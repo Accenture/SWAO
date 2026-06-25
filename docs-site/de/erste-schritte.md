@@ -5,7 +5,6 @@ title: Erste Schritte
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Erste Schritte
 
 Diese Anleitung fuehrt Sie durch die Einrichtung von SWAO und die Durchfuehrung Ihrer ersten

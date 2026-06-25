@@ -5,7 +5,6 @@ title: Power BI
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Power BI-Export
 
 SWAO kann Bewertungsergebnisse in einem Format exportieren, das mit Microsoft Power BI Desktop

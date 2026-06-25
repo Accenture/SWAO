@@ -5,7 +5,6 @@ title: NIST SP 800-66 R2
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # NIST SP 800-66 Revision 2
 
 NIST Special Publication 800-66 Revision 2 provides guidance on implementing the HIPAA
@@ -39,7 +38,7 @@ flowchart TD
     A --> J["System and\nInfo Integrity (SI)"]
 ```
 
-## Control Families
+## Control Family Reference
 
 | Family | Code | Controls | Description |
 |--------|------|---------|-------------|

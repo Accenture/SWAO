@@ -5,7 +5,6 @@ title: HIPAA
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # HIPAA
 
 ## What is HIPAA?

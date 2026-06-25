@@ -5,7 +5,6 @@ title: TUI
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Terminal-Benutzeroberflache (TUI)
 
 SWAO enthalt eine Vollbild-Terminal-Oberflache zur interaktiven Untersuchung von Bewertungsergebnissen.

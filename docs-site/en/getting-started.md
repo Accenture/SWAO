@@ -5,7 +5,6 @@ title: Getting Started
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Getting Started
 
 This guide walks you through setting up SWAO and running your first workload assessment.

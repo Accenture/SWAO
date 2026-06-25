@@ -5,7 +5,6 @@ title: Power BI Export
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Power BI Export
 
 SWAO can export assessment results in a format compatible with Microsoft Power BI Desktop,

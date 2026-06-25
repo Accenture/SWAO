@@ -5,7 +5,6 @@ title: MCP Server
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # MCP Server
 
 SWAO exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server,

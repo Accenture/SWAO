@@ -5,7 +5,6 @@ title: DSGVO (GDPR)
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # DSGVO (GDPR)
 
 ## Was ist die DSGVO?

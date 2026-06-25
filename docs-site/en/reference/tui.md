@@ -5,7 +5,6 @@ title: TUI
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Terminal UI (TUI)
 
 SWAO includes a full-screen terminal interface for exploring assessment findings without

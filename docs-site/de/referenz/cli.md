@@ -5,7 +5,6 @@ title: CLI-Referenz
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # CLI-Referenz
 
 Alle SWAO-Befehle folgen dem Muster `swao <befehl> [flags]`.

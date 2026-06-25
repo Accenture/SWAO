@@ -5,7 +5,6 @@ title: CLI Reference
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # CLI Reference
 
 All SWAO commands follow the pattern `swao <command> [flags]`.

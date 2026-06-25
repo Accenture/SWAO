@@ -5,7 +5,6 @@ title: GDPR
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # GDPR
 
 ## What is GDPR?

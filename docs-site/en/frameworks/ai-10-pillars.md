@@ -5,7 +5,6 @@ title: AI 10 Pillars
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # AI 10 Pillars
 
 The AI 10 Pillars framework maps Accenture's responsible AI principles to assessable controls,

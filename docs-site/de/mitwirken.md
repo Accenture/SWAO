@@ -5,7 +5,6 @@ title: Mitwirken
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Mitwirken
 
 Vielen Dank fuer Ihr Interesse an einem Beitrag zu SWAO. Alle Beitraege sind willkommen und

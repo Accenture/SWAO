@@ -5,7 +5,6 @@ title: Konfiguration
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Konfiguration
 
 SWAO wird ueber eine `.swao.yml`-Datei im Workspace-Stammverzeichnis konfiguriert.

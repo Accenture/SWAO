@@ -5,7 +5,6 @@ title: HTML-Bericht
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # HTML-Bericht
 
 SWAO erstellt nach jeder Bewertung einen eigenstandigen HTML-Bericht -- eine einzelne Datei

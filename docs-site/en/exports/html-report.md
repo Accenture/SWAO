@@ -5,7 +5,6 @@ title: HTML Report
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # HTML Report
 
 SWAO generates a self-contained single-page HTML report after every assessment. The report

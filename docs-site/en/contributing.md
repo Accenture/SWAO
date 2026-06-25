@@ -5,7 +5,6 @@ title: Contributing
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # Contributing
 
 Thank you for your interest in contributing to SWAO. All contributions are welcome and

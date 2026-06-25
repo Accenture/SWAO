@@ -5,7 +5,6 @@ title: COBIT 5
      | SWAO -- Community Edition                                        |
      +------------------------------------------------------------------+ -->
 
-
 # COBIT 5
 
 COBIT 5 (Control Objectives for Information and Related Technologies) is an IT governance
