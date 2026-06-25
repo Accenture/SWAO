@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <title>SWAO</title>
+  <line x1="180" y1="100" x2="140" y2="31"  stroke="#a100ff" stroke-width="2"/>
+  <line x1="60"  y1="31"  x2="20"  y2="100" stroke="#a100ff" stroke-width="2"/>
+  <line x1="60"  y1="169" x2="140" y2="169" stroke="#a100ff" stroke-width="2"/>
+  <line x1="140" y1="31"  x2="60"  y2="31"  stroke="#a100ff" stroke-width="2" stroke-dasharray="5,4"/>
+  <line x1="20"  y1="100" x2="60"  y2="169" stroke="#a100ff" stroke-width="2" stroke-dasharray="5,4"/>
+  <line x1="140" y1="169" x2="180" y2="100" stroke="#a100ff" stroke-width="2" stroke-dasharray="5,4"/>
+  <circle cx="180" cy="100" r="5.5" fill="#a100ff"/>
+  <circle cx="140" cy="31"  r="5.5" fill="#a100ff"/>
+  <circle cx="60"  cy="31"  r="5.5" fill="#a100ff"/>
+  <circle cx="20"  cy="100" r="5.5" fill="#a100ff"/>
+  <circle cx="60"  cy="169" r="5.5" fill="#a100ff"/>
+  <circle cx="140" cy="169" r="5.5" fill="#a100ff"/>
+  <polygon points="177,108 183,108 180,115" fill="#a100ff"/>
+  <polygon points="177,92  183,92  180,85"  fill="#a100ff"/>
+  <polygon points="152,100 126,55 74,55 48,100 74,145 126,145" stroke="#a100ff" stroke-width="2" fill="none"/>
+  <polyline points="130,76 70,76 70,95 130,95 70,109 130,109 130,124 70,124" stroke="#a100ff" stroke-width="7" stroke-linecap="butt" stroke-linejoin="miter" fill="none"/>
+</svg>
