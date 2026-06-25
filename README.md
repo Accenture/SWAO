@@ -21,6 +21,32 @@
 
 SWAO (Sovereign Workload Assessment and Onboarding) is an AI-accelerated compliance assessment tool for cloud migration. It analyses source code and configuration files, evaluates them against community compliance frameworks (GDPR, HIPAA, PCI-DSS, ISO 27001, and others), and generates audit-grade HTML reports and dashboards. The CLI runs in minutes and produces findings with full evidence traceability.
 
+### How SWAO works
+
+```
+  INPUT              ASSESSMENT            OUTPUT            ONBOARDING
+  ──────             ────────────          ──────            ──────────
+
+ ┌──────────┐       ┌────────────┐       ┌──────────┐      ┌────────────┐
+ │  Source  │       │            │       │  HTML    │      │ Terraform  │
+ │  Code    ├──────►│  SWAO      ├──────►│  Report  ├─────►│ Landing    │
+ │          │       │  CLI       │       │  BI/CSV  │      │ Zones      │
+ └──────────┘       │  TUI       │       │  JSON    │      │ Meshcloud  │
+ ┌──────────┐       │  MCP       │       └──────────┘      └─────┬──────┘
+ │  Config  │       └─────┬──────┘                               │
+ │  Files   ├─────────────┘         Frameworks:                  │  7R
+ └──────────┘                       GDPR · HIPAA · PCI-DSS       ▼
+                                    ISO 27001 · SOC 2 · BSI C5  ┌────────────┐
+                                    DORA · COBIT-5 · NIST · ... │ 1 Retire   │
+                                                                 │ 2 Retain   │
+ ◄─────────────────────────────────────────────────────────────  │ 3 Rehost   │
+              CONTINUOUS IMPROVEMENT                             │ 4 Relocate │
+              Re-assess · Drift detection · Updated 7R          │ 5 Replatform│
+                                                                 │ 6 Refactor │
+                                                                 │ 7 Repurchase│
+                                                                 └────────────┘
+```
+
 ---
 
 ## Key Features

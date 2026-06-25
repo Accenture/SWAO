@@ -1,0 +1,25 @@
+/* SWAO brand purple: #a100ff */
+
+:root {
+  --vp-c-brand-1: #a100ff;
+  --vp-c-brand-2: #8800e8;
+  --vp-c-brand-3: #7000c8;
+  --vp-c-brand-soft: rgba(161, 0, 255, 0.14);
+
+  --vp-button-brand-bg: #a100ff;
+  --vp-button-brand-hover-bg: #8800e8;
+  --vp-button-brand-active-bg: #7000c8;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
+}
+
+.dark {
+  --vp-c-brand-1: #c970ff;
+  --vp-c-brand-2: #a100ff;
+  --vp-c-brand-3: #8800e8;
+  --vp-c-brand-soft: rgba(161, 0, 255, 0.16);
+
+  --vp-button-brand-bg: #a100ff;
+  --vp-button-brand-hover-bg: #c970ff;
+  --vp-button-brand-active-bg: #8800e8;
+}

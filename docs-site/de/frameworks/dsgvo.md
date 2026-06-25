@@ -1,12 +1,10 @@
-<!-- +------------------------------------------------------------------+
-     | SWAO -- DSGVO (GDPR)                                             |
-     | Type: User Guide                                                 |
-     | Version: Community Edition                                       |
-     +------------------------------------------------------------------+ -->
-
 ---
 title: DSGVO (GDPR)
 ---
+<!-- +------------------------------------------------------------------+
+     | SWAO -- Community Edition                                        |
+     +------------------------------------------------------------------+ -->
+
 
 # DSGVO (GDPR)
 
@@ -46,6 +44,20 @@ Das DSGVO-Framework in SWAO deckt folgende Kontrolldomaenen ab:
 | Verschluesselung | Verschluesselung im Ruhezustand (AES-256 oder gleichwertig), Verschluesselung bei der Uebertragung (TLS 1.2+), Schluesselverwaltung |
 | Zugangskontrolle | Rollenbasierter Zugang, Least-Privilege-Richtlinien, Regelmaessigkeit der Privilegienzugangspruefung |
 | Reaktion bei Datenpannen | Erkennungstools fuer Vorfaelle, Benachrichtigungs-Runbooks, DSB-Registrierungsstatus |
+
+### Kontrollauswertungsfluss
+
+```mermaid
+flowchart TD
+    A[Quellcode + Konfiguration] --> B[SWAO DSGVO-Bewertung]
+    B --> C{Kontrollergebnis}
+    C -->|Blocker| D["BLOCKER\nVor Migration beheben"]
+    C -->|Warnung| E["WARNUNG\nEmpfehlung zur Behebung"]
+    C -->|Bestanden| F["BESTANDEN\nKonform"]
+    D --> G[HTML-Bericht + Nachweis]
+    E --> G
+    F --> G
+```
 
 ## Beispielbefund
 

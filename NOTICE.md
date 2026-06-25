@@ -1,8 +1,13 @@
-+------------------------------------------------------------------+
-|  SWAO -- Third-Party Notices and Edition Scope                   |
-|  Type: Reference                                                 |
-|  Version: Community Edition                                      |
-+------------------------------------------------------------------+
+╔══════════════════════════════════════════════════════════════════╗
+║   ____  __        __     _       ___                            ║
+║  / ___| \ \      / /    / \     / _ \                           ║
+║  \___ \  \ \ /\ / /    / _ \   | | | |                         ║
+║   ___) |  \ V  V /    / ___ \  | |_| |                         ║
+║  |____/    \_/\_/    /_/   \_\  \___/                           ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Third-Party Notices and Edition Scope                          ║
+║  Reference  ·  Community Edition  ·  Apache 2.0                ║
+╚══════════════════════════════════════════════════════════════════╝
 
 # SWAO -- Third-Party Notices and Edition Scope
 
@@ -20,7 +25,7 @@ SWAO is built on open-source components. A full Software Bill of Materials (SBOM
 
 ## Copyright
 
-Copyright 2025 Accenture. Licensed under the Apache License, Version 2.0.
+Copyright 2026 Accenture. Licensed under the Apache License, Version 2.0.
 
 You may not use this software except in compliance with the Licence. A copy of the Licence is included in the `LICENSE` file at the root of this repository, and is also available at:
 

@@ -1,12 +1,10 @@
-<!-- +------------------------------------------------------------------+
-     | SWAO -- GDPR                                                     |
-     | Type: User Guide                                                 |
-     | Version: Community Edition                                       |
-     +------------------------------------------------------------------+ -->
-
 ---
 title: GDPR
 ---
+<!-- +------------------------------------------------------------------+
+     | SWAO -- Community Edition                                        |
+     +------------------------------------------------------------------+ -->
+
 
 # GDPR
 
@@ -46,6 +44,20 @@ The GDPR framework in SWAO covers the following control domains:
 | Encryption | Encryption at rest (AES-256 or equivalent), encryption in transit (TLS 1.2+), key management |
 | Access control | Role-based access, least-privilege policies, privileged access review cadence |
 | Breach response | Incident detection tooling, notification runbooks, DPA registration status |
+
+### Control evaluation flow
+
+```mermaid
+flowchart TD
+    A[Source Code + Config] --> B[SWAO GDPR Assessment]
+    B --> C{Control Result}
+    C -->|Blocker| D["BLOCKER\nMust fix before migration"]
+    C -->|Warning| E["WARNING\nRecommended to fix"]
+    C -->|Pass| F["PASSED\nCompliant"]
+    D --> G[HTML Report + Evidence Link]
+    E --> G
+    F --> G
+```
 
 ## Example Finding
 
