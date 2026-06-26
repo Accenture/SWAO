@@ -9,6 +9,9 @@ title: Getting Started
 
 This guide walks you through setting up SWAO and running your first workload assessment.
 
+> **New to SWAO?** Visit the [SWAO product page](https://steady-echo-yp4z.here.now) for a
+> business-focused overview, feature comparison by edition, and stakeholder benefit summaries.
+
 ## SWAO Architecture
 
 ![SWAO Architecture Overview](/SWAO/images/swao-archtecture-decoupled.png)

@@ -5,9 +5,9 @@
 
   AI-accelerated cloud workload compliance assessment with audit-grade traceability.
 
-  [GitHub](https://github.com/Accenture/SWAO) |
-  [Discussions](https://github.com/Accenture/SWAO/discussions) |
+  [Docs](https://accenture.github.io/SWAO/en/) |
   [Website](https://steady-echo-yp4z.here.now) |
+  [Discussions](https://github.com/Accenture/SWAO/discussions) |
   [Security](SECURITY.md)
 
   ![CI](https://github.com/Accenture/SWAO/actions/workflows/ci-community.yml/badge.svg)
@@ -110,6 +110,8 @@ Professional Services. Reach out via [GitHub Discussions](https://github.com/Acc
 ---
 
 ## Quick Start
+
+Full setup guide: **[accenture.github.io/SWAO/en/getting-started](https://accenture.github.io/SWAO/en/getting-started)**
 
 Binary downloads are coming soon. Install via npm (requires Node.js 20+):
 

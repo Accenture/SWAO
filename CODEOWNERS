@@ -1,0 +1,15 @@
+# CODEOWNERS -- auto-assigns reviewers to pull requests
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for all files
+* @MyLaserEyes
+
+# Community frameworks -- framework contributors reviewed by maintainer
+docs/community-frameworks/**  @MyLaserEyes
+
+# Security policy -- any change requires maintainer sign-off
+SECURITY.md @MyLaserEyes
+
+# Licence and notice files
+LICENSE @MyLaserEyes
+NOTICE.md @MyLaserEyes
