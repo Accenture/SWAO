@@ -1,0 +1,34 @@
+{
+  // MD013: line length -- docs, tables, and ASCII diagrams legitimately exceed 80 chars
+  "MD013": false,
+
+  // MD025: single h1 -- VitePress uses frontmatter title + body h1 (both intentional)
+  "MD025": false,
+
+  // MD034: bare URLs -- used in community health files and footer text
+  "MD034": false,
+
+  // MD036: emphasis as heading -- we use **bold** for step labels (e.g. **Step 1**)
+  "MD036": false,
+
+  // MD037: spaces inside emphasis -- figlet ASCII art triggers false positives
+  "MD037": false,
+
+  // MD040: fenced code language -- not all code blocks require a language tag
+  "MD040": false,
+
+  // MD041: first line h1 -- community health files open with figlet box headers
+  "MD041": false,
+
+  // MD050: strong style -- disabled; figlet ASCII art contains __ that is not emphasis
+  "MD050": false,
+
+  // MD060: table column style -- disabled; table pipe alignment varies by content width
+  "MD060": false,
+
+  // MD033: inline HTML -- README hero uses <div align="center"> and <img> for layout
+  "MD033": false,
+
+  // MD023: headings must start at line beginning -- heading inside centered <div> in README
+  "MD023": false
+}
