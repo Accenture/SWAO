@@ -14,7 +14,7 @@ This guide walks you through setting up SWAO and running your first workload ass
 
 ## SWAO Architecture
 
-![SWAO Architecture Overview](/SWAO/images/swao-archtecture-decoupled.png)
+![SWAO Architecture Overview](/images/swao-archtecture-decoupled.png)
 
 ## SWAO Workflow
 
