@@ -1,15 +1,22 @@
 # CODEOWNERS -- auto-assigns reviewers to pull requests
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Team reference: @Accenture/swao-team resolves to all current (and future)
+# members of https://github.com/orgs/Accenture/teams/swao-team automatically.
+# Individual handles are listed as explicit fallback.
 
-# Default owner for all files
-* @MyLaserEyes
+# Default owner for all files -- entire SWAO team
+* @Accenture/swao-team @MyLaserEyes @morks
 
-# Community frameworks -- framework contributors reviewed by maintainer
-docs/community-frameworks/**  @MyLaserEyes
+# Community frameworks -- reviewed by full team
+docs/community-frameworks/**  @Accenture/swao-team @MyLaserEyes @morks
 
-# Security policy -- any change requires maintainer sign-off
-SECURITY.md @MyLaserEyes
+# Security policy -- any change requires full team sign-off
+SECURITY.md @Accenture/swao-team @MyLaserEyes @morks
 
-# Licence and notice files
-LICENSE @MyLaserEyes
-NOTICE.md @MyLaserEyes
+# Licence and notice files -- any change requires full team sign-off
+LICENSE @Accenture/swao-team @MyLaserEyes @morks
+NOTICE.md @Accenture/swao-team @MyLaserEyes @morks
+
+# CI/CD workflows -- full team review required
+.github/workflows/** @Accenture/swao-team @MyLaserEyes @morks
