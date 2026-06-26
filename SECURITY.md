@@ -1,13 +1,17 @@
-╔══════════════════════════════════════════════════════════════════╗
-║   ____  __        __     _       ___                            ║
-║  / ___| \ \      / /    / \     / _ \                           ║
-║  \___ \  \ \ /\ / /    / _ \   | | | |                         ║
-║   ___) |  \ V  V /    / ___ \  | |_| |                         ║
-║  |____/    \_/\_/    /_/   \_\  \___/                           ║
-╠══════════════════════════════════════════════════════════════════╣
-║  Security Policy                                                ║
-║  Policy  ·  Community Edition  ·  Apache 2.0                   ║
-╚══════════════════════════════════════════════════════════════════╝
+// =======================================================================
+//
+//                          S  W  A  O
+//
+//     Sovereign Workload Assessment and Onboarding
+//     AI-accelerated cloud workload compliance assessment
+//
+//     Community Edition  --  Apache 2.0  --  Security Policy
+//
+//     Website       :  https://steady-echo-yp4z.here.now
+//     Technical Docs:  https://accenture.github.io/SWAO/en/
+//     Source Code   :  https://github.com/Accenture/SWAO
+//
+// =======================================================================
 
 # Security Policy
 
