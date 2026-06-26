@@ -10,9 +10,8 @@
   [Discussions](https://github.com/Accenture/SWAO/discussions) |
   [Security](SECURITY.md)
 
-  ![CI](https://github.com/Accenture/SWAO/actions/workflows/ci-community.yml/badge.svg)
+  ![Markdown Lint](https://github.com/Accenture/SWAO/actions/workflows/markdown-lint.yml/badge.svg)
   ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
-  ![Version](https://img.shields.io/github/v/release/Accenture/SWAO)
 </div>
 
 ---
@@ -28,27 +27,24 @@ exact file, line, or configuration that triggered it.
 ### How SWAO works
 
 ```
-  INPUT              ASSESSMENT            OUTPUT            ONBOARDING
-  ------             ----------            ------            ----------
-
- +----------+       +------------+       +----------+      +------------+
- |  Source  |       |            |       |  HTML    |      |  Terraform |
- |  Code    +------>|  SWAO      +------>|  Report  +----->|  Landing   |
- |          |       |  CLI       |       |  BI/CSV  |      |  Zones     |
- +----------+       |  TUI       |       |  JSON    |      |  meshStack |
- +----------+       |  MCP       |       +----------+      +------+-----+
- |  Config  |       +------+-----+                                |
- |  Files   +--------------|       Community Frameworks:          |  7R
- +----------+              |       GDPR, HIPAA, AI 10 Pillars    v
-                           |       COBIT 5, NIST SP 800-66 R2   +------------+
-                           |                                     | 1 Retire   |
-                           |       + your own YAML frameworks    | 2 Retain   |
- <-----------------------------------------------------------------| 3 Rehost   |
-              CONTINUOUS IMPROVEMENT                             | 4 Relocate |
-              Re-assess, drift detection, updated 7R            | 5 Replatform|
-                                                                 | 6 Refactor |
-                                                                 | 7 Repurchase|
-                                                                 +------------+
+  +---------------+     +--------------------+     +----------------+
+  |     INPUT     |     |        SWAO        |     |     OUTPUT     |
+  +---------------+     +--------------------+     +----------------+
+  | Source Code   |     | CLI / TUI / MCP    |     | HTML Report    |
+  | Config Files  +---->| 13-pass analysis   +---->| BI Export      |
+  | IaC / TF      |     |                    |     | JSON / CSV     |
+  | Web Crawl     |     | GDPR    HIPAA      |     | Workload       |
+  +---------------+     | AI 10 Pillars      |     | Sovereignty    |
+                        | COBIT 5            |     | Profile (WSP)  |
+                        | NIST SP 800-66 R2  |     +-------+--------+
+                        | + your own YAML    |             |
+                        +--------------------+             v
+                                                  +----------------+
+                                                  |  ONBOARDING    |
+  <-----------------------------------------------| Terraform / LZ |
+  Continuous improvement loop                     | meshStack      |
+  Re-assess after each migration                  | 7R Strategies  |
+                                                  +----------------+
 ```
 
 ---
