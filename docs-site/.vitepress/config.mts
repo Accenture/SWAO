@@ -10,11 +10,29 @@ export default defineConfig({
       label: 'English',
       lang: 'en-US',
       link: '/en/',
+      themeConfig: {
+        nav: [
+          { text: 'Home', link: '/en/' },
+          { text: 'Quick start', link: '/en/getting-started' },
+          { text: 'How it works', link: '/en/how-it-works' },
+          { text: 'Features', link: '/en/features' },
+          { text: 'User Guide', link: '/en/workspace-setup' },
+          { text: 'Samples', link: '/en/samples/' },
+        ],
+      },
     },
     de: {
       label: 'Deutsch',
       lang: 'de-DE',
       link: '/de/',
+      themeConfig: {
+        nav: [
+          { text: 'Startseite', link: '/de/' },
+          { text: 'Schnellstart', link: '/de/erste-schritte' },
+          { text: 'Benutzerhandbuch', link: '/de/workspace-setup' },
+          { text: 'Beispiele', link: '/de/samples/' },
+        ],
+      },
     },
   },
 
@@ -23,15 +41,6 @@ export default defineConfig({
       light: '/logo.svg',
       dark: '/logo-icon-dark.png',
     },
-
-    nav: [
-      { text: 'Home', link: '/en/' },
-      { text: 'Quick start', link: '/en/getting-started' },
-      { text: 'How it works', link: '/en/how-it-works' },
-      { text: 'Features', link: '/en/features' },
-      { text: 'User Guide', link: '/en/workspace-setup' },
-      { text: 'Samples', link: '/en/samples/' },
-    ],
 
     sidebar: {
       '/en/': [
@@ -87,6 +96,12 @@ export default defineConfig({
 
       '/de/': [
         {
+          text: 'Einstieg',
+          items: [
+            { text: 'Erste Schritte', link: '/de/erste-schritte' },
+          ],
+        },
+        {
           text: 'Benutzerhandbuch',
           items: [
             { text: '1. Workspace Setup', link: '/de/workspace-setup' },
@@ -108,31 +123,25 @@ export default defineConfig({
             { text: '7. Portfolio-Operationen', link: '/de/portfolio' },
             { text: '8. TF-Module generieren', link: '/de/generate-tf' },
             { text: '9. Werkzeuge', link: '/de/tools' },
+          ],
+        },
+        {
+          text: 'Beispiele + Screenshots',
+          items: [
             {
-              text: 'Beispiele + Screenshots',
+              text: 'Beispielgalerie',
+              link: '/de/samples/',
               items: [
-                {
-                  text: 'Beispielgalerie',
-                  link: '/de/samples/',
-                  items: [
-                    { text: 'CLI', link: '/de/samples/#cli' },
-                    { text: 'Power BI Berichte', link: '/de/samples/#power-bi-reports' },
-                    { text: 'Terminal-Oberflaeche (TUI)', link: '/de/samples/#terminal-interface-tui' },
-                    { text: 'MCP-Connector', link: '/de/samples/#mcp-connector' },
-                  ],
-                },
+                { text: 'CLI', link: '/de/samples/#cli' },
+                { text: 'Power BI Berichte', link: '/de/samples/#power-bi-reports' },
+                { text: 'Terminal-Oberflaeche (TUI)', link: '/de/samples/#terminal-interface-tui' },
+                { text: 'MCP-Connector', link: '/de/samples/#mcp-connector' },
               ],
             },
           ],
         },
         {
-          text: 'Erste Schritte',
-          items: [
-            { text: 'Erste Schritte', link: '/de/erste-schritte' },
-          ],
-        },
-        {
-          text: 'Benutzerhandbuch',
+          text: 'Referenz',
           items: [
             { text: 'CLI', link: '/de/referenz/cli' },
             { text: 'TUI', link: '/de/referenz/tui' },
