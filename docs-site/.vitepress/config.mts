@@ -26,18 +26,11 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/en/' },
-      { text: 'Getting Started', link: '/en/getting-started' },
+      { text: 'Quick start', link: '/en/getting-started' },
+      { text: 'How it works', link: '/en/how-it-works' },
+      { text: 'Features', link: '/en/features' },
       { text: 'User Guide', link: '/en/workspace-setup' },
       { text: 'Samples', link: '/en/samples/' },
-      {
-        text: 'Exports',
-        items: [
-          { text: 'HTML Report', link: '/en/exports/html-report' },
-          { text: 'Power BI', link: '/en/exports/powerbi' },
-        ],
-      },
-      { text: 'Frameworks', link: '/en/frameworks/' },
-      { text: 'Contributing', link: '/en/contributing' },
     ],
 
     sidebar: {
@@ -46,6 +39,8 @@ export default defineConfig({
           text: 'Getting started',
           items: [
             { text: 'Quick start (5 min)', link: '/en/getting-started' },
+            { text: 'How it works', link: '/en/how-it-works' },
+            { text: 'Features & Editions', link: '/en/features' },
           ],
         },
         { text: '1. Workspace Setup', link: '/en/workspace-setup' },
