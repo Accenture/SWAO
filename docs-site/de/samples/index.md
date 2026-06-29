@@ -264,7 +264,7 @@ Das Anleitungsfeld beschreibt den Ausgabepfad und das Format fuer die ausgewaehl
 
 ## MCP-Connector
 
-### SWAO verbunden in Claude Desktop {#mcp-connector}
+### SWAO verbunden in Claude Desktop {#sample-15}
 
 ![SWAO MCP connector active in Claude Desktop connectors menu](/samples/15-mcp-connector-claude-desktop.png)
 

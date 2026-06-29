@@ -65,7 +65,7 @@ else is deterministic static analysis.
 
 ## Power BI reports
 
-### Application Dashboard -- overview page {#power-bi-reports}
+### Application Dashboard -- overview page {#sample-04}
 
 ![Power BI Application Report dashboard page](/samples/04-powerbi-dashboard-overview.png)
 
@@ -156,7 +156,7 @@ and evidence paths.
 
 ## Terminal interface (TUI)
 
-### Main Menu {#terminal-interface-tui}
+### Main Menu {#sample-10}
 
 ![SWAO TUI main menu v0.4.8](/samples/10-tui-main-menu.png)
 
@@ -251,7 +251,7 @@ The guidance box describes the output path and format for the selected option.
 
 ## MCP connector
 
-### SWAO connected in Claude Desktop {#mcp-connector}
+### SWAO connected in Claude Desktop {#sample-15}
 
 ![SWAO MCP connector active in Claude Desktop connectors menu](/samples/15-mcp-connector-claude-desktop.png)
 
