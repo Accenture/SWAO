@@ -1,25 +1,85 @@
-/* SWAO brand purple: #a100ff */
+/* ── SWAO brand palette overrides for VitePress 1.x ─────────────────────────
+   Source of truth: docs/brand/branding-guidelines.md §4
+   Primary: #a100ff  Soft: #c87bff  Dim: #4a0080
+   Background: #070707  Surface: #111113  Border: #24242a
+   Text: #aaaab5  Text-high: #d6d6dd  White: #f2f2f5
+   Teal (partner): #1bbaa4
+   ──────────────────────────────────────────────────────────────────────────── */
 
+/* Brand accent -- applied in both light and dark */
 :root {
   --vp-c-brand-1: #a100ff;
-  --vp-c-brand-2: #8800e8;
-  --vp-c-brand-3: #7000c8;
-  --vp-c-brand-soft: rgba(161, 0, 255, 0.14);
+  --vp-c-brand-2: #8c00e0;
+  --vp-c-brand-3: #c87bff;
+  --vp-c-brand-soft: rgba(161, 0, 255, 0.12);
 
-  --vp-button-brand-bg: #a100ff;
-  --vp-button-brand-hover-bg: #8800e8;
-  --vp-button-brand-active-bg: #7000c8;
-  --vp-button-brand-border: transparent;
-  --vp-button-brand-text: #ffffff;
+  --vp-c-indigo-1: #a100ff;
+  --vp-c-indigo-2: #8c00e0;
+  --vp-c-indigo-3: #c87bff;
+  --vp-c-indigo-soft: rgba(161, 0, 255, 0.12);
 }
 
+/* ── Dark mode surface overrides ────────────────────────────────────────── */
 .dark {
-  --vp-c-brand-1: #c970ff;
-  --vp-c-brand-2: #a100ff;
-  --vp-c-brand-3: #8800e8;
-  --vp-c-brand-soft: rgba(161, 0, 255, 0.16);
+  --vp-c-bg:         #0a0a0c;
+  --vp-c-bg-alt:     #070707;
+  --vp-c-bg-soft:    #111113;
+  --vp-c-bg-elv:     #17171a;
 
-  --vp-button-brand-bg: #a100ff;
-  --vp-button-brand-hover-bg: #c970ff;
-  --vp-button-brand-active-bg: #8800e8;
+  --vp-c-border:     #24242a;
+  --vp-c-divider:    #24242a;
+  --vp-c-gutter:     #070707;
+
+  --vp-c-text-1:     #d6d6dd;
+  --vp-c-text-2:     #aaaab5;
+  --vp-c-text-3:     #6b6b75;
+
+  /* Nav */
+  --vp-nav-bg-color:      #0a0a0c;
+
+  /* Sidebar */
+  --vp-sidebar-bg-color:  #070707;
+
+  /* Code blocks */
+  --vp-code-block-bg:     #111113;
+  --vp-code-bg:           #17171a;
+
+  /* Tip / info / warning / danger callout tints */
+  --vp-custom-block-tip-bg:     rgba(161, 0, 255, 0.08);
+  --vp-custom-block-tip-border: rgba(161, 0, 255, 0.30);
+  --vp-custom-block-tip-text:   #c87bff;
+}
+
+/* ── Nav: "SWAO" title text in brand white ───────────────────────────────── */
+.VPNavBarTitle .title {
+  color: #f2f2f5 !important;
+  font-weight: 600;
+}
+
+/* ── Sidebar active link in brand purple ─────────────────────────────────── */
+.dark .VPSidebarItem.is-active > .item .link .text {
+  color: #c87bff;
+}
+
+/* ── Links ──────────────────────────────────────────────────────────────── */
+.dark a,
+.dark .vp-doc a {
+  color: #c87bff;
+}
+.dark a:hover,
+.dark .vp-doc a:hover {
+  color: #a100ff;
+}
+
+/* ── Nav top-bar thin bottom border in brand purple ─────────────────────── */
+.dark .VPNav {
+  border-bottom: 1px solid #24242a;
+}
+
+/* ── Nav logo: square corners rounded, sized to match nav height ─────────── */
+.VPNavBarTitle .logo {
+  height: 32px;
+  width: 32px;
+  border-radius: 6px;
+  object-fit: cover;
 }

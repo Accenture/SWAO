@@ -27,15 +27,8 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/en/' },
       { text: 'Getting Started', link: '/en/getting-started' },
-      {
-        text: 'User Guide',
-        items: [
-          { text: 'CLI Reference', link: '/en/reference/cli' },
-          { text: 'TUI', link: '/en/reference/tui' },
-          { text: 'MCP Server', link: '/en/reference/mcp' },
-          { text: 'Configuration', link: '/en/reference/configuration' },
-        ],
-      },
+      { text: 'User Guide', link: '/en/workspace-setup' },
+      { text: 'Samples', link: '/en/samples/' },
       {
         text: 'Exports',
         items: [
@@ -50,47 +43,93 @@ export default defineConfig({
     sidebar: {
       '/en/': [
         {
-          text: 'Getting Started',
+          text: 'Getting started',
           items: [
-            { text: 'Getting Started', link: '/en/getting-started' },
+            { text: 'Quick start (5 min)', link: '/en/getting-started' },
           ],
         },
+        { text: '1. Workspace Setup', link: '/en/workspace-setup' },
+        { text: '2. Health Check', link: '/en/health-check' },
         {
-          text: 'User Guide',
+          text: '3. Run Assessment',
+          link: '/en/assessment/',
           items: [
-            { text: 'CLI Reference', link: '/en/reference/cli' },
-            { text: 'TUI', link: '/en/reference/tui' },
-            { text: 'MCP Server', link: '/en/reference/mcp' },
-            { text: 'Configuration', link: '/en/reference/configuration' },
+            { text: 'Application', link: '/en/assessment/application' },
+            { text: 'Landing Zone', link: '/en/assessment/landing-zone' },
+            { text: 'Audit', link: '/en/assessment/audit' },
+            { text: 'LLM', link: '/en/assessment/llm' },
+            { text: 'Hybrid', link: '/en/assessment/hybrid' },
           ],
         },
+        { text: '4. Generate Report', link: '/en/generate-report' },
+        { text: '5. Publish HTML', link: '/en/publish-html' },
         {
-          text: 'Exports',
+          text: '6. Export BI',
+          link: '/en/export-bi',
           items: [
-            { text: 'HTML Report', link: '/en/exports/html-report' },
-            { text: 'Power BI', link: '/en/exports/powerbi' },
+            { text: 'Authoring guide -- single-app', link: '/en/exports/powerbi' },
           ],
         },
+        { text: '7. Portfolio Operations', link: '/en/portfolio' },
+        { text: '8. Generate TF Modules', link: '/en/generate-tf' },
+        { text: '9. Tools', link: '/en/tools' },
         {
-          text: 'Frameworks',
+          text: 'Samples + screenshots',
           items: [
-            { text: 'All Frameworks', link: '/en/frameworks/' },
-            { text: 'GDPR', link: '/en/frameworks/gdpr' },
-            { text: 'HIPAA', link: '/en/frameworks/hipaa' },
-            { text: 'AI 10 Pillars', link: '/en/frameworks/ai-10-pillars' },
-            { text: 'COBIT 5', link: '/en/frameworks/cobit5' },
-            { text: 'NIST SP 800-66 R2', link: '/en/frameworks/nist-sp-800-66r2' },
-          ],
-        },
-        {
-          text: 'Contributing',
-          items: [
-            { text: 'Contributing', link: '/en/contributing' },
+            {
+              text: 'Sample gallery',
+              link: '/en/samples/',
+              items: [
+                { text: 'CLI', link: '/en/samples/#cli' },
+                { text: 'Power BI reports', link: '/en/samples/#power-bi-reports' },
+                { text: 'Terminal interface (TUI)', link: '/en/samples/#terminal-interface-tui' },
+                { text: 'MCP connector', link: '/en/samples/#mcp-connector' },
+              ],
+            },
           ],
         },
       ],
 
       '/de/': [
+        {
+          text: 'Benutzerhandbuch',
+          items: [
+            { text: '1. Workspace Setup', link: '/de/workspace-setup' },
+            { text: '2. Health Check', link: '/de/health-check' },
+            {
+              text: '3. Bewertung durchfuehren',
+              link: '/de/assessment/',
+              items: [
+                { text: 'Anwendung', link: '/de/assessment/application' },
+                { text: 'Landing Zone', link: '/de/assessment/landing-zone' },
+                { text: 'Audit', link: '/de/assessment/audit' },
+                { text: 'LLM', link: '/de/assessment/llm' },
+                { text: 'Hybrid', link: '/de/assessment/hybrid' },
+              ],
+            },
+            { text: '4. Bericht erstellen', link: '/de/generate-report' },
+            { text: '5. HTML veroeffentlichen', link: '/de/publish-html' },
+            { text: '6. BI exportieren', link: '/de/export-bi' },
+            { text: '7. Portfolio-Operationen', link: '/de/portfolio' },
+            { text: '8. TF-Module generieren', link: '/de/generate-tf' },
+            { text: '9. Werkzeuge', link: '/de/tools' },
+            {
+              text: 'Beispiele + Screenshots',
+              items: [
+                {
+                  text: 'Beispielgalerie',
+                  link: '/de/samples/',
+                  items: [
+                    { text: 'CLI', link: '/de/samples/#cli' },
+                    { text: 'Power BI Berichte', link: '/de/samples/#power-bi-reports' },
+                    { text: 'Terminal-Oberflaeche (TUI)', link: '/de/samples/#terminal-interface-tui' },
+                    { text: 'MCP-Connector', link: '/de/samples/#mcp-connector' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
         {
           text: 'Erste Schritte',
           items: [
@@ -133,8 +172,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'SWAO is an Accenture open-source project.',
-      copyright: 'Apache 2.0 -- Copyright 2026 Accenture',
+      message: 'Released under the <a href="https://github.com/Accenture/SWAO/blob/main/LICENSE" target="_blank">Apache 2.0 Licence</a>.',
+      copyright: '&copy; 2026 Accenture. Sovereign Workload Assessment and Onboarding.',
     },
 
     search: {
