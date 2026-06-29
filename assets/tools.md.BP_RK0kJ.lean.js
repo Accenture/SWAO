@@ -1,0 +1,1 @@
+import{_ as t,o as a,c as s,a2 as n}from"./chunks/framework.DTa47_fH.js";const u=JSON.parse('{"title":"Tools","description":"","frontmatter":{},"headers":[],"relativePath":"tools.md","filePath":"tools.md"}'),o={name:"tools.md"};function i(r,e,l,c,d,p){return a(),s("div",null,[...e[0]||(e[0]=[n("",30)])])}const g=t(o,[["render",i]]);export{u as __pageData,g as default};
