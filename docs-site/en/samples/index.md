@@ -8,7 +8,7 @@ live workspaces.
 
 ## CLI
 
-### `swao init` -- workspace scaffolding {#cli}
+### `swao init` -- workspace scaffolding {#sample-01}
 
 ![swao init output alongside the created workspace folder](/samples/01-cli-init.png)
 

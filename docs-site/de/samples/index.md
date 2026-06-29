@@ -8,7 +8,7 @@ SWAO v0.4.8 gegen Live-Workspaces.
 
 ## CLI
 
-### `swao init` -- Workspace-Strukturierung {#cli}
+### `swao init` -- Workspace-Strukturierung {#sample-01}
 
 ![swao init output alongside the created workspace folder](/samples/01-cli-init.png)
 
