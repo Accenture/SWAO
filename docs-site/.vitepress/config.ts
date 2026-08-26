@@ -50,28 +50,50 @@ const deSidebar = {
       ],
     },
     {
-      text: 'Hauptfunktionen',
+      text: '1. Workspace-Setup',
+      link: '/de/workspace-setup',
+    },
+    {
+      text: '2. Health Check',
+      link: '/de/health-check',
+    },
+    {
+      text: '3. Bewertung durchführen',
+      link: '/de/assessment/',
       items: [
-        { text: 'Anwendungsbewertung', link: '/de/how-it-works#die-bewertungs-pipeline' },
-        { text: 'HTML-Veröffentlichung', link: '/de/how-it-works#die-html-veroffentlichung' },
-        { text: 'MCP-Integration', link: '/de/how-it-works#mcp-integration' },
-        { text: 'PowerBI-Dashboards', link: '/de/how-it-works#powerbi-dashboards' },
+        { text: 'Anwendung', link: '/de/assessment/application' },
+        { text: 'Landing Zone', link: '/de/assessment/landing-zone' },
+        { text: 'LLM', link: '/de/assessment/llm' },
       ],
     },
     {
-      text: 'PowerBI-Vorlagen',
-      items: [
-        { text: 'Autorenleitfaden -- Einzelanwendung', link: '/templates/AUTHORING-GUIDE' },
-        { text: 'Autorenleitfaden -- Portfolio', link: '/templates/AUTHORING-GUIDE-PORTFOLIO' },
-        { text: 'Abfragen parametrisieren', link: '/templates/PARAMETERISE-PBIT-QUERIES' },
-        { text: 'Aktualisierungs-Runbook', link: '/templates/REFRESH-RUNBOOK' },
-        { text: 'CHANGELOG', link: '/templates/CHANGELOG' },
-      ],
+      text: '4. Bericht erstellen',
+      link: '/de/generate-report',
+    },
+    {
+      text: '5. HTML veröffentlichen',
+      link: '/de/publish-html',
+    },
+    {
+      text: '6. BI exportieren',
+      link: '/de/export-bi',
+    },
+    {
+      text: '7. Portfolio-Betrieb',
+      link: '/de/portfolio',
+    },
+    {
+      text: '8. TF-Module erstellen',
+      link: '/de/generate-tf',
+    },
+    {
+      text: '9. Werkzeuge',
+      link: '/de/tools',
     },
     {
       text: 'Beispiele + Screenshots',
       items: [
-        { text: 'Beispielgalerie', link: '/samples/' },
+        { text: 'Beispielgalerie', link: '/de/samples/' },
       ],
     },
     deRunbooksSidebar,
@@ -92,7 +114,7 @@ export default defineConfig({
   appearance: 'dark',
   ignoreDeadLinks: true,
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/SWAO/logo.svg' }],
   ],
   locales: {
     root: {
@@ -108,8 +130,7 @@ export default defineConfig({
           { text: 'Schnellstart', link: '/de/quick-start' },
           { text: 'Wie es funktioniert', link: '/de/how-it-works' },
           { text: 'Funktionen', link: '/de/features' },
-          { text: 'Autorenleitfaden', link: '/templates/AUTHORING-GUIDE' },
-          { text: 'Beispiele', link: '/samples/' },
+          { text: 'Beispiele', link: '/de/samples/' },
         ],
         sidebar: deSidebar,
       },
@@ -121,7 +142,6 @@ export default defineConfig({
       { text: 'Quick start', link: '/quick-start' },
       { text: 'How it works', link: '/how-it-works' },
       { text: 'Features', link: '/features' },
-      { text: 'Authoring', link: '/templates/AUTHORING-GUIDE' },
       { text: 'Samples', link: '/samples/' },
     ],
     sidebar: {
@@ -162,12 +182,6 @@ export default defineConfig({
         {
           text: '6. Export BI',
           link: '/export-bi',
-          items: [
-            { text: 'Authoring guide -- single-app', link: '/templates/AUTHORING-GUIDE' },
-            { text: 'Authoring guide -- portfolio', link: '/templates/AUTHORING-GUIDE-PORTFOLIO' },
-            { text: 'Parameterise queries', link: '/templates/PARAMETERISE-PBIT-QUERIES' },
-            { text: 'Refresh runbook', link: '/templates/REFRESH-RUNBOOK' },
-          ],
         },
         {
           text: '7. Portfolio Operations',

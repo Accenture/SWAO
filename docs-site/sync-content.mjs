@@ -29,6 +29,14 @@ const FILES = [
   { src: 'de/quick-start.md', dst: 'de/quick-start.md' },
   { src: 'de/how-it-works.md', dst: 'de/how-it-works.md' },
   { src: 'de/features.md', dst: 'de/features.md' },
+  { src: 'de/workspace-setup.md', dst: 'de/workspace-setup.md' },
+  { src: 'de/health-check.md', dst: 'de/health-check.md' },
+  { src: 'de/generate-report.md', dst: 'de/generate-report.md' },
+  { src: 'de/publish-html.md', dst: 'de/publish-html.md' },
+  { src: 'de/export-bi.md', dst: 'de/export-bi.md' },
+  { src: 'de/portfolio.md', dst: 'de/portfolio.md' },
+  { src: 'de/generate-tf.md', dst: 'de/generate-tf.md' },
+  { src: 'de/tools.md', dst: 'de/tools.md' },
 ];
 
 // Image extensions to copy alongside the samples markdown.
@@ -55,6 +63,18 @@ const DE_RUNBOOKS_FOLDER = {
 const ASSESSMENT_FOLDER = {
   src: 'assessment',
   dst: 'assessment',
+  filter: (name) => name.endsWith('.md'),
+};
+
+const DE_ASSESSMENT_FOLDER = {
+  src: 'de/assessment',
+  dst: 'de/assessment',
+  filter: (name) => name.endsWith('.md'),
+};
+
+const DE_SAMPLES_FOLDER = {
+  src: 'de/samples',
+  dst: 'de/samples',
   filter: (name) => name.endsWith('.md'),
 };
 
@@ -134,6 +154,38 @@ for (const { src, dst } of FILES) {
       if (!ASSESSMENT_FOLDER.filter(file)) continue;
       copyFileSync(join(s, file), join(d, file));
       console.log(`  copied: ${ASSESSMENT_FOLDER.src}/${file} -> manual/${ASSESSMENT_FOLDER.dst}/${file}`);
+    }
+  } else {
+    console.warn(`[warn] source folder missing: ${s}`);
+  }
+}
+
+// Copy DE assessment stubs from docs/de/assessment/ -> manual/de/assessment/
+{
+  const s = join(srcRoot, DE_ASSESSMENT_FOLDER.src);
+  const d = join(dstRoot, DE_ASSESSMENT_FOLDER.dst);
+  if (existsSync(s)) {
+    mkdirSync(d, { recursive: true });
+    for (const file of readdirSync(s)) {
+      if (!DE_ASSESSMENT_FOLDER.filter(file)) continue;
+      copyFileSync(join(s, file), join(d, file));
+      console.log(`  copied: ${DE_ASSESSMENT_FOLDER.src}/${file} -> manual/${DE_ASSESSMENT_FOLDER.dst}/${file}`);
+    }
+  } else {
+    console.warn(`[warn] source folder missing: ${s}`);
+  }
+}
+
+// Copy DE samples stub from docs/de/samples/ -> manual/de/samples/
+{
+  const s = join(srcRoot, DE_SAMPLES_FOLDER.src);
+  const d = join(dstRoot, DE_SAMPLES_FOLDER.dst);
+  if (existsSync(s)) {
+    mkdirSync(d, { recursive: true });
+    for (const file of readdirSync(s)) {
+      if (!DE_SAMPLES_FOLDER.filter(file)) continue;
+      copyFileSync(join(s, file), join(d, file));
+      console.log(`  copied: ${DE_SAMPLES_FOLDER.src}/${file} -> manual/${DE_SAMPLES_FOLDER.dst}/${file}`);
     }
   } else {
     console.warn(`[warn] source folder missing: ${s}`);

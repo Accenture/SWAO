@@ -178,6 +178,16 @@ swao assess --portfolio
 
 ---
 
+## Live example report
+
+See a real Landing Zone Assessment output for the Sovereign Health demo workspace:
+
+[Open live report](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24T11-36-12-sovereign-health-lz.html)
+
+This report shows the fit/gap analysis across EU sovereign and hyperscaler cloud providers, with readiness verdicts per provider.
+
+---
+
 ## Further reading
 
 - [Adapting LZ Catalogues](/runbooks/adapting-lz-catalogues) -- add regions, correct facts, create private-cloud entries

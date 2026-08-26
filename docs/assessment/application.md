@@ -195,6 +195,16 @@ assessment typically costs a fraction of the initial run.
 
 ---
 
+## Live example report
+
+See a real Application Assessment output for the Sovereign Health demo workspace:
+
+[Open live report](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-23T17-29-27-sovereign-health.html)
+
+This report covers GDPR and BSI C5 signal findings, risk register, and 7R migration strategy for a fictitious patient-management application.
+
+---
+
 ## Further reading
 
 - [Landing Zone Assessment](./landing-zone) -- for CSP infrastructure fit/gap analysis

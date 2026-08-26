@@ -211,6 +211,16 @@ Addendum and applicable terms.
 
 ---
 
+## Live example report
+
+See a real LLM Assessment output comparing multiple AI providers:
+
+[Open live report](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24-08-32-09-llm-assessment.html)
+
+This report evaluates several language models against data-residency, GDPR, and BSI C5 requirements, with per-model verdicts and a sovereignty ranking.
+
+---
+
 ## Further reading
 
 - [LLM provider swap](/runbooks/llm-provider-swap) -- change connectors and test connectivity
