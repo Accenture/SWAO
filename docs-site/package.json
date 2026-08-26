@@ -7,7 +7,7 @@
   "scripts": {
     "docs:sync": "node sync-content.mjs",
     "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
+    "docs:build": "node sync-content.mjs && vitepress build",
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {
