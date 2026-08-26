@@ -33,7 +33,7 @@ Community  v0.11.2
 
   1  Workspace Setup       init + LLM + credentials wizard
   2  Health Check          swao health-check
-  3  Run Assessment        Application / Audit / Landing Zone + more
+  3  Run Assessment        Application / Landing Zone / LLM + more
   4  Generate Report       swao report (text / PDF)
   5  Publish HTML          swao publish -- self-contained HTML file
   6  Export BI             star schema / PowerBI / Tableau
@@ -88,8 +88,6 @@ Select **3. Run Assessment** from the main menu. SWAO asks which assessment type
 | Application Assessment | Analyses your application source code |
 | Landing Zone Assessment | Checks your cloud infrastructure configuration |
 | LLM Assessment | Benchmarks LLM providers against sovereignty criteria |
-| Audit Assessment | Roadmap -- human-led audit |
-| Hybrid Assessment | Roadmap -- combined source + audit |
 
 Select an assessment type, confirm, and SWAO runs automatically. A live progress bar
 shows each pass as it completes.
@@ -201,7 +199,7 @@ For **Power BI Desktop** users, SWAO ships pre-built templates in your workspace
 
 | Template | Tier | Pages |
 |---|---|---|
-| `swao-report.pbit` (single app) | Consultant + Enterprise | Overview, Compliance, Signals, Risks, Auditor, Run Stats |
+| `swao-report.pbit` (single app) | Enterprise | Overview, Compliance, Signals, Risks, Auditor, Run Stats |
 | `swao-portfolio.pbit` (multi-app) | Enterprise | Portfolio Overview, App Heatmap, Compliance, Risk & 7R, Wave Sequencing, Auditor Roll-up |
 
 To open a template:

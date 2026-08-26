@@ -31,8 +31,8 @@ hero:
       link: /de/how-it-works
 
 features:
-  - title: Fünf Bewertungstypen
-    details: Anwendungs-, Landing-Zone- und LLM-Bewertung sind jetzt verfügbar. Audit- und Hybrid-Bewertung befinden sich auf der Roadmap.
+  - title: Drei Bewertungstypen
+    details: Anwendungs-, Landing-Zone- und LLM-Bewertung -- alle jetzt verfügbar ohne zusätzliche Konfiguration.
   - title: Eigenes LLM mitbringen
     details: Anthropic Claude, OpenAI, Ollama oder ein deterministischer Stub für den Offline-Betrieb. LLM-Zugriff ist in jeder Edition enthalten.
   - title: Audit-konforme Nachvollziehbarkeit
@@ -65,8 +65,6 @@ LLM-Anbieter mit.
 | Anwendungsbewertung | Verfügbar | Vollständige Pipeline: Inventar, SBOM, Datenklassifizierung, Compliance, 7R-Synthese |
 | Landing-Zone-Bewertung | Verfügbar | Cloud-Infrastruktur-Fit/Gap-Bericht gegen Souveränitätsanforderungen |
 | LLM-Bewertung | Verfügbar | Paralleles Souveränitäts-Benchmarking uber mehrere LLM-Anbieter |
-| Audit-Bewertung | Roadmap | Menschgeführte Checkliste und Evidenz mit deterministischem Compliance-Urteil |
-| Hybrid-Bewertung | Roadmap | Kombinierte Quellanalyse und Consultant-Audit-Evidenz |
 
 ---
 

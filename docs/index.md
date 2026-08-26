@@ -31,8 +31,8 @@ hero:
       link: /how-it-works
 
 features:
-  - title: Five assessment types
-    details: Application Assessment, Landing Zone Assessment, and LLM Assessment are available now. Audit and Hybrid assessments are on the roadmap.
+  - title: Three assessment types
+    details: Application Assessment, Landing Zone Assessment, and LLM Assessment -- all available now with no additional configuration.
   - title: Bring your own LLM
     details: Anthropic Claude, OpenAI, Ollama, or a deterministic stub for offline use. LLM access is included in every edition.
   - title: Audit-grade traceability
@@ -80,8 +80,6 @@ code and assessment data never leave your machine. Bring your own LLM provider.
 | Application Assessment | Available | Full pipeline: inventory, SBOM, data classification, compliance, 7R synthesis |
 | Landing Zone Assessment | Available | Cloud infrastructure fit/gap report against sovereignty requirements |
 | LLM Assessment | Available | Side-by-side sovereignty benchmarking across multiple LLM providers |
-| Audit Assessment | In development | Human-led checklist and evidence with deterministic compliance verdict |
-| Hybrid Assessment | In development | Combined source analysis and consultant audit evidence |
 
 ---
 

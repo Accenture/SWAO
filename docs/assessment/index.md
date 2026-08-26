@@ -14,7 +14,7 @@
 =======================================================================
 # Run Assessment
 
-SWAO supports five assessment types. Each type targets a different surface and produces
+SWAO supports three assessment types. Each type targets a different surface and produces
 a distinct set of artefacts. All types share the same workspace layout and write output
 to the `wsp/` folder.
 
@@ -27,8 +27,6 @@ to the `wsp/` folder.
 | [Application](./application) | `swao assess --app <id>` | Application source code -- up to 14 analysis passes |
 | [Landing Zone](./landing-zone) | `swao assess --type landing-zone-catalog --app <id>` | Cloud provider service catalogue against sovereignty controls |
 | [LLM](./llm) | `swao assess --type llm --app <id>` | Multiple LLM providers benchmarked against sovereignty criteria side by side |
-| [Audit](./audit) | `swao assess --type audit --app <id>` | Consultant-led checklist and evidence (in development) |
-| [Hybrid](./hybrid) | `swao assess --type hybrid --app <id>` | Combined source analysis and consultant audit evidence (in development) |
 
 ---
 
@@ -41,7 +39,6 @@ to the `wsp/` folder.
 - **Add LLM Assessment** when the engagement includes a sovereignty evaluation of the
   AI provider stack. It requires a completed Application Assessment and at least two
   LLM-Gateway connectors configured.
-- **Audit and Hybrid** are in development. They will be available in a future release.
 
 ---
 

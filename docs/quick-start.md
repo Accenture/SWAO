@@ -66,7 +66,7 @@ Community  v0.11.2
 
   1  Workspace Setup       init + LLM + credentials wizard
   2  Health Check          swao health-check
-  3  Run Assessment        Application / Audit / Landing Zone + more
+  3  Run Assessment        Application / Landing Zone / LLM + more
   4  Generate Report       swao report (text / PDF)
   5  Publish HTML          swao publish -- self-contained HTML file
   6  Export BI             star schema / PowerBI / Tableau

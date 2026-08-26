@@ -32,7 +32,7 @@ Community  v0.11.2
 
   1  Workspace Setup       Init + LLM + Zugangsdaten-Assistent
   2  Health Check          swao health-check
-  3  Run Assessment        Anwendung / Audit / Landing Zone + mehr
+  3  Run Assessment        Anwendung / Landing Zone / LLM + mehr
   4  Generate Report       swao report (Text / PDF)
   5  Publish HTML          swao publish -- eigenständige HTML-Datei
   6  Export BI             Sternschema / PowerBI / Tableau
@@ -78,8 +78,6 @@ Wählen Sie **3. Run Assessment**, dann den Bewertungstyp:
 | Anwendungsbewertung | Analysiert Ihren Quellcode |
 | Landing-Zone-Bewertung | Prüft Ihre Cloud-Infrastruktur |
 | LLM-Bewertung | Bewertet LLM-Anbieter nach Souveränitätskriterien |
-| Audit-Bewertung | Roadmap -- menschgeführtes Audit |
-| Hybrid-Bewertung | Roadmap -- Quellcode + Audit kombiniert |
 
 ---
 
