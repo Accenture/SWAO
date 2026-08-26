@@ -1,0 +1,35 @@
+# SWAO LLM-Gateway connector -- Anthropic (Design 090)
+# Copy this file, amend the connectivity information, drop it into
+# <workspace>/wsp/inputs/llm-gateway/ -- the next setup run discovers it.
+schema_version: "1.0"
+connector:
+  id: anthropic
+  name: Anthropic Claude
+  description: Anthropic Messages API (api.anthropic.com).
+  protocol: anthropic-messages
+  base_url: https://api.anthropic.com
+  auth:
+    credential_key: anthropic-api-key
+    env_var: SWAO_ANTHROPIC_API_KEY
+    header: x-api-key
+    scheme: raw
+  models:
+    default: claude-haiku-4-5-20251001
+    catalogue:
+      - id: claude-opus-4-7
+        cost: { input_per_million: 15.0, output_per_million: 75.0 }
+      - id: claude-sonnet-4-6
+        cost: { input_per_million: 3.0, output_per_million: 15.0 }
+      - id: claude-haiku-4-5-20251001
+        cost: { input_per_million: 1.0, output_per_million: 5.0 }
+  defaults:
+    temperature: 0
+    max_tokens: 32768
+  sovereignty:
+    data_residency: US/EU (region depends on account configuration)
+    zero_retention: unknown
+    notes: Verify the data processing addendum and retention terms per engagement.
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    contributor: Accenture SWAO team

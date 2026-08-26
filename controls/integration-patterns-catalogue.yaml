@@ -1,0 +1,199 @@
+# integration-patterns-catalogue.yaml
+# SWAO runtime asset -- Integration Pattern Detection Rules
+# Used by Pass 20 (Integration Pattern Assessment) to classify brokers, ESBs, and coupling types.
+#
+# detection_patterns: npm package names, Maven groupIds, file patterns that indicate the technology
+# sovereignty: available | partial | not_available
+# migration_effort: trivial | low | moderate | high | very_high
+
+brokers:
+
+  - name: kafka
+    display_name: "Apache Kafka"
+    detection_patterns:
+      npm: ["kafkajs", "kafka-node", "rhea-promise"]
+      maven: ["org.springframework.kafka", "org.apache.kafka"]
+      env: ["KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BROKER"]
+      docker: ["confluentinc/cp-kafka", "bitnami/kafka", "wurstmeister/kafka"]
+    type: event_streaming
+    sovereignty: available
+    sovereign_equivalent:
+      - "Self-hosted Kafka on STACKIT CCE / OTC CCE"
+      - "OTC DMS Kafka (managed Kafka service)"
+    migration_effort: moderate
+    notes: "Kafka is open source (Apache 2.0). Self-hosted on sovereign Kubernetes is straightforward. OTC DMS provides a managed Kafka-compatible service."
+
+  - name: rabbitmq
+    display_name: "RabbitMQ"
+    detection_patterns:
+      npm: ["amqplib", "amqp.node", "rhea"]
+      maven: ["org.springframework.amqp", "com.rabbitmq"]
+      python: ["pika", "aio-pika"]
+      docker: ["rabbitmq"]
+    type: message_broker
+    sovereignty: available
+    sovereign_equivalent:
+      - "Self-hosted RabbitMQ on sovereign Kubernetes"
+      - "STACKIT RabbitMQ (if available)"
+    migration_effort: low
+    notes: "RabbitMQ is MPL-2.0 licensed. Self-hosted on CCE is straightforward. AMQP 0-9-1 protocol is standard."
+
+  - name: bullmq
+    display_name: "BullMQ / Bull (Redis-backed queue)"
+    detection_patterns:
+      npm: ["bullmq", "bull", "@nestjs/bull", "@nestjs/bullmq"]
+    type: async_queue
+    sovereignty: available
+    sovereign_equivalent:
+      - "BullMQ on STACKIT Redis / OTC DCS Valkey"
+    migration_effort: trivial
+    notes: "Bull/BullMQ is Redis-backed. Migrates transparently to any Redis-compatible service (Valkey, STACKIT Redis). No broker replacement required."
+
+  - name: aws_sqs
+    display_name: "AWS SQS / SNS"
+    detection_patterns:
+      npm: ["@aws-sdk/client-sqs", "@aws-sdk/client-sns", "aws-sdk"]
+      python: ["boto3"]
+      env: ["SQS_QUEUE_URL", "SNS_TOPIC_ARN"]
+    type: managed_queue
+    sovereignty: not_available
+    sovereign_equivalent:
+      - "OTC DMS (Distributed Message Service)"
+      - "Self-hosted RabbitMQ or Kafka"
+    migration_effort: moderate
+    notes: "AWS SQS/SNS are proprietary managed services. Code must be refactored to use a sovereign-compatible message broker. OTC DMS provides Kafka-compatible APIs."
+
+  - name: azure_service_bus
+    display_name: "Azure Service Bus"
+    detection_patterns:
+      npm: ["@azure/service-bus"]
+      dotnet: ["Azure.Messaging.ServiceBus"]
+    type: managed_queue
+    sovereignty: not_available
+    sovereign_equivalent:
+      - "Self-hosted RabbitMQ or Kafka"
+      - "OTC DMS"
+    migration_effort: moderate
+    notes: "Azure Service Bus is a proprietary managed service. Code must be refactored. AMQP 1.0 compatibility may reduce effort with RabbitMQ target."
+
+  - name: google_pubsub
+    display_name: "Google Cloud Pub/Sub"
+    detection_patterns:
+      npm: ["@google-cloud/pubsub"]
+      python: ["google-cloud-pubsub"]
+    type: event_streaming
+    sovereignty: not_available
+    sovereign_equivalent:
+      - "Self-hosted Kafka"
+      - "OTC DMS Kafka"
+    migration_effort: moderate
+    notes: "Google Pub/Sub is US-controlled. No sovereign equivalent. Refactor to Kafka or RabbitMQ required."
+
+  - name: ibm_mq
+    display_name: "IBM MQ"
+    detection_patterns:
+      npm: ["ibmmq", "mq-nodejs"]
+      java: ["com.ibm.mq"]
+    type: enterprise_message_broker
+    sovereignty: partial
+    sovereign_equivalent:
+      - "VM-based IBM MQ BYOL on sovereign IaaS"
+    migration_effort: high
+    notes: "IBM MQ is a tier_1_blocker (legacy-indicators-catalogue). Commercial licence required. No managed sovereign equivalent. VM BYOL on OTC/STACKIT IaaS is the only sovereign path. Migration to Kafka or RabbitMQ requires significant refactor."
+    tier: tier_1_blocker
+
+  - name: tibco
+    display_name: "TIBCO EMS / ActiveMatrix"
+    detection_patterns:
+      java: ["com.tibco.tibjms", "com.tibco.tibrv"]
+      config: [".tibco", "tibco-ems"]
+    type: enterprise_service_bus
+    sovereignty: partial
+    sovereign_equivalent:
+      - "VM-based TIBCO BYOL on sovereign IaaS"
+    migration_effort: very_high
+    notes: "TIBCO EMS is a tier_1_blocker. Commercial licence. Proprietary protocol. No managed sovereign equivalent. Migration requires ESB re-architecture."
+    tier: tier_1_blocker
+
+  - name: activemq
+    display_name: "Apache ActiveMQ / Artemis"
+    detection_patterns:
+      npm: ["activemq-client"]
+      java: ["org.apache.activemq", "org.apache.activemq.artemis"]
+      docker: ["activemq", "apache/activemq-artemis"]
+    type: message_broker
+    sovereignty: available
+    sovereign_equivalent:
+      - "Self-hosted ActiveMQ on sovereign Kubernetes"
+    migration_effort: low
+    notes: "Apache ActiveMQ is Apache-2.0 licensed. Self-hosted on CCE is straightforward."
+
+esbs:
+
+  - name: mulesoft
+    display_name: "MuleSoft Anypoint Platform"
+    detection_patterns:
+      maven: ["org.mule", "org.mule.runtime", "org.mule.modules"]
+      file: [".mule/", "mule-app.properties", "mule-artifact.json"]
+    type: integration_platform
+    sovereignty: partial
+    sovereign_equivalent:
+      - "Self-hosted Mule Runtime on sovereign Kubernetes"
+    migration_effort: very_high
+    notes: "MuleSoft Anypoint is a proprietary ESB. Anypoint Platform (cloud control plane) is US-hosted. On-premises Mule Runtime is self-hostable on sovereign CCE. Full re-architecture of integration flows required."
+
+  - name: apache_camel
+    display_name: "Apache Camel"
+    detection_patterns:
+      maven: ["org.apache.camel"]
+      gradle: ["camel-"]
+    type: integration_framework
+    sovereignty: available
+    sovereign_equivalent:
+      - "Self-hosted Apache Camel on sovereign Kubernetes (Camel K)"
+    migration_effort: low
+    notes: "Apache Camel is Apache-2.0 licensed. Camel K (Kubernetes operator) allows self-hosted deployment on OTC/STACKIT CCE."
+
+  - name: wso2
+    display_name: "WSO2 API Manager / ESB"
+    detection_patterns:
+      maven: ["org.wso2"]
+      docker: ["wso2/"]
+    type: integration_platform
+    sovereignty: available
+    sovereign_equivalent:
+      - "Self-hosted WSO2 on sovereign Kubernetes"
+    migration_effort: moderate
+    notes: "WSO2 is Apache-2.0 licensed for most components. Self-hosted on CCE is feasible."
+
+coupling_types:
+
+  - type: sync_http
+    description: "Direct HTTP/REST/gRPC call; latency-sensitive; tight coupling"
+    migration_constraint: "Co-migration required if target service also migrates"
+    sovereignty_impact: low
+
+  - type: async_queue
+    description: "Fire-and-forget via message broker; decoupled; retry-tolerant"
+    migration_constraint: "Consumer can tolerate brief producer unavailability"
+    sovereignty_impact: depends_on_broker
+
+  - type: async_event
+    description: "Event-driven; pub/sub model; fan-out capable"
+    migration_constraint: "Fan-out consumers must be migrated before publisher"
+    sovereignty_impact: depends_on_broker
+
+  - type: batch_file
+    description: "Scheduled file transfer (FTP, SFTP, S3 PUT); loosely coupled"
+    migration_constraint: "Low coupling; timing coordination only"
+    sovereignty_impact: low_if_storage_sovereign
+
+  - type: edi
+    description: "EDI X12 / EDIFACT; high coupling; specialist tooling required"
+    migration_constraint: "Trading partner connectivity must be re-established"
+    sovereignty_impact: high
+
+  - type: proprietary_faas
+    description: "Proprietary FaaS coupling (AWS Lambda, Azure Functions, GCP Cloud Functions)"
+    migration_constraint: "Replace with equivalent sovereign FaaS or container workload"
+    sovereignty_impact: high

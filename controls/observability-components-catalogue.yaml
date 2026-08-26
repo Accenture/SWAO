@@ -1,0 +1,160 @@
+# Observability Components Catalogue
+# Pass 15 -- Observability Readiness (OBS signals)
+# Each component contributes equally to observability_score (weight 1/8).
+# score = sum(component_scores) / 8
+# component_score: 1.0 configured | 0.5 partial | 0.0 not_assessed | 0.0 absent
+
+schema_version: '1.0'
+signal_prefix: OBS
+
+components:
+  - id: structured_logging
+    signal_id: OBS-01
+    description: Structured log output (JSON or equivalent) via a recognised logging library.
+    detection_patterns:
+      - pino
+      - winston
+      - bunyan
+      - log4j2
+      - structlog
+      - loguru
+      - zerolog
+      - slog
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - OTC Log Tank Service (LTS)
+      - STACKIT Observability (Loki)
+      - Grafana Loki (self-hosted)
+
+  - id: distributed_tracing
+    signal_id: OBS-02
+    description: Distributed trace propagation using OTEL SDK or a vendor tracing client with exporter configured.
+    detection_patterns:
+      - '@opentelemetry/sdk-trace'
+      - opentelemetry-sdk-trace
+      - jaeger-client
+      - zipkin-js
+      - dd-trace
+      - elastic-apm
+      - io.opentelemetry
+      - opentelemetry-python
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Grafana Tempo (self-hosted)
+      - OTC Application Performance Management (APM)
+      - STACKIT Observability (Tempo)
+
+  - id: metrics_exposition
+    signal_id: OBS-03
+    description: Application-level metrics exposed via Prometheus /metrics endpoint or CloudWatch metrics agent.
+    detection_patterns:
+      - prom-client
+      - prometheus-client
+      - micrometer
+      - actuator/prometheus
+      - aws-embedded-metrics
+      - opentelemetry/exporter-prometheus
+      - io.prometheus
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Prometheus + Grafana (self-hosted)
+      - OTC Cloud Eye metrics
+      - STACKIT Observability (Prometheus)
+
+  - id: log_aggregation
+    signal_id: OBS-04
+    description: Logs shipped to a centralised aggregation platform (Loki, ELK, Splunk, CloudWatch Logs).
+    detection_patterns:
+      - fluent-bit
+      - fluentd
+      - logstash
+      - cloudwatch-logs
+      - elastic/ecs-logging
+      - loki
+      - grafana-agent
+      - vector
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Grafana Loki (self-hosted)
+      - OTC Log Tank Service (LTS)
+      - STACKIT Observability (Loki)
+
+  - id: alerting_rules
+    signal_id: OBS-05
+    description: Alerting rules configured in a monitoring platform (PagerDuty, Grafana alerts, CloudWatch alarms, Prometheus Alertmanager).
+    detection_patterns:
+      - pagerduty
+      - opsgenie
+      - alertmanager
+      - grafana-alerting
+      - cloudwatch-alarms
+      - victorops
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Grafana Alertmanager (self-hosted)
+      - OTC Simple Message Notification (SMN)
+      - STACKIT Observability (Alertmanager)
+
+  - id: slo_definitions
+    signal_id: OBS-06
+    description: Service Level Objectives defined in CMDB, runbook, architecture document, or code (SLO YAML / Prometheus recording rules).
+    detection_patterns:
+      - slo
+      - 'error_budget'
+      - burn_rate
+      - sloth
+      - slo-generator
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Grafana SLO plugin (self-hosted)
+      - Manual SLO definitions in runbook
+
+  - id: health_endpoints
+    signal_id: OBS-07
+    description: Liveness (/healthz) and/or readiness (/readiness or /ready) HTTP endpoints implemented.
+    detection_patterns:
+      - /healthz
+      - /health
+      - /readiness
+      - /ready
+      - /liveness
+      - 'HealthCheckResult'
+      - terminus
+      - '@godaddy/terminus'
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Kubernetes liveness/readiness probes (standard; no sovereign dependency)
+
+  - id: error_tracking
+    signal_id: OBS-08
+    description: Error tracking and aggregation via Sentry, Rollbar, Bugsnag, or equivalent in production dependencies.
+    detection_patterns:
+      - '@sentry/node'
+      - '@sentry/browser'
+      - sentry-python
+      - rollbar
+      - bugsnag
+      - airbrake
+      - raygun
+      - elastic-apm
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    sovereign_tooling_alternatives:
+      - Sentry (self-hosted)
+      - GlitchTip (open-source Sentry alternative)
+      - Grafana + Loki error queries

@@ -1,0 +1,39 @@
+{
+  "name": "@swao/module-landing-zone",
+  "version": "0.1.0",
+  "description": "SWAO landing-zone module: CSP service catalogue, customer LZ scan, and LZ fit/gap assessment (type:landing-zone, Design 056)",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --pool forks"
+  },
+  "dependencies": {
+    "@swao/core": "workspace:*",
+    "commander": "^12.1.0",
+    "js-yaml": "^4.2.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.4.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

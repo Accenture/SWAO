@@ -1,0 +1,9 @@
+# App-level config for the ci-app smoke fixture.
+# Inherits engagement from portfolio .swao.yml above.
+
+app:
+  id: ci-app
+  name: ci-app
+
+source:
+  path: source/

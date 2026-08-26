@@ -1,0 +1,15 @@
+.git/
+.claude/
+node_modules/
+**/node_modules/
+examples/
+packages/swao/dist/
+packages/swao/src/**/*.test.ts
+*.md
+SPEC.md
+AGENT.md
+CLAUDE.md
+STATE.md
+docs/
+swao-premium/
+ops/

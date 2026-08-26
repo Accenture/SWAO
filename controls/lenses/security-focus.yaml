@@ -1,0 +1,3 @@
+id: security-focus
+passes: [SBOM, CRYPTO, EGR, MAL]
+auto_frameworks: [KRITIS, NIS2]

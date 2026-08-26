@@ -1,0 +1,29 @@
+{
+  "name": "@swao/module-iac",
+  "version": "0.9.7",
+  "description": "SWAO IaC provider abstraction module (Consultant tier): tool-agnostic interface for reading Terraform, OpenTofu, and Pulumi infrastructure state. Exposes IaCProvider, IaCResourceGraph, and a provider registry. Design 085.",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --pool forks"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

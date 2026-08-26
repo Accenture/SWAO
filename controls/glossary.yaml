@@ -1,0 +1,105 @@
+# SWAO Glossary -- key terms used in assessment reports
+# Format: list of {term, definition, category}
+terms:
+  - term: Signal
+    definition: >
+      An atomic finding emitted by an assessment pass. Each signal has a unique ID
+      (e.g. CRYPTO-01), a severity (critical/high/medium/low/informational), an outcome
+      (negative/positive/informational), and a derivation explaining what was detected
+      and why it matters.
+    category: assessment
+
+  - term: Pass
+    definition: >
+      A single analysis step that inspects the application from one angle (e.g. inventory,
+      cryptography, compliance). SWAO runs up to 12 passes per assessment, each producing
+      signals and a YAML artefact under wsp/passes/.
+    category: assessment
+
+  - term: Compliance Control
+    definition: >
+      A specific requirement from a compliance framework (e.g. GDPR Art. 32, ISO 27001 A.10.1).
+      Each control is evaluated as pass, partial, or fail based on the signals detected.
+    category: compliance
+
+  - term: RAG Status
+    definition: >
+      Red-Amber-Green traffic-light status for a compliance control. Pass (green) means the
+      control is satisfied by evidence. Partial (amber) means partial evidence exists.
+      Fail (red) means the control requirement is not met or evidence is missing.
+    category: compliance
+
+  - term: Framework
+    definition: >
+      A collection of compliance controls grouped by a regulatory or best-practice standard
+      (e.g. GDPR, ISO 27001, NIST SP 800-66R2). SWAO ships bundled frameworks and supports
+      community-contributed custom frameworks.
+    category: compliance
+
+  - term: Evidence
+    definition: >
+      A file or artefact from the workspace inputs that a pass used to derive its signals.
+      Evidence items appear in the Evidence Gallery and are referenced in the Auditor report.
+    category: assessment
+
+  - term: Blind Spot
+    definition: >
+      A category of risk or compliance area where SWAO could not assess coverage due to
+      missing input artefacts. Blind spots prompt for specific documents or data exports
+      to improve assessment quality.
+    category: assessment
+
+  - term: 7R Label
+    definition: >
+      The migration strategy recommendation derived from the assessment: Retire, Retain,
+      Rehost, Replatform, Repurchase, Refactor, or Relocate. The SYNTH pass synthesises
+      signals into this verdict.
+    category: assessment
+
+  - term: Coverage Score
+    definition: >
+      A percentage indicating how many assessment passes returned actionable signals relative
+      to the total passes run. A low score suggests missing input artefacts (blank workspace
+      scaffolds) rather than a clean application.
+    category: assessment
+
+  - term: Workspace
+    definition: >
+      The folder containing .swao.yml, app source inputs, and all assessment outputs (wsp/).
+      One workspace holds one engagement with multiple app assessments under apps/<id>/.
+    category: platform
+
+  - term: WSP
+    definition: >
+      Workspace Protocol -- the structured YAML schema that records all assessment inputs,
+      pass outputs, signals, evidence, compliance results, and run metadata. The WSP is the
+      source of truth for all downstream outputs (BI export, HTML report, MCP).
+    category: platform
+
+  - term: MCP
+    definition: >
+      Model Context Protocol -- an open standard that lets a desktop AI client (e.g. Claude
+      Desktop) query SWAO findings interactively. SWAO registers itself as an MCP server so
+      operators can ask questions like "which apps fail GDPR Art. 32?" directly in the AI client.
+    category: platform
+
+  - term: Lens
+    definition: >
+      A named configuration that selects which assessment passes run and which compliance
+      frameworks are automatically applied. Bundled lenses include cloud-migration,
+      security-focus, and data-governance.
+    category: assessment
+
+  - term: False Positive
+    definition: >
+      A signal flagged as potentially inaccurate because its evidence reference does not
+      exist in the workspace or the evidence file contains placeholder content. False
+      positives are retained in the assessment but marked for review.
+    category: assessment
+
+  - term: LZR
+    definition: >
+      Landing Zone Readiness -- an assessment of whether the application and its cloud
+      infrastructure meet the target sovereign landing zone requirements. Produces an
+      overall readiness verdict plus per-check results.
+    category: platform

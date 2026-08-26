@@ -1,0 +1,80 @@
+apiVersion: meshstack.io/v1alpha1
+kind: BuildingBlockDefinition
+metadata:
+  name: swao
+spec:
+  displayName: "SWAO -- Sovereign Workload Assessment & Onboarding"
+  description: >
+    AI-accelerated CLI tool that analyses a workload from eight perspectives
+    (inventory, statefulness, data classification, egress, SBOM, cryptography,
+    12-factor compliance, 7R synthesis) and produces a machine-readable
+    Workload Sovereignty Profile (WSP) for automated meshStack provisioning.
+  version: "0.11.2"
+  icon: "https://raw.githubusercontent.com/accenture/swao/main/docs/brand/assets/logo-horizontal-dark.png"
+  supportedPlatforms: []
+  executor:
+    type: git
+    endpoint: "https://github.com/accenture/swao-unipipe"
+    branch: main
+  inputs:
+    - name: app_id
+      type: string
+      displayName: "Application ID"
+      description: >
+        Identifier of the application to assess. Must match the app directory
+        name inside the portfolio workspace (and .swao.yml app.id field).
+      required: true
+
+    - name: workspace_path
+      type: string
+      displayName: "Workspace Path"
+      description: >
+        Absolute path to the portfolio workspace directory. The directory is
+        mounted at /workspace inside the SWAO Docker container.
+      required: true
+      default: "/workspace"
+
+    - name: llm_provider
+      type: string
+      displayName: "LLM Provider"
+      description: >
+        AI provider used for assessment passes that require language model
+        inference (data classification, context ingestion, 7R synthesis).
+        Use 'stub' for offline/CI runs.
+      required: false
+      default: "stub"
+      enum:
+        - "anthropic"
+        - "ollama"
+        - "stub"
+
+    - name: anthropic_api_key
+      type: secret
+      displayName: "Anthropic API Key"
+      description: >
+        Anthropic Claude API key. Required when llm_provider is 'anthropic'.
+        Stored as an encrypted secret; never logged or emitted in outputs.
+      required: false
+
+  outputs:
+    - name: wsp_url
+      type: string
+      displayName: "WSP Report URL"
+      description: >
+        Download link for the generated Workload Sovereignty Profile YAML
+        artefact (wsp.yaml). Populated after a successful assessment run.
+
+    - name: seven_r_label
+      type: string
+      displayName: "7R Migration Label"
+      description: >
+        Migration recommendation produced by the 7R synthesis pass.
+        One of: Retain, Retire, Rehost, Replatform, Refactor,
+        Re-Architect, Repurchase.
+
+    - name: coverage_score
+      type: number
+      displayName: "Coverage Score (%)"
+      description: >
+        Assessment completeness as a percentage (0-100). Reflects how many
+        analysis signals were resolved versus estimated total for the workload.

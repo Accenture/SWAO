@@ -1,0 +1,175 @@
+# Landing Zone Checks Catalogue
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-04
+# Schema: landing-zone-checks-catalogue-v1
+#
+# Used by: Pass 23 (LZR Terraform/local ingestion)
+# Design: swao-premium/docs/design/015-landing-zone-readiness-assessment.md
+#
+# check.category values:
+#   service     -- managed service presence and provisioning state
+#   quota       -- resource quota availability
+#   policy      -- compliance policy / security misconfiguration
+#   network     -- network egress and connectivity
+#   compliance  -- BSI C5 / GDPR / sector-specific compliance control
+#
+# check.severity values:
+#   blocker     -- missing/failing this check prevents migration (hard blocker)
+#   warning     -- advisory; migration possible but risk is elevated
+#   info        -- informational; no migration impact
+#
+# check.providers: list of provider IDs this check applies to.
+#   'all' means every provider in the catalogue.
+
+version: "2026-04"
+schema: landing-zone-checks-catalogue-v1
+
+checks:
+  # ---- STACKIT DE Sovereign specific checks ----
+
+  - id: LZC-STACKIT-01
+    name: SKE (Sovereign Kubernetes Engine) provisioned
+    category: service
+    severity: blocker
+    providers: [stackit_de_sovereign]
+    description: >
+      The workload requires Kubernetes. STACKIT SKE must be provisioned and active
+      in the target project before migration can proceed.
+    terraform_resource_types: [stackit_ske_cluster]
+    pulumi_resource_types:
+      - aws:eks/cluster:Cluster
+      - azure-native:containerservice:ManagedCluster
+      - gcp:container/cluster:Cluster
+    service_dep_codes: [kubernetes, container_runtime]
+    rationale: "Workload signals TF-03 (container runtime required) or INV-01 (k8s dependency)."
+    remediation: "Provision an SKE cluster via STACKIT portal or Terraform before cutover."
+
+  - id: LZC-STACKIT-02
+    name: PostgreSQL Flex provisioned
+    category: service
+    severity: blocker
+    providers: [stackit_de_sovereign]
+    description: >
+      The workload requires a managed PostgreSQL service. STACKIT PostgreSQL Flex
+      must be provisioned in the target project.
+    terraform_resource_types: [stackit_postgresflex_instance, stackit_postgresql_instance]
+    pulumi_resource_types:
+      - aws:rds/instance:Instance
+      - azure-native:dbforpostgresql:FlexibleServer
+      - gcp:sql/databaseInstance:DatabaseInstance
+    service_dep_codes: [postgresql]
+    rationale: "Workload signals DBA-01 or STATE-02 (PostgreSQL dependency detected)."
+    remediation: "Create a PostgreSQL Flex instance in the target STACKIT project."
+
+  - id: LZC-STACKIT-03
+    name: Redis (Object Cache) provisioned
+    category: service
+    severity: warning
+    providers: [stackit_de_sovereign]
+    description: >
+      The workload uses Redis for caching or session management. STACKIT Object Cache
+      (Redis-compatible) should be provisioned.
+    terraform_resource_types: [stackit_redis_instance, stackit_objectcache_instance]
+    pulumi_resource_types:
+      - aws:elasticache/cluster:Cluster
+      - azure-native:cache:Redis
+      - gcp:redis/instance:Instance
+    service_dep_codes: [redis]
+    rationale: "Workload signals DBA-03 or STATE-04 (Redis dependency detected)."
+    remediation: "Create a STACKIT Object Cache instance or evaluate in-cluster Redis."
+
+  - id: LZC-STACKIT-04
+    name: BSI C5 encryption-at-rest enabled on managed storage
+    category: compliance
+    severity: blocker
+    providers: [stackit_de_sovereign]
+    description: >
+      BSI C5 (OPS-10/CRY-01) requires encryption at rest on all managed storage resources.
+      Object Storage and database instances must have encryption enabled.
+    terraform_resource_types: [stackit_objectstorage_bucket, stackit_postgresflex_instance]
+    checkov_rule_ids: [CKV_STACKIT_1, CKV2_STACKIT_1]
+    rationale: "Compliance regime BSI_C5 requires CRY-01 (encryption at rest)."
+    remediation: "Enable server-side encryption on all STACKIT Object Storage buckets and DB instances."
+
+  - id: LZC-STACKIT-05
+    name: Object Storage provisioned
+    category: service
+    severity: warning
+    providers: [stackit_de_sovereign]
+    description: >
+      The workload requires blob/object storage. STACKIT Object Storage must be
+      provisioned.
+    terraform_resource_types: [stackit_objectstorage_bucket]
+    pulumi_resource_types:
+      - aws:s3/bucket:Bucket
+      - aws:s3/bucketV2:BucketV2
+      - gcp:storage/bucket:Bucket
+      - azure-native:storage:StorageAccount
+    service_dep_codes: [object_storage, s3]
+    rationale: "Workload signals STATE-05 (object storage dependency detected)."
+    remediation: "Create an Object Storage bucket in the target STACKIT project."
+
+  # ---- Generic cross-provider checks ----
+
+  - id: LZC-GEN-01
+    name: Egress to required external endpoints allowed
+    category: network
+    severity: blocker
+    providers: all
+    description: >
+      Network egress rules must permit outbound traffic to all external endpoints
+      the workload depends on (detected in EGR pass). Any firewall or network policy
+      blocking required egress prevents migration.
+    terraform_resource_types: [azurerm_network_security_rule, aws_security_group_rule, google_compute_firewall]
+    pulumi_resource_types:
+      - azure-native:network:SecurityRule
+      - aws:ec2/securityGroupRule:SecurityGroupRule
+      - gcp:compute/firewall:Firewall
+    rationale: "Workload signals EGR-NN (egress dependency detected)."
+    remediation: "Open firewall rules for required egress endpoints before cutover."
+
+  - id: LZC-GEN-02
+    name: TLS termination for ingress traffic
+    category: policy
+    severity: warning
+    providers: all
+    description: >
+      All ingress traffic must be TLS-terminated. Plain HTTP ingress is non-compliant
+      with BSI C5 (TRA-01) and GDPR Article 32.
+    checkov_rule_ids: [CKV_K8S_35, CKV2_AWS_47]
+    rationale: "Compliance regime BSI_C5 or GDPR requires TLS on all ingress paths."
+    remediation: "Configure TLS termination at the ingress controller or load balancer."
+
+  - id: LZC-GEN-03
+    name: Private network (no public IP on data tier)
+    category: network
+    severity: blocker
+    providers: all
+    description: >
+      Database and stateful services must not have public IP addresses exposed.
+      Data-tier resources must be on a private network segment only.
+    checkov_rule_ids: [CKV_AWS_17, CKV_AZURE_68, CKV_GCP_6]
+    rationale: "Security baseline and BSI C5 OPS-11 prohibit direct public access to data tier."
+    remediation: "Remove public IPs from database instances; use private endpoints or VPC peering."
+
+  - id: LZC-GEN-04
+    name: vCPU / compute quota sufficient for workload
+    category: quota
+    severity: warning
+    providers: all
+    description: >
+      Available vCPU quota in the target project must be sufficient to run the
+      workload's declared compute requirements.
+    rationale: "Quota exhaustion prevents Kubernetes node pool or VM instance creation."
+    remediation: "Request quota increase for vCPU from the provider before migration starts."
+
+  - id: LZC-GEN-05
+    name: Object storage quota sufficient
+    category: quota
+    severity: warning
+    providers: all
+    description: >
+      Available object storage quota (GB) must exceed the workload's estimated data
+      volume with a 20 % headroom buffer.
+    rationale: "Insufficient storage quota would cause upload failures post-migration."
+    remediation: "Request storage quota increase or configure lifecycle policies to reduce usage."

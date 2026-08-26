@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SWAO -- Sovereign Workload Assessment and Onboarding</title>
+  <meta name="description" content="AI-accelerated cloud compliance assessments. From weeks to minutes. Community Edition by Accenture." />
+
+  <!-- Open Graph -->
+  <meta property="og:title"        content="SWAO -- Sovereign Workload Assessment and Onboarding" />
+  <meta property="og:description"  content="AI-accelerated cloud compliance. Audit-grade traceability. Community Edition by Accenture." />
+  <meta property="og:image"        content="https://accenture.github.io/SWAO/social-preview.png" />
+  <meta property="og:url"          content="https://steady-echo-yp4z.here.now/" />
+  <meta property="og:type"         content="website" />
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:image"       content="https://accenture.github.io/SWAO/social-preview.png" />
+  <meta name="twitter:title"       content="SWAO -- Sovereign Workload Assessment and Onboarding" />
+  <meta name="twitter:description" content="AI-accelerated cloud compliance. Audit-grade traceability. Community Edition by Accenture." />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #080010;
+      --bg-alt:     #0d001a;
+      --purple:     #a100ff;
+      --white:      #ffffff;
+      --grey-text:  #c0b8cc;
+      --border:     rgba(161, 0, 255, 0.3);
+      --font:       'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono:       'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      --max-w:      1100px;
+      --section-py: 80px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 16px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--purple); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: var(--max-w);
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+
+    /* NAV */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: var(--bg);
+      border-bottom: 2px solid var(--purple);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+
+    .nav-brand:hover { text-decoration: none; }
+
+    .nav-brand img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+
+    .nav-wordmark {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--white);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--grey-text);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--white); text-decoration: none; }
+
+    .nav-links .nav-cta a {
+      color: var(--purple);
+      font-weight: 600;
+      border: 1px solid var(--purple);
+      padding: 5px 14px;
+    }
+
+    .nav-links .nav-cta a:hover {
+      background-color: var(--purple);
+      color: var(--white);
+    }
+
+    @media (max-width: 860px) { .nav-hide    { display: none; } }
+    @media (max-width: 600px) { .nav-hide-sm { display: none; } }
+
+    /* BUTTONS */
+    .btn-primary {
+      display: inline-block;
+      background-color: var(--purple);
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px 28px;
+      border: 2px solid var(--purple);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary:hover {
+      background-color: #8800dd;
+      border-color: #8800dd;
+      text-decoration: none;
+      color: var(--white);
+    }
+
+    .btn-secondary {
+      display: inline-block;
+      background-color: transparent;
+      color: var(--purple);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px 28px;
+      border: 2px solid var(--purple);
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--purple);
+      color: var(--white);
+      text-decoration: none;
+    }
+
+    /* HERO */
+    .hero {
+      padding-top: 96px;
+      padding-bottom: var(--section-py);
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      border: 1px solid var(--purple);
+      color: var(--purple);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      margin-bottom: 28px;
+    }
+
+    .hero-headline {
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      max-width: 820px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-headline span { color: var(--purple); }
+
+    .hero-subheadline {
+      margin-top: 24px;
+      font-size: clamp(16px, 2.2vw, 20px);
+      color: var(--grey-text);
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-ctas {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    /* TERMINAL */
+    .terminal-wrap { margin-top: 56px; display: flex; justify-content: center; }
+
+    .terminal {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-width: 700px;
+      width: 100%;
+      text-align: left;
+      overflow: hidden;
+    }
+
+    .terminal-bar {
+      background-color: #1a0033;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .terminal-dot   { width: 12px; height: 12px; border-radius: 50%; background-color: #333; }
+    .terminal-title { font-family: var(--mono); font-size: 12px; color: #666; margin-left: 8px; }
+
+    .terminal-body {
+      padding: 24px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .t-prompt  { color: var(--purple); }
+    .t-cmd     { color: var(--white); }
+    .t-dim     { color: #888; }
+    .t-blocker { color: #ff5555; }
+    .t-warning { color: #f0a030; }
+    .t-passed  { color: #50fa7b; }
+    .t-info    { color: var(--grey-text); }
+
+    /* SECTION COMMON */
+    .section-divider {
+      padding-top: var(--section-py);
+      padding-bottom: var(--section-py);
+      border-top: 1px solid var(--border);
+    }
+
+    .section-heading {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .section-subheading {
+      text-align: center;
+      color: var(--grey-text);
+      font-size: 17px;
+      max-width: 660px;
+      margin: 0 auto 48px;
+    }
+
+    /* VALUE PROPS */
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    @media (max-width: 768px) { .value-grid { grid-template-columns: 1fr; } }
+
+    .value-card {
+      padding: 32px;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+    }
+
+    .value-card-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 8px;
+    }
+
+    .value-card-title { font-size: 21px; font-weight: 700; margin-bottom: 14px; color: var(--white); }
+    .value-card-body  { font-size: 15px; color: var(--grey-text); }
+
+    /* STAKEHOLDERS */
+    .stakeholder-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 28px;
+    }
+
+    @media (max-width: 680px) { .stakeholder-grid { grid-template-columns: 1fr; } }
+
+    .stakeholder-card {
+      padding: 32px;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--purple);
+    }
+
+    .stakeholder-role {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 10px;
+    }
+
+    .stakeholder-title { font-size: 19px; font-weight: 700; margin-bottom: 14px; color: var(--white); }
+    .stakeholder-body  { font-size: 15px; color: var(--grey-text); line-height: 1.7; }
+    .stakeholder-body ul { list-style: none; margin-top: 12px; }
+    .stakeholder-body ul li { padding: 3px 0; }
+    .stakeholder-body ul li::before { content: "-> "; color: var(--purple); font-family: var(--mono); }
+
+    /* PIPELINE VISUAL */
+    .pipeline-wrap {
+      margin-bottom: 48px;
+      overflow-x: auto;
+    }
+
+    .pipeline {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr 40px 1fr;
+      gap: 0;
+      min-width: 720px;
+      align-items: stretch;
+    }
+
+    .pipe-col {
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pipe-col-passes {
+      background-color: rgba(161, 0, 255, 0.06);
+      border-color: var(--purple);
+    }
+
+    .pipe-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--purple);
+      font-size: 28px;
+      font-weight: 300;
+    }
+
+    .pipe-col-heading {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pipe-items { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+
+    .pipe-item {
+      padding: 8px 12px;
+      background-color: rgba(255,255,255,0.03);
+      border: 1px solid rgba(161,0,255,0.2);
+      font-size: 13px;
+      color: var(--grey-text);
+    }
+
+    .pipe-item-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #555;
+      margin-top: 14px;
+      margin-bottom: 4px;
+    }
+
+    .pipe-pass-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .pipe-pass {
+      padding: 6px 10px;
+      background-color: rgba(161, 0, 255, 0.1);
+      border: 1px solid rgba(161, 0, 255, 0.3);
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--grey-text);
+    }
+
+    .pipe-pass span {
+      color: var(--purple);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .pipe-out-item {
+      padding: 10px 12px;
+      background-color: rgba(80, 250, 123, 0.05);
+      border: 1px solid rgba(80, 250, 123, 0.25);
+      font-size: 13px;
+      color: var(--grey-text);
+    }
+
+    .pipe-out-item strong {
+      display: block;
+      color: #50fa7b;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .pipe-out-item small {
+      font-size: 11px;
+      color: #666;
+    }
+
+    .pipe-wsp-note {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background-color: rgba(161, 0, 255, 0.08);
+      border-left: 3px solid var(--purple);
+      font-size: 12px;
+      color: var(--grey-text);
+      line-height: 1.5;
+    }
+
+    /* FRAMEWORKS */
+    .framework-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .fw-pill {
+      display: inline-block;
+      padding: 10px 24px;
+      border: 1px solid var(--purple);
+      color: var(--purple);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: default;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .fw-pill:hover { background-color: var(--purple); color: #000; }
+
+    .framework-note { margin-top: 24px; text-align: center; font-size: 14px; color: var(--grey-text); }
+
+    /* FRAMEWORK DETAIL CARDS */
+    .fw-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 680px) { .fw-detail-grid { grid-template-columns: 1fr; } }
+
+    .fw-card {
+      padding: 28px;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+    }
+
+    .fw-card-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .fw-card-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .fw-card-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--purple);
+      border: 1px solid var(--purple);
+      padding: 2px 8px;
+    }
+
+    .fw-card-body { font-size: 14px; color: var(--grey-text); line-height: 1.65; }
+
+    .fw-card-benefit {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background-color: rgba(161, 0, 255, 0.07);
+      border-left: 3px solid var(--purple);
+      font-size: 13px;
+      color: var(--grey-text);
+    }
+
+    .fw-card-benefit strong { color: var(--white); }
+
+    /* CUSTOM FRAMEWORK */
+    .custom-fw-box {
+      margin-top: 48px;
+      padding: 36px;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--purple);
+      text-align: center;
+    }
+
+    .custom-fw-title { font-size: 22px; font-weight: 700; margin-bottom: 14px; color: var(--white); }
+    .custom-fw-body  { font-size: 15px; color: var(--grey-text); max-width: 680px; margin: 0 auto 24px; }
+
+    /* STEPS */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 40px;
+    }
+
+    @media (max-width: 900px) { .steps-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px)  { .steps-grid { grid-template-columns: 1fr; } }
+
+    .step { display: flex; flex-direction: column; }
+    .step-number { font-size: 48px; font-weight: 800; color: var(--purple); line-height: 1; margin-bottom: 16px; }
+    .step-title  { font-size: 18px; font-weight: 700; margin-bottom: 10px; color: var(--white); }
+    .step-body   { font-size: 15px; color: var(--grey-text); }
+
+    /* EDITIONS */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .edition-table {
+      width: 100%;
+      min-width: 660px;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    .edition-table thead tr { background-color: var(--purple); color: #000; }
+
+    .edition-table thead th {
+      padding: 14px 20px;
+      font-weight: 700;
+      text-align: left;
+      letter-spacing: 0.04em;
+    }
+
+    .edition-table thead th:first-child { color: #000; }
+    .edition-table tbody tr:nth-child(odd)  { background-color: var(--bg-alt); }
+    .edition-table tbody tr:nth-child(even) { background-color: #0a0018; }
+
+    .edition-table .group-header td {
+      background-color: rgba(161, 0, 255, 0.12);
+      color: var(--purple);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 8px 20px;
+    }
+
+    .edition-table tbody td {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      color: var(--grey-text);
+    }
+
+    .edition-table tbody td:first-child { color: var(--white); font-weight: 500; }
+    .edition-table .yes { color: #50fa7b; font-weight: 600; }
+    .edition-table .no  { color: #444; }
+
+    .edition-ctas {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    /* GET INVOLVED */
+    .involve-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 28px;
+    }
+
+    @media (max-width: 640px) { .involve-grid { grid-template-columns: 1fr; } }
+
+    .involve-card {
+      padding: 40px 32px;
+      background-color: var(--bg-alt);
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .involve-icon  { font-size: 40px; margin-bottom: 16px; }
+    .involve-title { font-size: 21px; font-weight: 700; margin-bottom: 14px; color: var(--white); }
+
+    .involve-body {
+      font-size: 15px;
+      color: var(--grey-text);
+      margin-bottom: 24px;
+      max-width: 380px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* FOOTER */
+    .footer { border-top: 1px solid var(--border); padding-top: 48px; padding-bottom: 48px; }
+
+    .footer-inner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .footer-inner { grid-template-columns: 1fr; text-align: center; }
+      .footer-right  { text-align: center; }
+    }
+
+    .footer-left { font-size: 13px; color: var(--grey-text); max-width: 320px; }
+
+    .footer-centre {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-centre a { font-size: 13px; color: var(--grey-text); transition: color 0.2s; }
+    .footer-centre a:hover { color: var(--white); text-decoration: none; }
+    .footer-right { font-size: 13px; color: var(--grey-text); text-align: right; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== NAVIGATION ===== -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="container nav-inner">
+      <a class="nav-brand" href="/">
+        <img src="logo-icon-dark.png" width="36" height="36" alt="SWAO" />
+        <span class="nav-wordmark">SWAO</span>
+      </a>
+      <ul class="nav-links">
+        <li class="nav-hide"><a href="#why-swao">Why SWAO</a></li>
+        <li class="nav-hide"><a href="#for-your-team">For Your Team</a></li>
+        <li class="nav-hide"><a href="#frameworks">Frameworks</a></li>
+        <li class="nav-hide"><a href="#how-it-works">How it works</a></li>
+        <li class="nav-hide"><a href="#editions">Editions</a></li>
+        <li class="nav-hide-sm"><a href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Discussions</a></li>
+        <li class="nav-hide-sm"><a href="https://github.com/Accenture/SWAO" target="_blank" rel="noopener">GitHub</a></li>
+        <li class="nav-cta"><a href="https://accenture.github.io/SWAO/en/" target="_blank" rel="noopener">Docs</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero" aria-labelledby="hero-headline">
+    <div class="container">
+      <div class="hero-badge">Open Source by Accenture</div>
+      <h1 class="hero-headline" id="hero-headline">
+        Cloud compliance assessments<br>in <span>minutes, not months</span>.
+      </h1>
+      <p class="hero-subheadline">
+        SWAO (Sovereign Workload Assessment and Onboarding) analyses your cloud workloads against
+        industry compliance frameworks, produces audit-grade evidence, and generates a migration
+        plan -- all in a single command. Community Edition is free and open source.
+      </p>
+      <div class="hero-ctas">
+        <a class="btn-primary"   href="https://accenture.github.io/SWAO/en/getting-started" target="_blank" rel="noopener">Get started free</a>
+        <a class="btn-secondary" href="https://github.com/Accenture/SWAO"                   target="_blank" rel="noopener">View on GitHub</a>
+        <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions"        target="_blank" rel="noopener">Join the community</a>
+      </div>
+
+      <div class="terminal-wrap">
+        <div class="terminal" role="img" aria-label="SWAO CLI assessment output example">
+          <div class="terminal-bar">
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-title">swao -- terminal</span>
+          </div>
+          <div class="terminal-body"><span class="t-prompt">$</span><span class="t-cmd"> swao assess --app sovereign-health --framework gdpr</span>
+
+<span class="t-dim">  Assessing sovereign-health (Application Assessment)...</span>
+<span class="t-dim">  Running 14 analysis passes: inventory, state, data,</span>
+<span class="t-dim">  sbom, terraform, egress, crypto, compliance, dynamic...</span>
+
+<span class="t-info">  [====================] 47 controls evaluated</span>
+
+<span class="t-blocker">  BLOCKERS    3</span><span class="t-info">   Data residency not enforced in eu-west-1</span>
+<span class="t-warning">  WARNINGS    8</span><span class="t-info">   Retention policy missing on 3 S3 buckets</span>
+<span class="t-passed">  PASSED     36</span>
+
+<span class="t-dim">  7R Disposition:  Replatform  (confidence: high)</span>
+<span class="t-dim">  WSP written:     ./workspace/sovereign-health.wsp.yaml</span>
+<span class="t-dim">  Report:          ./reports/sovereign-health-gdpr-2026-06-26.html</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WHY SWAO ===== -->
+  <section id="why-swao" class="section-divider" aria-labelledby="why-heading">
+    <div class="container">
+      <h2 class="section-heading" id="why-heading">Why SWAO?</h2>
+      <p class="section-subheading">Traditional cloud compliance assessments take weeks of manual effort across multiple teams. SWAO compresses the entire workflow into a single automated pipeline -- from code to compliance evidence to migration plan.</p>
+      <div class="value-grid">
+
+        <div class="value-card">
+          <div class="value-card-label">Speed</div>
+          <h3 class="value-card-title">Weeks to minutes</h3>
+          <p class="value-card-body">
+            A full framework evaluation -- source code, infrastructure, dynamic UI -- completes in
+            minutes. What used to require a team of consultants and a spreadsheet now runs from a
+            single command. Re-assess after every change to catch compliance drift early.
+          </p>
+        </div>
+
+        <div class="value-card">
+          <div class="value-card-label">Evidence</div>
+          <h3 class="value-card-title">Audit-ready by design</h3>
+          <p class="value-card-body">
+            Every finding cites the exact file, line number, or screen element that triggered it.
+            SWAO produces HTML evidence packs, Power BI dashboards, and structured JSON that
+            auditors and GRC platforms can consume directly -- no manual transcription.
+          </p>
+        </div>
+
+        <div class="value-card">
+          <div class="value-card-label">Sovereignty</div>
+          <h3 class="value-card-title">Your data stays yours</h3>
+          <p class="value-card-body">
+            Runs on your own infrastructure. Choose your LLM provider (Anthropic, OpenAI, or
+            Ollama). Secret redaction runs before any external call. Built for
+            regulated industries where data residency is non-negotiable.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOR YOUR TEAM ===== -->
+  <section id="for-your-team" class="section-divider" aria-labelledby="stakeholders-heading">
+    <div class="container">
+      <h2 class="section-heading" id="stakeholders-heading">Built for every role in your programme</h2>
+      <p class="section-subheading">From the consultant running the assessment on a laptop to the CISO signing off on compliance evidence -- SWAO serves each stakeholder with the output they need.</p>
+
+      <div class="stakeholder-grid">
+
+        <div class="stakeholder-card">
+          <div class="stakeholder-role">Cloud Migration Consultants</div>
+          <h3 class="stakeholder-title">Compress 7R engagements from weeks to days</h3>
+          <div class="stakeholder-body">
+            Run a full Rehost / Replatform / Refactor analysis for an application in a single
+            command. SWAO produces a portable Workload Sovereignty Profile (WSP) that carries the
+            assessment forward into planning and onboarding -- no re-entry, no drift between phases.
+            <ul>
+              <li>Single binary, works on a laptop or client-hosted container</li>
+              <li>Unlimited assessments in Community Edition (no licence required)</li>
+              <li>Interactive TUI for guided exploration of findings</li>
+              <li>Generates migration runbook, risk register, and training plan</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="stakeholder-card">
+          <div class="stakeholder-role">Compliance and Risk Officers</div>
+          <h3 class="stakeholder-title">Audit-ready evidence, generated automatically</h3>
+          <div class="stakeholder-body">
+            Every SWAO finding links back to the specific file, configuration line, or screen
+            element that triggered it. Multi-regime assessments (GDPR + HIPAA + COBIT 5 in a
+            single run) give a complete picture without duplicate effort.
+            <ul>
+              <li>HTML evidence packs and structured JSON for GRC platforms</li>
+              <li>Full human-override audit trail -- every manual decision is logged</li>
+              <li>11 frameworks included free: GDPR, BSI C5, AI 10 Pillars, NCA, SAMA, PCI-DSS, and more</li>
+              <li>Confidence scoring flags areas that need human review</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="stakeholder-card">
+          <div class="stakeholder-role">Enterprise and Cloud Architects</div>
+          <h3 class="stakeholder-title">From compliance gaps to sovereign landing zones</h3>
+          <div class="stakeholder-body">
+            SWAO maps workload constraints to a target landing zone and emits a Terraform module
+            tailored to your cloud provider and sovereign requirements. One assessment drives
+            both compliance evidence and infrastructure design.
+            <ul>
+              <li>Landing Zone Assessment: fit/gap vs. your existing landing zone</li>
+              <li>meshStack Developer Portal Building Block deployment</li>
+              <li>Pluggable VCS, scanner, and tracker connectors</li>
+              <li>Portfolio assessment and wave planning (Enterprise Edition)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="stakeholder-card">
+          <div class="stakeholder-role">Developers and DevSecOps Teams</div>
+          <h3 class="stakeholder-title">Compliance checks inside your development workflow</h3>
+          <div class="stakeholder-body">
+            The SWAO MCP server lets AI coding assistants such as Claude Code and Cursor query
+            your compliance findings directly from the editor. Ask about control status, browse
+            blockers, and get remediation guidance without leaving your workflow.
+            <ul>
+              <li>MCP server on localhost:3737 -- connects to Claude Code and Cursor</li>
+              <li>Integrate findings into Jira, GitHub Issues, or Azure Boards</li>
+              <li>SAST, container scan, IaC scan, and secrets detection built in</li>
+              <li>Re-assess after every PR to detect compliance regression</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ARCHITECTURE ===== -->
+  <section class="section-divider" aria-labelledby="arch-heading">
+    <div class="container">
+      <h2 class="section-heading" id="arch-heading">How SWAO works</h2>
+      <p class="section-subheading">A 14-pass analysis pipeline reads your workload, evaluates it against compliance frameworks, and produces a single portable artefact -- the Workload Sovereignty Profile -- that drives everything downstream.</p>
+
+      <div class="pipeline-wrap">
+        <div class="pipeline">
+
+          <!-- LEFT: INPUTS -->
+          <div class="pipe-col">
+            <div class="pipe-col-heading">1. Input Sources</div>
+            <div class="pipe-items">
+              <div class="pipe-item">Source code repository</div>
+              <div class="pipe-item">Infrastructure as Code (Terraform, Helm)</div>
+              <div class="pipe-item">CMDB / FinOps data export</div>
+              <div class="pipe-item">Dynamic web UI (Playwright crawl)</div>
+              <div class="pipe-item">Workshop transcripts / runbooks</div>
+              <div class="pipe-item-label">Your LLM (bring your own)</div>
+              <div class="pipe-item">Anthropic Claude</div>
+              <div class="pipe-item">OpenAI / Open-LLM providers</div>
+              <div class="pipe-item">Ollama (fully local)</div>
+            </div>
+          </div>
+
+          <div class="pipe-arrow">&#8594;</div>
+
+          <!-- MIDDLE: 13 PASSES -->
+          <div class="pipe-col pipe-col-passes">
+            <div class="pipe-col-heading">2. Analysis Pipeline (14 Passes)</div>
+            <div class="pipe-pass-grid">
+              <div class="pipe-pass"><span>01</span>Inventory</div>
+              <div class="pipe-pass"><span>02</span>State</div>
+              <div class="pipe-pass"><span>03</span>Data Class.</div>
+              <div class="pipe-pass"><span>04</span>Context</div>
+              <div class="pipe-pass"><span>05</span>SBOM</div>
+              <div class="pipe-pass"><span>06</span>Terraform</div>
+              <div class="pipe-pass"><span>07</span>Egress</div>
+              <div class="pipe-pass"><span>08</span>Crypto</div>
+              <div class="pipe-pass"><span>09</span>Synthesis</div>
+              <div class="pipe-pass"><span>10</span>Dynamic UI</div>
+              <div class="pipe-pass"><span>11</span>Compliance</div>
+              <div class="pipe-pass"><span>12</span>Blockers</div>
+              <div class="pipe-pass"><span>13</span>Scope &amp; 7R</div>
+              <div class="pipe-pass"><span>14</span>Evidence Gallery</div>
+            </div>
+            <div class="pipe-wsp-note">
+              Each pass adds findings to the <strong style="color:var(--purple)">Workload Sovereignty Profile (WSP)</strong> --
+              a versioned YAML artefact that carries the full assessment state forward into planning and onboarding.
+            </div>
+          </div>
+
+          <div class="pipe-arrow">&#8594;</div>
+
+          <!-- RIGHT: OUTPUTS -->
+          <div class="pipe-col">
+            <div class="pipe-col-heading">3. Output Artefacts</div>
+            <div class="pipe-items">
+              <div class="pipe-out-item">
+                <strong>WSP.yaml</strong>
+                <small>Portable, versioned, machine-readable -- flows into planning and onboarding</small>
+              </div>
+              <div class="pipe-out-item">
+                <strong>HTML Evidence Report</strong>
+                <small>Per-control findings with file:line traceability</small>
+              </div>
+              <div class="pipe-out-item">
+                <strong>7R Disposition</strong>
+                <small>Rehost / Replatform / Refactor / Repurchase / Retire / Retain / Relocate</small>
+              </div>
+              <div class="pipe-out-item">
+                <strong>Migration Runbook</strong>
+                <small>Risk register, data plan, rollback plan, training plan</small>
+              </div>
+              <div class="pipe-out-item">
+                <strong>Terraform Scaffold</strong>
+                <small>Landing zone tailored to workload's sovereign constraints</small>
+              </div>
+              <div class="pipe-out-item">
+                <strong>Power BI / CSV / JSON</strong>
+                <small>For dashboards, GRC platforms, and portfolio roll-ups</small>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="value-grid">
+        <div class="value-card">
+          <div class="value-card-label">Deployment Mode A</div>
+          <h3 class="value-card-title">Consultant laptop</h3>
+          <p class="value-card-body">Single binary or Docker container. Install and run the first assessment in under 10 minutes. Ideal for discovery workshops and client demos. No infrastructure to provision.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-card-label">Deployment Mode B</div>
+          <h3 class="value-card-title">Client-hosted</h3>
+          <p class="value-card-body">Docker or Kubernetes on the client's own infrastructure. Source code never leaves the client environment. Preferred for regulated industries with strict data residency requirements.</p>
+        </div>
+        <div class="value-card">
+          <div class="value-card-label">Deployment Mode B-DevX</div>
+          <h3 class="value-card-title">meshStack Building Block</h3>
+          <p class="value-card-body">SWAO deployed as a Developer Portal Building Block on meshStack. Application teams self-serve assessments from the platform they already operate -- no consultant needed for each run.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COMMUNITY FRAMEWORKS ===== -->
+  <section id="frameworks" class="section-divider" aria-labelledby="frameworks-heading">
+    <div class="container">
+      <h2 class="section-heading" id="frameworks-heading">Community Frameworks</h2>
+      <p class="section-subheading">11 compliance frameworks included in every edition -- free, open, and continuously updated. No licence required to run any of them.</p>
+
+      <div class="framework-grid">
+        <span class="fw-pill">GDPR</span>
+        <span class="fw-pill">HIPAA / NIST SP 800-66r2</span>
+        <span class="fw-pill">AI 10 Pillars</span>
+        <span class="fw-pill">BSI C5</span>
+        <span class="fw-pill">BSI IT-Grundschutz 2023</span>
+        <span class="fw-pill">LLM Selection</span>
+        <span class="fw-pill">NCA CCC 2024 (CSP)</span>
+        <span class="fw-pill">NCA CCC 2024 (CST)</span>
+        <span class="fw-pill">NCA ECC 2024</span>
+        <span class="fw-pill">PCI-DSS v4</span>
+        <span class="fw-pill">SAMA CSF v1</span>
+      </div>
+
+      <div class="fw-detail-grid">
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">GDPR</span>
+            <span class="fw-card-tag">EU / Data Privacy</span>
+          </div>
+          <p class="fw-card-body">
+            The General Data Protection Regulation is the European Union's primary law governing
+            the collection, processing, and storage of personal data for EU residents. It applies
+            to any organisation -- worldwide -- that processes EU citizen data.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 47 controls covering data residency
+            enforcement, consent management, retention policies, encryption at rest and in transit,
+            data subject rights, and breach notification readiness. Each finding cites the specific
+            GDPR article and the code or configuration that triggered it.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">HIPAA</span>
+            <span class="fw-card-tag">US / Healthcare</span>
+          </div>
+          <p class="fw-card-body">
+            The Health Insurance Portability and Accountability Act establishes US federal
+            requirements for protecting Protected Health Information (PHI) in any system that
+            stores, transmits, or processes patient data. Mandatory for all US healthcare entities
+            and their business associates.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO checks administrative, physical, and technical
+            safeguards -- ePHI encryption, workforce access controls, audit logging, automatic
+            logoff, data backup, and disaster recovery configurations -- against the HIPAA Security
+            Rule's required and addressable implementation specifications.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">AI 10 Pillars</span>
+            <span class="fw-card-tag">Responsible AI</span>
+          </div>
+          <p class="fw-card-body">
+            Accenture's Responsible AI framework defines ten pillars for building and deploying AI
+            systems that are fair, transparent, and accountable. It covers the full AI lifecycle --
+            from data sourcing and model design through deployment and monitoring.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO assesses AI and ML workloads against all ten
+            pillars: fairness, transparency, explainability, robustness, privacy, security,
+            reliability, inclusiveness, accountability, and sustainability. Identifies gaps in
+            model governance, bias controls, explainability tooling, and audit logging.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">BSI C5</span>
+            <span class="fw-card-tag">Cloud / Germany</span>
+          </div>
+          <p class="fw-card-body">
+            The BSI Cloud Computing Compliance Criteria Catalogue (C5) is the German Federal
+            Office for Information Security's standard for cloud service providers operating in
+            Germany. It covers 17 security domains and is a prerequisite for public sector
+            procurement in Germany.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 62 controls across all 17 BSI C5
+            domains -- from organisation and personnel through cryptography, network security,
+            logging, and business continuity. Essential for cloud providers serving German public
+            or regulated private sector clients.
+          </div>
+        </div>
+
+        <div class="fw-card" style="grid-column: 1 / -1;">
+          <div class="fw-card-header">
+            <span class="fw-card-name">NIST SP 800-66 R2</span>
+            <span class="fw-card-tag">US / Healthcare (NIST)</span>
+          </div>
+          <p class="fw-card-body">
+            NIST Special Publication 800-66 Revision 2 provides prescriptive implementation
+            guidance for the HIPAA Security Rule. Where HIPAA defines the regulatory requirements,
+            NIST SP 800-66 R2 specifies concrete technical controls -- making it the reference of
+            choice for healthcare organisations seeking NIST alignment alongside HIPAA compliance.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> 9 control families and 66 individual controls
+            across Access Control (AC), Audit and Accountability (AU), Configuration Management
+            (CM), Contingency Planning (CP), Identification and Authentication (IA), Incident
+            Response (IR), Risk Assessment (RA), System and Communications Protection (SC), and
+            System and Information Integrity (SI). Run alongside the HIPAA framework for a complete
+            regulatory and implementation-guidance picture.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CUSTOM FRAMEWORKS -->
+      <div class="custom-fw-box">
+        <h3 class="custom-fw-title">Build your own framework</h3>
+        <p class="custom-fw-body">
+          Not covered by the 11 community frameworks? SWAO's framework format is a plain YAML
+          file -- no TypeScript, no compilation, no specialist tooling required. Define your own
+          controls, risk levels, remediation guidance, and regime metadata. Point SWAO at your
+          YAML file and it runs immediately alongside the community frameworks.
+        </p>
+        <p class="custom-fw-body" style="margin-top: -8px;">
+          Custom frameworks are ideal for internal security policies, client-specific contractual
+          requirements, sector-specific regulations not yet in the community catalogue, or
+          proprietary control frameworks. Contribute your framework back to the community via a
+          GitHub pull request and help the ecosystem grow.
+        </p>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+          <a class="btn-primary"   href="https://accenture.github.io/SWAO/en/frameworks/" target="_blank" rel="noopener">Framework authoring guide</a>
+          <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions"           target="_blank" rel="noopener">Share your framework</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== HOW IT WORKS ===== -->
+  <section id="how-it-works" class="section-divider" aria-labelledby="how-heading">
+    <div class="container">
+      <h2 class="section-heading" id="how-heading">Getting started in four steps</h2>
+      <p class="section-subheading">From a fresh install to a full compliance report in under 15 minutes.</p>
+      <div class="steps-grid">
+
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-title">Install and initialise</div>
+          <p class="step-body">Download the SWAO binary and run <code style="color:var(--purple);font-family:var(--mono)">swao init</code> to configure your workspace, LLM provider, and target compliance frameworks via a guided wizard.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-title">Run an assessment</div>
+          <p class="step-body">Point SWAO at your application repository. Static code analysis, dynamic UI crawling (Playwright), SBOM generation, and secret detection run automatically across 14 passes.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-title">Review findings</div>
+          <p class="step-body">Explore results in the interactive TUI or HTML evidence report. Filter by severity, framework control, or file path. Every finding links back to the exact source that triggered it.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">4</div>
+          <div class="step-title">Plan and migrate</div>
+          <p class="step-body">Export a migration runbook, risk register, and Terraform landing-zone scaffold. Re-assess after remediation to track compliance improvement over time.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== EDITIONS ===== -->
+  <section id="editions" class="section-divider" aria-labelledby="editions-heading">
+    <div class="container">
+      <h2 class="section-heading" id="editions-heading">Choose your edition</h2>
+      <p class="section-subheading">Community Edition is free and Apache 2.0 licensed. Consultant and Enterprise editions add production outputs, portal integration, and programme-scale capabilities via Accenture Professional Services.</p>
+
+      <div class="table-scroll">
+        <table class="edition-table">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Community</th>
+              <th scope="col">Consultant</th>
+              <th scope="col">Enterprise</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr class="group-header"><td colspan="4">Assessment Types</td></tr>
+            <tr>
+              <td>Application Assessment (AI-assisted: static, dynamic, SBOM)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Landing Zone Assessment (fit/gap vs. your existing LZ)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>LLM Assessment (sovereignty benchmarking across LLM providers)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Audit Assessment (human checklist-driven)</td>
+              <td class="no">Roadmap</td>
+              <td class="no">Roadmap</td>
+              <td class="no">Roadmap</td>
+            </tr>
+            <tr>
+              <td>Portfolio Assessment (100+ apps, wave planning)</td>
+              <td class="no">-</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="4">Tools and Interface</td></tr>
+            <tr>
+              <td>CLI and interactive TUI</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>LLM integration (Anthropic, OpenAI, Ollama, open-LLM providers)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>MCP server (Claude Code and other AI tools)</td>
+              <td class="no">-</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="4">Frameworks</td></tr>
+            <tr>
+              <td>11 Community Frameworks (GDPR, HIPAA, AI 10 Pillars, BSI C5, BSI IT-Grundschutz, LLM Selection, NCA CCC CSP, NCA CCC CST, NCA ECC, PCI-DSS v4, SAMA CSF v1)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="4">Reports and Outputs</td></tr>
+            <tr>
+              <td>HTML evidence report (single-file, offline-capable)</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Portal and programme dashboard</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>PDF report (branded with licensee details)</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Power BI export (.pbit template for dashboards and trends)</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Terraform and landing zone generation</td>
+              <td class="no">-</td>
+              <td class="no">-</td>
+              <td class="yes">Yes</td>
+            </tr>
+
+            <tr class="group-header"><td colspan="4">Licence and Support</td></tr>
+            <tr>
+              <td>Licence</td>
+              <td>Apache 2.0</td>
+              <td>Proprietary</td>
+              <td>Proprietary</td>
+            </tr>
+            <tr>
+              <td>Support</td>
+              <td><a href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">GitHub Discussions</a></td>
+              <td>Accenture PS</td>
+              <td>Accenture PS</td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <div class="edition-ctas">
+        <a class="btn-primary"   href="https://github.com/Accenture/SWAO"                   target="_blank" rel="noopener">Get Community Edition</a>
+        <a class="btn-secondary" href="https://accenture.github.io/SWAO/en/getting-started"  target="_blank" rel="noopener">Read the docs</a>
+        <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions"        target="_blank" rel="noopener">Join the discussion</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== GET INVOLVED ===== -->
+  <section class="section-divider" aria-labelledby="involve-heading">
+    <div class="container">
+      <h2 class="section-heading" id="involve-heading">Get involved</h2>
+      <p class="section-subheading">SWAO is open source. Whether you are building with SWAO, contributing frameworks, or exploring an Accenture-led migration engagement, there is a path for you.</p>
+
+      <div class="involve-grid">
+
+        <div class="involve-card">
+          <div class="involve-icon">&#128172;</div>
+          <h3 class="involve-title">Community Discussions</h3>
+          <p class="involve-body">Ask questions, share custom frameworks, report issues, and follow release announcements on GitHub Discussions. The SWAO development team monitors this channel and welcomes community contributions.</p>
+          <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Open Discussions</a>
+        </div>
+
+        <div class="involve-card">
+          <div class="involve-icon">&#127970;</div>
+          <h3 class="involve-title">Accenture Professional Services</h3>
+          <p class="involve-body">For Consultant or Enterprise Edition licences, programme-scale deployments, meshStack integration, or a guided cloud migration engagement, reach out via GitHub Discussions or your Accenture account team.</p>
+          <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Contact via Discussions</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-left">
+          SWAO is an Accenture open-source project released under the Apache 2.0 licence.
+          Consultant and Enterprise editions are available through Accenture Professional Services.
+        </div>
+        <nav class="footer-centre" aria-label="Footer navigation">
+          <a href="https://github.com/Accenture/SWAO"            target="_blank" rel="noopener">GitHub</a>
+          <a href="https://accenture.github.io/SWAO/en/"         target="_blank" rel="noopener">Technical Docs</a>
+          <a href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Discussions</a>
+          <a href="https://github.com/Accenture/SWAO/security"    target="_blank" rel="noopener">Security</a>
+        </nav>
+        <div class="footer-right">
+          Copyright 2026 Accenture
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

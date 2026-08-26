@@ -1,0 +1,32 @@
+# SWAO LLM-Gateway connector -- OpenAI (Design 090)
+schema_version: "1.0"
+connector:
+  id: openai
+  name: OpenAI
+  description: OpenAI Chat Completions API (api.openai.com).
+  protocol: openai-chat
+  base_url: https://api.openai.com
+  auth:
+    credential_key: openai-api-key
+    env_var: SWAO_OPENAI_API_KEY
+  models:
+    default: gpt-4o-mini
+    catalogue:
+      - id: gpt-4o
+        cost: { input_per_million: 2.5, output_per_million: 10.0 }
+      - id: gpt-4o-mini
+        cost: { input_per_million: 0.15, output_per_million: 0.6 }
+      - id: gpt-5
+        cost: { input_per_million: 10.0, output_per_million: 30.0 }
+      - id: gpt-5-mini
+        cost: { input_per_million: 0.5, output_per_million: 2.0 }
+  defaults:
+    temperature: 0
+  sovereignty:
+    data_residency: US (global endpoints)
+    zero_retention: unknown
+    notes: Exposed to US jurisdiction; verify per engagement.
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    contributor: Accenture SWAO team

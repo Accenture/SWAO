@@ -1,0 +1,34 @@
+# Manual questionnaire for HIPAA-PND-04 -- Documentation Updates
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: HIPAA-PND-04
+framework_id: NIST_SP_800_66R2
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Does every HIPAA-relevant policy carry a documented review cadence (annually minimum)?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Policy register lists review cycle per policy (24 of 24 HIPAA policies)"
+  - id: q2
+    text: "Is the review date and reviewer recorded in each document's metadata?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "DMS metadata schema enforces both fields"
+  - id: q3
+    text: "Are policy reviews triggered by environmental change (new cloud provider, regulatory update, M&A) beyond the time-based cadence?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "2025-Q3 cloud migration triggered policy refresh of 4 documents"
+  - id: q4
+    text: "Is workforce re-acknowledgement required on material policy change?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Workday workflow auto-assigns re-acknowledgement on policy version bump"
+  - id: q5
+    text: "Are reviews on policies that affect ePHI processing reviewed for HIPAA-specific impact before sign-off?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Policy approval workflow includes 'HIPAA impact review' checkbox owned by the security official"

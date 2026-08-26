@@ -1,0 +1,642 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "Delos Cloud service catalogue",
+    "provider": "delos",
+    "last_updated": "2026-08-11",
+    "source": {
+      "mode": "curated",
+      "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
+      "source_note": "Hand-curated from published portfolio documentation (retrieved 2026-08-06). Delos Cloud GmbH (100 percent SAP subsidiary, Walldorf), Microsoft technology, Arvato Systems operations with security-vetted German staff; datacentres in Berlin and Frankfurt am Main with a second operations centre near Leipzig (live early 2026). EU-entity operator: Delos Cloud GmbH and Arvato Systems are German/EU entities -- CLOUD Act does not attach via ownership or operations. Residual risk: Microsoft (US jurisdiction) remains the technology licensor and software supplier; this is a supply-chain dependency, not a legal extraterritorial attachment, and is recorded here for framework evaluation. A November 2025 code-access MoU between SAP, Arvato, and Microsoft mitigates the update-dependency concern (sap.com 2025-11-18). certifications: [] is deliberate -- no Delos-specific BSI C5 Testat or IT-Grundschutz certificate is published (verified absence 2026-08-06); the BSI oversight design intent and VS-NfD roadmap are noted so the field can be populated the day a Testat appears. No BYOK/HYOK/Customer Key/Managed HSM documentation exists publicly (verified absence 2026-08-06) -- a material finding for sovereignty assessments demanding customer key custody. key_custody: ['provider-managed'] baseline; Azure Key Vault with CMK is the strongest documented option. confidence: low -- portfolio statuses are published as planned, per-service GA dates are unverified (the roadmap page blocks automated retrieval), and commercial GA date is unconfirmed. Pricing: approximately 10-20 percent above Microsoft list prices (reported, unverified per-service). Status policy: portfolio entries are announced by default; the Azure Foundational tier (core compute/storage/network exercised in pilots) is preview; nothing is ga until confirmable. Sources: deloscloud.de/products/portfolio.html; news.microsoft.com/de-de 2024-09-23; news.sap.com/germany 2024-09; arvato-systems.com; adesso.de; computerwoche.de 2024-11; openai.com/global-affairs/openai-for-germany/ 2025-09; sap.com/germany/documents/2025/11 (code-access MoU); netzpolitik.org/2024 (sovereignty debate context)."
+    },
+    "confidence": "low",
+    "regions_count": 1
+  },
+  "regions": [
+    {
+      "id": "de",
+      "display": "Germany / EU (Berlin / Frankfurt, geo-redundant)",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": []
+      },
+      "services": [
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "preview",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "preview",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "preview",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Load Balancer",
+          "name": "Load Balancer",
+          "status": "preview",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "preview",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "preview",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "preview",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "announced",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "announced",
+          "fulfills": [
+            "paas_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Container Instances",
+          "name": "Container Instances",
+          "status": "announced",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "announced",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Batch",
+          "name": "Azure Batch",
+          "status": "announced",
+          "fulfills": [
+            "batch_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "announced",
+          "fulfills": [
+            "sql_server"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "announced",
+          "fulfills": [
+            "postgresql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Database for MySQL",
+          "name": "Azure Database for MySQL",
+          "status": "announced",
+          "fulfills": [
+            "mysql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "announced",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "announced",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "announced",
+          "fulfills": [
+            "network_firewall"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Application Gateway",
+          "name": "Application Gateway",
+          "status": "announced",
+          "fulfills": [
+            "load_balancer",
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Front Door",
+          "name": "Azure Front Door",
+          "status": "announced",
+          "fulfills": [
+            "cdn",
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "ExpressRoute",
+          "name": "ExpressRoute",
+          "status": "announced",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "VPN Gateway",
+          "name": "VPN Gateway",
+          "status": "announced",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure DNS",
+          "name": "Azure DNS",
+          "status": "announced",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Bastion",
+          "name": "Azure Bastion",
+          "status": "announced",
+          "fulfills": [],
+          "capabilities": [
+            "private-ssh-rdp-access"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Private Link",
+          "name": "Private Link",
+          "status": "announced",
+          "fulfills": [],
+          "capabilities": [
+            "private-endpoint"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "DDoS Protection",
+          "name": "DDoS Protection",
+          "status": "announced",
+          "fulfills": [],
+          "capabilities": [
+            "ddos-mitigation"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "announced",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "announced",
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "announced",
+          "fulfills": [
+            "event_streaming"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Event Grid",
+          "name": "Event Grid",
+          "status": "announced",
+          "fulfills": [
+            "event_streaming"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Logic Apps",
+          "name": "Logic Apps",
+          "status": "announced",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "announced",
+          "fulfills": [
+            "audit_logging",
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "announced",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Site Recovery",
+          "name": "Azure Site Recovery",
+          "status": "announced",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Policy",
+          "name": "Azure Policy",
+          "status": "announced",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Entra Domain Services",
+          "name": "Entra Domain Services",
+          "status": "announced",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Data Factory",
+          "name": "Data Factory",
+          "status": "announced",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Stream Analytics",
+          "name": "Stream Analytics",
+          "status": "announced",
+          "fulfills": [
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Data Explorer",
+          "name": "Azure Data Explorer",
+          "status": "announced",
+          "fulfills": [
+            "data_analytics",
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "HDInsight",
+          "name": "HDInsight",
+          "status": "announced",
+          "fulfills": [
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Power BI Embedded",
+          "name": "Power BI Embedded",
+          "status": "announced",
+          "fulfills": [
+            "bi_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "AI Search",
+          "name": "AI Search",
+          "status": "announced",
+          "fulfills": [
+            "search"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure OpenAI",
+          "name": "Azure OpenAI",
+          "status": "announced",
+          "fulfills": [
+            "managed_llm"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        }
+      ]
+    }
+  ]
+}

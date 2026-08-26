@@ -1,0 +1,50 @@
+# SWAO Community Edition -- Dockerfile (#0676, sprint-072)
+#
+# Community-tier variant of the main Dockerfile. Identical build context
+# (swao/ subtree) but builds dist/bundle-community.cjs instead of the
+# enterprise bundle, so the image ships WITHOUT premium modules (pdf-report,
+# terraform, html-portal, portfolio, challenge) and WITHOUT premium framework
+# data. Framework catalog (GDPR, AI_10_PILLARS, COBIT_5, NIST_SP_800_66R2,
+# etc.) is included -- Community users can run compliance assessments.
+#
+# Intended push target: ghcr.io/accenture/swao (the public Accenture/SWAO
+# repository). Push is currently disabled in release-community.yml pending OSS
+# approval (ADR-0015). Until then, the image is built and verified on the
+# private repo's GHCR namespace.
+#
+# Usage:
+#   docker build -f Dockerfile.community -t ghcr.io/accenture/swao:latest .
+#   docker run --rm -v $(pwd):/workspace ghcr.io/accenture/swao:latest swao --version
+
+# Stage 1: build the workspace + produce the community bundle.
+FROM node:22-alpine AS builder
+WORKDIR /repo
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN npm install -g pnpm@10
+# node-pty requires python3 + build tools (make, g++) to compile its native
+# binding via node-gyp. alpine ships none of these by default.
+RUN apk add --no-cache python3 make g++
+COPY . .
+RUN pnpm install --frozen-lockfile
+# Build TypeScript then run the community-tier bundle (esbuild, no pkg).
+# build-community.mjs --no-pkg copies runtime assets (controls, community-
+# frameworks, powerbi templates, publication assets, pass fixtures) and
+# emits dist/bundle-community.cjs. Premium framework data is excluded.
+RUN pnpm --filter @swao/swao run build \
+ && cd packages/swao \
+ && node scripts/build-community.mjs --no-pkg
+
+# Stage 2: runtime.
+FROM node:22-alpine AS runtime
+WORKDIR /workspace
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN apk add --no-cache git openssh-client ca-certificates
+COPY --from=builder /repo /repo
+
+LABEL org.opencontainers.image.title="SWAO Community" \
+      org.opencontainers.image.description="SWAO -- Sovereign Workload Assessment and Onboarding (Community Edition, Apache-2.0)" \
+      org.opencontainers.image.vendor="Accenture" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/Accenture/SWAO"
+
+ENTRYPOINT ["node", "/repo/packages/swao/dist/bundle-community.cjs"]

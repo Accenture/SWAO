@@ -1,0 +1,1360 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "Open Telekom Cloud / T Cloud Public service catalogue",
+    "provider": "otc",
+    "last_updated": "2026-08-11",
+    "source": {
+      "mode": "curated",
+      "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
+      "source_note": "Hand-curated from the opentelekomcloud-docs/regions-and-endpoints GitHub repository (raw.githubusercontent.com/opentelekomcloud-docs/regions-and-endpoints/master/doc/source/index.rst, retrieved 2026-08-11) and the T Cloud Public compliance pages (t-cloud-public.com/en/products-services/core-services/certifications; t-cloud-public.com/en/blog/benefits/bsi-c5-soc-2-typ-2; retrieved 2026-08-11). Rebrand note: Open Telekom Cloud was renamed T Cloud Public by Deutsche Telekom in 2026; provider ID stays 'otc' for SWAO stability; documentation remains at docs.otc.t-systems.com. Operator: T-Systems International GmbH, Deutsche Telekom subsidiary, German/EU entity, no US parent, KRITIS-registered; CLOUD Act does not attach via ownership or operations. Certifications BSI_C5/ISO_27001/SOC_2 confirmed for both regions per certification page. TISAX Level 3 confirmed for both regions. IT-Grundschutz: application submitted 2025-07-28, listed on BSI website 2025-09-19 under BSI-IGZ-0757; audit begins January 2026; certificate expected Q4 2026 -- NOT yet issued; populate certifications when published. KMS BYOK: documented in tracker issue #1385; direct documentation at docs.otc.t-systems.com/key-management-service was blocked by Anubis anti-bot (2026-08-11) -- UNVERIFIED; review before upgrading key_custody claim. Freshness caveat: the RST endpoint table is auto-propagated from T-Systems internal Gitea (last sync 2026-03-03); the table is approximately two years stale relative to the live portal; treat the service list as a lower bound. Helmut is clarifying the authoritative current source directly with T-Systems; update catalogue and bump confidence when confirmed (tracker #1385, OQ-3). Swiss T Cloud Public (T-Systems Switzerland, data centres Bern + Zollikofen, FINMA scope) is a separate product and operator -- NOT covered by this file; see design 095 OQ-1."
+    },
+    "confidence": "medium",
+    "regions_count": 2
+  },
+  "regions": [
+    {
+      "id": "eu-de",
+      "display": "Germany (Biere + Magdeburg, 3 AZs: eu-de-01/02/03)",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Elastic Cloud Server",
+          "name": "Elastic Cloud Server",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Bare Metal Server",
+          "name": "Bare Metal Server",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "bare-metal",
+            "dedicated-tenancy"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Dedicated Host",
+          "name": "Dedicated Host",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "dedicated-tenancy"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Auto Scaling",
+          "name": "Auto Scaling",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "auto-scaling"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Image Management Service",
+          "name": "Image Management Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "vm-images"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Container Engine",
+          "name": "Cloud Container Engine",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Container Instance",
+          "name": "Cloud Container Instance",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Software Repository for Container",
+          "name": "Software Repository for Container",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "FunctionGraph",
+          "name": "FunctionGraph",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Application Service Mesh",
+          "name": "Application Service Mesh",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "service-mesh"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage Service",
+          "name": "Object Storage Service",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Elastic Volume Service",
+          "name": "Elastic Volume Service",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Scalable File Service",
+          "name": "Scalable File Service",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Backup and Recovery",
+          "name": "Cloud Backup and Recovery",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Server Backup Service",
+          "name": "Cloud Server Backup Service",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Volume Backup Service",
+          "name": "Volume Backup Service",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Storage Disaster Recovery Service",
+          "name": "Storage Disaster Recovery Service",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Relational Database Service",
+          "name": "Relational Database Service",
+          "status": "ga",
+          "fulfills": [
+            "postgresql",
+            "mysql",
+            "sql_server"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "TaurusDB",
+          "name": "TaurusDB",
+          "status": "ga",
+          "fulfills": [
+            "mysql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "GeminiDB",
+          "name": "GeminiDB",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Distributed Cache Service",
+          "name": "Distributed Cache Service",
+          "status": "ga",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Document Database Service",
+          "name": "Document Database Service",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Warehouse Service",
+          "name": "Data Warehouse Service",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Distributed Database Middleware",
+          "name": "Distributed Database Middleware",
+          "status": "ga",
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Replication Service",
+          "name": "Data Replication Service",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Virtual Private Cloud",
+          "name": "Virtual Private Cloud",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Elastic Load Balancing",
+          "name": "Elastic Load Balancing",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "NAT Gateway",
+          "name": "NAT Gateway",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "nat-gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Direct Connect",
+          "name": "Direct Connect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Enterprise Router",
+          "name": "Enterprise Router",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [
+            "transit-routing"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "VPN Gateway",
+          "name": "VPN Gateway",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [
+            "enterprise-vpn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Domain Name Service",
+          "name": "Domain Name Service",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "VPC Endpoint",
+          "name": "VPC Endpoint",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "private-endpoint"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Private Link Access Service",
+          "name": "Private Link Access Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "private-endpoint"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Anti-DDoS",
+          "name": "Anti-DDoS",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "ddos-mitigation"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall Dedicated",
+          "name": "Web Application Firewall Dedicated",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [
+            "dedicated-waf"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Host Security Service",
+          "name": "Host Security Service",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Key Management Service",
+          "name": "Key Management Service",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Identity and Access Management",
+          "name": "Identity and Access Management",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Distributed Message Service",
+          "name": "Distributed Message Service",
+          "status": "ga",
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Simple Message Notification",
+          "name": "Simple Message Notification",
+          "status": "ga",
+          "fulfills": [
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "API Gateway",
+          "name": "API Gateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Eye",
+          "name": "Cloud Eye",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Trace Service",
+          "name": "Cloud Trace Service",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Log Tank Service",
+          "name": "Log Tank Service",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging",
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Application Operations Management",
+          "name": "Application Operations Management",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Config",
+          "name": "Config",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Resource Template Service",
+          "name": "Resource Template Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "infrastructure-as-code"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Tag Management Service",
+          "name": "Tag Management Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Lake Insight",
+          "name": "Data Lake Insight",
+          "status": "ga",
+          "fulfills": [
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "DataArts Studio",
+          "name": "DataArts Studio",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "MapReduce Service",
+          "name": "MapReduce Service",
+          "status": "ga",
+          "fulfills": [
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Search Service",
+          "name": "Cloud Search Service",
+          "status": "ga",
+          "fulfills": [
+            "search"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "ModelArts",
+          "name": "ModelArts",
+          "status": "ga",
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Optical Character Recognition",
+          "name": "Optical Character Recognition",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "ai-ocr"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "eu-nl",
+      "display": "Netherlands (Almere + Aalsmeer, 3 AZs: eu-nl-01/02/03)",
+      "country": "NL",
+      "sovereignty": {
+        "residency_country": "NL",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Elastic Cloud Server",
+          "name": "Elastic Cloud Server",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Dedicated Host",
+          "name": "Dedicated Host",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "dedicated-tenancy"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Auto Scaling",
+          "name": "Auto Scaling",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "auto-scaling"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Image Management Service",
+          "name": "Image Management Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "vm-images"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Container Engine",
+          "name": "Cloud Container Engine",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Software Repository for Container",
+          "name": "Software Repository for Container",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage Service",
+          "name": "Object Storage Service",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Elastic Volume Service",
+          "name": "Elastic Volume Service",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Scalable File Service",
+          "name": "Scalable File Service",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Backup and Recovery",
+          "name": "Cloud Backup and Recovery",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Relational Database Service",
+          "name": "Relational Database Service",
+          "status": "ga",
+          "fulfills": [
+            "postgresql",
+            "mysql",
+            "sql_server"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Distributed Cache Service",
+          "name": "Distributed Cache Service",
+          "status": "ga",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Document Database Service",
+          "name": "Document Database Service",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Replication Service",
+          "name": "Data Replication Service",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Virtual Private Cloud",
+          "name": "Virtual Private Cloud",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Elastic Load Balancing",
+          "name": "Elastic Load Balancing",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "NAT Gateway",
+          "name": "NAT Gateway",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "nat-gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Direct Connect",
+          "name": "Direct Connect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Enterprise Router",
+          "name": "Enterprise Router",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [
+            "transit-routing"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "VPN Gateway",
+          "name": "VPN Gateway",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [
+            "classic-vpn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Domain Name Service",
+          "name": "Domain Name Service",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "VPC Endpoint",
+          "name": "VPC Endpoint",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "private-endpoint"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Anti-DDoS",
+          "name": "Anti-DDoS",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "ddos-mitigation"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Key Management Service",
+          "name": "Key Management Service",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Identity and Access Management",
+          "name": "Identity and Access Management",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Distributed Message Service",
+          "name": "Distributed Message Service",
+          "status": "ga",
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Simple Message Notification",
+          "name": "Simple Message Notification",
+          "status": "ga",
+          "fulfills": [
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Eye",
+          "name": "Cloud Eye",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Log Tank Service",
+          "name": "Log Tank Service",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging",
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Application Operations Management",
+          "name": "Application Operations Management",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Config",
+          "name": "Config",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Resource Template Service",
+          "name": "Resource Template Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "infrastructure-as-code"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Tag Management Service",
+          "name": "Tag Management Service",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    }
+  ]
+}

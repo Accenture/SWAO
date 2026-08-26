@@ -1,0 +1,1014 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "STACKIT service catalogue",
+    "provider": "stackit",
+    "last_updated": "2026-07-07",
+    "source": {
+      "mode": "pim-api-stackit",
+      "tool": "pim.api.stackit.cloud/v1/skus",
+      "operator": "SWAO operator",
+      "source_note": "PIM API endpoint is not publicly contracted; fallback to curated YAML if auth is added"
+    },
+    "confidence": "medium",
+    "regions_count": 2
+  },
+  "regions": [
+    {
+      "id": "eu01",
+      "display": "STACKIT eu01 (Germany)",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001"
+        ]
+      },
+      "services": [
+        {
+          "code": "ai-model-serving",
+          "name": "AI Model Serving",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "application-load-balancer",
+          "name": "Application Load Balancer",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "load_balancer"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "archiving",
+          "name": "Archiving",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "backup-storage",
+          "name": "Backup Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "block-storage",
+          "name": "Block Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "block_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "cdn",
+          "name": "CDN",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "cdn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "cloud-foundry",
+          "name": "Cloud Foundry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "confidential-kubernetes",
+          "name": "Confidential Kubernetes",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "confidential-server",
+          "name": "Confidential Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "container-registry",
+          "name": "Container Registry",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "dns",
+          "name": "DNS",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "dns"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "dremio",
+          "name": "Dremio",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "data_analytics"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "edge-cloud",
+          "name": "Edge Cloud",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "cdn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "file-storage",
+          "name": "File Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "file_storage"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "git",
+          "name": "Git",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vcs"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "gpu-server",
+          "name": "GPU Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "gpu_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "intake",
+          "name": "Intake",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "key-value-store",
+          "name": "Key Value Store",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "kms",
+          "name": "KMS",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "kubernetes-engine",
+          "name": "Kubernetes Engine",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "logme",
+          "name": "LogMe",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "log_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "logs",
+          "name": "Logs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "log_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "mariadb",
+          "name": "MariaDB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "mariadb"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "mongodb-flex",
+          "name": "MongoDB Flex",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "network-load-balancer",
+          "name": "Network Load Balancer",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "load_balancer"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "object-storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "observability",
+          "name": "Observability",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "monitoring",
+            "metrics"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "opensearch",
+          "name": "OpenSearch",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "search"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "pipelines",
+          "name": "Pipelines",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "ci_cd"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "postgresql-flex",
+          "name": "PostgreSQL Flex",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "public-ip-address",
+          "name": "Public IP Address",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "networking"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "rabbitmq",
+          "name": "RabbitMQ",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "messaging",
+            "queue"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "red-hat-enterprise-linux",
+          "name": "Red Hat Enterprise Linux",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "redis",
+          "name": "Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "secrets-manager",
+          "name": "Secrets Manager",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "secrets_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server",
+          "name": "Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server-backup-management",
+          "name": "Server Backup Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server-update-management",
+          "name": "Server Update Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "systems_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "servicenow",
+          "name": "ServiceNow",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "itsm"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "sqlserver-flex",
+          "name": "SQLServer Flex",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "sql_server"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "telemetry-router",
+          "name": "Telemetry Router",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "monitoring"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "vpn",
+          "name": "VPN",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vpn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "windows-server",
+          "name": "Windows Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "workflows",
+          "name": "Workflows",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        }
+      ]
+    },
+    {
+      "id": "eu02",
+      "display": "STACKIT eu02 (Austria)",
+      "country": "AT",
+      "sovereignty": {
+        "residency_country": "AT",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": [
+          "ISO_27001"
+        ]
+      },
+      "services": [
+        {
+          "code": "application-load-balancer",
+          "name": "Application Load Balancer",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "load_balancer"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "backup-storage",
+          "name": "Backup Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "block-storage",
+          "name": "Block Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "block_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "cdn",
+          "name": "CDN",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "cdn"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "confidential-kubernetes",
+          "name": "Confidential Kubernetes",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "dns",
+          "name": "DNS",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "dns"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "dremio",
+          "name": "Dremio",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "data_analytics"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "key-value-store",
+          "name": "Key Value Store",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "kms",
+          "name": "KMS",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "kubernetes-engine",
+          "name": "Kubernetes Engine",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "mongodb-flex",
+          "name": "MongoDB Flex",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "network-load-balancer",
+          "name": "Network Load Balancer",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "load_balancer"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "object-storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "observability",
+          "name": "Observability",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "monitoring",
+            "metrics"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "postgresql-flex",
+          "name": "PostgreSQL Flex",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "public-ip-address",
+          "name": "Public IP Address",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "networking"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "red-hat-enterprise-linux",
+          "name": "Red Hat Enterprise Linux",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server",
+          "name": "Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server-backup-management",
+          "name": "Server Backup Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "server-update-management",
+          "name": "Server Update Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "systems_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "sqlserver-flex",
+          "name": "SQLServer Flex",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "sql_server"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "telemetry-router",
+          "name": "Telemetry Router",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "monitoring"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "windows-server",
+          "name": "Windows Server",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "workflows",
+          "name": "Workflows",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "pim-api-stackit"
+        }
+      ]
+    }
+  ]
+}

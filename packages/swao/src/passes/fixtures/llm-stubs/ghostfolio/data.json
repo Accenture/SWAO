@@ -1,0 +1,61 @@
+{
+  "signals": [
+    {
+      "id": "DATA-01",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "high",
+      "derivation": "Prisma schema contains Account, Transaction, Order, Portfolio models -- financial transaction data is processed and stored. Regulatory scope: GDPR and MiFID II.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "high"
+    },
+    {
+      "id": "DATA-02",
+      "source": "llm_inference",
+      "category": "business_processes",
+      "severity": "medium",
+      "derivation": "MiFID II requires 5-year retention of transaction records; GDPR Art. 17 grants right to erasure. Conflict: financial records cannot be fully deleted within retention window. Anonymisation strategy required.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "medium"
+    },
+    {
+      "id": "DATA-03",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "medium",
+      "derivation": "Broker credential storage (Schwab, IBKR) not confirmed in Prisma schema. Access model present but active broker integration unconfirmed. Workshop open item.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "low"
+    },
+    {
+      "id": "DATA-04",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "medium",
+      "derivation": "JWT_SECRET_KEY and ACCESS_TOKEN_SALT are managed via environment variables (.env.example). Secrets are not hard-coded. Pattern is acceptable but KMS-backed key management is recommended for DORA compliance.",
+      "evidence": [".env.example"],
+      "confidence": "high"
+    },
+    {
+      "id": "DATA-05",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "positive",
+      "derivation": "GDPR Art. 17 right to erasure is implemented: DELETE /user and DELETE /user/:id endpoints confirmed in user.controller.ts. Both authenticated with JWT guard.",
+      "evidence": ["apps/api/src/app/user/user.controller.ts"],
+      "confidence": "high"
+    }
+  ],
+  "assessment": {
+    "data_classes": [
+      "financial_transaction",
+      "portfolio_position",
+      "user_account",
+      "broker_credential"
+    ],
+    "regulatory_scope": ["GDPR", "MiFID_II", "DORA"],
+    "gdpr_art17_implemented": true,
+    "secrets_in_env": true,
+    "retention_conflict": true
+  }
+}

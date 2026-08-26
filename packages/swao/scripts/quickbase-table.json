@@ -1,0 +1,27 @@
+{
+  "pageTitle": "Sign In",
+  "url": "https://acnlegalreadiness.quickbase.com/db/main?a=SignIn&nexturl=https%3A%2F%2Facnlegalreadiness.quickbase.com%2Fdb%2Fbszi783sk%3Fa%3Dtd&rc=psi&_c=zfv8d8",
+  "tables": [
+    {
+      "headers": [
+        "Quickbase will send a report of the events currently displayed on your calendar."
+      ],
+      "rows": [
+        [
+          "Email addresses"
+        ]
+      ]
+    },
+    {
+      "headers": [
+        "Your work email"
+      ],
+      "rows": [
+        [
+          "Your company"
+        ]
+      ]
+    }
+  ],
+  "rawText": "\t\nSign In\n\nWe need to know where to send you to sign in.\n\nDo you have a Accenture Legal Readiness single sign-on (SSO) account?\n\nYes No\n© 2026 Quickbase, Inc. All rights reserved.\nTerms|Privacy"
+}

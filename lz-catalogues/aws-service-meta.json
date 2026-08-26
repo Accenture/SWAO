@@ -1,0 +1,1547 @@
+{
+  "schema_version": "0.1",
+  "description": "AWS and AWS ESC service display metadata from botocore service-2.json (serviceFullName, serviceId, serviceAbbreviation). Null = no service-2.json found. Used by lz-catalog-services HTML publication block.",
+  "generated_at": "2026-07-04",
+  "source": "https://github.com/boto/botocore/tree/develop/botocore/data",
+  "partitions": [
+    "aws",
+    "aws-eu-sovereign"
+  ],
+  "services": {
+    "account": {
+      "name": "AWS Account",
+      "id": "Account",
+      "abbreviation": null
+    },
+    "acm": {
+      "name": "AWS Certificate Manager",
+      "id": "ACM",
+      "abbreviation": "ACM"
+    },
+    "acm-pca": {
+      "name": "AWS Certificate Manager Private Certificate Authority",
+      "id": "ACM PCA",
+      "abbreviation": "ACM-PCA"
+    },
+    "amplify": {
+      "name": "AWS Amplify",
+      "id": "Amplify",
+      "abbreviation": "Amplify"
+    },
+    "amplifybackend": {
+      "name": "AmplifyBackend",
+      "id": "AmplifyBackend",
+      "abbreviation": null
+    },
+    "amplifyuibuilder": {
+      "name": "AWS Amplify UI Builder",
+      "id": "AmplifyUIBuilder",
+      "abbreviation": null
+    },
+    "apigateway": {
+      "name": "Amazon API Gateway",
+      "id": "API Gateway",
+      "abbreviation": null
+    },
+    "appconfig": {
+      "name": "Amazon AppConfig",
+      "id": "AppConfig",
+      "abbreviation": "AppConfig"
+    },
+    "appconfigdata": {
+      "name": "AWS AppConfig Data",
+      "id": "AppConfigData",
+      "abbreviation": null
+    },
+    "appflow": {
+      "name": "Amazon Appflow",
+      "id": "Appflow",
+      "abbreviation": null
+    },
+    "application-autoscaling": {
+      "name": "Application Auto Scaling",
+      "id": "Application Auto Scaling",
+      "abbreviation": null
+    },
+    "appmesh": {
+      "name": "AWS App Mesh",
+      "id": "App Mesh",
+      "abbreviation": null
+    },
+    "apprunner": {
+      "name": "AWS App Runner",
+      "id": "AppRunner",
+      "abbreviation": null
+    },
+    "appsync": {
+      "name": "AWS AppSync",
+      "id": "AppSync",
+      "abbreviation": "AWSAppSync"
+    },
+    "arc-zonal-shift": {
+      "name": "AWS ARC - Zonal Shift",
+      "id": "ARC Zonal Shift",
+      "abbreviation": null
+    },
+    "athena": {
+      "name": "Amazon Athena",
+      "id": "Athena",
+      "abbreviation": null
+    },
+    "auditmanager": {
+      "name": "AWS Audit Manager",
+      "id": "AuditManager",
+      "abbreviation": null
+    },
+    "autoscaling": {
+      "name": "Auto Scaling",
+      "id": "Auto Scaling",
+      "abbreviation": null
+    },
+    "autoscaling-plans": {
+      "name": "AWS Auto Scaling Plans",
+      "id": "Auto Scaling Plans",
+      "abbreviation": null
+    },
+    "backup": {
+      "name": "AWS Backup",
+      "id": "Backup",
+      "abbreviation": null
+    },
+    "backup-gateway": {
+      "name": "AWS Backup Gateway",
+      "id": "Backup Gateway",
+      "abbreviation": null
+    },
+    "batch": {
+      "name": "AWS Batch",
+      "id": "Batch",
+      "abbreviation": "AWS Batch"
+    },
+    "bedrock": {
+      "name": "Amazon Bedrock",
+      "id": "Bedrock",
+      "abbreviation": null
+    },
+    "billingconductor": {
+      "name": "AWSBillingConductor",
+      "id": "billingconductor",
+      "abbreviation": null
+    },
+    "braket": {
+      "name": "Braket",
+      "id": "Braket",
+      "abbreviation": null
+    },
+    "budgets": {
+      "name": "AWS Budgets",
+      "id": "Budgets",
+      "abbreviation": "AWSBudgets"
+    },
+    "ce": {
+      "name": "AWS Cost Explorer Service",
+      "id": "Cost Explorer",
+      "abbreviation": "AWS Cost Explorer"
+    },
+    "chime": {
+      "name": "Amazon Chime",
+      "id": "Chime",
+      "abbreviation": null
+    },
+    "cleanrooms": {
+      "name": "AWS Clean Rooms Service",
+      "id": "CleanRooms",
+      "abbreviation": null
+    },
+    "cloud9": {
+      "name": "AWS Cloud9",
+      "id": "Cloud9",
+      "abbreviation": null
+    },
+    "clouddirectory": {
+      "name": "Amazon CloudDirectory",
+      "id": "CloudDirectory",
+      "abbreviation": null
+    },
+    "cloudformation": {
+      "name": "AWS CloudFormation",
+      "id": "CloudFormation",
+      "abbreviation": null
+    },
+    "cloudfront": {
+      "name": "Amazon CloudFront",
+      "id": "CloudFront",
+      "abbreviation": "CloudFront"
+    },
+    "cloudhsm": {
+      "name": "Amazon CloudHSM",
+      "id": "CloudHSM",
+      "abbreviation": "CloudHSM"
+    },
+    "cloudhsmv2": {
+      "name": "AWS CloudHSM V2",
+      "id": "CloudHSM V2",
+      "abbreviation": "CloudHSM V2"
+    },
+    "cloudsearch": {
+      "name": "Amazon CloudSearch",
+      "id": "CloudSearch",
+      "abbreviation": null
+    },
+    "cloudtrail": {
+      "name": "AWS CloudTrail",
+      "id": "CloudTrail",
+      "abbreviation": "CloudTrail"
+    },
+    "cloudtrail-data": {
+      "name": "AWS CloudTrail Data Service",
+      "id": "CloudTrail Data",
+      "abbreviation": null
+    },
+    "codeartifact": {
+      "name": "CodeArtifact",
+      "id": "codeartifact",
+      "abbreviation": null
+    },
+    "codebuild": {
+      "name": "AWS CodeBuild",
+      "id": "CodeBuild",
+      "abbreviation": null
+    },
+    "codecatalyst": {
+      "name": "Amazon CodeCatalyst",
+      "id": "CodeCatalyst",
+      "abbreviation": null
+    },
+    "codecommit": {
+      "name": "AWS CodeCommit",
+      "id": "CodeCommit",
+      "abbreviation": "CodeCommit"
+    },
+    "codedeploy": {
+      "name": "AWS CodeDeploy",
+      "id": "CodeDeploy",
+      "abbreviation": "CodeDeploy"
+    },
+    "codeguru-reviewer": {
+      "name": "Amazon CodeGuru Reviewer",
+      "id": "CodeGuru Reviewer",
+      "abbreviation": "CodeGuruReviewer"
+    },
+    "codepipeline": {
+      "name": "AWS CodePipeline",
+      "id": "CodePipeline",
+      "abbreviation": "CodePipeline"
+    },
+    "codestar-connections": {
+      "name": "AWS CodeStar connections",
+      "id": "CodeStar connections",
+      "abbreviation": null
+    },
+    "codestar-notifications": {
+      "name": "AWS CodeStar Notifications",
+      "id": "codestar notifications",
+      "abbreviation": null
+    },
+    "cognito-identity": {
+      "name": "Amazon Cognito Identity",
+      "id": "Cognito Identity",
+      "abbreviation": null
+    },
+    "cognito-idp": {
+      "name": "Amazon Cognito Identity Provider",
+      "id": "Cognito Identity Provider",
+      "abbreviation": null
+    },
+    "cognito-sync": {
+      "name": "Amazon Cognito Sync",
+      "id": "Cognito Sync",
+      "abbreviation": null
+    },
+    "comprehend": {
+      "name": "Amazon Comprehend",
+      "id": "Comprehend",
+      "abbreviation": null
+    },
+    "comprehendmedical": {
+      "name": "AWS Comprehend Medical",
+      "id": "ComprehendMedical",
+      "abbreviation": "ComprehendMedical"
+    },
+    "compute-optimizer": {
+      "name": "AWS Compute Optimizer",
+      "id": "Compute Optimizer",
+      "abbreviation": null
+    },
+    "config": {
+      "name": "AWS Config",
+      "id": "Config Service",
+      "abbreviation": "Config Service"
+    },
+    "connect": {
+      "name": "Amazon Connect Service",
+      "id": "Connect",
+      "abbreviation": "Amazon Connect"
+    },
+    "controltower": {
+      "name": "AWS Control Tower",
+      "id": "ControlTower",
+      "abbreviation": null
+    },
+    "cost-optimization-hub": {
+      "name": "Cost Optimization Hub",
+      "id": "Cost Optimization Hub",
+      "abbreviation": null
+    },
+    "cur": {
+      "name": "AWS Cost and Usage Report Service",
+      "id": "Cost and Usage Report Service",
+      "abbreviation": null
+    },
+    "databrew": {
+      "name": "AWS Glue DataBrew",
+      "id": "DataBrew",
+      "abbreviation": null
+    },
+    "dataexchange": {
+      "name": "AWS Data Exchange",
+      "id": "DataExchange",
+      "abbreviation": null
+    },
+    "datapipeline": {
+      "name": "AWS Data Pipeline",
+      "id": "Data Pipeline",
+      "abbreviation": null
+    },
+    "datasync": {
+      "name": "AWS DataSync",
+      "id": "DataSync",
+      "abbreviation": "DataSync"
+    },
+    "datazone": {
+      "name": "Amazon DataZone",
+      "id": "DataZone",
+      "abbreviation": null
+    },
+    "dax": {
+      "name": "Amazon DynamoDB Accelerator (DAX)",
+      "id": "DAX",
+      "abbreviation": "Amazon DAX"
+    },
+    "devicefarm": {
+      "name": "AWS Device Farm",
+      "id": "Device Farm",
+      "abbreviation": null
+    },
+    "devops-guru": {
+      "name": "Amazon DevOps Guru",
+      "id": "DevOps Guru",
+      "abbreviation": null
+    },
+    "directconnect": {
+      "name": "AWS Direct Connect",
+      "id": "Direct Connect",
+      "abbreviation": null
+    },
+    "discovery": {
+      "name": "AWS Application Discovery Service",
+      "id": "Application Discovery Service",
+      "abbreviation": null
+    },
+    "dlm": {
+      "name": "Amazon Data Lifecycle Manager",
+      "id": "DLM",
+      "abbreviation": "Amazon DLM"
+    },
+    "dms": {
+      "name": "AWS Database Migration Service",
+      "id": "Database Migration Service",
+      "abbreviation": null
+    },
+    "docdb": {
+      "name": "Amazon DocumentDB with MongoDB compatibility",
+      "id": "DocDB",
+      "abbreviation": "Amazon DocDB"
+    },
+    "drs": {
+      "name": "Elastic Disaster Recovery Service",
+      "id": "drs",
+      "abbreviation": "drs"
+    },
+    "ds": {
+      "name": "AWS Directory Service",
+      "id": "Directory Service",
+      "abbreviation": "Directory Service"
+    },
+    "dynamodb": {
+      "name": "Amazon DynamoDB",
+      "id": "DynamoDB",
+      "abbreviation": "DynamoDB"
+    },
+    "ebs": {
+      "name": "Amazon Elastic Block Store",
+      "id": "EBS",
+      "abbreviation": "Amazon EBS"
+    },
+    "ec2": {
+      "name": "Amazon Elastic Compute Cloud",
+      "id": "EC2",
+      "abbreviation": "Amazon EC2"
+    },
+    "ecs": {
+      "name": "Amazon EC2 Container Service",
+      "id": "ECS",
+      "abbreviation": "Amazon ECS"
+    },
+    "eks": {
+      "name": "Amazon Elastic Kubernetes Service",
+      "id": "EKS",
+      "abbreviation": "Amazon EKS"
+    },
+    "eks-auth": {
+      "name": "Amazon EKS Auth",
+      "id": "EKS Auth",
+      "abbreviation": null
+    },
+    "elasticache": {
+      "name": "Amazon ElastiCache",
+      "id": "ElastiCache",
+      "abbreviation": null
+    },
+    "elasticbeanstalk": {
+      "name": "AWS Elastic Beanstalk",
+      "id": "Elastic Beanstalk",
+      "abbreviation": "Elastic Beanstalk"
+    },
+    "emr-containers": {
+      "name": "Amazon EMR Containers",
+      "id": "EMR containers",
+      "abbreviation": null
+    },
+    "emr-serverless": {
+      "name": "EMR Serverless",
+      "id": "EMR Serverless",
+      "abbreviation": null
+    },
+    "es": {
+      "name": "Amazon Elasticsearch Service",
+      "id": "Elasticsearch Service",
+      "abbreviation": null
+    },
+    "events": {
+      "name": "Amazon EventBridge",
+      "id": "EventBridge",
+      "abbreviation": null
+    },
+    "finspace": {
+      "name": "FinSpace User Environment Management service",
+      "id": "finspace",
+      "abbreviation": "finspace"
+    },
+    "firehose": {
+      "name": "Amazon Kinesis Firehose",
+      "id": "Firehose",
+      "abbreviation": "Firehose"
+    },
+    "fms": {
+      "name": "Firewall Management Service",
+      "id": "FMS",
+      "abbreviation": "FMS"
+    },
+    "forecast": {
+      "name": "Amazon Forecast Service",
+      "id": "forecast",
+      "abbreviation": null
+    },
+    "forecastquery": {
+      "name": "Amazon Forecast Query Service",
+      "id": "forecastquery",
+      "abbreviation": null
+    },
+    "frauddetector": {
+      "name": "Amazon Fraud Detector",
+      "id": "FraudDetector",
+      "abbreviation": null
+    },
+    "fsx": {
+      "name": "Amazon FSx",
+      "id": "FSx",
+      "abbreviation": null
+    },
+    "gamelift": {
+      "name": "Amazon GameLift",
+      "id": "GameLift",
+      "abbreviation": null
+    },
+    "gameliftstreams": {
+      "name": "Amazon GameLift Streams",
+      "id": "GameLiftStreams",
+      "abbreviation": null
+    },
+    "glacier": {
+      "name": "Amazon Glacier",
+      "id": "Glacier",
+      "abbreviation": null
+    },
+    "globalaccelerator": {
+      "name": "AWS Global Accelerator",
+      "id": "Global Accelerator",
+      "abbreviation": null
+    },
+    "glue": {
+      "name": "AWS Glue",
+      "id": "Glue",
+      "abbreviation": null
+    },
+    "grafana": {
+      "name": "Amazon Managed Grafana",
+      "id": "grafana",
+      "abbreviation": null
+    },
+    "greengrass": {
+      "name": "AWS Greengrass",
+      "id": "Greengrass",
+      "abbreviation": null
+    },
+    "groundstation": {
+      "name": "AWS Ground Station",
+      "id": "GroundStation",
+      "abbreviation": null
+    },
+    "guardduty": {
+      "name": "Amazon GuardDuty",
+      "id": "GuardDuty",
+      "abbreviation": null
+    },
+    "health": {
+      "name": "AWS Health APIs and Notifications",
+      "id": "Health",
+      "abbreviation": "AWSHealth"
+    },
+    "healthlake": {
+      "name": "Amazon HealthLake",
+      "id": "HealthLake",
+      "abbreviation": "HealthLake"
+    },
+    "iam": {
+      "name": "AWS Identity and Access Management",
+      "id": "IAM",
+      "abbreviation": "IAM"
+    },
+    "identitystore": {
+      "name": "AWS SSO Identity Store",
+      "id": "identitystore",
+      "abbreviation": "IdentityStore"
+    },
+    "importexport": {
+      "name": "AWS Import/Export",
+      "id": "ImportExport",
+      "abbreviation": null
+    },
+    "inspector": {
+      "name": "Amazon Inspector",
+      "id": "Inspector",
+      "abbreviation": null
+    },
+    "inspector2": {
+      "name": "Inspector2",
+      "id": "Inspector2",
+      "abbreviation": "Inspector2"
+    },
+    "internetmonitor": {
+      "name": "Amazon CloudWatch Internet Monitor",
+      "id": "InternetMonitor",
+      "abbreviation": null
+    },
+    "iot": {
+      "name": "AWS IoT",
+      "id": "IoT",
+      "abbreviation": null
+    },
+    "iotfleetwise": {
+      "name": "AWS IoT FleetWise",
+      "id": "IoTFleetWise",
+      "abbreviation": null
+    },
+    "iotsitewise": {
+      "name": "AWS IoT SiteWise",
+      "id": "IoTSiteWise",
+      "abbreviation": null
+    },
+    "iotthingsgraph": {
+      "name": "AWS IoT Things Graph",
+      "id": "IoTThingsGraph",
+      "abbreviation": null
+    },
+    "iottwinmaker": {
+      "name": "AWS IoT TwinMaker",
+      "id": "IoTTwinMaker",
+      "abbreviation": null
+    },
+    "iotwireless": {
+      "name": "AWS IoT Wireless",
+      "id": "IoT Wireless",
+      "abbreviation": null
+    },
+    "ivs": {
+      "name": "Amazon Interactive Video Service",
+      "id": "ivs",
+      "abbreviation": "Amazon IVS"
+    },
+    "ivschat": {
+      "name": "Amazon Interactive Video Service Chat",
+      "id": "ivschat",
+      "abbreviation": "ivschat"
+    },
+    "kafka": {
+      "name": "Managed Streaming for Kafka",
+      "id": "Kafka",
+      "abbreviation": "Kafka"
+    },
+    "kafkaconnect": {
+      "name": "Managed Streaming for Kafka Connect",
+      "id": "KafkaConnect",
+      "abbreviation": "Kafka Connect"
+    },
+    "kendra": {
+      "name": "AWSKendraFrontendService",
+      "id": "kendra",
+      "abbreviation": "kendra"
+    },
+    "kendra-ranking": {
+      "name": "Amazon Kendra Intelligent Ranking",
+      "id": "Kendra Ranking",
+      "abbreviation": "Kendra Ranking"
+    },
+    "kinesis": {
+      "name": "Amazon Kinesis",
+      "id": "Kinesis",
+      "abbreviation": "Kinesis"
+    },
+    "kinesisanalytics": {
+      "name": "Amazon Kinesis Analytics",
+      "id": "Kinesis Analytics",
+      "abbreviation": "Kinesis Analytics"
+    },
+    "kinesisvideo": {
+      "name": "Amazon Kinesis Video Streams",
+      "id": "Kinesis Video",
+      "abbreviation": "Kinesis Video"
+    },
+    "kms": {
+      "name": "AWS Key Management Service",
+      "id": "KMS",
+      "abbreviation": "KMS"
+    },
+    "lakeformation": {
+      "name": "AWS Lake Formation",
+      "id": "LakeFormation",
+      "abbreviation": null
+    },
+    "lambda": {
+      "name": "AWS Lambda",
+      "id": "Lambda",
+      "abbreviation": null
+    },
+    "license-manager": {
+      "name": "AWS License Manager",
+      "id": "License Manager",
+      "abbreviation": null
+    },
+    "license-manager-linux-subscriptions": {
+      "name": "AWS License Manager Linux Subscriptions",
+      "id": "License Manager Linux Subscriptions",
+      "abbreviation": null
+    },
+    "license-manager-user-subscriptions": {
+      "name": "AWS License Manager User Subscriptions",
+      "id": "License Manager User Subscriptions",
+      "abbreviation": null
+    },
+    "lightsail": {
+      "name": "Amazon Lightsail",
+      "id": "Lightsail",
+      "abbreviation": null
+    },
+    "logs": {
+      "name": "Amazon CloudWatch Logs",
+      "id": "CloudWatch Logs",
+      "abbreviation": null
+    },
+    "lookoutequipment": {
+      "name": "Amazon Lookout for Equipment",
+      "id": "LookoutEquipment",
+      "abbreviation": "LookoutEquipment"
+    },
+    "m2": {
+      "name": "AWSMainframeModernization",
+      "id": "m2",
+      "abbreviation": null
+    },
+    "machinelearning": {
+      "name": "Amazon Machine Learning",
+      "id": "Machine Learning",
+      "abbreviation": null
+    },
+    "macie2": {
+      "name": "Amazon Macie 2",
+      "id": "Macie2",
+      "abbreviation": null
+    },
+    "managedblockchain": {
+      "name": "Amazon Managed Blockchain",
+      "id": "ManagedBlockchain",
+      "abbreviation": "ManagedBlockchain"
+    },
+    "managedblockchain-query": {
+      "name": "Amazon Managed Blockchain Query",
+      "id": "ManagedBlockchain Query",
+      "abbreviation": null
+    },
+    "marketplacecommerceanalytics": {
+      "name": "AWS Marketplace Commerce Analytics",
+      "id": "Marketplace Commerce Analytics",
+      "abbreviation": null
+    },
+    "mediaconnect": {
+      "name": "AWS MediaConnect",
+      "id": "MediaConnect",
+      "abbreviation": null
+    },
+    "mediaconvert": {
+      "name": "AWS Elemental MediaConvert",
+      "id": "MediaConvert",
+      "abbreviation": "MediaConvert"
+    },
+    "medialive": {
+      "name": "AWS Elemental MediaLive",
+      "id": "MediaLive",
+      "abbreviation": "MediaLive"
+    },
+    "mediapackage": {
+      "name": "AWS Elemental MediaPackage",
+      "id": "MediaPackage",
+      "abbreviation": "MediaPackage"
+    },
+    "mediapackage-vod": {
+      "name": "AWS Elemental MediaPackage VOD",
+      "id": "MediaPackage Vod",
+      "abbreviation": "MediaPackage Vod"
+    },
+    "mediapackagev2": {
+      "name": "AWS Elemental MediaPackage v2",
+      "id": "MediaPackageV2",
+      "abbreviation": "mediapackagev2"
+    },
+    "mediastore": {
+      "name": "AWS Elemental MediaStore",
+      "id": "MediaStore",
+      "abbreviation": "MediaStore"
+    },
+    "mgh": {
+      "name": "AWS Migration Hub",
+      "id": "Migration Hub",
+      "abbreviation": null
+    },
+    "mgn": {
+      "name": "Application Migration Service",
+      "id": "mgn",
+      "abbreviation": "mgn"
+    },
+    "mq": {
+      "name": "AmazonMQ",
+      "id": "mq",
+      "abbreviation": null
+    },
+    "neptune": {
+      "name": "Amazon Neptune",
+      "id": "Neptune",
+      "abbreviation": "Amazon Neptune"
+    },
+    "network-firewall": {
+      "name": "AWS Network Firewall",
+      "id": "Network Firewall",
+      "abbreviation": "Network Firewall"
+    },
+    "networkmanager": {
+      "name": "AWS Network Manager",
+      "id": "NetworkManager",
+      "abbreviation": "NetworkManager"
+    },
+    "notifications": {
+      "name": "AWS User Notifications",
+      "id": "Notifications",
+      "abbreviation": null
+    },
+    "nova-act": {
+      "name": "Nova Act Service",
+      "id": "Nova Act",
+      "abbreviation": null
+    },
+    "oam": {
+      "name": "CloudWatch Observability Access Manager",
+      "id": "OAM",
+      "abbreviation": null
+    },
+    "omics": {
+      "name": "Amazon Omics",
+      "id": "Omics",
+      "abbreviation": null
+    },
+    "organizations": {
+      "name": "AWS Organizations",
+      "id": "Organizations",
+      "abbreviation": "Organizations"
+    },
+    "osis": {
+      "name": "Amazon OpenSearch Ingestion",
+      "id": "OSIS",
+      "abbreviation": null
+    },
+    "outposts": {
+      "name": "AWS Outposts",
+      "id": "Outposts",
+      "abbreviation": "Outposts"
+    },
+    "partnercentral-channel": {
+      "name": "Partner Central Channel API",
+      "id": "PartnerCentral Channel",
+      "abbreviation": null
+    },
+    "personalize": {
+      "name": "Amazon Personalize",
+      "id": "Personalize",
+      "abbreviation": null
+    },
+    "pi": {
+      "name": "AWS Performance Insights",
+      "id": "PI",
+      "abbreviation": "AWS PI"
+    },
+    "pinpoint": {
+      "name": "Amazon Pinpoint",
+      "id": "Pinpoint",
+      "abbreviation": null
+    },
+    "pipes": {
+      "name": "Amazon EventBridge Pipes",
+      "id": "Pipes",
+      "abbreviation": null
+    },
+    "polly": {
+      "name": "Amazon Polly",
+      "id": "Polly",
+      "abbreviation": null
+    },
+    "proton": {
+      "name": "AWS Proton",
+      "id": "Proton",
+      "abbreviation": null
+    },
+    "qbusiness": {
+      "name": "QBusiness",
+      "id": "QBusiness",
+      "abbreviation": null
+    },
+    "quicksight": {
+      "name": "Amazon QuickSight",
+      "id": "QuickSight",
+      "abbreviation": null
+    },
+    "ram": {
+      "name": "AWS Resource Access Manager",
+      "id": "RAM",
+      "abbreviation": "RAM"
+    },
+    "rbin": {
+      "name": "Amazon Recycle Bin",
+      "id": "rbin",
+      "abbreviation": null
+    },
+    "rds": {
+      "name": "Amazon Relational Database Service",
+      "id": "RDS",
+      "abbreviation": "Amazon RDS"
+    },
+    "rds-data": {
+      "name": "AWS RDS DataService",
+      "id": "RDS Data",
+      "abbreviation": null
+    },
+    "redshift": {
+      "name": "Amazon Redshift",
+      "id": "Redshift",
+      "abbreviation": null
+    },
+    "redshift-serverless": {
+      "name": "Redshift Serverless",
+      "id": "Redshift Serverless",
+      "abbreviation": null
+    },
+    "rekognition": {
+      "name": "Amazon Rekognition",
+      "id": "Rekognition",
+      "abbreviation": null
+    },
+    "resiliencehub": {
+      "name": "AWS Resilience Hub",
+      "id": "resiliencehub",
+      "abbreviation": null
+    },
+    "resource-explorer-2": {
+      "name": "AWS Resource Explorer",
+      "id": "Resource Explorer 2",
+      "abbreviation": null
+    },
+    "resource-groups": {
+      "name": "AWS Resource Groups",
+      "id": "Resource Groups",
+      "abbreviation": "Resource Groups"
+    },
+    "rolesanywhere": {
+      "name": "IAM Roles Anywhere",
+      "id": "RolesAnywhere",
+      "abbreviation": null
+    },
+    "route53": {
+      "name": "Amazon Route 53",
+      "id": "Route 53",
+      "abbreviation": "Route 53"
+    },
+    "route53-recovery-control-config": {
+      "name": "AWS Route53 Recovery Control Config",
+      "id": "Route53 Recovery Control Config",
+      "abbreviation": null
+    },
+    "route53domains": {
+      "name": "Amazon Route 53 Domains",
+      "id": "Route 53 Domains",
+      "abbreviation": null
+    },
+    "route53profiles": {
+      "name": "Route 53 Profiles",
+      "id": "Route53Profiles",
+      "abbreviation": null
+    },
+    "route53resolver": {
+      "name": "Amazon Route 53 Resolver",
+      "id": "Route53Resolver",
+      "abbreviation": "Route53Resolver"
+    },
+    "rum": {
+      "name": "CloudWatch RUM",
+      "id": "RUM",
+      "abbreviation": null
+    },
+    "s3": {
+      "name": "Amazon Simple Storage Service",
+      "id": "S3",
+      "abbreviation": "Amazon S3"
+    },
+    "sagemaker-geospatial": {
+      "name": "Amazon SageMaker geospatial capabilities",
+      "id": "SageMaker Geospatial",
+      "abbreviation": null
+    },
+    "savingsplans": {
+      "name": "AWS Savings Plans",
+      "id": "savingsplans",
+      "abbreviation": "AWSSavingsPlans"
+    },
+    "scheduler": {
+      "name": "Amazon EventBridge Scheduler",
+      "id": "Scheduler",
+      "abbreviation": null
+    },
+    "schemas": {
+      "name": "Schemas",
+      "id": "schemas",
+      "abbreviation": null
+    },
+    "sdb": {
+      "name": "Amazon SimpleDB",
+      "id": "SimpleDB",
+      "abbreviation": null
+    },
+    "secretsmanager": {
+      "name": "AWS Secrets Manager",
+      "id": "Secrets Manager",
+      "abbreviation": null
+    },
+    "securityhub": {
+      "name": "AWS SecurityHub",
+      "id": "SecurityHub",
+      "abbreviation": null
+    },
+    "securitylake": {
+      "name": "Amazon Security Lake",
+      "id": "SecurityLake",
+      "abbreviation": null
+    },
+    "serverlessrepo": {
+      "name": "AWSServerlessApplicationRepository",
+      "id": "ServerlessApplicationRepository",
+      "abbreviation": null
+    },
+    "servicecatalog": {
+      "name": "AWS Service Catalog",
+      "id": "Service Catalog",
+      "abbreviation": null
+    },
+    "servicecatalog-appregistry": {
+      "name": "AWS Service Catalog App Registry",
+      "id": "Service Catalog AppRegistry",
+      "abbreviation": "AppRegistry"
+    },
+    "servicediscovery": {
+      "name": "AWS Cloud Map",
+      "id": "ServiceDiscovery",
+      "abbreviation": "ServiceDiscovery"
+    },
+    "shield": {
+      "name": "AWS Shield",
+      "id": "Shield",
+      "abbreviation": "AWS Shield"
+    },
+    "signer": {
+      "name": "AWS Signer",
+      "id": "signer",
+      "abbreviation": "signer"
+    },
+    "sms-voice": {
+      "name": "Amazon Pinpoint SMS and Voice Service",
+      "id": "Pinpoint SMS Voice",
+      "abbreviation": "Pinpoint SMS Voice"
+    },
+    "snowball": {
+      "name": "Amazon Import/Export Snowball",
+      "id": "Snowball",
+      "abbreviation": "Amazon Snowball"
+    },
+    "sns": {
+      "name": "Amazon Simple Notification Service",
+      "id": "SNS",
+      "abbreviation": "Amazon SNS"
+    },
+    "sqs": {
+      "name": "Amazon Simple Queue Service",
+      "id": "SQS",
+      "abbreviation": "Amazon SQS"
+    },
+    "ssm": {
+      "name": "Amazon Simple Systems Manager (SSM)",
+      "id": "SSM",
+      "abbreviation": "Amazon SSM"
+    },
+    "ssm-contacts": {
+      "name": "AWS Systems Manager Incident Manager Contacts",
+      "id": "SSM Contacts",
+      "abbreviation": "SSM Contacts"
+    },
+    "ssm-incidents": {
+      "name": "AWS Systems Manager Incident Manager",
+      "id": "SSM Incidents",
+      "abbreviation": "SSM Incidents"
+    },
+    "ssm-quicksetup": {
+      "name": "AWS Systems Manager QuickSetup",
+      "id": "SSM QuickSetup",
+      "abbreviation": null
+    },
+    "ssm-sap": {
+      "name": "AWS Systems Manager for SAP",
+      "id": "Ssm Sap",
+      "abbreviation": "SsmSap"
+    },
+    "sso": {
+      "name": "AWS Single Sign-On",
+      "id": "SSO",
+      "abbreviation": "SSO"
+    },
+    "storagegateway": {
+      "name": "AWS Storage Gateway",
+      "id": "Storage Gateway",
+      "abbreviation": null
+    },
+    "sts": {
+      "name": "AWS Security Token Service",
+      "id": "STS",
+      "abbreviation": "AWS STS"
+    },
+    "support": {
+      "name": "AWS Support",
+      "id": "Support",
+      "abbreviation": null
+    },
+    "swf": {
+      "name": "Amazon Simple Workflow Service",
+      "id": "SWF",
+      "abbreviation": "Amazon SWF"
+    },
+    "synthetics": {
+      "name": "Synthetics",
+      "id": "synthetics",
+      "abbreviation": "Synthetics"
+    },
+    "textract": {
+      "name": "Amazon Textract",
+      "id": "Textract",
+      "abbreviation": null
+    },
+    "tnb": {
+      "name": "AWS Telco Network Builder",
+      "id": "tnb",
+      "abbreviation": null
+    },
+    "transcribe": {
+      "name": "Amazon Transcribe Service",
+      "id": "Transcribe",
+      "abbreviation": null
+    },
+    "transfer": {
+      "name": "AWS Transfer Family",
+      "id": "Transfer",
+      "abbreviation": "AWS Transfer"
+    },
+    "translate": {
+      "name": "Amazon Translate",
+      "id": "Translate",
+      "abbreviation": null
+    },
+    "trustedadvisor": {
+      "name": "TrustedAdvisor Public API",
+      "id": "TrustedAdvisor",
+      "abbreviation": null
+    },
+    "verifiedpermissions": {
+      "name": "Amazon Verified Permissions",
+      "id": "VerifiedPermissions",
+      "abbreviation": null
+    },
+    "vpc-lattice": {
+      "name": "Amazon VPC Lattice",
+      "id": "VPC Lattice",
+      "abbreviation": null
+    },
+    "waf": {
+      "name": "AWS WAF",
+      "id": "WAF",
+      "abbreviation": "WAF"
+    },
+    "waf-regional": {
+      "name": "AWS WAF Regional",
+      "id": "WAF Regional",
+      "abbreviation": "WAF Regional"
+    },
+    "wafv2": {
+      "name": "AWS WAFV2",
+      "id": "WAFV2",
+      "abbreviation": "WAFV2"
+    },
+    "wellarchitected": {
+      "name": "AWS Well-Architected Tool",
+      "id": "WellArchitected",
+      "abbreviation": "Well-Architected"
+    },
+    "wisdom": {
+      "name": "Amazon Connect Wisdom Service",
+      "id": "Wisdom",
+      "abbreviation": null
+    },
+    "workdocs": {
+      "name": "Amazon WorkDocs",
+      "id": "WorkDocs",
+      "abbreviation": null
+    },
+    "workmail": {
+      "name": "Amazon WorkMail",
+      "id": "WorkMail",
+      "abbreviation": null
+    },
+    "workspaces": {
+      "name": "Amazon WorkSpaces",
+      "id": "WorkSpaces",
+      "abbreviation": null
+    },
+    "workspaces-web": {
+      "name": "Amazon WorkSpaces Web",
+      "id": "WorkSpaces Web",
+      "abbreviation": null
+    },
+    "xray": {
+      "name": "AWS X-Ray",
+      "id": "XRay",
+      "abbreviation": null
+    },
+    "access-analyzer": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "agreement-marketplace": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "airflow": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "aoss": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.detective": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.ecr": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.ecr-public": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.iotdeviceadvisor": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.iotwireless": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.mediatailor": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.pricing": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.sagemaker": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "api.tunneling.iot": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "app-integrations": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "applicationinsights": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "appstream2": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "aps": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "cases": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "cassandra": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "catalog.marketplace": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "cloudcontrolapi": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "codeguru-profiler": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "connect-campaigns": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "contact-lens": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "data-ats.iot": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "data.iot": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "data.jobs.iot": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "data.mediastore": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "edge.sagemaker": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "elasticfilesystem": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "elasticloadbalancing": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "elasticmapreduce": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "email": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "entitlement.marketplace": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "finspace-api": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "geo": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "identity-chime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "ingest.timestream": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "iotsecuredtunneling": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "ivsrealtime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "media-pipelines-chime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "meetings-chime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "memory-db": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "messaging-chime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "metering.marketplace": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "metrics.sagemaker": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "migrationhub-orchestrator": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "migrationhub-strategy": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "mobileanalytics": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "models-v2-lex": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "models.lex": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "monitoring": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "mturk-requester": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "notifications-contacts": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "oidc": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "participant.connect": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "portal.sso": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "profile": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "query.timestream": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "runtime-v2-lex": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "runtime.lex": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "runtime.sagemaker": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "s3-control": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "s3-outposts": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "servicequotas": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "states": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "streams.dynamodb": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "supportapp": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "tagging": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "tax": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "thinclient": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "transcribestreaming": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "voice-chime": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    },
+    "voiceid": {
+      "name": null,
+      "id": null,
+      "abbreviation": null
+    }
+  }
+}

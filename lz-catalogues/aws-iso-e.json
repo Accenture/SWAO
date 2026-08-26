@@ -1,0 +1,1013 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "AWS ISOE Europe service catalogue (classified)",
+    "provider": "aws-iso-e",
+    "last_updated": "2026-08-05",
+    "source": {
+      "mode": "botocore-endpoints",
+      "tool": "refresh-lz-catalogue-aws.mjs",
+      "operator": "SWAO team",
+      "source_note": "Service list from botocore endpoints (high confidence). Sovereignty facts hand-authored: aws-iso-e is an AWS isolated partition for classified/government workloads with minimal public documentation; no EU operating entity is publicly documented (#1382)."
+    },
+    "confidence": "low",
+    "regions_count": 1
+  },
+  "regions": [
+    {
+      "id": "eu-isoe-west-1",
+      "display": "EU ISOE West",
+      "country": "EU",
+      "sovereignty": {
+        "residency_country": "EU",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": []
+      },
+      "services": [
+        {
+          "code": "access-analyzer",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "acm",
+          "status": "ga",
+          "fulfills": [
+            "certificate_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "acm-pca",
+          "status": "ga",
+          "fulfills": [
+            "certificate_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "api.ecr",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "api.pricing",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "api.sagemaker",
+          "status": "ga",
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "apigateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "appconfig",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "appconfigdata",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "application-autoscaling",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "arc-zonal-shift",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "athena",
+          "status": "ga",
+          "fulfills": [
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "autoscaling",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "batch",
+          "status": "ga",
+          "fulfills": [
+            "batch_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "budgets",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "cloudcontrolapi",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "cloudformation",
+          "status": "ga",
+          "fulfills": [
+            "iac"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "cloudtrail",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "cloudtrail-data",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "codedeploy",
+          "status": "ga",
+          "fulfills": [
+            "ci_cd"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "compute-optimizer",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "config",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "cost-optimization-hub",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "directconnect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "dlm",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "dms",
+          "status": "ga",
+          "fulfills": [
+            "data_migration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ds",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "dynamodb",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ebs",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ec2",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ecs",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "eks",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "elasticache",
+          "status": "ga",
+          "fulfills": [
+            "redis",
+            "memcached"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "elasticfilesystem",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "elasticloadbalancing",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "elasticmapreduce",
+          "status": "ga",
+          "fulfills": [
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "emr-serverless",
+          "status": "ga",
+          "fulfills": [
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "es",
+          "status": "ga",
+          "fulfills": [
+            "search"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "events",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "firehose",
+          "status": "ga",
+          "fulfills": [
+            "event_streaming"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "glue",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "kinesis",
+          "status": "ga",
+          "fulfills": [
+            "event_streaming"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "kms",
+          "status": "ga",
+          "fulfills": [
+            "key_vault"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "lakeformation",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "lambda",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "license-manager",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "logs",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "metrics.sagemaker",
+          "status": "ga",
+          "fulfills": [
+            "ml_inference"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "monitoring",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "oam",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "pi",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "pipes",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ram",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "rbin",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "rds",
+          "status": "ga",
+          "fulfills": [
+            "postgresql",
+            "mysql",
+            "mariadb"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "redshift",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "redshift-serverless",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "rekognition",
+          "status": "ga",
+          "fulfills": [
+            "ml_vision"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "resource-groups",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "route53profiles",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "route53resolver",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "s3",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "scheduler",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "schemas",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "secretsmanager",
+          "status": "ga",
+          "fulfills": [
+            "secrets_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "servicecatalog",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "servicediscovery",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "servicequotas",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "sns",
+          "status": "ga",
+          "fulfills": [
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "sqs",
+          "status": "ga",
+          "fulfills": [
+            "queue"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "ssm",
+          "status": "ga",
+          "fulfills": [
+            "systems_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "states",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "streams.dynamodb",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "sts",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "swf",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "synthetics",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "tagging",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "trustedadvisor",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "xray",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-01",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "Amazon EBS",
+          "name": "Amazon Elastic Block Store",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Amazon VPC",
+          "name": "Amazon Virtual Private Cloud",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+# SWAO LLM-Gateway connector -- Ollama (local, Design 090)
+schema_version: "1.0"
+connector:
+  id: ollama
+  name: Ollama (local)
+  description: Local Ollama daemon; no key, zero cost, data never leaves the machine.
+  protocol: ollama
+  base_url: http://localhost:11434
+  auth: {}
+  models:
+    default: llama3.3
+    catalogue:
+      - id: llama3.3
+      - id: mistral-small
+      - id: qwen2.5-coder
+  defaults:
+    temperature: 0
+  sovereignty:
+    data_residency: local
+    zero_retention: true
+    notes: Fully local inference; suitable for air-gapped assessments (Design 046).
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    contributor: Accenture SWAO team

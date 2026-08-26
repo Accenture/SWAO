@@ -1,0 +1,75 @@
+version: "1.0"
+description: "Known analytics, tracking, and data-exfiltration script domains for DYN-06 third-party script detection"
+updated: "2026-07-26"
+domains:
+  # Analytics and tracking
+  - domain: segment.io
+    category: analytics
+    severity: HIGH
+  - domain: mixpanel.com
+    category: analytics
+    severity: HIGH
+  - domain: plausible.io
+    category: analytics
+    severity: MEDIUM
+  - domain: amplitude.com
+    category: analytics
+    severity: HIGH
+  - domain: hotjar.com
+    category: analytics
+    severity: HIGH
+  - domain: fullstory.com
+    category: analytics
+    severity: HIGH
+  - domain: heap.io
+    category: analytics
+    severity: HIGH
+  - domain: posthog.com
+    category: analytics
+    severity: MEDIUM
+  # Support chat / session recording
+  - domain: intercom.io
+    category: support-chat
+    severity: HIGH
+  - domain: zdassets.com
+    category: support-chat
+    severity: MEDIUM
+  - domain: crisp.chat
+    category: support-chat
+    severity: MEDIUM
+  # CDN / supply chain
+  - domain: cdnjs.cloudflare.com
+    category: cdn
+    severity: MEDIUM
+  - domain: unpkg.com
+    category: cdn
+    severity: MEDIUM
+  - domain: jsdelivr.net
+    category: cdn
+    severity: MEDIUM
+  # Error tracking
+  - domain: sentry.io
+    category: error-tracking
+    severity: MEDIUM
+  - domain: bugsnag.com
+    category: error-tracking
+    severity: MEDIUM
+  - domain: rollbar.com
+    category: error-tracking
+    severity: MEDIUM
+  # Social / tracking pixels
+  - domain: connect.facebook.net
+    category: social-pixel
+    severity: HIGH
+  - domain: googletagmanager.com
+    category: tag-manager
+    severity: HIGH
+  - domain: google-analytics.com
+    category: analytics
+    severity: HIGH
+  - domain: doubleclick.net
+    category: advertising
+    severity: HIGH
+  - domain: ads.linkedin.com
+    category: advertising
+    severity: HIGH

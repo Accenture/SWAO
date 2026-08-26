@@ -1,0 +1,166 @@
+{
+  "_comment": "SWAO LZ Service Catalogue Template. Copy this file to your workspace at wsp/inputs/catalogs/lz-catalogues/<provider>.json and fill in the fields below. JSON does not support comments natively; remove all _comment fields before using.",
+
+  "meta": {
+    "_comment_meta": "Catalogue-level metadata. All fields are required unless noted.",
+
+    "schema_version": "0.1",
+    "_comment_schema_version": "Always '0.1' for the current schema generation. Do not change.",
+
+    "name": "My Private Cloud service catalogue",
+    "_comment_name": "Human-readable name shown in 'swao lz catalogue list'.",
+
+    "provider": "my-private-cloud",
+    "_comment_provider": "Unique machine-readable identifier. Use kebab-case. Must match the filename (my-private-cloud.json). Register in index.json if you want SWAO to discover it automatically.",
+
+    "last_updated": "2026-08-11",
+    "_comment_last_updated": "ISO-8601 date when this file was last manually reviewed or updated.",
+
+    "source": {
+      "_comment_source": "Provenance block. Describes where the data came from.",
+
+      "mode": "curated",
+      "_comment_mode": "Closed enum: api | scrape | curated | botocore-endpoints | pim-api-stackit. Use 'curated' for hand-authored files.",
+
+      "operator": "Your Name",
+      "_comment_operator": "Name of the person or team who authored/maintains this catalogue.",
+
+      "source_note": "Hand-authored from internal cloud team documentation. Reviewed 2026-08-11. Key management confirmed with platform team 2026-07-30. Certifications per ISO certificate #CERT-12345 issued 2025-03-01.",
+      "_comment_source_note": "Free-text provenance note. Include URLs, document references, review dates, and any data-freshness caveats. This is the primary audit trail for data quality."
+    },
+
+    "confidence": "medium",
+    "_comment_confidence": "Enum: high | medium | low. high = machine-sourced, verified. medium = hand-curated from authoritative docs. low = partial / unverified.",
+
+    "regions_count": 2,
+    "_comment_regions_count": "Number of region objects in the regions array. Must match."
+  },
+
+  "regions": [
+    {
+      "_comment_region_1": "First region -- primary site, high sovereignty profile.",
+
+      "id": "dc-frankfurt-1",
+      "_comment_id": "Region identifier. Use a stable, kebab-case string. Will appear in assessment output and framework rules.",
+
+      "display": "Frankfurt Primary (Hall 1-3, Tier III+)",
+      "_comment_display": "Optional human-readable description shown in the TUI. Include location, tier, or noteworthy details.",
+
+      "country": "DE",
+      "_comment_country": "ISO 3166-1 alpha-2 country code for the physical data centre location.",
+
+      "sovereignty": {
+        "_comment_sovereignty": "Sovereignty facts for this region. Stored as facts only; verdicts are computed by installed frameworks (D-LZ-07).",
+
+        "residency_country": "DE",
+        "_comment_residency_country": "ISO 3166-1 alpha-2 country where data physically resides. Omit if genuinely unknown (e.g. Azure Local where the customer chooses the site).",
+
+        "operator_jurisdiction": "EU-entity",
+        "_comment_operator_jurisdiction": "Free-form string describing the legal jurisdiction of the cloud operator. Common values: 'EU-entity' (EU-incorporated, EU-staff), 'US-entity' (US-incorporated, CLOUD Act attaches), 'operator-site' (customer premises -- jurisdiction is the customer's).",
+
+        "extraterritorial_exposure": [],
+        "_comment_extraterritorial_exposure": "Array of known extraterritorial legal exposure vectors. Common values: 'us_cloud_act' (US CLOUD Act applies to operator), 'fisa_702' (US FISA 702 applies). Empty array means no known extraterritorial exposure.",
+
+        "certifications": ["BSI_C5", "ISO_27001", "SOC_2"],
+        "_comment_certifications": "Array of confirmed third-party certifications. Valid SWAO vocabulary: BSI_C5, ISO_27001, SOC_2, TISAX_L3. Only include certifications that have been issued (not 'planned' or 'in progress'). Record in-progress ones in source_note instead."
+      },
+
+      "services": [
+        {
+          "_comment_service_1": "Example: virtual machine compute service.",
+
+          "code": "Virtual Machines",
+          "_comment_code": "Unique service identifier within this region. Use the official provider service name. Must be unique within this region's services array.",
+
+          "name": "Virtual Machines",
+          "_comment_name": "Optional human-readable name. Can be the same as code or more descriptive.",
+
+          "status": "ga",
+          "_comment_status": "Enum: ga (generally available) | preview (limited availability, no SLA) | announced (on roadmap, not yet orderable) | retired (previously available, now discontinued).",
+
+          "fulfills": ["vm_compute"],
+          "_comment_fulfills": "SWAO assessment vocabulary -- what workload capability this service provides. Multiple values allowed. Common values: vm_compute, kubernetes, container_orchestration, serverless_compute, batch_compute, object_storage, block_storage, file_storage, postgresql, mysql, sql_server, nosql_database, redis, search, key_vault, secrets_management, identity_management, vpc_networking, load_balancer, dedicated_connectivity, vpn, waf, dns, cdn, monitoring, audit_logging, threat_detection, compliance_monitoring, backup, data_analytics, data_warehouse, ml_training, ml_inference, managed_llm, queue, messaging, event_streaming, data_integration, big_data, bi_analytics, api_gateway, container_registry, vdi. Use [] if no standard vocabulary match exists -- add capabilities instead.",
+
+          "capabilities": ["trusted-launch", "bare-metal"],
+          "_comment_capabilities": "Free-form capability tags for this service. Use kebab-case. Examples: gpu-h100, trusted-launch, bare-metal, dedicated-tenancy, auto-scaling, kafka-compatible, oracle-rdbms, fips-140-2-level-3-hsm. Frameworks can match on capabilities when fulfills has no vocabulary match.",
+
+          "key_custody": ["provider-managed", "cmk"],
+          "_comment_key_custody": "Who controls the encryption keys for data stored by this service. Multiple values reflect the options the service offers. Enum: provider-managed (provider holds keys; default), cmk (customer-managed key stored in provider KMS), byok (customer imports own key material into provider KMS), hyok (customer holds keys outside the provider; provider only sees references), operator-managed (for on-prem/HCI -- the hosting organisation holds keys).",
+
+          "last_verified": "2026-08-11",
+          "_comment_last_verified": "ISO-8601 date when this service entry was last manually confirmed against provider documentation.",
+
+          "source": "curated",
+          "_comment_source": "Source of this specific service entry. For hand-authored files use 'curated'. Automated adapters stamp their source tool here."
+        },
+        {
+          "_comment_service_2": "Example: managed Kubernetes service.",
+          "code": "Managed Kubernetes",
+          "name": "Managed Kubernetes",
+          "status": "ga",
+          "fulfills": ["kubernetes"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "_comment_service_3": "Example: key management with BYOK.",
+          "code": "Key Management Service",
+          "name": "Key Management Service",
+          "status": "ga",
+          "fulfills": ["key_vault", "secrets_management"],
+          "capabilities": ["fips-140-2-level-3-hsm"],
+          "key_custody": ["provider-managed", "cmk", "byok"],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "_comment_service_4": "Example: announced service (on roadmap, not yet orderable).",
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "announced",
+          "fulfills": ["object_storage"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "_comment_region_2": "Second region -- disaster recovery site, lower sovereignty profile.",
+      "id": "dc-amsterdam-1",
+      "display": "Amsterdam DR (Colocation, Tier III)",
+      "country": "NL",
+      "sovereignty": {
+        "residency_country": "NL",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": ["ISO_27001"]
+      },
+      "services": [
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "fulfills": ["vm_compute"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": ["object_storage"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "ghostfolio",
+  "version": "3.0.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@nestjs/core": "10.3.0",
+    "@nestjs/common": "10.3.0",
+    "@angular/core": "20.3.27",
+    "prisma": "5.10.0",
+    "@prisma/client": "5.10.0",
+    "redis": "4.6.0",
+    "bull": "4.12.0",
+    "alphavantage": "1.5.0",
+    "jsonwebtoken": "9.0.2"
+  },
+  "devDependencies": {
+    "typescript": "5.3.0"
+  }
+}

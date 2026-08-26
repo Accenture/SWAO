@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx"
+  },
+  "references": [
+    { "path": "../@swao/core" },
+    { "path": "../@swao/community-frameworks" },
+    { "path": "../@swao/module-framework" },
+    { "path": "../@swao/module-html-portal" },
+    { "path": "../@swao/module-html-report" },
+    { "path": "../@swao/module-app-assessment" },
+    { "path": "../@swao/module-challenge" },
+    { "path": "../@swao/module-health-check" },
+    { "path": "../@swao/module-landing-zone" },
+    { "path": "../@swao/module-llm-assessment" },
+    { "path": "../@swao/module-llm-providers" },
+    { "path": "../@swao/module-mcp" },
+    { "path": "../@swao/module-pdf-report" },
+    { "path": "../@swao/module-portfolio" },
+    { "path": "../@swao/module-powerbi" },
+    { "path": "../@swao/module-terraform" },
+    { "path": "../@swao/tui-kit" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/__tests__/**",
+    "src/passes/fixtures/**"
+  ]
+}

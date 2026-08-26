@@ -1,0 +1,32 @@
+# SWAO LLM-Gateway connector -- generic OpenAI-compatible endpoint (Design 090)
+# The successor of the open-llm-provider configuration (Design 082): works for
+# vLLM, internal GenAI hubs, and any platform speaking the OpenAI chat wire
+# format. Copy, rename the id, point base_url at your platform, name your
+# credential -- done.
+schema_version: "1.0"
+connector:
+  id: vllm-generic
+  name: Generic OpenAI-compatible endpoint (vLLM / internal hub)
+  protocol: openai-chat
+  base_url: http://localhost:8000
+  # vLLM path-prefix routing: path between base_url and /v1/chat/completions.
+  # Leave empty for standard single-route deployments.
+  path_prefix: ""
+  auth:
+    credential_key: open-llm-api-key
+    env_var: SWAO_OPEN_LLM_API_KEY
+  models:
+    default: served-model
+  defaults:
+    temperature: 0
+  cost_per_token:
+    input_per_million: 0
+    output_per_million: 0
+  sovereignty:
+    data_residency: self-hosted
+    zero_retention: true
+    notes: Sovereignty facts depend on where you host it -- amend for your deployment.
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    contributor: Accenture SWAO team

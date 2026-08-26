@@ -1,0 +1,64 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+# NCA CCC-2:2024 -- Cloud Cybersecurity Controls, Version 2 (2024)
+# Cloud Service Provider (CSP) control catalogue.
+# Source: National Cybersecurity Authority, Kingdom of Saudi Arabia.
+# Sprint-100 #1133 -- authored 2026-07-18.
+
+framework:
+  id: NCA_CCC_CSP
+  name: "National Cybersecurity Authority -- Cloud Cybersecurity Controls (CCC-2:2024) -- Cloud Service Provider (CSP)"
+  version: "CCC-2:2024 -- issued by NCA Saudi Arabia, effective 2024"
+  authority: "National Cybersecurity Authority (NCA), Kingdom of Saudi Arabia"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-18"
+  applicability_hints:
+    - ksa_regulated_entity
+    - cloud_provider
+    - iaas_provider
+    - paas_provider
+    - saas_provider
+  assessment_type_scope: [aud]
+  signal_prefix: NCA_CCC_CSP
+  description: >-
+    NCA Cloud Cybersecurity Controls (CCC-2:2024) -- Cloud Service Provider
+    (CSP) obligations. This catalogue covers the 37 main CSP controls
+    (P-notation) across 4 domains: Cloud Cybersecurity Governance (Domain 1),
+    Cloud Cybersecurity Defense (Domain 2), Cloud Cybersecurity Resilience
+    (Domain 3), and Third-Party Cloud Cybersecurity (Domain 4). CCC-2:2024 is a
+    mandatory extension to the Essential Cybersecurity Controls (ECC-2:2024).
+    Applicable to all cloud service providers operating in the Kingdom of Saudi
+    Arabia or providing cloud services to Saudi government agencies, CNI entities,
+    or regulated private-sector organisations. CSP controls govern the provider
+    side of the shared-responsibility model across IaaS, PaaS, and SaaS delivery
+    models, including tenant isolation, Cloud Technology Stack security, supply
+    chain governance, Saudisation requirements, and CST notification obligations.
+  references:
+    - "https://nca.gov.sa/en-US/Regulations/Pages/Cloud-Cybersecurity-Controls.aspx"
+    - "CCC-2:2024 English PDF: https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-07-18"
+
+  replaces: []
+
+  cross_mapping_hints:
+    target_frameworks:
+      - NCA_ECC          # parent standard; each CCC control cites its ECC parent
+      - NCA_CCC_CST      # the complementary CST catalogue for shared-responsibility heatmap
+      - ISO_27001        # ISO 27001:2022 Annex A security controls
+      - SOC_2            # SOC 2 Trust Service Criteria (availability, confidentiality)
+      - BSI_C5           # BSI Cloud Computing Compliance Criteria Catalogue (C5:2020)
+
+  redistribution_note: >-
+    NCA CCC-2:2024 is published by the National Cybersecurity Authority of
+    the Kingdom of Saudi Arabia and is classified as publicly available. Control
+    descriptions in this catalogue paraphrase the English text of the official
+    NCA publication for SWAO machine ingestion. The authoritative source is the
+    official NCA website listed under references. Reviewers verify control
+    accuracy by locating the cited domain and control reference in the source
+    publication. No legal advice is provided; consult qualified legal and
+    information security professionals for interpretation of how a requirement
+    applies to a specific cloud provider operating in or serving the Kingdom
+    of Saudi Arabia.

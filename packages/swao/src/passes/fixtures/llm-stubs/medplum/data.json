@@ -1,0 +1,38 @@
+{
+  "signals": [
+    {
+      "id": "DATA-01",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "high",
+      "derivation": "Prisma schema contains Patient and Observation models. NHS numbers, names, and dates of birth are stored. GDPR Art. 9 special category health data applies.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "high"
+    },
+    {
+      "id": "DATA-02",
+      "source": "llm_inference",
+      "category": "business_processes",
+      "severity": "high",
+      "derivation": "AWS Comprehend Medical dependency detected. PHI may be sent to AWS (us-east-1) for NLP processing. GDPR Art. 9 and Art. 44 Chapter V transfer restriction applies for EU-only deployments. DPA with AWS required.",
+      "evidence": ["package.json"],
+      "confidence": "high"
+    },
+    {
+      "id": "DATA-03",
+      "source": "llm_inference",
+      "category": "application",
+      "severity": "medium",
+      "derivation": "FHIR R4 data model used via @medplum/fhirpath. FHIR resources include patient identifiers and clinical observations. Data retention policy must be defined per applicable healthcare regulation.",
+      "evidence": ["package.json"],
+      "confidence": "medium"
+    }
+  ],
+  "assessment": {
+    "data_classes": ["health_record", "patient_identifier", "clinical_observation"],
+    "regulatory_scope": ["GDPR", "DiGA", "HIPAA_if_US_deployment"],
+    "gdpr_art17_implemented": false,
+    "secrets_in_env": true,
+    "phi_detected": true
+  }
+}

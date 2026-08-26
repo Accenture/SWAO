@@ -1,0 +1,89 @@
+# SWAO Community Framework -- PCI DSS v4.0
+
+regime_meta:
+  id: PCI_DSS
+  name: "Payment Card Industry Data Security Standard v4.0"
+  version: "4.0"
+  scope: community
+  authority: "PCI Security Standards Council"
+  contributor:
+    name: "Accenture SWAO team (community packaging)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://accenture.example/swao/community-frameworks/pci-dss"
+  applicability_hints: [payments, cardholder_data, ecommerce]
+  description: >
+    PCI DSS v4.0 (effective 2024-03-31, full enforcement 2025-03-31) is
+    the global standard for protecting cardholder data. Applies to all
+    entities that store, process, or transmit cardholder data or
+    sensitive authentication data.
+  references:
+    - "https://www.pcisecuritystandards.org/document_library/"
+  last_reviewed: "2026-05-24"
+  catalogue_version: "1.0.0"
+
+controls:
+  - id: PCI_DSS_3.4
+    title: "Render PAN unreadable wherever it is stored"
+    description: >
+      Primary Account Number (PAN) shall be rendered unreadable
+      anywhere it is stored using strong cryptography (AES-256 or
+      equivalent), one-way hashes, truncation, or tokens.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: DATA
+    references:
+      - "PCI DSS v4.0 Requirement 3.4"
+
+  - id: PCI_DSS_4.1
+    title: "Strong cryptography for transmission of cardholder data"
+    description: >
+      Transmissions of cardholder data over open public networks shall
+      be encrypted using strong cryptography and security protocols
+      (TLS 1.2 or higher).
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: TF
+    references:
+      - "PCI DSS v4.0 Requirement 4.1"
+
+  - id: PCI_DSS_6.2
+    title: "Secure software development"
+    description: >
+      Bespoke and custom software is developed using secure software
+      development processes; code reviews, secure coding training, and
+      vulnerability management apply throughout the SDLC.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: PP
+      - signal_prefix: QA
+      - signal_prefix: SBOM
+    references:
+      - "PCI DSS v4.0 Requirement 6.2"
+
+  - id: PCI_DSS_8.3
+    title: "Multi-factor authentication for non-console access"
+    description: >
+      MFA is required for all non-console access into the cardholder
+      data environment, including access by personnel with
+      administrative privileges and by all third-party providers.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+      - context_input: solution_arch
+    references:
+      - "PCI DSS v4.0 Requirement 8.3 to 8.5"
+
+  - id: PCI_DSS_10
+    title: "Log and monitor all access to system components and cardholder data"
+    description: >
+      Audit logs are enabled and active for all system components and
+      cardholder data, capturing identity, type of event, success/fail,
+      origination, and identity of affected data or resource.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    references:
+      - "PCI DSS v4.0 Requirement 10"

@@ -1,0 +1,2250 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "Oracle Cloud Infrastructure (OCI) service catalogue",
+    "provider": "oci",
+    "last_updated": "2026-08-11",
+    "source": {
+      "mode": "curated",
+      "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
+      "source_note": "Hand-curated from Oracle documentation (retrieved 2026-08-11). Two distinct OCI products are encoded here, distinguished by region ID: standard OCI (oc1 realm, operator Oracle Corporation USA) and OCI EU Sovereign Cloud (oc19 realm, operator Oracle EU Sovereign Cloud legal entities with EU-resident staff only). Standard regions use domain oraclecloud.com; sovereign regions use oraclecloud.eu (console cloud.oracle.eu). CLOUD Act: Oracle Corporation is US-incorporated; CLOUD Act and FISA 702 attach to all standard regions regardless of data centre location. EU Sovereign Cloud: EU-only operations materially reduce but do not eliminate US extraterritorial exposure (Oracle Corporation remains US parent company); CLOUD Act retained, FISA 702 omitted for sovereign regions given EU-only personnel nexus -- see Design 096 D-096-03 for legal review recommendation and OQ-6. Certifications: BSI C5 Type II confirmed for eu-frankfurt-1 (Accorp Partners blog 2025; cloud13.ch 2025-07-28). BSI C5 also confirmed for eu-frankfurt-2 (EU Sovereign Cloud; cloud13.ch 2025-07-28). ISO 27001 (27001/27017/27018/27701), SOC 1/2/3, CSA STAR Level 2, PCI DSS confirmed for all commercial regions (Oracle Cloud Compliance portal). TISAX: no evidence found; do not include without ENX portal confirmation (Design 096 OQ-3). IT-Grundschutz: Oracle references framework alignment but no BSI-IGZ certificate published as of 2026-08-11 (Design 096 OQ-2). Key management: OCI Vault supports BYOK (import own key material) and HYOK/External KMS (keys stored outside OCI, only key references in OCI) via FIPS 140-2 Level 3 HSMs. Source: docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm (region list); docs.oracle.com/en-us/iaas/Content/sovereign-cloud/eu-sovereign-cloud.htm (sovereign region IDs, endpoints, realm); docs.oracle.com/en-us/iaas/Content/KeyManagement/Concepts/keyoverview.htm (vault/BYOK/HYOK); docs.oracle.com/en-us/iaas/Content/home.htm (service catalog); cpl.thalesgroup.com/blog/data-security/oci-customers-manage-encryption-keys-cloud-service (HYOK confirmation). eu-amsterdam-1 and other standard EU regions (eu-paris-1, eu-marseille-1, eu-milan-1, eu-stockholm-1) share the same service set as eu-frankfurt-1 with residency_country and certification adjustments (BSI_C5 not confirmed outside Frankfurt). eu-madrid-2 is the DR pair for eu-frankfurt-2 and shares the same service list. ARM Ampere (A1) shapes are NOT available in EU Sovereign Cloud. Free Tier is NOT available in EU Sovereign Cloud."
+    },
+    "confidence": "medium",
+    "regions_count": 4
+  },
+  "regions": [
+    {
+      "id": "eu-frankfurt-1",
+      "display": "Germany Central (Frankfurt) -- standard OCI, 3 ADs, oc1 realm",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal, GPU)",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "bare-metal",
+            "gpu-a10",
+            "gpu-l40s",
+            "gpu-h100",
+            "ampere-a1"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Engine for Kubernetes",
+          "name": "Container Engine for Kubernetes (OKE)",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Instances",
+          "name": "Container Instances",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Functions",
+          "name": "Functions",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Batch",
+          "name": "Batch",
+          "status": "ga",
+          "fulfills": [
+            "batch_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Artifact Registry",
+          "name": "Artifact Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [
+            "artifact-registry"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Secure Desktops",
+          "name": "Secure Desktops",
+          "status": "ga",
+          "fulfills": [
+            "vdi"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Archive Storage",
+          "name": "Archive Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [
+            "cold-archival"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Block Volume",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "File Storage",
+          "name": "File Storage",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "File Storage with Lustre",
+          "name": "File Storage with Lustre",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [
+            "high-performance-parallel"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Networking",
+          "name": "Networking (Virtual Cloud Network)",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Load Balancer",
+          "name": "Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Network Load Balancer",
+          "name": "Network Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [
+            "layer-4-nlb"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "FastConnect",
+          "name": "FastConnect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Site-to-Site VPN",
+          "name": "Site-to-Site VPN",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "DNS and Traffic Management",
+          "name": "DNS and Traffic Management",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Network Firewall",
+          "name": "Network Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf",
+            "network_firewall"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Acceleration",
+          "name": "Web Application Acceleration",
+          "status": "ga",
+          "fulfills": [
+            "cdn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ADW",
+          "name": "Autonomous Database (Analytics and Data Warehousing)",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db",
+            "self-tuning"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ATP",
+          "name": "Autonomous Database (Transaction Processing)",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db",
+            "self-tuning"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Base Database Service",
+          "name": "Base Database Service (Oracle DB on VMs and Bare Metal)",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "oracle-rdbms"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Database with PostgreSQL",
+          "name": "OCI Database with PostgreSQL",
+          "status": "ga",
+          "fulfills": [
+            "postgresql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "MySQL HeatWave",
+          "name": "MySQL HeatWave",
+          "status": "ga",
+          "fulfills": [
+            "mysql",
+            "data_analytics"
+          ],
+          "capabilities": [
+            "in-memory-analytics"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "NoSQL Database",
+          "name": "NoSQL Database",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Cache",
+          "name": "OCI Cache (Redis-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Search with OpenSearch",
+          "name": "OCI Search with OpenSearch",
+          "status": "ga",
+          "fulfills": [
+            "search"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Vault",
+          "name": "OCI Vault (Key Management and Secret Management)",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [
+            "fips-140-2-level-3-hsm",
+            "dedicated-hsm",
+            "automatic-key-rotation"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "IAM with Identity Domains",
+          "name": "IAM with Identity Domains",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Access Governance",
+          "name": "Access Governance",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [
+            "access-review",
+            "role-mining"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Guard",
+          "name": "Cloud Guard",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection",
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Vulnerability Scanning",
+          "name": "Vulnerability Scanning",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Security Zones",
+          "name": "Security Zones",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Bastion",
+          "name": "Bastion",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "secure-ssh-access"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Monitoring",
+          "name": "Monitoring",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Logging",
+          "name": "Logging",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Audit",
+          "name": "Audit",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Application Performance Monitoring",
+          "name": "Application Performance Monitoring",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Analytics Cloud",
+          "name": "Analytics Cloud",
+          "status": "ga",
+          "fulfills": [
+            "bi_analytics",
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Big Data Service",
+          "name": "Big Data Service",
+          "status": "ga",
+          "fulfills": [
+            "big_data"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Flow",
+          "name": "Data Flow",
+          "status": "ga",
+          "fulfills": [
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Science",
+          "name": "Data Science",
+          "status": "ga",
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Generative AI",
+          "name": "Generative AI (OCI GenAI)",
+          "status": "ga",
+          "fulfills": [
+            "managed_llm"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "GoldenGate",
+          "name": "GoldenGate",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Data Integration",
+          "name": "Data Integration",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "API Gateway",
+          "name": "API Gateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Streaming",
+          "name": "Streaming (incl. Apache Kafka-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "event_streaming",
+            "queue"
+          ],
+          "capabilities": [
+            "kafka-compatible"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Queue",
+          "name": "Queue",
+          "status": "ga",
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Full Stack Disaster Recovery",
+          "name": "Full Stack Disaster Recovery",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "eu-amsterdam-1",
+      "display": "Netherlands Northwest (Amsterdam) -- standard OCI, 1 AD, oc1 realm",
+      "country": "NL",
+      "sovereignty": {
+        "residency_country": "NL",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal, GPU)",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "bare-metal",
+            "gpu-a10",
+            "gpu-l40s",
+            "ampere-a1"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Engine for Kubernetes",
+          "name": "Container Engine for Kubernetes (OKE)",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Instances",
+          "name": "Container Instances",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Functions",
+          "name": "Functions",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Block Volume",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "File Storage",
+          "name": "File Storage",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Networking",
+          "name": "Networking (Virtual Cloud Network)",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Load Balancer",
+          "name": "Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "FastConnect",
+          "name": "FastConnect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Site-to-Site VPN",
+          "name": "Site-to-Site VPN",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "DNS and Traffic Management",
+          "name": "DNS and Traffic Management",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ADW",
+          "name": "Autonomous Database (Analytics and Data Warehousing)",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Database with PostgreSQL",
+          "name": "OCI Database with PostgreSQL",
+          "status": "ga",
+          "fulfills": [
+            "postgresql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "MySQL HeatWave",
+          "name": "MySQL HeatWave",
+          "status": "ga",
+          "fulfills": [
+            "mysql",
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "NoSQL Database",
+          "name": "NoSQL Database",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Cache",
+          "name": "OCI Cache (Redis-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Vault",
+          "name": "OCI Vault (Key Management and Secret Management)",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [
+            "fips-140-2-level-3-hsm"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "IAM with Identity Domains",
+          "name": "IAM with Identity Domains",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Guard",
+          "name": "Cloud Guard",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection",
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Monitoring",
+          "name": "Monitoring",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Logging",
+          "name": "Logging",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Audit",
+          "name": "Audit",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "API Gateway",
+          "name": "API Gateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Streaming",
+          "name": "Streaming (incl. Apache Kafka-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "event_streaming",
+            "queue"
+          ],
+          "capabilities": [
+            "kafka-compatible"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "GoldenGate",
+          "name": "GoldenGate",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "eu-frankfurt-2",
+      "display": "EU Sovereign Central (Frankfurt) -- OCI EU Sovereign Cloud, 1 AD, oc19 realm",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act"
+        ],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal, GPU -- Intel/AMD; no ARM Ampere)",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "bare-metal",
+            "gpu-a10",
+            "gpu-h100"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Engine for Kubernetes",
+          "name": "Container Engine for Kubernetes (OKE)",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Instances",
+          "name": "Container Instances",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Functions",
+          "name": "Functions",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Archive Storage",
+          "name": "Archive Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [
+            "cold-archival"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Block Volume",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "File Storage",
+          "name": "File Storage",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Networking",
+          "name": "Networking (Virtual Cloud Network)",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Load Balancer",
+          "name": "Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Network Load Balancer",
+          "name": "Network Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [
+            "layer-4-nlb"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "FastConnect",
+          "name": "FastConnect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Site-to-Site VPN",
+          "name": "Site-to-Site VPN",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "DNS and Traffic Management",
+          "name": "DNS and Traffic Management",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Network Firewall",
+          "name": "Network Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf",
+            "network_firewall"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ADW",
+          "name": "Autonomous Database (Analytics and Data Warehousing)",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ATP",
+          "name": "Autonomous Database (Transaction Processing)",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Database with PostgreSQL",
+          "name": "OCI Database with PostgreSQL",
+          "status": "ga",
+          "fulfills": [
+            "postgresql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "MySQL HeatWave",
+          "name": "MySQL HeatWave",
+          "status": "ga",
+          "fulfills": [
+            "mysql",
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "NoSQL Database",
+          "name": "NoSQL Database",
+          "status": "ga",
+          "fulfills": [
+            "nosql_database"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Cache",
+          "name": "OCI Cache (Redis-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "redis"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Search with OpenSearch",
+          "name": "OCI Search with OpenSearch",
+          "status": "ga",
+          "fulfills": [
+            "search"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Vault",
+          "name": "OCI Vault (Key Management and Secret Management)",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [
+            "fips-140-2-level-3-hsm",
+            "dedicated-hsm"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "IAM with Identity Domains",
+          "name": "IAM with Identity Domains (sovereign realm; isolated from oc1)",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [
+            "realm-isolated-identity"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Guard",
+          "name": "Cloud Guard",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection",
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Security Zones",
+          "name": "Security Zones",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Monitoring",
+          "name": "Monitoring",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Logging",
+          "name": "Logging",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Audit",
+          "name": "Audit",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Generative AI",
+          "name": "Generative AI (OCI GenAI -- confirmed in sovereign realm)",
+          "status": "ga",
+          "fulfills": [
+            "managed_llm"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "API Gateway",
+          "name": "API Gateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Streaming",
+          "name": "Streaming (incl. Apache Kafka-compatible)",
+          "status": "ga",
+          "fulfills": [
+            "event_streaming",
+            "queue"
+          ],
+          "capabilities": [
+            "kafka-compatible"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "GoldenGate",
+          "name": "GoldenGate",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Analytics Cloud",
+          "name": "Analytics Cloud",
+          "status": "preview",
+          "fulfills": [
+            "bi_analytics",
+            "data_analytics"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Full Stack Disaster Recovery",
+          "name": "Full Stack Disaster Recovery",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "eu-madrid-2",
+      "display": "EU Sovereign South (Madrid) -- OCI EU Sovereign Cloud, 1 AD, oc19 realm (DR pair for eu-frankfurt-2)",
+      "country": "ES",
+      "sovereignty": {
+        "residency_country": "ES",
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal, GPU -- Intel/AMD; no ARM Ampere)",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "bare-metal",
+            "gpu-a10"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Engine for Kubernetes",
+          "name": "Container Engine for Kubernetes (OKE)",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Instances",
+          "name": "Container Instances",
+          "status": "ga",
+          "fulfills": [
+            "container_orchestration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Functions",
+          "name": "Functions",
+          "status": "ga",
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": [
+            "object_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Block Volume",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "File Storage",
+          "name": "File Storage",
+          "status": "ga",
+          "fulfills": [
+            "file_storage"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Networking",
+          "name": "Networking (Virtual Cloud Network)",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Load Balancer",
+          "name": "Load Balancer",
+          "status": "ga",
+          "fulfills": [
+            "load_balancer"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "FastConnect",
+          "name": "FastConnect",
+          "status": "ga",
+          "fulfills": [
+            "dedicated_connectivity"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Site-to-Site VPN",
+          "name": "Site-to-Site VPN",
+          "status": "ga",
+          "fulfills": [
+            "vpn"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "DNS and Traffic Management",
+          "name": "DNS and Traffic Management",
+          "status": "ga",
+          "fulfills": [
+            "dns"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Web Application Firewall",
+          "name": "Web Application Firewall",
+          "status": "ga",
+          "fulfills": [
+            "waf"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Autonomous Database ADW",
+          "name": "Autonomous Database (Analytics and Data Warehousing)",
+          "status": "ga",
+          "fulfills": [
+            "data_warehouse"
+          ],
+          "capabilities": [
+            "oracle-rdbms",
+            "oracle-autonomous-db"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Database with PostgreSQL",
+          "name": "OCI Database with PostgreSQL",
+          "status": "ga",
+          "fulfills": [
+            "postgresql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "MySQL HeatWave",
+          "name": "MySQL HeatWave",
+          "status": "ga",
+          "fulfills": [
+            "mysql"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed",
+            "cmk"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "OCI Vault",
+          "name": "OCI Vault (Key Management and Secret Management)",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [
+            "fips-140-2-level-3-hsm"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "cmk",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "IAM with Identity Domains",
+          "name": "IAM with Identity Domains",
+          "status": "ga",
+          "fulfills": [
+            "identity_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Cloud Guard",
+          "name": "Cloud Guard",
+          "status": "ga",
+          "fulfills": [
+            "threat_detection",
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Monitoring",
+          "name": "Monitoring",
+          "status": "ga",
+          "fulfills": [
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Logging",
+          "name": "Logging",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Audit",
+          "name": "Audit",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Generative AI",
+          "name": "Generative AI (OCI GenAI)",
+          "status": "ga",
+          "fulfills": [
+            "managed_llm"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "API Gateway",
+          "name": "API Gateway",
+          "status": "ga",
+          "fulfills": [
+            "api_gateway"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "GoldenGate",
+          "name": "GoldenGate",
+          "status": "ga",
+          "fulfills": [
+            "data_integration"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        },
+        {
+          "code": "Full Stack Disaster Recovery",
+          "name": "Full Stack Disaster Recovery",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4615 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "Azure service catalogue",
+    "provider": "azure",
+    "last_updated": "2026-07-07",
+    "source": {
+      "mode": "api",
+      "tool": "retail-prices-api",
+      "operator": "SWAO operator"
+    },
+    "confidence": "high",
+    "regions_count": 16
+  },
+  "regions": [
+    {
+      "id": "australiaeast",
+      "country": "AU",
+      "sovereignty": {
+        "residency_country": "AU",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "IRAP"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "brazilsouth",
+      "country": "BR",
+      "sovereignty": {
+        "residency_country": "BR",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "canadacentral",
+      "country": "CA",
+      "sovereignty": {
+        "residency_country": "CA",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "eastus",
+      "country": "US",
+      "sovereignty": {
+        "residency_country": "US",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS",
+          "FedRAMP_High"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure OpenAI",
+          "name": "Azure OpenAI",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "francecentral",
+      "country": "FR",
+      "sovereignty": {
+        "residency_country": "FR",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "germanywestcentral",
+      "country": "DE",
+      "sovereignty": {
+        "residency_country": "DE",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "BSI_C5",
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "japaneast",
+      "country": "JP",
+      "sovereignty": {
+        "residency_country": "JP",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "northeurope",
+      "country": "IE",
+      "sovereignty": {
+        "residency_country": "IE",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "norwayeast",
+      "country": "NO",
+      "sovereignty": {
+        "residency_country": "NO",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "polandcentral",
+      "country": "PL",
+      "sovereignty": {
+        "residency_country": "PL",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "southeastasia",
+      "country": "SG",
+      "sovereignty": {
+        "residency_country": "SG",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "MAS_TRM"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "swedencentral",
+      "country": "SE",
+      "sovereignty": {
+        "residency_country": "SE",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "switzerlandnorth",
+      "country": "CH",
+      "sovereignty": {
+        "residency_country": "CH",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "uksouth",
+      "country": "GB",
+      "sovereignty": {
+        "residency_country": "GB",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "westeurope",
+      "country": "NL",
+      "sovereignty": {
+        "residency_country": "NL",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    },
+    {
+      "id": "westus2",
+      "country": "US",
+      "sovereignty": {
+        "residency_country": "US",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2",
+          "PCI_DSS",
+          "FedRAMP_High"
+        ]
+      },
+      "services": [
+        {
+          "code": "API Management",
+          "name": "API Management",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "api_gateway"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "App Service",
+          "name": "App Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "paas_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "backup"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cache for Redis",
+          "name": "Azure Cache for Redis",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "redis"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Cosmos DB",
+          "name": "Azure Cosmos DB",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "nosql_database"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Database for PostgreSQL",
+          "name": "Azure Database for PostgreSQL",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Firewall",
+          "name": "Azure Firewall",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "network_firewall"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Functions",
+          "name": "Azure Functions",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "serverless_compute"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "key_vault"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok",
+            "hyok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "kubernetes"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Machine Learning",
+          "name": "Azure Machine Learning",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "ml_training",
+            "ml_inference"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "audit_logging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure OpenAI",
+          "name": "Azure OpenAI",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Azure SQL Database",
+          "name": "Azure SQL Database",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "postgresql",
+            "mysql"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Cognitive Services",
+          "name": "Cognitive Services",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "managed_llm",
+            "ml_nlp",
+            "ml_vision",
+            "ml_speech"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "container_registry"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Event Hubs",
+          "name": "Event Hubs",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "event_streaming"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Service Bus",
+          "name": "Service Bus",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "queue",
+            "messaging"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Storage",
+          "name": "Storage",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "object_storage"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [
+            "vm_compute"
+          ],
+          "key_custody": [
+            "provider-managed",
+            "byok"
+          ],
+          "last_verified": "2026-07-07",
+          "source": "retail-prices-api"
+        },
+        {
+          "code": "Virtual Network",
+          "name": "Virtual Network",
+          "status": "ga",
+          "fulfills": [
+            "networking",
+            "vpc_networking"
+          ],
+          "capabilities": []
+        },
+        {
+          "code": "Managed Disks",
+          "name": "Managed Disks",
+          "status": "ga",
+          "fulfills": [
+            "block_storage"
+          ],
+          "capabilities": []
+        }
+      ]
+    }
+  ]
+}

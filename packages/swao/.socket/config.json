@@ -1,0 +1,8 @@
+{
+  "issueRules": {
+    "malware": { "action": "error" },
+    "obfuscated-code": { "action": "error" },
+    "install-scripts": { "action": "warn" },
+    "network-access": { "action": "warn" }
+  }
+}

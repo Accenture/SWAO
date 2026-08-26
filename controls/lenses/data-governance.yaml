@@ -1,0 +1,3 @@
+id: data-governance
+passes: [DATA, CTX]
+auto_frameworks: [GDPR]

@@ -1,0 +1,464 @@
+# Legacy Indicators Catalogue
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-04
+# Schema: legacy-indicators-catalogue-v1.schema.json
+#
+# Used by: SPEC §10.1a legacy_indicators sub-pass (Stage D)
+# Purpose: Three-tier taxonomy of legacy technology patterns. Applied during
+#   the INV-supplement pass to detect dependencies or patterns that affect
+#   migration complexity or block sovereign cloud migration entirely.
+#
+# Tier definitions:
+#   tier_1_blocker     -- No sovereign-cloud equivalent; blocks migration without
+#                         full replacement. Immediately escalates 7R to Retain or
+#                         triggers Re-architect review.
+#   tier_2_complicator -- Sovereign alternative exists but requires significant
+#                         migration effort (schema migration, protocol bridge,
+#                         refactoring). Adds 30-90 days to migration timeline.
+#   tier_3_manageable  -- Legacy pattern that adds migration cost but does not
+#                         change the 7R disposition. Captured as LOW signals;
+#                         noted in runbook.
+#
+# Detection method per indicator:
+#   dependency_manifest -- scan Cargo.toml, package.json, pom.xml, requirements.txt
+#   file_pattern        -- scan for file extensions or filenames (e.g. .bts, .cbl)
+#   code_pattern        -- regex scan of source files
+#   docker_image        -- scan docker-compose.*.yml for proprietary middleware images
+#   sql_pattern         -- scan migration SQL files for specific DDL patterns
+
+tiers:
+
+  # ===========================================================================
+  # TIER 1: BLOCKERS
+  # No sovereign-cloud equivalent without full technology replacement.
+  # ===========================================================================
+
+  tier_1_blockers:
+
+    - id: LI-T1-001
+      name: "IBM MQ (WebSphere MQ)"
+      description: >
+        IBM proprietary message queuing middleware. No sovereign-cloud equivalent
+        in EU public cloud providers (OTC, IONOS). Requires replacement with
+        AMQP-standard messaging (RabbitMQ, Apache Kafka).
+      detection:
+        dependency_manifest:
+          - { ecosystem: npm, pattern: "ibmmq", match: exact }
+          - { ecosystem: pip, pattern: "pymqi", match: exact }
+          - { ecosystem: cargo, pattern: "ibm_mq", match: prefix }
+          - { ecosystem: maven, pattern: "com.ibm.mq", match: prefix }
+          - { ecosystem: nuget, pattern: "IBM.MQ", match: exact }
+        docker_image:
+          - { pattern: "ibmcom/mq", match: prefix }
+          - { pattern: "icr.io/ibm-messaging/mq", match: prefix }
+        code_pattern:
+          - { pattern: "wmq\\.", lang: [java, python] }
+          - { pattern: "MQEnvironment", lang: [java] }
+      sovereign_alternative: "RabbitMQ (self-hosted OTC) or Apache Kafka"
+      migration_effort_weeks: 12
+      tags: [ibm, messaging, queue]
+
+    - id: LI-T1-002
+      name: "TIBCO EMS / BusinessWorks / Rendezvous"
+      description: >
+        TIBCO proprietary middleware suite. EMS (Enterprise Message Service),
+        BusinessWorks (process orchestration), and Rendezvous (multicast messaging)
+        have no direct sovereign-cloud equivalents. Protocol is proprietary.
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "com.tibco", match: prefix }
+          - { ecosystem: pip, pattern: "tibco-messaging", match: prefix }
+        file_pattern:
+          - { pattern: "*.bwproject", description: "TIBCO BusinessWorks project files" }
+          - { pattern: "*.process", description: "TIBCO BusinessWorks process files" }
+        docker_image:
+          - { pattern: "tibco/", match: prefix }
+        code_pattern:
+          - { pattern: "com\\.tibco\\.", lang: [java] }
+          - { pattern: "tibrvmsg", lang: [c, cpp] }
+      sovereign_alternative: "Apache Camel + RabbitMQ or Kafka; Camunda for process orchestration"
+      migration_effort_weeks: 16
+      tags: [tibco, messaging, bpm, legacy]
+
+    - id: LI-T1-003
+      name: "Oracle SOA Suite / Oracle BPEL"
+      description: >
+        Oracle proprietary SOA middleware. BPEL processes, Oracle Mediator,
+        and Oracle Service Bus are not portable to sovereign cloud without
+        full rewrite. Oracle SOA Suite requires Oracle-licensed infrastructure.
+      detection:
+        file_pattern:
+          - { pattern: "*.bpel", description: "BPEL process definition files" }
+          - { pattern: "*.composite.xml", description: "Oracle Composite application descriptors" }
+          - { pattern: "*.wsdl", description: "Shared WSDL -- not a blocker alone, context-dependent" }
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "oracle.soa", match: prefix }
+          - { ecosystem: maven, pattern: "oracle.bpel", match: prefix }
+        code_pattern:
+          - { pattern: "oracle\\.soa\\.", lang: [java, xml] }
+          - { pattern: "BPELWorklistService", lang: [java, xml] }
+      sovereign_alternative: "Apache Camel + Camunda BPM (self-hosted) or jBPM"
+      migration_effort_weeks: 20
+      tags: [oracle, soa, bpel, legacy]
+
+    - id: LI-T1-004
+      name: "Microsoft BizTalk Server"
+      description: >
+        Microsoft BizTalk is an on-premises ESB/EAI platform. No cloud-native
+        equivalent; Azure Logic Apps is the Microsoft migration target but is
+        not a sovereign cloud option. BizTalk-specific orchestrations (.bts files),
+        maps, and pipeline components require complete rewrite.
+      detection:
+        file_pattern:
+          - { pattern: "*.bts", description: "BizTalk orchestration files" }
+          - { pattern: "*.btm", description: "BizTalk map files" }
+          - { pattern: "*.btp", description: "BizTalk pipeline files" }
+          - { pattern: "*.btproj", description: "BizTalk project files" }
+        dependency_manifest:
+          - { ecosystem: nuget, pattern: "Microsoft.BizTalk", match: prefix }
+        code_pattern:
+          - { pattern: "Microsoft\\.BizTalk\\.", lang: [csharp] }
+      sovereign_alternative: "Apache Camel or MuleSoft (self-hosted); NServiceBus on OTC"
+      migration_effort_weeks: 24
+      tags: [biztalk, microsoft, esb, legacy]
+
+    - id: LI-T1-005
+      name: "COM / DCOM (Windows Component Object Model)"
+      description: >
+        COM/DCOM components indicate deep Windows platform coupling. COM interop
+        from .NET or native COM activation patterns cannot run in Linux containers
+        or sovereign cloud environments without Windows VMs.
+      detection:
+        code_pattern:
+          - { pattern: "CoCreateInstance", lang: [cpp, csharp] }
+          - { pattern: "IDispatch", lang: [cpp, csharp] }
+          - { pattern: "\\[ComImport\\]", lang: [csharp] }
+          - { pattern: "\\[ComVisible\\]", lang: [csharp] }
+          - { pattern: "Marshal\\.GetActiveObject", lang: [csharp] }
+          - { pattern: "ProgId\\(", lang: [csharp] }
+        dependency_manifest:
+          - { ecosystem: cargo, pattern: "windows", match: exact, note: "May not indicate COM; inspect usage" }
+          - { ecosystem: cargo, pattern: "windows-sys", match: exact, note: "May not indicate COM; inspect usage" }
+      sovereign_alternative: >
+        Rewrite COM components as gRPC services or REST APIs. If COM is for Office
+        automation, replace with LibreOffice (self-hosted), Apache POI (Java), or
+        python-docx. Windows-only containers on OTC are possible but not sovereign-optimal.
+      migration_effort_weeks: 16
+      tags: [com, dcom, windows, legacy]
+
+    - id: LI-T1-006
+      name: "SAP RFC / BAPI / JCo"
+      description: >
+        SAP Remote Function Calls via JCo (Java Connector) or RFC libraries
+        indicate tight SAP ERP coupling. SAP JCo requires SAP licensing and
+        runs proprietary ABAP RFC protocol. Cannot run on standard sovereign
+        cloud compute without SAP BTP or SAP S/4HANA Cloud.
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "com.sap.conn.jco", match: prefix }
+          - { ecosystem: pip, pattern: "pyrfc", match: exact }
+          - { ecosystem: pip, pattern: "pysap", match: exact }
+        file_pattern:
+          - { pattern: "*.dll", glob: "**/sapjco*", description: "SAP JCo native library" }
+          - { pattern: "sapjco3.jar" }
+        code_pattern:
+          - { pattern: "JCoDestination", lang: [java] }
+          - { pattern: "CALL FUNCTION", lang: [abap] }
+      sovereign_alternative: >
+        REST/SOAP API layer in front of SAP (SAP Integration Suite EU tenant or
+        self-hosted SAP GW on OTC). ABAP rewrite to SAP BTP Kyma (Kubernetes)
+        for greenfield; REST adaptor for brownfield.
+      migration_effort_weeks: 20
+      tags: [sap, rfc, abap, legacy]
+
+    - id: LI-T1-007
+      name: "Progress OpenEdge (ABL / 4GL)"
+      description: >
+        Progress OpenEdge ABL (Advanced Business Language / 4GL) applications
+        require the OpenEdge runtime, which has no containerised sovereign-cloud
+        image. OpenEdge databases use a proprietary format incompatible with
+        PostgreSQL without full schema migration.
+      detection:
+        file_pattern:
+          - { pattern: "*.p", description: "OpenEdge ABL procedure files" }
+          - { pattern: "*.cls", description: "OpenEdge ABL class files (ambiguous with Java .class)" }
+          - { pattern: "*.df", description: "OpenEdge data definition files" }
+          - { pattern: "*.i", description: "OpenEdge include files" }
+        code_pattern:
+          - { pattern: "DEFINE VARIABLE .* AS .* NO-UNDO", lang: [abl] }
+          - { pattern: "FIND FIRST", lang: [abl] }
+      sovereign_alternative: >
+        Full rewrite required. Migrate ABL to Java/Kotlin, Python, or Go.
+        OpenEdge DB -> PostgreSQL schema migration via Progress Data Migration tools.
+      migration_effort_weeks: 32
+      tags: [progress, openedge, 4gl, legacy]
+
+  # ===========================================================================
+  # TIER 2: COMPLICATORS
+  # Sovereign alternative exists; significant migration effort required.
+  # ===========================================================================
+
+  tier_2_complicators:
+
+    - id: LI-T2-001
+      name: "Oracle Database client"
+      description: >
+        Oracle Database drivers indicate dependency on Oracle-licensed RDBMS.
+        Oracle is available on OCI (Oracle Cloud Infrastructure) which has
+        EU datacentres but is not a sovereign provider. Managed Oracle on
+        OTC/IONOS does not exist; self-hosted Oracle requires licensed VMs.
+        Migration to PostgreSQL is the standard path.
+      detection:
+        dependency_manifest:
+          - { ecosystem: cargo, pattern: "oracle", match: exact }
+          - { ecosystem: cargo, pattern: "sibyl", match: exact }
+          - { ecosystem: pip, pattern: "cx_Oracle", match: exact }
+          - { ecosystem: pip, pattern: "oracledb", match: exact }
+          - { ecosystem: npm, pattern: "oracledb", match: exact }
+          - { ecosystem: maven, pattern: "com.oracle.database.jdbc", match: prefix }
+          - { ecosystem: nuget, pattern: "Oracle.ManagedDataAccess", match: prefix }
+        docker_image:
+          - { pattern: "container-registry.oracle.com/database", match: prefix }
+          - { pattern: "oracle/database", match: prefix }
+      sovereign_alternative: "PostgreSQL (managed OTC, IONOS) via ora2pg migration"
+      migration_effort_weeks: 8
+      tags: [oracle, database]
+
+    - id: LI-T2-002
+      name: "Microsoft SQL Server client"
+      description: >
+        SQL Server clients indicate MSSQL dependency. SQL Server is not available
+        on sovereign cloud providers (OTC, IONOS) as a managed service. Self-hosted
+        SQL Server on Linux containers is possible (Microsoft offers Linux images)
+        but adds licensing cost and management burden. PostgreSQL or MariaDB are
+        the sovereign migration targets.
+      detection:
+        dependency_manifest:
+          - { ecosystem: cargo, pattern: "tiberius", match: exact }
+          - { ecosystem: pip, pattern: "pyodbc", match: exact, note: "May also be used for other ODBC; inspect DSN" }
+          - { ecosystem: pip, pattern: "pymssql", match: exact }
+          - { ecosystem: npm, pattern: "mssql", match: exact }
+          - { ecosystem: npm, pattern: "tedious", match: exact }
+          - { ecosystem: maven, pattern: "com.microsoft.sqlserver", match: prefix }
+        docker_image:
+          - { pattern: "mcr.microsoft.com/mssql", match: prefix }
+      sovereign_alternative: "PostgreSQL via pgloader; MariaDB if MySQL-compatible schema"
+      migration_effort_weeks: 6
+      tags: [sqlserver, microsoft, database]
+
+    - id: LI-T2-003
+      name: "IBM Db2 client"
+      description: >
+        IBM Db2 is not available as a managed service on sovereign EU cloud providers.
+        Self-hosted Db2 is possible on Linux containers (IBM provides community edition)
+        but requires IBM licensing for production. PostgreSQL is the standard migration
+        target; Db2 SQL extensions (GROUP BY ROLLUP, OLAP functions) are largely
+        available in PostgreSQL 14+.
+      detection:
+        dependency_manifest:
+          - { ecosystem: pip, pattern: "ibm_db", match: exact }
+          - { ecosystem: pip, pattern: "ibm-db", match: exact }
+          - { ecosystem: maven, pattern: "com.ibm.db2", match: prefix }
+          - { ecosystem: cargo, pattern: "ibm_db", match: prefix }
+        docker_image:
+          - { pattern: "icr.io/db2_community/db2", match: prefix }
+          - { pattern: "ibmcom/db2", match: prefix }
+      sovereign_alternative: "PostgreSQL via custom ETL or IBM Data Movement Tool"
+      migration_effort_weeks: 8
+      tags: [ibm, database, legacy]
+
+    - id: LI-T2-004
+      name: "COBOL callable APIs / JNI COBOL bridge"
+      description: >
+        COBOL callable via JNI (Java Native Interface), GnuCOBOL FFI from Rust,
+        or direct COBOL binary invocation. COBOL execution requires specific runtime
+        (GnuCOBOL, IBM Enterprise COBOL, Micro Focus COBOL). Containerisation
+        of COBOL is feasible (GnuCOBOL Linux image) but represents significant
+        technical debt and runtime complexity.
+      detection:
+        file_pattern:
+          - { pattern: "*.cbl", description: "COBOL source files" }
+          - { pattern: "*.cob", description: "COBOL source files" }
+          - { pattern: "*.cpy", description: "COBOL copybook files" }
+        code_pattern:
+          - { pattern: "cobol.callable", lang: [java, python] }
+          - { pattern: "GnuCobol", lang: [rust, c] }
+          - { pattern: "IDENTIFICATION DIVISION", lang: [cobol] }
+        dependency_manifest:
+          - { ecosystem: cargo, pattern: "cobol", match: prefix }
+      sovereign_alternative: >
+        Rewrite COBOL in Java or Python (COBOL -> Java transpilers available:
+        OpenCobolIDE, Micro Focus). GnuCOBOL containers are feasible short-term.
+      migration_effort_weeks: 20
+      tags: [cobol, mainframe, legacy]
+
+    - id: LI-T2-005
+      name: "JMS (Java Messaging Service) / proprietary MQ-Light"
+      description: >
+        JMS is a standard API but is implemented by proprietary brokers (ActiveMQ,
+        IBM MQ, WebLogic JMS, Oracle AQ). Dependency on JMS alone is not a complicator
+        if an open-source broker (ActiveMQ Artemis) is the backing implementation.
+        Flag if JMS is used with proprietary broker drivers (IBM MQ JMS, Oracle AQ JMS).
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "javax.jms", match: prefix }
+          - { ecosystem: maven, pattern: "jakarta.jms", match: prefix }
+          - { ecosystem: maven, pattern: "com.ibm.mq.jms", match: prefix, note: "BLOCKER-level if IBM MQ JMS" }
+          - { ecosystem: maven, pattern: "oracle.jms", match: prefix }
+          - { ecosystem: npm, pattern: "stompit", match: exact, note: "STOMP over WebSocket; usually OK" }
+        code_pattern:
+          - { pattern: "QueueManager", lang: [java] }
+          - { pattern: "MQQueueConnectionFactory", lang: [java] }
+      sovereign_alternative: "ActiveMQ Artemis (JMS-compatible, self-hosted OTC) or Kafka"
+      migration_effort_weeks: 4
+      tags: [jms, messaging, legacy]
+
+    - id: LI-T2-006
+      name: "Sybase / SAP ASE client"
+      description: >
+        SAP Adaptive Server Enterprise (formerly Sybase ASE) is not available as
+        a managed service on sovereign EU cloud. Self-hosted ASE on Linux containers
+        is possible but requires SAP licensing. Migration to PostgreSQL is feasible
+        for most schema patterns; Sybase T-SQL has some PostgreSQL incompatibilities.
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "com.sybase", match: prefix }
+          - { ecosystem: pip, pattern: "pyodbc", match: exact, note: "Inspect DSN for Sybase/ASE" }
+          - { ecosystem: nuget, pattern: "Sybase.AdoNet4.AseClient", match: exact }
+        code_pattern:
+          - { pattern: "AseConnection", lang: [csharp] }
+          - { pattern: "com\\.sybase\\.jdbc", lang: [java] }
+      sovereign_alternative: "PostgreSQL (SAP ASE -> PG migration tooling available)"
+      migration_effort_weeks: 6
+      tags: [sybase, sap, database, legacy]
+
+    - id: LI-T2-007
+      name: "Informix client"
+      description: >
+        IBM Informix is not available as a managed service on sovereign EU cloud.
+        Informix has unique SQL extensions (SET operations, SERIAL columns as
+        sequences, row-level locking) that require careful mapping to PostgreSQL.
+      detection:
+        dependency_manifest:
+          - { ecosystem: pip, pattern: "ifxpy", match: exact }
+          - { ecosystem: maven, pattern: "com.ibm.informix", match: prefix }
+          - { ecosystem: nuget, pattern: "IBM.Data.Informix", match: prefix }
+      sovereign_alternative: "PostgreSQL via custom schema migration; ifx2pg tooling"
+      migration_effort_weeks: 8
+      tags: [ibm, informix, database, legacy]
+
+  # ===========================================================================
+  # TIER 3: MANAGEABLE
+  # Migration cost added but 7R disposition unchanged.
+  # ===========================================================================
+
+  tier_3_manageable:
+
+    - id: LI-T3-001
+      name: "Dense stored procedures"
+      description: >
+        High density of CREATE FUNCTION / CREATE PROCEDURE in SQL migration files
+        indicates business logic embedded in the database. Manageable for PostgreSQL
+        (PL/pgSQL is supported) but increases migration regression testing burden.
+        Threshold: > 20 stored procedures in migration files.
+      detection:
+        sql_pattern:
+          - { pattern: "CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION", lang: [sql, plpgsql] }
+          - { pattern: "CREATE\\s+(OR\\s+REPLACE\\s+)?PROCEDURE", lang: [sql] }
+        threshold: 20
+        count_unit: "distinct stored procedure / function definitions"
+      migration_effort_weeks: 2
+      tags: [database, stored_procedures, plsql]
+
+    - id: LI-T3-002
+      name: "Dynamic class loading / plugin loading at runtime"
+      description: >
+        Runtime class loading (Java: Class.forName(), Python: importlib.import_module(),
+        Rust: libloading crate) indicates extensibility patterns that may complicate
+        containerisation if plugins are loaded from filesystem paths. Manageable if
+        plugins are bundled in the container image.
+      detection:
+        code_pattern:
+          - { pattern: "Class\\.forName\\(", lang: [java] }
+          - { pattern: "importlib\\.import_module", lang: [python] }
+          - { pattern: "dlopen", lang: [c, cpp] }
+          - { pattern: "libloading", lang: [rust], check: cargo_manifest }
+        dependency_manifest:
+          - { ecosystem: cargo, pattern: "libloading", match: exact }
+          - { ecosystem: cargo, pattern: "dlopen", match: prefix }
+      migration_effort_weeks: 1
+      tags: [plugins, dynamic_loading]
+
+    - id: LI-T3-003
+      name: "XSLT / XSL transformation engines"
+      description: >
+        Heavy XSLT usage indicates XML-centric data transformation patterns.
+        XSLT itself is not a legacy indicator alone; Saxon-EE (commercial XSLT 3.0
+        processor) introduces licensing concerns for sovereign cloud. Open-source
+        Saxon-HE or libxslt are sovereign-compatible.
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "net.sf.saxon", match: prefix }
+          - { ecosystem: npm, pattern: "xslt3", match: exact }
+          - { ecosystem: pip, pattern: "lxml", match: exact, note: "May be XSLT; inspect usage" }
+        file_pattern:
+          - { pattern: "*.xsl", description: "XSLT stylesheet files" }
+          - { pattern: "*.xslt", description: "XSLT stylesheet files" }
+        code_pattern:
+          - { pattern: "Transformer\\.transform\\(", lang: [java] }
+      migration_effort_weeks: 1
+      tags: [xml, xslt, data_transformation]
+
+    - id: LI-T3-004
+      name: "Legacy authentication protocols (NTLM, Kerberos without abstraction)"
+      description: >
+        Direct use of NTLM or Kerberos without an abstraction layer (e.g. SSPI,
+        MIT Kerberos) indicates Windows domain or Active Directory dependencies.
+        Manageable if domain controllers can be migrated to Azure AD or self-hosted
+        Samba DC. Direct NTLM in application code requires replacement with
+        standard OAuth 2.0 / OIDC.
+      detection:
+        code_pattern:
+          - { pattern: "NtlmCredentials", lang: [csharp, java, python] }
+          - { pattern: "NTLM", lang: [csharp, java, python] }
+          - { pattern: "Kerberos\\.acquireServiceTicket", lang: [java] }
+          - { pattern: "krb5cc_", lang: [c, cpp, python] }
+        dependency_manifest:
+          - { ecosystem: nuget, pattern: "Microsoft.Net.Http.Ntlm", match: prefix }
+          - { ecosystem: pip, pattern: "requests-ntlm", match: exact }
+      migration_effort_weeks: 3
+      tags: [auth, windows, active_directory, legacy]
+
+    - id: LI-T3-005
+      name: "Proprietary logging framework (log4j 1.x)"
+      description: >
+        Log4j 1.x reached end of life in 2015 and has multiple known CVEs
+        (including CVE-2019-17571). Not a sovereign blocker, but indicates
+        unpatched dependency debt that increases risk during migration.
+        Log4j 1.x is not the same as Log4j 2.x (CVE-2021-44228 vector).
+      detection:
+        dependency_manifest:
+          - { ecosystem: maven, pattern: "log4j", match: exact, group: "log4j", note: "log4j:log4j = v1.x; org.apache.logging.log4j = v2.x" }
+        jar_patterns:
+          - { pattern: "log4j-1.*\\.jar" }
+      migration_effort_weeks: 1
+      tags: [logging, cve, eol]
+
+    - id: LI-T3-006
+      name: "Native shared libraries (JNI / FFI / C extension)"
+      description: >
+        JNI (Java Native Interface), Python ctypes/cffi C extensions, or Rust FFI
+        bindings to native shared libraries complicate containerisation (library
+        must be present in the container image) and may have OS-specific builds.
+        Not a blocker if the native library is open-source and builds on Linux.
+      detection:
+        code_pattern:
+          - { pattern: "System\\.loadLibrary", lang: [java] }
+          - { pattern: "native void|native int|native long", lang: [java] }
+          - { pattern: "ctypes\\.CDLL|ctypes\\.WinDLL", lang: [python] }
+          - { pattern: "cffi\\.FFI", lang: [python] }
+        file_pattern:
+          - { pattern: "*.so", description: "Linux shared objects (inspect origin; may be build artefacts)" }
+          - { pattern: "*.dll", description: "Windows DLLs (flag if committed to repository)" }
+      migration_effort_weeks: 2
+      tags: [native, ffi, jni, containerisation]

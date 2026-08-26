@@ -1,0 +1,54 @@
+{
+  "version": 3,
+  "deployment": {
+    "manifest": {
+      "time": "2026-07-29T10:00:00Z",
+      "magic": "abc123",
+      "version": "v3.124.0"
+    },
+    "resources": [
+      {
+        "urn": "urn:pulumi:prod::myapp::pulumi:pulumi:Stack::myapp-prod",
+        "type": "pulumi:pulumi:Stack",
+        "id": "myapp-prod",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:prod::myapp::pulumi:providers:aws::default_6_0_0",
+        "type": "pulumi:providers:aws",
+        "id": "default_6_0_0",
+        "inputs": { "region": "eu-west-1" },
+        "outputs": { "region": "eu-west-1" }
+      },
+      {
+        "urn": "urn:pulumi:prod::myapp::aws:s3/bucket:Bucket::my-bucket",
+        "type": "aws:s3/bucket:Bucket",
+        "id": "my-bucket-abc123",
+        "inputs": { "bucket": "my-bucket", "acl": "private" },
+        "outputs": { "arn": "arn:aws:s3:::my-bucket-abc123", "bucketDomainName": "my-bucket-abc123.s3.amazonaws.com" }
+      },
+      {
+        "urn": "urn:pulumi:prod::myapp::aws:eks/cluster:Cluster::my-cluster",
+        "type": "aws:eks/cluster:Cluster",
+        "id": "my-cluster",
+        "inputs": { "name": "my-cluster", "version": "1.30" },
+        "outputs": { "endpoint": "https://abc.eks.amazonaws.com", "status": "ACTIVE" }
+      },
+      {
+        "urn": "urn:pulumi:prod::myapp::aws:rds/instance:Instance::my-db",
+        "type": "aws:rds/instance:Instance",
+        "id": "my-db",
+        "inputs": {
+          "engine": "postgres14",
+          "instanceClass": "db.t3.medium",
+          "allocatedStorage": 20
+        },
+        "outputs": {
+          "address": "my-db.xyz.us-east-1.rds.amazonaws.com",
+          "port": 5432
+        }
+      }
+    ]
+  }
+}

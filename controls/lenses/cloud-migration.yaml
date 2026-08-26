@@ -1,0 +1,3 @@
+id: cloud-migration
+passes: [INV, STATE, DATA, CTX, SBOM, TF, EGR, CRYPTO, SYNTH, LZR, COMP, SCOPE]
+auto_frameworks: []

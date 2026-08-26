@@ -1,103 +1,177 @@
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     AI-accelerated cloud workload compliance assessment
-//
-//     Community Edition  --  Apache 2.0  --  Contributing Guide
-//
-//     Website       :  https://steady-echo-yp4z.here.now
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
+=======================================================================
 
+                         S  W  A  O
+
+    Sovereign Workload Assessment and Onboarding
+    Contributing Guide
+
+    Community Edition  -  Apache 2.0
+
+    Website       :  https://steady-echo-yp4z.here.now/
+    Technical Docs:  https://accenture.github.io/SWAO/en/
+    Source Code   :  https://github.com/Accenture/SWAO
+
+=======================================================================
 # Contributing to SWAO
 
-Thank you for your interest in contributing to SWAO (Software Workload Assessment Optimiser). SWAO is an open-source tool that helps organisations assess cloud migration readiness using structured compliance frameworks. Community contributions -- from bug reports and feature ideas to new compliance frameworks -- make it better for everyone.
+Thank you for your interest in contributing to SWAO -- Sovereign Workload
+Assessment and Onboarding. This document explains how to contribute code,
+compliance frameworks, and provider drivers.
 
-## Before You Start
+## Developer Certificate of Origin
 
-To avoid duplicated effort, please **open a Discussion before filing an issue** for anything non-trivial:
+All contributions to SWAO require a Developer Certificate of Origin (DCO)
+sign-off. By adding a `Signed-off-by` trailer to your commit messages you
+certify that you authored the contribution and have the right to submit it
+under the project licence:
 
-<https://github.com/Accenture/SWAO/discussions>
+```
+git commit --signoff -m "feat(analyzer): add inventory pass for Rust workspaces"
+```
 
-This applies especially to: new features, new frameworks, significant refactors, and questions about project direction. For straightforward bug reports, you can go straight to the issue tracker.
+The DCO text is available at https://developercertificate.org/.
 
-## Framework Contributions
+SWAO uses DCO (not a CLA) because it is an Apache-2.0 project and DCO is
+the appropriate lightweight mechanism for Apache-licensed community projects.
 
-Adding a compliance framework is the single most impactful contribution you can make. **No TypeScript knowledge is required** -- frameworks are defined entirely in YAML.
+## Reporting Issues
 
-Each framework lives in its own directory and requires two files:
+- **Bugs and unexpected behaviour:** open a GitHub Issue at
+  https://github.com/Accenture/SWAO/issues
+- **Questions and discussion:** use GitHub Discussions at
+  https://github.com/Accenture/SWAO/discussions
+- **Security vulnerabilities:** see SECURITY.md for responsible disclosure
 
-- **`framework-meta.yaml`** -- framework identity, version, standard body, and top-level metadata
-- **`controls.yaml`** -- the full list of controls, each with an ID, title, description, and mapping hints
+## Development Setup
 
-Start by opening a [framework contribution issue](https://github.com/Accenture/SWAO/issues/new?template=framework-contribution.md) so maintainers can confirm the framework is in scope before you invest time writing the YAML.
-
-## Bug Reports and Features
-
-Use the issue templates to keep reports consistent and actionable:
-
-- **Bug report**: <https://github.com/Accenture/SWAO/issues/new?template=bug-report.md>
-- **Feature request**: <https://github.com/Accenture/SWAO/issues/new?template=feature-request.md>
-
-## Local Development Setup
-
-The following steps set up the Community Edition locally:
+Prerequisites: Node.js 20+ LTS, pnpm 10+.
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/Accenture/SWAO.git
-cd SWAO
-
-# 2. Install dependencies (pnpm is required)
+cd SWAO/swao
 pnpm install
 
-# 3. Build the community package
-pnpm build
+# Typecheck
+pnpm exec tsc --noEmit
 
-# 4. Run the test suite
+# Lint
+pnpm lint
+
+# Full test suite
 pnpm test
 ```
 
-Requires Node.js 20+ and pnpm 9+.
+Provider contract tests (requires a running provider):
 
-## Commit Message Conventions
-
-SWAO follows [Conventional Commits](https://www.conventionalcommits.org/). Every commit message must start with a type prefix:
-
-| Prefix  | When to use                                    |
-|---------|------------------------------------------------|
-| `feat:` | A new feature or framework                     |
-| `fix:`  | A bug fix                                      |
-| `docs:` | Documentation-only changes                     |
-| `chore:`| Build, config, or maintenance tasks            |
-
-Examples:
-
-```
-feat(frameworks): add NIST SP 800-53 Rev 5 controls
-fix(cli): correct control count in summary output
-docs: update local setup instructions
-chore: bump markdownlint-cli2-action to v16
+```bash
+pnpm test:contract
 ```
 
-## PR Checklist
+## Commit Convention
 
-Before submitting a pull request, confirm all of the following:
+SWAO follows [Conventional Commits](https://www.conventionalcommits.org/).
 
-- [ ] No em-dashes (`--`) or en-dashes in any prose or Markdown
-- [ ] All prose uses British English spelling (behaviour, licence, organisation, etc.)
-- [ ] `pnpm test` passes locally
-- [ ] Documentation updated where relevant
-- [ ] Commit messages follow Conventional Commits
+```
+feat(analyzer/static): add statefulness pass for Rust workloads
+fix(provider/llm/ollama): handle 502 from local instance
+docs(spec): clarify §10.1a signal-to-finding cascade
+chore(tracker): update dependencies
+```
 
-## Community Standards
+Valid scopes include: `analyzer/static`, `analyzer/dynamic`, `analyzer/compliance`,
+`analyzer/security`, `provider/llm`, `provider/vcs`, `provider/redactor`,
+`report`, `cli`, `tui`, `mcp`, `spec`, `docs`, `adr`.
 
-All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md). We are committed to a welcoming, inclusive, and harassment-free community.
+## Pull Request Guidelines
 
-## Contact
+1. Open an issue first for non-trivial changes to discuss the approach.
+2. Keep PRs focused -- one feature or fix per PR.
+3. Include tests for new behaviour. The `pnpm test` suite must pass.
+4. Run `pnpm exec tsc --noEmit` and `pnpm lint` before submitting.
+5. Update documentation when changing user-facing behaviour.
+6. Add a `Signed-off-by` trailer (see DCO above).
 
-For repository questions, the public app owners are **@MyLaserEyes** and **@morks**. For everything else -- questions, ideas, feedback -- please use [Discussions](https://github.com/Accenture/SWAO/discussions) rather than direct messages or issues. Public threads help the whole community.
+Maintainers aim to review community pull requests within 5 business days.
+For questions before or during a contribution, use GitHub Discussions at
+https://github.com/Accenture/SWAO/discussions.
+
+For questions about Consultant or Enterprise licensing, contact:
+swao-tool@accenture.com
+
+## Contributing Compliance Frameworks
+
+Community compliance frameworks are the fastest way to extend SWAO's
+assessment coverage. A framework is a pair of files placed in
+`packages/@swao/community-frameworks/frameworks/<slug>/`.
+
+### framework-meta.yaml
+
+```yaml
+id: MY_FRAMEWORK
+version: "1.0"
+name: My Compliance Framework
+authority: My Standards Body
+description: >
+  A brief description of what this framework covers and who it applies to.
+applicability:
+  sector: [cross-sector]
+  geography: [global]
+contributor:
+  name: Your Name
+  org: Your Organisation
+  contact: https://github.com/Accenture/SWAO/discussions
+licence: Apache-2.0
+```
+
+### controls.yaml
+
+```yaml
+controls:
+  - id: MF-01
+    title: Access Control Policy
+    description: >
+      The organisation shall define and enforce access control policies...
+    signals:
+      - IAM-01
+      - SEC-AUTH-01
+    guidance: >
+      Evidence: check for IAM configuration files, RBAC definitions...
+```
+
+Controls use paraphrased language -- do not reproduce verbatim text from
+copyrighted standards documents. Paraphrasing is acceptable fair use;
+verbatim reproduction is not.
+
+Run the framework gate to validate your files before submitting:
+
+```bash
+node tests/audit-gates/community-binary-shape.gate.mjs
+```
+
+Contributor block format: the `contributor:` block in `framework-meta.yaml`
+must use your real name, organisation, and a public contact (GitHub profile
+or Discussions URL). No private email addresses in committed content.
+
+## Contributing Provider Drivers
+
+Provider drivers implement pluggable interfaces (see `SPEC.md §15a`) so SWAO
+can reach additional LLM providers, VCS systems, SAST tools, and container
+scanners.
+
+A driver lives in `packages/providers/<category>/<provider-name>/` and must:
+
+1. Implement the interface from `@swao/core` (e.g. `LlmProvider`,
+   `VcsProvider`, `RedactorProvider`).
+2. Ship a contract-test suite (`*.contract.test.ts`) that passes without
+   a live service using a mock/stub server.
+3. Export a factory function matching the provider interface signature.
+4. Include a `DRIVER.md` documenting authentication, rate limits, and
+   any non-obvious behaviour.
+
+The existing Anthropic and Ollama LLM drivers are good examples to follow.
+
+## Licence
+
+By contributing to SWAO you agree that your contributions will be licensed
+under the Apache License, Version 2.0, consistent with the rest of the
+project. See the `LICENSE` file at the repository root.

@@ -1,18 +1,17 @@
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     AI-accelerated cloud workload compliance assessment
-//
-//     Community Edition  --  Apache 2.0  --  Code of Conduct
-//
-//     Website       :  https://steady-echo-yp4z.here.now
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
+=======================================================================
 
+                         S  W  A  O
+
+    Sovereign Workload Assessment and Onboarding
+    Code of Conduct
+
+    Community Edition  -  Apache 2.0
+
+    Website       :  https://steady-echo-yp4z.here.now/
+    Technical Docs:  https://accenture.github.io/SWAO/en/
+    Source Code   :  https://github.com/Accenture/SWAO
+
+=======================================================================
 # Contributor Covenant Code of Conduct
 
 ## Our Pledge
@@ -32,23 +31,23 @@ diverse, inclusive, and healthy community.
 Examples of behaviour that contributes to a positive environment for our
 community include:
 
-* Demonstrating empathy and kindness toward other people
-* Being respectful of differing opinions, viewpoints, and experiences
-* Giving and gracefully accepting constructive feedback
-* Accepting responsibility and apologising to those affected by our mistakes,
+- Demonstrating empathy and kindness toward other people
+- Being respectful of differing opinions, viewpoints, and experiences
+- Giving and gracefully accepting constructive feedback
+- Accepting responsibility and apologising to those affected by our mistakes,
   and learning from the experience
-* Focusing on what is best not just for us as individuals, but for the overall
+- Focusing on what is best not just for us as individuals, but for the overall
   community
 
 Examples of unacceptable behaviour include:
 
-* The use of sexualised language or imagery, and sexual attention or advances of
+- The use of sexualised language or imagery, and sexual attention or advances of
   any kind
-* Trolling, insulting or derogatory comments, and personal or political attacks
-* Public or private harassment
-* Publishing others' private information, such as a physical or electronic
+- Trolling, insulting or derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information, such as a physical or electronic
   address, without their explicit permission
-* Other conduct which could reasonably be considered inappropriate in a
+- Other conduct which could reasonably be considered inappropriate in a
   professional setting
 
 ## Enforcement Responsibilities
@@ -73,8 +72,9 @@ representative at an online or offline event.
 
 ## Enforcement
 
-Report CoC violations privately via GitHub Security Advisories:
-https://github.com/Accenture/SWAO/security/advisories/new
+Instances of abusive, harassing, or otherwise unacceptable behaviour may be
+reported to the community leaders responsible for enforcement at:
+swao-tool@accenture.com
 
 All complaints will be reviewed and investigated promptly and fairly.
 

@@ -1,0 +1,34 @@
+# SWAO LLM-Gateway connector -- OpenRouter aggregator (Design 090)
+# One key, hundreds of vendor-prefixed models (https://openrouter.ai/models).
+# Model discovery + per-model pricing via /v1/models (#1405).
+schema_version: "1.0"
+connector:
+  id: openrouter
+  name: OpenRouter
+  description: Hosted multi-vendor aggregator; OpenAI-compatible chat route.
+  protocol: openai-chat
+  base_url: https://openrouter.ai/api
+  auth:
+    credential_key: openrouter-api-key
+    env_var: SWAO_OPENROUTER_API_KEY
+  headers:
+    HTTP-Referer: https://github.com/Accenture/SWAO
+    X-Title: SWAO
+  models:
+    default: mistralai/mistral-large
+    catalogue:
+      - id: mistralai/mistral-large
+      - id: anthropic/claude-sonnet-4
+      - id: meta-llama/llama-3.3-70b-instruct
+    discovery_endpoint: /v1/models
+  defaults:
+    temperature: 0
+    max_tokens: 32768
+  sovereignty:
+    data_residency: global
+    zero_retention: unknown
+    notes: Routing metadata traverses the aggregator; verify residency and retention per engagement.
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    contributor: Accenture SWAO team

@@ -1,0 +1,117 @@
+# Architecture Patterns Catalogue
+# Pass 18 -- Architecture Pattern Assessment (PAT signals)
+# Eight built-in patterns assessed from static analysis and context inputs.
+# score = sum(component_scores) / 8
+# component_score: 1.0 configured | 0.5 partial | 0.0 not_assessed | 0.0 absent
+
+schema_version: '1.0'
+signal_prefix: PAT
+
+patterns:
+  - id: PAT-01
+    pattern: api_specification_present
+    description: OpenAPI or AsyncAPI specification file present in repo root, docs/, or openapi/ directory.
+    detection_patterns:
+      - openapi.yaml
+      - openapi.json
+      - swagger.yaml
+      - swagger.json
+      - asyncapi.yaml
+      - asyncapi.json
+      - docs/api/
+      - src/openapi/
+    weight: 1.0
+    sovereign_relevance: "API-first design reduces migration coupling risk; specification enables sovereign service substitution."
+
+  - id: PAT-02
+    pattern: api_versioning_scheme
+    description: URL versioning (/v1/, /v2/) or HTTP header versioning (Accept-Version, API-Version) present in route definitions.
+    detection_patterns:
+      - /v1/
+      - /v2/
+      - /api/v
+      - Accept-Version header
+      - API-Version header
+      - x-api-version header
+    weight: 1.0
+    sovereign_relevance: "Versioned APIs allow phased migration; unversioned APIs require coordinated cutover."
+
+  - id: PAT-03
+    pattern: health_endpoint_implemented
+    description: Liveness (/healthz) and/or readiness (/readiness, /ready) HTTP endpoints implemented.
+    detection_patterns:
+      - /healthz
+      - /health
+      - /readiness
+      - /ready
+      - /liveness
+      - HealthCheckResult
+      - '@godaddy/terminus'
+    weight: 1.0
+    sovereign_relevance: "Health endpoints are required by all sovereign Kubernetes platforms (OTC CCE, STACKIT SKE) for pod lifecycle management."
+
+  - id: PAT-04
+    pattern: graceful_shutdown_handler
+    description: SIGTERM handler or framework-level graceful shutdown hook present; in-flight requests drain before process exit.
+    detection_patterns:
+      - process.on(SIGTERM
+      - process.on(SIGINT
+      - signal.notify_waiting_coroutines
+      - shutdown hook
+      - gracefulShutdown
+      - '@godaddy/terminus terminusOptions.onSignal'
+      - actix_rt::signal::unix::signal
+    weight: 1.0
+    sovereign_relevance: "Graceful shutdown is mandatory for zero-downtime blue/green deployment in containerised sovereign environments."
+
+  - id: PAT-05
+    pattern: service_boundary_isolation
+    description: No shared mutable state across service packages detectable by static analysis; services communicate via well-defined interfaces.
+    detection_patterns:
+      - no cross-package direct import of internal state
+      - no global mutable singleton accessible across module boundaries
+      - message passing or API boundary enforced
+    weight: 1.0
+    sovereign_relevance: "Tightly coupled services require coordinated migration; isolated services can migrate independently reducing risk."
+
+  - id: PAT-06
+    pattern: dependency_injection
+    description: Dependency injection framework or constructor injection pattern used; global singletons avoided.
+    detection_patterns:
+      - InversifyJS
+      - tsyringe
+      - NestJS DI
+      - Spring Boot @Autowired
+      - FastAPI Depends
+      - constructor injection pattern
+      - wire (Go)
+    weight: 1.0
+    sovereign_relevance: "DI enables configuration of sovereign-specific service adapters without code changes; global singletons resist substitution."
+
+  - id: PAT-07
+    pattern: configuration_externalised
+    description: All environment-specific configuration injected via environment variables or mounted config; no hard-coded credentials or host references in source.
+    detection_patterns:
+      - process.env.
+      - os.environ
+      - os.getenv
+      - dotenv
+      - viper
+      - 12-factor III (overlaps TF pass; reinforcement signal)
+    weight: 1.0
+    sovereign_relevance: "Externalised configuration is a prerequisite for sovereign deployment without code modification."
+
+  - id: PAT-08
+    pattern: circuit_breaker_or_retry
+    description: Resilience pattern library (circuit breaker, retry with exponential backoff) present in production dependencies for outbound calls.
+    detection_patterns:
+      - resilience4j
+      - cockatiel
+      - opossum
+      - '@lifeomic/attempt'
+      - stamina (Python)
+      - tenacity
+      - retry
+      - polly
+    weight: 1.0
+    sovereign_relevance: "Circuit breakers prevent cascade failures during migration traffic shifts; essential for non-trivial sovereign cutovers."

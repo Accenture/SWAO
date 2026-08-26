@@ -1,0 +1,34 @@
+# Manual questionnaire for HIPAA-PHY-09 -- Device and Media Accountability
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: HIPAA-PHY-09
+framework_id: NIST_SP_800_66R2
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Is every ePHI-handling device tagged in the asset register with a unique identifier?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "CMDB asset class 'ephi-endpoint' covers 1,247 assets; 100% tagged"
+  - id: q2
+    text: "Are device movements (issue, return, transfer between users) logged?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "ServiceNow asset-movement workflow"
+  - id: q3
+    text: "Are losses and thefts logged within 24 hours of discovery?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Loss-reporting workflow with 24-hour SLA, monitored by security ops"
+  - id: q4
+    text: "Is the asset register reconciled with the IAM platform's device inventory at least quarterly?"
+    answer: "no"
+    severity_if_no: medium
+    evidence_ref: "Last reconciliation 2025-Q3; 2026 cadence not yet enforced"
+  - id: q5
+    text: "Are removable-media devices (USB sticks, external drives) under the same accountability regime?"
+    answer: "unknown"
+    severity_if_no: medium
+    evidence_ref: "Removable media is technically blocked at endpoint; accountability for the few exception cases is unclear"

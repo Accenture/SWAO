@@ -1,0 +1,36 @@
+{
+  "name": "@swao/community-frameworks",
+  "version": "0.1.0",
+  "description": "SWAO community frameworks (Apache-2.0). Bundled framework catalogues (GDPR, COBIT 5, AI 10 Pillars, NIST SP 800-66R2, ...), each a folder containing its controls, plus the path resolver. A leaf content package (no @swao deps) so consultant/enterprise framework packages can sit alongside it.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "frameworks"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --pool forks"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

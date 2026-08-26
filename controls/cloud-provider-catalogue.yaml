@@ -1,0 +1,2101 @@
+# Cloud Provider Capability Catalogue
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-04
+# Schema: cloud-provider-catalogue-v1
+#
+# Used by: SPEC §10.5 (Landing Zone Mapper); SYNTH pass (Pass 9) landing zone matching sub-pass
+# Design: swao-premium/docs/design/012-cloud-provider-catalogue.md
+#
+# provider.type values:
+#   hyperscaler_eu_region   -- major hyperscaler operating an EU-located region
+#   dedicated_sovereign     -- cloud built for EU/national sovereignty; EU or national operating entity
+#   gaia_x_compliant        -- Gaia-X certified provider (certification maturing; assigned when ratified)
+#   managed_private         -- managed hosting / colocation provider; no hyperscaler-level PaaS
+#   hyperscaler_gov         -- government-specific hyperscaler cloud (not in v1 scope)
+#
+# certification.status values:
+#   attested        -- third-party attested (e.g. BSI C5 Type II attestation report issued)
+#   certified       -- formal certification body has issued a certificate (ISO 27001 etc.)
+#   in_progress     -- assessment underway; not yet issued
+#   not_assessed    -- provider has not pursued this certification
+#   not_applicable  -- certification is outside scope for this provider type
+#   partial         -- subset of services or scope covered; not comprehensive
+#
+# compliance_regime_coverage values:
+#   satisfied       -- provider fully satisfies the SWAO compliance regime requirements
+#   partial         -- provider satisfies key controls but not comprehensive
+#   in_progress     -- provider is working toward satisfying this regime
+#   not_applicable  -- provider does not seek this regime's coverage
+#   not_satisfied   -- provider has known gaps that disqualify it for this regime
+#
+# cost_tier: low | medium | high   (relative to hyperscaler EU on-demand pricing)
+# sovereign_score: 0.0-1.0         (how strongly sovereign: national entity + BSI C5 + no US parent)
+#
+# vendor_lock_in.overall_risk: low | medium | high
+#   How difficult it is to migrate away from this provider.
+#   low   -- primarily open-standard APIs (K8s, PostgreSQL wire, S3); migration is config + data move
+#   medium -- mix of open + proprietary; some API rewrite required for specific services
+#   high   -- significant proprietary API surface; substantial rewrite + migration engineering
+#
+# vendor_lock_in.portability_score: 0.0-1.0
+#   Fraction of managed services using open or interoperable standards.
+#   1.0 = fully portable; 0.0 = fully proprietary.
+#
+# vendor_lock_in.exclusive_capabilities: capabilities unique to this provider with no equivalent
+#   elsewhere in the catalogue. Signals that a workload depending on these has NO migration path
+#   without rearchitecting that feature.
+#
+# vendor_lock_in.proprietary_apis: services with non-standard or provider-specific APIs
+#   even where the function is generic (e.g. object storage with non-S3 API).
+#   Each entry includes lock_in_risk (low|medium|high) and a migration_path note.
+#
+# vendor_lock_in.data_egress_risk: low | medium | high
+#   Economic lock-in via data transfer costs when migrating stored data out.
+#   high = hyperscaler-scale egress pricing; low = minimal or no egress fees.
+#
+# service.lock_in_risk: low | medium | high | critical (added to individual service entries)
+#   Specific lock-in risk for this service API on this provider.
+#
+# Update process: edit this file directly; bump last_reviewed + last_updated on changed entry.
+# Commit: chore(controls): update cloud-provider-catalogue -- <provider> <change>
+# No code change required unless the matching algorithm reads a new field.
+# Quarterly review: https://github.com/Accenture/SWAO/issues
+# See design doc §Catalogue update process for full governance.
+
+catalogue_version: "2026-04"
+last_updated: "2026-04-28"
+
+providers:
+
+  # ===========================================================================
+  # DEDICATED SOVEREIGN PROVIDERS -- EU / national operating entities
+  # ===========================================================================
+
+  - id: stackit_de_sovereign
+    name: "STACKIT (Schwarz Group)"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      German-sovereign cloud operated by the Schwarz Group (Lidl/Kaufland parent).
+      All infrastructure physically in Germany. No US parent company.
+      Positioned for BSI C5, GDPR Art.9, and DORA workloads in the German market.
+
+    residency:
+      regions: [de-01, de-02]
+      data_residency_guarantees:
+        - DE_only
+        - EU_only
+
+    certifications:
+      bsi_c5:
+        status: attested
+        scope: "IaaS + PaaS"
+        last_audited: "2024-12"
+        evidence_url: "https://stackit.de/en/security-and-compliance/"
+      iso_27001:
+        status: certified
+        last_audited: "2024-06"
+      eucs_high:
+        status: in_progress
+        notes: "EUCS High certification expected 2026"
+      gdpr_dpa:
+        status: available
+        notes: "GDPR Art. 28 DPA available for all customers"
+      dora:
+        status: partial
+        notes: "ICT risk management controls present; full DORA attestation pending"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: satisfied
+      dora: partial
+      hipaa: not_applicable
+      pci_dss: in_progress
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "SKE (Sovereign Kubernetes Engine)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "STACKIT PostgreSQL Flex"
+        versions: ["14", "15", "16"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "STACKIT MySQL Flex"
+      redis:
+        available: true
+        managed: true
+        service_name: "STACKIT Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "STACKIT Object Storage"
+      serverless:
+        available: false
+        notes: "No equivalent to AWS Lambda or Azure Functions"
+      ml_inference:
+        available: false
+        notes: "No equivalent to AWS Comprehend Medical or Azure AI Services"
+      secrets_management:
+        available: true
+        service_name: "STACKIT Secrets Manager"
+      container_registry:
+        available: true
+        service_name: "STACKIT Container Registry"
+      cdn:
+        available: false
+        notes: "Planned; not GA as of 2026-04"
+      byok_kms:
+        available: true
+        service_name: "STACKIT Key Management Service"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "STACKIT Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "STACKIT DNS"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "stackit-de-01"
+      building_blocks_available: [kubernetes, postgresql, redis, networking, iam, secrets]
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.90
+      exclusive_capabilities: []
+      proprietary_apis:
+        - service: secrets_management
+          risk: low
+          migration_path: "STACKIT Secrets Manager API is STACKIT-specific; migrating to HashiCorp Vault or AWS Secrets Manager requires SDK swap. Data export supported."
+      data_egress_risk: low
+      notes: >
+        STACKIT uses S3-compatible object storage, standard PostgreSQL wire protocol,
+        and CNCF-standard Kubernetes. Migration away is primarily a data-move + config
+        exercise. The primary lock-in risk is the limited service catalogue: workloads
+        that need CDN or ML inference cannot stay on STACKIT and must be rearchitected
+        regardless of provider choice.
+
+    cost_tier: medium
+    sovereign_score: 0.95
+
+    suitable_for_signals:
+      - DE_only_residency
+      - EU_only_residency
+      - bsi_c5_required
+      - gdpr_regulated
+      - no_us_parent_required
+
+    not_suitable_for_signals:
+      - global_cdn_required
+      - ml_inference_sovereign
+      - us_jurisdiction_acceptable
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://stackit.de/en/security-and-compliance/"
+      - "https://docs.stackit.cloud/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: otc_de_sovereign
+    name: "Open Telekom Cloud (T-Systems / Deutsche Telekom)"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      German-sovereign cloud operated by T-Systems (Deutsche Telekom subsidiary).
+      Runs on OpenStack infrastructure physically in Germany. No US parent company.
+      Strong enterprise PaaS breadth; proven meshStack Building Block integration.
+      BSI C5 attested across IaaS and PaaS. Preferred for DACH health and public sector.
+
+    residency:
+      regions: [eu-de-01, eu-de-02]
+      data_residency_guarantees:
+        - DE_only
+        - EU_only
+
+    certifications:
+      bsi_c5:
+        status: attested
+        scope: "IaaS + PaaS (broad service scope)"
+        last_audited: "2024-06"
+        evidence_url: "https://open-telekom-cloud.com/en/security/bsi-c5"
+      iso_27001:
+        status: certified
+        last_audited: "2024-03"
+      eucs_high:
+        status: in_progress
+        notes: "Assessment planned; timeline aligned with ENISA EUCS ratification"
+      gdpr_dpa:
+        status: available
+      dora:
+        status: partial
+        notes: "ICT risk framework controls documented; DORA attestation in progress"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: satisfied
+      dora: partial
+      hipaa: not_applicable
+      pci_dss: satisfied
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Cloud Container Engine (CCE)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Relational Database Service (RDS) -- PostgreSQL"
+        versions: ["13", "14", "15"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Relational Database Service (RDS) -- MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "Distributed Cache Service (DCS)"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Object Storage Service (OBS)"
+      serverless:
+        available: true
+        managed: true
+        service_name: "FunctionGraph"
+        notes: "Limited ecosystem compared to AWS Lambda"
+      ml_inference:
+        available: false
+        notes: "ModelArts available for training; no managed medical NLP equivalent"
+      secrets_management:
+        available: true
+        service_name: "Data Encryption Workshop (DEW) -- Secret Manager"
+      container_registry:
+        available: true
+        service_name: "Software Repository for Container (SWR)"
+      cdn:
+        available: true
+        managed: true
+        service_name: "Content Delivery Network (CDN)"
+        notes: "EU PoPs; DE-only routing configurable"
+      byok_kms:
+        available: true
+        service_name: "Data Encryption Workshop (DEW) -- KMS"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Elastic Load Balance (ELB)"
+      dns:
+        available: true
+        managed: true
+        service_name: "Domain Name Service (DNS)"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "otc-eu-de-1"
+      building_blocks_available: [kubernetes, postgresql, mysql, redis, networking, iam, secrets, object_storage]
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.87
+      exclusive_capabilities: []
+      proprietary_apis:
+        - service: serverless
+          risk: medium
+          migration_path: "FunctionGraph uses OpenFaaS-inspired but OTC-specific trigger model; rewrite to standard container or Knative required"
+        - service: secrets_management
+          risk: low
+          migration_path: "DEW Secret Manager API is OTC-specific; migrating to HashiCorp Vault or another KMS requires SDK swap"
+      data_egress_risk: low
+      notes: >
+        OTC is built on OpenStack; most IaaS APIs are OpenStack-standard. S3-compatible
+        object storage and standard K8s reduce lock-in significantly. FunctionGraph is the
+        main proprietary surface. Broader PaaS breadth than STACKIT means more services
+        to migrate if switching providers, but each is individually interoperable.
+
+    cost_tier: medium
+    sovereign_score: 0.92
+
+    suitable_for_signals:
+      - DE_only_residency
+      - EU_only_residency
+      - bsi_c5_required
+      - gdpr_regulated
+      - no_us_parent_required
+      - pci_dss_required
+      - broad_paas_required
+
+    not_suitable_for_signals:
+      - ml_inference_sovereign
+      - us_jurisdiction_acceptable
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://open-telekom-cloud.com/en/security"
+      - "https://docs.otc.t-systems.com/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: ionos_de_sovereign
+    name: "IONOS Cloud (United Internet)"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      German cloud operated by United Internet subsidiary IONOS SE.
+      Infrastructure in Germany, Spain, and UK. BSI C5 assessment in progress.
+      Positioned as mid-market sovereign cloud; meshStack integration partial.
+
+    residency:
+      regions: [de-fra-01, de-txl-01]
+      data_residency_guarantees:
+        - EU_only
+
+    certifications:
+      bsi_c5:
+        status: in_progress
+        notes: "BSI C5 Type I assessment initiated; no attestation report issued as of 2026-04"
+      iso_27001:
+        status: certified
+        last_audited: "2023-11"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: in_progress
+      dora: not_applicable
+      hipaa: not_applicable
+      pci_dss: partial
+      nis2: not_assessed
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "IONOS Kubernetes Engine"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "IONOS Database-as-a-Service -- PostgreSQL"
+        versions: ["13", "14", "15"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "IONOS Database-as-a-Service -- MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "IONOS In-Memory DB"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "IONOS Object Storage"
+      serverless:
+        available: false
+      ml_inference:
+        available: false
+      secrets_management:
+        available: false
+        notes: "No managed secrets manager; use HashiCorp Vault on IaaS"
+      container_registry:
+        available: true
+        service_name: "IONOS Container Registry"
+      cdn:
+        available: true
+        managed: true
+        service_name: "IONOS CDN"
+      byok_kms:
+        available: false
+        notes: "Customer-managed keys via IaaS volume encryption; no managed KMS"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "IONOS Application Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "IONOS DNS"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "ionos-de-fra-01"
+      building_blocks_available: [kubernetes, postgresql, networking]
+      notes: "Partial integration; fewer Building Blocks than STACKIT or OTC"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.88
+      exclusive_capabilities: []
+      proprietary_apis:
+        - service: kubernetes
+          risk: low
+          migration_path: "IONOS Kubernetes Engine is CNCF-standard; workloads portable with standard manifests"
+      data_egress_risk: low
+      notes: >
+        IONOS services use open standards throughout. Absence of managed secrets/KMS
+        and BYOK means customers running those on IaaS already operate provider-agnostic
+        tooling (HashiCorp Vault etc.) which reduces migration effort. The main lock-in
+        risk is operational: consultants may build runbooks tightly coupled to IONOS
+        Cloud Console UX rather than API/Terraform.
+
+    cost_tier: low
+    sovereign_score: 0.72
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - cost_sensitive
+      - no_us_parent_required
+
+    not_suitable_for_signals:
+      - DE_only_residency
+      - bsi_c5_required
+      - ml_inference_sovereign
+      - byok_required
+      - secrets_management_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://cloud.ionos.com/security"
+      - "https://docs.ionos.com/cloud/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: cloudferro_eu_sovereign
+    name: "CloudFerro"
+    type: dedicated_sovereign
+    jurisdiction: PL
+    description: >
+      EU-sovereign cloud operator headquartered in Poland; operates infrastructure in
+      Poland (WAW), Germany (FRA), and France (PAR). Specialises in geospatial and
+      scientific computing; growing general-purpose PaaS. No US parent company.
+      Gaia-X member; BSI C5 assessment in progress.
+
+    residency:
+      regions: [waw-01, fra-01, par-01]
+      data_residency_guarantees:
+        - EU_only
+
+    certifications:
+      bsi_c5:
+        status: in_progress
+        notes: "Type I assessment initiated as of 2025; FRA region target"
+      iso_27001:
+        status: certified
+        last_audited: "2024-01"
+      eucs_high:
+        status: in_progress
+        notes: "Gaia-X participation; EUCS preparatory work underway"
+      gdpr_dpa:
+        status: available
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: in_progress
+      dora: not_applicable
+      hipaa: not_applicable
+      pci_dss: not_assessed
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "CloudFerro Kubernetes"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "DBaaS -- PostgreSQL"
+      mysql:
+        available: false
+      redis:
+        available: false
+        notes: "Not available as managed service; deploy on IaaS"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "EO Data Hub Object Storage (EODATA) / CREODIAS"
+      serverless:
+        available: false
+      ml_inference:
+        available: false
+      secrets_management:
+        available: false
+      container_registry:
+        available: true
+        service_name: "CloudFerro Container Registry"
+      cdn:
+        available: false
+      byok_kms:
+        available: false
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "CloudFerro Load Balancer"
+      dns:
+        available: true
+
+    meshstack_support:
+      supported: false
+      notes: "No meshStack integration as of 2026-04; roadmap unconfirmed"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.92
+      exclusive_capabilities:
+        - capability: "EODATA / CREODIAS geospatial data hub"
+          risk: medium
+          note: "Access to Copernicus satellite data archive is CloudFerro-exclusive in the EU public cloud market. Workloads consuming EODATA directly depend on this. No equivalent on any other provider in this catalogue."
+      proprietary_apis: []
+      data_egress_risk: low
+      notes: >
+        CloudFerro IaaS is OpenStack-based with S3-compatible object storage.
+        The exclusive capability (EODATA geospatial archive) is only relevant for
+        earth observation workloads; most enterprise migrations are unaffected.
+        Minimal managed PaaS means customers already bring their own tooling --
+        low lock-in, but also lower operational leverage.
+
+    cost_tier: low
+    sovereign_score: 0.78
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - no_us_parent_required
+      - geospatial_workload
+      - cost_sensitive
+
+    not_suitable_for_signals:
+      - DE_only_residency
+      - bsi_c5_required
+      - ml_inference_sovereign
+      - meshstack_required
+      - redis_managed_required
+      - secrets_management_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://cloudferro.com/en/security/"
+      - "https://docs.cloudferro.com/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: ovhcloud_eu_sovereign
+    name: "OVHcloud (OVH SAS)"
+    type: dedicated_sovereign
+    jurisdiction: FR
+    description: >
+      French cloud operator; largest EU-headquartered cloud provider by infrastructure
+      footprint. Operates data centres across Europe. No US parent company.
+      BSI C5 not pursued; ISO 27001 certified. SecNumCloud (French national certification)
+      for specific offerings. Gaia-X member.
+
+    residency:
+      regions: [gra-01, rbx-01, sbg-01, de-01, uk-01]
+      data_residency_guarantees:
+        - EU_only
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+        notes: "OVHcloud has not pursued BSI C5 attestation; ISO 27001 is their primary certification"
+      iso_27001:
+        status: certified
+        last_audited: "2023-09"
+      secnumcloud:
+        status: certified
+        scope: "OVHcloud SecureCompute offering (FR datacentres only)"
+        notes: "French national cloud certification (ANSSI); not directly equivalent to BSI C5"
+      eucs_high:
+        status: in_progress
+        notes: "Gaia-X member; EUCS preparatory engagement announced"
+      gdpr_dpa:
+        status: available
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: not_satisfied
+      dora: not_applicable
+      hipaa: not_applicable
+      pci_dss: partial
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "OVHcloud Managed Kubernetes Service"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Managed Databases -- PostgreSQL"
+        versions: ["13", "14", "15", "16"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Managed Databases -- MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "Managed Databases -- Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Object Storage (S3-compatible)"
+      serverless:
+        available: false
+        notes: "No equivalent to AWS Lambda; OVHcloud Functions in alpha as of 2026-04"
+      ml_inference:
+        available: false
+        notes: "No managed ML inference; AI Endpoints in early access"
+      secrets_management:
+        available: false
+        notes: "No managed secrets manager"
+      container_registry:
+        available: true
+        service_name: "Managed Private Registry"
+      cdn:
+        available: true
+        managed: true
+        service_name: "CDN Infrastructure"
+      byok_kms:
+        available: false
+        notes: "Customer-managed encryption via volume; no managed KMS"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "OVHcloud DNS"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "ovhcloud-eu-gra-01"
+      building_blocks_available: [kubernetes, postgresql, networking]
+      notes: "Partial integration; community-maintained Building Blocks"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.88
+      exclusive_capabilities:
+        - capability: "SecNumCloud (ANSSI-certified) secure enclave"
+          risk: low
+          note: "SecNumCloud offering targets French public sector. If a workload is legally required to run on SecNumCloud, OVHcloud is the only provider in this catalogue that qualifies. Not relevant to most enterprise migrations."
+      proprietary_apis: []
+      data_egress_risk: low
+      notes: >
+        OVHcloud uses open standards throughout: S3-compatible object storage,
+        standard K8s, standard PostgreSQL/MySQL/Redis wire protocols. The CDN uses
+        OVHcloud-specific configuration APIs but the traffic path is standard.
+        Absence of managed secrets manager and BYOK KMS means customers use
+        provider-agnostic tooling (HashiCorp Vault, Terraform) which lowers lock-in.
+
+    cost_tier: low
+    sovereign_score: 0.65
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - no_us_parent_required
+      - cost_sensitive
+      - cdn_required
+
+    not_suitable_for_signals:
+      - DE_only_residency
+      - bsi_c5_required
+      - ml_inference_sovereign
+      - byok_required
+      - secrets_management_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://www.ovhcloud.com/en/enterprise/products/secnumcloud/"
+      - "https://docs.ovh.com/gb/en/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: hetzner_de_managed
+    name: "Hetzner Cloud"
+    type: managed_private
+    jurisdiction: DE
+    description: >
+      German-managed hosting and cloud provider. Infrastructure in Germany and Finland.
+      No US parent company. Cost-competitive IaaS; limited managed PaaS.
+      No BSI C5 or formal sovereignty certification. Not suitable for regulated workloads
+      requiring third-party attestation. Suitable for cost-sensitive EU-only workloads
+      with self-managed compliance.
+
+    residency:
+      regions: [hel-01, fsn-01, nbg-01, ash-01]
+      data_residency_guarantees:
+        - EU_only
+      notes: "ash-01 (Ashburn, US) must be explicitly excluded for EU-only configurations"
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+      iso_27001:
+        status: not_assessed
+        notes: "ISO 27001 not formally certified; internal security programme only"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "GDPR DPA available; standard DPA, not enterprise-grade"
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: partial
+      bsi_c5: not_satisfied
+      dora: not_applicable
+      hipaa: not_satisfied
+      pci_dss: not_satisfied
+      nis2: not_assessed
+
+    services:
+      kubernetes:
+        available: false
+        notes: "No managed Kubernetes; use k3s or kubeadm on IaaS VMs"
+      postgresql:
+        available: false
+        notes: "No managed PostgreSQL; deploy on IaaS VMs"
+      mysql:
+        available: false
+      redis:
+        available: false
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Hetzner Object Storage"
+        notes: "S3-compatible; limited regions"
+      serverless:
+        available: false
+      ml_inference:
+        available: false
+      secrets_management:
+        available: false
+      container_registry:
+        available: false
+      cdn:
+        available: false
+      byok_kms:
+        available: false
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Hetzner Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "Hetzner DNS"
+
+    meshstack_support:
+      supported: false
+      notes: "No meshStack integration"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.95
+      exclusive_capabilities: []
+      proprietary_apis: []
+      data_egress_risk: low
+      notes: >
+        Hetzner is almost entirely IaaS with S3-compatible object storage. There is
+        effectively no managed PaaS to lock into. Customers self-manage databases,
+        Kubernetes, and secrets -- all using provider-agnostic tooling. This is the
+        most portable provider in the catalogue by definition. The main migration
+        cost is operational: moving IaaS VMs and data volumes.
+
+    cost_tier: low
+    sovereign_score: 0.45
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - cost_sensitive
+      - no_us_parent_required
+      - self_managed_compliance_acceptable
+
+    not_suitable_for_signals:
+      - DE_only_residency
+      - bsi_c5_required
+      - managed_kubernetes_required
+      - managed_database_required
+      - ml_inference_sovereign
+      - byok_required
+      - hipaa_required
+      - pci_dss_required
+      - meshstack_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://docs.hetzner.com/"
+      - "https://www.hetzner.com/legal/privacy-policy"
+
+  # ---------------------------------------------------------------------------
+
+  - id: exoscale_ch_sovereign
+    name: "Exoscale (A1 / IRIDEOS Group)"
+    type: dedicated_sovereign
+    jurisdiction: CH
+    description: >
+      Swiss-sovereign cloud operated by Exoscale (A1 Group subsidiary). Infrastructure
+      in Switzerland and Austria. No US parent company at operating entity level.
+      Swiss jurisdiction means GDPR-equivalent (nFADP) applies; US data transfer
+      rules differ from EU. Suitable for Swiss market; EU-only constraints satisfied
+      by AT region. BSI C5 not pursued.
+
+    residency:
+      regions: [ch-gva-2, ch-dk2-1, at-vie-2, de-fra-1, bg-sof-1]
+      data_residency_guarantees:
+        - EU_only
+      notes: "CH region satisfies EU_only only if customer confirms Swiss adequacy decision coverage; AT region (Vienna) satisfies EU_only unconditionally"
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+      iso_27001:
+        status: certified
+        last_audited: "2023-07"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "EU SCCs + nFADP (Swiss) DPA available"
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: partial
+      bsi_c5: not_satisfied
+      dora: not_applicable
+      hipaa: not_applicable
+      pci_dss: not_assessed
+      nis2: not_assessed
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Exoscale Kubernetes Service (SKS)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Exoscale Database-as-a-Service -- PostgreSQL"
+        versions: ["13", "14", "15"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Exoscale Database-as-a-Service -- MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "Exoscale Database-as-a-Service -- Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Exoscale Object Storage (SOS)"
+      serverless:
+        available: false
+      ml_inference:
+        available: false
+      secrets_management:
+        available: false
+      container_registry:
+        available: true
+        service_name: "Exoscale Container Registry"
+      cdn:
+        available: false
+      byok_kms:
+        available: false
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Exoscale Network Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "Exoscale DNS"
+
+    meshstack_support:
+      supported: false
+      notes: "No meshStack integration as of 2026-04"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.90
+      exclusive_capabilities: []
+      proprietary_apis: []
+      data_egress_risk: low
+      notes: >
+        Exoscale uses S3-compatible object storage (SOS), standard Kubernetes (SKS),
+        and standard PostgreSQL/MySQL/Redis. No proprietary PaaS surface beyond
+        the control-plane API for provisioning (Exoscale v2 API). Migration away is
+        a standard data-move + manifest exercise. The main constraint is the narrow
+        service catalogue: workloads needing managed secrets, BYOK, or CDN must
+        introduce new tooling, but that tooling is provider-agnostic.
+
+    cost_tier: medium
+    sovereign_score: 0.60
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - no_us_parent_required
+      - swiss_market_preferred
+
+    not_suitable_for_signals:
+      - DE_only_residency
+      - bsi_c5_required
+      - ml_inference_sovereign
+      - byok_required
+      - meshstack_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://community.exoscale.com/documentation/"
+      - "https://www.exoscale.com/security/"
+
+  # ===========================================================================
+  # HYPERSCALER EU REGIONS -- major hyperscalers operating EU-located regions
+  # ===========================================================================
+
+  - id: azure_west_europe
+    name: "Microsoft Azure (West Europe -- Netherlands, North Europe -- Ireland)"
+    type: hyperscaler_eu_region
+    jurisdiction: IE
+    description: >
+      Microsoft Azure EU regions: West Europe (Amsterdam, NL) and North Europe (Dublin, IE).
+      US parent company (Microsoft Corp). GDPR DPA available; EU Data Boundary programme
+      covers many services. BSI C5 attested for IaaS + core PaaS only; broader PaaS
+      scope not attested. Broadest managed service catalogue of any provider in this list.
+      Suitable where full service coverage outweighs strict sovereignty requirements.
+
+    residency:
+      regions: [westeurope, northeurope, germanywestcentral, germanynorth]
+      data_residency_guarantees:
+        - EU_only
+      notes: >
+        germanywestcentral (Frankfurt) + germanynorth (Berlin) satisfy DE_only only
+        if customer explicitly constrains deployment to those regions AND enables
+        EU Data Boundary for all services in scope. This constraint requires
+        manual validation; SWAO engine cannot auto-confirm DE_only for Azure.
+
+    certifications:
+      bsi_c5:
+        status: attested
+        scope: "IaaS + core PaaS (Azure Compute, Storage, Networking, AAD). PaaS services outside core scope are not attested."
+        last_audited: "2024-09"
+        evidence_url: "https://servicetrust.microsoft.com/"
+      iso_27001:
+        status: certified
+        last_audited: "2024-03"
+      eucs_high:
+        status: in_progress
+        notes: "EU Data Boundary programme; EUCS High assessment announced"
+      gdpr_dpa:
+        status: available
+        notes: "Microsoft DPA + EU Standard Contractual Clauses; EU Data Boundary programme for data residency"
+      dora:
+        status: partial
+        notes: "Microsoft DORA whitepaper published; formal attestation pending"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: partial
+      dora: partial
+      hipaa: satisfied
+      pci_dss: satisfied
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Azure Kubernetes Service (AKS)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Azure Database for PostgreSQL -- Flexible Server"
+        versions: ["13", "14", "15", "16"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Azure Database for MySQL -- Flexible Server"
+      redis:
+        available: true
+        managed: true
+        service_name: "Azure Cache for Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: false
+        service_name: "Azure Blob Storage"
+        notes: "Azure-proprietary API; S3 compatibility via third-party gateway"
+      serverless:
+        available: true
+        managed: true
+        service_name: "Azure Functions"
+      ml_inference:
+        available: true
+        managed: true
+        service_name: "Azure AI Services (Language, Vision, OpenAI Service)"
+        notes: "Azure AI includes text analytics, medical entity extraction (alternative to Comprehend Medical)"
+      secrets_management:
+        available: true
+        service_name: "Azure Key Vault"
+      container_registry:
+        available: true
+        service_name: "Azure Container Registry (ACR)"
+      cdn:
+        available: true
+        managed: true
+        service_name: "Azure CDN / Azure Front Door"
+      byok_kms:
+        available: true
+        service_name: "Azure Key Vault -- Customer-Managed Keys (CMK)"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Azure Load Balancer / Application Gateway"
+      dns:
+        available: true
+        managed: true
+        service_name: "Azure DNS"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "azure-westeurope"
+      building_blocks_available: [kubernetes, postgresql, mysql, redis, networking, iam, secrets, object_storage, ml_inference]
+
+    vendor_lock_in:
+      overall_risk: high
+      portability_score: 0.45
+      exclusive_capabilities:
+        - capability: "Azure OpenAI Service (GPT-4, DALL-E via API)"
+          risk: high
+          note: "Azure-exclusive access to OpenAI models under enterprise terms. Migrating to self-hosted or alternative LLM requires model swap + prompt engineering rework."
+        - capability: "Microsoft Entra ID (Azure AD) -- Conditional Access, PIM, hybrid identity"
+          risk: high
+          note: "Entra ID advanced features (Conditional Access policies, Privileged Identity Management) use Azure-proprietary policy DSL. OIDC/SAML federation is portable; the control plane is not."
+        - capability: "Azure Front Door (global anycast WAF + CDN)"
+          risk: medium
+          note: "Front Door combines CDN, WAF, and global load balancing in one product. Decomposing to equivalent OSS stack requires multiple separate services."
+      proprietary_apis:
+        - service: object_storage
+          risk: high
+          migration_path: "Azure Blob Storage uses a proprietary REST API (not S3-compatible natively). Migration to S3 or S3-compatible storage requires data migration + full SDK rewrite. Rclone/AzCopy can move data but application code must change."
+        - service: serverless
+          risk: high
+          migration_path: "Azure Functions uses a proprietary trigger/binding model (Event Hub trigger, Cosmos DB change-feed trigger, etc.). Core HTTP triggers are portable; Azure-specific triggers require full rewrite."
+        - service: ml_inference
+          risk: high
+          migration_path: "Azure AI Services use a proprietary REST API with Azure-specific auth (APIM keys or Managed Identity). No open-standard alternative for medical entity extraction at comparable capability."
+        - service: cdn
+          risk: medium
+          migration_path: "Azure Front Door rules engine and WAF policies use Azure-specific configuration language. Migrating to Cloudflare or OVHcloud CDN requires policy rewrite."
+        - service: secrets_management
+          risk: medium
+          migration_path: "Azure Key Vault API is Azure-proprietary. Migrating to HashiCorp Vault or AWS Secrets Manager requires SDK swap + application config changes. Secrets themselves are portable (export/import)."
+      data_egress_risk: high
+      notes: >
+        Azure has the highest lock-in risk of any provider in this catalogue.
+        The combination of proprietary object storage API (Blob vs S3), proprietary
+        Functions trigger model, Entra ID advanced identity features, and Azure-specific
+        ARM/Bicep IaC means that a workload that uses Azure services beyond AKS and
+        PostgreSQL is accumulating lock-in debt with every service adopted.
+        AKS (standard K8s), Azure Database for PostgreSQL (standard wire protocol),
+        and Azure Cache for Redis (standard Redis protocol) are the portable anchors.
+        Everything else carries medium-to-high migration cost.
+
+    cost_tier: high
+    sovereign_score: 0.35
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - hipaa_required
+      - pci_dss_required
+      - broad_service_catalogue_required
+      - ml_inference_required
+      - global_cdn_required
+      - serverless_required
+
+    not_suitable_for_signals:
+      - no_us_parent_required
+      - bsi_c5_paas_required
+      - cost_sensitive
+      - low_vendor_lock_in_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://servicetrust.microsoft.com/"
+      - "https://docs.microsoft.com/en-us/azure/compliance/"
+      - "https://www.microsoft.com/en-us/trust-center/privacy/european-data-boundary-eudb"
+
+  # ---------------------------------------------------------------------------
+
+  - id: aws_eu_central_1
+    name: "Amazon Web Services (eu-central-1 Frankfurt)"
+    type: hyperscaler_eu_region
+    jurisdiction: DE
+    description: >
+      AWS EU region in Frankfurt, Germany. US parent company (Amazon.com Inc).
+      Infrastructure physically in Germany; legal and commercial entity is Amazon Web
+      Services EMEA SARL (Luxembourg) for EU customers. No BSI C5 attestation as of
+      2026-04. Broadest managed service catalogue of any cloud provider globally.
+      AWS Nitro System supports confidential computing. Suitable where service breadth
+      outweighs sovereignty requirements.
+
+    residency:
+      regions: [eu-central-1, eu-central-2]
+      data_residency_guarantees:
+        - EU_only
+      notes: >
+        eu-central-1 (Frankfurt DE) and eu-central-2 (Zurich CH) available.
+        Physical infrastructure in Germany; legal entity is AWS EMEA SARL (LU).
+        DE_only residency NOT confirmed by default -- CLOUD Act jurisdiction is US.
+        Schrems II compliance relies on AWS DPA + SCCs + Transfer Impact Assessment.
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+        notes: "AWS has not pursued BSI C5 Type II attestation as of 2026-04. SOC 2 Type II and ISO 27001 available."
+      iso_27001:
+        status: certified
+        last_audited: "2024-06"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "AWS DPA + EU SCCs; AWS Data Processing Addendum covers GDPR Art. 28"
+      dora:
+        status: partial
+        notes: "AWS DORA Financial Services whitepaper; formal attestation not published"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: not_satisfied
+      dora: partial
+      hipaa: satisfied
+      pci_dss: satisfied
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Amazon Elastic Kubernetes Service (EKS)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Amazon RDS for PostgreSQL / Aurora PostgreSQL"
+        versions: ["13", "14", "15", "16"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Amazon RDS for MySQL / Aurora MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "Amazon ElastiCache for Redis / MemoryDB for Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Amazon S3"
+      serverless:
+        available: true
+        managed: true
+        service_name: "AWS Lambda"
+      ml_inference:
+        available: true
+        managed: true
+        service_name: "Amazon Comprehend / Comprehend Medical / Amazon Bedrock"
+        notes: "Comprehend Medical available in eu-central-1; sovereign equivalent question for GDPR Art.9 health data remains"
+      secrets_management:
+        available: true
+        service_name: "AWS Secrets Manager"
+      container_registry:
+        available: true
+        service_name: "Amazon ECR (Elastic Container Registry)"
+      cdn:
+        available: true
+        managed: true
+        service_name: "Amazon CloudFront"
+        notes: "Global CDN; EU-only routing requires origin shield configuration"
+      byok_kms:
+        available: true
+        service_name: "AWS Key Management Service (KMS) -- Customer Managed Keys"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "AWS Application Load Balancer / Network Load Balancer"
+      dns:
+        available: true
+        managed: true
+        service_name: "Amazon Route 53"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "aws-eu-central-1"
+      building_blocks_available: [kubernetes, postgresql, mysql, redis, networking, iam, secrets, object_storage, ml_inference]
+
+    vendor_lock_in:
+      overall_risk: high
+      portability_score: 0.50
+      exclusive_capabilities:
+        - capability: "Amazon Comprehend Medical"
+          risk: critical
+          note: "The only managed medical NLP service available in eu-central-1 with HIPAA BAA. No equivalent exists on any EU sovereign provider. Workloads depending on Comprehend Medical CANNOT migrate to STACKIT, OTC, or any dedicated sovereign provider without a full ML rearchitect or self-hosted model deployment."
+        - capability: "Amazon Bedrock (foundation model API)"
+          risk: high
+          note: "AWS-exclusive managed foundation model API covering multiple LLM providers (Anthropic, Meta, Mistral) under AWS contract terms. No equivalent managed model gateway on EU sovereign providers."
+        - capability: "AWS PrivateLink ecosystem"
+          risk: medium
+          note: "PrivateLink allows private connectivity to 150+ AWS and partner services without internet exposure. The breadth of PrivateLink-connected SaaS partners has no equivalent on other providers."
+      proprietary_apis:
+        - service: serverless
+          risk: high
+          migration_path: "AWS Lambda uses a proprietary event source model (SQS trigger, DynamoDB streams, Kinesis trigger, S3 event notifications). HTTP-triggered functions (Lambda + API Gateway) are portable to Cloud Run or Azure Functions. Event-source-integrated functions require full rewrite of the trigger integration layer."
+        - service: ml_inference
+          risk: critical
+          migration_path: "Comprehend Medical API is AWS-proprietary. Alternative: deploy open-source clinical NLP model (e.g. medspaCy, Stanza) on Kubernetes. Effort: high. No managed alternative available on EU sovereign providers."
+        - service: cdn
+          risk: medium
+          migration_path: "CloudFront distribution configuration and Lambda@Edge functions are AWS-proprietary. Cache behaviour rules and geo-restriction configs require manual recreation on alternative CDN. Effort: medium."
+      data_egress_risk: high
+      notes: >
+        AWS lock-in is driven by two factors: (1) the breadth of proprietary managed services
+        that have no equivalent on EU sovereign providers (Comprehend Medical being the most
+        critical for health workloads), and (2) the IAM policy language (AWS JSON policy DSL)
+        which is deeply embedded in every multi-service architecture.
+        S3 has become a de-facto standard (all other providers implement S3-compatible APIs)
+        which means S3-based storage itself is NOT a lock-in risk -- but S3 event notifications
+        wired to Lambda ARE, because that integration is AWS-proprietary.
+        EKS (standard K8s), RDS PostgreSQL (standard wire protocol), and ElastiCache Redis
+        (standard Redis protocol) are the portable anchors. Lambda event integrations,
+        Comprehend Medical, and Bedrock are the primary lock-in surfaces.
+
+    cost_tier: high
+    sovereign_score: 0.25
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - hipaa_required
+      - pci_dss_required
+      - broad_service_catalogue_required
+      - ml_inference_required
+      - comprehend_medical_required
+      - global_cdn_required
+      - serverless_required
+      - us_jurisdiction_acceptable
+
+    not_suitable_for_signals:
+      - no_us_parent_required
+      - bsi_c5_required
+      - DE_only_residency
+      - cost_sensitive
+      - low_vendor_lock_in_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://aws.amazon.com/compliance/eu-data-protection/"
+      - "https://d1.awsstatic.com/whitepapers/compliance/GDPR_Compliance_in_AWS.pdf"
+      - "https://aws.amazon.com/security/compliance/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: aws_eu_sovereign
+    name: "Amazon Web Services European Sovereign Cloud (ESC)"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      AWS European Sovereign Cloud (ESC) is a distinct cloud offering operated by AWS Europe SAS,
+      a European entity incorporated in Luxembourg. Physically and operationally separated from
+      aws_eu_central_1. US CLOUD Act does not apply: operating entity is European, with EU-only
+      staff access controls. First region: Germany (de-eu-sov-1 or equivalent at GA).
+      Initial GA: 2026. Target sectors: BFSI, public sector, healthcare.
+
+    residency:
+      data_residency_guarantees:
+        - DE_only
+        - EU_only
+      notes: >
+        ESC first region is Germany. Operating entity is AWS Europe SAS (Luxembourg).
+        Data access limited to EU-based AWS staff. Technically and contractually separated
+        from aws_eu_central_1. DE_only guarantee is explicit in ESC contract terms.
+
+    certifications:
+      bsi_c5:
+        status: in_progress
+        notes: "BSI C5 Type II attestation planned for 2026; not yet issued as of 2026-04"
+      iso_27001:
+        status: certified
+      gdpr_dpa:
+        status: available
+        notes: "GDPR-compliant DPA via AWS Europe SAS; EU supervisory authority is Luxembourg CNPD"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: in_progress
+      hipaa: in_progress
+      dora: partial
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Amazon EKS (ESC)"
+        lock_in_risk: low
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Amazon RDS for PostgreSQL (ESC)"
+        lock_in_risk: low
+      redis:
+        available: true
+        managed: true
+        service_name: "Amazon ElastiCache for Redis (ESC)"
+        lock_in_risk: low
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Amazon S3 (ESC)"
+        lock_in_risk: low
+      serverless:
+        available: false
+        notes: "Lambda not available in ESC at GA (2026-04)"
+      ml_inference:
+        available: false
+        notes: "Bedrock / Comprehend Medical not available in ESC at GA (2026-04)"
+      secrets_management:
+        available: true
+        service_name: "AWS Secrets Manager (ESC)"
+        lock_in_risk: medium
+      byok_kms:
+        available: true
+        service_name: "AWS KMS (ESC) -- Customer Managed Keys"
+        lock_in_risk: medium
+      cdn:
+        available: false
+        notes: "CloudFront not available in ESC at GA (2026-04)"
+      container_registry:
+        available: true
+        service_name: "Amazon ECR (ESC)"
+        lock_in_risk: low
+      load_balancer:
+        available: true
+        service_name: "AWS Load Balancer (ESC)"
+        lock_in_risk: medium
+      dns:
+        available: true
+        service_name: "Amazon Route 53 (ESC region)"
+        lock_in_risk: medium
+      networking:
+        available: true
+        managed: true
+        service_name: "Amazon VPC (ESC)"
+
+    meshstack_support:
+      supported: false
+      notes: "meshStack integration for AWS ESC planned; not available as of 2026-04"
+
+    vendor_lock_in:
+      overall_risk: medium
+      portability_score: 0.60
+      exclusive_capabilities: []
+      proprietary_apis:
+        - service: secrets_management
+          risk: medium
+          migration_path: "Secrets Manager API is proprietary; migrate to Vault or k8s secrets"
+        - service: load_balancer
+          risk: medium
+          migration_path: "ALB/NLB annotations are AWS-specific; re-configure for target LB"
+      data_egress_risk: medium
+      notes: >
+        ESC service catalogue is a subset of aws_eu_central_1 at GA; proprietary API surface
+        is the same AWS SDK surface. Portability score matches aws_eu_central_1.
+
+    cost_tier: high
+    sovereign_score: 0.78
+
+    suitable_for_signals:
+      - DE_only_residency
+      - EU_only_residency
+      - gdpr_regulated
+      - bsi_c5_target
+      - high_compliance_required
+
+    last_reviewed: "2026-04-28"
+    review_required_by: "2026-10-01"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://aws.amazon.com/blogs/security/announcing-the-aws-european-sovereign-cloud/"
+      - "https://aws.amazon.com/compliance/eu-sovereign-cloud/"
+
+  # ---------------------------------------------------------------------------
+
+  - id: gcp_eu_regions
+    name: "Google Cloud Platform (EU regions)"
+    type: hyperscaler_eu_region
+    jurisdiction: IE
+    description: >
+      Google Cloud Platform EU multi-region and single regions. US parent company
+      (Alphabet Inc). EU regions: europe-west1 (BE), europe-west3 (DE Frankfurt),
+      europe-west4 (NL), europe-north1 (FI), europe-west9 (FR), europe-west10 (DE Berlin).
+      No BSI C5 attestation as of 2026-04. Data Residency Guarantees available via
+      GCP Data Regions commitments. Sovereign Controls add-on (Assured Workloads) for
+      regulated industries -- limited EU offering compared to US govcloud.
+
+    residency:
+      regions: [europe-west1, europe-west3, europe-west4, europe-north1, europe-west9, europe-west10]
+      data_residency_guarantees:
+        - EU_only
+      notes: >
+        europe-west3 (Frankfurt DE) and europe-west10 (Berlin DE) available for
+        DE-located infrastructure. DE_only NOT confirmed by default -- CLOUD Act
+        jurisdiction is US. Assured Workloads (Sovereignty Controls) add-on available
+        for some regulated workloads; does not constitute BSI C5 equivalent.
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+        notes: "GCP has not published a BSI C5 Type II attestation report as of 2026-04. ISO 27001 + SOC 2 available."
+      iso_27001:
+        status: certified
+        last_audited: "2024-06"
+      eucs_high:
+        status: in_progress
+        notes: "GCP European Sovereign Cloud announced for 2024-2025; EUCS engagement underway"
+      gdpr_dpa:
+        status: available
+        notes: "Google Cloud DPA + EU SCCs; Data Processing Addendum covers GDPR Art. 28"
+      dora:
+        status: partial
+        notes: "Google Cloud DORA whitepaper published; formal attestation pending"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: not_satisfied
+      dora: partial
+      hipaa: satisfied
+      pci_dss: satisfied
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Google Kubernetes Engine (GKE)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "Cloud SQL for PostgreSQL / AlloyDB"
+        versions: ["13", "14", "15", "16"]
+      mysql:
+        available: true
+        managed: true
+        service_name: "Cloud SQL for MySQL"
+      redis:
+        available: true
+        managed: true
+        service_name: "Memorystore for Redis"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: false
+        service_name: "Google Cloud Storage"
+        notes: "XML API is largely S3-compatible; native API is Google-proprietary"
+      serverless:
+        available: true
+        managed: true
+        service_name: "Cloud Functions / Cloud Run"
+      ml_inference:
+        available: true
+        managed: true
+        service_name: "Vertex AI / Healthcare Natural Language API"
+        notes: "Healthcare NLP available; sovereign data processing for EU requires Assured Workloads configuration"
+      secrets_management:
+        available: true
+        service_name: "Secret Manager"
+      container_registry:
+        available: true
+        service_name: "Artifact Registry"
+      cdn:
+        available: true
+        managed: true
+        service_name: "Cloud CDN"
+        notes: "Global CDN; EU-only routing via Cloud Armor + origin configuration"
+      byok_kms:
+        available: true
+        service_name: "Cloud KMS -- Customer-Managed Encryption Keys (CMEK)"
+      load_balancer:
+        available: true
+        managed: true
+        service_name: "Cloud Load Balancing"
+      dns:
+        available: true
+        managed: true
+        service_name: "Cloud DNS"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "gcp-europe-west3"
+      building_blocks_available: [kubernetes, postgresql, mysql, redis, networking, iam, secrets, object_storage, ml_inference]
+
+    vendor_lock_in:
+      overall_risk: high
+      portability_score: 0.48
+      exclusive_capabilities:
+        - capability: "BigQuery (serverless analytics warehouse)"
+          risk: critical
+          note: "BigQuery uses a Google-proprietary SQL dialect and columnar storage format. No equivalent managed analytics warehouse exists on any EU sovereign provider. Migrating off BigQuery requires data export + replatform to open-source (ClickHouse, DuckDB) or another cloud warehouse (Snowflake, Redshift). Effort: very high."
+        - capability: "Cloud Spanner (globally-distributed relational DB)"
+          risk: critical
+          note: "Spanner is the only managed globally-distributed relational database with external consistency. No equivalent on any other provider in this catalogue. Migration requires database redesign to CockroachDB (open-source) or sharded PostgreSQL."
+        - capability: "Vertex AI (managed ML training + prediction pipeline)"
+          risk: high
+          note: "Vertex AI pipelines, Feature Store, and Model Registry use Google-proprietary APIs. Kubeflow (open-source) is the portable alternative but requires self-hosting and pipeline rewrites."
+        - capability: "Healthcare Natural Language API"
+          risk: high
+          note: "GCP's medical entity extraction API. No equivalent managed service on EU sovereign providers. Migration to self-hosted clinical NLP required."
+      proprietary_apis:
+        - service: object_storage
+          risk: medium
+          migration_path: "Google Cloud Storage native JSON API is Google-proprietary. The XML API is largely S3-compatible but has edge cases (multi-part upload, object lock) that differ. Migrating to S3 or STACKIT Object Storage requires testing + SDK validation. Rclone can move data. Effort: low-medium."
+        - service: serverless
+          risk: medium
+          migration_path: "Cloud Functions (Gen 1) uses a Google-proprietary deployment model. Cloud Run (container-based) is more portable -- OCI containers run anywhere. Workloads using Cloud Run are substantially more portable than those using Cloud Functions with Pub/Sub triggers."
+        - service: ml_inference
+          risk: high
+          migration_path: "Vertex AI Prediction API and Healthcare NLP API are Google-proprietary. Open-source alternative for healthcare NLP: medspaCy or AWS Comprehend Medical (changes provider). Vertex AI prediction can be replaced by KServe on Kubernetes. Effort: high."
+        - service: cdn
+          risk: medium
+          migration_path: "Cloud Armor WAF policies and Cloud CDN cache configuration use GCP-specific resource models. Cloud Armor security policies are expressible in CEL (Common Expression Language) which is open; but the rule schema is GCP-specific."
+      data_egress_risk: high
+      notes: >
+        GCP lock-in is concentrated in data analytics and AI/ML. A workload that uses
+        only GKE + Cloud SQL + Cloud Storage + Secret Manager is relatively portable.
+        A workload that adds BigQuery, Pub/Sub, Vertex AI, or Spanner accumulates
+        severe lock-in that has no direct equivalent on any EU sovereign provider.
+        GCS XML API compatibility with S3 is partial and must be validated per use case.
+        Cloud Run is a portable bright spot: OCI-standard containers with HTTP
+        invocation are the most portable serverless execution model in the catalogue.
+        IAM is Google-proprietary (role bindings + Workload Identity Federation) but
+        the OIDC/SAML federation layer is standard.
+
+    cost_tier: high
+    sovereign_score: 0.28
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - hipaa_required
+      - pci_dss_required
+      - broad_service_catalogue_required
+      - ml_inference_required
+      - global_cdn_required
+      - serverless_required
+      - us_jurisdiction_acceptable
+
+    not_suitable_for_signals:
+      - no_us_parent_required
+      - bsi_c5_required
+      - DE_only_residency
+      - cost_sensitive
+      - low_vendor_lock_in_required
+
+    last_reviewed: "2026-04-28"
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://cloud.google.com/security/compliance/compliance-reports-manager"
+      - "https://cloud.google.com/assured-workloads/docs/eu-regions-and-support"
+      - "https://cloud.google.com/privacy"
+
+  - id: gridscale_de_sovereign
+    name: "gridscale"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      German-owned IaaS and PaaS provider headquartered in Cologne. Operates data centres
+      in Germany (Cologne, Hamburg) and the Netherlands. No US parent company.
+      Focuses on developer-friendly API-first infrastructure. BSI IT Grundschutz aligned;
+      ISO 27001 certified. Not a hyperscaler -- limited managed PaaS breadth.
+
+    residency:
+      regions: [cgn-01, ham-01, ams-01]
+      data_residency_guarantees:
+        - EU_only
+        - DE_only_on_request
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+        notes: "BSI IT Grundschutz alignment claimed; formal C5 Type II attestation not issued"
+      iso_27001:
+        status: certified
+        notes: "ISO 27001:2022 certified; scope covers all production data centres"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "GDPR-compliant DPA available; standard contract"
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: partial
+      dora: not_applicable
+      hipaa: not_satisfied
+      pci_dss: partial
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "gridscale Kubernetes Engine"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "gridscale Managed PostgreSQL"
+      mysql:
+        available: true
+        managed: true
+      redis:
+        available: true
+        managed: true
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+      networking:
+        available: true
+        managed: true
+      serverless:
+        available: false
+
+    meshstack_support:
+      supported: false
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.82
+      proprietary_apis:
+        - service: infrastructure
+          risk: low
+          migration_path: "gridscale uses a REST API for VM and network management. VMs run standard Linux images; migration to any other IaaS provider requires VM snapshot export and re-import. Effort: low."
+
+    cost_tier: low
+    sovereign_score: 0.78
+
+    suitable_for_signals:
+      - EU_only_residency
+      - DE_only_residency
+      - gdpr_regulated
+      - cost_sensitive
+
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://gridscale.io/en/compliance/"
+
+  - id: plusserver_de_sovereign
+    name: "PlusServer"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      German managed cloud provider (subsidiary of Deutsche Telekom) operating
+      ISO 27001-certified data centres in Germany. Offers GDPR-compliant managed
+      infrastructure, VMware-based private cloud, and sovereign OpenStack deployments.
+      Positioned as a "German sovereign cloud" alternative for regulated industries.
+      BSI C5 attestation in progress.
+
+    residency:
+      regions: [cologne, hamburg, frankfurt, nuremberg]
+      data_residency_guarantees:
+        - EU_only
+        - DE_only
+
+    certifications:
+      bsi_c5:
+        status: in_progress
+        notes: "BSI C5 Type II audit underway; expected completion 2026"
+      iso_27001:
+        status: certified
+        notes: "ISO 27001 certified; all DE data centres"
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "GDPR DPA with German-law governing clause available"
+      dora:
+        status: partial
+        notes: "Managed DORA compliance documentation available for financial sector clients"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: partial
+      dora: partial
+      hipaa: not_satisfied
+      pci_dss: partial
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "PlusServer Kubernetes Engine (OpenStack-based)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "PlusServer Managed Database PostgreSQL"
+      mysql:
+        available: true
+        managed: true
+      redis:
+        available: true
+        managed: false
+        notes: "Redis available via IaaS VM; no managed Redis service"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "PlusServer Object Storage (S3-compatible)"
+      networking:
+        available: true
+        managed: true
+      vmware:
+        available: true
+        managed: true
+        service_name: "PlusServer VMware Managed Cloud"
+
+    meshstack_support:
+      supported: false
+      notes: "meshStack integration roadmapped; not yet available"
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.80
+      proprietary_apis:
+        - service: vmware
+          risk: medium
+          migration_path: "VMware workloads require VM export (OVA/OVF) before migration to KVM-based cloud. Effort: medium. Container-based workloads are fully portable."
+
+    cost_tier: medium
+    sovereign_score: 0.82
+
+    suitable_for_signals:
+      - EU_only_residency
+      - DE_only_residency
+      - gdpr_regulated
+      - bsi_c5_required
+      - regulated_industry
+
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://www.plusserver.com/en/compliance/"
+
+  - id: contabo_de_managed
+    name: "Contabo"
+    type: managed_private
+    jurisdiction: DE
+    description: >
+      German-managed hosting provider (Munich, Germany) offering VPS, dedicated servers,
+      and basic cloud infrastructure. No US parent company. Extremely cost-competitive.
+      No managed PaaS (Kubernetes, PostgreSQL); no formal sovereignty certifications.
+      Suitable only for non-regulated, cost-sensitive workloads where self-managed
+      compliance is acceptable.
+
+    residency:
+      regions: [eu-de-muc, eu-de-fra, eu-es-mad, eu-gb-lon]
+      data_residency_guarantees:
+        - EU_only_on_request
+
+    certifications:
+      bsi_c5:
+        status: not_assessed
+      iso_27001:
+        status: not_assessed
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "Basic GDPR DPA available"
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: partial
+      bsi_c5: not_satisfied
+      dora: not_applicable
+      hipaa: not_satisfied
+      pci_dss: not_satisfied
+      nis2: not_assessed
+
+    services:
+      kubernetes:
+        available: false
+      postgresql:
+        available: false
+      mysql:
+        available: false
+      redis:
+        available: false
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "Contabo Object Storage (S3-compatible)"
+      networking:
+        available: true
+        managed: false
+
+    meshstack_support:
+      supported: false
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.90
+      notes: "Standard IaaS VMs; minimal lock-in. Data export is simple."
+
+    cost_tier: low
+    sovereign_score: 0.62
+
+    suitable_for_signals:
+      - EU_only_residency
+      - cost_sensitive
+
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://contabo.com/en/legal/gdpr/"
+
+  - id: t_systems_de_sovereign
+    name: "T-Systems Open Telekom Cloud (OTC) -- Deutsche Telekom Sovereign"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      T-Systems International (wholly owned Deutsche Telekom subsidiary) offers a
+      sovereign variant of Open Telekom Cloud (OTC) with enhanced compliance features
+      for German federal government and regulated industries. BSI C5 Type II attested.
+      This entry covers the T-Systems Sovereign variant; the base OTC entry covers
+      the standard public cloud.
+
+    residency:
+      regions: [eu-de-fra, eu-de-muc]
+      data_residency_guarantees:
+        - DE_only
+
+    certifications:
+      bsi_c5:
+        status: attested
+        notes: "BSI C5 Type II attestation; current report available from T-Systems on request"
+      iso_27001:
+        status: certified
+      eucs_high:
+        status: in_progress
+      gdpr_dpa:
+        status: available
+        notes: "Federal-grade GDPR DPA available; complies with German state IT procurement requirements"
+      dora:
+        status: partial
+        notes: "DORA-readiness documentation available; full DORA certification in progress"
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: satisfied
+      dora: partial
+      hipaa: partial
+      pci_dss: satisfied
+      nis2: satisfied
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "Cloud Container Engine (CCE)"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "RDS for PostgreSQL"
+      mysql:
+        available: true
+        managed: true
+      redis:
+        available: true
+        managed: true
+        service_name: "Distributed Cache Service (Redis-compatible)"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "OBS (Object Storage Service)"
+      networking:
+        available: true
+        managed: true
+      serverless:
+        available: true
+        managed: true
+        service_name: "FunctionGraph"
+
+    meshstack_support:
+      supported: true
+      platform_identifier: "otc-sovereign"
+      building_blocks_available: [kubernetes, postgresql, networking, object_storage, iam]
+
+    vendor_lock_in:
+      overall_risk: medium
+      portability_score: 0.72
+      proprietary_apis:
+        - service: object_storage
+          risk: low
+          migration_path: "OBS is S3-compatible; migration to STACKIT or AWS S3 is straightforward with rclone."
+        - service: serverless
+          risk: medium
+          migration_path: "FunctionGraph is OpenFaaS-compatible for simple functions; complex workflows require rewrite."
+
+    cost_tier: high
+    sovereign_score: 0.90
+
+    suitable_for_signals:
+      - EU_only_residency
+      - DE_only_residency
+      - gdpr_regulated
+      - bsi_c5_required
+      - federal_government
+      - regulated_industry
+      - dora_required
+
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://www.t-systems.com/de/en/cloud/sovereign-cloud"
+
+  - id: ionos_eu_cloud
+    name: "IONOS Enterprise Cloud"
+    type: dedicated_sovereign
+    jurisdiction: DE
+    description: >
+      IONOS (1&1 IONOS SE, Montabaur Germany) operates the IONOS Enterprise Cloud across
+      European data centres. German-listed company; no US parent company.
+      Offers managed Kubernetes (DCDM), managed databases, and S3-compatible object storage.
+      ISO 27001 certified; BSI C5 attestation in progress. Suitable for EU-regulated
+      workloads that do not require existing BSI C5 certification.
+      Note: this entry is the Enterprise Cloud variant; the standard IONOS entry covers
+      the VPS / shared hosting tier (ionos_de_sovereign).
+
+    residency:
+      regions: [de-txl, de-fra, es-vit, gb-lhr, fr-par, us-ewr]
+      data_residency_guarantees:
+        - EU_only_on_request
+      notes: "Select EU-only data centres explicitly; us-ewr must be excluded for EU-only configs"
+
+    certifications:
+      bsi_c5:
+        status: in_progress
+        notes: "BSI C5 audit in progress; targeted Q4 2026"
+      iso_27001:
+        status: certified
+      eucs_high:
+        status: not_assessed
+      gdpr_dpa:
+        status: available
+        notes: "GDPR DPA available; compliant with Art. 28 GDPR"
+      dora:
+        status: not_assessed
+
+    compliance_regime_coverage:
+      gdpr: satisfied
+      bsi_c5: partial
+      dora: not_applicable
+      hipaa: not_satisfied
+      pci_dss: partial
+      nis2: partial
+
+    services:
+      kubernetes:
+        available: true
+        managed: true
+        service_name: "IONOS Kubernetes Engine"
+      postgresql:
+        available: true
+        managed: true
+        service_name: "IONOS DBaaS PostgreSQL"
+      mysql:
+        available: true
+        managed: true
+        service_name: "IONOS DBaaS MySQL"
+      redis:
+        available: false
+        notes: "No managed Redis; self-host on IaaS"
+      object_storage:
+        available: true
+        managed: true
+        s3_compatible: true
+        service_name: "IONOS Object Storage (S3-compatible)"
+      networking:
+        available: true
+        managed: true
+      serverless:
+        available: false
+
+    meshstack_support:
+      supported: false
+
+    vendor_lock_in:
+      overall_risk: low
+      portability_score: 0.84
+      notes: "Strong S3 compatibility and standard Kubernetes. Low lock-in for cloud-native workloads."
+
+    cost_tier: low
+    sovereign_score: 0.76
+
+    suitable_for_signals:
+      - EU_only_residency
+      - gdpr_regulated
+      - cost_sensitive
+
+    last_updated: "2026-04-28"
+    review_sources:
+      - "https://cloud.ionos.de/managed-kubernetes"
+      - "https://cloud.ionos.de/object-storage"

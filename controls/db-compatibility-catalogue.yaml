@@ -1,0 +1,164 @@
+# db-compatibility-catalogue.yaml
+# SWAO runtime asset -- Database Engine Compatibility Matrix
+# Used by Pass 19 (Database Migration Assessment) to classify migration effort.
+# Schema: engine, version_range, target_managed_service, compatibility, effort, notes, sovereign_availability
+#
+# compatibility values: supported | migration_required | complex | not_available
+# effort values: trivial | low | moderate | high | very_high
+# sovereign_availability: available | partial | vm_only | not_available
+
+engines:
+
+  - engine: postgres
+    version_range: ">=15"
+    target_managed_service:
+      - "STACKIT PostgreSQL"
+      - "OTC RDS PostgreSQL (v15)"
+      - "Ionos Managed PostgreSQL"
+      - "OVHcloud Public Cloud Databases"
+    compatibility: supported
+    effort: low
+    sovereign_availability: available
+    notes: "Modern PG versions supported on all major sovereign providers. STACKIT SKE + CloudNativePG is the recommended deployment pattern."
+
+  - engine: postgres
+    version_range: ">=12,<15"
+    target_managed_service:
+      - "OTC RDS PostgreSQL"
+      - "STACKIT PostgreSQL"
+    compatibility: supported
+    effort: trivial
+    sovereign_availability: available
+    notes: "All versions >=12 supported. No breaking changes in minor version upgrades within 12-15 range for standard SQL workloads."
+
+  - engine: postgres
+    version_range: "<12"
+    target_managed_service:
+      - "None -- requires upgrade before cloud migration"
+    compatibility: migration_required
+    effort: moderate
+    sovereign_availability: partial
+    notes: "PG <12 predates logical replication (PG 10+). Upgrade to PG 15 recommended before cloud migration. WAL streaming requires PG 10+."
+
+  - engine: mysql
+    version_range: ">=8.0"
+    target_managed_service:
+      - "OTC RDS MySQL 8.0"
+      - "Ionos Managed MySQL"
+    compatibility: supported
+    effort: low
+    sovereign_availability: available
+    notes: "MySQL 8.0 widely available on sovereign providers. MariaDB is a compatible alternative."
+
+  - engine: mysql
+    version_range: ">=5.7,<8.0"
+    target_managed_service:
+      - "OTC RDS MySQL 5.7"
+    compatibility: supported
+    effort: low
+    sovereign_availability: partial
+    notes: "MySQL 5.7 EOL as of 2023. Recommend upgrade to 8.0. OTC supports 5.7 but no new instances."
+
+  - engine: mariadb
+    version_range: ">=10.6"
+    target_managed_service:
+      - "OTC RDS MariaDB"
+      - "Ionos Managed MySQL (MariaDB-compatible)"
+    compatibility: supported
+    effort: low
+    sovereign_availability: available
+    notes: "MariaDB is MySQL-compatible. Most sovereign managed MySQL services accept MariaDB clients."
+
+  - engine: mongodb
+    version_range: ">=5.0"
+    target_managed_service:
+      - "Self-hosted on sovereign IaaS (MongoDB Community)"
+    compatibility: complex
+    effort: moderate
+    sovereign_availability: partial
+    notes: "No sovereign-managed MongoDB service available (MongoDB Atlas is US-controlled SaaS). Self-hosted MongoDB on OTC/STACKIT CCE is the sovereign option. SSPL licence does not permit hosting MongoDB as a managed service. Consider document store alternatives: FerretDB (PostgreSQL-backed, MIT-licensed)."
+
+  - engine: mongodb
+    version_range: "<5.0"
+    target_managed_service:
+      - "Self-hosted on sovereign IaaS"
+    compatibility: complex
+    effort: high
+    sovereign_availability: partial
+    notes: "Old MongoDB versions below 5.0 not supported by FerretDB. Upgrade to 5.0+ or migrate to FerretDB first."
+
+  - engine: redis
+    version_range: ">=7.0"
+    target_managed_service:
+      - "STACKIT Redis"
+      - "OTC DCS Valkey (wire-compatible)"
+      - "Ionos Managed Redis"
+    compatibility: supported
+    effort: trivial
+    sovereign_availability: available
+    notes: "Redis 7.x has RSAL licence. OTC DCS uses Valkey (BSD-2-Clause); wire-protocol compatible with Redis 7. ioredis and Bull/BullMQ clients are Valkey-compatible."
+
+  - engine: redis
+    version_range: ">=6.0,<7.0"
+    target_managed_service:
+      - "STACKIT Redis"
+      - "OTC DCS Redis 6"
+    compatibility: supported
+    effort: trivial
+    sovereign_availability: available
+    notes: "Redis 6 BSL-licenced but sovereign managed instances available."
+
+  - engine: oracle
+    version_range: ">=19"
+    target_managed_service:
+      - "VM-based BYOL on OTC/STACKIT IaaS"
+    compatibility: complex
+    effort: very_high
+    sovereign_availability: vm_only
+    notes: "Oracle DB has no sovereign managed service equivalent. BYOL required on cloud VMs. Licensing cost significant. Migration alternatives: PostgreSQL (data and procedure rewrite), Aurora PostgreSQL (non-sovereign). Open source migration path requires stored procedure rewrite."
+
+  - engine: oracle
+    version_range: ">=11,<19"
+    target_managed_service:
+      - "VM-based BYOL on IaaS"
+    compatibility: complex
+    effort: very_high
+    sovereign_availability: vm_only
+    notes: "Pre-19c Oracle on cloud VMs is BYOL. 11g/12c Extended Support ended. Upgrade path before migration strongly recommended."
+
+  - engine: sqlserver
+    version_range: ">=2019"
+    target_managed_service:
+      - "VM-based BYOL on OTC/STACKIT IaaS"
+    compatibility: partial
+    effort: high
+    sovereign_availability: vm_only
+    notes: "Azure SQL Managed Instance is the managed alternative but is non-sovereign. OTC/STACKIT have no managed SQL Server. VM BYOL is the only sovereign option. Stored procedure portability to PostgreSQL requires manual rewrite."
+
+  - engine: sqlserver
+    version_range: ">=2016,<2019"
+    target_managed_service:
+      - "VM-based BYOL on IaaS"
+    compatibility: partial
+    effort: high
+    sovereign_availability: vm_only
+    notes: "SQL Server 2016/2017 mainstream support ended. BYOL on sovereign IaaS is feasible."
+
+  - engine: ibm_db2
+    version_range: ">=11"
+    target_managed_service:
+      - "VM-based BYOL on IaaS"
+    compatibility: complex
+    effort: very_high
+    sovereign_availability: vm_only
+    notes: "IBM Db2 has no sovereign managed cloud equivalent. BYOL on IaaS feasible but licensing complex. Migration to PostgreSQL recommended for new deployments."
+
+  - engine: elasticsearch
+    version_range: ">=8.0"
+    target_managed_service:
+      - "Self-hosted on sovereign IaaS"
+      - "OTC Cloud Search Service (OpenSearch)"
+    compatibility: partial
+    effort: moderate
+    sovereign_availability: partial
+    notes: "Elasticsearch 7.x+ uses SSPL/ELv2 (non-OSS). OpenSearch (Apache 2.0 fork) is sovereign-compatible and wire-compatible for most use cases. AWS OpenSearch (non-sovereign) or self-hosted OpenSearch on OTC are the main options."

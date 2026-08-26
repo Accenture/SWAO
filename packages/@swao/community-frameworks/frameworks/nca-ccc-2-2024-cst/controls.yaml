@@ -1,0 +1,530 @@
+# SWAO community framework controls (design 029 §2.4 + §11)
+# NCA CCC-2:2024 Cloud Service Tenant (CST) -- 18 controls.
+# Source: NCA CCC-2:2024 English PDF (T-notation controls).
+# Sprint-100 #1133 -- authored 2026-07-18.
+
+regime_meta:
+  id: NCA_CCC_CST
+  name: "NCA Cloud Cybersecurity Controls (CCC-2:2024) -- Cloud Service Tenant"
+  version: "CCC-2:2024"
+  authority: "National Cybersecurity Authority (NCA), Kingdom of Saudi Arabia"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-18"
+  catalogue_version: "1.0.0"
+  signal_prefix: NCA_CCC_CST
+  last_reviewed: "2026-07-18"
+  applicability_hints:
+    - ksa_regulated_entity
+    - cloud_workload
+    - cloud_tenant
+    - saas_workload
+  source_sha256: ""
+
+controls:
+
+  - id: NCA_CCC_CST_01
+    pillar: "Domain 1 -- Cloud Cybersecurity Governance, 1-1 Cybersecurity Roles and Responsibilities"
+    title: "Cybersecurity Roles and RACI for Cloud Services"
+    description: >-
+      In addition to ECC control 1-4-1, the Authorizing Official of the CST
+      shall identify, document, and approve cybersecurity roles and RACI
+      assignments for all stakeholders of cloud services, including the
+      Authorizing Official's own roles and responsibilities.
+    severity_default: medium
+    evidence_basis:
+      - context_input: "evidence/cst-01-roles-raci.md"
+    references:
+      - "NCA CCC-2:2024 CST control 1-1-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_1-4-1
+      - ISO_27001_A.6.1.1
+    remediation: >-
+      Document a RACI matrix covering all cloud service roles including cloud
+      administrators, security managers, and the Authorizing Official. Review
+      and update the matrix whenever cloud service subscriptions change.
+    tags:
+      - domain.governance
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_02
+    pillar: "Domain 1 -- Cloud Cybersecurity Governance, 1-2 Cybersecurity Risk Management"
+    title: "Cybersecurity Risk Management for Cloud Services"
+    description: >-
+      In addition to ECC Subdomain 1-5, the CST cybersecurity risk management
+      methodology shall: define acceptable risk levels for cloud services;
+      incorporate data and information classification levels in the methodology;
+      and develop and periodically monitor a cybersecurity risk register for
+      cloud services.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-02-risk-management.md"
+    references:
+      - "NCA CCC-2:2024 CST control 1-2-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_1-5
+      - ISO_27001_Clause_6.1
+    remediation: >-
+      Extend the organisational risk register to include cloud-specific risks.
+      Define explicit risk acceptance thresholds for cloud workloads at each
+      data classification level (Level 1 Top Secret through Level 4 Public).
+      Schedule periodic reviews no less than annually.
+    tags:
+      - domain.governance
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_03
+    pillar: "Domain 1 -- Cloud Cybersecurity Governance, 1-3 Compliance with Cybersecurity Standards, Laws, and Regulations"
+    title: "Continuous Compliance Monitoring of the Cloud Service Provider"
+    description: >-
+      In addition to ECC control 1-7-1, the CST legislative and regulatory
+      compliance programme shall include continuous or real-time monitoring of
+      the CSP's compliance with relevant cybersecurity legislation and with the
+      contractual clauses governing the cloud service.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-03-csp-compliance-monitoring.md"
+    references:
+      - "NCA CCC-2:2024 CST control 1-3-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_1-7-1
+      - ISO_27001_A.5.31
+    remediation: >-
+      Establish a supplier compliance monitoring programme covering the CSP.
+      Review CSP compliance certifications, third-party audit reports, and
+      contractual SLAs at least annually or on notification of a material
+      change. Document evidence of continuous monitoring.
+    tags:
+      - domain.governance
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_04
+    pillar: "Domain 1 -- Cloud Cybersecurity Governance, 1-4 Cybersecurity in Human Resources"
+    title: "Pre-Employment Screening for Cloud-Sensitive Functions"
+    description: >-
+      In addition to ECC control 1-9-3, the CST shall screen or vet candidates
+      for personnel positions that carry access to cloud service sensitive
+      functions -- specifically key management, service administration, and
+      access control -- prior to the commencement of the professional
+      relationship.
+    severity_default: medium
+    evidence_basis:
+      - context_input: "evidence/cst-04-hr-screening.md"
+    references:
+      - "NCA CCC-2:2024 CST control 1-4-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_1-9-3
+      - ISO_27001_A.6.1
+    remediation: >-
+      Define which internal roles constitute cloud-sensitive functions (key
+      management, cloud administration, access control). Apply formal background
+      screening to those roles before granting access. Retain screening records.
+    tags:
+      - domain.governance
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_05
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-1 Asset Management"
+    title: "Inventory of Cloud Services and Related Technology Assets"
+    description: >-
+      In addition to ECC control 2-1, the CST shall maintain an inventory of
+      all cloud services in use and all information and technology assets
+      related to those cloud services.
+    severity_default: medium
+    evidence_basis:
+      - context_input: "evidence/cst-05-cloud-asset-inventory.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-1-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-1
+      - ISO_27001_A.5.9
+    remediation: >-
+      Maintain a cloud asset register listing each cloud service, its data
+      classification level, named owner, and associated technical assets.
+      Update the register upon any subscription change or decommission.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_06
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-2 Identity and Access Management"
+    title: "Identity and Access Management for Cloud Credentials"
+    description: >-
+      In addition to ECC control 2-2-3, the CST shall: manage all cloud
+      credentials across their full lifecycle; maintain confidentiality of
+      cloud user identifications, credentials, and access rights (requiring
+      users to keep them private); implement secure session management covering
+      session authenticity, lockout thresholds, and timeout termination; enforce
+      multi-factor authentication for privileged cloud users; and maintain a
+      formal process to detect and prevent unauthorised access, such as a
+      threshold on unsuccessful login attempts.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "NCA CCC-2:2024 CST control 2-2-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-2-3
+      - ISO_27001_A.5.15
+      - ISO_27001_A.5.16
+      - ISO_27001_A.5.17
+      - ISO_27001_A.8.5
+    remediation: >-
+      Implement an identity governance tool to manage cloud credential
+      lifecycle. Enable MFA on all privileged cloud accounts. Set account
+      lockout policies after a configured number of failed attempts. Review
+      and recertify access rights at least quarterly.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_07
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-3 Information System and Information Processing Facilities Protection"
+    title: "Verification of Community Cloud Isolation"
+    description: >-
+      In addition to ECC control 2-3-3, the CST shall verify that the CSP
+      isolates community cloud services provided to government entities and
+      Critical National Infrastructure (CNI) entities from any other cloud
+      computing provided to entities outside the scope of CCC-2:2024.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-07-community-cloud-isolation.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-3-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-3-3
+      - ISO_27001_A.8.22
+    remediation: >-
+      Obtain and review the CSP's isolation architecture documentation.
+      Verify via contractual clauses or third-party audit reports that
+      government and CNI tenant workloads are logically isolated from
+      commercial cloud tenants outside the CCC scope.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_08
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-4 Networks Security Management"
+    title: "Protection of the Connection Channel with the Cloud Service Provider"
+    description: >-
+      In addition to ECC control 2-5-3, the CST shall protect the connection
+      channel between the CST environment and the cloud service provider.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-08-csp-connection-security.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-4-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-5-3
+      - ISO_27001_A.8.20
+    remediation: >-
+      Implement encrypted and authenticated connectivity (e.g., TLS 1.2 or
+      higher, or a dedicated VPN) for all traffic between the CST environment
+      and the cloud provider. Prohibit unencrypted administrative access to
+      cloud resources over the public internet.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_09
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-5 Mobile Devices Security"
+    title: "Data Sanitation and Secure Disposal of End-User Devices with Cloud Access"
+    description: >-
+      In addition to ECC control 2-6-3, the CST shall apply data sanitation
+      and secure disposal procedures for end-user devices that have access to
+      cloud services.
+    severity_default: medium
+    evidence_basis:
+      - context_input: "evidence/cst-09-mobile-device-disposal.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-5-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-6-3
+      - ISO_27001_A.7.14
+    remediation: >-
+      Define a device decommissioning procedure for any device used to access
+      cloud services. Require certified data wiping or physical destruction of
+      storage media before device reuse or disposal.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_10
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-6 Data and Information Protection"
+    title: "Cloud Data Exit Strategy and Secure Transfer"
+    description: >-
+      In addition to ECC control 2-7-3, the CST shall maintain an exit strategy
+      to ensure the secure disposal of CST data on termination or expiry of the
+      contract with the CSP, and shall use secure means to export and transfer
+      data and virtual infrastructure throughout the contract lifetime.
+    severity_default: critical
+    evidence_basis:
+      - context_input: "evidence/cst-10-data-exit-strategy.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-6-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-7-3
+      - ISO_27001_A.5.33
+    remediation: >-
+      Document a cloud exit strategy covering data export procedures, certified
+      deletion verification timelines, and migration contingency plans. Confirm
+      the CSP contract includes data portability and certified deletion clauses.
+      Test the exit procedure at least annually.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_11
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-7 Cryptography"
+    title: "Cryptographic Standards for Cloud Data Protection"
+    description: >-
+      In addition to ECC control 2-8-3, the CST shall implement technical
+      mechanisms and cryptographic primitives for strong encryption in
+      accordance with the advanced level of the National Cryptographic
+      Standards (NCS-1:2020), and shall encrypt all data transferred to or
+      from the cloud in accordance with relevant legal and regulatory
+      requirements in the Kingdom of Saudi Arabia.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "NCA CCC-2:2024 CST control 2-7-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-8-3
+      - ISO_27001_A.8.24
+    remediation: >-
+      Apply NCS-1:2020 advanced-level cryptographic algorithms for all data at
+      rest and in transit within cloud environments. Enforce TLS 1.2 or higher
+      for all cloud connectivity. Maintain a cryptographic standards register
+      aligned with NCS-1:2020 and review it when the standard is updated.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_12
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-9 Vulnerabilities Management"
+    title: "Vulnerability Assessment and Remediation for Cloud Services"
+    description: >-
+      In addition to ECC control 2-10-3, the CST shall assess and remediate
+      vulnerabilities in cloud services at least once every three months, and
+      shall manage vulnerabilities notified by the CSP by ensuring that the
+      relevant safeguards are implemented.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-12-vulnerability-management.md"
+    references:
+      - "NCA CCC-2:2024 CST control 2-9-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-10-3
+      - ISO_27001_A.8.8
+    remediation: >-
+      Schedule quarterly vulnerability scans of all cloud-hosted workloads.
+      Establish a process to receive and action CSP vulnerability notifications
+      within defined remediation SLAs. Track and document all remediation
+      actions to evidence the quarterly cycle.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_13
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-11 Cybersecurity Event Logs and Monitoring Management"
+    title: "Cloud Service Log Collection and Monitoring"
+    description: >-
+      In addition to ECC control 2-12-3, the CST shall activate and collect
+      login event logs and cybersecurity event logs on all assets related to
+      cloud services, and shall monitor all activated cybersecurity logs across
+      the CST's cloud services.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    references:
+      - "NCA CCC-2:2024 CST control 2-11-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-12-3
+      - ISO_27001_A.8.15
+      - ISO_27001_A.8.16
+    remediation: >-
+      Enable cloud-native logging services (e.g., CloudTrail, Azure Monitor,
+      GCP Cloud Logging) for all cloud accounts and subscriptions. Integrate
+      cloud logs into the SIEM. Define alert rules for anomalous login events,
+      privilege escalation, and unexpected configuration changes.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_14
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-15 Key Management"
+    title: "Key Management Policy -- Identification and Documentation"
+    description: >-
+      The CST shall identify, document, and obtain approval for the
+      cybersecurity requirements governing its key management process for
+      cryptographic keys used in cloud services.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "NCA CCC-2:2024 CST control 2-15-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-8-3-2
+      - ISO_27001_A.8.24
+    remediation: >-
+      Produce a formal key management policy document covering key generation,
+      storage, rotation, revocation, and destruction for all cloud-resident
+      cryptographic keys. Obtain sign-off from the Authorizing Official and
+      retain a version-controlled record.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_15
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-15 Key Management"
+    title: "Key Management Policy -- Implementation"
+    description: >-
+      The CST shall apply the documented cybersecurity requirements for key
+      management within the cloud environment.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "NCA CCC-2:2024 CST control 2-15-T-2"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-8-3-2
+      - ISO_27001_A.8.24
+    remediation: >-
+      Deploy key management controls in line with the approved key management
+      policy. Use a cloud key management service or hardware security module
+      (HSM) for storing cryptographic keys. Verify that operational controls
+      match the documented policy.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_16
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-15 Key Management"
+    title: "Key Management -- Technical Requirements"
+    description: >-
+      In addition to ECC Subcontrol 2-8-3-2, the CST shall ensure well-defined
+      ownership for all cryptographic keys, and shall implement a secure data
+      retrieval mechanism in case of encryption key loss -- for example, key
+      backups stored in a trusted key store that is strictly external to the
+      cloud environment.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "NCA CCC-2:2024 CST control 2-15-T-3"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-8-3-2
+      - ISO_27001_A.8.24
+    remediation: >-
+      Assign named owners to all cryptographic keys. Implement key backup
+      procedures to an offline or out-of-cloud trusted key store. Document
+      and test key recovery procedures at least annually and after each key
+      rotation event.
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_17
+    pillar: "Domain 2 -- Cloud Cybersecurity Defense, 2-15 Key Management"
+    title: "Key Management Policy -- Periodic Review"
+    description: >-
+      The CST shall apply key management requirements and review them
+      periodically to ensure they remain current and effective.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "NCA CCC-2:2024 CST control 2-15-T-4"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_2-8-3-2
+      - ISO_27001_A.8.24
+    remediation: >-
+      Schedule an annual review of the key management policy and associated
+      controls. Update key management requirements in response to changes in
+      cloud architecture, data classification levels, or cryptographic standards
+      (NCS-1:2020 revisions).
+    tags:
+      - domain.defense
+      - role.cloud-tenant
+      - applies-to.ksa-regulated
+
+  - id: NCA_CCC_CST_18
+    pillar: "Domain 3 -- Cloud Cybersecurity Resilience, 3-1 Cybersecurity Resilience Aspects of Business Continuity Management (BCM)"
+    title: "Cloud Disaster Recovery and Business Continuity"
+    description: >-
+      In addition to ECC control 3-1-3, the CST shall develop and implement
+      disaster recovery and business continuity procedures related to cloud
+      computing in a secure manner.
+    severity_default: high
+    evidence_basis:
+      - context_input: "evidence/cst-18-cloud-bcm.md"
+    references:
+      - "NCA CCC-2:2024 CST control 3-1-T-1"
+      - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"
+    overrides: []
+    maps_to:
+      - NCA_ECC_3-1-3
+      - ISO_27001_A.5.29
+      - ISO_27001_A.5.30
+    remediation: >-
+      Develop a cloud-specific business continuity and disaster recovery plan
+      covering loss of cloud services, data availability targets, and service
+      restoration procedures. Test the plan at least annually and update it
+      after significant cloud infrastructure changes.
+    tags:
+      - domain.resilience
+      - role.cloud-tenant
+      - applies-to.ksa-regulated

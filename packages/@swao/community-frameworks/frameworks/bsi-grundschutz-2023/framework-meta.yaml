@@ -1,0 +1,90 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+#
+# BSI IT-Grundschutz Kompendium Edition 2023 -- workload-relevant subset
+# packaged as a SWAO community framework.
+#
+# The Kompendium is published by the German Federal Office for Information
+# Security (BSI) and is freely available for download under the BSI's terms
+# of use. Control descriptions paraphrase the requirement text from the
+# Edition 2023 publication for SWAO machine ingestion.
+#
+# Severity mapping applied to this catalogue:
+#   Basis (B)           -- high   (mandatory baseline requirements)
+#   Standard (S)        -- medium (standard requirements; recommended)
+#   Hoher Schutzbedarf  -- excluded from v0.1.0; manual review only
+#
+# v0.2.0 scope: 105 controls across 27 Bausteine drawn from ISMS, ORP, CON,
+# OPS, DER, APP, SYS, and NET layers. 72 Basis (B) + 33 Standard (S) requirements.
+
+framework:
+  id: BSI_GRUNDSCHUTZ_2023
+  name: "BSI IT-Grundschutz Kompendium Edition 2023"
+  version: "Edition 2023 (published January 2023)"
+  authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - german_public_sector
+    - regulated_industry
+    - cloud_workload
+    - on_premise
+    - critical_infrastructure
+    - sovereign_cloud
+    - iso_27001_aligned
+    - bsi_certified
+  description: >-
+    BSI IT-Grundschutz Kompendium Edition 2023 packaged as a SWAO community
+    framework. The Kompendium is the German Federal Office for Information
+    Security's (BSI) systematic methodology for establishing, implementing,
+    and continually improving information security. Edition 2023 organises
+    111 Bausteine (building blocks) across 10 Schichten (layers): ISMS,
+    ORP, CON, OPS, DER, APP, SYS, IND, NET, and INF.
+
+    This catalogue covers the workload-applicable scope: 105 controls drawn
+    from 27 Bausteine across ISMS, ORP, CON, OPS, DER, APP, SYS, and NET
+    layers. v0.2.0 ships 72 mandatory Basis (B) and 33 recommended Standard
+    (S) requirements. Hoher Schutzbedarf (H) requirements are excluded from
+    automated assessment and must be addressed through manual expert review.
+
+    Severity mapping: Basis (B) -> high; Standard (S) -> medium;
+    Hoher Schutzbedarf (H) -> excluded.
+  references:
+    - "https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/IT-Grundschutz/IT-Grundschutz-Kompendium/it-grundschutz-kompendium_node.html"
+    - "https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Grundschutz/International/bsi_it_gs_comp_2023.html"
+    - "BSI-Standard 200-1: Information Security Management Systems (ISMS)"
+    - "BSI-Standard 200-2: IT-Grundschutz Methodology"
+    - "BSI-Standard 200-3: Risk Analysis based on IT-Grundschutz"
+  catalogue_version: "0.2.0"
+  last_reviewed: "2026-07-08"
+
+  signal_prefix: BSI
+  assessment_type_scope: [app, aud]
+
+  cross_mapping_hints:
+    target_frameworks:
+      # Bundled (heatmap-edge-ready)
+      - GDPR           # data protection requirements map to CON.2, CON.1, DER.2.1, OPS.2.2
+      - ISO_27001      # IT-Grundschutz aligns to Annex A controls throughout
+      - BSI_C5         # BSI Cloud Computing Compliance Criteria Catalogue -- cloud-layer overlap
+      - DORA           # ICT risk management, incident management, third-party risk
+      - SOC_2          # confidentiality / availability / processing-integrity
+      # Community / advisory
+      - CIS_CONTROLS_V8   # prescriptive technical controls companion
+      - NIST_CSF_2        # GOVERN / IDENTIFY / PROTECT / DETECT / RESPOND / RECOVER
+      - PCI_DSS_4_0_1     # cardholder data environment overlap (APP.3.1, NET layer)
+
+  redistribution_note: >-
+    BSI IT-Grundschutz is published by the German Federal Office for
+    Information Security (BSI) and is freely available for download under
+    the BSI's standard terms of use. Control descriptions in this catalogue
+    paraphrase the requirement text from the Edition 2023 Kompendium for
+    SWAO machine ingestion. The authoritative source PDF can be downloaded
+    from the BSI website listed under references. Reviewers verify a
+    control's accuracy by locating the cited Baustein and requirement
+    identifier in the source publication. No legal advice is provided;
+    consult qualified information security professionals for interpretation
+    of how a requirement applies to a specific workload.
+
+  replaces: []

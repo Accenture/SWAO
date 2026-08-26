@@ -1,0 +1,59 @@
+# SWAO LLM-Gateway connector TEMPLATE (Design 090)
+#
+# How to connect YOUR platform in three steps:
+#   1. Copy this file (or any bundled connector) into
+#      <workspace>/wsp/inputs/llm-gateway/<your-id>.yaml
+#   2. Amend id, name, protocol, base_url, auth, and models.default.
+#   3. Re-run `swao setup` (or the setup wizard) -- your connector appears
+#      in the LLM selection automatically. No rebuild required.
+#
+# RULES
+#   - NEVER put key material in this file. auth names WHERE the key lives:
+#     a SWAO credential-store entry (credential_key) and/or an environment
+#     variable (env_var). SWAO refuses files containing secret-shaped values.
+#   - Files starting with an underscore are ignored by discovery.
+#
+schema_version: "1.0"
+connector:
+  # Unique kebab-case id -- the selection key in setup and .swao.yml.
+  id: my-platform
+  name: My LLM Platform
+  description: One line about the platform.
+  # Wire protocol: openai-chat | anthropic-messages | ollama
+  protocol: openai-chat
+  base_url: https://llm.example.internal
+  # Optional path between base_url and the protocol route (vLLM routing).
+  path_prefix: ""
+  auth:
+    credential_key: my-platform-api-key
+    env_var: SWAO_MY_PLATFORM_API_KEY
+    # header: Authorization   (default; scheme bearer prefixes the key)
+    # scheme: bearer          (use raw for x-api-key style headers)
+  # Optional static non-secret headers sent on every request.
+  # headers:
+  #   X-Internal-Route: genai-hub
+  models:
+    default: my-model
+    # Optional catalogue shown in the model picker; per-model cost overrides
+    # cost_per_token below.
+    # catalogue:
+    #   - id: my-model
+    #     cost: { input_per_million: 0, output_per_million: 0 }
+    # Optional dynamic discovery (OpenAI-style /v1/models):
+    # discovery_endpoint: /v1/models
+  defaults:
+    temperature: 0
+    # max_tokens: 8192
+  # Optional vendor-specific request-body extensions (reserved keys
+  # model/messages/stream cannot be overridden):
+  # request_overrides:
+  #   reasoning: { enabled: true }
+  # Connector-level fallback cost when the model has no catalogue cost.
+  # cost_per_token: { input_per_million: 0, output_per_million: 0 }
+  sovereignty:
+    data_residency: self-hosted
+    zero_retention: unknown
+    notes: Amend with the facts of your deployment.
+  meta:
+    source: user
+    last_reviewed: "2026-08-05"   # SWAO team review date -- amend when you validate the connector

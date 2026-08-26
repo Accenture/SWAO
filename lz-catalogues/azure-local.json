@@ -1,0 +1,382 @@
+{
+  "meta": {
+    "schema_version": "0.1",
+    "name": "Azure Local service catalogue",
+    "provider": "azure-local",
+    "last_updated": "2026-08-11",
+    "source": {
+      "mode": "curated",
+      "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
+      "source_note": "Hand-curated from Microsoft documentation (retrieved 2026-08-06). Azure Local (formerly Azure Stack HCI) is customer-sited Arc-managed infrastructure. Two deployment modes are modelled as regions because they differ in service availability and sovereignty facts. Connected mode: Arc control plane (resource metadata, billing, telemetry, 30-day sync obligation) runs in Microsoft cloud under a US entity -- us_cloud_act and fisa_702 reflect management-plane exposure only, not workload data residency (learn.microsoft.com/azure/azure-local/faq and .../concepts/telemetry-and-diagnostics-overview). Disconnected mode: only registration and licence-renewal handshakes remain per Microsoft FAQ; residual dependency on Microsoft as US-jurisdiction licensor is noted (computerweekly.com opinion 2026). residency_country is unset in both modes: workload data lives at the customer site and the catalogue cannot know the location. certifications: [] is deliberate -- no Azure Local-specific C5 or ISO attestation exists (verified absence 2026-08-06); CIS Benchmark and DISA STIG capable baselines appear as capabilities on the Security Baseline entry rather than certifications. L1 pricing: USD 10 per physical core per month (hyperconverged). L2: USD 20.1 (external SAN / disaggregated). L3 disconnected: negotiated only, no public list price. Sources: learn.microsoft.com/azure/azure-local/ (overview, whats-new, disconnected-operations-overview, disconnected-operations-whats-new, billing, security-features, faq, system-requirements-23h2, manage/manage-bitlocker, concepts/telemetry-and-diagnostics-overview); azure.microsoft.com/pricing/details/azure-local/; learn.microsoft.com/azure/azure-sovereign-clouds/private/overview/sovereign-private-cloud; dataon.io/azure-local-pricing-for-external-san-support-and-disconnect-operations/ (2026-06-25); learn.microsoft.com/azure/virtual-desktop/azure-local-overview."
+    },
+    "confidence": "medium",
+    "regions_count": 2
+  },
+  "regions": [
+    {
+      "id": "connected",
+      "display": "Customer site (Arc-connected)",
+      "sovereignty": {
+        "operator_jurisdiction": "operator-site",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": []
+      },
+      "services": [
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "trusted-launch",
+            "confidential-vm-preview",
+            "gpu-dda"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "ga",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Virtual Desktop",
+          "name": "Azure Virtual Desktop",
+          "status": "ga",
+          "fulfills": [
+            "vdi"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Storage Spaces Direct",
+          "name": "Storage Spaces Direct",
+          "status": "ga",
+          "fulfills": [
+            "block_storage",
+            "hci_storage"
+          ],
+          "capabilities": [
+            "external-san-fc",
+            "external-san-iscsi"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "SDN",
+          "name": "SDN",
+          "status": "ga",
+          "fulfills": [
+            "vpc_networking",
+            "network_firewall",
+            "load_balancer",
+            "networking"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Monitor",
+          "name": "Azure Monitor",
+          "status": "ga",
+          "fulfills": [
+            "audit_logging",
+            "monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Update Manager",
+          "name": "Azure Update Manager",
+          "status": "ga",
+          "fulfills": [
+            "systems_management"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Backup",
+          "name": "Azure Backup",
+          "status": "ga",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "data-leaves-site"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Site Recovery",
+          "name": "Azure Site Recovery",
+          "status": "preview",
+          "fulfills": [
+            "backup"
+          ],
+          "capabilities": [
+            "dr-orchestration"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Microsoft Defender for Cloud",
+          "name": "Microsoft Defender for Cloud",
+          "status": "preview",
+          "fulfills": [
+            "threat_detection"
+          ],
+          "capabilities": [
+            "host-defender-av"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Policy",
+          "name": "Azure Policy",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "SQL Server on Azure Local",
+          "name": "SQL Server on Azure Local",
+          "status": "ga",
+          "fulfills": [
+            "sql_server"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure IoT Operations",
+          "name": "Azure IoT Operations",
+          "status": "ga",
+          "fulfills": [
+            "iot_platform"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Security Baseline",
+          "name": "Security Baseline",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [
+            "cis-benchmark",
+            "disa-stig",
+            "wdac-default",
+            "syslog-forwarding"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "disconnected",
+      "display": "Customer site (disconnected operations)",
+      "sovereignty": {
+        "operator_jurisdiction": "operator-site",
+        "extraterritorial_exposure": [],
+        "certifications": []
+      },
+      "services": [
+        {
+          "code": "Local Control Plane",
+          "name": "Local Control Plane",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [
+            "local-arm",
+            "local-portal",
+            "local-rbac",
+            "local-cli"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Virtual Machines",
+          "name": "Virtual Machines",
+          "status": "ga",
+          "fulfills": [
+            "vm_compute"
+          ],
+          "capabilities": [
+            "trusted-launch"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Kubernetes Service",
+          "name": "Azure Kubernetes Service",
+          "status": "preview",
+          "fulfills": [
+            "kubernetes"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Key Vault",
+          "name": "Azure Key Vault",
+          "status": "ga",
+          "fulfills": [
+            "key_vault",
+            "secrets_management"
+          ],
+          "capabilities": [
+            "local-hsm"
+          ],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Container Registry",
+          "name": "Container Registry",
+          "status": "ga",
+          "fulfills": [
+            "container_registry"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        },
+        {
+          "code": "Azure Policy",
+          "name": "Azure Policy",
+          "status": "ga",
+          "fulfills": [
+            "compliance_monitoring"
+          ],
+          "capabilities": [],
+          "key_custody": [
+            "operator-managed"
+          ],
+          "last_verified": "2026-08-06",
+          "source": "curated"
+        }
+      ]
+    }
+  ]
+}

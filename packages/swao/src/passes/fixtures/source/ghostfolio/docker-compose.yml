@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  ghostfolio:
+    image: ghostfolio/ghostfolio:latest
+    ports:
+      - "3333:3333"
+    env_file:
+      - .env
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ghostfolio
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+  redis:
+    image: redis:7

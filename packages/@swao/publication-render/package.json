@@ -1,0 +1,40 @@
+{
+  "name": "@swao/publication-render",
+  "version": "0.1.0",
+  "description": "SWAO shared HTML publication-rendering engine (ADR-0048, Sprint 064 #0582). Leaf package: the PublicationModel + zod schemas, the extractor + PII sanitiser, the block renderers, the tag/search index, the data-quality banner HTML, the bundled slot-marker template, the rendering assets (CSS/JS/i18n), and the shared page-assembly pipeline (assemblePublicationPage + resolvePublishAsset). Consumed by both the Community single-page publication (@swao/module-html-report) and the Consultant HTML portal so the two share ONE engine without a sibling import. Depends only on @swao/core + @swao/community-frameworks + leaf npm; NO react / ink / fastify / commander.",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --pool forks"
+  },
+  "dependencies": {
+    "@swao/core": "workspace:*",
+    "@swao/community-frameworks": "workspace:*",
+    "js-yaml": "^4.2.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.4.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.0.0",
+    "ajv": "^8.20.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

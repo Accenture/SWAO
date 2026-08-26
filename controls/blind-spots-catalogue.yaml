@@ -1,0 +1,181 @@
+# SWAO Blind-Spots Catalogue
+#
+# Categories that SWAO structurally does not assess by default from a
+# source-only static analysis. Pass 13 (Scope Coverage) cross-references
+# this catalogue with each app's wsp/inputs/ to declare what was within
+# scope, what was outside, and what would close each open gap.
+#
+# Distinct from data_gaps[] (customer did not provide a field SWAO
+# asked for) and assumptions[] (assessment assumed Y because evidence
+# was thin). Blind spots are categories SWAO cannot infer from source,
+# regardless of customer cooperation; some can be closed by context
+# inputs, some require future product features.
+#
+# See:
+# - ADR-0030 (Assessment Scope Disclosure)
+# - SPEC.md §10.1c
+# - #0263 (epic), Sprint 029 Phase 1
+
+schema_version: "1"
+catalogue_version: "1.0.0"
+
+blind_spots:
+  - id: BS_NETWORK_POLICY
+    name: "Kubernetes / mesh network policy"
+    category: network
+    description: >
+      Ingress and egress restrictions enforced at the platform layer
+      (Kubernetes NetworkPolicy, service mesh, CNI). Compensates for
+      open ports in application config when isolation is enforced
+      outside the application repository.
+    severity_default: high
+    current_swao_coverage: none
+    input_that_closes: cmdb_or_platform_repo
+    input_paths:
+      - "wsp/inputs/network-policies"
+      - "wsp/inputs/platform"
+    input_path_hint: "Drop network policies under wsp/inputs/network-policies/ or platform configs under wsp/inputs/platform/"
+    related_regimes: [BSI_C5, ISO_27001, SOC_2]
+
+  - id: BS_RUNTIME_SECRETS
+    name: "Runtime secret injection"
+    category: secrets
+    description: >
+      Credentials injected at deploy or runtime via sealed secrets,
+      vault sidecars, or KMS. Static scans see placeholder strings
+      (e.g. .env.example); they cannot observe what the deployer
+      actually injects.
+    severity_default: high
+    current_swao_coverage: partial
+    input_that_closes: cmdb_or_deploy_config
+    input_paths:
+      - "wsp/inputs/secrets-strategy.md"
+      - "wsp/inputs/secrets"
+    input_path_hint: "Document the secret-injection strategy at wsp/inputs/secrets-strategy.md or stage exports under wsp/inputs/secrets/"
+    related_regimes: [GDPR, HIPAA, PCI_DSS, BSI_C5]
+
+  - id: BS_CLOUD_FIREWALL
+    name: "Cloud-provider firewall and security groups"
+    category: network
+    description: >
+      Inbound and outbound rules at the cloud-provider level (AWS SG,
+      Azure NSG, GCP firewall). Often maintained in a separate IaC
+      repository owned by a platform team.
+    severity_default: high
+    current_swao_coverage: partial
+    input_that_closes: terraform_stub_or_export
+    input_paths:
+      - "wsp/inputs/terraform"
+    input_path_hint: "Stage a Terraform export, .tfstate, .tfplan, or lz-*-stub.json under wsp/inputs/terraform/"
+    related_regimes: [BSI_C5, ISO_27001, SOC_2, DORA]
+
+  - id: BS_SERVICE_MESH_MTLS
+    name: "Service-mesh mTLS enforcement"
+    category: encryption_in_transit
+    description: >
+      mTLS between services enforced by Istio, Linkerd, Consul, or
+      similar. Compensates for plaintext protocols in application
+      config when the mesh injects encryption sidecar-side.
+    severity_default: medium
+    current_swao_coverage: none
+    input_that_closes: cmdb_or_mesh_config
+    input_paths:
+      - "wsp/inputs/service-mesh"
+      - "wsp/inputs/pen-test"
+    input_path_hint: "Drop mesh config exports or a pen-test report under wsp/inputs/service-mesh/ or wsp/inputs/pen-test/"
+    related_regimes: [GDPR, HIPAA, BSI_C5]
+
+  - id: BS_SIEM_DETECTION
+    name: "SIEM / EDR detection rules"
+    category: detection
+    description: >
+      Out-of-band detection of suspicious activity (SOC SIEM, EDR
+      agent, cloud-provider GuardDuty). Compensates for application
+      logging gaps when the SOC layer catches the signal anyway.
+    severity_default: medium
+    current_swao_coverage: none
+    input_that_closes: cmdb_or_soc_runbook
+    input_paths:
+      - "wsp/inputs/soc-runbook.md"
+      - "wsp/inputs/soc"
+    input_path_hint: "Document the SOC runbook at wsp/inputs/soc-runbook.md or stage detection-rule exports under wsp/inputs/soc/"
+    related_regimes: [ISO_27001, SOC_2, DORA, BSI_C5]
+
+  - id: BS_WAF_API_GATEWAY
+    name: "WAF / API gateway controls"
+    category: network
+    description: >
+      Inbound traffic shaped by a WAF or API gateway (rate limiting,
+      OWASP rules, geo-blocking, auth enforcement). Compensates for
+      missing in-app controls when the edge enforces them.
+    severity_default: medium
+    current_swao_coverage: none
+    input_that_closes: cmdb_or_edge_config
+    input_paths:
+      - "wsp/inputs/edge-controls.md"
+      - "wsp/inputs/waf"
+      - "wsp/inputs/api-gateway"
+    input_path_hint: "Document edge controls at wsp/inputs/edge-controls.md or stage WAF/API gateway exports under wsp/inputs/waf/ or wsp/inputs/api-gateway/"
+    related_regimes: [PCI_DSS, GDPR]
+
+  - id: BS_CLOUD_IAM
+    name: "Cloud IAM beyond IaC stubs"
+    category: identity
+    description: >
+      Cloud-provider IAM roles, policies, and service principals
+      managed outside the application IaC. Often platform-team owned.
+    severity_default: high
+    current_swao_coverage: partial
+    input_that_closes: cloud_iam_export
+    input_paths:
+      - "wsp/inputs/iam"
+    input_path_hint: "Stage IAM exports (AWS IAM JSON, Azure RBAC, GCP IAM) under wsp/inputs/iam/"
+    related_regimes: [ISO_27001, SOC_2, BSI_C5]
+
+  - id: BS_OPERATIONAL_RUNBOOK
+    name: "Operational runbooks and manual controls"
+    category: process
+    description: >
+      Incident response, change management, patching cadence, and
+      access-review processes that exist as written procedure rather
+      than as code. SWAO cannot infer these from a static scan.
+    severity_default: medium
+    current_swao_coverage: none
+    input_that_closes: imports_runbook
+    input_paths:
+      - "wsp/inputs/runbooks"
+      - "wsp/inputs/policies"
+      - "wsp/inputs/ops"
+    input_path_hint: "Drop runbooks, change-management policies, or ops procedures under wsp/inputs/runbooks/, wsp/inputs/policies/, or wsp/inputs/ops/"
+    related_regimes: [SOC_2, ISO_27001, DORA]
+
+  - id: BS_GRANTED_EXCEPTIONS
+    name: "Documented security exceptions"
+    category: governance
+    description: >
+      Customer's security board has reviewed a finding and granted a
+      time-bound exception. The finding remains in the code but is
+      not a finding in the customer's risk register.
+    severity_default: low
+    current_swao_coverage: none
+    input_that_closes: imports_exception_register
+    input_paths:
+      - "wsp/inputs/exception-register.csv"
+      - "wsp/inputs/exceptions"
+    input_path_hint: "Stage the exception register at wsp/inputs/exception-register.csv or under wsp/inputs/exceptions/"
+    related_regimes: [all]
+
+  - id: BS_DATA_PROCESSING_AGREEMENTS
+    name: "Sub-processor and data-processing agreements"
+    category: contractual
+    description: >
+      GDPR Art. 28 sub-processor obligations, DPA terms, cross-border
+      transfer mechanisms (SCCs, BCRs). Live in contracts, not code.
+    severity_default: high
+    current_swao_coverage: none
+    input_that_closes: imports_legal
+    input_paths:
+      - "wsp/inputs/data-processing-agreements"
+      - "wsp/inputs/legal"
+    input_path_hint: "Stage DPA artefacts (SCCs, BCRs, sub-processor list) under wsp/inputs/data-processing-agreements/ or wsp/inputs/legal/"
+    related_regimes: [GDPR, BSI_C5]

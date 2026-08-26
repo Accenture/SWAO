@@ -1,0 +1,128 @@
+# Testing and Quality Maturity Catalogue
+# Pass 17 -- Testing and Quality Maturity (QA signals)
+# Seven components contributing equally to testing_maturity_score.
+# score = sum(component_scores) / 7
+# component_score: 1.0 configured | 0.5 partial | 0.0 not_assessed | 0.0 absent
+
+schema_version: '1.0'
+signal_prefix: QA
+
+components:
+  - id: unit_tests
+    signal_id: QA-01
+    description: Unit test framework present and test files found in source tree.
+    detection_patterns:
+      - jest
+      - vitest
+      - mocha
+      - jasmine
+      - pytest
+      - unittest
+      - JUnit
+      - testify
+      - go test
+      - RSpec
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+
+  - id: integration_tests
+    signal_id: QA-02
+    description: Integration test patterns detected -- database, API, or service boundary tests.
+    detection_patterns:
+      - supertest
+      - testcontainers
+      - '@jest/globals integration'
+      - httpx
+      - requests mock
+      - wiremock
+      - MockServer
+      - nock
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+
+  - id: e2e_tests
+    signal_id: QA-03
+    description: End-to-end test framework configured in devDependencies or test tooling configuration.
+    detection_patterns:
+      - playwright
+      - cypress
+      - puppeteer
+      - selenium
+      - nightwatch
+      - webdriverio
+      - testcafe
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+
+  - id: contract_tests
+    signal_id: QA-04
+    description: API contract tests (Pact, Dredd) or domain-specific conformance (FHIR SMART, DiGA) present.
+    detection_patterns:
+      - pact
+      - '@pact-foundation/pact'
+      - dredd
+      - schemathesis
+      - SMART-on-FHIR conformance
+      - hl7-fhir-validator
+      - bfarm-diga-conformance
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+    domain_extensions:
+      fhir:
+        - SMART-on-FHIR conformance suite
+        - HL7 FHIR Validator (hl7.org/fhir/validator.html)
+      diga:
+        - BfArM DiGA API conformance testing
+        - gematik DiGA test infrastructure
+
+  - id: ci_test_enforcement
+    signal_id: QA-05
+    description: Test step present in CI workflow that triggers on PR and on push to main.
+    detection_patterns:
+      - 'jobs: test'
+      - 'run: npm test'
+      - 'run: pnpm test'
+      - 'run: pytest'
+      - 'run: go test'
+      - 'run: mvn test'
+      - GitHub Actions workflow with test job on pull_request trigger
+      - GitLab CI test stage
+      - Jenkins test stage
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+
+  - id: code_coverage
+    signal_id: QA-06
+    description: Coverage reporter configured with a threshold enforcement gate.
+    detection_patterns:
+      - istanbul
+      - nyc
+      - 'jest --coverage'
+      - 'vitest --coverage'
+      - c8
+      - coverage.py
+      - JaCoCo
+      - codecov
+      - coveralls
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0
+
+  - id: dr_drill_documented
+    signal_id: QA-07
+    description: Disaster recovery drill cadence documented in ops runbook or incident-response procedure with evidence of execution.
+    detection_patterns:
+      - dr_drill
+      - failover_test
+      - disaster_recovery_procedure
+      - incident-response.md
+      - runbook/dr-
+      - chaos engineering
+    score_configured: 1.0
+    score_partial: 0.5
+    score_absent: 0.0

@@ -1,0 +1,309 @@
+# CI/CD Pipeline Security Rules
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-04
+# Schema: pipeline-security-rules-v1.schema.json
+#
+# Used by: SPEC §10.12 Security Posture Analyser -- Layer 8 (pipeline_security)
+# Purpose: Detection rules applied to CI/CD pipeline configuration files to
+#   identify security weaknesses in the software supply chain.
+#
+# Supported pipeline formats:
+#   - GitHub Actions (.github/workflows/*.yml, *.yaml)
+#   - GitLab CI (.gitlab-ci.yml)
+#   - Jenkins (Jenkinsfile)
+#   - CircleCI (.circleci/config.yml)
+#   - Bitbucket Pipelines (bitbucket-pipelines.yml)
+#   - Azure Pipelines (azure-pipelines.yml)
+#   - TeamCity (.teamcity/settings.kts)
+#   - Drone CI (.drone.yml)
+#
+# severity values: high / medium / low
+# finding_category: pipeline_security
+# cwe references: https://cwe.mitre.org/
+#
+# AP-04 discipline: Do NOT re-emit findings already attributed to INV, TF,
+#   SBOM, or other originating passes. Pipeline security findings are
+#   additive -- they apply only when pipeline configuration files are present.
+
+rules:
+
+  # ===========================================================================
+  # PP-R-01: Third-party actions pinned by tag (not SHA)
+  # ===========================================================================
+  - id: PP-R-01
+    name: "Third-party actions pinned by mutable tag (not immutable SHA)"
+    severity: high
+    cwe: CWE-829
+    description: >
+      Using mutable version tags (e.g. uses: actions/checkout@v4) instead of
+      immutable SHA digests (e.g. uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683)
+      allows a compromised or updated action to run different code than intended.
+      Tags can be moved or deleted; SHA pins are immutable.
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      regex:
+        - pattern: 'uses:\s+[\w\-\.]+/[\w\-\.]+@(?![\da-f]{40})'
+          description: "Action reference that is not a 40-character SHA hex digest"
+        - pattern: 'uses:\s+[\w\-\.]+/[\w\-\.]+@(main|master|latest|HEAD)'
+          severity_override: high
+          description: "Action pinned to a branch name -- highest risk; branch can be rewritten"
+      exceptions:
+        - pattern: 'uses:\s+\./'
+          description: "Local composite actions (relative paths) are exempt"
+    remediation: >
+      Pin all third-party actions to their full SHA-256 commit hash.
+      Use a tool such as Dependabot, Renovate, or pin-github-action to maintain
+      up-to-date SHA pins automatically. Example:
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+    references:
+      - "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions"
+      - "SLSA Supply Chain Threat: dependency confusion"
+    tags: [supply_chain, action_pinning, github_actions]
+
+  # ===========================================================================
+  # PP-R-02: Missing or overly-permissive permissions block
+  # ===========================================================================
+  - id: PP-R-02
+    name: "Missing or overly-permissive workflow permissions block"
+    severity: medium
+    cwe: CWE-269
+    description: >
+      GitHub Actions workflows without an explicit `permissions:` block at
+      the workflow or job level inherit the repository's default permissions,
+      which may be `write-all` depending on repository settings. Explicitly
+      setting `permissions: {}` (deny-all) and granting only required
+      permissions per job follows the principle of least privilege.
+      `permissions: write-all` or implicit write is particularly dangerous
+      in public repositories (fork pull request attack).
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      conditions:
+        - type: missing_key
+          key: "permissions"
+          scope: workflow_or_job_level
+          description: "No permissions block found at workflow or job level"
+        - type: value_match
+          key: "permissions"
+          value: "write-all"
+          description: "Explicit write-all grants all permissions to the GITHUB_TOKEN"
+    remediation: >
+      Add a `permissions: {}` block at the top of the workflow file and grant
+      only the minimum required permissions per job. Example:
+        permissions: {}
+        jobs:
+          build:
+            permissions:
+              contents: read
+              id-token: write  # only if OIDC is needed
+    references:
+      - "https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token"
+    tags: [permissions, least_privilege, github_actions]
+
+  # ===========================================================================
+  # PP-R-03: Secrets injected into steps running third-party actions
+  # ===========================================================================
+  - id: PP-R-03
+    name: "Repository secrets passed to third-party actions"
+    severity: high
+    cwe: CWE-522
+    description: >
+      Passing repository secrets (e.g. ${{ secrets.DEPLOY_TOKEN }}) as `with:`
+      inputs or environment variables to third-party actions grants those actions
+      access to secrets. A compromised third-party action can exfiltrate secrets.
+      Secrets should only be passed to trusted first-party or internally-authored
+      actions, or to official provider actions pinned by SHA.
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      regex:
+        - pattern: '\$\{\{\s*secrets\.\w+\s*\}\}'
+          scope: within_third_party_action_step
+          description: "Secret expression found in a step using a third-party action"
+      context_required:
+        - "The step must use a third-party action (uses: non-local, not SHA-pinned)"
+    remediation: >
+      Pass secrets only to steps running your own code or SHA-pinned trusted actions.
+      Use OIDC (id-token: write permission) to authenticate to cloud providers
+      instead of long-lived secrets. For third-party actions that require a token,
+      create a scoped token with the minimum required permissions.
+    references:
+      - "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-secrets"
+    tags: [secrets, supply_chain, github_actions]
+
+  # ===========================================================================
+  # PP-R-04: Self-hosted runners without restrictive labels
+  # ===========================================================================
+  - id: PP-R-04
+    name: "Self-hosted runner used without restrictive job labels"
+    severity: medium
+    cwe: CWE-668
+    description: >
+      `runs-on: self-hosted` without additional discriminating labels (OS, team,
+      environment) can route jobs to any self-hosted runner registered to the
+      repository or organisation. In multi-team environments this can allow
+      unintended runner sharing. In public repositories, fork pull requests
+      can trigger jobs on self-hosted runners (runner compromise risk).
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      regex:
+        - pattern: 'runs-on:\s*self-hosted\s*$'
+          description: "Single 'self-hosted' label without environment qualifier"
+        - pattern: "runs-on:\\s*\\[\\s*self-hosted\\s*\\]"
+          description: "Array with only 'self-hosted' label"
+    remediation: >
+      Add environment-discriminating labels to self-hosted runner configuration:
+        runs-on: [self-hosted, linux, x64, production]
+      Disable pull_request triggers for workflows that run on self-hosted runners,
+      or use `pull_request_target` with explicit HEAD commit pinning.
+    references:
+      - "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#hardening-for-self-hosted-runners"
+    tags: [self_hosted_runner, github_actions]
+
+  # ===========================================================================
+  # PP-R-05: Third-party action from non-verified publisher
+  # ===========================================================================
+  - id: PP-R-05
+    name: "Third-party action from non-verified or unknown publisher"
+    severity: medium
+    cwe: CWE-829
+    description: >
+      Actions from GitHub marketplace publishers without the "Verified creator"
+      badge or actions from personal repositories (e.g. uses: someuser/someaction)
+      have not been vetted by GitHub. Non-verified actions have a higher risk of
+      supply chain compromise. Prefer actions from verified creators or from
+      official vendor organisations.
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      allowlist:
+        github_verified_orgs:
+          - actions          # GitHub official actions
+          - github           # GitHub official
+          - docker           # Docker official
+          - aws-actions      # AWS official
+          - azure            # Azure official
+          - google-github-actions  # Google official
+          - hashicorp        # HashiCorp official
+          - slsa-framework   # SLSA official
+      regex:
+        - pattern: 'uses:\s+(?!(\./|actions/|github/|docker/|aws-actions/|azure/|google-github-actions/|hashicorp/|slsa-framework/))'
+          description: "Action from publisher not on the default allowlist"
+    remediation: >
+      Review action publisher and source code before use. Add reviewed publishers
+      to a local allowlist in your SWAO .swao.yml `pipeline_security` override block.
+      Prefer pinning by SHA once publisher trust is established.
+    tags: [supply_chain, marketplace, github_actions]
+
+  # ===========================================================================
+  # PP-R-06: OIDC token scope wider than necessary
+  # ===========================================================================
+  - id: PP-R-06
+    name: "OIDC id-token permission scope wider than necessary"
+    severity: medium
+    cwe: CWE-269
+    description: >
+      When `id-token: write` is granted at the workflow level (rather than per-job),
+      all jobs in the workflow can request OIDC tokens. If any job runs a
+      compromised action, it can request an OIDC token and authenticate to cloud
+      providers with the full scope granted by the workflow. Scope `id-token: write`
+      to the specific job that requires cloud authentication.
+    platform: [github_actions]
+    detection:
+      file_patterns: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+      conditions:
+        - type: key_at_scope
+          key: "permissions.id-token"
+          value: "write"
+          scope: workflow_level
+          description: "id-token: write set at workflow level (applies to all jobs)"
+      exceptions:
+        - condition: "workflow has exactly one job"
+          description: "Single-job workflows: workflow-level and job-level are equivalent"
+    remediation: >
+      Move `id-token: write` from the workflow-level `permissions:` block to the
+      specific job that deploys to cloud infrastructure. Grant `id-token: none`
+      or omit from jobs that do not require cloud authentication.
+    tags: [oidc, permissions, least_privilege, github_actions]
+
+  # ===========================================================================
+  # PP-R-07: Privileged container in pipeline steps
+  # ===========================================================================
+  - id: PP-R-07
+    name: "Privileged container option in pipeline job definition"
+    severity: high
+    cwe: CWE-250
+    description: >
+      Using `options: --privileged` in a GitHub Actions container job, or
+      `privileged: true` in GitLab CI job definitions, grants the container
+      full host privileges. A compromised step running in a privileged container
+      can escape the container and access the runner host filesystem, escalating
+      to runner compromise. Avoid privileged containers; use specific capabilities
+      instead (e.g. `--cap-add SYS_PTRACE` for debugging only).
+    platform: [github_actions, gitlab_ci]
+    detection:
+      file_patterns:
+        - ".github/workflows/*.yml"
+        - ".github/workflows/*.yaml"
+        - ".gitlab-ci.yml"
+      regex:
+        - pattern: "options:\\s*.*--privileged"
+          platform: github_actions
+          description: "Container options with --privileged flag (GitHub Actions)"
+        - pattern: "privileged:\\s*true"
+          platform: gitlab_ci
+          description: "Privileged: true in GitLab CI job definition"
+    remediation: >
+      Remove `--privileged` and use specific Linux capabilities instead:
+        options: --cap-add SYS_PTRACE  # if needed for specific tooling
+      For Docker-in-Docker (dind) builds, use rootless Docker or Kaniko instead
+      of privileged mode.
+    tags: [container, privilege_escalation, github_actions, gitlab_ci]
+
+  # ===========================================================================
+  # PP-R-08: Secrets echoed or printed to logs
+  # ===========================================================================
+  - id: PP-R-08
+    name: "Repository secrets echoed or printed to pipeline logs"
+    severity: high
+    cwe: CWE-312
+    description: >
+      Shell steps that echo, print, or use secret expressions in contexts where
+      output is captured and logged expose secrets in plaintext to anyone with
+      read access to the workflow run logs. GitHub masks `${{ secrets.X }}`
+      expressions in logs, but indirect expansion (via environment variables
+      passed to shell scripts) can bypass masking.
+    platform: [github_actions, gitlab_ci, jenkins]
+    detection:
+      file_patterns:
+        - ".github/workflows/*.yml"
+        - ".github/workflows/*.yaml"
+        - ".gitlab-ci.yml"
+        - "Jenkinsfile"
+      regex:
+        - pattern: 'echo\s+\$\{\{\s*secrets\.\w+\s*\}\}'
+          description: "Direct echo of secrets expression (masked by GitHub but insecure pattern)"
+        - pattern: 'run:\s*.*echo.*\$[A-Z_]+SECRET'
+          description: "Echo of environment variable with SECRET in name"
+        - pattern: 'run:\s*.*echo.*\$[A-Z_]+TOKEN'
+          description: "Echo of environment variable with TOKEN in name"
+        - pattern: 'run:\s*.*echo.*\$[A-Z_]+KEY'
+          description: "Echo of environment variable with KEY in name"
+        - pattern: 'run:\s*.*echo.*\$[A-Z_]+PASSWORD'
+          description: "Echo of environment variable with PASSWORD in name"
+        - pattern: "sh 'echo \\$.*'"
+          platform: jenkins
+          description: "Jenkins sh step echoing variable (may include credentials)"
+      exceptions:
+        - pattern: "# pragma: allow-echo"
+          description: "Explicit engineer sign-off for debug step (requires code review)"
+    remediation: >
+      Never echo secrets in pipeline steps. Use secret masking (GitHub's built-in
+      masking covers ${{ secrets.X }} but not env-var expansion). For debugging:
+      use `echo "secret length: ${#MY_SECRET}"` to confirm presence without exposing value.
+      Remove debug echo steps before merging to default branch.
+    references:
+      - "https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#accessing-secrets"
+    tags: [secrets, logging, information_disclosure, github_actions, gitlab_ci, jenkins]
