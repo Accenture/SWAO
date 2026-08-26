@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Funktionen und Editionen
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Funktionen & Editionen
 
 SWAO ist in drei Editionen erhältlich. Alle Editionen teilen dieselbe Kern-Engine und
@@ -46,6 +32,9 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | **Compliance-Rahmenwerke** | | | |
 | <FeatureTooltip tip="14 Rahmenwerke in jeder Edition: DSGVO, KI 10 Säulen, BSI C5, BSI IT-Grundschutz 2023, DORA, HIPAA / NIST SP 800-66r2, ISO 27001:2022, LLM-Auswahl, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, PCI-DSS v4, SAMA CSF v1, SOC 2 Typ II. Installation mit: swao framework install.">Community-Rahmenwerk-Bibliothek (14 Rahmenwerke)</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Eigene Compliance-Rahmenwerke als YAML-Datei hinzufügen -- kein Programmieren erforderlich.">Eigene Rahmenwerke (YAML)</FeatureTooltip> | Ja | Ja | Ja |
+| **Landing-Zone-Kataloge** | | | |
+| <FeatureTooltip tip="12 Cloud-Anbieter enthalten: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer, Microsoft Azure EU, AWS eu-central-1 / ESC, Google Cloud EU. Jeder Eintrag enthaelt Bereitschaftspruefungen (Blocker, Warnungen, Info-Punkte) abgestimmt auf das Service-Portfolio und die Souveränitätsnachweise des Anbieters.">Integrierter LZ-Katalog (12 Anbieter)</FeatureTooltip> | Ja | Ja | Ja |
+| <FeatureTooltip tip="Eigenen Cloud- oder Privatcloud-Anbieter als YAML-Eintrag hinzufügen. Laeuft sofort neben den integrierten Eintraegen.">Eigene LZ-Katalog-Eintraege (YAML)</FeatureTooltip> | Ja | Ja | Ja |
 | **KI & LLM** | | | |
 | <FeatureTooltip tip="Anthropic Claude, OpenAI GPT oder selbst gehostetes Ollama-Modell. Das LLM erstellt verständliche Begründungen für jedes Signal.">Eigenes LLM mitbringen</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Erweiterte Modellverwaltung und benutzerdefinierte Konfiguration -- Professional-Services-Engagement.">Eigene Modellkonfiguration</FeatureTooltip> | -- | PS-Gebühr | Ja |
@@ -62,6 +51,41 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Mehrere Anwendungen in einem Workspace bewerten. Aggregiertes Risikoregister und Compliance-Matrix.">Multi-App-Portfolio-Workspace</FeatureTooltip> | -- | Ja | Ja |
 | <FeatureTooltip tip="Branchenspezifische Migrationsrunbook-Vorlagen und Führungsbriefing-Formate.">Branchenspezifische Engagement-Vorlagen</FeatureTooltip> | -- | -- | Ja |
+
+---
+
+## Landing-Zone-Kataloge
+
+SWAO wird mit einem kuratierten Katalog von Cloud-Anbietern ausgeliefert. Waehrend einer
+Landing-Zone-Bewertung waehlt SWAO den passenden Anbieter-Eintrag aus und validiert
+Bereitschaftspruefungen -- Blocker, Warnungen und Info-Punkte -- gegen die Signale Ihres
+Workloads und das Service-Portfolio der Ziel-Cloud.
+
+### Enthaltene Anbieter
+
+| Anbieter | Typ | Souveraenitaet |
+|---|---|---|
+| STACKIT (Schwarz Group) | Dedizierte souveraene Cloud | DE / EU |
+| Open Telekom Cloud (T-Systems) | Dedizierte souveraene Cloud | DE / EU |
+| IONOS Cloud (United Internet) | Dedizierte souveraene Cloud | EU |
+| OVHcloud (OVH SAS) | EU-souveraen | EU |
+| CloudFerro | EU-souveraen | EU |
+| Exoscale (A1 / IRIDEOS Group) | Schweizer souveraene Cloud | CH / EU |
+| Hetzner Cloud | Verwaltete EU-Cloud | DE / FI |
+| gridscale | Dedizierte souveraene Cloud | DE |
+| PlusServer | Dedizierte souveraene Cloud | DE |
+| Microsoft Azure (West Europe) | Hyperscaler EU-Region | EU |
+| AWS eu-central-1 + ESC | Hyperscaler EU / Souveraen | EU |
+| Google Cloud (EU-Regionen) | Hyperscaler EU-Region | EU |
+
+### Anpassbar und automatisch aktualisiert
+
+Der Katalog ist eine einfache YAML-Datei. Fuegen Sie Ihren eigenen Anbieter hinzu --
+Privatcloud, verwaltetes Hosting oder interne Plattform -- mit demselben Prüfschema wie
+die integrierten Anbieter. SWAO liest Ihren Eintrag sofort; keine Neukompilierung erforderlich.
+
+Fuehren Sie `swao catalogue update` aus, um die neuesten Anbieter-Pruefungen und
+Souveränitätsnachweise ohne Upgrade des vollstaendigen Binaries zu laden.
 
 ---
 

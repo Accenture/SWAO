@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: CI/CD-Pipeline-Integration
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # CI/CD-Pipeline-Integration
 
 SWAO-Assessments lassen sich in GitHub Actions-Workflows integrieren, um Pull Requests und Release-Branches auf Sovereign-Readiness-Befunde zu prüfen. Dieses Runbook liefert ein vollständiges Workflow-Beispiel, Hinweise zum Caching und Erläuterungen zu Exit-Codes und Artefakt-Handling.

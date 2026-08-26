@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Linux-Installation
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Linux: SWAO installieren
 
 Dieses Runbook beschreibt die Installation der SWAO-Binary unter Linux, die PATH-Konfiguration für Root- und Nicht-Root-Nutzer sowie die Einrichtung einer optionalen systemd-Service-Unit für Server-Deployments.

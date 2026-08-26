@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: CLI-Referenz
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # CLI-Referenz
 
 Schnellreferenz für alle SWAO-Befehle. Jeder Abschnitt enthält die Syntax, wichtige Flags und ein Beispielaufruf.

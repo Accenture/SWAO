@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Fehlerbehebung
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Fehlerbehebung
 
 Referenz für die häufigsten SWAO-Fehler. Jeder Eintrag enthält die Fehlermeldung oder das Symptom, die wahrscheinliche Ursache und die Behebungsschritte.

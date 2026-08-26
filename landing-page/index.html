@@ -677,6 +677,7 @@
         <li class="nav-hide"><a href="#why-swao">Why SWAO</a></li>
         <li class="nav-hide"><a href="#for-your-team">For Your Team</a></li>
         <li class="nav-hide"><a href="#frameworks">Frameworks</a></li>
+        <li class="nav-hide"><a href="#lz-catalogues">LZ Catalogues</a></li>
         <li class="nav-hide"><a href="#how-it-works">How it works</a></li>
         <li class="nav-hide"><a href="#editions">Editions</a></li>
         <li class="nav-hide-sm"><a href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Discussions</a></li>
@@ -961,7 +962,7 @@
   <section id="frameworks" class="section-divider" aria-labelledby="frameworks-heading">
     <div class="container">
       <h2 class="section-heading" id="frameworks-heading">Community Frameworks</h2>
-      <p class="section-subheading">11 compliance frameworks included in every edition -- free, open, and continuously updated. No licence required to run any of them.</p>
+      <p class="section-subheading">14 compliance frameworks included in every edition -- free, open, and continuously updated. No licence required to run any of them.</p>
 
       <div class="framework-grid">
         <span class="fw-pill">GDPR</span>
@@ -969,12 +970,15 @@
         <span class="fw-pill">AI 10 Pillars</span>
         <span class="fw-pill">BSI C5</span>
         <span class="fw-pill">BSI IT-Grundschutz 2023</span>
+        <span class="fw-pill">DORA</span>
+        <span class="fw-pill">ISO 27001:2022</span>
         <span class="fw-pill">LLM Selection</span>
         <span class="fw-pill">NCA CCC 2024 (CSP)</span>
         <span class="fw-pill">NCA CCC 2024 (CST)</span>
         <span class="fw-pill">NCA ECC 2024</span>
         <span class="fw-pill">PCI-DSS v4</span>
         <span class="fw-pill">SAMA CSF v1</span>
+        <span class="fw-pill">SOC 2 Type II</span>
       </div>
 
       <div class="fw-detail-grid">
@@ -1080,7 +1084,7 @@
       <div class="custom-fw-box">
         <h3 class="custom-fw-title">Build your own framework</h3>
         <p class="custom-fw-body">
-          Not covered by the 11 community frameworks? SWAO's framework format is a plain YAML
+          Not covered by the 14 community frameworks? SWAO's framework format is a plain YAML
           file -- no TypeScript, no compilation, no specialist tooling required. Define your own
           controls, risk levels, remediation guidance, and regime metadata. Point SWAO at your
           YAML file and it runs immediately alongside the community frameworks.
@@ -1094,6 +1098,93 @@
         <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
           <a class="btn-primary"   href="https://accenture.github.io/SWAO/en/frameworks/" target="_blank" rel="noopener">Framework authoring guide</a>
           <a class="btn-secondary" href="https://github.com/Accenture/SWAO/discussions"           target="_blank" rel="noopener">Share your framework</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== LANDING ZONE CATALOGUES ===== -->
+  <section id="lz-catalogues" class="section-divider" aria-labelledby="lz-heading">
+    <div class="container">
+      <h2 class="section-heading" id="lz-heading">Landing Zone Catalogues</h2>
+      <p class="section-subheading">SWAO ships with a curated catalogue of cloud providers -- covering major hyperscalers and EU-dedicated sovereign clouds. Each provider entry defines a set of readiness checks that SWAO validates automatically during a Landing Zone Assessment. The catalogue is customisable and updated with every SWAO release.</p>
+
+      <div class="framework-grid">
+        <span class="fw-pill">STACKIT (Schwarz Group)</span>
+        <span class="fw-pill">OTC (T-Systems)</span>
+        <span class="fw-pill">IONOS Cloud</span>
+        <span class="fw-pill">OVHcloud</span>
+        <span class="fw-pill">CloudFerro</span>
+        <span class="fw-pill">Exoscale</span>
+        <span class="fw-pill">Hetzner Cloud</span>
+        <span class="fw-pill">gridscale</span>
+        <span class="fw-pill">PlusServer</span>
+        <span class="fw-pill">Microsoft Azure (EU)</span>
+        <span class="fw-pill">AWS (eu-central-1 / ESC)</span>
+        <span class="fw-pill">Google Cloud (EU regions)</span>
+      </div>
+
+      <div class="fw-detail-grid">
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">Sovereign EU clouds</span>
+            <span class="fw-card-tag">STACKIT, OTC, IONOS, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer</span>
+          </div>
+          <p class="fw-card-body">
+            Dedicated sovereign cloud providers operating under EU or national legal jurisdiction.
+            These providers offer contractual data residency guarantees, EU-domiciled operating
+            entities, and -- in several cases -- BSI C5 or ISO 27001 attestations. SWAO's
+            catalogue includes provider-specific checks tailored to each platform's service
+            portfolio, Terraform resource types, and sovereignty evidence.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO generates a fit/gap report for your chosen
+            target provider. Blocker checks flag services your workload depends on that are not
+            yet available on the target platform. Warning checks surface configuration steps
+            required before cutover. Informational checks document the sovereignty evidence trail.
+          </div>
+        </div>
+
+        <div class="fw-card">
+          <div class="fw-card-header">
+            <span class="fw-card-name">Hyperscaler EU regions</span>
+            <span class="fw-card-tag">Microsoft Azure (West Europe), AWS eu-central-1 + ESC, Google Cloud EU</span>
+          </div>
+          <p class="fw-card-body">
+            Major hyperscalers with EU-located regions and -- in the case of AWS ESC -- dedicated
+            sovereign cloud infrastructure. SWAO evaluates these providers against the same
+            sovereignty and compliance criteria as the dedicated EU clouds, surfacing the controls
+            that are satisfied, the gaps that remain, and the configuration changes required to
+            meet EU data residency requirements.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> Produces a comparative fit/gap report across
+            multiple target providers so migration architects can select the landing zone that
+            best matches the workload's compliance profile and operational constraints.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="custom-fw-box">
+        <h3 class="custom-fw-title">Add your own landing zone</h3>
+        <p class="custom-fw-body">
+          The cloud provider catalogue is a plain YAML file -- no TypeScript, no compilation.
+          Add a new provider entry with its service portfolio, sovereignty evidence, and
+          readiness checks. Point SWAO at your YAML and it runs immediately alongside the
+          built-in providers. Custom entries are ideal for private cloud platforms, managed
+          hosting providers, or internal platform teams that operate their own landing zones.
+        </p>
+        <p class="custom-fw-body" style="margin-top: -8px;">
+          SWAO also updates the catalogue automatically when new provider data becomes available:
+          run <code>swao catalogue update</code> to pull the latest provider checks without
+          upgrading the full binary.
+        </p>
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
+          <a class="btn-primary"   href="https://github.com/Accenture/SWAO/discussions" target="_blank" rel="noopener">Request a provider</a>
+          <a class="btn-secondary" href="https://github.com/Accenture/SWAO/issues"       target="_blank" rel="noopener">Report a catalogue issue</a>
         </div>
       </div>
 
@@ -1173,12 +1264,6 @@
               <td class="yes">Yes</td>
             </tr>
             <tr>
-              <td>Audit Assessment (human checklist-driven)</td>
-              <td class="no">Roadmap</td>
-              <td class="no">Roadmap</td>
-              <td class="no">Roadmap</td>
-            </tr>
-            <tr>
               <td>Portfolio Assessment (100+ apps, wave planning)</td>
               <td class="no">-</td>
               <td class="no">-</td>
@@ -1199,7 +1284,7 @@
               <td class="yes">Yes</td>
             </tr>
             <tr>
-              <td>MCP server (Claude Code and other AI tools)</td>
+              <td>MCP server (Claude Code, Cursor, and other AI tools)</td>
               <td class="no">-</td>
               <td class="no">-</td>
               <td class="yes">Yes</td>
@@ -1207,7 +1292,13 @@
 
             <tr class="group-header"><td colspan="4">Frameworks</td></tr>
             <tr>
-              <td>11 Community Frameworks (GDPR, HIPAA, AI 10 Pillars, BSI C5, BSI IT-Grundschutz, LLM Selection, NCA CCC CSP, NCA CCC CST, NCA ECC, PCI-DSS v4, SAMA CSF v1)</td>
+              <td>14 Community Frameworks (AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, DORA, GDPR, ISO 27001:2022, LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIST SP 800-66r2 / HIPAA, PCI-DSS v4, SAMA CSF v1, SOC 2 Type II)</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+              <td class="yes">Yes</td>
+            </tr>
+            <tr>
+              <td>Landing Zone Catalogues (12 EU sovereign and hyperscaler providers; customisable)</td>
               <td class="yes">Yes</td>
               <td class="yes">Yes</td>
               <td class="yes">Yes</td>

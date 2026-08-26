@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Windows-Installation
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Windows: SWAO-Binary freigeben
 
 Windows Defender SmartScreen blockiert die SWAO-Programmdatei beim ersten Start, da sie in Microsofts Reputationsdienst noch nicht weit verbreitet ist. Dieses Runbook beschreibt, wie die Binary auf einzelnen Rechnern und in Unternehmensumgebungen freigegeben werden kann.

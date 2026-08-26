@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Docker Deployment
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Docker Deployment
 
 Run SWAO inside a Docker container for reproducible assessments, air-gapped environments, or team-shared infrastructure. This runbook covers the basic `docker run` invocation, a Docker Compose setup with named volumes, and offline operation using `--llm-stub`.

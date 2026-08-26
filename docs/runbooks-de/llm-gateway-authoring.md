@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: LLM-Gateway-Connector erstellen
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/de/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Runbook: LLM-Gateway-Connector erstellen
 
 > **Hinweis:** Dies ist eine Kurzreferenz auf Deutsch. Die vollstaendige

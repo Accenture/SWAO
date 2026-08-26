@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Workspace Configuration
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Workspace Configuration
 
 The `.swao.yml` file is the primary configuration surface for a SWAO workspace. This runbook covers the full set of available options, including custom pass configuration, exclusions, multi-repo layouts, and environment variable overrides.

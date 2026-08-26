@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: LLM-Anbieter konfigurieren
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # LLM-Provider wechseln
 
 SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unterstützt aber auch den Wechsel zu einer lokalen Ollama-Instanz, OpenAI oder den vollständigen Offline-Betrieb mit `--llm-stub`. Dieses Runbook erläutert die verfügbaren Optionen und die Konfigurationsmöglichkeiten.

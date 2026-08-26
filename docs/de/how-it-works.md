@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    So funktioniert SWAO
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Wie SWAO funktioniert
 
 SWAO analysiert eine Cloud-Anwendung und erstellt in einem einzigen Befehl -- oder über
@@ -50,9 +36,10 @@ Wählen Sie **1. Workspace Setup**. Der Assistent stellt vier Fragen:
 
 1. **Workspace-Name** -- Bezeichner für den Engagement-Ordner.
 2. **Anwendungsname** -- der zu bewertende Workload.
-3. **Compliance-Rahmenwerke** -- DSGVO ist vorausgewählt. Elf Community-Rahmenwerke verfügbar
-   (DSGVO, KI 10 Säulen, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2,
-   LLM-Auswahl, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, PCI-DSS v4, SAMA CSF v1).
+3. **Compliance-Rahmenwerke** -- DSGVO ist vorausgewählt. Vierzehn Community-Rahmenwerke verfügbar
+   (KI 10 Säulen, BSI C5, BSI IT-Grundschutz 2023, DORA, DSGVO, ISO 27001:2022, LLM-Auswahl,
+   NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIST SP 800-66r2 / HIPAA,
+   PCI-DSS v4, SAMA CSF v1, SOC 2 Typ II).
 4. **LLM-Anbieter** -- Anthropic Claude, OpenAI, Ollama oder deterministischer Stub.
 
 ### Health Check (Systemprüfung)

@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Licence Management
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Licence Management
 
 SWAO ships in three tiers -- Community, Consultant, and Enterprise -- each unlocking additional capabilities. This runbook covers requesting a licence, activating it, handling offline environments, checking status, and understanding what each tier includes.

@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: MCP-Server-Integration
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # MCP-Server-Integration
 
 SWAO stellt seine Assessment-Funktionen als MCP-Server (Model Context Protocol) bereit, sodass KI-Assistenten wie Claude Code SWAO-Tools direkt aus einer Konversation heraus aufrufen können. Dieses Runbook beschreibt das Starten des Servers, die Konfiguration von Claude Code für die Verbindung, die verfügbaren Tools und Sicherheitshinweise.

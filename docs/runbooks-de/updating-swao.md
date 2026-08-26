@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: SWAO aktualisieren
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # SWAO aktualisieren
 
 Dieses Runbook beschreibt das Herunterladen eines neün SWAO-Releases, die Integritätsprüfung, das Ersetzen der alten Binary und die Prüfung auf Konfigurationsänderungen, die eventüll Handlungsbedarf erfordern.

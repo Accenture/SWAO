@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: macOS-Installation
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # macOS: SWAO installieren
 
 macOS Gatekeeper blockiert standardmässig unsignierte oder neu verteilte Binaries. Dieses Runbook beschreibt das Herunterladen der SWAO-Binary, das Entfernen des Quarantäne-Attributs und das Hinzufügen von SWAO zum Shell-PATH.

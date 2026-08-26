@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Health Check Output
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Understanding Doctor Output
 
 `swao health-check` runs a series of environment probes before an assessment and reports a pass/fail/warn status for each. This runbook explains what each probe checks, what the colour-coded statuses mean, and how to resolve common failures.

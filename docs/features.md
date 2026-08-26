@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Features and Editions
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Features & Editions
 
 SWAO is available in three editions. All editions share the same core engine and
@@ -46,6 +32,9 @@ SWAO supports three assessment surfaces, all available now.
 | **Compliance frameworks** | | | |
 | <FeatureTooltip tip="14 frameworks available in every edition: GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, DORA, HIPAA / NIST SP 800-66r2, ISO 27001:2022, LLM Selection, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, PCI-DSS v4, SAMA CSF v1, SOC 2 Type II. Install any with: swao framework install.">Community framework library (14 frameworks)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Add your own compliance framework as a YAML file -- no coding required. Supports the same controls schema as the community frameworks.">Custom frameworks (YAML)</FeatureTooltip> | Yes | Yes | Yes |
+| **Landing Zone Catalogues** | | | |
+| <FeatureTooltip tip="12 cloud providers covered: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer, Microsoft Azure EU, AWS eu-central-1 / ESC, Google Cloud EU. Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (12 providers)</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="Add your own cloud or private-cloud provider as a YAML entry. Supports the same check schema as the built-in providers. Run alongside built-in entries immediately.">Custom LZ catalogue entries (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **AI & LLM** | | | |
 | <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Advanced model management and custom model configuration -- Professional Services engagement.">Custom model configuration</FeatureTooltip> | -- | PS fee | Yes |
@@ -62,6 +51,40 @@ SWAO supports three assessment surfaces, all available now.
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning.">Multi-app portfolio workspace</FeatureTooltip> | -- | Yes | Yes |
 | <FeatureTooltip tip="Sector-specific migration runbook templates, executive briefing formats, and industry-vetted DPA skeletons.">Sector-specific engagement templates</FeatureTooltip> | -- | -- | Yes |
+
+---
+
+## Landing Zone Catalogues
+
+SWAO ships with a curated catalogue of cloud providers. During a Landing Zone Assessment, SWAO
+selects the relevant provider entry and validates a set of readiness checks -- blockers, warnings,
+and informational items -- against your workload's signals and your target cloud's service portfolio.
+
+### Included providers
+
+| Provider | Type | Sovereignty |
+|---|---|---|
+| STACKIT (Schwarz Group) | Dedicated sovereign | DE / EU |
+| Open Telekom Cloud (T-Systems) | Dedicated sovereign | DE / EU |
+| IONOS Cloud (United Internet) | Dedicated sovereign | EU |
+| OVHcloud (OVH SAS) | EU sovereign | EU |
+| CloudFerro | EU sovereign | EU |
+| Exoscale (A1 / IRIDEOS Group) | Swiss sovereign | CH / EU |
+| Hetzner Cloud | Managed EU | DE / FI |
+| gridscale | Dedicated sovereign | DE |
+| PlusServer | Dedicated sovereign | DE |
+| Microsoft Azure (West Europe) | Hyperscaler EU region | EU |
+| AWS eu-central-1 + ESC | Hyperscaler EU / sovereign | EU |
+| Google Cloud (EU regions) | Hyperscaler EU region | EU |
+
+### Customisable and automatically updated
+
+The catalogue is a plain YAML file. Add your own provider entry -- private cloud, managed
+hosting, or internal platform team -- using the same check schema as the built-in providers.
+SWAO reads your custom entry immediately; no recompilation required.
+
+Run `swao catalogue update` to pull the latest provider checks and sovereignty evidence from
+the SWAO catalogue repository without upgrading the full binary.
 
 ---
 

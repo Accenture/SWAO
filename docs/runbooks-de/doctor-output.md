@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Runbook: Gesundheitsprufung -- Ausgabe
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Doctor-Ausgabe verstehen
 
 `swao doctor` führt vor einem Assessment eine Reihe von Umgebungsprüfungen durch und meldet für jeden Prüfpunkt einen Status (Bestanden/Nicht bestanden/Warnung). Dieses Runbook erläutert, was jeder Prüfpunkt prüft, was die farbcodierten Status bedeuten und wie häufige Fehler behoben werden können.
