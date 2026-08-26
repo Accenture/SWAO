@@ -87,7 +87,7 @@ export default defineConfig({
   // bracket placeholders that Vue can't parse. Re-sync with
   // `npm run docs:sync` (see below) when source markdown changes.
   srcDir: './manual',
-  base: '/',
+  base: '/SWAO/',
   cleanUrls: true,
   appearance: 'dark',
   ignoreDeadLinks: true,
@@ -148,9 +148,7 @@ export default defineConfig({
           items: [
             { text: 'Application', link: '/assessment/application' },
             { text: 'Landing Zone', link: '/assessment/landing-zone' },
-            { text: 'Audit', link: '/assessment/audit' },
             { text: 'LLM', link: '/assessment/llm' },
-            { text: 'Hybrid', link: '/assessment/hybrid' },
           ],
         },
         {
