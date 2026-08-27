@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "@nestjs/core": "10.3.0",
-    "@nestjs/common": "10.3.0",
+    "@nestjs/common": "10.4.16",
     "@angular/core": "20.3.27",
     "prisma": "5.10.0",
     "@prisma/client": "5.10.0",
