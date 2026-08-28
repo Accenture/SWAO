@@ -1,0 +1,26 @@
+# Default values for the SWAO Helm chart.
+# Override these with --set or a custom values file.
+
+image:
+  repository: accenture/swao
+  tag: dev
+  pullPolicy: IfNotPresent
+
+# app.id is required -- the application ID to assess (subdirectory under apps/ in the workspace).
+# Example: --set app.id=sovereign-health
+app:
+  id: ""
+  workspacePvcName: swao-workspace
+
+# LLM provider passed to the container via SWAO_LLM_PROVIDER env var.
+# Defaults to stub (no real LLM calls) for CI / testing.
+llm:
+  provider: stub
+
+# Credential env vars injected into the container.
+# Keys must match the SWAO_CREDENTIAL_* naming convention.
+# Example:
+#   credentials:
+#     SWAO_CREDENTIAL_ANTHROPIC_API_KEY: sk-ant-...
+#     SWAO_CREDENTIAL_VCS_TOKEN: ghp_...
+credentials: {}
