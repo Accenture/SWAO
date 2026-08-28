@@ -1,3 +1,8 @@
+# ── Source packages (not published until OSS legal approval -- issue #2139) ──
+# Robocopy /XD prevents copying but does not delete from destination; .gitignore
+# ensures the directory is never tracked in the public repo even if it re-appears.
+packages/
+
 # ── Build output ─────────────────────────────────────────────────────────────
 dist/
 dist-bin/*
