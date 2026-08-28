@@ -45,7 +45,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist-community
-          sha256sum swao-community-win-x64.exe \
+          sha256sum swao-community-win.exe \
                     swao-community-linux-x64 \
                     swao-community-darwin-x64 \
                     swao-community-darwin-arm64 > SHA256SUMS
