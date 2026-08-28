@@ -1,0 +1,196 @@
+# SWAO Compliance Ruleset Library -- 10 Pillars of Secure AI Systems
+# Scope: community (sprint-037 #0341 retired the legacy `overlay` scope)
+# Generated from `ai-10-pillars-input.csv` + `ai-10-pillars-framework-meta.yaml`
+# via `swao import community` (design/029-client-compliance-community-framework-intake.md).
+# Schema: RegimeCatalogueSchema (packages/swao/src/schema/regime-catalogue.ts)
+# ADR: 0024 (catalogue discovery), 0025 (auditor-grade outcome and rationale)
+#
+# Do not hand-edit. Edit `ai-10-pillars-input.csv` and re-run the importer.
+#
+# Current-schema notes (design 029 §4.5):
+#   - `evidence_basis` today supports: signal_prefix | context_input | pass.
+#   - The CSV-side richer kinds (local_signal_regex, manual_questionnaire,
+#     external_scanner) are emitted as comments below their controls so the
+#     consultant can see the intended target binding; after sprint-034 ships
+#     the schema additions, the importer will emit the typed variants
+#     directly. Until then those controls resolve to UNKNOWN by virtue of
+#     having only context_input bindings with no matching context document.
+
+regime_meta:
+  id: AI_10_PILLARS
+  name: "10 Pillars of Secure AI Systems"
+  version: "2026-Q2"
+  scope: community
+  authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://accenture.example/swao/community-frameworks/ai-10-pillars"
+  applicability_hints:
+    - ai_workload
+    - llm_app
+    - rag_pipeline
+    - genai_application
+  description: >
+    Ten-pillar architecture rulebook for securing AI systems. Covers input
+    security, identity and access control, data protection, model security,
+    prompt security, retrieval security (RAG), tool and API security, output
+    guardrails, monitoring and detection, and governance and compliance.
+    Suitable as a baseline overlay alongside regulatory regimes (GDPR, PCI
+    DSS, SOC 2) for any application that embeds an LLM or builds on RAG.
+  references:
+    - "https://alok-sharan.example/10-pillars-secure-ai-systems"
+    - "https://owasp.org/www-project-llm-prompt-injection"
+    - "https://atlas.mitre.org"
+  last_reviewed: "2026-05-21"
+  catalogue_version: "1.0.0"
+
+controls:
+  - id: AI10P-INP-01
+    title: "Validate and sanitise all incoming inputs"
+    description: >
+      Validate and sanitise all incoming inputs to prevent prompt injection
+      and data injection attacks across user-facing entry points (REST,
+      GraphQL, WebSocket).
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_input_security
+    references:
+      - "https://owasp.org/www-project-llm-prompt-injection"
+    overrides: []
+    # post-sprint-034 target binding:
+    #   local_signal_regex: "src/**/{handler,route,controller,api}*.{ts,js,py}::(sanitize|validate|escape|Zod|Pydantic)"
+
+  - id: AI10P-IAM-01
+    title: "AuthN/AuthZ across AI APIs"
+    description: >
+      Manage authentication, authorisation, and user permissions across AI
+      systems, model endpoints, and adjacent APIs. Ensure only authorised
+      users and services can access models and sensitive data.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "https://www.nist.gov/identity-access-management"
+    overrides: []
+
+  - id: AI10P-DAT-01
+    title: "Encrypt and mask sensitive data"
+    description: >
+      Secure sensitive data feeding into or returned from AI systems using
+      encryption at rest, in transit, masking for non-production paths, and
+      strict access controls.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "GDPR Article 32(1)(a)"
+    overrides: []
+
+  - id: AI10P-DAT-02
+    title: "Prevent data leakage in AI outputs"
+    description: >
+      Prevent data leakage, unauthorised access, and compliance violations
+      through AI inference paths (chat logs, embeddings, vector DB rows).
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: DATA
+    references: []
+    overrides: []
+
+  - id: AI10P-MOD-01
+    title: "Protect models from theft and adversarial manipulation"
+    description: >
+      Ensure integrity, reliability, and confidentiality of AI models in
+      storage and at serving time. Protect against model theft, weight
+      extraction, and adversarial manipulation.
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_model_security
+    references:
+      - "https://atlas.mitre.org"
+    overrides: []
+    # post-sprint-034 target binding:
+    #   manual_questionnaire: evidence/model-security-questionnaire.yaml
+
+  - id: AI10P-PRM-01
+    title: "Protect system-prompt integrity"
+    description: >
+      Prevent manipulation of system prompts and protect instruction
+      integrity. Stop attackers from overriding system rules or extracting
+      hidden system instructions.
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_prompt_security
+    references:
+      - "https://owasp.org/www-project-llm-prompt-injection"
+    overrides: []
+    # post-sprint-034 target binding:
+    #   local_signal_regex: "src/**/prompt*.{ts,js,py,md,yaml}::(SYSTEM_PROMPT|systemMessage|instructions)"
+
+  - id: AI10P-RAG-01
+    title: "Secure RAG pipeline and vector store"
+    description: >
+      Secure data retrieval pipelines, embeddings, and vector databases.
+      Prevent unauthorised data access and poisoning of knowledge sources.
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_retrieval_security
+    references: []
+    overrides: []
+    # post-sprint-034 target binding:
+    #   local_signal_regex: "src/**/{rag,retriever,embedding,vector}*.{ts,js,py}::(pinecone|qdrant|weaviate|chroma|pgvector)"
+
+  - id: AI10P-TAS-01
+    title: "Secure tool and external-API integrations"
+    description: >
+      Secure integrations with external APIs, tools, and plugins used by AI
+      systems. Prevent abuse, unauthorised actions, and exploitation of
+      connected services.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+    references: []
+    overrides: []
+
+  - id: AI10P-OUT-01
+    title: "Filter and constrain AI outputs"
+    description: >
+      Filter and constrain AI-generated outputs to enforce safety and
+      compliance. Prevent harmful, biased, or sensitive information from
+      reaching users.
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_output_guardrails
+    references: []
+    overrides: []
+    # post-sprint-034 target binding:
+    #   local_signal_regex: "src/**/{guard,filter,moderation,output}*.{ts,js,py}::(moderation|guardrail|filter|redact)"
+
+  - id: AI10P-OBS-01
+    title: "Continuously track usage and anomalies"
+    description: >
+      Continuously track usage, anomalies, and suspicious behaviour across
+      AI systems. Enable early detection of attacks, misuse, and system
+      vulnerabilities (prompt-injection attempts, jailbreaks, exfiltration).
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: OBS
+    references: []
+    overrides: []
+
+  - id: AI10P-GOV-01
+    title: "AI governance and regulatory alignment"
+    description: >
+      Define policies, audit controls, and regulatory frameworks for AI
+      usage. Ensure responsible AI deployment aligned with legal and ethical
+      standards (EU AI Act, NIST AI RMF).
+    severity_default: high
+    evidence_basis:
+      - context_input: ai_governance
+    references:
+      - "https://artificialintelligenceact.eu"
+      - "https://www.nist.gov/itl/ai-risk-management-framework"
+    overrides: []
+    # post-sprint-034 target binding:
+    #   manual_questionnaire: evidence/ai-governance-questionnaire.yaml

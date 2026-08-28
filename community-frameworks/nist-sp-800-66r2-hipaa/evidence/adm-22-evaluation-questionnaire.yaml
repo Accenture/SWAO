@@ -1,0 +1,34 @@
+# Manual questionnaire for HIPAA-ADM-22 -- Evaluation
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: HIPAA-ADM-22
+framework_id: NIST_SP_800_66R2
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Has a documented HIPAA Security Rule evaluation been performed within the last 12 months?"
+    answer: "no"
+    severity_if_no: high
+    evidence_ref: "Last evaluation: 2024-Q4 (Deloitte) -- 18 months old as of this assessment"
+  - id: q2
+    text: "Are evaluation findings tracked in a remediation register through to closure?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "2024 evaluation findings closed by 2025-Q3; tracker in GRC tool"
+  - id: q3
+    text: "Is the evaluation triggered by material environmental or operational changes (M&A, new cloud provider, regulatory update)?"
+    answer: "unknown"
+    severity_if_no: medium
+    evidence_ref: "Trigger criteria not documented; the 2025 cloud migration did not trigger a refresh"
+  - id: q4
+    text: "Does the evaluation cover both technical (e.g. configuration audit) and non-technical (e.g. workforce interview) dimensions?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "2024 evaluation scope included tech config audit + interviews with 12 workforce roles"
+  - id: q5
+    text: "Is the evaluation report shared with the board or governance committee?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Board minutes 2024-Q4 item 8.2 (evaluation report briefing)"

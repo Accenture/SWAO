@@ -66,7 +66,7 @@ jobs:
       - name: Run doctor
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: swao doctor
+        run: swao health-check
 
       - name: Run assessment
         env:
@@ -114,14 +114,14 @@ Die Grösse der Binary beträgt je nach Build-Target ungefähr 50--80 MB. Das Ca
 
 ---
 
-## 4. --llm-stub für schnelles Gating verwenden
+## 4. --skip-llm für schnelles Gating verwenden
 
-Für Pull-Request-Checks, bei denen echte LLM-Ausgaben nicht benötigt werden (z. B. Schema-Validierung oder Konfigurationsprüfung), kann `--llm-stub` eingesetzt werden, um API-Kosten und Latenzen zu vermeiden:
+Für Pull-Request-Checks, bei denen echte LLM-Ausgaben nicht benötigt werden (z. B. Schema-Validierung oder Konfigurationsprüfung), kann `--skip-llm` eingesetzt werden, um API-Kosten und Latenzen zu vermeiden:
 
 ::: v-pre
 ```yaml
 - name: Fast schema check (stub)
-  run: swao assess --app ${{ env.SWAO_APP_ID }} --llm-stub --workspace ./portfolio
+  run: swao assess --app ${{ env.SWAO_APP_ID }} --skip-llm --workspace ./portfolio
 ```
 :::
 

@@ -1,23 +1,59 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Changelog
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Changelog
 
 All notable changes to SWAO are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [0.12.0] -- 2026-08-28
+
+### Summary
+
+Sprint-128 distribution security: Docker multi-tier image strategy (ADR-0056-0058),
+pre-build obfuscation for Consultant/Enterprise binaries, premium package extraction to
+swao-premium/ with community-source-isolation gate, TUI tier badge UX replacing [coming soon]
+labels, all four go-live legal gates closed, @swao/module-iac-scan rename, Windows
+grandchild PID leak fix (spawnSync + file-backed stdio + treeKillSync), and VitePress
+hygiene (health-check runbook, install guide, content QA). 72pt shipped; 30pt deferred to
+sprint-129 (public release infra, content scrubbing, community infrastructure, CodeQL).
+
+### Added
+
+- Docker multi-tier CI: Consultant, Enterprise, and Community images built from correct
+  tier entry points with SWAO_BINARY_TIER set (#2125-#2130, ADR-0056-0058).
+- Pre-build obfuscation scripts for Consultant and Enterprise bundles; wired into
+  release-consultant + release-enterprise CI (#2131, ADR-0057).
+- community-source-isolation gate (`community-source-isolation.gate.mjs`) verifies no
+  premium package imports in Community bundle (#2134).
+- TUI main menu tier badges: `[Enterprise]`, `[Consultant]`, `[Community+]` replace
+  `[coming soon]` labels; LicenseGate blocks navigation at parse time (#2150).
+
+### Changed
+
+- Premium packages (`@swao/module-challenge`, `@swao/module-html-portal`,
+  `@swao/module-portfolio`, `@swao/module-llm-assessment`, `@swao/module-powerbi`)
+  extracted to swao-premium/ (private) with Robocopy sync exclusions updated (#2132-#2133,
+  ADR-0058).
+- `@swao/module-iac` renamed to `@swao/module-iac-scan` to reserve the `module-iac`
+  namespace for future write modules (#2153).
+- VitePress health-check runbook renamed to `health-check-output.md`; install guide
+  corrected; content QA pass aligns all docs with v0.11.x (#2135-#2137).
+- All four go-live legal gates closed: OSS approval, COBIT 5 licence, meshcloud SLA,
+  pnpm licence audit (#2152).
+
+### Fixed
+
+- Windows grandchild PID leak: `spawnSync` with pipe stdio blocks indefinitely when
+  grandchildren (Playwright, git, node) hold inherited write-ends. Replaced with
+  file-backed stdio FDs and `treeKillSync` (`taskkill /T /F`) after each call; applied
+  in binary-e2e.test.ts, MCP server.ts, and MCP smoke tests (#2011, sprint-128).
+- `swao publish --edit --help` on Community exits 0 with help text instead of tier-gate
+  error 2; fixed with parse-time `.on('option:edit', ...)` handler (#2040).
+- `assess --workspace <path>` writes `portfolio-events` NDJSON to CWD instead of
+  workspace; fixed by calling `setWorkspaceRoot(workspaceRoot)` before first
+  `logPortfolio` emission (#2155).
 
 ---
 

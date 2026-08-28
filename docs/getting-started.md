@@ -83,7 +83,7 @@ if the MCP server already has the correct workspace loaded.
 
 | Step | CLI command | Claude Desktop prompt |
 |---|---|---|
-| Check health | `swao doctor` | `Use swao_health_check at workspace C:\path\to\workspace.` |
+| Check health | `swao health-check` | `Use swao_health_check at workspace C:\path\to\workspace.` |
 | Show workspace | `swao ls` | `Use swao_workspace_inventory at workspace C:\path\to\workspace.` |
 | Run assessment | `swao assess --app sovereign-health` | `Use swao_assess for sovereign-health at workspace C:\path\to\workspace.` |
 | Run selected passes | `swao assess --app ... --passes inv,data,egr` | `Use swao_assess for sovereign-health, passes: inv,data,egr.` |
@@ -262,7 +262,7 @@ Dimensions are explained in full in Part 5 of this guide.
 Before running any assessment, run the health check:
 
 ```
-swao doctor
+swao health-check
 ```
 
 or, if you are using SWAO through Claude Desktop:
@@ -271,7 +271,7 @@ or, if you are using SWAO through Claude Desktop:
 Use swao_health_check at workspace C:\path\to\workspace.
 ```
 
-`swao doctor` checks that all the components SWAO needs are available and
+`swao health-check` checks that all the components SWAO needs are available and
 configured:
 
 - LLM provider: the language model SWAO uses to reason about code

@@ -147,7 +147,7 @@ swao lz catalogue copy stackit
 ```
 
 Edit the file and re-run the assessment. SWAO picks up the workspace-level file
-automatically and marks its origin as `workspace` in `swao doctor` output.
+automatically and marks its origin as `workspace` in `swao health-check` output.
 
 See [Adapting LZ Catalogues](/runbooks/adapting-lz-catalogues) for the full workflow.
 

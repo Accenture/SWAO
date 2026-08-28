@@ -1,0 +1,53 @@
+# LLM Selection Framework for Sovereign Deployment -- community framework metadata
+# Design 063 §A.2 -- phase 5 framework files shipped #0641 (sprint-073).
+# Sprint-075 #0695: renamed SWAO_LLM_ASSESS -> LLM_SELECTION; dir swao-llm-assess -> llm-selection.
+# Schema: design 029 §11 framework-meta shape (framework: root key).
+
+framework:
+  id: LLM_SELECTION
+  name: "LLM Selection Framework for Sovereign Deployment"
+  version: "1.0"
+  authority: "Accenture SWAO team -- community framework (Design 063)"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - llm_app
+    - genai_application
+    - foundation_model
+    - ai_workload
+  assessment_type_scope: [llm]
+  description: >
+    Evaluates a large language model provider as a candidate for
+    sovereign-workload deployment. Covers data sovereignty and residency
+    (DSR), model transparency (MT), performance and reliability (PR),
+    cultural and language fit (CLF), safety and bias (SB), people and team
+    readiness (PEO), and agentic capabilities (AC). Aligned with EU AI Act
+    GPAI obligations and Gartner G00794364 five-dimension LLM selection
+    framework. 34 controls across 7 domains scored into a Sovereignty
+    Readiness Score (SRS). Mode B benchmark component (Design 063 Phase 5).
+  references:
+    - "EU AI Act Articles 51-55 (GPAI model obligations)"
+    - "GDPR Articles 28, 44-46 (data processing agreements; transfer mechanisms)"
+    - "ISO/IEC 42001 (AI management systems)"
+    - "NIST AI RMF 1.0 (Govern, Map, Measure, Manage)"
+    - "NIST SP 800-218A (secure AI development)"
+    - "Gartner G00794364 -- How to Select the Right Large Language Model (2025)"
+    - "OWASP LLM Top 10 v2025 (prompt injection and jailbreak resistance)"
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-06-30"
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR          # DSR-01/DSR-02/DSR-03/DSR-05 map to Art.28/Art.44-46
+      - AI_10_PILLARS  # SB + AC domains overlap with pillars 5-10
+      - ISO_27001      # MT-03 audit log; SB-02 red-team -> A.5.8 threat intel
+
+  srs_weights:
+    DSR: 0.20
+    MT: 0.17
+    PR: 0.17
+    CLF: 0.12
+    SB: 0.15
+    AC: 0.16
+    PEO: 0.03

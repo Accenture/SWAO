@@ -1,0 +1,1283 @@
+# SWAO Community Framework -- BSI C5 (Cloud Computing Compliance Criteria Catalogue)
+#
+# Schema: RegimeCatalogueSchema v0.11 (design 029 §4.5; design 018 §2.1).
+#
+# Source of truth: BSI C5:2020 (Cloud Computing Compliance Criteria Catalogue),
+# published by the Bundesamt fuer Sicherheit in der Informationstechnik (BSI).
+# Available at:
+# https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html
+#
+# Each control description paraphrases the Basic Criteria requirement text from
+# C5:2020 for SWAO machine ingestion. Reviewers verify accuracy by locating the
+# cited domain and criterion identifier in the source publication.
+#
+# Severity mapping applied to this catalogue:
+#   Critical Basic Criteria (cryptography, access controls) -- critical
+#   Standard Basic Criteria                                 -- high
+#   Availability and compliance criteria                    -- medium
+#
+# v1.0.0 scope: 62 controls across all 17 C5:2020 Basic Criteria domains.
+
+regime_meta:
+  id: BSI_C5
+  name: "Cloud Computing Compliance Criteria Catalogue"
+  version: "2020"
+  scope: community
+  authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints: [de_sovereign, public_sector, cloud]
+  description: >-
+    German Federal Office for Information Security catalogue of minimum
+    requirements for the secure use of cloud services. C5:2020 revision
+    defines Basic Criteria and Additional Criteria across 17 control
+    domains. Mandatory baseline for German public-sector cloud usage and
+    strongly recommended for KRITIS-regulated sectors.
+  references:
+    - "https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html"
+  last_reviewed: "2026-07-08"
+  catalogue_version: "1.0.0"
+
+controls:
+  # ===========================================================================
+  # OIS -- Organisational Information Security
+  # ===========================================================================
+  - id: BSI_C5_OIS-01
+    pillar: "OIS -- Organisational Information Security"
+    title: "Information security policy documented and communicated"
+    description: >-
+      A written information security policy, approved by management, must be
+      established and communicated to all internal and relevant external users.
+      The policy must set out the objectives and scope of information security,
+      management commitment, and the governance framework applicable to the
+      cloud service. The policy must be reviewed at defined intervals and
+      following significant changes to the cloud environment.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ois-01-security-policy.md" }
+    references:
+      - "BSI C5:2020 OIS-01"
+    maps_to: [BSI_ISMS1_A3, ISO_27001_A.5.1, GDPR_Art_24]
+    remediation: >-
+      Draft and publish an information security policy with explicit management
+      sign-off; establish an annual review cycle; provide all staff with
+      acknowledgement of having read the policy.
+
+  - id: BSI_C5_OIS-02
+    pillar: "OIS -- Organisational Information Security"
+    title: "Information security roles and responsibilities defined"
+    description: >-
+      Roles and responsibilities for information security in the context of the
+      cloud service must be clearly defined, documented, and communicated to all
+      relevant staff. This includes naming a responsible person or function for
+      information security and ensuring accountability is traceable throughout
+      the organisation and its subcontractors.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ois-02-roles-responsibilities.md" }
+    references:
+      - "BSI C5:2020 OIS-02"
+    maps_to: [BSI_ORP1_A1, ISO_27001_A.5.2, ISO_27001_A.5.3]
+    remediation: >-
+      Document an RACI matrix for information security roles covering the cloud
+      service; publish it to all staff; update when organisational structure
+      changes.
+
+  - id: BSI_C5_OIS-03
+    pillar: "OIS -- Organisational Information Security"
+    title: "Risk management process established"
+    description: >-
+      A risk management process applicable to the cloud service must be
+      established, documented, and operationalised. The process must include
+      risk identification, analysis, evaluation, and treatment. Accepted
+      residual risks must be formally approved by accountable management.
+      Risk assessments must be repeated at defined intervals and following
+      significant changes.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 OIS-03"
+    maps_to: [BSI_ISMS1_A6, ISO_27001_A.6.1, ISO_27001_A.8.2]
+    remediation: >-
+      Establish a risk register for the cloud service; assign ownership of each
+      risk; review the register at least annually and after significant changes.
+
+  - id: BSI_C5_OIS-04
+    pillar: "OIS -- Organisational Information Security"
+    title: "Security objectives aligned with business objectives"
+    description: >-
+      Information security objectives relevant to the cloud service must be
+      documented and aligned with the overall business strategy. Objectives
+      must be measurable, monitored, and reported to management. Deviations
+      from objectives must be tracked and remediation actions assigned.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 OIS-04"
+    maps_to: [BSI_ISMS1_A1, ISO_27001_A.5.1]
+    remediation: >-
+      Define measurable security objectives tied to the cloud service; include
+      them in management reporting; review progress at least quarterly.
+
+  - id: BSI_C5_OIS-05
+    pillar: "OIS -- Organisational Information Security"
+    title: "Third-party and supplier security management policy"
+    description: >-
+      A policy and documented process for managing the security risks introduced
+      by third parties and subcontractors involved in delivering the cloud
+      service must exist. The policy must cover selection, contracting,
+      monitoring, and exit of third parties. Security obligations must be
+      reflected in contracts.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 OIS-05"
+    maps_to: [BSI_OPS22_A1, ISO_27001_A.5.19, ISO_27001_A.5.20]
+    remediation: >-
+      Establish a supplier register with security risk classification; include
+      security requirements in all supplier contracts; conduct periodic reviews
+      of supplier compliance.
+
+  # ===========================================================================
+  # PRY -- Physical Security
+  # ===========================================================================
+  - id: BSI_C5_PRY-01
+    pillar: "PRY -- Physical Security"
+    title: "Physical access control to data centre and server rooms"
+    description: >-
+      Physical access to facilities hosting the cloud service infrastructure
+      must be restricted to authorised personnel. Access must be controlled via
+      security zones, authentication mechanisms, and logging of entry and exit.
+      Visitor access must be supervised and recorded.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PRY-01"
+    maps_to: [ISO_27001_A.7.2, ISO_27001_A.7.3]
+    remediation: >-
+      Implement card-based or biometric access control to all server rooms;
+      maintain access logs; review access rights quarterly and revoke on role
+      change or termination.
+
+  - id: BSI_C5_PRY-02
+    pillar: "PRY -- Physical Security"
+    title: "Environmental controls for data centre facilities"
+    description: >-
+      Facilities hosting the cloud service must be protected against
+      environmental threats including fire, flood, extreme temperature, and
+      power interruption. Environmental monitoring systems must be in place
+      with alerting and defined response procedures.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PRY-02"
+    maps_to: [ISO_27001_A.7.5, ISO_27001_A.7.6]
+    remediation: >-
+      Verify that the hosting facility operates fire suppression, flood
+      detection, temperature monitoring, and UPS systems; review maintenance
+      records annually.
+
+  - id: BSI_C5_PRY-03
+    pillar: "PRY -- Physical Security"
+    title: "Equipment disposal and reuse procedures"
+    description: >-
+      Procedures must exist for the secure disposal or reuse of storage media
+      and equipment used to deliver the cloud service. All data must be
+      securely erased or the media physically destroyed before disposal or
+      reuse. Disposal records must be maintained.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PRY-03"
+    maps_to: [BSI_CON6_A1, ISO_27001_A.7.14, ISO_27001_A.8.10]
+    remediation: >-
+      Implement a secure media disposal process aligned to BSI TR-03138 or
+      equivalent; maintain a disposal register with certificate references.
+
+  - id: BSI_C5_PRY-04
+    pillar: "PRY -- Physical Security"
+    title: "Secure media handling and cabling protection"
+    description: >-
+      Removable media used in the cloud service environment must be controlled,
+      inventoried, and protected from unauthorised access. Power and
+      telecommunications cabling must be protected from interception and
+      physical damage. Cabling documentation must be maintained.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PRY-04"
+    maps_to: [ISO_27001_A.7.12, ISO_27001_A.7.13]
+    remediation: >-
+      Maintain a removable media register; enforce USB port restrictions where
+      applicable; inspect cabling infrastructure at least annually.
+
+  # ===========================================================================
+  # HRS -- Human Resources Security
+  # ===========================================================================
+  - id: BSI_C5_HRS-01
+    pillar: "HRS -- Human Resources Security"
+    title: "Background verification for staff in sensitive roles"
+    description: >-
+      Background checks proportionate to the sensitivity of the role and
+      applicable legal requirements must be conducted for all personnel with
+      access to the cloud service infrastructure, customer data, or security
+      controls. Checks must be repeated at defined intervals for staff in
+      highly sensitive roles.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/hrs-01-background-checks.md" }
+    references:
+      - "BSI C5:2020 HRS-01"
+    maps_to: [BSI_ORP2_A1, ISO_27001_A.6.1]
+    remediation: >-
+      Define screening requirements by role classification; conduct checks
+      before granting access; maintain screening records in compliance with
+      applicable data protection law.
+
+  - id: BSI_C5_HRS-02
+    pillar: "HRS -- Human Resources Security"
+    title: "Security awareness training programme"
+    description: >-
+      All personnel with access to the cloud service must receive security
+      awareness training at onboarding and at regular intervals thereafter.
+      Training must cover relevant threats, security policies, incident
+      reporting procedures, and individual responsibilities. Completion
+      must be recorded.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/hrs-02-awareness-training.md" }
+    references:
+      - "BSI C5:2020 HRS-02"
+    maps_to: [BSI_ISMS1_A8, ISO_27001_A.6.3, GDPR_Art_29]
+    remediation: >-
+      Implement a mandatory annual security awareness programme; track completion
+      rates; include phishing simulation for staff with elevated access.
+
+  - id: BSI_C5_HRS-03
+    pillar: "HRS -- Human Resources Security"
+    title: "Disciplinary process for security policy violations"
+    description: >-
+      A documented disciplinary process must be in place for personnel who
+      violate the information security policy. The process must be communicated
+      to all staff. It must cover a range of responses proportionate to the
+      severity of the violation and must not preclude legal action where
+      required.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 HRS-03"
+    maps_to: [BSI_ORP2_A4, ISO_27001_A.6.4]
+    remediation: >-
+      Document the disciplinary procedure in the HR policy; include security
+      policy violation scenarios; ensure legal review of the procedure.
+
+  - id: BSI_C5_HRS-04
+    pillar: "HRS -- Human Resources Security"
+    title: "Security obligations on employment termination or role change"
+    description: >-
+      Defined procedures must exist to manage information security obligations
+      when employment or a contractor engagement is terminated, or when a
+      person role changes significantly. Procedures must cover return of
+      equipment, revocation of access rights, and confidentiality obligations
+      that survive termination.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 HRS-04"
+    maps_to: [BSI_ORP2_A2, ISO_27001_A.6.5, GDPR_Art_28]
+    remediation: >-
+      Implement a joiner/mover/leaver process that triggers access revocation
+      within 24 hours of departure; verify equipment return before final
+      clearance.
+
+  # ===========================================================================
+  # IDM -- Identity and Access Management
+  # ===========================================================================
+  - id: BSI_C5_IDM-01
+    pillar: "IDM -- Identity and Access Management"
+    title: "Identity and access management policies"
+    description: >-
+      Policies and procedures for the identity and access management of internal
+      and external users have been documented, communicated, and applied. The
+      policies must cover user registration, provisioning, de-provisioning, and
+      the principle of least privilege for cloud service access.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 IDM-01"
+    maps_to: [BSI_ORP4_A1, ISO_27001_A.5.15, ISO_27001_A.5.18]
+    remediation: >-
+      Document IAM policies covering provisioning, recertification, and
+      de-provisioning; enforce least privilege; publish to all staff.
+
+  - id: BSI_C5_IDM-02
+    pillar: "IDM -- Identity and Access Management"
+    title: "Multi-factor authentication for privileged access"
+    description: >-
+      Multi-factor authentication must be enforced for all privileged access
+      to the cloud service infrastructure, management planes, and administrative
+      interfaces. MFA must use at least two independent authentication factors
+      from different categories (knowledge, possession, inherence).
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references:
+      - "BSI C5:2020 IDM-02"
+    maps_to: [BSI_ORP4_A2, ISO_27001_A.8.5, ISO_27001_A.5.17]
+    remediation: >-
+      Enable MFA on all privileged accounts; enforce via identity provider
+      policy; audit for exceptions monthly.
+
+  - id: BSI_C5_IDM-03
+    pillar: "IDM -- Identity and Access Management"
+    title: "Access rights review and recertification"
+    description: >-
+      Access rights granted to users of the cloud service infrastructure must
+      be formally reviewed and recertified at regular intervals. Access rights
+      that can no longer be justified must be revoked promptly. Reviews must
+      cover all user categories including privileged accounts and service
+      accounts.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references:
+      - "BSI C5:2020 IDM-03"
+    maps_to: [ISO_27001_A.5.18, ISO_27001_A.8.2]
+    remediation: >-
+      Conduct quarterly access recertification campaigns; automate revocation
+      on non-response; document results and exceptions.
+
+  - id: BSI_C5_IDM-04
+    pillar: "IDM -- Identity and Access Management"
+    title: "Privileged access management and just-in-time access"
+    description: >-
+      Privileged access to cloud service systems must be managed through a
+      controlled process that limits standing privilege. Where technically
+      feasible, just-in-time or time-limited privilege elevation must be
+      applied. All privileged sessions must be logged.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references:
+      - "BSI C5:2020 IDM-04"
+    maps_to: [BSI_ORP4_A2, ISO_27001_A.8.2, ISO_27001_A.5.15]
+    remediation: >-
+      Deploy a privileged access management solution; implement session
+      recording for all privileged sessions; enforce time-limited elevation.
+
+  - id: BSI_C5_IDM-05
+    pillar: "IDM -- Identity and Access Management"
+    title: "Service account management"
+    description: >-
+      Service accounts and technical accounts used by applications or automated
+      processes to access cloud service resources must be inventoried, assigned
+      to a named owner, and subject to the same access control disciplines as
+      human accounts. Unused service accounts must be disabled or deleted.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references:
+      - "BSI C5:2020 IDM-05"
+    maps_to: [ISO_27001_A.5.15, ISO_27001_A.8.2]
+    remediation: >-
+      Maintain a service account register; assign owners; audit for unused
+      or over-privileged service accounts quarterly.
+
+  - id: BSI_C5_IDM-06
+    pillar: "IDM -- Identity and Access Management"
+    title: "Joiners, movers, and leavers process for cloud access"
+    description: >-
+      A defined joiner/mover/leaver process must ensure that access to the
+      cloud service is granted appropriately on hire, adjusted on role change,
+      and revoked on departure. Time limits must be enforced for temporary
+      access grants.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 IDM-06"
+    maps_to: [BSI_ORP2_A2, ISO_27001_A.5.18, GDPR_Art_24]
+    remediation: >-
+      Integrate HR system with identity provider; automate access revocation
+      on departure; verify revocation within 24 hours of leaver notification.
+
+  # ===========================================================================
+  # CRY -- Cryptography
+  # ===========================================================================
+  - id: BSI_C5_CRY-01
+    pillar: "CRY -- Cryptography"
+    title: "Cryptography policies and key management"
+    description: >-
+      Policies and procedures for the use of cryptography and the management of
+      keys for the cloud service have been documented, communicated, and applied.
+      Algorithms and key lengths must follow BSI Technical Guideline TR-02102.
+      The policies must cover the full key lifecycle including generation,
+      storage, distribution, revocation, and destruction.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references:
+      - "BSI C5:2020 CRY-01"
+      - "BSI TR-02102-1"
+    maps_to: [BSI_CON1_A1, ISO_27001_A.8.24, GDPR_Art_32]
+    remediation: >-
+      Document a cryptography policy aligned to BSI TR-02102; enforce approved
+      algorithms at the platform level; review and update when TR-02102 is
+      revised.
+
+  - id: BSI_C5_CRY-02
+    pillar: "CRY -- Cryptography"
+    title: "Encryption of data at rest for sensitive and personal data"
+    description: >-
+      Data stored by the cloud service that is classified as sensitive or that
+      contains personal data must be encrypted at rest using approved algorithms.
+      Encryption must be applied at the storage layer and, where applicable, at
+      the application layer. Keys must be managed separately from the encrypted
+      data.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+      - { signal_prefix: DATA }
+    references:
+      - "BSI C5:2020 CRY-02"
+      - "BSI TR-02102-1"
+    maps_to: [BSI_CON1_A2, ISO_27001_A.8.24, GDPR_Art_32]
+    remediation: >-
+      Enable encryption at rest for all storage containing sensitive or personal
+      data; ensure keys are held in a managed key store separate from the data.
+
+  - id: BSI_C5_CRY-03
+    pillar: "CRY -- Cryptography"
+    title: "Key rotation and lifecycle management"
+    description: >-
+      Cryptographic keys used in the cloud service must be rotated at defined
+      intervals and on security events such as suspected compromise or personnel
+      departure. Key rotation procedures must be documented and tested. Old keys
+      must be retained only as long as required to decrypt data encrypted under
+      them.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references:
+      - "BSI C5:2020 CRY-03"
+    maps_to: [BSI_CON1_A4, ISO_27001_A.8.24]
+    remediation: >-
+      Configure automated key rotation in the key management service; define
+      rotation intervals per key type; test rotation procedures annually.
+
+  - id: BSI_C5_CRY-04
+    pillar: "CRY -- Cryptography"
+    title: "Certificate management and expiry monitoring"
+    description: >-
+      TLS/SSL certificates and other cryptographic certificates used in the
+      cloud service must be inventoried, their expiry dates monitored, and
+      renewal carried out before expiry. Certificate issuance and revocation
+      processes must be documented. Use of self-signed certificates in
+      production must be justified and approved.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+      - { signal_prefix: TF }
+    references:
+      - "BSI C5:2020 CRY-04"
+    maps_to: [ISO_27001_A.8.24, ISO_27001_A.5.20]
+    remediation: >-
+      Deploy certificate inventory monitoring with alerting 30 days before
+      expiry; automate renewal where possible; review self-signed certificate
+      exceptions annually.
+
+  # ===========================================================================
+  # COS -- Communication Security
+  # ===========================================================================
+  - id: BSI_C5_COS-01
+    pillar: "COS -- Communication Security"
+    title: "Network segmentation and zone architecture"
+    description: >-
+      The cloud service network must be segmented into security zones based on
+      trust and sensitivity. Traffic between zones must be controlled and
+      filtered. Production systems must be separated from development and test
+      environments. Network architecture must be documented and reviewed
+      regularly.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: TF }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 COS-01"
+    maps_to: [BSI_NET11_A1, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    remediation: >-
+      Define and implement network security zones; enforce zone boundaries with
+      firewalls or security groups; document the zone architecture and review
+      annually.
+
+  - id: BSI_C5_COS-02
+    pillar: "COS -- Communication Security"
+    title: "Firewall management and rule review process"
+    description: >-
+      Firewall and network access control rules for the cloud service must be
+      managed through a change-controlled process. Rules must be reviewed at
+      defined intervals to identify and remove rules that are no longer
+      required. All-permit and broad-permit rules must be justified and
+      approved.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: TF }
+    references:
+      - "BSI C5:2020 COS-02"
+    maps_to: [BSI_NET32_A1, ISO_27001_A.8.20, ISO_27001_A.8.23]
+    remediation: >-
+      Conduct firewall rule reviews at least twice per year; document the review
+      process; automate detection of unused rules.
+
+  - id: BSI_C5_COS-03
+    pillar: "COS -- Communication Security"
+    title: "Remote access security"
+    description: >-
+      Remote access to the cloud service administration plane and internal
+      systems must be secured using encrypted channels. Authentication for
+      remote access must use at least multi-factor authentication. Remote
+      access sessions must be logged. Access from unmanaged devices must be
+      restricted or prohibited.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+      - { signal_prefix: CRYPTO }
+    references:
+      - "BSI C5:2020 COS-03"
+    maps_to: [BSI_NET33_A1, ISO_27001_A.8.20, ISO_27001_A.8.5]
+    remediation: >-
+      Enforce MFA for all remote access; log all sessions; block unmanaged
+      device connections unless compensating controls are applied.
+
+  - id: BSI_C5_COS-04
+    pillar: "COS -- Communication Security"
+    title: "Endpoint protection and malware prevention"
+    description: >-
+      Endpoints and systems used to deliver the cloud service must be protected
+      against malware and unauthorised code. Malware protection must be kept
+      current and must cover real-time scanning. Detection events must be
+      alerted and investigated.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 COS-04"
+    maps_to: [BSI_SYS11_A2, ISO_27001_A.8.7]
+    remediation: >-
+      Deploy endpoint protection on all service-delivering systems; enforce
+      automatic signature updates; pipe detection events into the SOC or
+      monitoring platform.
+
+  # ===========================================================================
+  # OPS -- Operations
+  # ===========================================================================
+  - id: BSI_C5_OPS-01
+    pillar: "OPS -- Operations"
+    title: "Change management process for cloud infrastructure"
+    description: >-
+      A formal change management process must govern all changes to the cloud
+      service infrastructure and configuration. Changes must be documented,
+      reviewed, approved, and tested before deployment to production. Emergency
+      changes must follow an expedited process with retrospective review.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 OPS-01"
+    maps_to: [BSI_OPS112_A1, ISO_27001_A.8.32]
+    remediation: >-
+      Implement a change management workflow with mandatory approval gates;
+      enforce through the CI/CD pipeline; retain change records for audit.
+
+  - id: BSI_C5_OPS-02
+    pillar: "OPS -- Operations"
+    title: "Patch and vulnerability management"
+    description: >-
+      A systematic process for identifying, evaluating, and applying security
+      patches to systems delivering the cloud service must be in place.
+      Vulnerability scanning must be conducted at regular intervals. Critical
+      patches must be applied within a defined maximum timeframe. Patch
+      application status must be tracked and reported.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: SBOM }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 OPS-02"
+    maps_to: [BSI_OPS113_A1, ISO_27001_A.8.8, ISO_27001_A.8.19]
+    remediation: >-
+      Establish patch SLAs by severity (critical: 72 hours, high: 7 days);
+      automate patch deployment where possible; track exceptions in the risk
+      register.
+
+  - id: BSI_C5_OPS-03
+    pillar: "OPS -- Operations"
+    title: "Capacity and performance management"
+    description: >-
+      Capacity and performance of cloud service resources must be monitored and
+      managed to ensure agreed service levels are met. Capacity planning must
+      consider expected growth and peak usage. Capacity-related risks must be
+      identified and addressed before they affect service availability.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 OPS-03"
+    maps_to: [BSI_OPS112_A3, ISO_27001_A.8.6]
+    remediation: >-
+      Implement capacity monitoring dashboards with alerting at defined
+      thresholds; conduct quarterly capacity reviews; document forecasts.
+
+  - id: BSI_C5_OPS-04
+    pillar: "OPS -- Operations"
+    title: "Asset management -- inventory of information assets"
+    description: >-
+      The cloud provider maintains a complete and current inventory of
+      information assets relevant to the provision of the cloud service.
+      The inventory must be reviewed and updated at defined intervals and
+      whenever significant changes occur to the cloud environment.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: cmdb_export }
+      - { signal_prefix: INV }
+    references:
+      - "BSI C5:2020 OPS-04"
+    maps_to: [BSI_OPS22_A2, ISO_27001_A.5.9, ISO_27001_A.5.10]
+    remediation: >-
+      Implement a CMDB or equivalent asset register covering all cloud service
+      components; update it on every infrastructure change; review completeness
+      quarterly.
+
+  - id: BSI_C5_OPS-05
+    pillar: "OPS -- Operations"
+    title: "Security configuration baseline and hardening"
+    description: >-
+      Security configuration baselines must be defined and applied to all
+      systems, platforms, and services used to deliver the cloud service.
+      Baselines must be based on recognised hardening standards. Deviations
+      from baselines must be tracked and justified. Configuration compliance
+      must be monitored continuously or at regular intervals.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: TF }
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 OPS-05"
+    maps_to: [BSI_SYS11_A1, ISO_27001_A.8.9, ISO_27001_A.8.8]
+    remediation: >-
+      Define hardening baselines per system type; enforce via IaC; run
+      continuous compliance scanning and alert on drift.
+
+  - id: BSI_C5_OPS-06
+    pillar: "OPS -- Operations"
+    title: "Logging and monitoring strategy"
+    description: >-
+      A logging and monitoring strategy for the cloud service must be
+      documented and implemented. Security-relevant events must be logged.
+      Logs must be protected from tampering, retained for a defined period,
+      and reviewed for security incidents. Monitoring must cover availability
+      and security dimensions.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 OPS-06"
+    maps_to: [BSI_DER1_A1, ISO_27001_A.8.15, ISO_27001_A.8.16, GDPR_Art_32]
+    remediation: >-
+      Define logging requirements per event category; centralise logs in a
+      tamper-evident store; configure retention per regulatory requirements;
+      establish a review cadence.
+
+  # ===========================================================================
+  # AVL -- Availability and Resilience
+  # ===========================================================================
+  - id: BSI_C5_AVL-01
+    pillar: "AVL -- Availability and Resilience"
+    title: "Business continuity plan covering cloud services"
+    description: >-
+      A business continuity plan applicable to the cloud service must be
+      documented, approved, and tested at regular intervals. The BCP must cover
+      the scenarios most likely to disrupt service delivery and define
+      escalation paths and communication procedures.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 AVL-01"
+    maps_to: [BSI_DER4_A1, ISO_27001_A.5.29, ISO_27001_A.5.30]
+    remediation: >-
+      Author and maintain a cloud-specific BCP; test it at least annually
+      through a tabletop exercise; document and act on test findings.
+
+  - id: BSI_C5_AVL-02
+    pillar: "AVL -- Availability and Resilience"
+    title: "Recovery time and recovery point objectives defined and tested"
+    description: >-
+      Recovery time objectives (RTO) and recovery point objectives (RPO) for
+      the cloud service must be defined based on business impact analysis and
+      contractual commitments. Actual recovery capability must be tested at
+      regular intervals and results compared against defined objectives.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 AVL-02"
+    maps_to: [BSI_DER4_A2, ISO_27001_A.5.30]
+    remediation: >-
+      Document RTO and RPO per service tier; conduct recovery tests at least
+      annually; close gaps between tested recovery times and defined objectives.
+
+  - id: BSI_C5_AVL-03
+    pillar: "AVL -- Availability and Resilience"
+    title: "Geographic redundancy and failover capability"
+    description: >-
+      Cloud service components that support critical functions must be deployed
+      across geographically separated locations to protect against site-level
+      outages. Failover mechanisms must be tested and their behaviour documented.
+      Geographic distribution must not violate data residency requirements.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: TF }
+    references:
+      - "BSI C5:2020 AVL-03"
+    maps_to: [ISO_27001_A.5.30, ISO_27001_A.8.14]
+    remediation: >-
+      Deploy across at least two availability zones in a compliant geographic
+      region; test failover annually; confirm data residency alignment with
+      DAT-02.
+
+  - id: BSI_C5_AVL-04
+    pillar: "AVL -- Availability and Resilience"
+    title: "Backup strategy and restore testing"
+    description: >-
+      A documented backup strategy for cloud service data and configurations
+      must be in place. Backups must be performed at intervals aligned with
+      defined RPOs. Restore procedures must be tested regularly. Backup copies
+      must be stored in a separate location or separate cloud account.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 AVL-04"
+    maps_to: [BSI_CON3_A1, ISO_27001_A.8.13]
+    remediation: >-
+      Implement automated backup with offsite or cross-account storage; test
+      restores quarterly; document the backup schedule and retain test results.
+
+  # ===========================================================================
+  # DEV -- Procurement and Development
+  # ===========================================================================
+  - id: BSI_C5_DEV-01
+    pillar: "DEV -- Procurement and Development"
+    title: "Security requirements in software procurement"
+    description: >-
+      Information security requirements must be identified and documented
+      before procuring software components used in the cloud service. Suppliers
+      must demonstrate that their products meet the stated requirements.
+      Security clauses must be included in procurement contracts.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/dev-01-procurement-security.md" }
+    references:
+      - "BSI C5:2020 DEV-01"
+    maps_to: [BSI_OPS22_A1, ISO_27001_A.5.19, ISO_27001_A.5.20]
+    remediation: >-
+      Define security acceptance criteria for procured software; include
+      security requirements in RFPs and contracts; conduct vendor security
+      assessments for critical components.
+
+  - id: BSI_C5_DEV-02
+    pillar: "DEV -- Procurement and Development"
+    title: "Secure software development lifecycle"
+    description: >-
+      A secure software development lifecycle must be applied to all software
+      developed for or incorporated into the cloud service. Security
+      requirements must be addressed from design through to deployment. Threat
+      modelling, security testing, and code review must be integrated into the
+      development process.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/dev-02-secure-sdlc.md" }
+    references:
+      - "BSI C5:2020 DEV-02"
+    maps_to: [BSI_APP31_A1, ISO_27001_A.8.25, ISO_27001_A.8.26]
+    remediation: >-
+      Document SSDLC practices including threat modelling and security testing
+      gates; enforce via CI pipeline; train developers on secure coding.
+
+  - id: BSI_C5_DEV-03
+    pillar: "DEV -- Procurement and Development"
+    title: "Code review and security testing before release"
+    description: >-
+      All code changes to the cloud service must undergo review before
+      deployment to production. Security testing including SAST and DAST must
+      be integrated into the release pipeline. Critical findings must block
+      release until resolved. Test results must be retained for audit.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: SBOM }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 DEV-03"
+    maps_to: [BSI_APP31_A2, ISO_27001_A.8.26, ISO_27001_A.8.29]
+    remediation: >-
+      Gate releases on SAST scan completion; block critical findings; retain
+      scan artefacts in the release record.
+
+  - id: BSI_C5_DEV-04
+    pillar: "DEV -- Procurement and Development"
+    title: "Vulnerability disclosure and responsible disclosure policy"
+    description: >-
+      A responsible disclosure policy must exist for the cloud service that
+      defines how external researchers can report security vulnerabilities and
+      how the service provider will respond. The policy must include a target
+      response time and a commitment not to take legal action against
+      good-faith reporters. Critical vulnerabilities must be remediated on a
+      risk-based schedule.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 DEV-04"
+    maps_to: [ISO_27001_A.5.8, ISO_27001_A.8.8]
+    remediation: >-
+      Publish a responsible disclosure policy at a well-known URL; define an
+      internal triage and response process; track disclosed vulnerabilities to
+      closure.
+
+  # ===========================================================================
+  # INM -- Incident Management
+  # ===========================================================================
+  - id: BSI_C5_INM-01
+    pillar: "INM -- Incident Management"
+    title: "Incident response plan and team defined"
+    description: >-
+      A documented incident response plan applicable to the cloud service must
+      exist. The plan must define roles, responsibilities, communication paths,
+      and escalation procedures. An incident response team with defined members
+      must be named. The plan must be tested at regular intervals.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/inm-01-incident-response-plan.md" }
+    references:
+      - "BSI C5:2020 INM-01"
+    maps_to: [BSI_DER21_A1, ISO_27001_A.5.26, ISO_27001_A.5.24]
+    remediation: >-
+      Author and publish an incident response plan; identify and train the
+      incident response team; conduct a tabletop exercise at least annually.
+
+  - id: BSI_C5_INM-02
+    pillar: "INM -- Incident Management"
+    title: "Incident classification and escalation procedure"
+    description: >-
+      A classification scheme for security incidents must be defined and applied
+      to the cloud service. The classification must drive escalation paths,
+      response timeframes, and notification obligations. All staff must know
+      how to report a suspected incident.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 INM-02"
+    maps_to: [BSI_DER21_A2, ISO_27001_A.5.25, ISO_27001_A.5.26]
+    remediation: >-
+      Define and publish an incident classification matrix; train all staff
+      on the reporting path; include classification in incident response
+      exercises.
+
+  - id: BSI_C5_INM-03
+    pillar: "INM -- Incident Management"
+    title: "Notification to BSI for significant cloud security incidents"
+    description: >-
+      Significant security incidents affecting the cloud service must be
+      reported to the BSI in accordance with applicable regulatory obligations.
+      The process for determining whether an incident triggers reporting
+      obligations, the escalation path, and the notification template must be
+      documented and tested.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/inm-03-bsi-notification.md" }
+    references:
+      - "BSI C5:2020 INM-03"
+    maps_to: [BSI_DER21_A3, GDPR_Art_33, ISO_27001_A.5.26]
+    remediation: >-
+      Document the incident reporting obligations to BSI; assign the
+      notification owner; include BSI notification in incident response plan
+      and tabletop exercises.
+
+  - id: BSI_C5_INM-04
+    pillar: "INM -- Incident Management"
+    title: "Post-incident review and lessons learned"
+    description: >-
+      Following any significant security incident affecting the cloud service,
+      a post-incident review must be conducted. The review must identify root
+      cause, evaluate the effectiveness of the response, and produce a list of
+      improvement actions with owners and target dates. Findings must be tracked
+      to closure.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 INM-04"
+    maps_to: [ISO_27001_A.5.27, ISO_27001_A.5.26]
+    remediation: >-
+      Mandate post-incident reviews for all P1 and P2 incidents; publish
+      lessons learned internally; track improvement actions in the risk register.
+
+  # ===========================================================================
+  # SIM -- Security Incident Management (Detection and Monitoring)
+  # ===========================================================================
+  - id: BSI_C5_SIM-01
+    pillar: "SIM -- Security Incident Management"
+    title: "Security event monitoring and alerting"
+    description: >-
+      Security-relevant events from the cloud service infrastructure must be
+      collected, correlated, and monitored. Alerting rules must be configured
+      to detect known attack patterns and anomalous behaviour. Alerts must
+      be routed to a team with the capability to triage and respond.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 SIM-01"
+    maps_to: [BSI_DER1_A2, ISO_27001_A.8.15, ISO_27001_A.8.16]
+    remediation: >-
+      Deploy a SIEM or equivalent; define detection rules for high-priority
+      attack scenarios; assign on-call triage responsibilities; review alert
+      quality quarterly.
+
+  - id: BSI_C5_SIM-02
+    pillar: "SIM -- Security Incident Management"
+    title: "Forensic capability and evidence preservation"
+    description: >-
+      The cloud service provider must maintain the capability to collect and
+      preserve forensic evidence in the event of a security incident. Log
+      retention settings must support forensic investigation for at least the
+      minimum period required by regulation. Chain of custody procedures must
+      be documented.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: OBS }
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 SIM-02"
+    maps_to: [BSI_DER31_A1, ISO_27001_A.5.28, ISO_27001_A.8.15]
+    remediation: >-
+      Define log retention periods per regulation (minimum 90 days, recommended
+      1 year); implement tamper-evident log storage; document evidence
+      preservation procedures.
+
+  - id: BSI_C5_SIM-03
+    pillar: "SIM -- Security Incident Management"
+    title: "Threat intelligence integration"
+    description: >-
+      Threat intelligence relevant to the cloud service threat landscape must
+      be gathered from reliable sources and integrated into monitoring and
+      detection rules. Intelligence feeds must be reviewed for relevance at
+      defined intervals. Newly disclosed vulnerabilities and attack techniques
+      must be assessed for applicability to the cloud service.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references:
+      - "BSI C5:2020 SIM-03"
+    maps_to: [BSI_DER1_A3, ISO_27001_A.5.7]
+    remediation: >-
+      Subscribe to BSI-CERT advisories and relevant threat intelligence feeds;
+      review and apply actionable intelligence within defined SLAs.
+
+  # ===========================================================================
+  # COM -- Compliance
+  # ===========================================================================
+  - id: BSI_C5_COM-01
+    pillar: "COM -- Compliance"
+    title: "Legal and regulatory compliance register"
+    description: >-
+      A register of legal, regulatory, and contractual obligations applicable
+      to the cloud service must be maintained. The register must be kept
+      current. Responsibilities for monitoring compliance with each obligation
+      must be assigned. The register must be reviewed at least annually.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 COM-01"
+    maps_to: [BSI_ORP5_A1, ISO_27001_A.5.31, GDPR_Art_24]
+    remediation: >-
+      Establish a compliance register covering applicable laws, regulations,
+      and contracts; assign owners; review after regulatory changes.
+
+  - id: BSI_C5_COM-02
+    pillar: "COM -- Compliance"
+    title: "Internal audit programme covering C5 criteria"
+    description: >-
+      An internal audit programme must exist that periodically assesses the
+      cloud service against the C5 criteria and other applicable security
+      requirements. Audit plans, findings, and action tracking must be
+      documented. Audit results must be reported to management.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/com-02-audit-programme.md" }
+    references:
+      - "BSI C5:2020 COM-02"
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36]
+    remediation: >-
+      Define an annual audit plan covering C5 domains; track findings to
+      closure; report results to management; use findings to prioritise
+      remediation efforts.
+
+  - id: BSI_C5_COM-03
+    pillar: "COM -- Compliance"
+    title: "C5 attestation process management"
+    description: >-
+      A process for managing the C5 attestation engagement must be defined and
+      operationalised. The process must cover selection of the auditor,
+      provision of evidence, tracking of open findings, and publication of the
+      attestation report. Attestation must be renewed at the intervals required
+      by BSI and customer contracts.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 COM-03"
+    maps_to: [ISO_27001_A.5.35]
+    remediation: >-
+      Establish an attestation project plan with milestone tracker; assign an
+      attestation owner; maintain a continuous evidence collection programme.
+
+  # ===========================================================================
+  # PSS -- Portability and Interoperability
+  # ===========================================================================
+  - id: BSI_C5_PSS-01
+    pillar: "PSS -- Portability and Interoperability"
+    title: "Data export capability and format documentation"
+    description: >-
+      The cloud service must provide customers with the capability to export
+      their data in a documented, machine-readable format. Export formats and
+      procedures must be documented. The export capability must be tested.
+      Proprietary lock-in dependencies must be disclosed to customers.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/pss-01-data-portability.md" }
+    references:
+      - "BSI C5:2020 PSS-01"
+    maps_to: [GDPR_Art_20, ISO_27001_A.5.10]
+    remediation: >-
+      Document supported export formats and procedures; provide a self-service
+      export mechanism; test export completeness at least annually.
+
+  - id: BSI_C5_PSS-02
+    pillar: "PSS -- Portability and Interoperability"
+    title: "Service termination and data return or deletion"
+    description: >-
+      Procedures for service termination must be documented and communicated
+      to customers. On termination, the cloud provider must enable customers
+      to retrieve all their data within a defined period and must securely
+      delete customer data after the retrieval window expires. A certificate
+      of deletion must be provided on request.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PSS-02"
+    maps_to: [GDPR_Art_17, GDPR_Art_28, ISO_27001_A.8.10]
+    remediation: >-
+      Define and publish service termination procedures; implement secure
+      deletion; issue deletion certificates; test the termination process
+      annually.
+
+  # ===========================================================================
+  # BCP -- Business Continuity Planning
+  # ===========================================================================
+  - id: BSI_C5_BCP-01
+    pillar: "BCP -- Business Continuity Planning"
+    title: "Crisis communication plan for cloud service disruption"
+    description: >-
+      A crisis communication plan must exist covering significant cloud service
+      disruptions. The plan must define stakeholder notification procedures,
+      communication channels, spokesperson roles, and message templates.
+      Customer notification obligations must be reflected in the plan.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 BCP-01"
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30]
+    remediation: >-
+      Author a crisis communication plan; pre-define notification templates;
+      include communication in BCP exercises.
+
+  - id: BSI_C5_BCP-02
+    pillar: "BCP -- Business Continuity Planning"
+    title: "Supplier dependency mapping and exit strategy"
+    description: >-
+      Dependencies on critical third-party suppliers and subcontractors in
+      the cloud service delivery chain must be mapped. Exit strategies for
+      critical suppliers must be documented and reviewed. Single points of
+      failure in the supply chain must be identified and mitigated.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 BCP-02"
+    maps_to: [BSI_OPS22_A4, ISO_27001_A.5.21, ISO_27001_A.5.22]
+    remediation: >-
+      Maintain a supplier dependency map; define exit criteria and transition
+      plans for critical suppliers; review annually and after supply chain
+      changes.
+
+  # ===========================================================================
+  # DAT -- Data Security
+  # ===========================================================================
+  - id: BSI_C5_DAT-01
+    pillar: "DAT -- Data Security"
+    title: "Data security -- classification and protection"
+    description: >-
+      Data of the cloud customer is classified and protected according to its
+      protection requirements with regard to confidentiality, integrity, and
+      availability. Classification criteria and the resulting protection
+      measures must be documented and applied consistently.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: DATA }
+      - { signal_prefix: EGR }
+    references:
+      - "BSI C5:2020 DAT-01"
+    maps_to: [BSI_CON2_A1, ISO_27001_A.5.12, ISO_27001_A.5.13]
+    remediation: >-
+      Define a data classification scheme; apply classification labels at
+      creation or ingestion; enforce protection measures by classification tier.
+
+  - id: BSI_C5_DAT-02
+    pillar: "DAT -- Data Security"
+    title: "Data residency controls and documentation"
+    description: >-
+      The geographic locations in which customer data is stored, processed, and
+      transmitted must be documented and controllable. Data residency commitments
+      in contracts must be technically enforced. Any cross-border transfer of
+      customer data must be disclosed to the customer and subject to applicable
+      legal transfer mechanisms.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: DATA }
+      - { signal_prefix: TF }
+    references:
+      - "BSI C5:2020 DAT-02"
+    maps_to: [GDPR_Art_46, GDPR_Art_49, ISO_27001_A.5.33]
+    remediation: >-
+      Document data residency locations in the service description; enforce
+      via infrastructure policy; alert on violations; disclose any cross-border
+      transfers.
+
+  - id: BSI_C5_DAT-03
+    pillar: "DAT -- Data Security"
+    title: "Data deletion and secure disposal"
+    description: >-
+      Customer data and derived data must be securely deleted at the end of
+      the retention period, on customer request, or upon service termination.
+      Deletion must be irreversible and cover all copies including backups and
+      logs where technically feasible. Deletion must be confirmed to the
+      customer on request.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: DATA }
+    references:
+      - "BSI C5:2020 DAT-03"
+    maps_to: [GDPR_Art_17, BSI_CON6_A2, ISO_27001_A.8.10]
+    remediation: >-
+      Implement automated data retention enforcement; cover backups in the
+      deletion workflow; issue deletion certificates; test deletion annually.
+
+  - id: BSI_C5_DAT-04
+    pillar: "DAT -- Data Security"
+    title: "Data processing agreement with subprocessors"
+    description: >-
+      Where the cloud service involves subprocessors that process customer data,
+      data processing agreements must be in place between the cloud provider
+      and each subprocessor. DPAs must impose obligations equivalent to those
+      the provider carries to the customer. Subprocessors must be disclosed
+      to the customer.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 DAT-04"
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.19]
+    remediation: >-
+      Maintain an up-to-date subprocessor list; ensure DPAs are in place for
+      all data-handling subprocessors; notify customers before adding new
+      subprocessors.
+
+  # ===========================================================================
+  # PI -- Personal Information / Privacy
+  # ===========================================================================
+  - id: BSI_C5_PI-01
+    pillar: "PI -- Personal Information / Privacy"
+    title: "Privacy by design in cloud service architecture"
+    description: >-
+      Privacy requirements must be addressed from the earliest stages of cloud
+      service design. Data minimisation, purpose limitation, and storage
+      limitation must be incorporated into the architecture. Privacy impact
+      assessments must be conducted for high-risk processing operations.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PI-01"
+    maps_to: [GDPR_Art_25, ISO_27001_A.5.34]
+    remediation: >-
+      Conduct privacy impact assessments for new processing; embed privacy
+      review in the design phase of the SSDLC; document privacy design
+      decisions.
+
+  - id: BSI_C5_PI-02
+    pillar: "PI -- Personal Information / Privacy"
+    title: "Data subject rights fulfilment process"
+    description: >-
+      Processes must exist to fulfil data subject rights applicable to personal
+      data processed as part of the cloud service, including access, erasure,
+      rectification, restriction, and portability. Requests must be handled
+      within legally mandated timeframes. A log of requests and responses must
+      be maintained.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ops_runbooks }
+    references:
+      - "BSI C5:2020 PI-02"
+    maps_to: [GDPR_Art_12, GDPR_Art_17, GDPR_Art_20, ISO_27001_A.5.34]
+    remediation: >-
+      Define a data subject rights handling procedure; assign ownership; log
+      all requests and responses; train customer-facing staff on obligations.
+
+  - id: BSI_C5_PI-03
+    pillar: "PI -- Personal Information / Privacy"
+    title: "Encrypted transmission of data"
+    description: >-
+      Data transmitted over public networks is protected against unauthorised
+      disclosure or modification using strong encryption and authenticated
+      channels. Protocols and cipher suites must conform to BSI Technical
+      Guideline TR-02102.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+      - { signal_prefix: TF }
+    references:
+      - "BSI C5:2020 PI-03"
+    maps_to: [BSI_NET33_A1, ISO_27001_A.8.24, GDPR_Art_32]
+    remediation: >-
+      Enforce TLS 1.2+ on all public endpoints; disable weak cipher suites;
+      scan for unencrypted transmission paths quarterly.

@@ -1,6 +1,6 @@
 # LLM-Provider wechseln
 
-SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unterstützt aber auch den Wechsel zu einer lokalen Ollama-Instanz, OpenAI oder den vollständigen Offline-Betrieb mit `--llm-stub`. Dieses Runbook erläutert die verfügbaren Optionen und die Konfigurationsmöglichkeiten.
+SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unterstützt aber auch den Wechsel zu einer lokalen Ollama-Instanz, OpenAI oder den vollständigen Offline-Betrieb mit `--skip-llm`. Dieses Runbook erläutert die verfügbaren Optionen und die Konfigurationsmöglichkeiten.
 
 ---
 
@@ -70,10 +70,10 @@ Die `.swao.yml`-Einstellung wird durch die Umgebungsvariable `SWAO_LLM_PROVIDER`
 swao assess --app my-app --llm-provider ollama
 
 # Run with the stub for a quick offline test
-swao assess --app my-app --llm-stub
+swao assess --app my-app --skip-llm
 ```
 
-`--llm-stub` ist eine Kurzform für `--llm-provider stub`. Beide Formen sind äquivalent.
+`--skip-llm` ist eine Kurzform für `--llm-provider stub`. Beide Formen sind äquivalent.
 
 ---
 
@@ -110,7 +110,7 @@ SWAO nutzt die OpenAI Chat Completions API. Jedes Modell, auf das der API-Key Zu
 
 ---
 
-## 6. Vollständiger Offline-Betrieb mit --llm-stub
+## 6. Vollständiger Offline-Betrieb mit --skip-llm
 
 Der Stub-Provider liefert deterministische feste Antworten für jeden LLM-Aufruf. Typische Einsatzszenarien:
 
@@ -119,7 +119,7 @@ Der Stub-Provider liefert deterministische feste Antworten für jeden LLM-Aufruf
 - CI-Pipeline-Tests beschleunigen, bei denen echte LLM-Ausgaben nicht benötigt werden
 
 ```bash
-swao assess --app my-app --llm-stub
+swao assess --app my-app --skip-llm
 ```
 
 Stub-Ausgabedateien sind strukturell identisch mit echten Läufen, enthalten jedoch Platzhaltertexte. Sie sind nicht für die Präsentation gegenüber Stakeholdern geeignet.
@@ -130,9 +130,9 @@ Stub-Ausgabedateien sind strukturell identisch mit echten Läufen, enthalten jed
 
 Wenn der konfigurierte Provider nicht erreichbar ist (fehlender API-Key, Ollama nicht aktiv, Netzwerkfehler), beendet SWAO sich mit einem Fehlercode und gibt eine Diagnosemeldung aus. Ein automatischer Fallback auf einen anderen Provider findet nicht statt, damit Assessments nicht unbemerkt an Qualität verlieren.
 
-Mit `swao doctor` die Provider-Konnektivität vor einem vollständigen Assessment prüfen:
+Mit `swao health-check` die Provider-Konnektivität vor einem vollständigen Assessment prüfen:
 
 ```bash
-swao doctor
+swao health-check
 # Look for: "LLM connectivity: green" with the active provider name
 ```

@@ -1,17 +1,3 @@
-=======================================================================
-
-                         S  W  A  O
-
-    Sovereign Workload Assessment and Onboarding
-    Contributing Guide
-
-    Community Edition  -  Apache 2.0
-
-    Website       :  https://steady-echo-yp4z.here.now/
-    Technical Docs:  https://accenture.github.io/SWAO/en/
-    Source Code   :  https://github.com/Accenture/SWAO
-
-=======================================================================
 # Contributing to SWAO
 
 Thank you for your interest in contributing to SWAO -- Sovereign Workload
@@ -169,6 +155,11 @@ A driver lives in `packages/providers/<category>/<provider-name>/` and must:
    any non-obvious behaviour.
 
 The existing Anthropic and Ollama LLM drivers are good examples to follow.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
+Please read it before participating. Violations may be reported to swao-tool@accenture.com.
 
 ## Licence
 

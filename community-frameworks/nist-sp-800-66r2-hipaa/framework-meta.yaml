@@ -1,0 +1,112 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+# The folder name is descriptive only; the identity comes from `framework.id`.
+# NIST SP 800-66r2 is a NIST publication (public domain, USG work product);
+# the underlying standards are HHS / OCR regulation (45 CFR Part 164 Subpart C).
+# Authority records the regulator (HHS), not the guidance issuer (NIST) -- the
+# controls in this catalogue are the HIPAA Standards / Implementation
+# Specifications themselves, framed using NIST 800-66r2 as the operator manual.
+
+framework:
+  id: NIST_SP_800_66R2
+  name: "HIPAA Security Rule -- Implementation Guidance (NIST SP 800-66 Revision 2)"
+  version: "NIST SP 800-66r2 / 2024-02"
+  authority: "U.S. Department of Health and Human Services -- 45 CFR Part 164 Subpart C (Security Rule); implementation guidance from NIST SP 800-66 Revision 2 (February 2024)"
+  contributor:
+    name: "Accenture SWAO team (community packaging)"
+    url: "https://accenture.example/swao/community-frameworks/nist-sp-800-66r2-hipaa"
+  applicability_hints:
+    - us_health
+    - phi
+    - electronic_phi
+    - healthcare
+    - covered_entity
+    - business_associate
+    - hipaa_security_rule
+  assessment_type_scope: [app, aud]
+  description: >-
+    Community packaging of the HIPAA Security Rule (45 CFR Part 164 Subpart C)
+    as framed by NIST SP 800-66 Revision 2 (Implementing the HIPAA Security
+    Rule: A Cybersecurity Resource Guide, February 2024). The Security Rule
+    is structured as 5 sections containing 22 standards and 49 implementation
+    specifications (IS) -- 24 Required (R) and 25 Addressable (A). This
+    catalogue models each IS as one SWAO control, grouped by the 5 sections as
+    pillars: Administrative Safeguards (164.308), Physical Safeguards
+    (164.310), Technical Safeguards (164.312), Organisational Requirements
+    (164.314), and Policies and Procedures and Documentation Requirements
+    (164.316). The Required-vs-Addressable distinction is orthogonal to the
+    pillar -- see README §11 for how this catalogue is the worked example
+    for issue #0348 (the `tags:` field proposal in design 029 §13.7 item 2).
+  references:
+    - "NIST.SP.800-66r2.pdf (in this folder; public domain)"
+    - "https://csrc.nist.gov/pubs/sp/800/66/r2/final"
+    - "https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations"
+    - "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C"
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-05-23"
+
+  # Optional: signal_prefix overrides the default. We pick `HIPAA` (5 chars,
+  # inside the [3, 8] advisory band per design 029 §13 item 4) -- the
+  # well-known abbreviation is more legible in the PowerBI signal grid than
+  # `NIST_SP_800_66R2` would be.
+  signal_prefix: HIPAA
+
+  # D-LZ-07: framework-driven sovereignty gate. HIPAA Security Rule requires
+  # that PHI be processed only in CSP regions that hold HIPAA-eligible
+  # infrastructure status (operator has signed or is willing to sign a BAA and
+  # the region meets HIPAA technical safeguard requirements). CSPs/regions
+  # without HIPAA certification receive SOVEREIGNTY_BLOCKED when this
+  # framework is active in a landing-zone assessment.
+  sovereignty_requirements:
+    require_certifications:
+      - HIPAA
+
+  # This packaging supersedes the PoC-era bundled HIPAA stub (3 controls at
+  # the standard-section level: 164.308 / .310 / .312). The replaces: field
+  # is the design 029 §11 mechanism for community-framework upgrades.
+  replaces:
+    - regime_id: HIPAA
+      location: "swao/controls/standard/hipaa-controls.yaml (PoC stub)"
+      note: "3-control PoC stub at standard-section level; this packaging expands to 49 IS-level controls per NIST SP 800-66r2."
+
+  # Frameworks COBIT 5, ISO 27001, SOC 2 and NIST CSF 2.0 are the canonical
+  # cross-mapping targets for the HIPAA Security Rule. NIST SP 800-66r2
+  # Appendix D contains an authoritative HIPAA -> NIST CSF 2.0 + 800-53 crosswalk;
+  # when those community frameworks install, the importer can bulk-load the
+  # mapping (design 029 §13.3 item 2 / sprint-035 successor).
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001          # installed: bundled regulatory regime (security)
+      - SOC_2              # installed: bundled regulatory regime (trust services)
+      - COBIT_5            # installed (community packaging): DSS05 + APO13 + many more
+      - GDPR               # installed: where the workload also processes EU-resident PHI
+      - DORA               # installed: business-associate continuity / ICT third party
+      - NIST_CSF_2         # advisory: NIST CSF 2.0 (sprint-035+); authoritative crosswalk in NIST SP 800-66r2 Appendix D
+      - NIST_800_53R5      # advisory: federal control catalogue (sprint-035+)
+      - HITRUST_CSF        # advisory: HIPAA-aligned community framework (sprint-035+)
+      - PCI_DSS            # installed: healthcare-payments overlap
+      - ISO_27799          # advisory: health-informatics security management (sprint-035+)
+
+  # Native rating posture. HIPAA itself does not define a rating scale; the
+  # Security Rule's Required (R) / Addressable (A) distinction is a
+  # compliance-status modifier, not a rating. Mapping below covers how
+  # auditors typically score against the Rule.
+  rating_scale:
+    native_label: "HIPAA Security Rule compliance posture (OCR audit lens)"
+    mapping:
+      - { native: "Fully implemented (R) / Implemented or alternative measure (A)", swao: SATISFIED }
+      - { native: "Partially implemented",                                              swao: PARTIAL }
+      - { native: "Not implemented; no alternative measure documented (A)",             swao: GAP, severity_floor: high }
+      - { native: "Not implemented (R)",                                                swao: GAP, severity_floor: critical }
+      - { native: "Not applicable",                                                     swao: N_A }
+
+  # NIST SP 800-66r2 is a U.S. Government work product; per 17 USC 105 it is
+  # public-domain in the United States and is freely redistributable.
+  redistribution_note: >-
+    NIST SP 800-66 Revision 2 (February 2024) is a U.S. Government work
+    product authored by NIST and is not subject to copyright in the United
+    States (17 USC 105). The bundled NIST.SP.800-66r2.pdf is included as the
+    canonical source. The HIPAA Security Rule itself (45 CFR Part 164 Subpart
+    C) is federal regulation and freely reproducible. Control titles in this
+    packaging match the HIPAA Standards / Implementation Specification names
+    verbatim; description text is paraphrased from the regulation and the
+    NIST guidance for SWAO machine ingestion.

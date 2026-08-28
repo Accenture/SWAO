@@ -1,0 +1,120 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+#
+# GDPR (Regulation (EU) 2016/679) packaged as the FIRST community framework
+# in the unified Community-Frameworks model (design 029 §11). This catalogue
+# REPLACES the legacy bundled stub at `swao/controls/standard/gdpr-controls.yaml`
+# (which carries only 5 controls; this catalogue carries 55).
+#
+# Per Helmut's decision (2026-05-22): all flagship regimes ship as community
+# frameworks; SWAO ships no embedded regulatory catalogues. GDPR is the pilot.
+
+framework:
+  id: GDPR
+  name: "General Data Protection Regulation (Regulation (EU) 2016/679)"
+  version: "Regulation (EU) 2016/679 -- in force since 2018-05-25"
+  authority: "European Parliament and Council of the European Union"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    url: "https://accenture.example/swao/community-frameworks/gdpr"
+  applicability_hints:
+    - eu_data
+    - personal_data
+    - consumer_app
+    - health_data
+    - employee_data
+    - cross_border_transfer
+    - automated_decisioning
+    - profiling
+  assessment_type_scope: [app, aud]
+  description: >
+    EU General Data Protection Regulation, the binding EU-wide framework
+    governing the processing of personal data of natural persons in or
+    targeted from the Union (Article 3 -- Territorial scope). 99 articles
+    organised across 11 chapters. This SWAO catalogue covers the workload-
+    applicable scope (Chapters II-V: Principles, Data subject rights,
+    Controller / processor, Third-country transfers) expanded into 55 sub-
+    controls that bind to existing SWAO signal prefixes (CRYPTO, IAM, OBS,
+    DATA, EGR), to consultant-furnished context documents, and to manual
+    questionnaires. Articles in the workload-applicable scope are
+    encoded as control rows; articles addressing supervisory authorities,
+    the EDPB, and final / delegated provisions are excluded (see README §4).
+  references:
+    - "https://gdpr-info.eu/"
+    - "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32016R0679"
+    - "CELEX_32016R0679_EN_TXT.pdf (in this folder; the EUR-Lex authoritative English text)"
+    - "European Data Protection Board (EDPB) Guidelines: https://www.edpb.europa.eu/our-work-tools/general-guidance/guidelines-recommendations-best-practices_en"
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-05-22"
+
+  # Two-character community-friendly prefix for emitted local signals.
+  signal_prefix: GDPR
+
+  # Cross-mapping hints feeding the (sprint-035) LLM-augmented matcher.
+  # Updated each time a new community framework lands in catalogs/community/
+  # or docs/custom-frameworks/ -- see README §6 for the maintenance process
+  # the user requested at the 2026-05-22 packaging workshop.
+  cross_mapping_hints:
+    target_frameworks:
+      # Bundled today (heatmap-edge-ready)
+      - ISO_27001         # security of processing (Art 32 family) maps heavily
+      - SOC_2             # confidentiality / availability / processing-integrity
+      - HIPAA             # health-data special-category overlap
+      - PCI_DSS           # cardholder PII overlap
+      - BSI_C5            # German cloud security overlap
+      - DORA              # operational resilience / ICT third-party risk
+      # Community / advisory today
+      - AI_10_PILLARS     # AI workload security overlay
+      - GARTNER_APP_VENUE_2026  # vendor sovereignty / data residency overlap
+      - EU_AI_ACT         # Art 22 GDPR <-> Art 14 EU AI Act human oversight; processing of training data
+      - NIS2_2022_2555    # cybersecurity overlay for essential / important entities
+      - EPRIVACY_2002_58  # ePrivacy Directive (cookies, electronic comms)
+      - ISO_42001         # AI management system; processing-of-personal-data overlay
+      - EDPB_GUIDELINES   # EDPB interpretive guidance per article
+
+  # Rating-scale extension proposal in design 029 §13.3. GDPR uses ADR-0025
+  # outcomes directly. The severity floor for each control is derived from
+  # Article 83 (administrative fines) -- the regulation's own grading:
+  #   Art 83(5) "Tier 1" fineable (up to EUR 20M / 4% turnover) -> critical
+  #   Art 83(4) "Tier 2" fineable (up to EUR 10M / 2% turnover) -> high
+  #   procedural / non-fineable                                  -> medium
+  # See README §3 for the article-by-article tier classification.
+
+  # Carries the licence / redistribution posture into the auditor view.
+  redistribution_note: >
+    GDPR is EU legislation; the regulation text is public, published by the
+    EUR-Lex Publications Office (https://eur-lex.europa.eu/eli/reg/2016/679/oj).
+    Control descriptions in this catalogue paraphrase the article text for
+    SWAO ingestion; the authoritative legal source is the EUR-Lex English
+    text retained alongside this catalogue. Reviewers verify a control's
+    legal accuracy by opening the source PDF at the cited Article number.
+    No legal advice is provided by this catalogue; consult counsel for
+    interpretation of how an article applies to a specific workload.
+
+  # Migration / replacement posture for the bundled stub.
+  # D-LZ-07: framework-driven sovereignty gate. GDPR + Schrems II requires
+  # personal data to be processed by EU-operated entities (adequacy decision
+  # or equivalent safeguards). Regions operated by non-EU entities receive
+  # SOVEREIGNTY_BLOCKED when GDPR is active in a landing-zone assessment.
+  # Note: GDPR does not forbid a specific CSP; it requires EU operator
+  # jurisdiction. Forbid-exposure rules are not declared here.
+  sovereignty_requirements:
+    require_operator_jurisdiction:
+      - EU-entity
+    # Capability codes that must appear in the LZ assessed scope when GDPR is
+    # active, regardless of whether the app's INV pass detected explicit usage.
+    # Encryption key management determines who holds data keys and whether they
+    # are subject to extraterritorial jurisdiction -- a material GDPR Article 32
+    # and Schrems II consideration (#1353).
+    required_services:
+      - key_vault
+
+  replaces:
+    - regime_id: GDPR
+      location: "swao/controls/standard/gdpr-controls.yaml"
+      controls_carried_over: [GDPR_Art_5, GDPR_Art_6, GDPR_Art_9, GDPR_Art_25, GDPR_Art_32]
+      note: >
+        The bundled stub carries 5 controls; this catalogue is a strict
+        superset (the 5 IDs are preserved with richer descriptions and
+        sub-controls where applicable). After this community framework
+        installs, the bundled stub is retired from `catalogs/standard/`.

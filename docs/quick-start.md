@@ -12,7 +12,7 @@ and a 7R migration verdict -- with full traceability on every signal and complia
 
 - Windows / macOS / Linux with **Node.js >= 20**
 - A workload to assess (your own repo, or the example workspace bundled with SWAO)
-- Optional: **Anthropic API key** for real-LLM analysis. Without it, use `--llm-stub`
+- Optional: **Anthropic API key** for real-LLM analysis. Without it, use `--skip-llm`
   for deterministic offline output.
 - Optional: **PowerBI Desktop** (Windows only) to open the resulting dashboard.
 

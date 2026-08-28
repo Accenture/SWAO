@@ -1,0 +1,51 @@
+name: Community Compliance Framework
+description: Propose or contribute a new compliance framework
+labels: [community-framework]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for contributing to SWAO's compliance coverage. Read
+        [CONTRIBUTING.md](../CONTRIBUTING.md#contributing-compliance-frameworks) before
+        submitting to understand the `framework-meta.yaml` + `controls.yaml` format.
+
+  - type: input
+    id: framework_name
+    attributes:
+      label: Framework name and version
+      placeholder: "ISO/IEC 27001:2022"
+    validations:
+      required: true
+
+  - type: input
+    id: standards_body
+    attributes:
+      label: Standards body
+      placeholder: "ISO, NIST, EU regulation, national authority..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Brief description
+      description: What does this framework cover and who does it apply to?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: self_contribute
+    attributes:
+      label: Are you proposing to contribute the framework YAML yourself?
+      options:
+        - "Yes -- I will open a pull request with framework-meta.yaml + controls.yaml"
+        - "No -- I am requesting that the maintainers add it"
+    validations:
+      required: true
+
+  - type: input
+    id: standard_link
+    attributes:
+      label: Link to the authoritative standard document
+      description: Public URL to the official standard (must be freely accessible)
+      placeholder: "https://www.iso.org/standard/..."

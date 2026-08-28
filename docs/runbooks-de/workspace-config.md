@@ -138,10 +138,10 @@ Globale Ausschlüsse (für alle Apps geltend) werden derzeit nicht unterstützt.
 
 ```bash
 # Validate .swao.yml without running an assessment
-swao doctor
+swao health-check
 
 # Check with verbose output to see parsed config
-swao doctor --verbose
+swao health-check --verbose
 ```
 
-`swao doctor` parst und validiert `.swao.yml` als Teil seines Workspace-Prüfpunkts. Alle Schema-Fehler oder nicht erkannten Schlüssel werden vor dem Assessment-Start gemeldet.
+`swao health-check` parst und validiert `.swao.yml` als Teil seines Workspace-Prüfpunkts. Alle Schema-Fehler oder nicht erkannten Schlüssel werden vor dem Assessment-Start gemeldet.

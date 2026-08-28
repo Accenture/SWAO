@@ -37,7 +37,7 @@ Expires:         n/a
 Features:        core, llm, report/pdf
 ```
 
-Der Befehl `swao doctor` gibt den Lizenzstatus ebenfalls als einen seiner Prüfpunkte aus.
+Der Befehl `swao health-check` gibt den Lizenzstatus ebenfalls als einen seiner Prüfpunkte aus.
 
 ---
 
@@ -87,7 +87,7 @@ Das Lizenztoken ist ein signiertes JSON-Payload. Es enthält keine personenbezog
 
 ## 4. Erneürung
 
-Lizenzen haben ein Ablaufdatum. Wenn eine Lizenz innerhalb von 30 Tagen abläuft, gibt `swao doctor` eine gelbe Warnung beim Lizenz-Prüfpunkt aus. Nach dem Ablauf wird der Prüfpunkt rot, und Consultant-/Enterprise-Funktionen werden bis zur Erneürung gesperrt.
+Lizenzen haben ein Ablaufdatum. Wenn eine Lizenz innerhalb von 30 Tagen abläuft, gibt `swao health-check` eine gelbe Warnung beim Lizenz-Prüfpunkt aus. Nach dem Ablauf wird der Prüfpunkt rot, und Consultant-/Enterprise-Funktionen werden bis zur Erneürung gesperrt.
 
 ```bash
 # Check days remaining

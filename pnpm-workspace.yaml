@@ -6,6 +6,7 @@ packages:
   - packages/swao
   - packages/@swao/*
   - '!packages/@swao/module-doctor'
+  - '../swao-premium/packages/@swao/*'
 
 # Sprint-037 #0347 Part B overrides (previously in packages/swao/pnpm-workspace.yaml).
 # uuid >= 11: transitive from exceljs; bumps past CVE flagged by Dependabot #18/#19.

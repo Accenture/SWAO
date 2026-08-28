@@ -107,10 +107,10 @@ Unblock-File -Path "C:\Tools\swao\swao-enterprise-win.exe"
 
 ```bash
 swao --version
-swao doctor
+swao health-check
 ```
 
-`swao doctor` führt alle Umgebungsprüfungen einschliesslich der Schema-Version durch. Wenn der Schema-Prüfpunkt nach dem Upgrade rot wird, ist zwischen den Versionen eine brechende WSP-Schema-Änderung erfolgt -- siehe Abschnitt 5.
+`swao health-check` führt alle Umgebungsprüfungen einschliesslich der Schema-Version durch. Wenn der Schema-Prüfpunkt nach dem Upgrade rot wird, ist zwischen den Versionen eine brechende WSP-Schema-Änderung erfolgt -- siehe Abschnitt 5.
 
 ---
 
@@ -124,7 +124,7 @@ https://github.com/Accenture/SWAO/releases/tag/v<version>
 
 ### WSP-Schema-Änderungen
 
-Die WSP-Schema-Version wird in `schema_version` in der `run-manifest.json` jedes Laufs getrackt. Wenn die Binary eine neüre Schema-Version erwartet als die `.swao.yml` des Workspaces deklariert, meldet `swao doctor` eine Schema-Diskrepanz.
+Die WSP-Schema-Version wird in `schema_version` in der `run-manifest.json` jedes Laufs getrackt. Wenn die Binary eine neüre Schema-Version erwartet als die `.swao.yml` des Workspaces deklariert, meldet `swao health-check` eine Schema-Diskrepanz.
 
 Behebung mit dem Konfigurations-Migrations-Befehl:
 
@@ -136,7 +136,7 @@ swao migrate-config --dry-run
 swao migrate-config
 
 # Verify
-swao doctor
+swao health-check
 ```
 
 ### Pass-Konfigurationsänderungen

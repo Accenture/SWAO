@@ -45,5 +45,5 @@ SWAO refreshes the bundled catalogues when a new release ships. Custom catalogue
 
 To pull updated community catalogues without updating the binary, run:
 ```bash
-swao doctor --refresh-catalogs
+swao health-check --refresh-catalogs
 ```

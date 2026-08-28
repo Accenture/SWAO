@@ -183,7 +183,7 @@ options are visible alongside their descriptions:
 | Key | Option | What it does |
 |---|---|---|
 | 1 | Workspace Setup | init + LLM + credentials wizard |
-| 2 | Health Check | swao doctor |
+| 2 | Health Check | swao health-check |
 | 3 | Run Assessment | Application / Audit / Landing Zone + more |
 | 4 | Generate Report | swao report (text / PDF) |
 | 5 | Publish HTML | swao publish -- self-contained HTML file |

@@ -154,10 +154,10 @@ ANTHROPIC_API_KEY=sk-...
 
 ```bash
 swao --version
-swao doctor
+swao health-check
 ```
 
-Alle `swao doctor`-Prüfpunkte sollten grün sein. Ein gelbes Ergebnis beim Playwright-Prüfpunkt ist auf Servern ohne installierten Browser erwartet; es betrifft ausschliesslich den Befehl `swao publish`.
+Alle `swao health-check`-Prüfpunkte sollten grün sein. Ein gelbes Ergebnis beim Playwright-Prüfpunkt ist auf Servern ohne installierten Browser erwartet; es betrifft ausschliesslich den Befehl `swao publish`.
 
 ---
 
@@ -175,5 +175,5 @@ sudo mv /tmp/swao /usr/local/bin/swao
 # Restart and verify
 sudo systemctl start swao-mcp
 swao --version
-swao doctor
+swao health-check
 ```

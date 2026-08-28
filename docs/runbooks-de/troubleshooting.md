@@ -44,7 +44,7 @@ chmod +x "$(which swao)"
 
 ## API-Key nicht gesetzt
 
-**Symptom:** `Error: ANTHROPIC_API_KEY is not set` oder `LLM connectivity: red` in `swao doctor`.
+**Symptom:** `Error: ANTHROPIC_API_KEY is not set` oder `LLM connectivity: red` in `swao health-check`.
 
 **Ursache:** Die Anthropic-API-Key-Umgebungsvariable fehlt in der aktüllen Shell-Sitzung.
 
@@ -59,7 +59,7 @@ echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
 source ~/.zshrc
 
 # Verify
-swao doctor
+swao health-check
 ```
 
 Für CI-Umgebungen den Schlüssel als Repository-Secret speichern und per Workflow einbinden (siehe [CI/CD-Pipeline-Integration](./cicd-pipeline.md)).
@@ -68,7 +68,7 @@ Für CI-Umgebungen den Schlüssel als Repository-Secret speichern und per Workfl
 
 ## WSP-Schema-Diskrepanz
 
-**Symptom:** `swao doctor` meldet `Schema version: red`; das Assessment schlägt mit einem Schema-Validierungsfehler fehl.
+**Symptom:** `swao health-check` meldet `Schema version: red`; das Assessment schlägt mit einem Schema-Validierungsfehler fehl.
 
 **Ursache:** Die `.swao.yml` des Workspaces deklariert eine ältere Schema-Version als die installierte Binary erwartet, oder umgekehrt.
 
@@ -82,7 +82,7 @@ swao migrate-config --dry-run
 swao migrate-config
 
 # Verify
-swao doctor
+swao health-check
 ```
 
 Bei einem bewussten Rollback auf eine ältere Binary sicherstellen, dass die Binary-Version mit der in `.swao.yml` deklarierten Schema-Version übereinstimmt.
@@ -91,7 +91,7 @@ Bei einem bewussten Rollback auf eine ältere Binary sicherstellen, dass die Bin
 
 ## Playwright nicht gefunden
 
-**Symptom:** `Playwright: yellow` in `swao doctor`; der `dynamic`-Pass wird übersprungen.
+**Symptom:** `Playwright: yellow` in `swao health-check`; der `dynamic`-Pass wird übersprungen.
 
 **Ursache:** Playwright und/oder Chromium sind nicht installiert. Der gelbe Status bedeutet, dass der Dynamic Pass automatisch deaktiviert wird -- andere Passes laufen normal.
 
@@ -104,7 +104,7 @@ npx playwright install chromium
 npx playwright install-deps chromium
 ```
 
-Nach der Installation `swao doctor` erneut ausführen, um zu bestätigen, dass der Prüfpunkt grün wird.
+Nach der Installation `swao health-check` erneut ausführen, um zu bestätigen, dass der Prüfpunkt grün wird.
 
 ---
 
@@ -130,7 +130,7 @@ Optionen für einen persistenten Server-Betrieb findet sich unter [MCP-Server-In
 
 ## Lizenz abgelaufen
 
-**Symptom:** `swao doctor` meldet `Licence: red`; Consultant-/Enterprise-Funktionen sind nicht verfügbar.
+**Symptom:** `swao health-check` meldet `Licence: red`; Consultant-/Enterprise-Funktionen sind nicht verfügbar.
 
 **Ursache:** Der Aktivierungsschlüssel hat sein Ablaufdatum überschritten.
 
@@ -157,7 +157,7 @@ Community-Edition-Funktionen bleiben ohne Lizenzschlüssel verfügbar.
 
 ---
 
-## swao doctor: LLM-Timeout
+## swao health-check: LLM-Timeout
 
 **Symptom:** `LLM connectivity: red` oder `yellow` mit Timeout-Fehler; Assessment-Passes hängen sich auf.
 
@@ -171,15 +171,15 @@ curl -v https://api.anthropic.com/v1/models \
   -H "x-api-key: ${ANTHROPIC_API_KEY}" \
   -H "anthropic-version: 2023-06-01"
 
-# Temporarily bypass using --llm-stub
-swao assess --app my-app --llm-stub
+# Temporarily bypass using --skip-llm
+swao assess --app my-app --skip-llm
 ```
 
 Wenn die Umgebung den Datenverkehr über einen HTTP-Proxy leitet, `HTTPS_PROXY` vor dem Ausführen von SWAO setzen:
 
 ```bash
 export HTTPS_PROXY="http://proxy.example.com:8080"
-swao doctor
+swao health-check
 ```
 
 ---

@@ -7,7 +7,7 @@
 
 **Accenture** &nbsp;|&nbsp; Enterprise Cloud Migration
 
-[![Build](https://github.com/Accenture/SWAO/actions/workflows/ci.yml/badge.svg)](https://github.com/Accenture/SWAO/actions/workflows/ci.yml)
+[![Docs](https://github.com/Accenture/SWAO/actions/workflows/pages.yml/badge.svg)](https://github.com/Accenture/SWAO/actions/workflows/pages.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/Accenture/SWAO)](https://github.com/Accenture/SWAO/releases/latest)
 [![Community Edition](https://img.shields.io/badge/Community-free--no%20registration-green.svg)](https://github.com/Accenture/SWAO/releases/latest)
@@ -92,6 +92,15 @@ swao/
 +-- controls/          # Compliance control catalogue
 +-- landing-page/      # Marketing landing page (standalone HTML)
 ```
+
+---
+
+## Installation
+
+Download the latest binary from **https://github.com/Accenture/SWAO/releases/latest**
+and add it to your PATH. See [docs/runbooks/install.md](docs/runbooks/install.md) for
+platform-specific steps (Windows, macOS Gatekeeper, Linux), checksum verification, and
+the Docker alternative.
 
 ---
 
@@ -272,6 +281,8 @@ New releases are tagged on `main` via `v*` tags (e.g. `v0.4.3`) which trigger th
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on
 submitting issues, pull requests, compliance frameworks, and provider drivers.
 Questions and discussion: [GitHub Discussions](https://github.com/Accenture/SWAO/discussions).
+
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
 
 **Maintainer:** Accenture
 

@@ -1,0 +1,71 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+# Sprint-039 #0358 Phase 1: migrated from standard-scope PoC stub.
+# Sprint-083 #0875: full catalogue deepening -- 5 controls to 62 controls
+# covering all 17 C5:2020 Basic Criteria domains.
+
+framework:
+  id: BSI_C5
+  name: "Cloud Computing Compliance Criteria Catalogue"
+  version: "2020"
+  authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - de_sovereign
+    - public_sector
+    - cloud
+    - kritis
+    - german_regulated
+    - bsi_c5_attested
+  assessment_type_scope: [app, aud]
+  signal_prefix: C5
+  description: >-
+    German Federal Office for Information Security catalogue of minimum
+    requirements for the secure use of cloud services. C5:2020 revision
+    defines Basic Criteria and Additional Criteria across 17 control
+    domains. Mandatory baseline for German public-sector cloud usage and
+    strongly recommended for KRITIS-regulated sectors. This catalogue covers
+    62 Basic Criteria controls across all 17 C5:2020 domains: OIS, PRY, HRS,
+    IDM, CRY, COS, OPS, AVL, DEV, INM, SIM, COM, PSS, BCP, DAT, and PI.
+  references:
+    - "https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-07-08"
+
+  replaces: []
+
+  # D-LZ-07: framework-driven sovereignty gate. BSI C5:2020 certification
+  # requires EU-operated infrastructure with no US extraterritorial legal
+  # exposure (Cloud Act / FISA 702). Regions that carry these exposure facts
+  # or are operated by a non-EU entity receive SOVEREIGNTY_BLOCKED when
+  # BSI C5 is active in a landing-zone assessment.
+  sovereignty_requirements:
+    forbid_exposure:
+      - us_cloud_act
+      - fisa_702
+    require_operator_jurisdiction:
+      - EU-entity
+    require_certifications:
+      - BSI_C5
+
+  cross_mapping_hints:
+    target_frameworks:
+      - BSI_GRUNDSCHUTZ_2023
+      - ISO_27001
+      - GDPR
+      - SOC_2
+      - EUCS
+      - DORA
+
+  redistribution_note: >-
+    BSI C5:2020 is published by the German Federal Office for Information
+    Security (BSI) and is freely available under BSI terms of use. Control
+    descriptions in this catalogue paraphrase BSI C5:2020 Basic Criteria for
+    SWAO machine ingestion. The authoritative source is available from the BSI
+    website listed under references. Reviewers verify a control accuracy by
+    locating the cited domain and criterion identifier in the source
+    publication. No legal advice is provided; consult qualified information
+    security professionals for interpretation of how a requirement applies to
+    a specific workload.

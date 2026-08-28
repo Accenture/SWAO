@@ -114,14 +114,14 @@ Binary size is approximately 50--80 MB depending on the build target. Caching it
 
 ---
 
-## 4. Using --llm-stub for fast gating
+## 4. Using --skip-llm for fast gating
 
-For pull request checks where real LLM output is not required (e.g., schema validation or configuration checks), use `--llm-stub` to eliminate API costs and latency:
+For pull request checks where real LLM output is not required (e.g., schema validation or configuration checks), use `--skip-llm` to eliminate API costs and latency:
 
 ::: v-pre
 ```yaml
 - name: Fast schema check (stub)
-  run: swao assess --app ${{ env.SWAO_APP_ID }} --llm-stub --workspace ./portfolio
+  run: swao assess --app ${{ env.SWAO_APP_ID }} --skip-llm --workspace ./portfolio
 ```
 :::
 

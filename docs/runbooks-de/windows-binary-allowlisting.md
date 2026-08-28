@@ -98,4 +98,4 @@ Die Ausnahme muss vor dem Pipeline-Schritt gesetzt werden, der `swao-enterprise-
 & "C:\Tools\swao\swao-enterprise-win.exe" doctor
 ```
 
-Eine saubere `swao doctor`-Ausgabe mit allen grünen Prüfpunkten bestätigt, dass die Binary vertraünswürdig und betriebsbereit ist.
+Eine saubere `swao health-check`-Ausgabe mit allen grünen Prüfpunkten bestätigt, dass die Binary vertraünswürdig und betriebsbereit ist.

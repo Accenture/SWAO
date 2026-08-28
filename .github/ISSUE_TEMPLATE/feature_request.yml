@@ -1,0 +1,44 @@
+name: Feature Request
+description: Suggest a new feature or improvement for SWAO
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, please check [GitHub Discussions](https://github.com/Accenture/SWAO/discussions)
+        to see if this has already been proposed.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature summary
+      description: A clear and concise description of the feature you are proposing.
+      placeholder: Add a pass that detects X and emits signal Y...
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation and use case
+      description: Why is this feature needed? What problem does it solve?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: assessment_type
+    attributes:
+      label: Which assessment type does this relate to?
+      options:
+        - Application assessment (swao assess)
+        - Landing zone catalogue
+        - LLM / AI provider configuration
+        - Compliance framework authoring
+        - Reporting and publication
+        - Other
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Optional -- how might this be implemented?

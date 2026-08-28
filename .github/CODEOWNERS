@@ -1,0 +1,12 @@
+# CODEOWNERS -- all PRs require review from a maintainer
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global: all files require maintainer sign-off
+* @Accenture-Cloud-First-Tech/swao-maintainers
+
+# CI workflows -- restricted to maintainers only
+/.github/workflows/ @Accenture-Cloud-First-Tech/swao-maintainers
+
+# Community frameworks and controls -- open to community contribution, still reviewed by maintainers
+/controls/ @Accenture-Cloud-First-Tech/swao-maintainers
+/packages/@swao/community-frameworks/ @Accenture-Cloud-First-Tech/swao-maintainers

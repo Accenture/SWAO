@@ -9,7 +9,7 @@ spec:
     (inventory, statefulness, data classification, egress, SBOM, cryptography,
     12-factor compliance, 7R synthesis) and produces a machine-readable
     Workload Sovereignty Profile (WSP) for automated meshStack provisioning.
-  version: "0.11.2"
+  version: "0.12.0"
   icon: "https://raw.githubusercontent.com/accenture/swao/main/docs/brand/assets/logo-horizontal-dark.png"
   supportedPlatforms: []
   executor:

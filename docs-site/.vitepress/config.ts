@@ -31,7 +31,7 @@ const deRunbooksSidebar = {
       text: 'Betrieb',
       items: [
         { text: 'CLI-Referenz', link: '/de/runbooks/cli-reference' },
-        { text: 'Doctor-Ausgabe', link: '/de/runbooks/doctor-output' },
+        { text: 'Health-check-Ausgabe', link: '/de/runbooks/health-check-output' },
         { text: 'SWAO aktualisieren', link: '/de/runbooks/updating-swao' },
         { text: 'Fehlerbehebung', link: '/de/runbooks/troubleshooting' },
       ],
@@ -216,6 +216,7 @@ export default defineConfig({
             {
               text: 'Installation',
               items: [
+                { text: 'All platforms (overview)', link: '/runbooks/install' },
                 { text: 'Windows', link: '/runbooks/windows-binary-allowlisting' },
                 { text: 'macOS', link: '/runbooks/macos-install' },
                 { text: 'Linux', link: '/runbooks/linux-install' },
@@ -241,7 +242,7 @@ export default defineConfig({
               text: 'Operations',
               items: [
                 { text: 'CLI reference', link: '/runbooks/cli-reference' },
-                { text: 'Doctor output', link: '/runbooks/doctor-output' },
+                { text: 'Health-check output', link: '/runbooks/health-check-output' },
                 { text: 'Updating SWAO', link: '/runbooks/updating-swao' },
                 { text: 'Troubleshooting', link: '/runbooks/troubleshooting' },
               ],

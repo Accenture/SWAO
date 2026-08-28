@@ -12,7 +12,7 @@ und ein 7R-Migrationsurteil -- mit vollständiger Nachvollziehbarkeit für jedes
 
 - Windows / macOS / Linux mit **Node.js >= 20**
 - Einen zu bewertenden Workload (eigenes Repository oder mitgelieferter Beispiel-Workspace)
-- Optional: **Anthropic-API-Schlüssel** für echte LLM-Analyse. Ohne ihn: `--llm-stub`.
+- Optional: **Anthropic-API-Schlüssel** für echte LLM-Analyse. Ohne ihn: `--skip-llm`.
 - Optional: **Power BI Desktop** (nur Windows).
 
 ---

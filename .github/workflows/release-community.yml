@@ -1,0 +1,165 @@
+name: Release Community Edition
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  attach-community-assets:
+    name: Attach Community binaries to GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Community binaries from private release
+        env:
+          PRIVATE_RELEASE_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          # Download Community binaries attached to the matching private release.
+          # The private CI builds all tiers and uploads community-* assets.
+          # This job re-attaches them to the public release.
+          mkdir -p dist-community
+          for ASSET in \
+            "swao-community-win-x64.exe" \
+            "swao-community-linux-x64" \
+            "swao-community-macos-x64" \
+            "swao-community-macos-arm64"; do
+            gh release download "$VERSION" \
+              --repo "${{ secrets.SWAO_PRIVATE_REPO }}" \
+              --pattern "$ASSET" \
+              --dir dist-community
+          done
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+
+      - name: Generate checksums
+        run: |
+          cd dist-community
+          sha256sum swao-community-win-x64.exe \
+                    swao-community-linux-x64 \
+                    swao-community-macos-x64 \
+                    swao-community-macos-arm64 > checksums.sha256
+          cat checksums.sha256
+
+      - name: Generate Community SBOM
+        run: |
+          npm install -g @cyclonedx/cdxgen --quiet
+          cdxgen -o dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
+            --no-recurse --spec-version 1.5 .
+
+      - name: Upload assets to public release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          gh release upload "$VERSION" \
+            dist-community/swao-community-win-x64.exe \
+            dist-community/swao-community-linux-x64 \
+            dist-community/swao-community-macos-x64 \
+            dist-community/swao-community-macos-arm64 \
+            dist-community/checksums.sha256 \
+            dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
+            --clobber
+
+  # ---------------------------------------------------------------------------
+  # Docker: build + push the Community edition image to ghcr.io/accenture/swao
+  # (sprint-128 #2130, ADR-0056). Multi-arch via native matrix runners.
+  # Requires packages:write on the public Accenture/SWAO repo. The GITHUB_TOKEN
+  # in the public repo CI grants write access to ghcr.io/accenture/* automatically.
+  # ---------------------------------------------------------------------------
+  publish-docker-community:
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Community image (${{ matrix.arch }})
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.community
+          push: true
+          platforms: ${{ matrix.platform }}
+          tags: ghcr.io/accenture/swao:${{ github.ref_name }}-${{ matrix.arch }}
+          cache-from: type=gha,scope=community-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=community-${{ matrix.arch }}
+
+  publish-docker-community-manifest:
+    needs: publish-docker-community
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect pre-release
+        id: prerelease
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Compose multi-arch Community manifest
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          docker buildx imagetools create \
+            -t "ghcr.io/accenture/swao:${TAG}" \
+            -t "ghcr.io/accenture/swao:community-${TAG}" \
+            "ghcr.io/accenture/swao:${TAG}-amd64" \
+            "ghcr.io/accenture/swao:${TAG}-arm64"
+        shell: bash
+
+      - name: Tag `latest` (production tags only)
+        if: steps.prerelease.outputs.is_prerelease == 'false'
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          docker buildx imagetools create \
+            -t "ghcr.io/accenture/swao:latest" \
+            "ghcr.io/accenture/swao:${TAG}-amd64" \
+            "ghcr.io/accenture/swao:${TAG}-arm64"
+        shell: bash

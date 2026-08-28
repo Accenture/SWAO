@@ -1,0 +1,54 @@
+name: Provider Driver Request
+description: Request or propose a new pluggable provider driver
+labels: [provider-driver]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SWAO supports pluggable provider drivers for LLM inference, VCS, SAST, container
+        scanning, CMDB, FinOps, and more. Read
+        [CONTRIBUTING.md](../CONTRIBUTING.md#contributing-provider-drivers) for the driver
+        interface and contract-test requirements.
+
+  - type: input
+    id: provider_name
+    attributes:
+      label: Provider name
+      placeholder: "ServiceNow, Datadog, Backstage, Snyk..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data_surface
+    attributes:
+      label: Data surface
+      description: What kind of data does this provider expose to SWAO?
+      options:
+        - CMDB / configuration data
+        - FinOps / cost and usage data
+        - Observability / metrics and logs
+        - SAST / static analysis findings
+        - Container / image scanning
+        - VCS / source code
+        - LLM inference
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Brief description
+      description: What data does this provider expose and how would SWAO use it?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: self_contribute
+    attributes:
+      label: Are you proposing to contribute the driver yourself?
+      options:
+        - "Yes -- I will open a pull request with the driver implementation and contract tests"
+        - "No -- I am requesting that the maintainers implement it"
+    validations:
+      required: true

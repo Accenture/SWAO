@@ -1,0 +1,37 @@
+# SWAO community framework metadata -- 10 Pillars of Secure AI Systems
+# Generated alongside `ai-10-pillars-input.csv` (consultant interface).
+# Compiled into the runtime catalogue via `swao import community`.
+# Schema: docs/design/029-client-compliance-community-framework-intake.md §2.3
+
+framework:
+  id: AI_10_PILLARS
+  name: "10 Pillars of Secure AI Systems"
+  version: "2026-Q2"
+  # `authority:` carries the upstream framework author. Alok Sharan published
+  # the 10 Pillars rulebook; SWAO repackaged it as a community catalogue.
+  authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
+  # `contributor:` is the SWAO-team packager (sprint-037 #0340 sweep:
+  # every bundled community framework attributes packaging to Helmut as
+  # the SWAO maintainer; upstream authorship stays in `authority:`).
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    url: "https://accenture.example/swao/community-frameworks/ai-10-pillars"
+  applicability_hints:
+    - ai_workload
+    - llm_app
+    - rag_pipeline
+    - genai_application
+  assessment_type_scope: [app, llm, aud]
+  description: >
+    Ten-pillar architecture rulebook for securing AI systems. Covers input
+    security, identity and access control, data protection, model security,
+    prompt security, retrieval security (RAG), tool and API security, output
+    guardrails, monitoring and detection, and governance and compliance.
+    Suitable as a baseline overlay alongside regulatory regimes (GDPR, PCI
+    DSS, SOC 2) for any application that embeds an LLM or builds on RAG.
+  references:
+    - "https://alok-sharan.example/10-pillars-secure-ai-systems"
+    - "https://owasp.org/www-project-llm-prompt-injection"
+    - "https://atlas.mitre.org"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-05-21"

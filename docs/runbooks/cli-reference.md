@@ -161,12 +161,12 @@ zone readiness) is opt-in via `--lzr <landingZoneId>`.
 
 **Typical use.** Once per app per assessment iteration. Re-run after
 source code or imports change. Real-LLM cost is ~0.05 to 0.20 USD
-per app on Anthropic; `--llm-stub` runs the pipeline against
+per app on Anthropic; `--skip-llm` runs the pipeline against
 deterministic fixtures for free.
 
 ```cmd
 swao assess --app my-app
-swao assess --app my-app --llm-stub          :: free dry run
+swao assess --app my-app --skip-llm          :: free dry run
 swao assess --app my-app --crawl             :: include dynamic crawl
 swao assess --portfolio                      :: all apps (Premium)
 ```
@@ -406,7 +406,7 @@ swao export                 :: refresh BI bundle
 ### Iterating without paying for LLM calls
 
 ```cmd
-swao assess --app my-app --llm-stub
+swao assess --app my-app --skip-llm
 swao report --app my-app --view technical
 ```
 

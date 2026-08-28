@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    labels:
+      - dependencies
+    open-pull-requests-limit: 5
+    groups:
+      typescript-toolchain:
+        patterns:
+          - "typescript"
+          - "@types/*"
+          - "eslint*"
+          - "vitest*"
+          - "vitepress*"
+      ink-ui:
+        patterns:
+          - "ink"
+          - "ink-*"
+          - "react"
+          - "@types/react"

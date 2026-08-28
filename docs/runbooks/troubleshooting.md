@@ -171,8 +171,8 @@ curl -v https://api.anthropic.com/v1/models \
   -H "x-api-key: ${ANTHROPIC_API_KEY}" \
   -H "anthropic-version: 2023-06-01"
 
-# Temporarily bypass using --llm-stub
-swao assess --app my-app --llm-stub
+# Temporarily bypass using --skip-llm
+swao assess --app my-app --skip-llm
 ```
 
 If your environment routes traffic via an HTTP proxy, set `HTTPS_PROXY` before running SWAO:
@@ -267,7 +267,7 @@ C:\Tools\swao\swao.bat
 
 # Also correct for scripted / non-interactive use (CI, MCP configuration)
 C:\Tools\swao\swao-enterprise-win.exe mcp --help
-C:\Tools\swao\swao-enterprise-win.exe assess --app my-app --llm-stub
+C:\Tools\swao\swao-enterprise-win.exe assess --app my-app --skip-llm
 
 # Incorrect for interactive TUI: bypasses console setup
 C:\Tools\swao\swao-enterprise-win.exe          # may show blank screen

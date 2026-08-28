@@ -1,0 +1,1813 @@
+# SWAO Community Framework -- BSI IT-Grundschutz Kompendium Edition 2023
+#
+# Schema: RegimeCatalogueSchema v0.11 (design 029 §4.5; design 018 §2.1).
+#
+# Source of truth: IT-Grundschutz Kompendium Edition 2023, published by the
+# Bundesamt fuer Sicherheit in der Informationstechnik (BSI). Available at:
+# https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Grundschutz/International/bsi_it_gs_comp_2023.html
+#
+# Each control description paraphrases the requirement text from the source.
+# Reviewers verify accuracy by locating the cited Baustein in the source publication.
+
+regime_meta:
+  id: BSI_GRUNDSCHUTZ_2023
+  name: "BSI IT-Grundschutz Kompendium Edition 2023"
+  version: "Edition 2023 (published January 2023)"
+  scope: community
+  authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
+  contributor:
+    name: "Helmut Schindlwick (Accenture SWAO team)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  catalogue_version: "0.1.0"
+  signal_prefix: BSI
+  last_reviewed: "2026-07-07"
+  applicability_hints:
+    - german_public_sector
+    - regulated_industry
+    - cloud_workload
+    - on_premise
+    - critical_infrastructure
+    - sovereign_cloud
+    - iso_27001_aligned
+    - bsi_certified
+  redistribution_note: >-
+    BSI IT-Grundschutz is published by the German Federal Office for
+    Information Security (BSI) and is freely available for download under
+    the BSI's standard terms of use. Control descriptions in this catalogue
+    paraphrase the requirement text from the Edition 2023 Kompendium for
+    SWAO machine ingestion. The authoritative source PDF can be downloaded
+    from the BSI website. Reviewers verify a control's accuracy by locating
+    the cited Baustein and requirement identifier in the source publication.
+    No legal advice is provided; consult qualified information security
+    professionals for interpretation of how a requirement applies to a
+    specific workload.
+
+controls:
+  # ==================================================================
+  # ISMS -- Security Management
+  # ==================================================================
+  - id: BSI_ISMS1_A1
+    pillar: "ISMS -- Security Management"
+    title: "Management responsibility for information security (ISMS.1.A1)"
+    description: >-
+      The institutional management bears overall responsibility for
+      information security and must ensure that an information security
+      process is established, implemented, maintained, and continually
+      improved. Management must actively support the information security
+      officer, approve the security policy, and ensure adequate resources are
+      provided for information security. This is the foundational Basis
+      requirement for any IT-Grundschutz implementation.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/isms1-a1-management-responsibility.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.1, ISO_27001_A.5.4]
+    remediation: "Obtain formal management endorsement of the security programme; document it in the security policy and review it at least annually; include information security in management reporting."
+
+  - id: BSI_ISMS1_A3
+    pillar: "ISMS -- Security Management"
+    title: "Information security policy (ISMS.1.A3)"
+    description: >-
+      A written information security policy, approved by management, must be
+      established and communicated to all staff. The policy must define the
+      objectives and scope of information security, management's commitment to
+      the programme, and the organisational framework. The policy must be
+      reviewed at defined intervals and following significant changes.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/isms1-a3-security-policy.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.1]
+    remediation: "Draft and publish the security policy with explicit management sign-off; establish an annual review cycle; provide staff with acknowledgement of having read the policy."
+
+  - id: BSI_ISMS1_A4
+    pillar: "ISMS -- Security Management"
+    title: "Appointment of an information security officer (ISMS.1.A4)"
+    description: >-
+      An information security officer (ISO) must be appointed with sufficient
+      authority, resources, and access to ensure the information security
+      process is established across the institution. The ISO must be given
+      adequate time and support and must be able to escalate to management
+      without obstruction. The appointment must be formally documented.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/isms1-a4-security-officer.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_37, ISO_27001_A.5.2]
+    remediation: "Formalise the ISO appointment in writing; define scope of authority; ensure the role is distinct from operational IT management to preserve independence."
+
+  - id: BSI_ISMS1_A6
+    pillar: "ISMS -- Security Management"
+    title: "Defining security measures (ISMS.1.A6)"
+    description: >-
+      Security measures necessary to protect information assets in scope must
+      be identified, documented, implemented, and their status tracked. The
+      selection of measures must be risk-driven and aligned with the
+      applicable Bausteine from the BSI IT-Grundschutz Kompendium. Outstanding
+      measures must be tracked in a remediation plan with owners and target
+      dates.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/isms1-a6-security-measures.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.31]
+    remediation: "Complete the IT-Grundschutz modelling for all target objects; assign owners to each measure; track open items in a remediation register with defined completion dates."
+
+  - id: BSI_ISMS1_A8
+    pillar: "ISMS -- Security Management"
+    title: "Integrating staff into the security process (ISMS.1.A8)"
+    description: >-
+      All staff must be made aware of information security requirements
+      relevant to their role. Mandatory awareness training must be provided at
+      onboarding and at regular intervals thereafter. Staff must be informed
+      of the escalation path for security incidents and of their
+      responsibilities during the incident response process.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/isms1-a8-staff-awareness.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_29, ISO_27001_A.6.3]
+    remediation: "Implement a mandatory onboarding security briefing and annual refresher; record completion; include contractor and third-party personnel in the programme."
+
+  # ==================================================================
+  # ORP -- Organisation and Personnel
+  # ==================================================================
+  - id: BSI_ORP1_A1
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Roles and responsibilities for information security (ORP.1.A1)"
+    description: >-
+      Roles and responsibilities for information security must be clearly
+      defined, documented, and communicated to all relevant staff. All staff
+      must know their information security obligations. Responsibilities must
+      cover normal operations, incidents, and continuity events.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp1-a1-roles-responsibilities.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-1']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.2, ISO_27001_A.5.3]
+    remediation: "Document an RACI for information security; publish it to all staff; review roles when the organisational structure changes."
+
+  - id: BSI_ORP1_A2
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Assignment of tasks and authorisations (ORP.1.A2)"
+    description: >-
+      Tasks and authorisations must be assigned in a consistent and documented
+      manner. No single person should hold both the operational and auditing
+      role for a critical process. Privileges must follow the principle of
+      least privilege and must be periodically reviewed to detect and remove
+      accumulation of rights.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp1-a2-task-assignment.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.3, ISO_27001_A.8.2]
+    remediation: "Review access rights at least annually; enforce least-privilege assignment at provisioning; separate duties for critical operations."
+
+  - id: BSI_ORP1_A4
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Documented operating procedures (ORP.1.A4)"
+    description: >-
+      Documented operating procedures must exist for all security-relevant
+      processes including onboarding, offboarding, change management, incident
+      response, and backup and recovery. Procedures must be accessible to
+      responsible staff and must be kept current. A review cycle must be
+      defined for each procedure.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp1-a4-procedures.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-1']
+    maps_to: [ISO_27001_A.5.37]
+    remediation: "Maintain a living set of standard operating procedures in an accessible location; assign an owner to each procedure; establish and enforce an annual review cycle."
+
+  - id: BSI_ORP2_A1
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Regulated procedures for onboarding new staff (ORP.2.A1)"
+    description: >-
+      A defined onboarding process must ensure that new staff, including
+      temporary staff and contractors, receive the access rights, equipment,
+      and security briefings required for their role. Access must be
+      provisioned only after identity verification and role assignment are
+      complete. The process must be documented and applied consistently.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp2-a1-onboarding.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-2']
+    maps_to: [GDPR_Art_29, ISO_27001_A.6.1, ISO_27001_A.6.2]
+    remediation: "Establish a joiner checklist that gates system access on role approval and security acknowledgement; include contractor and third-party staff."
+
+  - id: BSI_ORP2_A2
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Regulated procedures for offboarding departing staff (ORP.2.A2)"
+    description: >-
+      A defined offboarding process must ensure that all access rights are
+      revoked promptly when staff leave or change role. Credentials, tokens,
+      certificates, and physical access must all be covered. The process must
+      apply equally to permanent and temporary staff and must be tested
+      periodically.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp2-a2-offboarding.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.6.5, ISO_27001_A.8.18]
+    remediation: "Implement an automated deprovisioning trigger on HR termination events; verify revocation within 24 hours; log the completion of each offboarding action."
+
+  - id: BSI_ORP2_A4
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Regulated use of external staff and contractors (ORP.2.A4)"
+    description: >-
+      External personnel must be subject to information security requirements
+      equivalent to those applied to internal staff for the scope of their
+      engagement. Non-disclosure agreements must be signed before access is
+      granted. Access must be limited to the minimum necessary for the
+      contracted task and must be reviewed regularly.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp2-a4-external-staff.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-2']
+    maps_to: [GDPR_Art_28, GDPR_Art_32, ISO_27001_A.6.2, ISO_27001_A.6.6]
+    remediation: "Include security obligations in external staff contracts; maintain a register of active contractors with their access scope; revoke all access at contract end."
+
+  - id: BSI_ORP4_A1
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Identity and access management policy (ORP.4.A1)"
+    description: >-
+      A policy governing the management of identities, authentication, and
+      access rights must be established and applied to all systems and
+      applications in scope. The policy must address account lifecycle
+      management, privileged access, authentication strength requirements, and
+      the handling of service accounts.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp4-a1-iam-policy.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.16, ISO_27001_A.8.2]
+    remediation: "Write and approve an IAM policy; enforce it through periodic access reviews; align privileged access procedures with the policy."
+
+  - id: BSI_ORP4_A2
+    pillar: "ORP -- Organisation and Personnel"
+    title: "User account and authorisation management (ORP.4.A2)"
+    description: >-
+      User accounts must be created, modified, and deleted through a
+      documented, authorised process. All accounts must be assigned to a named
+      individual; shared or anonymous accounts are prohibited except where
+      technically unavoidable and explicitly approved. Unused accounts must be
+      disabled after a defined inactivity period.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/ORP-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.18, ISO_27001_A.8.5]
+    remediation: "Implement an automated account provisioning workflow; set an inactivity threshold of 90 days or less; run quarterly access certification campaigns."
+
+  - id: BSI_ORP5_A1
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Identification of legal and regulatory requirements (ORP.5.A1)"
+    description: >-
+      All legal, regulatory, and contractual requirements relevant to
+      information security must be identified, documented, and their
+      implications assessed. Requirements must include data protection
+      obligations, sector-specific regulations, and contractual obligations
+      from customer and partner agreements.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp5-a1-legal-requirements.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-5']
+    maps_to: [GDPR_Art_24, GDPR_Art_5_1_a, ISO_27001_A.5.31]
+    remediation: "Maintain a compliance register mapping each applicable law or regulation to a responsible owner; review at least annually and when the regulatory landscape changes."
+
+  - id: BSI_ORP5_A2
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Compliance monitoring (ORP.5.A2)"
+    description: >-
+      Regular checks must be performed to confirm that legal, regulatory, and
+      policy requirements are being met. Non-compliance findings must be
+      tracked and remediated within defined timescales. Results must be
+      reported to management at appropriate intervals.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp5-a2-compliance-monitoring.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-5']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.36]
+    remediation: "Establish a compliance calendar with assigned owners; report compliance posture to management quarterly; track open gaps in the remediation register."
+
+  # ==================================================================
+  # CON -- Concepts and Procedures
+  # ==================================================================
+  - id: BSI_CON1_A1
+    pillar: "CON -- Concepts and Procedures"
+    title: "Definition of cryptographic requirements (CON.1.A1)"
+    description: >-
+      The requirements for cryptographic protection of data at rest, data in
+      transit, and data in use must be defined in a cryptographic policy. The
+      policy must specify acceptable algorithms, minimum key lengths,
+      permitted protocols, and key management procedures. The BSI TR-02102
+      technical guideline must be used as the reference for algorithm
+      selection.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/CON-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.24]
+    remediation: "Adopt BSI TR-02102 for algorithm selection; enforce TLS 1.2 minimum (TLS 1.3 preferred) for all in-transit paths; document encryption coverage for all stores holding personal data."
+
+  - id: BSI_CON1_A2
+    pillar: "CON -- Concepts and Procedures"
+    title: "Cryptographic key management (CON.1.A2)"
+    description: >-
+      Cryptographic keys must be generated, distributed, stored, rotated, and
+      destroyed according to a defined key management procedure. Key material
+      must be protected from unauthorised disclosure, substitution, and
+      modification. Private keys must never be stored alongside the data they
+      protect or in a form accessible to application code at rest.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/CON-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.24]
+    remediation: "Use a dedicated key management service (KMS) or Hardware Security Module (HSM) for key storage; define and test key rotation schedules; prohibit software-level plaintext key storage."
+
+  - id: BSI_CON1_A4
+    pillar: "CON -- Concepts and Procedures"
+    title: "Cryptographic protection of stored data (CON.1.A4)"
+    description: >-
+      Data classified as confidential or above must be protected by encryption
+      at rest using approved algorithms as defined in the cryptographic policy
+      (CON.1.A1). Encrypted backups must use keys that are distinct from the
+      live data encryption keys. The coverage of at-rest encryption must be
+      documented for each data store.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/CON-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_9, ISO_27001_A.8.24]
+    remediation: "Enable volume or field-level encryption for all stores holding personal data; verify no plaintext copy exists in any backup path; test decryption as part of recovery drills."
+
+  - id: BSI_CON2_A1
+    pillar: "CON -- Concepts and Procedures"
+    title: "Obligation to data protection (CON.2.A1)"
+    description: >-
+      All staff who handle personal data must be formally committed to data
+      protection obligations. This commitment must cover applicable data
+      protection legislation, the institution's data protection policy, and
+      the consequences of non-compliance. A data protection officer must be
+      appointed where required by law, and their independence must be ensured.
+    severity_default: high
+    evidence_basis:
+      - { manual_questionnaire: "evidence/con2-a1-data-protection-questionnaire.yaml" }
+    references: ['https://www.bsi.bund.de/dok/CON-2']
+    maps_to: [GDPR_Art_37, GDPR_Art_38, GDPR_Art_29, ISO_27001_A.5.34]
+    remediation: "Appoint a data protection officer (or document why appointment is not legally required); maintain signed data protection commitments for all relevant staff; confirm DPO independence."
+
+  - id: BSI_CON3_A1
+    pillar: "CON -- Concepts and Procedures"
+    title: "Backup requirements analysis (CON.3.A1)"
+    description: >-
+      The recovery point objective (RPO) and recovery time objective (RTO)
+      must be determined for each information asset based on its criticality
+      and business impact. Requirements must be documented and reviewed when
+      the system or its data classification changes. Results must inform the
+      backup concept (CON.3.A2).
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con3-a1-backup-requirements.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Conduct and document a business impact analysis for each application; confirm RPO and RTO with the application owner; align backup frequency and retention with the agreed objectives."
+
+  - id: BSI_CON3_A2
+    pillar: "CON -- Concepts and Procedures"
+    title: "Backup concept (CON.3.A2)"
+    description: >-
+      A backup concept must define the scope, frequency, retention period,
+      storage media, and off-site or out-of-region placement for all backups.
+      The concept must address backup of all system and application data
+      required to recover to the agreed RPO. Backup of configuration data must
+      be included.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con3-a2-backup-concept.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Write and approve a backup concept; verify it covers all in-scope systems including databases, object storage, and configuration; confirm off-site or out-of-region placement for at least one copy."
+
+  - id: BSI_CON3_A3
+    pillar: "CON -- Concepts and Procedures"
+    title: "Minimum data backup requirements (CON.3.A3)"
+    description: >-
+      All relevant data must be backed up at a frequency that meets the agreed
+      RPO. Backup completeness and integrity must be verified automatically.
+      Backup media and destinations must be protected against unauthorised
+      access and environmental hazards to a standard equivalent to the source
+      systems.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "DATA" }
+    references: ['https://www.bsi.bund.de/dok/CON-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Automate backup jobs and configure alerting on failure; perform monthly restore tests and document the outcome; encrypt backup media with keys distinct from the live data keys."
+
+  - id: BSI_CON6_A1
+    pillar: "CON -- Concepts and Procedures"
+    title: "Information security requirements for software procurement (CON.6.A1)"
+    description: >-
+      Information security requirements must be defined before procuring
+      software or cloud services. Requirements must cover authentication,
+      access control, audit logging, cryptographic capabilities, and data
+      residency. Security requirements must be included as contractual
+      criteria and verified before contract signature.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con6-a1-procurement-security.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-6']
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.20]
+    remediation: "Maintain a security requirements checklist for procurement; include it in every request for proposal and contract review; obtain evidence of compliance before go-live."
+
+  - id: BSI_CON6_A2
+    pillar: "CON -- Concepts and Procedures"
+    title: "Secure software deployment (CON.6.A2)"
+    description: >-
+      Software and configuration changes must be deployed through a
+      documented, authorised process. Deployments must be authorised, tested
+      in a non-production environment, and capable of being rolled back if
+      they introduce security regressions. Deployment logs must be retained
+      for a defined minimum period.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con6-a2-secure-deployment.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-6']
+    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.8.19, ISO_27001_A.8.32]
+    remediation: "Implement a CI/CD pipeline with gated security tests; require explicit approval for production deployments; retain deployment audit logs for at least 90 days."
+
+  - id: BSI_CON8_A1
+    pillar: "CON -- Concepts and Procedures"
+    title: "Defining security requirements for software development (CON.8.A1)"
+    description: >-
+      Information security requirements must be defined and integrated into
+      the software development lifecycle from the requirements phase.
+      Requirements must address authentication, authorisation, session
+      management, input validation, error handling, and cryptographic
+      protection of sensitive data. Requirements must be verified at each
+      development gate.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con8-a1-dev-security-requirements.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-8']
+    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.8.26, ISO_27001_A.8.27]
+    remediation: "Publish secure development standards aligned to OWASP ASVS or equivalent; run mandatory security review gates at requirements, design, and pre-release phases; track deviations as risks."
+
+  - id: BSI_CON8_A2
+    pillar: "CON -- Concepts and Procedures"
+    title: "Software acceptance and release process (CON.8.A2)"
+    description: >-
+      Software must pass defined security acceptance criteria before release
+      to production. Acceptance criteria must include security tests,
+      vulnerability scans, and code review. Deviations from acceptance
+      criteria must be risk-accepted by a named authority and documented
+      before release.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con8-a2-acceptance.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-8']
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.29]
+    remediation: "Define security acceptance gates in the release checklist; require a named security sign-off before production deployment; log each release decision with the accepting authority."
+
+  - id: BSI_CON8_A7
+    pillar: "CON -- Concepts and Procedures"
+    title: "Test data protection (CON.8.A7)"
+    description: >-
+      Production data must not be used for development or testing purposes
+      unless there is no viable alternative and appropriate technical and
+      organisational measures are in place. Where use of production data is
+      unavoidable, it must be pseudonymised or anonymised before use, access
+      must be restricted to the minimum necessary, and the use must be
+      explicitly authorised.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "DATA" }
+    references: ['https://www.bsi.bund.de/dok/CON-8']
+    maps_to: [GDPR_Art_25, GDPR_Art_5_1_c, ISO_27001_A.8.33]
+    remediation: "Establish a test data management process; generate synthetic or anonymised test datasets; document any approved use of production data with DPO sign-off."
+
+  # ==================================================================
+  # OPS -- Operations
+  # ==================================================================
+  - id: BSI_OPS112_A1
+    pillar: "OPS -- Operations"
+    title: "Change management concept (OPS.1.1.2.A1)"
+    description: >-
+      A documented change management process must govern all changes to IT
+      systems, applications, and configurations. The process must cover
+      request, risk assessment, authorisation, implementation, and post-
+      implementation review. Emergency change procedures must be defined and
+      applied only in genuine emergencies.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops112-a1-change-management.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    remediation: "Implement a change management workflow covering standard, normal, and emergency change categories; require risk impact assessment for all normal and emergency changes."
+
+  - id: BSI_OPS112_A2
+    pillar: "OPS -- Operations"
+    title: "Maintaining operations during changes (OPS.1.1.2.A2)"
+    description: >-
+      Changes must be planned to minimise disruption to normal operations.
+      Where possible, changes must be deployed in defined maintenance windows.
+      Rollback plans must be defined and tested before deployment. Significant
+      changes must be rehearsed in a non-production environment representative
+      of production.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops112-a2-change-operations.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    remediation: "Define maintenance windows; require a tested rollback plan for all non-standard changes; conduct a post-change review within 48 hours of each significant deployment."
+
+  - id: BSI_OPS112_A3
+    pillar: "OPS -- Operations"
+    title: "Secure change testing (OPS.1.1.2.A3)"
+    description: >-
+      All changes must be tested prior to deployment in a test environment
+      that is representative of the production environment. Security
+      regression tests must be included in the test suite for changes to
+      security-relevant components. Test results must be documented and linked
+      to the change record.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops112-a3-change-testing.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.32]
+    remediation: "Maintain a dedicated staging environment; require test sign-off before production deployment; include security regression tests in the automated test suite."
+
+  - id: BSI_OPS113_A1
+    pillar: "OPS -- Operations"
+    title: "Patch and vulnerability management concept (OPS.1.1.3.A1)"
+    description: >-
+      A documented patch and vulnerability management concept must define the
+      process for identifying, assessing, prioritising, and remediating
+      vulnerabilities across all IT components in scope. The concept must
+      specify escalation paths for critical vulnerabilities and the maximum
+      time-to-patch per severity class.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    remediation: "Publish and approve a patch management policy with time-to-patch SLAs (critical: 48 hours, high: 30 days); assign an owner per vulnerability class; document the escalation path."
+
+  - id: BSI_OPS113_A2
+    pillar: "OPS -- Operations"
+    title: "Regular scanning for known vulnerabilities (OPS.1.1.3.A2)"
+    description: >-
+      All IT systems and applications in scope must be regularly scanned for
+      known vulnerabilities using automated tooling. Scan results must be
+      documented, triaged, and fed into the remediation workflow. The scan
+      schedule must be at least as frequent as the patch management SLAs
+      require.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    remediation: "Deploy continuous vulnerability scanning (SAST, DAST, SCA) in the CI pipeline; generate weekly posture reports; feed confirmed vulnerabilities into the remediation tracker automatically."
+
+  - id: BSI_OPS113_A3
+    pillar: "OPS -- Operations"
+    title: "Timely application of security patches (OPS.1.1.3.A3)"
+    description: >-
+      Security patches must be applied within the time limits defined in the
+      patch management concept. Critical and high-severity patches must be
+      prioritised over other maintenance activities. Where patching is
+      temporarily infeasible, a compensating control must be documented and
+      approved by the information security officer.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    remediation: "Automate patch deployment for OS and runtime images in the CI/CD pipeline; track outstanding patches by severity class; escalate unpatched critical items to management within the defined SLA window."
+
+  - id: BSI_OPS115_A1
+    pillar: "OPS -- Operations"
+    title: "Backup and recovery concept (OPS.1.1.5.A1)"
+    description: >-
+      A comprehensive backup and recovery concept must define the scope,
+      schedules, retention periods, media types, and recovery procedures for
+      all systems in scope. The concept must be aligned with the RPO and RTO
+      requirements from the backup requirements analysis (CON.3.A1) and
+      reviewed at defined intervals.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops115-a1-backup-recovery.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
+    overrides: [BSI_CON3_A2]
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Align the operational backup configuration with the approved concept; automate alerting on backup failures; store at least one backup copy in a separate security zone from the primary systems."
+
+  - id: BSI_OPS115_A3
+    pillar: "OPS -- Operations"
+    title: "Backup of key configuration data (OPS.1.1.5.A3)"
+    description: >-
+      Configuration data essential for system recovery -- including
+      application configuration, infrastructure-as-code definitions, secrets
+      references, and certificate metadata -- must be backed up separately
+      from application data and stored securely. Configuration backup must be
+      tested as part of recovery drills.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops115-a3-config-backup.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Version-control all infrastructure configuration in a separate repository; include configuration restore in the recovery runbook; test configuration restore at least once per quarter."
+
+  - id: BSI_OPS115_A4
+    pillar: "OPS -- Operations"
+    title: "Restore testing and documentation (OPS.1.1.5.A4)"
+    description: >-
+      Recovery procedures must be tested at regular intervals to verify that
+      data can be restored within the agreed RTO. Test results must be
+      documented including the time taken and the completeness of the
+      recovered data. Failures must be tracked and remediated before the next
+      test cycle.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops115-a4-restore-testing.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Schedule and run quarterly restore tests across all backup tiers; document the time taken and data completeness; report test outcomes to the information security officer."
+
+  - id: BSI_OPS22_A1
+    pillar: "OPS -- Operations"
+    title: "Cloud usage strategy (OPS.2.2.A1)"
+    description: >-
+      A documented cloud usage strategy must be established defining which
+      data types, workloads, and processes may be processed in cloud
+      environments, which cloud service and deployment models are permissible,
+      and which data residency and sovereignty requirements must be satisfied.
+      The strategy must be approved by management.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops22-a1-cloud-strategy.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-2']
+    maps_to: [GDPR_Art_46, GDPR_Art_44, ISO_27001_A.5.23]
+    remediation: "Write and approve a cloud usage policy explicitly addressing data classification, residency, and sovereign cloud requirements; review when a new cloud service is onboarded or the regulatory context changes."
+
+  - id: BSI_OPS22_A2
+    pillar: "OPS -- Operations"
+    title: "Classification of cloud service criticality (OPS.2.2.A2)"
+    description: >-
+      Cloud services used by the institution must be classified according to
+      their criticality and the sensitivity of data they process. The
+      classification must drive the appropriate level of security controls,
+      due diligence requirements, and contractual obligations for each
+      service.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops22-a2-cloud-classification.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-2']
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.23]
+    remediation: "Maintain a cloud service inventory with criticality classification; apply more stringent vetting to services processing personal or sensitive data; review the inventory when services are added or changed."
+
+  - id: BSI_OPS22_A3
+    pillar: "OPS -- Operations"
+    title: "Security requirements for cloud service providers (OPS.2.2.A3)"
+    description: >-
+      Minimum security requirements must be defined for cloud service
+      providers handling organisational data. Requirements must address
+      certifications (BSI C5, ISO 27001, or SOC 2 Type II), data residency
+      commitments, subprocessor transparency, audit rights, and incident
+      notification obligations.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops22-a3-cloud-provider-requirements.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-2']
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.20, ISO_27001_A.5.23]
+    remediation: "Define a minimum certification bar for cloud providers processing personal data; require evidence of compliance before onboarding; reassess annually and at each contract renewal."
+
+  - id: BSI_OPS22_A4
+    pillar: "OPS -- Operations"
+    title: "Cloud service agreement and data processing contract (OPS.2.2.A4)"
+    description: >-
+      A written agreement must be in place with each cloud service provider
+      covering information security obligations, data processing terms
+      compliant with applicable data protection law, incident reporting
+      obligations, audit rights, and exit provisions. The agreement must be
+      reviewed before each contract renewal.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops22-a4-cloud-contract.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-2']
+    maps_to: [GDPR_Art_28, GDPR_Art_46, ISO_27001_A.5.20]
+    remediation: "Review all cloud provider contracts for the required clauses before go-live; ensure DPA terms cover all personal data processing; track contract renewal dates in the compliance calendar."
+
+  - id: BSI_OPS23_A1
+    pillar: "OPS -- Operations"
+    title: "Cloud-native service security baseline (OPS.2.3.A1)"
+    description: >-
+      Cloud-native services -- managed databases, message queues, serverless
+      functions, and object storage -- must be configured in accordance with
+      the provider's published security baseline and any applicable CIS
+      benchmark or equivalent hardening guide. Default configurations that
+      expose public endpoints or disable encryption must be explicitly
+      overridden before deployment.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    remediation: "Run infrastructure-as-code security scanning (tfsec, checkov, or equivalent) on all cloud resource definitions; block deployments that fail mandatory security checks; review benchmark compliance quarterly."
+
+  # ==================================================================
+  # DER -- Detection and Response
+  # ==================================================================
+  - id: BSI_DER1_A1
+    pillar: "DER -- Detection and Response"
+    title: "Detection concept (DER.1.A1)"
+    description: >-
+      A concept for the detection of security-relevant events must be
+      established. The concept must define which event sources are monitored,
+      what constitutes a security event requiring response, the responsible
+      parties for detection, and the escalation path to the incident
+      management process. The concept must be reviewed annually.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/DER-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    remediation: "Document the detection concept; map it to the incident response procedure; review and update when significant infrastructure changes are made."
+
+  - id: BSI_DER1_A2
+    pillar: "DER -- Detection and Response"
+    title: "Central logging (DER.1.A2)"
+    description: >-
+      Security-relevant events must be logged centrally. Log sources must
+      include authentication events, privileged access, system and application
+      errors, network perimeter events, and changes to security configuration.
+      Logs must be protected from tampering and retained for a defined minimum
+      period appropriate to incident investigation timelines.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/DER-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_33, ISO_27001_A.8.15, ISO_27001_A.8.17]
+    remediation: "Deploy centralised log aggregation (SIEM or equivalent); enforce log retention of at least 90 days active and 12 months archived for audit-relevant events; protect log integrity with write-once storage or cryptographic sealing."
+
+  - id: BSI_DER1_A3
+    pillar: "DER -- Detection and Response"
+    title: "Alert thresholds and escalation (DER.1.A3)"
+    description: >-
+      Alert rules must be configured for high-priority security events
+      including authentication failures, privilege escalation, unexpected
+      outbound connections, and availability degradation. Alerts must be
+      routed to the responsible team and escalated to incident management if
+      not acknowledged within a defined timeframe.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/DER-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_33, ISO_27001_A.8.16]
+    remediation: "Define and test alert rules for each event class; establish on-call routing and acknowledgement SLAs; test alerting end-to-end at least quarterly using synthetic events."
+
+  - id: BSI_DER21_A1
+    pillar: "DER -- Detection and Response"
+    title: "Incident management concept (DER.2.1.A1)"
+    description: >-
+      A documented incident management concept must define the classification
+      of security incidents, roles and responsibilities for detection and
+      response, escalation procedures, communication requirements (internal
+      and to supervisory authorities), and criteria for incident closure. The
+      concept must be tested through tabletop exercises.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der21-a1-incident-management.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-2-1']
+    maps_to: [GDPR_Art_33, GDPR_Art_34, ISO_27001_A.5.26]
+    remediation: "Write and test the incident response plan; ensure the plan covers personal data breaches explicitly with notification timelines; rehearse with a tabletop exercise at least annually."
+
+  - id: BSI_DER21_A2
+    pillar: "DER -- Detection and Response"
+    title: "Incident classification and prioritisation (DER.2.1.A2)"
+    description: >-
+      Security incidents must be classified and prioritised according to their
+      impact, urgency, and scope. Classification criteria must be documented
+      and applied consistently. Personal data breaches must be identified as a
+      distinct incident class that triggers data protection notification
+      obligations under applicable law.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der21-a2-incident-classification.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-2-1']
+    maps_to: [GDPR_Art_33, GDPR_Art_4, ISO_27001_A.5.25]
+    remediation: "Define a severity matrix with clear escalation thresholds; train first responders on breach identification criteria; integrate breach detection rules into the SIEM alert set."
+
+  - id: BSI_DER21_A3
+    pillar: "DER -- Detection and Response"
+    title: "Incident documentation and post-incident review (DER.2.1.A3)"
+    description: >-
+      All security incidents must be documented from detection through to
+      closure. Documentation must capture timeline, impact, root cause,
+      remediation actions taken, and lessons learned. A post-incident review
+      must be conducted for significant incidents and findings fed back into
+      the security programme.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der21-a3-incident-docs.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-2-1']
+    maps_to: [GDPR_Art_33, ISO_27001_A.5.27]
+    remediation: "Use a structured incident record template; mandate post-incident review within 14 days of closure for high and critical incidents; track lessons-learned actions in the remediation register."
+
+  - id: BSI_DER31_A1
+    pillar: "DER -- Detection and Response"
+    title: "Internal audit planning (DER.3.1.A1)"
+    description: >-
+      Information security audits must be planned and conducted at defined
+      intervals. The audit scope must cover all components identified in the
+      IT-Grundschutz modelling. Audit findings must be tracked with assigned
+      owners and remediated within defined timeframes.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der31-a1-audit-planning.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-3-1']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.35]
+    remediation: "Publish an annual internal audit schedule; assign qualified auditors independent of the functions they audit; track findings in the remediation register with defined completion dates."
+
+  - id: BSI_DER31_A2
+    pillar: "DER -- Detection and Response"
+    title: "Auditing information security measures (DER.3.1.A2)"
+    description: >-
+      Implemented information security measures must be regularly audited for
+      effectiveness. Audits must include both documentary review and technical
+      testing. Results must be reported to management and used to improve the
+      information security programme. Technical test findings must be fed into
+      the remediation workflow.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der31-a2-audit-effectiveness.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-3-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.35, ISO_27001_A.5.36]
+    remediation: "Include technical penetration testing and configuration review in the annual audit programme; present results to the CISO or equivalent; require management sign-off on the remediation plan."
+
+  - id: BSI_DER4_A1
+    pillar: "DER -- Detection and Response"
+    title: "Business continuity plan (DER.4.A1)"
+    description: >-
+      A business continuity plan (BCP) must be established covering the loss
+      of IT services, key personnel, and critical infrastructure. The BCP must
+      define recovery priorities, minimum service levels, and communication
+      procedures for major incidents. The plan must be aligned with the RTO
+      objectives defined in the backup requirements analysis.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der4-a1-bcp.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.29]
+    remediation: "Write and approve the BCP; align recovery priorities with the business impact analysis; test the plan with a tabletop exercise annually and update it based on test findings."
+
+  - id: BSI_DER4_A2
+    pillar: "DER -- Detection and Response"
+    title: "Business continuity testing (DER.4.A2)"
+    description: >-
+      Business continuity and disaster recovery plans must be tested at
+      defined intervals to verify that recovery objectives can be met. Test
+      results must be documented and used to improve the plan. Critical staff
+      must be trained on their continuity roles and the current contact list
+      must be maintained.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der4-a2-bcp-testing.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.30]
+    remediation: "Conduct an annual BCP test; document the outcome and identify gaps; ensure that key recovery personnel have been briefed and the contact directory is current."
+
+  # ==================================================================
+  # APP -- Applications
+  # ==================================================================
+  - id: BSI_APP31_A1
+    pillar: "APP -- Applications"
+    title: "Authentication for web applications and services (APP.3.1.A1)"
+    description: >-
+      Web applications and web services must enforce strong authentication for
+      all users accessing sensitive functions or data. Default credentials
+      must be changed before deployment. Authentication mechanisms must be
+      resistant to common attacks including brute force, credential stuffing,
+      and session fixation. Privileged access must require multi-factor
+      authentication.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.5, ISO_27001_A.8.26]
+    remediation: "Implement multi-factor authentication for all privileged access; enforce account lockout after a defined number of failed attempts; use standard, well-reviewed authentication libraries."
+
+  - id: BSI_APP31_A2
+    pillar: "APP -- Applications"
+    title: "Access control for web applications (APP.3.1.A2)"
+    description: >-
+      Access control in web applications must enforce the principle of least
+      privilege. Every function and data object must have a server-side access
+      control check. Access control decisions must not rely solely on client-
+      supplied parameters. Horizontal and vertical privilege escalation must
+      be tested as part of the security acceptance process.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_5_1_c, ISO_27001_A.8.2, ISO_27001_A.8.26]
+    remediation: "Implement server-side authorisation for every sensitive endpoint; audit access control coverage with automated testing; document the access control matrix for each user role."
+
+  - id: BSI_APP31_A3
+    pillar: "APP -- Applications"
+    title: "Secure error and exception handling (APP.3.1.A3)"
+    description: >-
+      Web applications must not return stack traces, internal error messages,
+      or technical details to end users. Error messages presented to users
+      must be generic and must not reveal information about system
+      architecture, database schema, or internal identifiers. Detailed
+      diagnostic information must be logged server-side only and protected
+      from unauthorised access.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.26]
+    remediation: "Replace default error pages with custom generic messages; configure the application to suppress stack traces in production mode; review error handling as part of security code review."
+
+  - id: BSI_APP31_A6
+    pillar: "APP -- Applications"
+    title: "Input validation for web applications (APP.3.1.A6)"
+    description: >-
+      All input received by web applications from users, APIs, and external
+      services must be validated against expected type, length, format, and
+      range before processing. Validation must be performed server-side.
+      Parameterised queries or prepared statements must be used for all
+      database interactions to prevent injection attacks.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.26]
+    remediation: "Implement a centralised input validation layer; enforce parameterised queries throughout the data access layer; include input fuzzing in the automated security test suite."
+
+  - id: BSI_APP43_A1
+    pillar: "APP -- Applications"
+    title: "Database access control (APP.4.3.A1)"
+    description: >-
+      Access to databases must be restricted to authorised applications and
+      users. Each application must use a dedicated database account with the
+      minimum permissions required for its function. Direct user access to
+      production databases must require explicit authorisation and must be
+      logged. Superuser credentials must not be used by application code.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-3']
+    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.5, ISO_27001_A.8.26]
+    remediation: "Assign each application its own database user with least-privilege schema grants; prohibit shared superuser credentials in application connection strings; log and alert on direct DBA access to production."
+
+  - id: BSI_APP43_A2
+    pillar: "APP -- Applications"
+    title: "Minimal database configuration (APP.4.3.A2)"
+    description: >-
+      Database instances must be configured with the minimal set of services
+      and features enabled. Unused stored procedures, remote administration
+      features, and sample schemas must be disabled or removed. The database
+      management system must run under a dedicated low-privilege service
+      account and must not be reachable from general user networks.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "DATA" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    remediation: "Apply the CIS benchmark for the relevant DBMS; disable the remote administration interface in production; run the DBMS service under a non-root, non-administrator account."
+
+  - id: BSI_APP43_A3
+    pillar: "APP -- Applications"
+    title: "Database transaction security (APP.4.3.A3)"
+    description: >-
+      Database transactions must be designed to maintain data integrity under
+      concurrent access. Appropriate transaction isolation levels must be
+      selected for each workload and documented. Partial write failures must
+      not leave data in an inconsistent state; rollback procedures must be
+      tested as part of recovery drills.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "DATA" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-3']
+    maps_to: [GDPR_Art_32, GDPR_Art_5_1_d, ISO_27001_A.8.26]
+    remediation: "Select transaction isolation levels intentionally and document the rationale; include concurrency and failure injection tests in the test suite; verify rollback behaviour during restore drills."
+
+  - id: BSI_APP44_A1
+    pillar: "APP -- Applications"
+    title: "Container orchestration security policy (APP.4.4.A1)"
+    description: >-
+      A security policy for container orchestration platforms (Kubernetes or
+      equivalent) must be established covering role-based access control,
+      network policies, pod security standards, image provenance controls, and
+      secrets management. Default orchestration configurations that are
+      insecure must be overridden before workload deployment.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/app44-a1-container-policy.md" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-4']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.9]
+    remediation: "Apply a pod security standard (at minimum Baseline, prefer Restricted); deploy network policies to restrict pod-to-pod communication; use an external secrets manager rather than plain Kubernetes Secrets."
+
+  - id: BSI_APP44_A2
+    pillar: "APP -- Applications"
+    title: "Container image management and provenance (APP.4.4.A2)"
+    description: >-
+      Container images must be sourced from trusted registries. Images must be
+      scanned for known vulnerabilities before deployment and must not contain
+      critical or high-severity CVEs. Images must be signed to provide
+      provenance assurance. Base images must be updated with security patches
+      within the patch management SLAs.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    remediation: "Integrate container image scanning (Trivy, Grype, or equivalent) into the CI pipeline; block deployment of images with critical CVEs; enforce image signing with Cosign or equivalent."
+
+  # ==================================================================
+  # SYS -- IT Systems
+  # ==================================================================
+  - id: BSI_SYS11_A1
+    pillar: "SYS -- IT Systems"
+    title: "Physical and logical access restrictions for servers (SYS.1.1.A1)"
+    description: >-
+      Physical access to server hardware must be restricted to authorised
+      personnel. Logical access must be restricted to named administrators;
+      interactive login with shared accounts is prohibited. Server consoles
+      and management interfaces must be accessible only from defined
+      management networks. Access must be logged.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/sys11-a1-server-access.md" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.7.1, ISO_27001_A.8.5]
+    remediation: "Implement physical access control to server locations; restrict management-plane access to a dedicated management VLAN; disable or remove console access routes not required for operations."
+
+  - id: BSI_SYS11_A2
+    pillar: "SYS -- IT Systems"
+    title: "Minimal server configuration (SYS.1.1.A2)"
+    description: >-
+      Server operating systems must be configured with the minimum set of
+      services, packages, and open network ports required for their function.
+      All unnecessary services must be disabled or removed. The operating
+      system must be hardened in accordance with a recognised baseline such as
+      a CIS Benchmark or the BSI SiSyP hardening guide.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    remediation: "Apply the CIS Benchmark for the server operating system; automate configuration baseline checks with a compliance scanner; remediate deviations within the patch management SLAs."
+
+  - id: BSI_SYS11_A3
+    pillar: "SYS -- IT Systems"
+    title: "Restrictive authorisation for server access (SYS.1.1.A3)"
+    description: >-
+      Administrator privileges on servers must be granted only when required
+      and must follow the principle of least privilege. Privilege escalation
+      must use just-in-time or just-enough-access mechanisms where available.
+      Root or local administrator login must be logged and, where possible,
+      disabled in favour of named accounts with controlled privilege
+      escalation.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.2, ISO_27001_A.8.18]
+    remediation: "Disable direct root SSH login; use PAM or sudo with logging enabled for privilege escalation; alert on unexpected root access events in the SIEM."
+
+  - id: BSI_SYS16_A1
+    pillar: "SYS -- IT Systems"
+    title: "Container security planning (SYS.1.6.A1)"
+    description: >-
+      A security concept for containerised deployments must be established
+      before production rollout. The concept must address the full container
+      lifecycle -- build, ship, and run -- the orchestration platform
+      configuration, network isolation between containers, and secrets
+      management. The concept must be reviewed when the platform or base
+      images change significantly.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/sys16-a1-container-security.md" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-6']
+    overrides: [BSI_APP44_A1]
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.9]
+    remediation: "Write and approve the container security concept before migrating workloads to containers; align with the APP.4.4 policy; review when the orchestration platform or base images change significantly."
+
+  - id: BSI_SYS16_A2
+    pillar: "SYS -- IT Systems"
+    title: "Container image build security (SYS.1.6.A2)"
+    description: >-
+      Container images must be built from minimal base images, must not run as
+      root by default, and must have a non-root user defined in the build
+      specification. Multi-stage builds must be used to remove build-time
+      artefacts and tooling from the production image. Image build pipelines
+      must be version-controlled.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-6']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    remediation: "Enforce a non-root USER directive in all Dockerfiles; use distroless or minimal base images; run image linting (hadolint or equivalent) in the CI pipeline."
+
+  - id: BSI_SYS16_A5
+    pillar: "SYS -- IT Systems"
+    title: "Authorisation of container deployments (SYS.1.6.A5)"
+    description: >-
+      Container deployments to production must be authorised through the
+      change management process. Only images that have passed security
+      scanning and signing checks may be deployed to production. Deployment
+      authorisation must be enforced by admission controls in the
+      orchestration platform and logged.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-6']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.9, ISO_27001_A.8.32]
+    remediation: "Deploy an admission controller (OPA/Gatekeeper, Kyverno, or equivalent) enforcing image signing and scan status before production admission; log all admission decisions."
+
+  # ==================================================================
+  # NET -- Networks and Communication
+  # ==================================================================
+  - id: BSI_NET11_A1
+    pillar: "NET -- Networks and Communication"
+    title: "Network architecture requirements (NET.1.1.A1)"
+    description: >-
+      A network architecture concept must be established defining network
+      zones, trust boundaries, permitted traffic flows between zones, and the
+      placement of security controls including firewalls, proxies, and load
+      balancers. The architecture must follow the principle of need-to-
+      connect. The concept must be kept current as the infrastructure evolves.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/net11-a1-network-architecture.md" }
+    references: ['https://www.bsi.bund.de/dok/NET-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    remediation: "Document the network architecture with zone definitions and permitted flows; validate the documentation against actual network configuration annually; review after every significant infrastructure change."
+
+  - id: BSI_NET11_A2
+    pillar: "NET -- Networks and Communication"
+    title: "Network segmentation (NET.1.1.A2)"
+    description: >-
+      IT systems with different protection requirements must be separated into
+      distinct network segments. Internet-facing components must be placed in
+      a demilitarised zone (DMZ). Internal systems processing personal or
+      confidential data must be isolated from general-purpose user networks
+      and from each other where their protection requirements differ.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "EGR" }
+    references: ['https://www.bsi.bund.de/dok/NET-1-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.22]
+    remediation: "Implement VLAN or virtual network segmentation; restrict lateral movement between segments with stateful firewall rules; verify segmentation with network scanning after changes."
+
+  - id: BSI_NET11_A3
+    pillar: "NET -- Networks and Communication"
+    title: "Secure network management access (NET.1.1.A3)"
+    description: >-
+      Management access to network equipment must be restricted to a dedicated
+      out-of-band management network or a hardened jump host. Remote
+      management must use encrypted protocols (SSH or HTTPS) with multi-factor
+      authentication. All management-plane access must be logged and reviewed
+      periodically.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/net11-a3-network-management.md" }
+    references: ['https://www.bsi.bund.de/dok/NET-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.20]
+    remediation: "Disable Telnet and unencrypted management protocols; route management access through a dedicated bastion or jump host; enforce MFA for all remote network management access."
+
+  - id: BSI_NET32_A1
+    pillar: "NET -- Networks and Communication"
+    title: "Firewall security policy (NET.3.2.A1)"
+    description: >-
+      A documented firewall security policy must define the default-deny
+      principle for traffic between security zones. Permitted traffic flows
+      must be explicitly allowed on a need-to-communicate basis. The policy
+      must be reviewed when application requirements change and the ruleset
+      must be audited for redundant or overly permissive rules at least
+      annually.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/net32-a1-firewall-policy.md" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.22]
+    remediation: "Establish and approve the firewall ruleset against a written policy; audit the ruleset for shadowed or redundant rules annually; remove rules no longer required by an active application."
+
+  - id: BSI_NET32_A2
+    pillar: "NET -- Networks and Communication"
+    title: "Stateful firewall implementation (NET.3.2.A2)"
+    description: >-
+      Stateful packet inspection firewalls must be deployed at all boundaries
+      between network security zones. Firewall rules must block all traffic
+      not explicitly permitted by the security policy. Firewall logging must
+      capture all connection attempts including denied flows and must be
+      retained and forwarded to the central logging system.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "EGR" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    remediation: "Review and prune firewall rulesets quarterly; ensure denied flows are logged to the central SIEM; test firewall rules with automated network scanning after each significant rule change."
+
+  - id: BSI_NET33_A1
+    pillar: "NET -- Networks and Communication"
+    title: "VPN security requirements (NET.3.3.A1)"
+    description: >-
+      Virtual private network (VPN) connections used for remote access or
+      site-to-site connectivity must use only approved cryptographic
+      algorithms and key lengths compliant with BSI TR-02102 or equivalent.
+      VPN connections must require mutual authentication. Unused or inactive
+      VPN accounts must be disabled within a defined inactivity period.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.24, ISO_27001_A.8.20]
+    remediation: "Configure VPN gateways to allow only TLS 1.2+ or IKEv2 with BSI TR-02102-compliant cipher suites; enforce MFA for all remote-access VPN connections; automate deactivation of inactive VPN accounts."
+
+  # ==================================================================
+  # Standard (S) requirements -- severity_default: medium
+  # Added in v0.2.0: recommended requirements beyond the Basis baseline.
+  # ==================================================================
+
+  # ------------------------------------------------------------------
+  # ISMS.1 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_ISMS1_A2
+    pillar: "ISMS -- Security Management"
+    title: "Review of information security roles and responsibilities (ISMS.1.A2)"
+    description: >-
+      Information security roles, responsibilities, and delegated authorities
+      must be reviewed at least annually to verify they remain appropriate as
+      the organisation evolves. Changes to the organisational structure, scope
+      of the ISMS, or regulatory environment must trigger an out-of-cycle
+      review. Role holders must re-confirm acceptance of their responsibilities
+      in writing following any significant change.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/isms1-a2-security-roles-review.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_24, ISO_27001_A.5.2, ISO_27001_A.5.3]
+    remediation: "Conduct and document an annual review of all information security roles; update the RACI when organisational changes occur; re-obtain written acceptance from role holders when responsibilities change significantly."
+
+  - id: BSI_ISMS1_A5
+    pillar: "ISMS -- Security Management"
+    title: "System-specific security concepts for IT systems (ISMS.1.A5)"
+    description: >-
+      Each IT system or group of comparable systems in scope must have a
+      system-specific security concept derived from the IT-Grundschutz
+      modelling. The concept must document the protection requirements,
+      applicable Bausteine, implemented measures, and any approved deviations
+      from the standard recommendations. The concept must be maintained and
+      reviewed when the system changes significantly.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/isms1-a5-system-security-concepts.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.14, ISO_27001_A.5.31]
+    remediation: "Complete IT-Grundschutz modelling for each IT system in scope; document the resulting system security concept with implemented measures and approved deviations; review the concept when the system changes significantly."
+
+  - id: BSI_ISMS1_A7
+    pillar: "ISMS -- Security Management"
+    title: "Information security advice for projects and procurements (ISMS.1.A7)"
+    description: >-
+      The information security officer must be consulted on all projects and
+      procurements that could have a material impact on information security,
+      before decisions are made. Security requirements and risks must be
+      assessed and the ISO must provide formal sign-off on the security
+      approach at key decision points. The ISO's involvement and assessment
+      must be documented.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/isms1-a7-security-advice.md" }
+    references: ['https://www.bsi.bund.de/dok/ISMS-1']
+    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.5.31]
+    remediation: "Establish a formal consultation process requiring ISO involvement at project initiation and procurement stages; document the ISO's assessment and sign-off; track outstanding security requirements as project milestones."
+
+  # ------------------------------------------------------------------
+  # ORP.1, ORP.2 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_ORP1_A3
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Supervisory responsibility for information security (ORP.1.A3)"
+    description: >-
+      Supervisors at all levels must ensure that staff under their
+      responsibility fulfil their information security obligations and are
+      appropriately trained for the role they perform. Non-compliance
+      identified through supervision must be addressed promptly and
+      documented. Supervisors must themselves participate in security
+      awareness activities.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/orp1-a3-supervisory-responsibility.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-1']
+    maps_to: [GDPR_Art_29, ISO_27001_A.5.2, ISO_27001_A.6.3]
+    remediation: "Include information security responsibilities in supervisor job descriptions; require supervisors to attend security awareness sessions; define a process for supervisors to report and address staff non-compliance with security policies."
+
+  - id: BSI_ORP1_A5
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Formal notification of staff obligations (ORP.1.A5)"
+    description: >-
+      All staff must be formally notified of their information security
+      obligations in writing. The notification must cover applicable policies,
+      acceptable use rules, and the consequences of non-compliance. Staff must
+      acknowledge receipt and confirm their understanding. Acknowledgements
+      must be retained and refreshed at defined intervals.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/orp1-a5-staff-obligations.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-1']
+    maps_to: [GDPR_Art_29, ISO_27001_A.6.3, ISO_27001_A.5.37]
+    remediation: "Issue and record a formal security obligations acknowledgement for every employee and contractor; integrate the acknowledgement into the onboarding process; refresh annually alongside the annual security awareness cycle."
+
+  - id: BSI_ORP2_A3
+    pillar: "ORP -- Organisation and Personnel"
+    title: "Secure return of equipment and credentials on departure (ORP.2.A3)"
+    description: >-
+      All institutional equipment, credentials, access cards, and keys must
+      be formally returned by departing staff before or at the point of
+      departure. Return completion must be documented and confirmed by an
+      authorised manager or HR representative. Outstanding returns must be
+      escalated to the information security officer within 24 hours of the
+      departure date.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/orp2-a3-equipment-return.md" }
+    references: ['https://www.bsi.bund.de/dok/ORP-2']
+    maps_to: [ISO_27001_A.6.5, ISO_27001_A.8.11]
+    remediation: "Add an equipment and credential return checklist to the offboarding procedure; require manager confirmation of completed return before departure; escalate non-returns to the information security officer within 24 hours."
+
+  # ------------------------------------------------------------------
+  # CON.1, CON.3 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_CON1_A3
+    pillar: "CON -- Concepts and Procedures"
+    title: "Hardware security module for key storage (CON.1.A3)"
+    description: >-
+      Cryptographic keys protecting sensitive or personal data must be stored
+      in a hardware security module (HSM) or an equivalent hardware-protected
+      key store provided by a cloud key management service. Software-only key
+      storage is not permitted for keys that protect confidential or
+      higher-classified data. The HSM or hardware key store configuration
+      must be documented.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/CON-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.24]
+    remediation: "Migrate sensitive data encryption keys to an HSM or cloud-provider hardware-backed KMS; document which key classes are hardware-protected; prohibit software-only key storage for keys protecting confidential data."
+
+  - id: BSI_CON1_A5
+    pillar: "CON -- Concepts and Procedures"
+    title: "Secure deletion and destruction of data (CON.1.A5)"
+    description: >-
+      Data that is no longer required must be securely deleted or physically
+      destroyed using a procedure appropriate to the sensitivity of the data.
+      Simple file deletion without overwrite or cryptographic erasure is not
+      sufficient for confidential or higher-classified data. Deletion and
+      destruction events must be documented, including the data class, method
+      used, and the authorising person.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/con1-a5-secure-deletion.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-1']
+    maps_to: [GDPR_Art_17, GDPR_Art_5_1_e, ISO_27001_A.8.10]
+    remediation: "Implement a secure deletion policy specifying the required method per data classification; verify that storage media is overwritten or cryptographically erased before disposal; maintain a deletion log for sensitive data assets."
+
+  - id: BSI_CON3_A4
+    pillar: "CON -- Concepts and Procedures"
+    title: "Physical and logical protection of backup media (CON.3.A4)"
+    description: >-
+      Backup media must be stored in a physically secured location with
+      access controlled and logged separately from the primary system. Logical
+      access to backup repositories must be restricted to authorised personnel.
+      Backup destinations accessible from the internet or general networks must
+      be protected by additional measures equivalent to the sensitivity of the
+      data backed up.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/con3-a4-backup-storage.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.7.10, ISO_27001_A.8.13]
+    remediation: "Restrict physical access to backup media to a defined authorised set; maintain an access log; require multi-factor authentication for remote access to backup repositories; document the access control configuration and review it annually."
+
+  - id: BSI_CON3_A5
+    pillar: "CON -- Concepts and Procedures"
+    title: "Backup media rotation and off-site storage (CON.3.A5)"
+    description: >-
+      A media rotation scheme must be defined and implemented for tape or
+      removable backup media. At least one backup copy must be stored
+      off-site at all times. The off-site location must provide physical and
+      environmental security equivalent to the primary backup storage. The
+      rotation schedule and off-site location must be documented and tested.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/con3-a5-backup-rotation.md" }
+    references: ['https://www.bsi.bund.de/dok/CON-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Define and document the rotation schedule; confirm that at least one current off-site copy exists; verify that the off-site location meets the same physical security standard as primary backup storage; test off-site retrieval annually."
+
+  # ------------------------------------------------------------------
+  # OPS.1.1.2, OPS.1.1.3, OPS.1.1.5, OPS.2.2 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_OPS112_A4
+    pillar: "OPS -- Operations"
+    title: "Post-change evaluation (OPS.1.1.2.A4)"
+    description: >-
+      After completing a change, a formal evaluation must be performed to
+      verify that the objectives of the change were met and that no
+      unintended side-effects occurred. The evaluation must be documented
+      and linked to the change record. Changes to security-relevant
+      components must include a specific security verification step as part
+      of the post-change evaluation.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/ops112-a4-change-evaluation.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    remediation: "Add a mandatory post-change evaluation step to the change management process; require the change implementer and an independent reviewer to sign off on the evaluation; capture the outcome in the change record."
+
+  - id: BSI_OPS113_A4
+    pillar: "OPS -- Operations"
+    title: "Centralised vulnerability tracking register (OPS.1.1.3.A4)"
+    description: >-
+      All identified vulnerabilities across IT systems in scope must be
+      recorded in a centralised tracking register with current remediation
+      status, assigned owner, and target completion date. The register must
+      be reviewed at least weekly to identify overdue items; overdue
+      critical vulnerabilities must be escalated to the information security
+      officer immediately.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    remediation: "Deploy a vulnerability management tool or ITSM module to centralise tracking; require all confirmed vulnerabilities to be recorded within 24 hours of confirmation; automate escalation for items approaching their target remediation date."
+
+  - id: BSI_OPS115_A2
+    pillar: "OPS -- Operations"
+    title: "Backup failure response plans (OPS.1.1.5.A2)"
+    description: >-
+      Documented plans must define the procedures to be followed in the
+      event of a backup failure, including immediate response steps,
+      escalation path, and contingency measures to minimise data loss until
+      the backup capability is restored. The failure response plan must be
+      tested as part of the annual business continuity test.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/ops115-a2-backup-plans.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    remediation: "Write and approve a backup failure response procedure; include it in the operations runbook; test the procedure as part of the annual BCP test; update based on test findings."
+
+  - id: BSI_OPS22_A5
+    pillar: "OPS -- Operations"
+    title: "Cloud service exit planning (OPS.2.2.A5)"
+    description: >-
+      A documented exit plan must be maintained for each critical cloud
+      service, defining the procedures, timelines, technical steps, and
+      personnel required to migrate away from the service. The plan must
+      address data portability, service continuity during transition, and
+      contract termination requirements. The exit plan must be reviewed
+      annually and at each contract renewal.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/ops22-a5-cloud-exit.md" }
+    references: ['https://www.bsi.bund.de/dok/OPS-2-2']
+    maps_to: [GDPR_Art_20, GDPR_Art_46, ISO_27001_A.5.20]
+    remediation: "Document an exit plan for each critical cloud service; verify data portability by testing export and import of representative data; review the exit plan annually and at each contract renewal; include exit SLAs in new cloud contracts."
+
+  # ------------------------------------------------------------------
+  # DER.1, DER.2.1, DER.3.1, DER.4 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_DER1_A4
+    pillar: "DER -- Detection and Response"
+    title: "Regular analysis of log data (DER.1.A4)"
+    description: >-
+      Collected security log data must be regularly analysed to identify
+      patterns, anomalies, and potential indicators of compromise. Log
+      analysis must be documented; findings that indicate a security event
+      must trigger the incident management process. Analysis must be
+      performed by or under the supervision of trained personnel.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/DER-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.16, ISO_27001_A.5.27]
+    remediation: "Establish a weekly or continuous log review process; document analysis findings; configure automated correlation rules to identify multi-event patterns; ensure trained personnel perform or supervise log analysis."
+
+  - id: BSI_DER1_A5
+    pillar: "DER -- Detection and Response"
+    title: "Automated real-time event detection (DER.1.A5)"
+    description: >-
+      Automated mechanisms must be deployed to detect security-relevant
+      events in real time without depending on manual log review. Detection
+      rules must be tuned to reduce false positives while maintaining
+      sensitivity to genuine threats. Alert rules must be reviewed and
+      tested at regular intervals to confirm their continued effectiveness.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/DER-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    remediation: "Deploy a SIEM or equivalent automated detection platform; implement and tune detection rules for the defined threat model; test alert rules against synthetic events at least quarterly; document tuning decisions."
+
+  - id: BSI_DER21_A4
+    pillar: "DER -- Detection and Response"
+    title: "IT forensics capability for incident investigation (DER.2.1.A4)"
+    description: >-
+      The institution must maintain or have contractual access to IT
+      forensics capability for investigating security incidents. A forensic
+      procedure must define how evidence is collected, preserved, and
+      documented without contamination to ensure admissibility. Personnel
+      who may be the first to respond to an incident must be trained in
+      evidence preservation principles.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/der21-a4-forensics.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-2-1']
+    maps_to: [GDPR_Art_33, ISO_27001_A.5.28]
+    remediation: "Establish or contract IT forensics capability before it is needed; document the forensic evidence preservation procedure; train first-responder staff; verify capability through at least one dry-run exercise per year."
+
+  - id: BSI_DER31_A3
+    pillar: "DER -- Detection and Response"
+    title: "Verification of audit finding remediation (DER.3.1.A3)"
+    description: >-
+      All findings from information security audits must be subject to a
+      formal follow-up verification to confirm that remediation actions were
+      completed within agreed timeframes. The follow-up verification must be
+      independent of the team that performed the remediation. Findings that
+      remain open beyond their target date must be escalated to management.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/der31-a3-audit-followup.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-3-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.35, ISO_27001_A.5.36]
+    remediation: "Include a formal follow-up verification step in the audit lifecycle; assign verification to an independent auditor; report verification results to management; escalate findings remaining open beyond the agreed remediation date."
+
+  - id: BSI_DER4_A3
+    pillar: "DER -- Detection and Response"
+    title: "Business continuity testing with third parties (DER.4.A3)"
+    description: >-
+      Business continuity tests must include participation of key third-party
+      service providers and critical supply chain partners where their
+      services are material to recovery. The joint test must verify the third
+      party's recovery capabilities and communication procedures under
+      simulated disruption conditions. Test results must be documented and
+      findings shared with the third party.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/der4-a3-bcp-third-party.md" }
+    references: ['https://www.bsi.bund.de/dok/DER-4']
+    maps_to: [GDPR_Art_32, GDPR_Art_28, ISO_27001_A.5.30]
+    remediation: "Identify critical third-party dependencies in the BCP; invite key service providers to participate in the annual continuity test; document their participation and test outcomes; track and resolve gaps identified during joint exercises."
+
+  # ------------------------------------------------------------------
+  # APP.3.1, APP.4.3, APP.4.4 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_APP31_A4
+    pillar: "APP -- Applications"
+    title: "Secure session management for web applications (APP.3.1.A4)"
+    description: >-
+      Web applications must implement secure session management including
+      cryptographically strong session token generation, binding of sessions
+      to user context and device fingerprint, timeout after a defined period
+      of inactivity, and secure invalidation on logout. Session tokens must
+      not be exposed in URLs. Concurrent session limits must be configurable.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "IAM" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.26]
+    remediation: "Implement session management using a well-reviewed library; configure session timeout at 30 minutes of inactivity or less; verify that logout invalidates the server-side session; test session fixation and hijacking resistance in security acceptance."
+
+  - id: BSI_APP31_A5
+    pillar: "APP -- Applications"
+    title: "Logging of security events in web applications (APP.3.1.A5)"
+    description: >-
+      Web applications must log security-relevant events including
+      authentication attempts (successful and failed), access control
+      failures, and input validation errors. Logs must be structured,
+      timestamped, and forwarded to the central logging system. Application
+      logs must not capture sensitive values such as passwords, tokens, or
+      personal data beyond the minimum required for investigation.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/APP-3-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.15, ISO_27001_A.8.16]
+    remediation: "Configure application-level logging for all defined security event classes; verify that logs are forwarded to the SIEM; confirm that sensitive values are excluded from logs; test logging coverage as part of security acceptance."
+
+  - id: BSI_APP43_A4
+    pillar: "APP -- Applications"
+    title: "Database activity monitoring (APP.4.3.A4)"
+    description: >-
+      Access to sensitive data in databases must be monitored for unusual
+      or anomalous patterns. Database activity monitoring (DAM) or equivalent
+      controls must cover both application-tier queries and direct DBA access.
+      Alerts must be generated for bulk data extraction, privilege escalation,
+      and access outside normal business patterns.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-3']
+    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.15]
+    remediation: "Deploy database activity monitoring for all databases storing personal or sensitive data; define baseline normal access patterns; configure alerts for anomalous access; forward DAM logs to the central SIEM."
+
+  - id: BSI_APP43_A5
+    pillar: "APP -- Applications"
+    title: "Encryption at rest for databases (APP.4.3.A5)"
+    description: >-
+      Databases storing sensitive or personal data must be protected by
+      encryption at rest implemented at the storage or database layer.
+      Encryption keys must be managed separately from the encrypted data
+      and must not be stored on the same infrastructure as the database host.
+      Encryption coverage must be documented and verified in each security
+      audit cycle.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "CRYPTO" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-3']
+    maps_to: [GDPR_Art_32, GDPR_Art_9, ISO_27001_A.8.24]
+    remediation: "Enable transparent data encryption (TDE) or equivalent for all databases holding personal data; store encryption keys in an HSM or cloud-managed key service separate from the database host; verify encryption coverage in each audit cycle."
+
+  - id: BSI_APP44_A3
+    pillar: "APP -- Applications"
+    title: "Runtime security monitoring for containers (APP.4.4.A3)"
+    description: >-
+      Container workloads must be monitored for anomalous behaviour at
+      runtime. Runtime security controls must detect unexpected process
+      execution, network connections, and file system modifications within
+      running containers. Runtime alerts must be forwarded to the central
+      logging system and trigger the incident management process when
+      indicators of compromise are detected.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/APP-4-4']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    remediation: "Deploy a container runtime security tool (Falco, Sysdig Secure, or equivalent); define baseline behavioural profiles for each container workload; configure alerts for deviations; forward runtime alerts to the SIEM."
+
+  # ------------------------------------------------------------------
+  # SYS.1.1, SYS.1.6 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_SYS11_A4
+    pillar: "SYS -- IT Systems"
+    title: "Host-based network filtering for servers (SYS.1.1.A4)"
+    description: >-
+      A host-based firewall or equivalent host-level filtering mechanism
+      must be deployed on all servers to restrict inbound and outbound
+      network connections to only those explicitly required for the server's
+      function. Default-deny rules must be applied at the host level.
+      Permitted host-level connections must be documented and reviewed
+      annually.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "EGR" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    remediation: "Enable and configure host-based firewall rules on all servers; document permitted connection flows; verify that host-level rules are consistent with network-level controls; review annually and when the server's function changes."
+
+  - id: BSI_SYS11_A5
+    pillar: "SYS -- IT Systems"
+    title: "Physical environment protection for server hardware (SYS.1.1.A5)"
+    description: >-
+      Server hardware must be protected against environmental hazards
+      including overheating, humidity, and power fluctuations. Environmental
+      monitoring must be in place with automated alerting on threshold breach.
+      Uninterruptible power supplies (UPS) must be installed for servers where
+      continuous availability is required. UPS capacity and failover must be
+      tested at defined intervals.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/sys11-a5-physical-environment.md" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.7.5, ISO_27001_A.7.6]
+    remediation: "Install environmental monitoring (temperature, humidity) with automated alerts; document UPS coverage for critical servers; test UPS failover at least annually; review environmental controls when the data centre or server room configuration changes."
+
+  - id: BSI_SYS16_A3
+    pillar: "SYS -- IT Systems"
+    title: "Container network policies (SYS.1.6.A3)"
+    description: >-
+      Kubernetes network policies or equivalent must restrict pod-to-pod
+      communication to only explicitly permitted connections. A default-deny
+      network policy must be applied at the namespace level. All permitted
+      ingress and egress flows must be documented and reviewed when the
+      application topology changes. Network policy configuration must be
+      version-controlled alongside the application manifests.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "EGR" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-6']
+    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.22]
+    remediation: "Deploy and enforce a default-deny Kubernetes NetworkPolicy in all production namespaces; explicitly allow only required pod connections; audit network policy coverage with a policy validator; review when services are added or modified."
+
+  - id: BSI_SYS16_A4
+    pillar: "SYS -- IT Systems"
+    title: "Read-only container filesystems (SYS.1.6.A4)"
+    description: >-
+      Container filesystems must be mounted read-only where technically
+      feasible. Any write operations required by the container must be
+      directed to explicitly defined writable volumes. Running containers
+      must not be modified after deployment; any configuration or code
+      change must trigger a new image build and redeployment through the
+      authorised pipeline.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "SBOM" }
+    references: ['https://www.bsi.bund.de/dok/SYS-1-6']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    remediation: "Set readOnlyRootFilesystem: true in container security contexts; define explicit writable volumes only where required; enforce this setting via admission control policy; verify compliance in the CI pipeline image configuration check."
+
+  # ------------------------------------------------------------------
+  # NET.1.1, NET.3.2, NET.3.3 -- Standard
+  # ------------------------------------------------------------------
+  - id: BSI_NET11_A4
+    pillar: "NET -- Networks and Communication"
+    title: "Network path redundancy for critical infrastructure (NET.1.1.A4)"
+    description: >-
+      Critical network paths must be designed with redundancy to eliminate
+      single points of failure. Where redundancy cannot be achieved,
+      identified single points of failure must be documented as residual
+      risks with compensating controls. Network failover mechanisms must be
+      tested at defined intervals to verify that they operate correctly
+      under realistic disruption conditions.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/net11-a4-network-redundancy.md" }
+    references: ['https://www.bsi.bund.de/dok/NET-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.14]
+    remediation: "Document network topology with identified single points of failure; implement redundant paths for critical links; test failover mechanisms annually; track unresolved single points of failure as risks in the risk register."
+
+  - id: BSI_NET11_A5
+    pillar: "NET -- Networks and Communication"
+    title: "Filtering between internal security zones (NET.1.1.A5)"
+    description: >-
+      Security controls equivalent in function to a firewall must be
+      deployed at all boundaries between internal security zones, not only
+      at the network perimeter. Lateral movement between internal zones
+      must be filtered to only explicitly permitted flows. Internal zone
+      boundary controls must be monitored, logged, and reviewed as part of
+      the annual network security audit.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "EGR" }
+    references: ['https://www.bsi.bund.de/dok/NET-1-1']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.22]
+    remediation: "Deploy stateful filtering at all internal zone boundaries; enforce default-deny between zones; monitor and log inter-zone traffic; review internal zone firewall rules as part of the annual network security audit."
+
+  - id: BSI_NET32_A3
+    pillar: "NET -- Networks and Communication"
+    title: "Intrusion detection and prevention system deployment (NET.3.2.A3)"
+    description: >-
+      Intrusion detection or prevention systems (IDS/IPS) must be deployed
+      at critical network boundaries to detect and optionally block known
+      attack patterns. IDS/IPS signatures and behavioural models must be
+      kept current with the vendor's update channel. Detection alerts must
+      be forwarded to the central logging system and reviewed within defined
+      response times.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    remediation: "Deploy network IDS/IPS at DMZ and data centre ingress boundaries; maintain up-to-date signature feeds; forward alerts to the SIEM; review IDS/IPS configuration and alert tuning quarterly."
+
+  - id: BSI_NET32_A4
+    pillar: "NET -- Networks and Communication"
+    title: "Firewall penetration testing (NET.3.2.A4)"
+    description: >-
+      Firewall configurations must be subject to regular penetration testing
+      or independent technical security review to verify that the implemented
+      rules enforce the security policy and that no unintended access paths
+      exist. Test results must be reviewed and all critical and high-severity
+      findings remediated within the defined patch management SLA timeframes.
+    severity_default: medium
+    evidence_basis:
+      - { context_input: "evidence/net32-a4-firewall-pentest.md" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-2']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.5.35]
+    remediation: "Schedule annual firewall penetration testing or independent ruleset review; remediate all critical and high findings within the patch management SLA; document test results and present them to the information security officer."
+
+  - id: BSI_NET33_A2
+    pillar: "NET -- Networks and Communication"
+    title: "VPN connection event logging (NET.3.3.A2)"
+    description: >-
+      All VPN connection events must be logged including successful
+      connections, failed authentication attempts, and session terminations.
+      Logs must include timestamps, user or device identifiers, and source
+      IP addresses. VPN logs must be forwarded to the central logging system
+      and retained for the minimum period required by the log retention
+      policy.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: "OBS" }
+    references: ['https://www.bsi.bund.de/dok/NET-3-3']
+    maps_to: [GDPR_Art_32, ISO_27001_A.8.15, ISO_27001_A.8.20]
+    remediation: "Enable and configure VPN gateway logging for all event types; verify log forwarding to the SIEM; confirm that logs capture all required fields (timestamp, identity, source address); set retention to meet the minimum required period."

@@ -1,0 +1,44 @@
+control_id: GDPR_Art_33
+framework_id: GDPR
+collected_at: 2026-05-22
+collected_by: consultant
+
+# Aggregator (design 029 §3.4): any "no" at the control severity (high) -> GAP;
+# mix of "yes" + "n/a" -> SATISFIED; any "unknown" -> PARTIAL.
+
+questions:
+  - id: q1
+    text: "Is there a documented breach-notification runbook with a 72-hour clock from breach awareness?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "RUNBOOK-BREACH-001 (security wiki)"
+  - id: q2
+    text: "Are 'awareness' and 'breach' precisely defined (e.g. when does the 72-hour clock start)?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "RUNBOOK-BREACH-001 sec 2.1; aligned with EDPB Guidelines 9/2022"
+  - id: q3
+    text: "Is the runbook rehearsed at least annually (tabletop or live exercise)?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Tabletop exercise 2026-Q1 (report TBL-2026-Q1-014)"
+  - id: q4
+    text: "Are processor-to-controller notifications timed to allow the 72-hour SA notification to be met (Art 33(2))?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Standard DPA template clause 9.4 (max 24h processor-to-controller)"
+  - id: q5
+    text: "Is a breach register maintained (Art 33(5)) capturing facts, effects, and remedial action for every breach?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "`governance/breach-register.yaml`"
+  - id: q6
+    text: "Is the supervisory authority's notification channel preconfigured (which authority, which form, which contacts)?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Bayerisches Landesamt für Datenschutzaufsicht online portal; account credentials in legal vault"
+  - id: q7
+    text: "Where notification is delayed beyond 72 hours, is the reason routinely documented (Art 33(1) second sentence)?"
+    answer: "n/a"
+    severity_if_no: medium
+    evidence_ref: "No delayed notifications to date"

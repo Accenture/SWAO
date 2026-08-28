@@ -25,7 +25,10 @@ RUN npm install -g pnpm@10
 # binding via node-gyp. alpine ships none of these by default.
 RUN apk add --no-cache python3 make g++
 COPY . .
-RUN pnpm install --frozen-lockfile
+# Remove swao-premium workspace glob -- premium packages are not present in the
+# Community build context (public Accenture/SWAO checkout, ADR-0058 isolation).
+RUN sed -i '/swao-premium/d' pnpm-workspace.yaml
+RUN pnpm install
 # Build TypeScript then run the community-tier bundle (esbuild, no pkg).
 # build-community.mjs --no-pkg copies runtime assets (controls, community-
 # frameworks, powerbi templates, publication assets, pass fixtures) and

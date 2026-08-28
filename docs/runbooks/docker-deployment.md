@@ -1,6 +1,6 @@
 # Docker Deployment
 
-Run SWAO inside a Docker container for reproducible assessments, air-gapped environments, or team-shared infrastructure. This runbook covers the basic `docker run` invocation, a Docker Compose setup with named volumes, and offline operation using `--llm-stub`.
+Run SWAO inside a Docker container for reproducible assessments, air-gapped environments, or team-shared infrastructure. This runbook covers the basic `docker run` invocation, a Docker Compose setup with named volumes, and offline operation using `--skip-llm`.
 
 ---
 
@@ -38,7 +38,7 @@ Key flags:
 
 | Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes (unless using `--llm-stub`) | Anthropic API key for Claude |
+| `ANTHROPIC_API_KEY` | Yes (unless using `--skip-llm`) | Anthropic API key for Claude |
 | `SWAO_LLM_PROVIDER` | No | Override default LLM provider (`anthropic`, `ollama`, `openai`) |
 | `SWAO_LOG_LEVEL` | No | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `SWAO_WORKSPACE` | No | Default workspace path inside the container |
@@ -120,19 +120,21 @@ volumes:
 
 ---
 
-## 6. Air-gapped usage with --llm-stub
+## 6. Air-gapped usage with --skip-llm
 
-In environments without internet access, use `--llm-stub` to run assessments with a deterministic stub LLM. No API key is required.
+In environments without internet access, use `--skip-llm` to run only the static and Playwright analysis passes. No API key is required and no LLM calls are made.
 
 ```bash
 docker run --rm \
   -v "$(pwd)/workspace:/workspace" \
   -v "$(pwd)/output:/output" \
   ghcr.io/accenture/swao:latest \
-  assess --app sovereign-health --llm-stub --workspace /workspace --output /output
+  assess --app sovereign-health --skip-llm --workspace /workspace --output /output
 ```
 
-The stub returns fixed responses for every LLM call. Output files are written exactly as in a live run, making this mode useful for pipeline testing and schema validation without incurring API costs.
+`--skip-llm` removes the `comp` (compliance LLM) and `blocks` (block analysis) passes from the pipeline. All deterministic passes -- inventory, SBOM, cryptography, data classification, 7R synthesis, and landing zone -- still run and emit signals. Output files are written exactly as in a live run, making this mode useful for pipeline testing and schema validation without incurring API costs.
+
+> **Note:** `--llm-stub` was removed in v0.4.7 (issue #0473). If you have scripts referencing it, replace with `--skip-llm`.
 
 ---
 

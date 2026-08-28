@@ -1,6 +1,6 @@
 # Docker-Deployment
 
-SWAO lässt sich in einem Docker-Container betreiben, um reproduzierbare Assessments, Air-Gap-Umgebungen oder gemeinsam genutzte Team-Infrastruktur zu unterstützen. Dieses Runbook beschreibt den einfachen `docker run`-Aufruf, ein Docker Compose-Setup mit Named Volumes sowie den Offline-Betrieb mit `--llm-stub`.
+SWAO lässt sich in einem Docker-Container betreiben, um reproduzierbare Assessments, Air-Gap-Umgebungen oder gemeinsam genutzte Team-Infrastruktur zu unterstützen. Dieses Runbook beschreibt den einfachen `docker run`-Aufruf, ein Docker Compose-Setup mit Named Volumes sowie den Offline-Betrieb mit `--skip-llm`.
 
 ---
 
@@ -38,7 +38,7 @@ Wichtige Flags:
 
 | Variable | Erforderlich | Beschreibung |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Ja (ausser bei `--llm-stub`) | Anthropic-API-Key für Claude |
+| `ANTHROPIC_API_KEY` | Ja (ausser bei `--skip-llm`) | Anthropic-API-Key für Claude |
 | `SWAO_LLM_PROVIDER` | Nein | Standard-LLM-Provider überschreiben (`anthropic`, `ollama`, `openai`) |
 | `SWAO_LOG_LEVEL` | Nein | Log-Ausführlichkeit: `debug`, `info`, `warn`, `error` |
 | `SWAO_WORKSPACE` | Nein | Standard-Workspace-Pfad innerhalb des Containers |
@@ -120,16 +120,16 @@ volumes:
 
 ---
 
-## 6. Air-Gap-Betrieb mit --llm-stub
+## 6. Air-Gap-Betrieb mit --skip-llm
 
-In Umgebungen ohne Internet-Zugang kann `--llm-stub` verwendet werden, um Assessments mit einem deterministischen Stub-LLM durchzuführen. Ein API-Key ist nicht erforderlich.
+In Umgebungen ohne Internet-Zugang kann `--skip-llm` verwendet werden, um Assessments mit einem deterministischen Stub-LLM durchzuführen. Ein API-Key ist nicht erforderlich.
 
 ```bash
 docker run --rm \
   -v "$(pwd)/workspace:/workspace" \
   -v "$(pwd)/output:/output" \
   ghcr.io/accenture/swao:latest \
-  assess --app sovereign-health --llm-stub --workspace /workspace --output /output
+  assess --app sovereign-health --skip-llm --workspace /workspace --output /output
 ```
 
 Der Stub liefert feste Antworten für jeden LLM-Aufruf. Ausgabedateien werden genauso erstellt wie in einem echten Lauf, was diesen Modus für Pipeline-Tests und Schema-Validierung ohne API-Kosten nützlich macht.

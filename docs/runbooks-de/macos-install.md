@@ -131,7 +131,7 @@ swao --version
 
 ```bash
 swao --version
-swao doctor
+swao health-check
 ```
 
-Ein sauberes `swao doctor`-Ergebnis mit allen grünen Prüfpunkten bestätigt, dass die Installation abgeschlossen ist.
+Ein sauberes `swao health-check`-Ergebnis mit allen grünen Prüfpunkten bestätigt, dass die Installation abgeschlossen ist.

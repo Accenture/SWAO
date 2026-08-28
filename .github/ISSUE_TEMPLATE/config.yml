@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussions
+    url: https://github.com/Accenture/SWAO/discussions/categories/q-a
+    about: Ask a question or get help -- use Discussions for support requests
+  - name: Consultant or Enterprise licence enquiry
+    url: mailto:swao-tool@accenture.com
+    about: Contact us to request a Consultant or Enterprise licence
