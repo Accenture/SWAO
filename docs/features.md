@@ -42,6 +42,7 @@ SWAO supports three assessment surfaces, all available now.
 | <FeatureTooltip tip="Text, YAML, JSON, and Markdown (auditor.md) reports generated after every assessment. Open in any editor or import into your reporting workflow.">Text and Markdown reports</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Star-schema CSV bundle (17 tables) plus NDJSON mirror and XLSX rollup. Ready to load into any BI tool.">BI export bundle (CSV / NDJSON / XLSX)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="A self-contained HTML file you can open in any browser, email to a client, or use offline. Includes full-text search, persona views (executive, technical, auditor, DPO), and an evidence gallery.">HTML publication (single-file)</FeatureTooltip> | -- | Yes | Yes |
+| <FeatureTooltip tip="Interactive in-browser editor to annotate and customise the HTML evidence report, adjust findings text, and export a final client-ready version. Run with: swao publish --edit">HTML Editor (interactive, swao publish --edit)</FeatureTooltip> | -- | -- | Yes |
 | <FeatureTooltip tip="PDF rendering of the full assessment report. Requires Playwright to be installed.">PDF report</FeatureTooltip> | -- | Yes | Yes |
 | <FeatureTooltip tip="A pre-built Power BI Desktop template (.pbit) for single-application assessments. Six pages: Overview, Compliance, Signals, Risks, Auditor, Run Stats.">PowerBI single-app dashboard</FeatureTooltip> | -- | -- | Yes |
 | <FeatureTooltip tip="A pre-built Power BI Desktop template for multi-application portfolio assessments. Aggregates findings across all apps with wave-sequencing and heatmap views.">PowerBI portfolio dashboard</FeatureTooltip> | -- | -- | Roadmap |
@@ -51,6 +52,10 @@ SWAO supports three assessment surfaces, all available now.
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning.">Multi-app portfolio workspace</FeatureTooltip> | -- | -- | Roadmap |
 | <FeatureTooltip tip="Sector-specific migration runbook templates, executive briefing formats, and industry-vetted DPA skeletons.">Sector-specific engagement templates</FeatureTooltip> | -- | -- | Yes |
+| **Advanced delivery** | | | |
+| <FeatureTooltip tip="Generates Terraform module stubs for the recommended landing zone, pre-populated from the landing zone readiness assessment output.">Terraform LZ module stubs (from LZ readiness output)</FeatureTooltip> | -- | -- | Roadmap |
+| <FeatureTooltip tip="meshStack Developer Portal Building Block deployment and cloud management portal integration for self-service provisioning workflows.">meshStack Developer Portal integration</FeatureTooltip> | -- | -- | Roadmap |
+| <FeatureTooltip tip="Replace or extend the bundled landing zone catalogue with your organisation's cloud platform configuration standard.">Custom LZ catalogue standard (organisation-wide)</FeatureTooltip> | -- | -- | Roadmap |
 
 ---
 

@@ -12,6 +12,7 @@ SWAO ships in three tiers -- Community, Consultant, and Enterprise -- each unloc
 | LLM pass (dynamic analysis) | Yes | Yes | Yes |
 | PDF report generation | No | Yes | Yes |
 | Report gallery + publish | No | Yes | Yes |
+| HTML Editor (interactive evidence editor, swao publish --edit) | No | No | Yes |
 | Power BI export bundle | No | No | Yes |
 | Custom compliance frameworks | No | Yes | Yes |
 | Multi-app portfolio assessments | No | No | Roadmap |

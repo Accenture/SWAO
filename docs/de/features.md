@@ -40,6 +40,7 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | <FeatureTooltip tip="Erweiterte Modellverwaltung und benutzerdefinierte Konfiguration -- Professional-Services-Engagement.">Eigene Modellkonfiguration</FeatureTooltip> | -- | PS-Gebühr | Ja |
 | **Ausgabe & Veröffentlichung** | | | |
 | <FeatureTooltip tip="Eigenständige HTML-Datei mit Volltextsuche, Personenansichten und Evidenzgalerie. Offline nutzbar.">HTML-Veröffentlichung</FeatureTooltip> | -- | Ja | Ja |
+| <FeatureTooltip tip="Interaktiver Browser-Editor zum Annotieren und Anpassen des HTML-Evidenzberichts. Ausfuehren mit: swao publish --edit">HTML-Editor (interaktiv, swao publish --edit)</FeatureTooltip> | -- | -- | Ja |
 | <FeatureTooltip tip="Text-, YAML-, JSON- und Markdown-Berichte nach jeder Bewertung. In jedem Editor öffenbar.">Text- und Markdown-Berichte</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Sternschema-CSV-Paket (17 Tabellen) plus NDJSON und XLSX. Für jedes BI-Tool geeignet.">BI-Exportpaket (CSV / NDJSON / XLSX)</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="PDF-Rendering des vollständigen Bewertungsberichts. Erfordert Playwright.">PDF-Bericht</FeatureTooltip> | -- | Ja | Ja |
@@ -51,6 +52,10 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Mehrere Anwendungen in einem Workspace bewerten. Aggregiertes Risikoregister und Compliance-Matrix.">Multi-App-Portfolio-Workspace</FeatureTooltip> | -- | -- | Roadmap |
 | <FeatureTooltip tip="Branchenspezifische Migrationsrunbook-Vorlagen und Führungsbriefing-Formate.">Branchenspezifische Engagement-Vorlagen</FeatureTooltip> | -- | -- | Ja |
+| **Erweiterte Auslieferung** | | | |
+| <FeatureTooltip tip="Erzeugt Terraform-Modul-Stubs fuer die empfohlene Landing Zone, vorbefuellt aus der Landing-Zone-Bereitschaftsbewertung.">Terraform-LZ-Modul-Stubs (aus LZ-Bewertungsausgabe)</FeatureTooltip> | -- | -- | Roadmap |
+| <FeatureTooltip tip="meshStack Developer Portal Building Block-Deployment und Cloud-Management-Portal-Integration fuer Self-Service-Provisionierungs-Workflows.">meshStack Developer Portal-Integration</FeatureTooltip> | -- | -- | Roadmap |
+| <FeatureTooltip tip="Ersetzen oder erweitern Sie den integrierten Landing-Zone-Katalog durch den Cloud-Plattform-Konfigurationsstandard Ihrer Organisation.">Eigener LZ-Katalog-Standard (organisationsweit)</FeatureTooltip> | -- | -- | Roadmap |
 
 ---
 
