@@ -10,5 +10,6 @@ keywords:
   - sovereign-workload
 home: https://github.com/accenture/swao
 maintainers:
-  - name: Helmut Schindlwick
+  - name: Accenture
+    email: swao-tool@accenture.com
     url: https://github.com/Accenture/SWAO/discussions

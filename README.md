@@ -81,16 +81,19 @@ CSF v1). Install into a workspace via `swao framework install <id>`.
 ## Repository layout
 
 ```
-swao/
-+-- packages/
-|   +-- swao/          # CLI binary (Commander.js, TypeScript strict)
-|   +-- providers/     # Pluggable provider drivers
+Accenture/SWAO/
++-- community-frameworks/  # 11 compliance framework YAMLs (download + customise)
++-- lz-catalogues/         # Landing zone catalogue definitions
++-- llm-gateway/           # LLM provider gateway configuration examples
 +-- examples/
-|   +-- publications/  # Sample HTML assessment publications
+|   +-- publications/      # Sample HTML assessment publications
+|   +-- batch-samples/     # Batch assess-N-apps scripts (Windows + POSIX)
+|   +-- helm/              # Helm chart for Kubernetes batch job deployment
++-- controls/              # Compliance control catalogue (runtime asset)
 +-- docs/
-|   +-- runbooks/      # Setup guides
-+-- controls/          # Compliance control catalogue
-+-- landing-page/      # Marketing landing page (standalone HTML)
+|   +-- runbooks/          # Setup guides, CLI reference, troubleshooting
++-- .github/
+    +-- workflows/         # CI: docs publish, release asset attachment, CodeQL
 ```
 
 ---
@@ -182,16 +185,12 @@ Authoring guide: available to licensed Consultant and Enterprise users on reques
 
 ## Getting started
 
-**Prerequisites:** Node.js 20+ LTS, pnpm 10+
+Download the latest binary from the [Releases page](https://github.com/Accenture/SWAO/releases/latest)
+and follow the platform guide in [docs/runbooks/install.md](docs/runbooks/install.md).
 
-```bash
-git clone https://github.com/Accenture/SWAO.git
-cd SWAO/swao
-pnpm install          # install workspace dependencies
-pnpm build            # compile TypeScript
-pnpm test             # run test suite
-node dist/swao.js --help
-```
+> **Source availability:** the TypeScript source will be published here once OSS legal
+> review completes. Until then, Community binaries are the distribution mechanism.
+> Follow [GitHub Releases](https://github.com/Accenture/SWAO/releases) to be notified.
 
 ### Docker quick-start
 
