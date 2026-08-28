@@ -3,7 +3,7 @@
 # Requires: helm 3 installed and available on PATH.
 set -euo pipefail
 
-CHART_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/ops/helm/swao"
+CHART_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/examples/helm/swao"
 
 if ! command -v helm &>/dev/null; then
   echo "ERROR: helm not found on PATH. Install Helm 3: https://helm.sh/docs/intro/install/"
