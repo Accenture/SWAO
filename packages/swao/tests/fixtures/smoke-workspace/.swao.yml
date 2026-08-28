@@ -1,6 +1,0 @@
-# Smoke-test portfolio workspace fixture.
-# Used by cli-smoke.test.ts and pass-smoke.test.ts (#0670 Phase 1).
-# No LLM provider configured; static passes run without one.
-
-engagement:
-  name: CI Smoke Portfolio

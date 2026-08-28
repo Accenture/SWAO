@@ -1,9 +1,0 @@
-As FinOps Lead, I have reviewed the cost and resource signals in the Workload Sovereignty Profile and have three financial concerns for the Sovereign Health migration.
-
-First, the inventory pass does not include a current infrastructure cost baseline. Before we can model the sovereign cloud costs accurately, I need the current monthly spend on on-premises compute, storage, and networking for the Sovereign Health application. Without this baseline, any TCO comparison is speculative.
-
-Second, the assessment identifies Redis as a caching layer and PostgreSQL as the primary database. On Open Telekom Cloud, managed equivalents of these services carry a sovereign premium compared to hyperscaler pricing. I want to confirm that the landing zone cost model accounts for this premium and that there is budget approval for the delta -- particularly for the managed database service which will likely be the largest ongoing cost driver.
-
-Third, the Anthropic API egress for AI-assisted features represents a variable cost that is not currently modelled in the migration business case. Usage-based AI inference costs can scale non-linearly with patient volume. Has a cost cap or budget alert been defined for this spend category, and is there a plan to evaluate a self-hosted Ollama deployment as a cost-optimised alternative for non-critical AI features?
-
-Which cost area is most pressing to discuss first?

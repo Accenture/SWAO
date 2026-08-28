@@ -1,9 +1,0 @@
-As Application Architect, I have reviewed the Workload Sovereignty Profile and have three technical concerns about the proposed Replatform strategy for Sovereign Health.
-
-First, the inventory pass confirms the application is containerised with Docker but the assessment found no Kubernetes configuration. Replatforming to OTC sovereign cloud assumes K8s orchestration as the target runtime. Before we commit to this strategy, I need to understand the current container orchestration approach and confirm the team has the K8s skills to operate in the target environment without a managed service dependency on a non-sovereign provider.
-
-Second, the statefulness pass identifies a Prisma ORM schema with patient and medical record models backed by a PostgreSQL database. The migration plan marks this as portable, but I want to confirm the chosen sovereign cloud equivalent -- likely Open Telekom Cloud Relational Database Service -- has been benchmarked for query performance against the current on-premises PostgreSQL version. Schema compatibility at the Prisma adapter level needs to be verified.
-
-Third, the 12-factor compliance pass flags environment configuration as partially conformant. The application reads configuration from a mix of environment variables and hard-coded defaults. In the target K8s environment, all configuration must come from Kubernetes Secrets or ConfigMaps. Can you walk me through the configuration surface and confirm there are no hard-coded endpoint references that would require a code change post-migration?
-
-Where would you like to start?

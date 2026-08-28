@@ -1,9 +1,0 @@
-As Business Owner, I have three questions about the Sovereign Health migration that I need answered before I can approve the programme business case.
-
-First, the assessment recommends a Replatform strategy. I need to understand the total cost of ownership comparison between staying on the current on-premises infrastructure and migrating to the Open Telekom Cloud sovereign environment. The hardware refresh forcing function in Q4 2026 changes the economics, but I want to see a three-year TCO model that accounts for licence changes, operational staffing, and the sovereign cloud premium.
-
-Second, the coverage score is 93%, which means there are gaps in the analysis. The egress finding about Anthropic API calls concerns me from a business continuity perspective -- if the AI-assisted clinical features depend on a US-based provider, what is the fallback plan if that dependency becomes unavailable or non-compliant with evolving UK data regulations?
-
-Third, what is the realistic timeline from assessment sign-off to go-live, and what are the key milestones? I need to communicate an expected disruption window to clinical staff and ensure we are not overlapping with the NHS system upgrade scheduled for H1 2027.
-
-Can we go through these in order?

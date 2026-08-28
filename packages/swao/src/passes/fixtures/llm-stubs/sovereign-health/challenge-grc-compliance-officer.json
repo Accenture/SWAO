@@ -1,9 +1,0 @@
-As GRC and Compliance Officer for this migration programme, I have reviewed the Workload Sovereignty Profile for the Sovereign Health application and identified three primary concerns that require resolution before I can endorse the migration plan.
-
-First, the data classification pass has flagged NHS patient records -- including patient identifiers, diagnoses, and medical histories -- as high-severity findings. The proposed landing zone is an EU-sovereign provider (Open Telekom Cloud), but I need written confirmation that all data residency controls explicitly restrict patient data to UK/EEA storage with no backup replication outside these jurisdictions.
-
-Second, the egress analysis identifies active API calls to Anthropic for AI-assisted clinical features. Although zero_retention is configured on the API client, this constitutes a cross-border data transfer under UK GDPR Article 46. I require evidence of an Article 28 Data Processing Agreement with Anthropic and a completed Transfer Impact Assessment before the migration can proceed.
-
-Third, the cryptography pass shows that JWT signing uses a symmetric key (HMAC-SHA256). The NHS Data Security and Protection Toolkit mandates specific key management standards. I need confirmation of the current key rotation schedule and how it will be enforced and audited in the target sovereign environment.
-
-Which of these three concerns would you like to address first?
