@@ -30,10 +30,10 @@ jobs:
           # This job re-attaches them to the public release.
           mkdir -p dist-community
           for ASSET in \
-            "swao-community-win-x64.exe" \
+            "swao-community-win.exe" \
             "swao-community-linux-x64" \
-            "swao-community-macos-x64" \
-            "swao-community-macos-arm64"; do
+            "swao-community-darwin-x64" \
+            "swao-community-darwin-arm64"; do
             gh release download "$VERSION" \
               --repo "${{ secrets.SWAO_PRIVATE_REPO }}" \
               --pattern "$ASSET" \
@@ -47,9 +47,9 @@ jobs:
           cd dist-community
           sha256sum swao-community-win-x64.exe \
                     swao-community-linux-x64 \
-                    swao-community-macos-x64 \
-                    swao-community-macos-arm64 > checksums.sha256
-          cat checksums.sha256
+                    swao-community-darwin-x64 \
+                    swao-community-darwin-arm64 > SHA256SUMS
+          cat SHA256SUMS
 
       - name: Generate Community SBOM
         run: |
@@ -63,11 +63,11 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           gh release upload "$VERSION" \
-            dist-community/swao-community-win-x64.exe \
+            dist-community/swao-community-win.exe \
             dist-community/swao-community-linux-x64 \
-            dist-community/swao-community-macos-x64 \
-            dist-community/swao-community-macos-arm64 \
-            dist-community/checksums.sha256 \
+            dist-community/swao-community-darwin-x64 \
+            dist-community/swao-community-darwin-arm64 \
+            dist-community/SHA256SUMS \
             dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
             --clobber
 
