@@ -44,12 +44,12 @@ SWAO supports three assessment surfaces, all available now.
 | <FeatureTooltip tip="A self-contained HTML file you can open in any browser, email to a client, or use offline. Includes full-text search, persona views (executive, technical, auditor, DPO), and an evidence gallery.">HTML publication (single-file)</FeatureTooltip> | -- | Yes | Yes |
 | <FeatureTooltip tip="PDF rendering of the full assessment report. Requires Playwright to be installed.">PDF report</FeatureTooltip> | -- | Yes | Yes |
 | <FeatureTooltip tip="A pre-built Power BI Desktop template (.pbit) for single-application assessments. Six pages: Overview, Compliance, Signals, Risks, Auditor, Run Stats.">PowerBI single-app dashboard</FeatureTooltip> | -- | -- | Yes |
-| <FeatureTooltip tip="A pre-built Power BI Desktop template for multi-application portfolio assessments. Aggregates findings across all apps with wave-sequencing and heatmap views.">PowerBI portfolio dashboard</FeatureTooltip> | -- | -- | Yes |
+| <FeatureTooltip tip="A pre-built Power BI Desktop template for multi-application portfolio assessments. Aggregates findings across all apps with wave-sequencing and heatmap views.">PowerBI portfolio dashboard</FeatureTooltip> | -- | -- | Roadmap |
 | **Integration** | | | |
 | <FeatureTooltip tip="Load context from your CMDB, ServiceNow exports, FinOps reports, workshop transcripts, or architecture documents. SWAO fuses operational context with code analysis.">Context ingestion (CMDB / docs)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Expose SWAO assessment tools directly to Claude AI via the Model Context Protocol. Ask Claude about your assessment findings in natural language.">MCP integration (Claude AI)</FeatureTooltip> | -- | -- | Yes |
 | **Portfolio** | | | |
-| <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning.">Multi-app portfolio workspace</FeatureTooltip> | -- | Yes | Yes |
+| <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning.">Multi-app portfolio workspace</FeatureTooltip> | -- | -- | Roadmap |
 | <FeatureTooltip tip="Sector-specific migration runbook templates, executive briefing formats, and industry-vetted DPA skeletons.">Sector-specific engagement templates</FeatureTooltip> | -- | -- | Yes |
 
 ---

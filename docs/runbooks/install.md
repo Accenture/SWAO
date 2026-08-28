@@ -55,8 +55,8 @@ swao health-check
 
 ```bash
 # Make executable and move to PATH
-chmod +x swao-community-macos-arm64      # or swao-community-macos-x64 / swao-community-linux-x64
-mv swao-community-macos-arm64 /usr/local/bin/swao
+chmod +x swao-community-darwin-arm64      # or swao-community-darwin-x64 / swao-community-linux-x64
+mv swao-community-darwin-arm64 /usr/local/bin/swao
 
 # Verify
 swao health-check

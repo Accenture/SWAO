@@ -44,12 +44,12 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | <FeatureTooltip tip="Sternschema-CSV-Paket (17 Tabellen) plus NDJSON und XLSX. Für jedes BI-Tool geeignet.">BI-Exportpaket (CSV / NDJSON / XLSX)</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="PDF-Rendering des vollständigen Bewertungsberichts. Erfordert Playwright.">PDF-Bericht</FeatureTooltip> | -- | Ja | Ja |
 | <FeatureTooltip tip="Vorgefertigte Power BI Desktop-Vorlage für Einzelanwendungsbewertungen. Sechs Seiten.">PowerBI-Einzelanwendungs-Dashboard</FeatureTooltip> | -- | -- | Ja |
-| <FeatureTooltip tip="Vorgefertigte Power BI Desktop-Vorlage für Multi-App-Portfolio-Bewertungen.">PowerBI-Portfolio-Dashboard</FeatureTooltip> | -- | -- | Ja |
+| <FeatureTooltip tip="Vorgefertigte Power BI Desktop-Vorlage für Multi-App-Portfolio-Bewertungen.">PowerBI-Portfolio-Dashboard</FeatureTooltip> | -- | -- | Roadmap |
 | **Integration** | | | |
 | <FeatureTooltip tip="SWAO-Bewertungstools direkt Claude AI über MCP bereitstellen. Fragen in natürlicher Sprache stellen.">MCP-Integration (Claude AI)</FeatureTooltip> | -- | -- | Ja |
 | <FeatureTooltip tip="Kontext aus CMDB, ServiceNow, FinOps-Berichten und Architekturdokumenten laden.">Kontexteinlese (CMDB / Dokumente)</FeatureTooltip> | Ja | Ja | Ja |
 | **Portfolio** | | | |
-| <FeatureTooltip tip="Mehrere Anwendungen in einem Workspace bewerten. Aggregiertes Risikoregister und Compliance-Matrix.">Multi-App-Portfolio-Workspace</FeatureTooltip> | -- | Ja | Ja |
+| <FeatureTooltip tip="Mehrere Anwendungen in einem Workspace bewerten. Aggregiertes Risikoregister und Compliance-Matrix.">Multi-App-Portfolio-Workspace</FeatureTooltip> | -- | -- | Roadmap |
 | <FeatureTooltip tip="Branchenspezifische Migrationsrunbook-Vorlagen und Führungsbriefing-Formate.">Branchenspezifische Engagement-Vorlagen</FeatureTooltip> | -- | -- | Ja |
 
 ---

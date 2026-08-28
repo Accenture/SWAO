@@ -10,13 +10,13 @@ SWAO ships in three tiers -- Community, Consultant, and Enterprise -- each unloc
 |---|---|---|---|
 | Core assessment (static, compliance, context passes) | Yes | Yes | Yes |
 | LLM pass (dynamic analysis) | Yes | Yes | Yes |
-| PDF report generation | Yes | Yes | Yes |
+| PDF report generation | No | Yes | Yes |
 | Report gallery + publish | No | Yes | Yes |
-| Power BI export bundle | No | Yes | Yes |
+| Power BI export bundle | No | No | Yes |
 | Custom compliance frameworks | No | Yes | Yes |
-| Multi-app portfolio assessments | No | Yes | Yes |
+| Multi-app portfolio assessments | No | No | Roadmap |
 | Enterprise SSO + audit log | No | No | Yes |
-| Priority support SLA | No | No | Yes |
+| Priority support SLA | No | Yes | Yes |
 
 Community edition runs without any licence key. All capabilities are available locally with no registration required.
 
@@ -34,7 +34,7 @@ Example output:
 Licence tier:    Community
 Key:             (none)
 Expires:         n/a
-Features:        core, llm, report/pdf
+Features:        core, llm
 ```
 
 The `swao health-check` command also prints licence status as one of its probes.

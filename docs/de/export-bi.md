@@ -16,7 +16,7 @@ Zwei `.pbit`-Vorlagen sind in Ihrem Workspace unter `wsp/templates/powerbi/` ent
 
 | Vorlage | Edition | Seiten |
 |---|---|---|
-| `swao-report.pbit` | Consultant + Enterprise | Übersicht, Compliance, Signale, Risiken, Prüfer, Laufstatistiken |
+| `swao-report.pbit` | Enterprise | Übersicht, Compliance, Signale, Risiken, Prüfer, Laufstatistiken |
 | `swao-portfolio.pbit` | Enterprise | Portfolio-Übersicht, Heatmap, Compliance, Risiko & 7R, Wellensequenzierung |
 
 Öffnen Sie die `.pbit`-Datei in Power BI Desktop, setzen Sie `SWAOExportPath` auf Ihren `star/`-Ordner und klicken Sie **Laden**.
