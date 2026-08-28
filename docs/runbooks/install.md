@@ -1,7 +1,6 @@
 # Installation
 
-SWAO is available as a self-contained binary, a Docker image, and as source code (Community
-Edition only). Pick the option that suits your environment.
+SWAO is available as a self-contained binary and a Docker image. Pick the option that suits your environment.
 
 ---
 
@@ -24,27 +23,27 @@ Download the latest Community binary from the GitHub Releases page:
 
 | Platform | File to download |
 |---|---|
-| Windows x64 | `swao-community-win-x64.exe` |
-| macOS Apple Silicon (M1/M2/M3) | `swao-community-macos-arm64` |
-| macOS Intel | `swao-community-macos-x64` |
+| Windows x64 | `swao-community-win.exe` |
+| macOS Apple Silicon (M1/M2/M3) | `swao-community-darwin-arm64` |
+| macOS Intel | `swao-community-darwin-x64` |
 | Linux x64 | `swao-community-linux-x64` |
 
-Always verify the download against `checksums.sha256` (included in the release):
+Always verify the download against `SHA256SUMS` (included in the release):
 
 ```bash
 # macOS / Linux
-sha256sum --check checksums.sha256
+sha256sum --check SHA256SUMS
 
 # Windows (PowerShell)
-Get-FileHash swao-community-win-x64.exe -Algorithm SHA256
-# Compare against the value in checksums.sha256
+Get-FileHash swao-community-win.exe -Algorithm SHA256
+# Compare against the value in SHA256SUMS
 ```
 
 ### Windows
 
 ```powershell
 # Rename and add to PATH
-Rename-Item swao-community-win-x64.exe swao.exe
+Rename-Item swao-community-win.exe swao.exe
 # Move to a directory already on your PATH, e.g.:
 Move-Item swao.exe C:\Windows\System32\swao.exe
 
@@ -93,20 +92,13 @@ LLM provider setup, air-gapped usage, and licence file mounting.
 
 ---
 
-## Option C -- Build from source (Community Edition)
+## Option C -- Build from source
 
-```bash
-git clone https://github.com/Accenture/SWAO.git
-cd SWAO
-npm install
-npm run build
+Community Edition source publication is in progress as part of the SWAO open-source initiative.
+Subscribe to [SWAO Releases](https://github.com/Accenture/SWAO/releases) to be notified
+when source packages become available.
 
-# Run directly (no binary packaging required)
-node packages/swao/dist/bundle-community.cjs health-check
-
-# Or create a local alias
-alias swao='node /path/to/SWAO/packages/swao/dist/bundle-community.cjs'
-```
+Until then, use Option A (binary) or Option B (Docker).
 
 ---
 
@@ -135,8 +127,7 @@ stakeholder challenge workflow.
 
 Contact [swao-tool@accenture.com](mailto:swao-tool@accenture.com) to request a licence.
 
-See the [feature comparison](../getting-started.md#tier-comparison) for a full breakdown of
-what each tier includes.
+See the [Features & Editions](/features) page for a full breakdown of what each tier includes.
 
 ---
 

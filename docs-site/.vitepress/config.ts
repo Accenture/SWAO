@@ -6,6 +6,7 @@ const deRunbooksSidebar = {
     {
       text: 'Installation',
       items: [
+        { text: 'Alle Plattformen (Uebersicht)', link: '/de/runbooks/install' },
         { text: 'Windows', link: '/de/runbooks/windows-binary-allowlisting' },
         { text: 'macOS', link: '/de/runbooks/macos-install' },
         { text: 'Linux', link: '/de/runbooks/linux-install' },
@@ -15,7 +16,8 @@ const deRunbooksSidebar = {
     {
       text: 'Konfiguration',
       items: [
-        { text: 'LLM-Anbieter wechseln', link: '/de/runbooks/llm-provider-swap' },
+        { text: 'LLM-Gateway (EN)', link: '/runbooks/llm-gateway-authoring' },
+        { text: 'LZ-Kataloge anpassen (EN)', link: '/runbooks/adapting-lz-catalogues' },
         { text: 'Lizenzverwaltung', link: '/de/runbooks/licence-management' },
         { text: 'Workspace konfigurieren', link: '/de/runbooks/workspace-config' },
       ],
@@ -59,12 +61,7 @@ const deSidebar = {
     },
     {
       text: '3. Bewertung durchführen',
-      link: '/de/assessment/',
-      items: [
-        { text: 'Anwendung', link: '/de/assessment/application' },
-        { text: 'Landing Zone', link: '/de/assessment/landing-zone' },
-        { text: 'LLM', link: '/de/assessment/llm' },
-      ],
+      link: '/assessment/',
     },
     {
       text: '4. Bericht erstellen',
@@ -93,7 +90,16 @@ const deSidebar = {
     {
       text: 'Beispiele + Screenshots',
       items: [
-        { text: 'Beispielgalerie', link: '/de/samples/' },
+        {
+          text: 'Beispielgalerie',
+          link: '/de/samples/',
+          items: [
+            { text: 'CLI', link: '/de/samples/#cli' },
+            { text: 'Power BI Berichte', link: '/de/samples/#power-bi-reports' },
+            { text: 'Terminal (TUI)', link: '/de/samples/#terminal-interface-tui' },
+            { text: 'MCP-Konnektor', link: '/de/samples/#mcp-connector' },
+          ],
+        },
       ],
     },
     deRunbooksSidebar,
@@ -152,6 +158,7 @@ export default defineConfig({
             { text: 'Quick start (5 min)', link: '/quick-start' },
             { text: 'How it works', link: '/how-it-works' },
             { text: 'Features & Editions', link: '/features' },
+            { text: 'Getting started guide', link: '/getting-started' },
           ],
         },
         {
@@ -169,6 +176,7 @@ export default defineConfig({
             { text: 'Application', link: '/assessment/application' },
             { text: 'Landing Zone', link: '/assessment/landing-zone' },
             { text: 'LLM', link: '/assessment/llm' },
+            { text: 'Dimension catalogue', link: '/assessment-dimension-catalogue' },
           ],
         },
         {
@@ -226,7 +234,8 @@ export default defineConfig({
             {
               text: 'Configuration',
               items: [
-                { text: 'LLM provider swap', link: '/runbooks/llm-provider-swap' },
+                { text: 'LLM gateway authoring', link: '/runbooks/llm-gateway-authoring' },
+                { text: 'Adapting LZ catalogues', link: '/runbooks/adapting-lz-catalogues' },
                 { text: 'Licence management', link: '/runbooks/licence-management' },
                 { text: 'Workspace config', link: '/runbooks/workspace-config' },
               ],
@@ -243,6 +252,7 @@ export default defineConfig({
               items: [
                 { text: 'CLI reference', link: '/runbooks/cli-reference' },
                 { text: 'Health-check output', link: '/runbooks/health-check-output' },
+                { text: 'Malware scanning', link: '/malware-scanning' },
                 { text: 'Updating SWAO', link: '/runbooks/updating-swao' },
                 { text: 'Troubleshooting', link: '/runbooks/troubleshooting' },
               ],

@@ -23,6 +23,8 @@ const FILES = [
   { src: 'portfolio.md', dst: 'portfolio.md' },
   { src: 'generate-tf.md', dst: 'generate-tf.md' },
   { src: 'tools.md', dst: 'tools.md' },
+  { src: 'malware-scanning.md', dst: 'malware-scanning.md' },
+  { src: 'assessment-dimension-catalogue.md', dst: 'assessment-dimension-catalogue.md' },
   // README.md -> index.md: VitePress routes directory root from index.md
   { src: 'samples/README.md', dst: 'samples/index.md' },
   { src: 'de/index.md', dst: 'de/index.md' },
@@ -55,7 +57,7 @@ const RUNBOOKS_FOLDER = {
 };
 
 const DE_RUNBOOKS_FOLDER = {
-  src: 'runbooks-de',
+  src: 'de/runbooks',
   dst: 'de/runbooks',
   filter: (name) => name.endsWith('.md'),
 };

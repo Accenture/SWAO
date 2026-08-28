@@ -10,7 +10,7 @@ und ein 7R-Migrationsurteil -- mit vollständiger Nachvollziehbarkeit für jedes
 
 ## Voraussetzungen
 
-- Windows / macOS / Linux mit **Node.js >= 20**
+- Windows / macOS / Linux (kein Runtime erforderlich -- vorkompiliertes Binary)
 - Einen zu bewertenden Workload (eigenes Repository oder mitgelieferter Beispiel-Workspace)
 - Optional: **Anthropic-API-Schlüssel** für echte LLM-Analyse. Ohne ihn: `--skip-llm`.
 - Optional: **Power BI Desktop** (nur Windows).
@@ -19,11 +19,19 @@ und ein 7R-Migrationsurteil -- mit vollständiger Nachvollziehbarkeit für jedes
 
 ## Installation
 
+Laden Sie das Binary für Ihre Plattform von der [SWAO-Releases-Seite](https://github.com/Accenture/SWAO/releases/latest) herunter:
+
+| Plattform | Datei |
+|---|---|
+| Windows x64 | `swao-community-win.exe` |
+| macOS Apple Silicon | `swao-community-darwin-arm64` |
+| macOS Intel | `swao-community-darwin-x64` |
+| Linux x64 | `swao-community-linux-x64` |
+
 ```bash
-cd packages/swao
-npm install
-npm run build
-npm link
+# macOS / Linux -- ausfuehrbar machen und auf PATH legen
+chmod +x swao-community-linux-x64
+mv swao-community-linux-x64 /usr/local/bin/swao
 ```
 
 Verifizieren:

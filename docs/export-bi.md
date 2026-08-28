@@ -27,4 +27,4 @@ Open the `.pbit` file in Power BI Desktop, set `SWAOExportPath` to your `star/` 
 swao export --app my-app --formats csv,ndjson,xlsx
 ```
 
-See also: [PowerBI authoring guide](/templates/AUTHORING-GUIDE) | [Publish HTML](/publish-html)
+See also: [Publish HTML](/publish-html)

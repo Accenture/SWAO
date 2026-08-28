@@ -10,7 +10,7 @@ and a 7R migration verdict -- with full traceability on every signal and complia
 
 ## Prerequisites
 
-- Windows / macOS / Linux with **Node.js >= 20**
+- Windows / macOS / Linux (no runtime required -- pre-built binary)
 - A workload to assess (your own repo, or the example workspace bundled with SWAO)
 - Optional: **Anthropic API key** for real-LLM analysis. Without it, use `--skip-llm`
   for deterministic offline output.
@@ -20,11 +20,19 @@ and a 7R migration verdict -- with full traceability on every signal and complia
 
 ## Install
 
+Download the binary for your platform from the [SWAO Releases page](https://github.com/Accenture/SWAO/releases/latest):
+
+| Platform | File |
+|---|---|
+| Windows x64 | `swao-community-win.exe` |
+| macOS Apple Silicon | `swao-community-darwin-arm64` |
+| macOS Intel | `swao-community-darwin-x64` |
+| Linux x64 | `swao-community-linux-x64` |
+
 ```bash
-cd packages/swao
-npm install
-npm run build
-npm link
+# macOS / Linux -- make executable and put on PATH
+chmod +x swao-community-linux-x64
+mv swao-community-linux-x64 /usr/local/bin/swao
 ```
 
 Verify:
@@ -145,7 +153,7 @@ C:\my-engagement\apps\my-app\wsp\exports\2026-05-11T12-00-00\star
 Click **Load**. Six pages render: Overview, Compliance, Signals, Risks, Auditor, Run Stats.
 
 For portfolio assessments (multiple apps), use `swao-portfolio.pbit` with parameter
-`SWAOPortfolioExportPath`. See the [Refresh runbook](/templates/REFRESH-RUNBOOK) for
+`SWAOPortfolioExportPath`. See the [Export BI runbook](/export-bi) for
 multi-bundle workflows.
 
 No PowerBI? Open `wsp/exports/<ts>/xlsx/swao-export.xlsx` in Excel for the same data
@@ -205,7 +213,7 @@ swao export --app my-app --formats csv,ndjson,xlsx
 
 | You want to | Read |
 |---|---|
-| Re-run with a new export in PowerBI | [Refresh runbook](/templates/REFRESH-RUNBOOK) |
+| Re-run with a new export in PowerBI | [Export BI runbook](/export-bi) |
 | Add a compliance framework | `swao framework install <id>` or add a YAML file in `catalogs/community/` |
 | Run a portfolio assessment | `swao export --portfolio` (Consultant/Enterprise tier) |
 | Connect Claude AI via MCP | [How it works -- MCP](/how-it-works) |

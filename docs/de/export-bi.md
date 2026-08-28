@@ -27,4 +27,4 @@ Zwei `.pbit`-Vorlagen sind in Ihrem Workspace unter `wsp/templates/powerbi/` ent
 swao export --app meine-app --formats csv,ndjson,xlsx
 ```
 
-Siehe auch: [PowerBI-Autorenleitfaden](/templates/AUTHORING-GUIDE) | [HTML veröffentlichen](/de/publish-html)
+Siehe auch: [HTML veröffentlichen](/de/publish-html)

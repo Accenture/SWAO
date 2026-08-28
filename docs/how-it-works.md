@@ -196,7 +196,7 @@ To open a template:
 3. Click **Load**. The dashboard refreshes with your data.
 
 For step-by-step instructions on customising the template, see the
-[Authoring guide](/templates/AUTHORING-GUIDE).
+[Export BI runbook](/export-bi).
 
 ---
 
