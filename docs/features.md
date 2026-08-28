@@ -36,7 +36,7 @@ SWAO supports three assessment surfaces, all available now.
 | <FeatureTooltip tip="12 cloud providers covered: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer, Microsoft Azure EU, AWS eu-central-1 / ESC, Google Cloud EU. Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (12 providers)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Add your own cloud or private-cloud provider as a YAML entry. Supports the same check schema as the built-in providers. Run alongside built-in entries immediately.">Custom LZ catalogue entries (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **AI & LLM** | | | |
-| <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM (incl. Bedrock Gateway)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Advanced model management and custom model configuration -- Professional Services engagement.">Custom model configuration</FeatureTooltip> | -- | PS fee | Yes |
 | **Output & publication** | | | |
 | <FeatureTooltip tip="Text, YAML, JSON, and Markdown (auditor.md) reports generated after every assessment. Open in any editor or import into your reporting workflow.">Text and Markdown reports</FeatureTooltip> | Yes | Yes | Yes |

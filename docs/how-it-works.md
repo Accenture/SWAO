@@ -43,7 +43,7 @@ If this is your first time, start here. The wizard asks:
    available (GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2,
    LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, PCI-DSS v4, SAMA CSF v1).
    Add more at any time via `swao framework install`.
-4. **LLM provider** -- Anthropic Claude, OpenAI, a local Ollama model, or a deterministic
+4. **LLM provider** -- Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
    stub for offline use.
 
 The wizard creates a ready-to-use workspace folder on disk.
@@ -208,6 +208,6 @@ SWAO is **file-only** by design:
 - No hosted endpoint. The assessment engine runs entirely on your machine.
 - No call-home. The binary does not check for updates or send error reports.
 - LLM calls go directly from your machine to the provider you configured
-  (Anthropic, OpenAI, or Ollama). SWAO does not proxy or store them.
+  (Anthropic, OpenAI, Amazon Bedrock Gateway, or Ollama). SWAO does not proxy or store them.
 - The HTML publication, BI export, and PowerBI dashboard are local files.
   Share them only when and how you choose.

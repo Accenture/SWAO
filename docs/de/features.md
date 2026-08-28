@@ -36,7 +36,7 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | <FeatureTooltip tip="12 Cloud-Anbieter enthalten: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer, Microsoft Azure EU, AWS eu-central-1 / ESC, Google Cloud EU. Jeder Eintrag enthaelt Bereitschaftspruefungen (Blocker, Warnungen, Info-Punkte) abgestimmt auf das Service-Portfolio und die Souveränitätsnachweise des Anbieters.">Integrierter LZ-Katalog (12 Anbieter)</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Eigenen Cloud- oder Privatcloud-Anbieter als YAML-Eintrag hinzufügen. Laeuft sofort neben den integrierten Eintraegen.">Eigene LZ-Katalog-Eintraege (YAML)</FeatureTooltip> | Ja | Ja | Ja |
 | **KI & LLM** | | | |
-| <FeatureTooltip tip="Anthropic Claude, OpenAI GPT oder selbst gehostetes Ollama-Modell. Das LLM erstellt verständliche Begründungen für jedes Signal.">Eigenes LLM mitbringen</FeatureTooltip> | Ja | Ja | Ja |
+| <FeatureTooltip tip="Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway oder selbst gehostetes Ollama-Modell. Das LLM erstellt verständliche Begründungen für jedes Signal.">Eigenes LLM mitbringen (inkl. Bedrock Gateway)</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Erweiterte Modellverwaltung und benutzerdefinierte Konfiguration -- Professional-Services-Engagement.">Eigene Modellkonfiguration</FeatureTooltip> | -- | PS-Gebühr | Ja |
 | **Ausgabe & Veröffentlichung** | | | |
 | <FeatureTooltip tip="Eigenständige HTML-Datei mit Volltextsuche, Personenansichten und Evidenzgalerie. Offline nutzbar.">HTML-Veröffentlichung</FeatureTooltip> | -- | Ja | Ja |

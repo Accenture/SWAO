@@ -19,6 +19,7 @@ a code change or rebuild.
 |---|---|
 | OpenAI Chat Completions (`/v1/chat/completions`) -- vLLM, internal GenAI hubs, OpenRouter, LLMGateway, most aggregators | `openai-chat` |
 | Anthropic Messages (`/v1/messages`) | `anthropic-messages` |
+| Amazon Bedrock Gateway (Bedrock API via AWS SDK) | `bedrock-gateway` |
 | Local Ollama daemon | `ollama` |
 
 ## 3. Worked example: internal GenAI hub

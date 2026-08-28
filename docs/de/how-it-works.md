@@ -40,7 +40,7 @@ Wählen Sie **1. Workspace Setup**. Der Assistent stellt vier Fragen:
    (KI 10 Säulen, BSI C5, BSI IT-Grundschutz 2023, DORA, DSGVO, ISO 27001:2022, LLM-Auswahl,
    NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIST SP 800-66r2 / HIPAA,
    PCI-DSS v4, SAMA CSF v1, SOC 2 Typ II).
-4. **LLM-Anbieter** -- Anthropic Claude, OpenAI, Ollama oder deterministischer Stub.
+4. **LLM-Anbieter** -- Anthropic Claude, OpenAI, Amazon Bedrock Gateway, Ollama oder deterministischer Stub.
 
 ### Health Check (Systemprüfung)
 

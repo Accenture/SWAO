@@ -82,7 +82,7 @@ Select **1. Workspace Setup**. The wizard asks four questions:
 2. **Application name** -- the workload you are assessing (e.g. `my-app`).
 3. **Compliance frameworks** -- choose from the available community frameworks. GDPR is
    pre-selected. More can be added at any time via `swao framework install`.
-4. **LLM provider** -- Anthropic Claude, OpenAI, a local Ollama model, or a stub for
+4. **LLM provider** -- Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
    offline testing.
 
 The wizard creates the workspace folder and configuration on disk. No further setup needed.
