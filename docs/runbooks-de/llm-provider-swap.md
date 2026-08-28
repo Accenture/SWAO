@@ -11,7 +11,6 @@ SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unte
 | Anthropic (Standard) | `anthropic` | `ANTHROPIC_API_KEY` | Claude 3.x und neür |
 | Ollama (lokal) | `ollama` | `OLLAMA_BASE_URL` (optional) | Standard: `http://localhost:11434` |
 | OpenAI | `openai` | `OPENAI_API_KEY` | gpt-4o und kompatible Modelle |
-| Stub (offline) | `stub` | keine | Deterministische feste Antworten; kein echtes LLM |
 
 ---
 
@@ -32,10 +31,6 @@ export OPENAI_API_KEY=sk-...
 
 swao assess --app my-app
 
-# Fully offline (stub)
-export SWAO_LLM_PROVIDER=stub
-
-swao assess --app my-app
 ```
 
 ---
@@ -50,7 +45,7 @@ workspace:
   name: my-portfolio
 
 llm:
-  provider: ollama            # one of: anthropic, ollama, openai, stub
+  provider: ollama            # one of: anthropic, ollama, openai
   model: llama3               # provider-specific model identifier
   base_url: http://localhost:11434   # only relevant for ollama
 
@@ -69,11 +64,11 @@ Die `.swao.yml`-Einstellung wird durch die Umgebungsvariable `SWAO_LLM_PROVIDER`
 # Run a single assessment against Ollama without changing .swao.yml
 swao assess --app my-app --llm-provider ollama
 
-# Run with the stub for a quick offline test
+# Skip LLM calls for offline or CI use
 swao assess --app my-app --skip-llm
 ```
 
-`--skip-llm` ist eine Kurzform für `--llm-provider stub`. Beide Formen sind äquivalent.
+Verwenden Sie `--skip-llm` um LLM-Aufrufe zu ueberspringen (z.B. in CI-Umgebungen ohne API-Schlussel).
 
 ---
 
@@ -110,19 +105,13 @@ SWAO nutzt die OpenAI Chat Completions API. Jedes Modell, auf das der API-Key Zu
 
 ---
 
-## 6. Vollständiger Offline-Betrieb mit --skip-llm
+## 6. LLM-Aufrufe ueberspringen mit --skip-llm
 
-Der Stub-Provider liefert deterministische feste Antworten für jeden LLM-Aufruf. Typische Einsatzszenarien:
-
-- Workspace-Konfiguration und Schema-Konformität validieren, ohne API-Credits zu verbrauchen
-- Assessments in Air-Gap- oder netzwerkbeschränkten Umgebungen ausführen
-- CI-Pipeline-Tests beschleunigen, bei denen echte LLM-Ausgaben nicht benötigt werden
+Verwenden Sie `--skip-llm` um LLM-Aufrufe zu ueberspringen (z.B. in CI-Umgebungen ohne API-Schlussel).
 
 ```bash
 swao assess --app my-app --skip-llm
 ```
-
-Stub-Ausgabedateien sind strukturell identisch mit echten Läufen, enthalten jedoch Platzhaltertexte. Sie sind nicht für die Präsentation gegenüber Stakeholdern geeignet.
 
 ---
 

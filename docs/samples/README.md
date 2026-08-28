@@ -238,7 +238,7 @@ active and immediately usable; three are coming soon:
 | [1] | Application Assessment | Active -- `swao assess`, static + LLM pass suite |
 | [2] | Audit Assessment | Coming soon -- checklist + evidence + verdict |
 | [3] | Landing Zone Assessment | Active -- `swao assess --type landing-zone`, CSP fit/gap report |
-| [4] | LLM Assessment | Coming soon -- multi-LLM sovereignty benchmarking |
+| [4] | LLM Assessment | Active -- LLM Assessment -- provider sovereignty benchmarking |
 | [5] | Hybrid Assessment | Coming soon -- source + human evidence combined |
 
 The guidance box describes the highlighted type in full. Application Assessment is the
@@ -273,8 +273,7 @@ The guidance box describes the output path and format for the selected option.
 
 Claude Desktop with the Connectors panel open, showing the **SWAO connector enabled**
 (blue toggle). The menu shows "Add from SWAO" and "Tool access" entries alongside the
-standard connector management options. The SWAO connector is part of the ACN General
-Availability deployment -- no manual configuration required for operators on that tenant.
+standard connector management options. The SWAO connector is part of the example enterprise deployment -- no manual configuration required for operators on that tenant.
 
 Once connected, Claude can call SWAO MCP tools directly from any conversation: read
 workspace signals, query compliance gaps, and return structured assessment findings

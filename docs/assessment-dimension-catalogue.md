@@ -421,4 +421,4 @@ the absolute path to the portfolio root.
 | Provider sovereignty facts | `Use swao_cloud_provider_catalogue.` |
 | LZR scoring weights | `Use swao_lzr_weights for [app].` |
 
-Full tool reference: `docs/design/084-mcp-tool-reference-and-user-prompts.md`.
+See [MCP Integration](runbooks/mcp-integration) for the full tool reference.

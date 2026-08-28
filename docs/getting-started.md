@@ -5,7 +5,6 @@ version: 2026-07
 related:
   - docs/assessment-dimension-catalogue.md
   - docs/runbooks/mcp-integration.md
-  - docs/design/084-mcp-tool-reference-and-user-prompts.md
 
 ---
 
@@ -97,7 +96,7 @@ if the MCP server already has the correct workspace loaded.
 | Generate HTML report | `swao publish --app ...` | `Use swao_publish for sovereign-health, mode: html.` |
 | Portfolio summary | `swao portfolio summary` | `Use swao_portfolio_summary at workspace C:\path\to\workspace.` |
 
-Full tool reference and extended prompts: `docs/design/084-mcp-tool-reference-and-user-prompts.md`.
+Full tool reference and extended prompts: [MCP Integration](runbooks/mcp-integration).
 
 ---
 

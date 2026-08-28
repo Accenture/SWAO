@@ -38,7 +38,7 @@ runbook does the opposite job: it explains *purpose* and *order*.
 ```cmd
 swao init                              :: scaffold a workspace
 swao health-check                            :: pre-flight environment check
-swao assess --app <appId>              :: run the 11-pass pipeline
+swao assess --app <appId>              :: run the 14-pass pipeline
 swao report --app <appId> --view auditor
 swao export                            :: emit the BI bundle
 ```
@@ -117,7 +117,7 @@ swao setup
 
 **Purpose.** Pre-flight environment check. Seven probes:
 
-1. Licence state (Community / Standard / Premium tier; fingerprint)
+1. Licence state (Community / Consultant / Enterprise tier; fingerprint)
 2. Playwright / Chromium availability (for dynamic UI crawl)
 3. SWAO-MCP server entry in Claude Desktop config
 4. Compliance catalogues integrity (standard + overlay regimes)
@@ -140,7 +140,7 @@ swao health-check --format json   :: machine-readable for CI
 
 ### `swao assess`
 
-**Purpose.** Run the full 11-pass pipeline against one app:
+**Purpose.** Run the full 14-pass pipeline against one app:
 
 | # | Pass | Purpose |
 |---|---|---|
@@ -168,7 +168,7 @@ deterministic fixtures for free.
 swao assess --app my-app
 swao assess --app my-app --skip-llm          :: free dry run
 swao assess --app my-app --crawl             :: include dynamic crawl
-swao assess --portfolio                      :: all apps (Premium)
+swao assess --portfolio                      :: all apps (Enterprise)
 ```
 
 ### `swao report`
@@ -185,7 +185,7 @@ assess output. Six views ship today:
 - `lzr` -- landing zone readiness focused view
 
 Three formats: `text` (default), `yaml`, `json`. `pdf` requires
-Standard tier. `--view auditor --format json` produces a
+Consultant tier. `--view auditor --format json` produces a
 Zod-validated payload for CI / ETL consumers.
 
 **Typical use.** After every assess. Cheap (no LLM calls); regenerate
@@ -212,7 +212,7 @@ operator workflow is `assess` -> `assess` -> ... -> `export`.
 ```cmd
 swao export                       :: single-app bundle (auto-detects)
 swao export --app my-app          :: explicit single-app
-swao export --portfolio           :: portfolio bundle (Premium)
+swao export --portfolio           :: portfolio bundle (Enterprise)
 ```
 
 ### `swao challenge`
@@ -225,7 +225,7 @@ lands in `wsp/challenges/<agent>-<ts>.yaml`.
 
 **Typical use.** Run before sending the report to a client; the
 agent catches gaps that the assessment passes did not surface.
-Premium tier required.
+Enterprise tier required.
 
 ```cmd
 swao challenge --app my-app --agent legal-counsel
@@ -256,9 +256,9 @@ swao menu
   pre-filled with the machine fingerprint
 - `activate <key>` -- install a licence key received by email
 
-**Typical use.** Upgrade from Community to Standard or Premium when
+**Typical use.** Upgrade from Community to Consultant or Enterprise when
 the engagement needs portfolio mode, PDF export, Terraform
-generation, or `--challenge`. Premium / Standard limits are
+generation, or `--challenge`. Enterprise / Consultant limits are
 machine-bound.
 
 ```cmd
@@ -321,7 +321,7 @@ swao regime-select --regimes BSI_C5,DORA,GDPR
 
 ### `swao migrate-workspace [directory]`
 
-**Purpose.** Migrate a pre-#0227 workspace to the
+**Purpose.** Migrate a legacy workspace to the
 `wsp/inputs/` layout. Moves each app's `imports/` and `source/`
 folders under `wsp/inputs/` and rewrites `.swao.yml` paths to
 match. Idempotent.
@@ -353,7 +353,7 @@ swao install-playwright
 **Purpose.** Emit Terraform modules for a sovereign landing zone
 based on the wsp-plan output. Reads the assess pipeline's selected
 landing-zone catalogue entry and renders HCL ready for `terraform
-apply`. Standard or Premium tier required.
+apply`. Consultant or Enterprise tier required.
 
 **Typical use.** After assess completes and the 7R verdict is
 Rehost / Replatform / Refactor / Re-architect (any disposition
@@ -453,7 +453,7 @@ help is correct -- file a docs fix.
 
 ## Further information
 
-- Online manual (VitePress): {published per #0214 plan; pending}
+- Online manual (VitePress): Full flag reference available via `swao <subcommand> --help`.
 - Project landing page: https://accenture.github.io/SWAO/en/
 - Issues: https://github.com/Accenture/SWAO/issues
 - Discussions: https://github.com/Accenture/SWAO/discussions

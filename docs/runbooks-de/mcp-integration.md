@@ -2,7 +2,7 @@
 
 SWAO stellt seine Assessment-Funktionen als MCP-Server (Model Context Protocol) bereit, sodass KI-Assistenten wie Claude Code SWAO-Tools direkt aus einer Konversation heraus aufrufen können. Dieses Runbook beschreibt das Starten des Servers, die Konfiguration von Claude Code für die Verbindung, die verfügbaren Tools und Sicherheitshinweise.
 
-Die architektonische Begründung für die Wahl des HTTP-Transports ist in ADR-0045 dokumentiert.
+SWAO uses HTTP transport on `localhost:3737` because Accenture security policy restricts stdio-based MCP connections by process name.
 
 ---
 

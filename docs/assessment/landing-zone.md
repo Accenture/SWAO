@@ -159,12 +159,7 @@ SWAO includes a meshStack adapter for platform-mesh and building-block assessmen
 The adapter reads a meshStack platform snapshot and evaluates the building-block
 configuration against sovereignty controls.
 
-To use it, obtain a meshStack snapshot (for example, via the meshStack scraper in
-`scripts/`) and place the file at the workspace root:
-
-```
-wsp/lz-meshstack-snapshot.json
-```
+Obtain a meshStack snapshot by exporting tenant data from your meshStack Administrator area (Tenants > Export) and saving the JSON file to `imports/meshstack-snapshot.json` in your workspace.
 
 SWAO auto-detects the file during a portfolio assessment and runs the meshStack-specific
 checks without additional `.swao.yml` configuration. Results appear in the LZ
