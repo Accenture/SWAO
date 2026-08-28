@@ -119,6 +119,22 @@ export default defineConfig({
   cleanUrls: true,
   appearance: 'dark',
   ignoreDeadLinks: true,
+  buildEnd: async (siteConfig) => {
+    // GitHub Pages 404 fix: /SWAO/en/ has no static file because English
+    // is the root locale. Write a meta-refresh redirect so direct navigation
+    // and old bookmarks land on the correct root instead of a 404.
+    const { promises: fs } = await import('fs')
+    const { join } = await import('path')
+    const redirectHtml =
+      '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+      '<title>SWAO Documentation</title>' +
+      '<meta http-equiv="refresh" content="0; url=/SWAO/">' +
+      '<link rel="canonical" href="/SWAO/"></head>' +
+      '<body><script>window.location.replace(\'/SWAO/\');</script></body></html>'
+    const enDir = join(siteConfig.outDir, 'en')
+    await fs.mkdir(enDir, { recursive: true })
+    await fs.writeFile(join(enDir, 'index.html'), redirectHtml)
+  },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/SWAO/logo.svg' }],
   ],
