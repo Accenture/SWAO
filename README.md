@@ -96,6 +96,13 @@ Accenture/SWAO/
     +-- workflows/         # CI: docs publish, release asset attachment, CodeQL
 ```
 
+| Directory | What it contains |
+|---|---|
+| [`community-frameworks/`](community-frameworks/) | 11 compliance framework YAML files (NIST CSF, ISO 27001, CIS, etc.) -- download, customise, and drop into your `catalogs/` directory |
+| [`lz-catalogues/`](lz-catalogues/) | Landing zone catalogue definitions for supported cloud providers; used by `swao assess --type landing-zone` |
+| [`llm-gateway/`](llm-gateway/) | LLM provider gateway configuration examples for OpenRouter, Azure OpenAI, Ollama, and others |
+| [`examples/`](examples/) | Sample assessment workspaces and published HTML artefacts; more samples will be added in upcoming releases |
+
 ---
 
 ## Installation

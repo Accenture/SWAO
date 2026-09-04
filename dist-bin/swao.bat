@@ -3,7 +3,7 @@ REM swao.bat -- launcher for SWAO Windows binaries.
 REM
 REM Place this file alongside one or more SWAO binaries in the same directory:
 REM
-REM   swao-community-win.exe       Community edition (open-source, default)
+REM   swao-community-win-x64.exe       Community edition (open-source, default)
 REM   swao-consultant-win-x64.exe  Consultant edition
 REM   swao-enterprise-win-x64.exe  Enterprise edition
 REM
@@ -45,8 +45,8 @@ if /I "!SWAO_TIER!"=="consultant" (
 )
 
 REM Default: Community. Auto-detect if not found.
-if exist "!DIR!swao-community-win.exe" (
-    set "SWAO=!DIR!swao-community-win.exe"
+if exist "!DIR!swao-community-win-x64.exe" (
+    set "SWAO=!DIR!swao-community-win-x64.exe"
     set "TIER_LABEL=Community"
     goto :run
 )
@@ -65,7 +65,7 @@ echo.
 echo ERROR: No SWAO binary found in !DIR!
 echo.
 echo Expected one of:
-echo   swao-community-win.exe
+echo   swao-community-win-x64.exe
 echo   swao-consultant-win-x64.exe
 echo   swao-enterprise-win-x64.exe
 echo.
@@ -92,23 +92,6 @@ if not "%~1"=="" (
     "!SWAO!" %*
     exit /b %ERRORLEVEL%
 )
-
-echo.
-echo ================================================================
-echo.
-echo                    S  W  A  O
-echo.
-echo   Sovereign Workload Assessment and Onboarding
-echo   Windows launcher  [!TIER_LABEL! edition]
-echo.
-echo   Free and Open-Source Software (FOSS)
-echo.
-echo   Website       :  https://steady-echo-yp4z.here.now/
-echo   Technical Docs:  https://accenture.github.io/SWAO/en/
-echo   Source Code   :  https://github.com/Accenture/SWAO
-echo.
-echo ================================================================
-echo.
 
 set "SWAO_LAUNCHER_WROTE_BANNER=1"
 "!SWAO!" menu
