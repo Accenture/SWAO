@@ -14,7 +14,7 @@ framework:
   # every bundled community framework attributes packaging to Helmut as
   # the SWAO maintainer; upstream authorship stays in `authority:`).
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/ai-10-pillars"
   applicability_hints:
     - ai_workload

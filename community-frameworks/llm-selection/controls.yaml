@@ -17,7 +17,7 @@ regime_meta:
   authority: "Accenture SWAO team -- community framework (Design 063)"
   multi_domain_axes: true   # 7 per-control domain prefixes (DSR/MT/PR/CLF/SB/AC/PEO); tag probe skips global coverage check
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://github.com/Accenture/SWAO"
   applicability_hints:
     - llm_app

@@ -16,7 +16,7 @@ framework:
   version: "CSF v1.0 -- issued by SAMA, first published 2017; current as of 2026"
   authority: "Saudi Arabian Monetary Authority (SAMA)"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     email: "https://github.com/Accenture/SWAO/discussions"
     organisation: "Accenture GmbH"
     date: "2026-07-18"

@@ -105,4 +105,4 @@ in the source publication. No legal advice is provided.
 
 ## Contributor
 
-Helmut Schindlwick (Accenture SWAO team) -- https://github.com/Accenture/SWAO
+SWAO Development Team (Accenture) -- https://github.com/Accenture/SWAO

@@ -14,7 +14,7 @@ framework:
   version: "Regulation (EU) 2016/679 -- in force since 2018-05-25"
   authority: "European Parliament and Council of the European Union"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/gdpr"
   applicability_hints:
     - eu_data

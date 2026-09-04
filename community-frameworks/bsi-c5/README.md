@@ -79,4 +79,4 @@ version. See `CONTRIBUTING.md` for the authoring guide.
 
 ## Contributor
 
-Helmut Schindlwick (Accenture SWAO team) -- https://github.com/Accenture/SWAO
+SWAO Development Team (Accenture) -- https://github.com/Accenture/SWAO

@@ -81,7 +81,7 @@ repository root for the full authoring guide.
 
 ## Contributor
 
-Helmut Schindlwick (Accenture SWAO team) -- https://github.com/Accenture/SWAO
+SWAO Development Team (Accenture) -- https://github.com/Accenture/SWAO
 https://github.com/Accenture/SWAO
 
 **Authoritative source:** EUR-Lex canonical text at

@@ -76,5 +76,5 @@ A full-depth SWAO packaging is tracked as a community contribution opportunity.
 
 ## Contributor
 
-Helmut Schindlwick (Accenture SWAO team) -- https://github.com/Accenture/SWAO
+SWAO Development Team (Accenture) -- https://github.com/Accenture/SWAO
 https://github.com/Accenture/SWAO

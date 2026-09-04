@@ -15,7 +15,7 @@ version: 1
 frameworks:
   - id: AI_10_PILLARS
     folder: ai-10-pillars
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "2026-Q2"
     applicability_hints:
       - ai_workload
@@ -26,7 +26,7 @@ frameworks:
 
   - id: GDPR
     folder: gdpr
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "Regulation (EU) 2016/679"
     applicability_hints:
       - eu_data
@@ -106,7 +106,7 @@ frameworks:
 
   - id: BSI_C5
     folder: bsi-c5
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "2020"
     signal_prefix: C5
     applicability_hints:
@@ -140,7 +140,7 @@ frameworks:
 
   - id: LLM_SELECTION
     folder: llm-selection
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "1.0"
     applicability_hints:
       - llm_app
@@ -159,7 +159,7 @@ frameworks:
 
   - id: BSI_GRUNDSCHUTZ_2023
     folder: bsi-grundschutz-2023
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "Edition 2023 (published January 2023) -- v0.2.0"
     applicability_hints:
       - german_public_sector
@@ -181,7 +181,7 @@ frameworks:
 
   - id: GDPR_DEMO
     folder: gdpr-demo
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "Regulation (EU) 2016/679 -- demo subset 2026-07-02"
     applicability_hints:
       - eu_data
@@ -197,7 +197,7 @@ frameworks:
 
   - id: AI_10_PILLARS_DEMO
     folder: ai-10-pillars-demo
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "2026-Q2 -- demo subset 2026-07-02"
     applicability_hints:
       - ai_workload
@@ -213,7 +213,7 @@ frameworks:
 
   - id: NIST_SP_800_66R2_DEMO
     folder: nist-sp-800-66r2-demo
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "NIST SP 800-66r2 / 2024-02 -- demo subset 2026-07-02"
     applicability_hints:
       - us_health
@@ -231,7 +231,7 @@ frameworks:
 
   - id: BSI_GRUNDSCHUTZ_2023_DEMO
     folder: bsi-grundschutz-2023-demo
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "Edition 2023 (published January 2023) -- demo subset 2026-07-07"
     applicability_hints:
       - german_public_sector
@@ -251,7 +251,7 @@ frameworks:
 
   - id: NCA_ECC
     folder: nca-ecc-2-2024
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "ECC-2:2024 -- issued by NCA Saudi Arabia, effective 2024"
     applicability_hints:
       - ksa_regulated_entity
@@ -268,7 +268,7 @@ frameworks:
 
   - id: NCA_ECC_DEMO
     folder: nca-ecc-demo
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "ECC-2:2024 -- demo subset 2026-07-18"
     applicability_hints:
       - ksa_regulated_entity
@@ -280,7 +280,7 @@ frameworks:
 
   - id: NCA_CCC_CST
     folder: nca-ccc-2-2024-cst
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "CCC-2:2024 -- issued by NCA Saudi Arabia, effective 2024"
     applicability_hints:
       - ksa_regulated_entity
@@ -296,7 +296,7 @@ frameworks:
 
   - id: NCA_CCC_CSP
     folder: nca-ccc-2-2024-csp
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "CCC-2:2024 -- issued by NCA Saudi Arabia, effective 2024"
     applicability_hints:
       - ksa_regulated_entity
@@ -315,7 +315,7 @@ frameworks:
 
   - id: SAMA_CSF
     folder: sama-csf-v1
-    contributor: "Helmut Schindlwick (Accenture SWAO team)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "CSF v1.0 -- issued by SAMA, first published 2017; current as of 2026"
     applicability_hints:
       - ksa_financial_sector

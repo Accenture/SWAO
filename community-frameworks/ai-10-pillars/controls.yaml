@@ -23,7 +23,7 @@ regime_meta:
   scope: community
   authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     email: "https://github.com/Accenture/SWAO/discussions"
     url: "https://accenture.example/swao/community-frameworks/ai-10-pillars"
   applicability_hints:

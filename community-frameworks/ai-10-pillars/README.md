@@ -87,5 +87,5 @@ authoring guide.
 
 ## Contributor
 
-Alok Sharan (framework concept); Helmut Schindlwick / Accenture SWAO team (SWAO packaging)
+Alok Sharan (framework concept); SWAO Development Team (SWAO packaging)
 https://github.com/Accenture/SWAO

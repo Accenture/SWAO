@@ -23,7 +23,7 @@ regime_meta:
   scope: community
   authority: "National Cybersecurity Authority (NCA), Kingdom of Saudi Arabia"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     email: "https://github.com/Accenture/SWAO/discussions"
     organisation: "Accenture GmbH"
     date: "2026-07-18"

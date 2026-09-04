@@ -16,7 +16,7 @@ regime_meta:
   scope: community
   authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     email: "https://github.com/Accenture/SWAO/discussions"
     url: "https://github.com/Accenture/SWAO"
   catalogue_version: "0.1.0"

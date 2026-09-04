@@ -9,7 +9,7 @@ framework:
   version: "1.0"
   authority: "Accenture SWAO team -- community framework (Design 063)"
   contributor:
-    name: "Helmut Schindlwick (Accenture SWAO team)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://github.com/Accenture/SWAO"
   applicability_hints:
     - llm_app
