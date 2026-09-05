@@ -314,7 +314,7 @@ Threshold: 0.60 (at least 5 of 8 components instrumented before migration is rec
 
 ---
 
-## 7. Licence Compliance (Pass 16)
+## 7. Licence Compliance
 
 **What it measures**
 
@@ -338,7 +338,7 @@ calls over a network -- a common trigger in healthcare and financial services wo
 
 ---
 
-## 8. Testing and Quality Maturity (Pass 17)
+## 8. Testing and Quality Maturity
 
 **What it measures**
 

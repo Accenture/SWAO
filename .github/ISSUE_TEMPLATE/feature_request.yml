@@ -33,7 +33,7 @@ body:
         - Application assessment (swao assess)
         - Landing zone catalogue
         - LLM / AI provider configuration
-        - Compliance framework authoring
+        - community framework authoring
         - Reporting and publication
         - Other
 
@@ -41,4 +41,4 @@ body:
     id: solution
     attributes:
       label: Proposed solution
-      description: Optional -- how might this be implemented?
+      description: Optional - how might this be implemented?

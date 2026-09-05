@@ -134,7 +134,7 @@ docker run --rm \
 
 `--skip-llm` removes the `comp` (compliance LLM) and `blocks` (block analysis) passes from the pipeline. All deterministic passes -- inventory, SBOM, cryptography, data classification, 7R synthesis, and landing zone -- still run and emit signals. Output files are written exactly as in a live run, making this mode useful for pipeline testing and schema validation without incurring API costs.
 
-> **Note:** `--llm-stub` was removed in v0.4.7 (issue #0473). If you have scripts referencing it, replace with `--skip-llm`.
+> **Note:** `--llm-stub` was removed in v0.4.7. If you have scripts referencing it, replace with `--skip-llm`.
 
 ---
 

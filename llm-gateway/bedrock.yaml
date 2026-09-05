@@ -1,0 +1,98 @@
+# SWAO LLM-Gateway connector -- Amazon Bedrock (Design 090, #922)
+#
+# Authentication: resolved by the AWS SDK default credential chain.
+# DO NOT put key material in this file. auth.env_var names the
+# variable SWAO doctor probe 14 checks for credential presence.
+#
+#   Option A — env vars (SSO export / CI):
+#     export AWS_ACCESS_KEY_ID=...
+#     export AWS_SECRET_ACCESS_KEY=...
+#     export AWS_SESSION_TOKEN=...          # when using STS / SSO
+#
+#   Option B — AWS_PROFILE (SSO session):
+#     aws sso login --profile <profile>
+#     export AWS_PROFILE=<profile>
+#
+#   Option C — EC2 / ECS / Lambda: instance metadata (automatic)
+#
+# Region: encoded in base_url. Switch via SWAO_LLM_ENV:
+#   SWAO_LLM_ENV=us-east-1 swao assess --type llm ...
+#
+schema_version: "1.0"
+connector:
+  id: bedrock
+  name: Amazon Bedrock
+  description: >
+    Amazon Bedrock Converse API — run Anthropic Claude and other foundation
+    models via AWS IAM credentials. No Anthropic API key required.
+    Supports cross-region inference profiles for EU data-residency.
+  protocol: bedrock
+  active_env: eu-central-1          # default when SWAO_LLM_ENV and leg environment: are absent
+  base_url: https://bedrock-runtime.eu-central-1.amazonaws.com
+  auth:
+    env_var: AWS_ACCESS_KEY_ID   # presence-check only; SDK reads all AWS cred vars
+  models:
+    default: eu.anthropic.claude-sonnet-4-6
+    catalogue:
+      - id: eu.anthropic.claude-sonnet-4-6
+        context_window: 200000
+        cost: { input_per_million: 3.00, output_per_million: 15.00 }
+        notes: Claude Sonnet 4.6 via EU cross-region inference profile
+      - id: eu.anthropic.claude-sonnet-5
+        context_window: 200000
+        cost: { input_per_million: 10.00, output_per_million: 30.00 }
+        notes: Claude Sonnet 5 via EU cross-region inference profile
+      - id: eu.anthropic.claude-haiku-4-5-20251001-v1:0
+        context_window: 200000
+        cost: { input_per_million: 1.00, output_per_million: 5.00 }
+        notes: Claude Haiku 4.5 via EU cross-region inference profile (fastest + cheapest)
+      - id: anthropic.claude-sonnet-4-6
+        context_window: 200000
+        cost: { input_per_million: 3.00, output_per_million: 15.00 }
+        notes: Claude Sonnet 4.6 direct (us-east-1)
+      # ── Amazon Nova (eu cross-region) ───────────────────────────────────
+      - id: eu.amazon.nova-pro-v1:0
+        context_window: 300000
+        cost: { input_per_million: 0.80, output_per_million: 3.20 }
+        notes: Amazon Nova Pro — highest-capability Nova model
+      - id: eu.amazon.nova-lite-v1:0
+        context_window: 300000
+        cost: { input_per_million: 0.06, output_per_million: 0.24 }
+        notes: Amazon Nova Lite — cost-optimised, fast
+      - id: eu.amazon.nova-micro-v1:0
+        context_window: 128000
+        cost: { input_per_million: 0.035, output_per_million: 0.14 }
+        notes: Amazon Nova Micro — smallest, ultra-low cost
+      - id: eu.amazon.nova-2-lite-v1:0
+        context_window: 300000
+        cost: { input_per_million: 0.06, output_per_million: 0.24 }
+        notes: Amazon Nova 2 Lite
+      # ── Mistral (eu cross-region) ────────────────────────────────────────
+      - id: eu.mistral.pixtral-large-2502-v1:0
+        context_window: 131000
+        cost: { input_per_million: 2.00, output_per_million: 6.00 }
+        notes: Mistral Pixtral Large — EU-sovereign multimodal model
+  environments:
+    eu-central-1:
+      base_url: https://bedrock-runtime.eu-central-1.amazonaws.com
+      models:
+        default: eu.anthropic.claude-sonnet-4-6
+    us-east-1:
+      base_url: https://bedrock-runtime.us-east-1.amazonaws.com
+      models:
+        default: anthropic.claude-sonnet-4-6
+  defaults:
+    temperature: 0
+    max_tokens: 8192
+  sovereignty:
+    data_residency: AWS Region (configured via base_url / SWAO_LLM_ENV)
+    zero_retention: unknown
+    notes: >
+      AWS processes data in the configured region. Verify the AWS Data
+      Processing Addendum (DPA) and applicable GDPR Standard Contractual
+      Clauses for your engagement. Cross-region inference profiles route
+      within the selected AWS geography (EU or US).
+  meta:
+    source: bundled
+    last_reviewed: "2026-08-26"
+    contributor: Accenture SWAO team

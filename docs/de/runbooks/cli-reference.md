@@ -64,7 +64,7 @@ swao assess --app <id> [options]
 |---|---|
 | `--app <id>` | App-ID gemäss `.swao.yml` (erforderlich) |
 | `--workspace <path>` | Pfad zum Workspace-Stammverzeichnis |
-| `--skip-llm` | Stub-LLM verwenden (Offline-Modus; kein API-Key erforderlich) |
+| `--skip-llm` | LLM-Passes überspringen (kein LLM-Anbieter erforderlich) |
 | `--llm-provider <name>` | LLM-Provider für diesen Lauf überschreiben |
 | `--passes <list>` | Kommagetrennte Liste der auszuführenden Passes (z. B. `static,compliance`) |
 | `--stats` | Zeitmesstabelle pro Pass nach Abschluss ausgeben |
@@ -74,7 +74,7 @@ swao assess --app <id> [options]
 # Assess a single app
 swao assess --app sovereign-health
 
-# Assess with stub LLM and timing output
+# Assessment ohne LLM (--skip-llm)
 swao assess --app sovereign-health --skip-llm --stats
 
 # Run only the static and compliance passes

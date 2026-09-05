@@ -1,6 +1,6 @@
 # Licence Management
 
-SWAO ships in three tiers -- Community, Consultant, and Enterprise -- each unlocking additional capabilities. This runbook covers requesting a licence, activating it, handling offline environments, checking status, and understanding what each tier includes.
+SWAO ships in three tiers - Community, Consultant, and Enterprise - each unlocking additional capabilities. This runbook covers requesting a licence, activating it, handling offline environments, checking status, and understanding what each tier includes.
 
 ---
 
@@ -14,7 +14,7 @@ SWAO ships in three tiers -- Community, Consultant, and Enterprise -- each unloc
 | Report gallery + publish | No | Yes | Yes |
 | HTML Editor (interactive evidence editor, swao publish --edit) | No | No | Yes |
 | Power BI export bundle | No | No | Yes |
-| Custom compliance frameworks | No | Yes | Yes |
+| Custom community frameworks | No | Yes | Yes |
 | Multi-app portfolio assessments | No | No | Roadmap |
 | Enterprise SSO + audit log | No | No | Yes |
 | Priority support SLA | No | Yes | Yes |
@@ -44,7 +44,7 @@ The `swao health-check` command also prints licence status as one of its probes.
 
 ## 2. Upgrade from Community to Consultant
 
-### Step 1 -- request a licence token
+### Step 1 - request a licence token
 
 ```bash
 swao license request
@@ -52,11 +52,11 @@ swao license request
 
 This command prints a token to stdout that encodes your machine fingerprint. Copy the full token.
 
-### Step 2 -- send the token to the SWAO team
+### Step 2 - send the token to the SWAO team
 
 Email the token to the address provided on the SWAO releases page or in your procurement agreement. The team generates an activation key tied to your token.
 
-### Step 3 -- activate the key
+### Step 3 - activate the key
 
 ```bash
 swao license activate <activation-key>
@@ -108,18 +108,18 @@ Community edition never expires and does not require renewal.
 
 The activated licence is stored locally at:
 
-- **Linux / macOS:** `~/.swao/licence.json`
-- **Windows:** `%APPDATA%\swao\licence.json`
+- **Linux / macOS:** `~/.swao-license.json`
+- **Windows:** `%USERPROFILE%\.swao-license.json`
 
 Do not manually edit this file. If it becomes corrupted, delete it and re-activate.
 
 ```bash
 # Linux/macOS
-rm ~/.swao/licence.json
+rm ~/.swao-license.json
 swao license activate <key>
 
 # Windows (PowerShell)
-Remove-Item "$env:APPDATA\swao\licence.json"
+Remove-Item "$env:USERPROFILE\.swao-license.json"
 swao license activate <key>
 ```
 
@@ -136,7 +136,7 @@ Enterprise licences are provisioned organisation-wide via a licence server. Cont
 To request a Consultant or Enterprise licence, email the SWAO team with your machine
 fingerprint token.
 
-### Step 1 -- generate your machine fingerprint
+### Step 1 - generate your machine fingerprint
 
 ```bash
 swao machine-id
@@ -145,7 +145,7 @@ swao machine-id
 This prints a short token that encodes your machine identity without any personal data.
 Copy the full token string.
 
-### Step 2 -- send the request
+### Step 2 - send the request
 
 Email [swao-tool@accenture.com](mailto:swao-tool@accenture.com?subject=SWAO%20Consultant%20Licence%20Request) with:
 
@@ -160,7 +160,7 @@ Email [swao-tool@accenture.com](mailto:swao-tool@accenture.com?subject=SWAO%20Co
 
 The SWAO team will respond within two business days with an activation key.
 
-### Step 3 -- activate
+### Step 3 - activate
 
 ```bash
 swao license activate <activation-key>
@@ -185,7 +185,7 @@ each count as a separate machine.
 **Can I use one licence on multiple machines?**
 
 Consultant licences are single-machine. Enterprise licences cover an organisation-wide
-deployment -- contact the team to discuss the number of seats included.
+deployment - contact the team to discuss the number of seats included.
 
 **Is there a trial period?**
 

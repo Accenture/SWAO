@@ -1,7 +1,6 @@
 # Runbook: Authoring an LLM-Gateway connector
 
-Design 090 makes SWAO's LLM connectivity file-based: one YAML connector per
-platform. This runbook shows how to connect any LLM platform to SWAO without
+SWAO's LLM connectivity is file-based: one YAML connector per platform. This runbook shows how to connect any LLM platform to SWAO without
 a code change or rebuild.
 
 ## 1. The three-step flow
@@ -10,8 +9,7 @@ a code change or rebuild.
    setup) or any bundled connector to `wsp/inputs/llm-gateway/<your-id>.yaml`.
 2. Amend `id`, `name`, `protocol`, `base_url`, `auth`, and `models.default`.
 3. Re-run `swao setup` (or use `swao assess --llm <your-id>` directly). The
-   connector is discovered automatically; `swao health-check` probe 14 confirms it
-   validated.
+   connector is discovered automatically; `swao health-check` confirms it is valid.
 
 ## 2. Choosing the protocol
 
@@ -21,6 +19,7 @@ a code change or rebuild.
 | Anthropic Messages (`/v1/messages`) | `anthropic-messages` |
 | Amazon Bedrock Gateway (Bedrock API via AWS SDK) | `bedrock-gateway` |
 | Local Ollama daemon | `ollama` |
+| Amazon Bedrock (Bedrock Converse API via AWS SDK) | `bedrock` |
 
 ## 3. Worked example: internal GenAI hub
 
@@ -86,4 +85,4 @@ Every run records the connector id, file hash, and model in
 - Legacy `type: anthropic|openai|ollama|open-llm-provider` configurations
   keep working unchanged; migration is opt-in.
 - Sovereignty facts in the connector are facts, not verdicts -- they feed
-  the provider eligibility checks of the LLM benchmark (Design 063).
+  the provider eligibility checks of the LLM benchmark.

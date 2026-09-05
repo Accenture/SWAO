@@ -1,0 +1,58 @@
+# SWAO Enterprise Edition -- Dockerfile (sprint-128, ADR-0056)
+#
+# Enterprise-tier variant. Builds dist/bundle.cjs (src/index.ts full wiring)
+# and ships the complete feature set. This image is built exclusively by the
+# private CI and pushed to ghcr.io/accenture-cloud-first-tech/swao.
+#
+# Built by: private CI (release-enterprise.yml)
+# Push target: ghcr.io/accenture-cloud-first-tech/swao:enterprise-*
+#
+# Usage:
+#   docker build -f Dockerfile.enterprise -t ghcr.io/accenture-cloud-first-tech/swao:enterprise-latest .
+#   docker run --rm -v $(pwd):/workspace -v /path/to/licence.json:/licence.json \
+#              ghcr.io/accenture-cloud-first-tech/swao:enterprise-latest swao --version
+#
+# Licence file: mount via `-v licence.json:/licence.json`. See ADR-0056 OQ-097-04.
+
+# Stage 1: install the workspace, build TypeScript, emit the enterprise bundle.
+FROM node:22-alpine AS builder
+WORKDIR /repo
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+RUN npm install -g pnpm@11 typescript@5
+# node-pty requires python3 + build tools (make, g++) to compile its native
+# binding via node-gyp. alpine ships none of these by default.
+RUN apk add --no-cache python3 make g++
+# Copy the whole swao/ build context (node_modules + dist excluded via
+# .dockerignore; pnpm install + the build regenerate them).
+COPY . .
+# Premium packages live in swao-premium/ (sibling to swao/ in the private monorepo).
+# Mounted via the `swao-premium` named build context (set by CI via --build-context).
+# The workspace glob `../swao-premium/packages/@swao/*` resolves from /repo/ to
+# /swao-premium/, matching the packages copied here -- required for --frozen-lockfile.
+COPY --from=swao-premium . /swao-premium/
+RUN pnpm install --frozen-lockfile
+RUN cd packages/swao && pnpm run build \
+ && pnpm run build:bundle
+
+# Stage 2: runtime. Carry the built workspace (node_modules + dist) so the
+# bundle's externals + dynamic requires resolve; add the git/ssh prerequisites.
+FROM node:22-alpine AS runtime
+WORKDIR /workspace
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV SWAO_BINARY_TIER=enterprise
+# Runtime prerequisites:
+#   git             -- `swao assess` shells out to `git clone` for source ingestion
+#   openssh-client  -- the SSH-key clone path alongside HTTPS+PAT
+#   ca-certificates -- HTTPS clone trust store (alpine ships it bare)
+RUN apk add --no-cache git openssh-client ca-certificates
+COPY --from=builder /repo /repo
+
+# OCI labels -- consumed by ghcr.io UI, image inspectors.
+LABEL org.opencontainers.image.title="SWAO Enterprise" \
+      org.opencontainers.image.description="SWAO -- Sovereign Workload Assessment and Onboarding (Enterprise Edition, proprietary)" \
+      org.opencontainers.image.vendor="Accenture" \
+      org.opencontainers.image.licenses="Proprietary" \
+      org.opencontainers.image.source="https://github.com/Accenture/SWAO"
+
+# /workspace is the operator's bind-mounted portfolio; SWAO reads + writes it.
+ENTRYPOINT ["node", "/repo/packages/swao/dist/bundle.cjs"]

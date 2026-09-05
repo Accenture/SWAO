@@ -1,5 +1,5 @@
-name: Community Compliance Framework
-description: Propose or contribute a new compliance framework
+name: community framework
+description: Propose or contribute a new community framework
 labels: [community-framework]
 body:
   - type: markdown
@@ -38,8 +38,8 @@ body:
     attributes:
       label: Are you proposing to contribute the framework YAML yourself?
       options:
-        - "Yes -- I will open a pull request with framework-meta.yaml + controls.yaml"
-        - "No -- I am requesting that the maintainers add it"
+        - "Yes - I will open a pull request with framework-meta.yaml + controls.yaml"
+        - "No - I am requesting that the maintainers add it"
     validations:
       required: true
 

@@ -10,7 +10,7 @@ SWAO wird in drei Stufen ausgeliefert -- Community, Consultant und Enterprise --
 |---|---|---|---|
 | Kernassessment (Static-, Compliance-, Context-Pass) | Ja | Ja | Ja |
 | LLM-Pass (dynamische Analyse) | Ja | Ja | Ja |
-| PDF-Berichtgenerierung | Ja | Ja | Ja |
+| PDF-Berichtgenerierung | Nein | Ja | Ja |
 | Berichtsgalerie + Veröffentlichung | Nein | Ja | Ja |
 | Power BI-Exportpaket | Nein | Ja | Ja |
 | Benutzerdefinierte Compliance-Frameworks | Nein | Ja | Ja |
@@ -107,18 +107,18 @@ Die Community-Edition läuft unbegrenzt und erfordert keine Erneürung.
 
 Die aktivierte Lizenz wird lokal gespeichert unter:
 
-- **Linux / macOS:** `~/.swao/licence.json`
-- **Windows:** `%APPDATA%\swao\licence.json`
+- **Linux / macOS:** `~/.swao-license.json`
+- **Windows:** `%USERPROFILE%\.swao-license.json`
 
-Diese Datei nicht manüll bearbeiten. Bei Beschädigung löschen und neu aktivieren.
+Diese Datei nicht manuell bearbeiten. Bei Beschädigung löschen und neu aktivieren.
 
 ```bash
 # Linux/macOS
-rm ~/.swao/licence.json
+rm ~/.swao-license.json
 swao license activate <key>
 
 # Windows (PowerShell)
-Remove-Item "$env:APPDATA\swao\licence.json"
+Remove-Item "$env:USERPROFILE\.swao-license.json"
 swao license activate <key>
 ```
 

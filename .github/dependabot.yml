@@ -1,15 +1,63 @@
 version: 2
 updates:
-  - package-ecosystem: npm
+  # Keep GitHub Actions used in our workflows up to date.
+  - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
-      time: "06:00"
+      time: "07:00"
       timezone: Europe/Berlin
-    labels:
-      - dependencies
     open-pull-requests-limit: 5
+    labels:
+      - chore
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: chore(deps)
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /packages/swao
+    # Fixture packages in src/passes/fixtures/source/ simulate client source code
+    # for unit tests. They are NEVER installed or executed; ignore CVE alerts on them.
+    # See issue #0524 for tracking and eventual fixture isolation solution.
+    ignore:
+      - dependency-name: "express"
+        versions: [">=0"]
+      - dependency-name: "@nestjs/core"
+        versions: [">=0"]
+      - dependency-name: "@nestjs/common"
+        versions: [">=0"]
+      - dependency-name: "@angular/core"
+        versions: [">=0"]
+      - dependency-name: "prisma"
+        versions: [">=0"]
+      - dependency-name: "@prisma/client"
+        versions: [">=0"]
+      - dependency-name: "redis"
+        versions: [">=0"]
+      - dependency-name: "bull"
+        versions: [">=0"]
+      - dependency-name: "alphavantage"
+        versions: [">=0"]
+      - dependency-name: "jsonwebtoken"
+        versions: [">=0"]
+      - dependency-name: "@aws-sdk/client-comprehend-medical"
+        versions: [">=0"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    labels:
+      - chore
+      - dependencies
+      - npm
+    commit-message:
+      prefix: chore(deps)
+      include: scope
     groups:
       typescript-toolchain:
         patterns:
@@ -24,3 +72,11 @@ updates:
           - "ink-*"
           - "react"
           - "@types/react"
+      patch-and-minor-prod:
+        applies-to: version-updates
+        update-types: [patch, minor]
+        dependency-type: production
+      patch-and-minor-dev:
+        applies-to: version-updates
+        update-types: [patch, minor]
+        dependency-type: development

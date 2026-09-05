@@ -14,7 +14,7 @@ workspace:
   schema_version: "1.3"       # must match the version expected by the installed binary
 
 llm:
-  provider: anthropic         # anthropic | ollama | openai | stub
+  provider: anthropic         # anthropic | ollama | openai
   model: claude-3-5-sonnet-20241022   # provider-specific model id (optional; defaults apply)
   base_url: ~                 # override endpoint (used for ollama; ~ = default)
 

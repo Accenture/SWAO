@@ -9,7 +9,7 @@ Der **Workspace-Setup-Assistent** startet bei Auswahl von Option 1 im SWAO-Haupt
 | Workspace-Name | Erstellt die Engagement-Ordnerstruktur unter Ihrem gewählten Stammverzeichnis |
 | Anwendungsname | Registriert den zu bewertenden Workload |
 | Compliance-Rahmenwerke | Wählt aktive Rahmenwerke aus (DSGVO vorausgewählt; 14 Community-Rahmenwerke verfügbar) |
-| LLM-Anbieter | Konfiguriert den KI-Anbieter: Anthropic, OpenAI, Ollama oder deterministischer Stub |
+| LLM-Anbieter | Konfiguriert den KI-Anbieter: Anthropic, OpenAI, Ollama |
 | Zugangsdaten | Speichert API-Schlüssel und Vault-Referenzen über `swao credential set` |
 
 ## CLI-Äquivalent

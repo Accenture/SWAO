@@ -20,21 +20,40 @@
 FROM node:22-alpine AS builder
 WORKDIR /repo
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN npm install -g pnpm@10
+RUN npm install -g pnpm@11
 # node-pty requires python3 + build tools (make, g++) to compile its native
 # binding via node-gyp. alpine ships none of these by default.
 RUN apk add --no-cache python3 make g++
 COPY . .
 # Remove swao-premium workspace glob -- premium packages are not present in the
 # Community build context (public Accenture/SWAO checkout, ADR-0058 isolation).
-RUN sed -i '/swao-premium/d' pnpm-workspace.yaml
+# Also strip the 5 premium workspace:* dep refs from packages/swao/package.json
+# so pnpm install does not fail with ERR_PNPM_WORKSPACE_PKG_NOT_FOUND.
+RUN sed -i '/swao-premium/d' pnpm-workspace.yaml && \
+    node -e " \
+      const fs=require('fs'); \
+      const p=JSON.parse(fs.readFileSync('./packages/swao/package.json','utf8')); \
+      const pm=['@swao/module-challenge','@swao/module-html-portal','@swao/module-pdf-report','@swao/module-portfolio','@swao/module-terraform']; \
+      pm.forEach(m=>{delete p.dependencies[m];if(p.devDependencies)delete p.devDependencies[m];}); \
+      fs.writeFileSync('./packages/swao/package.json',JSON.stringify(p,null,2)+'\n'); \
+    " && \
+    node -e " \
+      const fs=require('fs'); \
+      const t=JSON.parse(fs.readFileSync('./packages/swao/tsconfig.json','utf8')); \
+      t.references=(t.references||[]).filter(r=>!r.path.includes('swao-premium')); \
+      fs.writeFileSync('./packages/swao/tsconfig.json',JSON.stringify(t,null,2)+'\n'); \
+    "
 RUN pnpm install
-# Build TypeScript then run the community-tier bundle (esbuild, no pkg).
-# build-community.mjs --no-pkg copies runtime assets (controls, community-
-# frameworks, powerbi templates, publication assets, pass fixtures) and
-# emits dist/bundle-community.cjs. Premium framework data is excluded.
-RUN pnpm --filter @swao/swao run build \
- && cd packages/swao \
+# Stub-out the 5 premium modules so tsc can resolve their imports without
+# the packages present. Each export used in source files is declared as `any`
+# so tsc type-checks cleanly. The community bundle entry (src/tiers/community.ts)
+# never calls them at runtime.
+RUN node -e 'const fs=require("fs");const c=["declare module \"@swao/module-portfolio\" {","  export const buildSpawnRunForApp: any;","  export const runPortfolio: any;","  export const formatPortfolioResult: any;","  export const PortfolioScreen: any;","  export type PortfolioHostDeps = any;","  export type PortfolioRunDeps = any;","  export type PortfolioResult = any;","}","declare module \"@swao/module-pdf-report\" {","  export const renderTextReportToPdf: any;","  export const renderLlmComparisonToPdf: any;","  export type RenderPdfArgs = any;","  export type LlmPdfArgs = any;","}","declare module \"@swao/module-html-portal\" {","  export const buildPortalSite: any;","}","declare module \"@swao/module-challenge\" {","  export const registerChallenge: any;","  export const ChallengeScreen: any;","}","declare module \"@swao/module-terraform\" {","  export const registerGenerateTf: any;","  export const GenerateTfScreen: any;","}"].join("\n")+"\n";fs.writeFileSync("./packages/swao/src/community-build-stubs.d.ts",c);'
+# Explicitly add the workspace root .bin to PATH so tsc is found when the
+# build script runs inside packages/swao (pnpm virtual store does not create
+# packages/swao/node_modules/.bin on Alpine).
+ENV PATH="/repo/node_modules/.bin:${PATH}"
+RUN cd packages/swao && pnpm run build \
  && node scripts/build-community.mjs --no-pkg
 
 # Stage 2: runtime.

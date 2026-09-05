@@ -1,7 +1,7 @@
 # How SWAO Works
 
 SWAO analyses a cloud application and produces an auditor-grade assessment report
-in a single command -- or through the guided terminal interface. No external services,
+in a single command - or through the guided terminal interface. No external services,
 no data uploads, no call-home.
 
 ---
@@ -31,19 +31,19 @@ Community  v0.11.2
 
 Use the arrow keys or type the number to navigate.
 
-> See also: [Sample Gallery -- TUI Main Menu](/samples/#sample-10)
+> See also: [Sample Gallery - TUI Main Menu](/samples/#sample-10)
 
 ### Setup Wizard
 
 If this is your first time, start here. The wizard asks:
 
-1. **Workspace name** -- a short identifier for the engagement folder.
-2. **Application name** -- the workload you are assessing.
-3. **Compliance frameworks** -- GDPR is pre-selected. Eleven community frameworks are
+1. **Workspace name** - a short identifier for the engagement folder.
+2. **Application name** - the workload you are assessing.
+3. **Community frameworks** - GDPR is pre-selected. Eleven community frameworks are
    available (GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2,
    LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, PCI-DSS v4, SAMA CSF v1).
    Add more at any time via `swao framework install`.
-4. **LLM provider** -- Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
+4. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
    stub for offline use.
 
 The wizard creates a ready-to-use workspace folder on disk.
@@ -63,7 +63,7 @@ is healthy. Each probe reports `ok` or a specific action to take:
 | Traceability | Audit-grade signal fields enabled |
 | BI export bundle | Previous export integrity |
 
-> See also: [Sample Gallery -- Health Check](/samples/#sample-12)
+> See also: [Sample Gallery - Health Check](/samples/#sample-12)
 
 ### Run Assessment
 
@@ -115,14 +115,14 @@ any browser, email to a client, or use offline in an air-gapped environment.
 
 The publication includes:
 
-- **Executive view** -- 7R verdict, coverage score, top risks in plain language.
-- **Technical view** -- all signals with derivation, evidence links, and pass breakdowns.
-- **Compliance view** -- per-framework control table with outcome and rationale.
-- **Auditor view** -- per-control audit record: outcome, rationale, evidence, assessor,
+- **Executive view** - 7R verdict, coverage score, top risks in plain language.
+- **Technical view** - all signals with derivation, evidence links, and pass breakdowns.
+- **Compliance view** - per-framework control table with outcome and rationale.
+- **Auditor view** - per-control audit record: outcome, rationale, evidence, assessor,
   timestamp. Filterable by framework and verdict.
-- **Evidence gallery** -- screenshots and artefacts from the assessment, embedded for
+- **Evidence gallery** - screenshots and artefacts from the assessment, embedded for
   offline delivery.
-- **Run history** -- duration, LLM cost, files assessed, per-pass breakdown.
+- **Run history** - duration, LLM cost, files assessed, per-pass breakdown.
 
 The HTML file contains everything. No server, no internet connection, no account needed
 to open it.
@@ -134,7 +134,7 @@ swao publish --app my-app
 # opens: wsp/publications/latest/index.html
 ```
 
-> See also: [Sample Gallery -- Publish HTML TUI](/samples/#sample-14) and [PowerBI dashboard screenshots](/samples/#sample-04)
+> See also: [Sample Gallery - Publish HTML TUI](/samples/#sample-14) and [PowerBI dashboard screenshots](/samples/#sample-04)
 
 ---
 
@@ -142,7 +142,7 @@ swao publish --app my-app
 
 SWAO can connect to **Claude AI** via the **Model Context Protocol (MCP)**. Once
 connected, you can ask Claude questions about your assessment findings in natural
-language -- without leaving your conversation.
+language - without leaving your conversation.
 
 Example questions you can ask Claude after connecting:
 
@@ -153,14 +153,14 @@ Example questions you can ask Claude after connecting:
 
 ### How to connect
 
-1. Run `swao health-check` (or select **2. Health Check** in the TUI) -- the MCP probe shows the server path.
+1. Run `swao health-check` (or select **2. Health Check** in the TUI) - the MCP probe shows the server path.
 2. In Claude Desktop: Settings > Developer > MCP Servers > Add. Paste the path.
 3. Restart Claude Desktop.
 
-> See also: [Sample Gallery -- MCP connector setup](/samples/#sample-15) and [MCP challenge in Claude](/samples/#sample-16)
+> See also: [Sample Gallery - MCP connector setup](/samples/#sample-15) and [MCP challenge in Claude](/samples/#sample-16)
 
 SWAO starts the MCP server automatically when Claude connects. All assessment data
-stays on your machine -- MCP only exposes a query interface, not the raw files.
+stays on your machine - MCP only exposes a query interface, not the raw files.
 
 Available tools via MCP:
 

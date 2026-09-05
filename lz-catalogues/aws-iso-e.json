@@ -3,14 +3,13 @@
     "schema_version": "0.1",
     "name": "AWS ISOE Europe service catalogue (classified)",
     "provider": "aws-iso-e",
-    "last_updated": "2026-08-05",
+    "last_updated": "2026-09-04",
     "source": {
       "mode": "botocore-endpoints",
-      "tool": "refresh-lz-catalogue-aws.mjs",
-      "operator": "SWAO team",
-      "source_note": "Service list from botocore endpoints (high confidence). Sovereignty facts hand-authored: aws-iso-e is an AWS isolated partition for classified/government workloads with minimal public documentation; no EU operating entity is publicly documented (#1382)."
+      "tool": "swao lz catalogue update",
+      "operator": "SWAO operator"
     },
-    "confidence": "low",
+    "confidence": "high",
     "regions_count": 1
   },
   "regions": [
@@ -20,12 +19,11 @@
       "country": "EU",
       "sovereignty": {
         "residency_country": "EU",
-        "operator_jurisdiction": "US-entity",
-        "extraterritorial_exposure": [
-          "us_cloud_act",
-          "fisa_702"
-        ],
-        "certifications": []
+        "operator_jurisdiction": "EU-entity",
+        "extraterritorial_exposure": [],
+        "certifications": [
+          "C5"
+        ]
       },
       "services": [
         {
@@ -36,7 +34,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -49,7 +47,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -62,7 +60,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -75,7 +73,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -86,7 +84,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -100,7 +98,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -113,7 +111,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -124,7 +122,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -135,7 +133,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -146,7 +144,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -157,7 +155,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -170,7 +168,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -181,7 +179,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -194,7 +192,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -205,7 +203,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -216,7 +214,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -229,7 +227,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -242,7 +240,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -253,7 +251,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -266,7 +264,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -277,7 +275,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -290,7 +288,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -301,7 +299,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -314,7 +312,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -325,7 +323,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -338,7 +336,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -349,7 +347,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -363,7 +361,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -374,7 +372,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -388,7 +386,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -401,7 +399,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -414,7 +412,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -428,7 +426,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -441,7 +439,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -454,7 +452,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -467,7 +465,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -480,7 +478,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -493,7 +491,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -504,7 +502,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -517,7 +515,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -530,7 +528,18 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "health",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -543,7 +552,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -558,7 +567,7 @@
             "byok",
             "hyok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -569,7 +578,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -582,7 +591,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -593,7 +602,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -604,7 +613,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -617,7 +626,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -628,7 +637,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -639,7 +648,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -650,7 +659,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -661,7 +670,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -672,7 +681,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -683,7 +692,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -698,7 +707,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -711,7 +720,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -724,7 +733,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -737,7 +746,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -748,7 +757,18 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
+          "source": "botocore-endpoints"
+        },
+        {
+          "code": "rolesanywhere",
+          "status": "ga",
+          "fulfills": [],
+          "capabilities": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -759,7 +779,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -772,7 +792,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -786,7 +806,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -797,7 +817,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -808,7 +828,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -822,7 +842,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -833,7 +853,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -844,7 +864,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -855,7 +875,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -868,7 +888,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -881,7 +901,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -894,7 +914,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -905,7 +925,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -919,7 +939,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -930,7 +950,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -941,7 +961,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -952,7 +972,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -963,7 +983,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -974,7 +994,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
@@ -985,27 +1005,29 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-01",
+          "last_verified": "2026-09-04",
           "source": "botocore-endpoints"
         },
         {
           "code": "Amazon EBS",
           "name": "Amazon Elastic Block Store",
-          "status": "ga",
+          "status": "retired",
           "fulfills": [
             "block_storage"
           ],
-          "capabilities": []
+          "capabilities": [],
+          "retired_at": "2026-09-02"
         },
         {
           "code": "Amazon VPC",
           "name": "Amazon Virtual Private Cloud",
-          "status": "ga",
+          "status": "retired",
           "fulfills": [
             "networking",
             "vpc_networking"
           ],
-          "capabilities": []
+          "capabilities": [],
+          "retired_at": "2026-09-02"
         }
       ]
     }

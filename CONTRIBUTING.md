@@ -1,25 +1,8 @@
-```
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     Contributing Guide
-//
-//     Community Edition  -  Apache 2.0
-//
-//     Website       :  https://steady-echo-yp4z.here.now/
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
-```
-
 # Contributing to SWAO
 
-Thank you for your interest in contributing to SWAO -- Sovereign Workload
+Thank you for your interest in contributing to SWAO - Sovereign Workload
 Assessment and Onboarding. This document explains how to contribute code,
-compliance frameworks, and provider drivers.
+community frameworks, and provider drivers.
 
 ## Developer Certificate of Origin
 
@@ -88,7 +71,7 @@ Valid scopes include: `analyzer/static`, `analyzer/dynamic`, `analyzer/complianc
 ## Pull Request Guidelines
 
 1. Open an issue first for non-trivial changes to discuss the approach.
-2. Keep PRs focused -- one feature or fix per PR.
+2. Keep PRs focused - one feature or fix per PR.
 3. Include tests for new behaviour. The `pnpm test` suite must pass.
 4. Run `pnpm exec tsc --noEmit` and `pnpm lint` before submitting.
 5. Update documentation when changing user-facing behaviour.
@@ -101,9 +84,9 @@ https://github.com/Accenture/SWAO/discussions.
 For questions about Consultant or Enterprise licensing, contact:
 swao-tool@accenture.com
 
-## Contributing Compliance Frameworks
+## Contributing Community Frameworks
 
-Community compliance frameworks are the fastest way to extend SWAO's
+community frameworks are the fastest way to extend SWAO's
 assessment coverage. A framework is a pair of files placed in
 `packages/@swao/community-frameworks/frameworks/<slug>/`.
 
@@ -141,7 +124,7 @@ controls:
       Evidence: check for IAM configuration files, RBAC definitions...
 ```
 
-Controls use paraphrased language -- do not reproduce verbatim text from
+Controls use paraphrased language - do not reproduce verbatim text from
 copyrighted standards documents. Paraphrasing is acceptable fair use;
 verbatim reproduction is not.
 

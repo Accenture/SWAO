@@ -38,11 +38,11 @@ ready -- `ingestion/`, `wsp/`, and `.swao.yml`.
 
 ---
 
-### `swao health-check` -- all 11 probes {#sample-02}
+### `swao health-check` -- all seven probes {#sample-02}
 
-![swao health-check with all 11 probes passing](./02-cli-doctor.png)
+![swao health-check with all seven probes passing](./02-cli-doctor.png)
 
-Output of `swao health-check` against a fully-configured Enterprise workspace. All 11 probes
+Output of `swao health-check` against a fully-configured Enterprise workspace. All seven probes
 report their status:
 
 | Probe | Result |
@@ -216,9 +216,9 @@ provider, credentials, and MCP connector in a single guided flow.
 
 ### Health Check -- TUI view {#sample-12}
 
-![SWAO TUI Health Check screen with 11 probes](./12-tui-health-check.png)
+![SWAO TUI Health Check screen with seven probes](./12-tui-health-check.png)
 
-The Health Check screen (menu item 2) with all 11 probes listed. Seven probes show
+The Health Check screen (menu item 2) with all seven probes listed. Seven probes show
 **OK** in green; Scope and Audit ingestion show **INFO** in cyan; Prerequisites shows
 **INFO**. The guidance box at the bottom describes the selected probe in detail --
 press `Ctrl+G` to collapse it. "All probes passed." confirms the workspace is
@@ -236,10 +236,8 @@ active and immediately usable; three are coming soon:
 | Key | Type | Status |
 |---|---|---|
 | [1] | Application Assessment | Active -- `swao assess`, static + LLM pass suite |
-| [2] | Audit Assessment | Coming soon -- checklist + evidence + verdict |
 | [3] | Landing Zone Assessment | Active -- `swao assess --type landing-zone`, CSP fit/gap report |
 | [4] | LLM Assessment | Active -- LLM Assessment -- provider sovereignty benchmarking |
-| [5] | Hybrid Assessment | Coming soon -- source + human evidence combined |
 
 The guidance box describes the highlighted type in full. Application Assessment is the
 primary entry point: it runs up to 14 analysis passes across inventory, SBOM, cryptography,

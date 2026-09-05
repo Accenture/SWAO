@@ -24,7 +24,7 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [1.0.0] -- 2026-09-04
+## [1.0.0] - 2026-09-04
 
 First public stable release of SWAO Community Edition.
 
@@ -45,7 +45,7 @@ produce actionable migration plans and compliance evidence.
   security scanning (credential detection, entropy analysis, SAST integration).
 - Coverage score reporting: Assessment Coverage, Cloud-Native Score, and Portability
   Score computed per application and aggregated across a portfolio.
-- 11 community compliance frameworks: GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz
+- 11 community frameworks: GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz
   2023, HIPAA/NIST SP 800-66r2, LLM Selection, NCA CCC 2024, NCA ECC 2024,
   PCI-DSS v4, SAMA CSF v1.
 - Landing zone catalogue assessment against AWS, Azure, GCP, StackIT, and AWS
@@ -53,7 +53,7 @@ produce actionable migration plans and compliance evidence.
 
 **Outputs**
 
-- Workload Sovereignty Profile (WSP) -- structured YAML assessment record per
+- Workload Sovereignty Profile (WSP) - structured YAML assessment record per
   application run.
 - HTML publication with interactive coverage tiles, migration rationale prose,
   severity breakdown chart, and per-finding tables.
@@ -62,12 +62,12 @@ produce actionable migration plans and compliance evidence.
 
 **CLI and TUI**
 
-- `swao assess` -- run a full assessment against an application workspace.
-- `swao report` -- generate reports from an existing WSP.
-- `swao publish` -- produce the HTML publication from a WSP.
-- `swao health-check` -- verify environment readiness (LLM provider, Playwright,
-  compliance frameworks, licence).
-- `swao init` -- scaffold a new SWAO workspace interactively.
+- `swao assess` - run a full assessment against an application workspace.
+- `swao report` - generate reports from an existing WSP.
+- `swao publish` - produce the HTML publication from a WSP.
+- `swao health-check` - verify environment readiness (LLM provider, Playwright,
+  community frameworks, licence).
+- `swao init` - scaffold a new SWAO workspace interactively.
 - Interactive TUI menu (`swao menu`) for guided operation.
 
 **Platform**
@@ -78,7 +78,7 @@ produce actionable migration plans and compliance evidence.
 
 ### Added (OSS launch)
 
-- 11 community compliance frameworks available at `community-frameworks/` for
+- 11 community frameworks available at `community-frameworks/` for
   standalone download and customisation.
 - Structured GitHub Issue forms: bug report, feature request, community framework,
   provider driver.
@@ -98,7 +98,7 @@ produce actionable migration plans and compliance evidence.
 
 ---
 
-## [0.12.3] -- 2026-09-02
+## [0.12.3] - 2026-09-02
 
 ### Fixed
 
@@ -119,7 +119,7 @@ produce actionable migration plans and compliance evidence.
 - `LicenseStatusLine` "previous licence (inactive)" label for manually-removed keys; avoids implying natural expiry (#2607)
 - `SupportBundleScreen` replaces text spinner with `ProgressBar` for consistency with other long-running screens (#2610)
 
-## [0.12.2] -- 2026-09-01
+## [0.12.2] - 2026-09-01
 
 ### Fixed
 
@@ -137,7 +137,7 @@ produce actionable migration plans and compliance evidence.
 - MainMenu tier badges visible for Community / Consultant / Enterprise (#2560)
 - LicenseScreen email placeholder is now static; PII no longer leaks into NDJSON events (#2561)
 
-## [0.12.1] -- 2026-08-29
+## [0.12.1] - 2026-08-29
 
 ### Fixed
 

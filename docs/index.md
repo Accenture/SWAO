@@ -20,7 +20,7 @@ features:
   - title: Three assessment types
     details: Application Assessment, Landing Zone Assessment, and LLM Assessment -- all available now with no additional configuration.
   - title: Bring your own LLM
-    details: Anthropic Claude, OpenAI, Ollama, or a deterministic stub for offline use. LLM access is included in every edition.
+    details: Anthropic Claude, OpenAI, Ollama, or run with `--skip-llm` to skip LLM passes for fully offline assessments. LLM access is included in every edition.
   - title: Audit-grade traceability
     details: Every signal carries outcome, derivation, assessor identity, false-positive consideration, and timestamp. Defensible against external auditors.
   - title: HTML publication

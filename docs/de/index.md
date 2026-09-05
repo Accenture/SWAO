@@ -20,7 +20,7 @@ features:
   - title: Drei Bewertungstypen
     details: Anwendungs-, Landing-Zone- und LLM-Bewertung -- alle jetzt verfügbar ohne zusätzliche Konfiguration.
   - title: Eigenes LLM mitbringen
-    details: Anthropic Claude, OpenAI, Ollama oder ein deterministischer Stub für den Offline-Betrieb. LLM-Zugriff ist in jeder Edition enthalten.
+    details: Anthropic Claude, OpenAI, Ollama, oder mit `--skip-llm` starten, um LLM-Passes für vollständig offline Assessments zu überspringen. LLM-Zugriff ist in jeder Edition enthalten.
   - title: Audit-konforme Nachvollziehbarkeit
     details: Jedes Signal enthält Ergebnis, Ableitung, Bewerteridentität, Falsch-Positiv-Betrachtung und Zeitstempel. Vertretbar gegenüber externen Prüfern.
   - title: HTML-Veröffentlichung

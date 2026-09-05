@@ -8,8 +8,8 @@ The **Workspace Setup** wizard runs when you select option 1 from the SWAO main 
 |---|---|
 | Workspace name | Creates the engagement folder structure under your chosen root |
 | Application name | Registers the workload to be assessed |
-| Compliance frameworks | Selects active frameworks (GDPR pre-selected; 14 community frameworks available) |
-| LLM provider | Configures the AI provider: Anthropic, OpenAI, Ollama, or deterministic stub |
+| community frameworks | Selects active frameworks (GDPR pre-selected; 14 community frameworks available) |
+| LLM provider | Configures the AI provider: Anthropic, OpenAI, Ollama |
 | Credentials | Stores API keys and vault references via `swao credential set` |
 
 ## CLI equivalent

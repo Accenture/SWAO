@@ -1,20 +1,3 @@
-```
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     Security Policy
-//
-//     Community Edition  -  Apache 2.0
-//
-//     Website       :  https://steady-echo-yp4z.here.now/
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
-```
-
 # Security Policy
 
 ## Supported versions
@@ -32,7 +15,7 @@ Only the latest release receives security fixes. Older versions are not patched.
 
 **Do not report security vulnerabilities via public GitHub issues.**
 
-### Preferred channel -- GitHub Security Advisories (confidential)
+### Preferred channel - GitHub Security Advisories (confidential)
 
 Open a private advisory at:
 https://github.com/Accenture/SWAO/security/advisories/new
@@ -41,7 +24,7 @@ This creates a private channel visible only to repository maintainers. We prefer
 this channel because it keeps the report confidential until a fix is ready and
 allows coordinated disclosure.
 
-### Alternative channel -- email
+### Alternative channel - email
 
 If you cannot use GitHub Security Advisories, send a report to:
 swao-tool@accenture.com
@@ -136,7 +119,7 @@ SWAO is designed for sovereign and regulated environments. Key security properti
 
 Security fixes are announced via:
 
-- **GitHub Releases** -- release notes indicate when a release addresses a security issue
-- **GitHub Discussions / Announcements** -- significant vulnerabilities announced in the
+- **GitHub Releases** - release notes indicate when a release addresses a security issue
+- **GitHub Discussions / Announcements** - significant vulnerabilities announced in the
   Announcements category
-- **GitHub Security Advisories** -- published at fix time with CVE if applicable
+- **GitHub Security Advisories** - published at fix time with CVE if applicable

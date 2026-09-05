@@ -100,7 +100,7 @@ If Windows SmartScreen shows "Windows protected your PC":
 2. Click **Run anyway**.
 
 This is expected for binaries that are not yet in Microsoft's reputation database.
-Code signing (planned post-PoC) will eliminate this dialog.
+Code signing for future releases will eliminate this dialog.
 
 ---
 

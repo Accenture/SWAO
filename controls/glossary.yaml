@@ -1,4 +1,4 @@
-# SWAO Glossary -- key terms used in assessment reports
+# SWAO Glossary - key terms used in assessment reports
 # Format: list of {term, definition, category}
 terms:
   - term: Signal
@@ -18,7 +18,7 @@ terms:
 
   - term: Compliance Control
     definition: >
-      A specific requirement from a compliance framework (e.g. GDPR Art. 32, ISO 27001 A.10.1).
+      A specific requirement from a community framework (e.g. GDPR Art. 32, ISO 27001 A.10.1).
       Each control is evaluated as pass, partial, or fail based on the signals detected.
     category: compliance
 
@@ -71,14 +71,14 @@ terms:
 
   - term: WSP
     definition: >
-      Workspace Protocol -- the structured YAML schema that records all assessment inputs,
+      Workspace Protocol - the structured YAML schema that records all assessment inputs,
       pass outputs, signals, evidence, compliance results, and run metadata. The WSP is the
       source of truth for all downstream outputs (BI export, HTML report, MCP).
     category: platform
 
   - term: MCP
     definition: >
-      Model Context Protocol -- an open standard that lets a desktop AI client (e.g. Claude
+      Model Context Protocol - an open standard that lets a desktop AI client (e.g. Claude
       Desktop) query SWAO findings interactively. SWAO registers itself as an MCP server so
       operators can ask questions like "which apps fail GDPR Art. 32?" directly in the AI client.
     category: platform
@@ -99,7 +99,7 @@ terms:
 
   - term: LZR
     definition: >
-      Landing Zone Readiness -- an assessment of whether the application and its cloud
+      Landing Zone Readiness - an assessment of whether the application and its cloud
       infrastructure meet the target sovereign landing zone requirements. Produces an
       overall readiness verdict plus per-check results.
     category: platform

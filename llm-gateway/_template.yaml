@@ -19,7 +19,7 @@ connector:
   id: my-platform
   name: My LLM Platform
   description: One line about the platform.
-  # Wire protocol: openai-chat | anthropic-messages | ollama
+  # Wire protocol: openai-chat | anthropic-messages | ollama | bedrock
   protocol: openai-chat
   base_url: https://llm.example.internal
   # Optional path between base_url and the protocol route (vLLM routing).

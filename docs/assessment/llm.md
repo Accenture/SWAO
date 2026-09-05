@@ -223,6 +223,6 @@ This report evaluates several language models against data-residency, GDPR, and 
 
 ## Further reading
 
-- [LLM provider swap](/runbooks/llm-provider-swap) -- change connectors and test connectivity
+- [LLM gateway authoring](/runbooks/llm-gateway-authoring) -- change connectors and test connectivity
 - [Application Assessment](./application) -- required before running LLM Assessment
 - [Licence management](/runbooks/licence-management) -- LLM Assessment is available in all tiers

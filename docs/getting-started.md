@@ -48,7 +48,7 @@ By the end of this guide you will be able to:
 
 SWAO exposes its full assessment engine as an MCP (Model Context Protocol) server.
 When connected, Claude Desktop can run assessments, read signals, ingest evidence,
-and apply overrides through natural-language prompts -- no command line needed.
+and apply overrides through natural-language prompts - no command line needed.
 
 ### Connector setup
 
@@ -92,7 +92,7 @@ if the MCP server already has the correct workspace loaded.
 | Explain LZ choice | `swao lz-explain --app ...` | `Use swao_explain_landing_zone for sovereign-health.` |
 | Run challenge | `swao challenge --app ... --agent compliance` | `Use swao_challenge for sovereign-health, agent: grc-compliance-officer.` |
 | Ingest a document | `swao ingest --app ...` | `Use swao_ingest for sovereign-health. Category: compliance. Filename: dpa.md. Content: [text].` |
-| Override a verdict | `swao feedback add ...` | `Use swao_feedback_add for sovereign-health. Target_type: signal. Target_id: CTX-03. Override_outcome: RISK_ACCEPTED. Rationale: [reason]. Author: you@accenture.com.` |
+| Override a verdict | `swao feedback add ...` | `Use swao_feedback_add for sovereign-health. Target_type: signal. Target_id: CTX-03. Override_outcome: RISK_ACCEPTED. Rationale: [reason]. Author: you@example.com.` |
 | Generate HTML report | `swao publish --app ...` | `Use swao_publish for sovereign-health, mode: html.` |
 | Portfolio summary | `swao portfolio summary` | `Use swao_portfolio_summary at workspace C:\path\to\workspace.` |
 
@@ -113,7 +113,7 @@ first:
 - Does it use any services that are not available in the target cloud?
 - Does it handle personal or regulated data in a way that must change?
 - How long will the migration take and what will it cost?
-- Which compliance frameworks (GDPR, HIPAA, BSI C5) apply and are they met?
+- Which community frameworks (GDPR, HIPAA, BSI C5) apply and are they met?
 - What happens if the migration goes wrong?
 
 Traditionally, answering these questions requires several consultants, several
@@ -125,7 +125,7 @@ difficult to keep consistent with each other.
 SWAO replaces that manual process with a single automated pipeline. It reads
 the application's source code, its dependency list, its infrastructure
 configuration, its incident history, its cloud spend data, and the notes from
-stakeholder workshops -- then produces all seven deliverables simultaneously,
+stakeholder workshops - then produces all seven deliverables simultaneously,
 backed by a single machine-readable artefact called the Workload Sovereignty
 Profile (WSP).
 
@@ -133,14 +133,14 @@ Profile (WSP).
 
 **Sovereign Workload Assessment and Onboarding**
 
-- **Sovereign** -- all client data stays inside the client environment. No
+- **Sovereign** - all client data stays inside the client environment. No
   source code is uploaded to a public service. The tool runs on the client's
   infrastructure or in a client-approved container. Compliance requirements
   are built into the assessment from the start.
-- **Workload** -- one application at a time is the unit of analysis.
-- **Assessment** -- every finding is backed by a traceable source. SWAO does
+- **Workload** - one application at a time is the unit of analysis.
+- **Assessment** - every finding is backed by a traceable source. SWAO does
   not produce opinions; it produces evidence-backed signals.
-- **Onboarding** -- the assessment output feeds directly into cloud
+- **Onboarding** - the assessment output feeds directly into cloud
   provisioning. SWAO generates Terraform templates and a service-catalogue
   entry so the migration plan triggers actual infrastructure, not another
   spreadsheet.
@@ -187,7 +187,7 @@ folders manually.
 A signal is a single finding that SWAO has discovered about the application,
 backed by a specific piece of evidence. Think of it like a note a consultant
 would write after reading the code: "I found an AWS-specific API call at
-line 47 of data-provider.service.ts -- this service is not available in
+line 47 of data-provider.service.ts - this service is not available in
 European sovereign clouds."
 
 Every signal has:
@@ -202,7 +202,7 @@ Signals are the building blocks of the entire assessment. Everything else
 
 ### Pass
 
-A pass is one chapter of the assessment. SWAO runs up to 23 passes, each
+A pass is one chapter of the assessment. SWAO runs up to 14 passes, each
 focused on a different aspect of the application. The passes run in sequence
 because later passes build on what earlier ones found.
 
@@ -322,7 +322,7 @@ SWAO reads the source code but never writes to it and never uploads it.
 
 The `imports/` folder is where you put any data the client has given you.
 SWAO reads these to enrich the assessment with real operational context.
-None of these files are required -- the assessment can run without them --
+None of these files are required - the assessment can run without them --
 but each one improves the quality of the findings.
 
 Common files to add:
@@ -470,15 +470,15 @@ Every signal carries a confidence level:
 | `medium` | SWAO inferred from indirect evidence (e.g. a package name implies a service). Verify before presenting. |
 | `low` | Pattern match only; context evidence is ambiguous. Treat as a hypothesis to investigate. |
 
-Low-confidence signals are not wrong -- they are prompts for human
+Low-confidence signals are not wrong - they are prompts for human
 investigation. When a signal is low-confidence, SWAO flags it as a data gap
 and recommends gathering more context (a workshop, a CMDB entry, a network
 flow export).
 
 ### What to do when a signal surprises you
 
-If a signal appears that seems wrong -- for example, SWAO flags an AWS
-service that the client says they no longer use -- do not delete the signal.
+If a signal appears that seems wrong - for example, SWAO flags an AWS
+service that the client says they no longer use - do not delete the signal.
 Instead:
 
 1. Check the evidence reference in the signal (the file and line number)
@@ -513,7 +513,7 @@ decisions. SWAO assigns one of seven labels:
 | Re-architect | Significant redesign required before migration can begin. |
 
 The label comes with a confidence score (0.0 to 1.0). A confidence below 0.70
-means SWAO does not have enough evidence to be certain -- gather more context
+means SWAO does not have enough evidence to be certain - gather more context
 and re-run.
 
 **What it means for the programme:**
@@ -558,7 +558,7 @@ the programme.
 your application calls do not have a direct sovereign-cloud equivalent.
 The good news is that two of these may be inactive in production. Once
 we confirm that with your team, the score rises to 0.75 and the application
-is in the conditional range -- one service left to resolve, which is
+is in the conditional range - one service left to resolve, which is
 manageable."
 
 ---
@@ -584,7 +584,7 @@ SWAO classifies legacy findings into three tiers:
 - COM/DCOM Windows dependencies (cannot run in a Linux container)
 
 **If no legacy blockers are found:** Record this explicitly. "Legacy-clear"
-is a positive differentiator for a client application -- it means the
+is a positive differentiator for a client application - it means the
 migration is not gated by technology debt.
 
 ---
@@ -635,7 +635,7 @@ SWAO checks eight security rules (PP-R-01 to PP-R-08):
 | PP-R-08 | Secrets are never echoed to logs |
 
 Results are reported as a count of findings by severity (critical, high,
-medium, low). There is no aggregate score -- the severity distribution drives
+medium, low). There is no aggregate score - the severity distribution drives
 the recommendation.
 
 ---
@@ -709,7 +709,7 @@ It means SWAO found at least one blocker that prevents migration. Check the
 risk register in the report for the specific reason. Common reasons: a Tier 1
 legacy dependency, a portability score below 0.50, or a regulatory constraint
 (data that legally cannot leave a specific jurisdiction). The Retain verdict
-is not a dead end -- it is a scoped problem. Work with the client to resolve
+is not a dead end - it is a scoped problem. Work with the client to resolve
 the specific blocker and re-run the assessment.
 
 **Q: A signal has high confidence but the client says it is wrong. What do I do?**

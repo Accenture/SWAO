@@ -23,27 +23,27 @@ Download the latest Community binary from the GitHub Releases page:
 
 | Platform | File to download |
 |---|---|
-| Windows x64 | `swao-community-win.exe` |
-| macOS Apple Silicon (M1/M2/M3) | `swao-community-darwin-arm64` |
-| macOS Intel | `swao-community-darwin-x64` |
+| Windows x64 | `swao-community-win-x64.exe` |
+| macOS Apple Silicon (M1/M2/M3) | `swao-community-macos-arm64` |
+| macOS Intel | `swao-community-macos-x64` |
 | Linux x64 | `swao-community-linux-x64` |
 
-Always verify the download against `SHA256SUMS` (included in the release):
+Always verify the download against `checksums.sha256` (included in the release):
 
 ```bash
 # macOS / Linux
-sha256sum --check SHA256SUMS
+sha256sum --check checksums.sha256
 
 # Windows (PowerShell)
-Get-FileHash swao-community-win.exe -Algorithm SHA256
-# Compare against the value in SHA256SUMS
+Get-FileHash swao-community-win-x64.exe -Algorithm SHA256
+# Compare against the value in checksums.sha256
 ```
 
 ### Windows
 
 ```powershell
 # Rename and add to PATH
-Rename-Item swao-community-win.exe swao.exe
+Rename-Item swao-community-win-x64.exe swao.exe
 # Move to a directory already on your PATH, e.g.:
 Move-Item swao.exe C:\Windows\System32\swao.exe
 
@@ -55,8 +55,8 @@ swao health-check
 
 ```bash
 # Make executable and move to PATH
-chmod +x swao-community-darwin-arm64      # or swao-community-darwin-x64 / swao-community-linux-x64
-mv swao-community-darwin-arm64 /usr/local/bin/swao
+chmod +x swao-community-macos-arm64      # or swao-community-macos-x64 / swao-community-linux-x64
+mv swao-community-macos-arm64 /usr/local/bin/swao
 
 # Verify
 swao health-check

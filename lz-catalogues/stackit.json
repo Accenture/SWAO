@@ -3,7 +3,7 @@
     "schema_version": "0.1",
     "name": "STACKIT service catalogue",
     "provider": "stackit",
-    "last_updated": "2026-07-07",
+    "last_updated": "2026-09-04",
     "source": {
       "mode": "pim-api-stackit",
       "tool": "pim.api.stackit.cloud/v1/skus",
@@ -39,7 +39,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -53,7 +53,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -67,7 +67,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -81,7 +81,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -96,7 +96,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -110,7 +110,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -124,7 +124,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -138,7 +138,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -152,7 +152,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -166,7 +166,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -180,7 +180,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -194,7 +194,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -208,7 +208,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -222,7 +222,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -236,7 +236,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -250,13 +250,25 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "help-center",
+          "name": "Help Center",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
           "code": "intake",
           "name": "Intake",
-          "status": "preview",
+          "status": "ga",
           "capabilities": [],
           "fulfills": [
             "event_streaming"
@@ -264,7 +276,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -278,7 +290,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -294,7 +306,7 @@
             "byok",
             "hyok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -308,7 +320,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -322,7 +334,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -336,7 +348,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -350,7 +362,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -364,7 +376,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -378,7 +390,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -393,7 +405,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -408,7 +420,19 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "opendesk",
+          "name": "openDesk",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -422,13 +446,13 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
           "code": "pipelines",
           "name": "Pipelines",
-          "status": "preview",
+          "status": "ga",
           "capabilities": [],
           "fulfills": [
             "ci_cd"
@@ -436,14 +460,16 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
           "code": "postgresql-flex",
           "name": "PostgreSQL Flex",
           "status": "ga",
-          "capabilities": [],
+          "capabilities": [
+            "pgaudit_supported"
+          ],
           "fulfills": [
             "postgresql"
           ],
@@ -451,8 +477,9 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
-          "source": "pim-api-stackit"
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit",
+          "max_version": 17
         },
         {
           "code": "public-ip-address",
@@ -465,7 +492,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -480,7 +507,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -494,7 +521,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -508,7 +535,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -522,7 +549,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -536,7 +563,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -550,7 +577,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -564,7 +591,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -578,7 +605,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -592,7 +619,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -606,7 +633,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -620,7 +647,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -634,7 +661,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -648,7 +675,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         }
       ]
@@ -677,7 +704,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -691,7 +718,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -706,7 +733,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -720,7 +747,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -734,7 +761,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -748,7 +775,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -762,7 +789,19 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "help-center",
+          "name": "Help Center",
+          "status": "ga",
+          "capabilities": [],
+          "fulfills": [],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -776,7 +815,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -792,7 +831,7 @@
             "byok",
             "hyok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -806,7 +845,35 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "logme",
+          "name": "LogMe",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "log_management"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "mariadb",
+          "name": "MariaDB",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "mariadb"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -820,7 +887,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -834,7 +901,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -849,7 +916,7 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -864,14 +931,30 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "opensearch",
+          "name": "OpenSearch",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "search"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
           "code": "postgresql-flex",
           "name": "PostgreSQL Flex",
           "status": "ga",
-          "capabilities": [],
+          "capabilities": [
+            "pgaudit_supported"
+          ],
           "fulfills": [
             "postgresql"
           ],
@@ -879,8 +962,9 @@
             "provider-managed",
             "byok"
           ],
-          "last_verified": "2026-07-07",
-          "source": "pim-api-stackit"
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit",
+          "max_version": 17
         },
         {
           "code": "public-ip-address",
@@ -893,7 +977,22 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
+          "source": "pim-api-stackit"
+        },
+        {
+          "code": "rabbitmq",
+          "name": "RabbitMQ",
+          "status": "preview",
+          "capabilities": [],
+          "fulfills": [
+            "messaging",
+            "queue"
+          ],
+          "key_custody": [
+            "provider-managed"
+          ],
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -907,7 +1006,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -921,7 +1020,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -935,7 +1034,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -949,7 +1048,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -963,7 +1062,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -977,7 +1076,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -991,7 +1090,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         },
         {
@@ -1005,7 +1104,7 @@
           "key_custody": [
             "provider-managed"
           ],
-          "last_verified": "2026-07-07",
+          "last_verified": "2026-09-04",
           "source": "pim-api-stackit"
         }
       ]

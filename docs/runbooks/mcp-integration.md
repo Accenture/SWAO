@@ -4,8 +4,6 @@ status: accepted
 purpose: Step-by-step guide to registering the SWAO MCP server in Claude Desktop and other MCP-compatible clients, so consultants can run assessments, generate reports, and run challenge sessions directly from an AI chat interface.
 authors: [Accenture/SWAO]
 related:
-  - packages/swao/src/mcp/server.ts
-  - packages/swao/src/commands/mcp.ts
 last_updated: 2026-04-29
 ---
 
@@ -431,8 +429,7 @@ No output means the file is valid.
 
 ## 8. Rebuilding after source changes (source mode only)
 
-Any change to `packages/swao/src/mcp/server.ts` or files it imports requires
-a rebuild:
+Any change to the MCP server or files it imports requires a rebuild:
 
 ```bash
 cd packages/swao

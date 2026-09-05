@@ -122,7 +122,7 @@ volumes:
 
 ## 6. Air-Gap-Betrieb mit --skip-llm
 
-In Umgebungen ohne Internet-Zugang kann `--skip-llm` verwendet werden, um Assessments mit einem deterministischen Stub-LLM durchzuführen. Ein API-Key ist nicht erforderlich.
+Verwenden Sie `--skip-llm`, um LLM-Passes vollständig zu überspringen -- hilfreich für CI-Pipelines oder Umgebungen ohne LLM-Zugang.
 
 ```bash
 docker run --rm \
@@ -132,7 +132,6 @@ docker run --rm \
   assess --app sovereign-health --skip-llm --workspace /workspace --output /output
 ```
 
-Der Stub liefert feste Antworten für jeden LLM-Aufruf. Ausgabedateien werden genauso erstellt wie in einem echten Lauf, was diesen Modus für Pipeline-Tests und Schema-Validierung ohne API-Kosten nützlich macht.
 
 ---
 

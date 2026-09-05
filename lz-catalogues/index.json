@@ -1,23 +1,21 @@
 {
   "schema_version": "0.1",
   "description": "SWAO LZ service-catalogue index (Design 056 Layer A). One JSON per provider; community-bundled point-in-time seeds, hand-editable, refreshed by the premium `swao lz catalogue update` adapters. Sovereignty is stored as facts only (D-LZ-07); verdicts come from installed community frameworks.",
-  "generated_at": "2026-08-11",
+  "generated_at": "2026-09-04",
   "catalogues": [
     {
       "provider": "gcp",
       "file": "gcp.json",
       "name": "GCP service catalogue",
-      "short_description": "Google Cloud Platform",
-      "last_updated": "2026-07-07",
-      "source": "scrape",
+      "last_updated": "2026-09-04",
+      "source": "region-picker-github",
       "confidence": "medium"
     },
     {
       "provider": "aws",
       "file": "aws.json",
       "name": "AWS service catalogue",
-      "short_description": "AWS standard global partitions",
-      "last_updated": "2026-07-01",
+      "last_updated": "2026-09-04",
       "source": "botocore-endpoints",
       "confidence": "high"
     },
@@ -25,17 +23,15 @@
       "provider": "aws-esc",
       "file": "aws-esc.json",
       "name": "AWS European Sovereign Cloud service catalogue",
-      "short_description": "AWS European Sovereign Cloud",
-      "last_updated": "2026-07-01",
+      "last_updated": "2026-09-04",
       "source": "botocore-endpoints",
       "confidence": "high"
     },
     {
       "provider": "azure",
       "file": "azure.json",
-      "name": "Microsoft Azure service catalogue",
-      "short_description": "Microsoft Azure",
-      "last_updated": "2026-07-07",
+      "name": "Azure service catalogue",
+      "last_updated": "2026-09-04",
       "source": "retail-prices-api",
       "confidence": "high"
     },
@@ -43,8 +39,7 @@
       "provider": "stackit",
       "file": "stackit.json",
       "name": "STACKIT service catalogue",
-      "short_description": "STACKIT (German sovereign)",
-      "last_updated": "2026-07-07",
+      "last_updated": "2026-09-04",
       "source": "pim-api-stackit",
       "confidence": "medium"
     },
@@ -52,10 +47,9 @@
       "provider": "aws-iso-e",
       "file": "aws-iso-e.json",
       "name": "AWS ISOE Europe service catalogue (classified)",
-      "short_description": "AWS ISOE Europe (classified)",
-      "last_updated": "2026-08-05",
+      "last_updated": "2026-09-04",
       "source": "botocore-endpoints",
-      "confidence": "low"
+      "confidence": "high"
     },
     {
       "provider": "azure-local",
@@ -97,5 +91,6 @@
   "coming_soon": [
     "ionos",
     "ovhcloud"
-  ]
+  ],
+  "seed_generated_at": "2026-08-11"
 }

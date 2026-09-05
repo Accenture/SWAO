@@ -12,7 +12,7 @@ Please tick all that apply:
 
 - [ ] Bug fix (non-breaking change that fixes an issue)
 - [ ] New feature (non-breaking change that adds functionality)
-- [ ] Framework contribution (new compliance framework YAML)
+- [ ] Framework contribution (new community framework YAML)
 - [ ] Documentation update
 
 ---

@@ -1,7 +1,7 @@
 # Landing Zone Assessment
 
 Landing Zone Assessment evaluates a cloud provider's service catalogue against the
-sovereignty controls derived from the active compliance frameworks. It produces a
+sovereignty controls derived from the active community frameworks. It produces a
 per-service fit/gap report and an overall readiness verdict for the target landing zone.
 
 ---
@@ -73,7 +73,7 @@ SWAO runs each target sequentially and writes a separate fit report for each pai
 
 ### Activating sovereignty frameworks
 
-Sovereignty gate logic is applied when one or more compliance frameworks are specified:
+Sovereignty gate logic is applied when one or more community frameworks are specified:
 
 ```bash
 swao assess --type landing-zone-catalog \
@@ -122,11 +122,11 @@ wsp/
 
 The fit report (`lz-catalogue-fit.yaml`) contains:
 
-- `provider` and `region` -- the assessed target
-- `frameworks` -- the sovereignty frameworks applied
-- `overall_verdict` -- `ready`, `partial`, or `blocked`
-- `services` -- per-service verdict with `available`, `sovereign`, `blockers`, and `gaps`
-- `signals` -- individual signal entries (one per service gap or confirmation)
+- `provider` and `region` - the assessed target
+- `frameworks` - the sovereignty frameworks applied
+- `overall_verdict` - `ready`, `partial`, or `blocked`
+- `services` - per-service verdict with `available`, `sovereign`, `blockers`, and `gaps`
+- `signals` - individual signal entries (one per service gap or confirmation)
 
 The HTML publication includes an LZ tab when a fit report is present. Run:
 
@@ -185,6 +185,6 @@ This report shows the fit/gap analysis across EU sovereign and hyperscaler cloud
 
 ## Further reading
 
-- [Adapting LZ Catalogues](/runbooks/adapting-lz-catalogues) -- add regions, correct facts, create private-cloud entries
-- [Application Assessment](./application) -- run LZ fit inline with source code analysis
-- [CLI reference](/runbooks/cli-reference) -- full flag listing for `swao assess` and `swao lz`
+- [Adapting LZ Catalogues](/runbooks/adapting-lz-catalogues) - add regions, correct facts, create private-cloud entries
+- [Application Assessment](./application) - run LZ fit inline with source code analysis
+- [CLI reference](/runbooks/cli-reference) - full flag listing for `swao assess` and `swao lz`

@@ -1,16 +1,16 @@
-# SWAO -- Quick Start
+# SWAO - Quick Start
 
 **Read time:** 5 minutes. **Install to first assessment:** about 15 minutes.
 
 SWAO is a sovereign workload assessment platform. Given a cloud application, it
 produces: an audit-grade assessment report, a PowerBI dashboard, an HTML publication,
-and a 7R migration verdict -- with full traceability on every signal and compliance verdict.
+and a 7R migration verdict - with full traceability on every signal and compliance verdict.
 
 ---
 
 ## Prerequisites
 
-- Windows / macOS / Linux (no runtime required -- pre-built binary)
+- Windows / macOS / Linux (no runtime required - pre-built binary)
 - A workload to assess (your own repo, or the example workspace bundled with SWAO)
 - Optional: **Anthropic API key** for real-LLM analysis. Without it, use `--skip-llm`
   for deterministic offline output.
@@ -44,7 +44,7 @@ swao --version
 
 ---
 
-## First assessment -- via the guided interface
+## First assessment - via the guided interface
 
 Run `swao` with no arguments to open the terminal user interface:
 
@@ -72,17 +72,17 @@ Community  v0.11.2
 
 Use the arrow keys or type the number to navigate.
 
-> See also: [Sample Gallery -- TUI Main Menu](/samples/#sample-10)
+> See also: [Sample Gallery - TUI Main Menu](/samples/#sample-10)
 
 ### Step 1: Workspace Setup
 
 Select **1. Workspace Setup**. The wizard asks four questions:
 
-1. **Workspace name** -- a short identifier for the engagement folder (e.g. `my-engagement`).
-2. **Application name** -- the workload you are assessing (e.g. `my-app`).
-3. **Compliance frameworks** -- choose from the available community frameworks. GDPR is
+1. **Workspace name** - a short identifier for the engagement folder (e.g. `my-engagement`).
+2. **Application name** - the workload you are assessing (e.g. `my-app`).
+3. **Community frameworks** - choose from the available community frameworks. GDPR is
    pre-selected. More can be added at any time via `swao framework install`.
-4. **LLM provider** -- Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
+4. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
    offline testing.
 
 The wizard creates the workspace folder and configuration on disk. No further setup needed.
@@ -104,12 +104,12 @@ or a specific action to take:
 
 All probes green means you are ready to assess.
 
-> See also: [Sample Gallery -- Health Check](/samples/#sample-12)
+> See also: [Sample Gallery - Health Check](/samples/#sample-12)
 
 ### Step 3: Run Assessment
 
 Select **3. Run Assessment** from the main menu. Choose **Application Assessment** (the
-full source-code pipeline). SWAO runs automatically -- a live progress bar shows each pass.
+full source-code pipeline). SWAO runs automatically - a live progress bar shows each pass.
 
 Typical duration and cost:
 
@@ -131,7 +131,7 @@ wsp/publications/latest/index.html
 ```
 
 The publication includes an executive summary, full signal trace, compliance table,
-and auditor view -- all in a single self-contained file you can email or use offline.
+and auditor view - all in a single self-contained file you can email or use offline.
 
 ---
 
@@ -214,9 +214,9 @@ swao export --app my-app --formats csv,ndjson,xlsx
 | You want to | Read |
 |---|---|
 | Re-run with a new export in PowerBI | [Export BI runbook](/export-bi) |
-| Add a compliance framework | `swao framework install <id>` or add a YAML file in `catalogs/community/` |
+| Add a community framework | `swao framework install <id>` or add a YAML file in `catalogs/community/` |
 | Run a portfolio assessment | `swao export --portfolio` (Consultant/Enterprise tier) |
-| Connect Claude AI via MCP | [How it works -- MCP](/how-it-works) |
+| Connect Claude AI via MCP | [How it works - MCP](/how-it-works) |
 | Share findings with a client | Open `wsp/publications/latest/index.html` |
 
 ---
@@ -229,5 +229,5 @@ swao <command> --help
 swao health-check
 ```
 
-SWAO is **file-only on disk** -- no telemetry, no hosted endpoint, no call-home.
+SWAO is **file-only on disk** - no telemetry, no hosted endpoint, no call-home.
 Your source code never leaves your machine.

@@ -210,4 +210,4 @@ This report covers GDPR and BSI C5 signal findings, risk register, and 7R migrat
 - [Landing Zone Assessment](./landing-zone) -- for CSP infrastructure fit/gap analysis
 - [LLM Assessment](./llm) -- for multi-provider LLM sovereignty benchmarking
 - [Adapting LZ Catalogues](/runbooks/adapting-lz-catalogues) -- customise the provider catalogue
-- [LLM provider swap](/runbooks/llm-provider-swap) -- change or test LLM connectors
+- [LLM gateway authoring](/runbooks/llm-gateway-authoring) -- change or test LLM connectors

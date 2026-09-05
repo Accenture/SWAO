@@ -50,7 +50,7 @@ controls/
 | Subdirectory | Purpose | When loaded |
 |---|---|---|
 | `lenses/` | Static overlay rules applied on top of any assessment to focus scoring on a particular concern (migration, governance, security) | Always available; selected via `--lens` flag or `.swao.yml` |
-| `dynamic-analysis/` | Rules that drive Playwright-based probes -- live browser interactions that generate screenshots and DOM snapshots for the dynamic analysis pass | Loaded only when the dynamic analysis pass runs (requires Playwright) |
+| `dynamic-analysis/` | Rules that drive Playwright-based probes - live browser interactions that generate screenshots and DOM snapshots for the dynamic analysis pass | Loaded only when the dynamic analysis pass runs (requires Playwright) |
 
 ## Versioning
 
@@ -60,7 +60,7 @@ are retained for replay (SPEC.md section 10.1b).
 
 ## Community frameworks
 
-Community compliance frameworks (GDPR, AI 10 Pillars, BSI C5, etc.) live in
-`packages/@swao/community-frameworks/frameworks/` -- separate from these
+community frameworks (GDPR, AI 10 Pillars, BSI C5, etc.) live in
+`packages/@swao/community-frameworks/frameworks/` - separate from these
 catalogues because frameworks are selectable and user-extendable, while
 catalogues are internal scoring inputs.

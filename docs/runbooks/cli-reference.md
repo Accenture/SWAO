@@ -27,8 +27,7 @@ swao <subcommand> --help    :: full flag list for one command
 swao assess --help          :: e.g. all flags for `assess`
 ```
 
-The in-binary help is auto-generated from the command modules
-(`packages/swao/src/commands/*.ts`), so it never drifts. This
+The in-binary help is auto-generated from the command modules, so it never drifts. This
 runbook does the opposite job: it explains *purpose* and *order*.
 
 ---
@@ -156,8 +155,7 @@ swao health-check --format json   :: machine-readable for CI
 | 11 | comp | compliance evaluation per regime (LLM) |
 | 12 | blocks | block-level assessments (LLM) |
 
-Pass 10 (dynamic UI crawl) is opt-in via `--crawl`. Pass 23 (landing
-zone readiness) is opt-in via `--lzr <landingZoneId>`.
+Pass 10 (dynamic UI crawl) is opt-in via `--crawl`. Landing zone readiness is opt-in via `--lzr <landingZoneId>`.
 
 **Typical use.** Once per app per assessment iteration. Re-run after
 source code or imports change. Real-LLM cost is ~0.05 to 0.20 USD
@@ -415,7 +413,7 @@ swao report --app my-app --view technical
 ## Batch samples
 
 Ready-to-edit batch scripts for the common multi-app + portfolio
-workflow live under `swao/ops/batch-samples/`:
+workflow live under `examples/batch-samples/`:
 
 - `assess-portfolio.cmd` -- Windows; iterates a configurable app
   list, runs `doctor` as a pre-flight gate, halts on any failure,
