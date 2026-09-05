@@ -59,7 +59,7 @@ consultant-supplied context files (`imports/`) and records any contradictions
 with source-code evidence. Dynamic analysis is opt-in via `--passes dynamic`
 or runs by default in full sweeps (skip with `--no-crawl`).
 
-**LLM providers:** Anthropic (default, recommended per ADR-0034), OpenAI
+**LLM providers:** Anthropic (default, recommended), OpenAI
 (`gpt-4o-mini` default; `gpt-5-mini` / `gpt-5` configurable), Ollama
 (air-gapped, local models), stub (CI / offline).
 
@@ -170,8 +170,6 @@ at the local endpoint. The server exposes tools for assessment orchestration, si
 inspection, and report generation - enabling conversational "run the assessment on my
 app and tell me what the sovereign risk factors are" workflows.
 
-Architecture: ADR-0045 (`docs/adr/0045-mcp-dual-transport-http-localhost-for-claude-code.md`)
-
 ### PowerBI
 
 SWAO ships `.pbit` template files for four report surfaces:
@@ -262,8 +260,7 @@ swao framework info NIST_SP_800_66R2  # print authority, controls count, contrib
 ```
 
 Organisations can author custom frameworks by providing a `framework-meta.yaml` +
-`controls.yaml` pair and placing them in `catalogs/community/<slug>/`. See ADR-0035
-(`docs/adr/0035-community-frameworks-scope.md`) for the schema specification.
+`controls.yaml` pair and placing them in `catalogs/community/<slug>/`.
 
 ---
 
@@ -271,7 +268,7 @@ Organisations can author custom frameworks by providing a `framework-meta.yaml` 
 
 SWAO follows semantic versioning (MAJOR.MINOR.PATCH). Community, Consultant, and Enterprise
 tier binaries are built from the same source at each tagged release; tier boundaries are
-enforced at runtime via `requireTier` guards (ADR-0049).
+enforced at runtime via `requireTier` guards.
 
 Release procedure: [`docs/runbooks/RELEASE.md`](docs/runbooks/RELEASE.md) - covers
 version bump, binary build (4 platforms), VirusTotal gate, SBOM + checksum publication,

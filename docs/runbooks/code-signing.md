@@ -120,9 +120,62 @@ until Authenticode signing is in place.
 
 ---
 
-## 5. References
+## 5. GPG Signing of Release Checksums
+
+Authenticode signs the Windows binary itself. GPG signing is a separate, complementary
+step that lets users verify the integrity of release artefacts (all binaries, not just Windows)
+by signing the SHA256SUMS file.
+
+**Status (v1.0.0-rc.1):** GPG public key published; checksums not yet GPG-signed.
+
+### 5.1 Key details
+
+| Field | Value |
+|---|---|
+| Key type | Ed25519 + Cv25519 |
+| UID | SWAO Security (SWAO Project Security Key) |
+| Email | swao-tool@accenture.com |
+| Fingerprint | 7F50A63D2884751B902ED453F876CFFED7D95A7A |
+| Expires | 2028-09-04 |
+| Public key file | `swao/swao-security.asc` (committed to the public repo) |
+| Private key location | Accenture password manager, entry "SWAO GPG Private Key" |
+
+### 5.2 Signing SHA256SUMS for a release
+
+After all binaries are built and `SHA256SUMS` is generated locally:
+
+```powershell
+# Import the private key from the password manager if not already in the local keyring
+& "C:\Program Files\GnuPG\bin\gpg.exe" --import swao-security-PRIVATE.asc
+
+# Sign the checksum file
+& "C:\Program Files\GnuPG\bin\gpg.exe" --armor --detach-sign --local-user 7F50A63D2884751B902ED453F876CFFED7D95A7A SHA256SUMS
+# Produces SHA256SUMS.asc
+```
+
+Upload both `SHA256SUMS` and `SHA256SUMS.asc` as release assets.
+
+### 5.3 User verification instructions
+
+Add to the release notes and `docs/runbooks/verify-download.md`:
+
+```bash
+# Import the SWAO signing key (one-time)
+gpg --import swao-security.asc
+
+# Verify the checksum signature
+gpg --verify SHA256SUMS.asc SHA256SUMS
+
+# Verify your binary's checksum
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+---
+
+## 7. References
 
 - Issue #2181 (this runbook is the deliverable)
 - Issue #2182 (VirusTotal baseline rebuild after signing)
 - `docs/runbooks/windows-binary-allowlisting.md` -- interim approach
 - ADR-0057 -- pre-build obfuscation for Premium tiers (separate from signing)
+- `swao/swao-security.asc` -- published GPG public key

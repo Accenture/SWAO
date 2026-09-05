@@ -7,6 +7,7 @@ packages/
 dist/
 dist-bin/*
 !dist-bin/SHA256SUMS
+!dist-bin/README.md
 !dist-bin/README.txt
 !dist-bin/swao.bat
 *.js.map

@@ -95,6 +95,15 @@ produce actionable migration plans and compliance evidence.
   The unsigned PE may trigger AV heuristics on some systems. See the VirusTotal
   baseline at `docs/releases/v1.0.0-vt-baseline.md` for the current detection
   profile. Code signing is planned for v1.1.0.
+- **MCP server WSP read coverage (Enterprise).** The MCP integration already
+  surfaces signals, stakeholder challenge YAMLs, reports, costs, risks, feedback
+  annotations, workspace inventory, portfolio views, and landing zone selection
+  rationale. The following artefact types are in active development under milestone
+  MCP-1.1 and will be available in the next minor release: ingested input file
+  listing, assessment run history, WSP verdict summary (7R label, coverage score,
+  recommended landing zone), saved report retrieval, and per-provider LZ fit score
+  matrix. All written artefacts are preserved to disk in the interim and accessible
+  via the CLI or existing MCP read tools.
 
 ---
 

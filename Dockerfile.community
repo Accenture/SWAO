@@ -20,7 +20,7 @@
 FROM node:22-alpine AS builder
 WORKDIR /repo
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN npm install -g pnpm@11
+RUN npm install -g pnpm@11.1.3
 # node-pty requires python3 + build tools (make, g++) to compile its native
 # binding via node-gyp. alpine ships none of these by default.
 RUN apk add --no-cache python3 make g++

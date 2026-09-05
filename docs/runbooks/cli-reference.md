@@ -51,8 +51,8 @@ For a portfolio (multiple apps in one engagement) jump to the
 
 ```
 +--------------+    +----------+    +----------+    +----------+    +----------+
-|  init        |    |  doctor  |    |  assess  |    |  report  |    |  export  |
-|  (or setup)  | -> |  (gate)  | -> | (per app)| -> | (per app)| -> |  (BI)    |
+|  init        |    | health-  |    |  assess  |    |  report  |    |  export  |
+|  (or setup)  | -> |  check   | -> | (per app)| -> | (per app)| -> |  (BI)    |
 +--------------+    +----------+    +----------+    +----------+    +----------+
                                           |               |
                                           v               v
@@ -63,7 +63,7 @@ For a portfolio (multiple apps in one engagement) jump to the
 ```
 
 - **init / setup** -- one-time per workspace.
-- **doctor** -- always before the first assess; re-run whenever the
+- **health-check** -- always before the first assess; re-run whenever the
   environment changes (new licence, new MCP install, new catalogue).
 - **assess** -- once per app per engagement (re-run when source
   code or imports change).
@@ -101,9 +101,9 @@ non-interactive script-friendly path; `setup` is the guided TUI.
 ### `swao setup`
 
 **Purpose.** Guided TUI wizard: workspace init + provider credentials
-configuration + doctor health check in one walkthrough. The
+configuration + health-check in one walkthrough. The
 operator-friendly alternative to chaining `init` + `credential set`
-+ `doctor` by hand.
++ `health-check` by hand.
 
 **Typical use.** First-time setup on a new operator machine, or
 when handing the binary to a new consultant.
@@ -268,13 +268,13 @@ swao license activate <key-from-email>
 ### `swao mcp`
 
 **Purpose.** Start the SWAO MCP server on the stdio transport.
-Exposes `swao_assess`, `swao_report`, `swao_doctor`, and
+Exposes `swao_assess`, `swao_report`, `swao_health_check`, and
 `swao_challenge` as MCP tools for Claude Desktop, Claude.ai web,
 or any MCP-compatible client.
 
 **Typical use.** Not invoked directly by operators. Called by
 Claude Desktop based on the entry in
-`%APPDATA%\Claude\claude_desktop_config.json`. Surface in `doctor`
+`%APPDATA%\Claude\claude_desktop_config.json`. Surface in `health-check`
 under `SWAO-MCP`.
 
 ```cmd
@@ -340,7 +340,7 @@ swao migrate-workspace C:\old-ws   :: explicit path
 cache directory so it survives binary upgrades.
 
 **Typical use.** First time you plan to run `assess --crawl`.
-`doctor` warns when Chromium is missing and points you here.
+`health-check` warns when Chromium is missing and points you here.
 
 ```cmd
 swao install-playwright
@@ -416,7 +416,7 @@ Ready-to-edit batch scripts for the common multi-app + portfolio
 workflow live under `examples/batch-samples/`:
 
 - `assess-portfolio.cmd` -- Windows; iterates a configurable app
-  list, runs `doctor` as a pre-flight gate, halts on any failure,
+  list, runs `health-check` as a pre-flight gate, halts on any failure,
   finishes with `export --portfolio`.
 - `assess-portfolio.sh` -- POSIX equivalent (macOS / Linux / Git Bash).
 - `README.md` -- operator instructions: what variables to edit,

@@ -15,24 +15,19 @@ Only the latest release receives security fixes. Older versions are not patched.
 
 **Do not report security vulnerabilities via public GitHub issues.**
 
-### Preferred channel - GitHub Security Advisories (confidential)
-
-Open a private advisory at:
-https://github.com/Accenture/SWAO/security/advisories/new
-
-This creates a private channel visible only to repository maintainers. We prefer
-this channel because it keeps the report confidential until a fix is ready and
-allows coordinated disclosure.
-
-### Alternative channel - email
-
-If you cannot use GitHub Security Advisories, send a report to:
+Send a report to:
 swao-tool@accenture.com
 
 Use the subject line: `[SECURITY] SWAO vulnerability report`
 
-Encrypt your report using the GPG key published in this repository if the report
-contains sensitive proof-of-concept material.
+If the report contains sensitive proof-of-concept material, encrypt it to the
+GPG key published at `swao-security.asc` in this repository.
+
+Key fingerprint: `7F50 A63D 2884 751B 902E D453 F876 CFFE D7D9 5A7A`
+
+Import with:
+
+    gpg --import swao-security.asc
 
 ### What to include
 
