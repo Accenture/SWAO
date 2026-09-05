@@ -10,6 +10,7 @@ dist-bin/*
 !dist-bin/SHA256SUMS-community
 !dist-bin/SHA256SUMS-consultant
 !dist-bin/SHA256SUMS-enterprise
+!dist-bin/swao-*-sbom.cdx.json
 !dist-bin/README.md
 !dist-bin/README.txt
 !dist-bin/swao.bat
