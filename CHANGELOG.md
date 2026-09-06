@@ -24,6 +24,18 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.1] - 2026-09-06
+
+Patch release: obfuscated binary startup hang.
+
+### Fixed
+
+- Consultant and Enterprise binaries hung indefinitely on startup with no
+  output. `selfDefending: true` and `controlFlowFlattening: true` in
+  `scripts/obfuscate.mjs` were incompatible with `@yao-pkg/pkg`'s module
+  loader. Both options disabled; stringArray encoding and identifier renaming
+  remain active.
+
 ## [1.0.0] - 2026-09-04
 
 First public stable release of SWAO Community Edition.
