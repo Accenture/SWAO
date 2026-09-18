@@ -37,7 +37,6 @@ SWAO supports three assessment surfaces, all available now.
 | <FeatureTooltip tip="Add your own cloud or private-cloud provider as a YAML entry. Supports the same check schema as the built-in providers. Run alongside built-in entries immediately.">Custom LZ catalogue entries (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **AI & LLM** | | | |
 | <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM (incl. Bedrock Gateway)</FeatureTooltip> | Yes | Yes | Yes |
-| <FeatureTooltip tip="Advanced model management and custom model configuration - Professional Services engagement.">Custom model configuration</FeatureTooltip> | - | PS fee | Yes |
 | **Output & publication** | | | |
 | <FeatureTooltip tip="Text, YAML, JSON, and Markdown (auditor.md) reports generated after every assessment. Open in any editor or import into your reporting workflow.">Text and Markdown reports</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Star-schema CSV bundle (17 tables) plus NDJSON mirror and XLSX rollup. Ready to load into any BI tool.">BI export bundle (CSV / NDJSON / XLSX)</FeatureTooltip> | Yes | Yes | Yes |

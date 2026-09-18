@@ -37,7 +37,6 @@ SWAO unterstützt drei Bewertungsflächen, alle jetzt verfügbar.
 | <FeatureTooltip tip="Eigenen Cloud- oder Privatcloud-Anbieter als YAML-Eintrag hinzufügen. Laeuft sofort neben den integrierten Eintraegen.">Eigene LZ-Katalog-Eintraege (YAML)</FeatureTooltip> | Ja | Ja | Ja |
 | **KI & LLM** | | | |
 | <FeatureTooltip tip="Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway oder selbst gehostetes Ollama-Modell. Das LLM erstellt verständliche Begründungen für jedes Signal.">Eigenes LLM mitbringen (inkl. Bedrock Gateway)</FeatureTooltip> | Ja | Ja | Ja |
-| <FeatureTooltip tip="Erweiterte Modellverwaltung und benutzerdefinierte Konfiguration - Professional-Services-Engagement.">Eigene Modellkonfiguration</FeatureTooltip> | - | PS-Gebühr | Ja |
 | **Ausgabe & Veröffentlichung** | | | |
 | <FeatureTooltip tip="Text-, YAML-, JSON- und Markdown-Berichte nach jeder Bewertung. In jedem Editor öffenbar.">Text- und Markdown-Berichte</FeatureTooltip> | Ja | Ja | Ja |
 | <FeatureTooltip tip="Sternschema-CSV-Paket (17 Tabellen) plus NDJSON und XLSX. Für jedes BI-Tool geeignet.">BI-Exportpaket (CSV / NDJSON / XLSX)</FeatureTooltip> | Ja | Ja | Ja |
