@@ -8,114 +8,53 @@
 //
 //     Community Edition  -  Apache 2.0
 //
-//     Website       :  https://steady-echo-yp4z.here.now/
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
+//     Website       :  https://accenture.github.io/SWAO/
 //     Source Code   :  https://github.com/Accenture/SWAO
 //
 // =======================================================================
 ```
 
-# SWAO Migration Guide -- v1.0.0
+# SWAO Migration Guide
 
-This guide covers breaking changes and migration steps for workspaces and
-integrations upgrading to SWAO v1.0.0.
-
----
-
-## From pre-v0.9 workspaces
-
-### WSP schema version
-
-Workspaces created with SWAO earlier than v0.9 use WSP schema v0.6 or earlier.
-SWAO v1.0 reads all historical schema versions for replay but writes v0.11.
-
-**Action required:** None. Existing run directories are replay-compatible.
-
-### `.swao.yml` field renames
-
-The following `.swao.yml` fields were renamed between v0.8 and v0.9:
-
-| Old field | New field | Notes |
-|---|---|---|
-| `provider.llm.endpoint` | `llm_gateway` connector file | Moved to per-connector YAML in `wsp/inputs/llm-gateway/` |
-| `crawl.url` | vault key `playwright-url-<id>` | Credentials moved to OS credential vault |
-| `crawl.user` | vault key `playwright-user-<id>` | |
-| `crawl.password` | vault key `playwright-pass-<id>` | |
-
-**Action required:** Remove the old fields from `.swao.yml`. Run `swao health-check`
-to confirm vault keys are present.
-
-### LLM connector files (new in v0.9)
-
-LLM API configuration is now file-based. Create
-`wsp/inputs/llm-gateway/<your-id>.yaml`:
-
-```yaml
-id: my-openai
-name: My OpenAI connector
-protocol: openai
-base_url: https://api.openai.com/v1
-auth:
-  type: bearer_token
-  env: OPENAI_API_KEY
-models:
-  default: gpt-4o
-```
-
-Run `swao health-check` -- probe 14 confirms the connector is valid.
+This guide covers breaking changes and migration steps for workspaces upgrading
+between stable SWAO releases. SWAO 1.0.0 is the first public stable release;
+no pre-1.0 migration path is documented here.
 
 ---
 
-## From v0.9--v0.10 workspaces
+## v1.0.x to v1.1.0
 
-### Multi-leg LLM Assessment (new in v0.10)
+v1.1.0 is a minor release. No breaking changes were introduced for Community
+or Consultant workspaces.
 
-The `--legs` flag was added for multi-leg LLM Assessment runs. Single-leg runs
-continue to work unchanged. The output directory structure now uses
-`wsp/runs/<timestamp>/legs/<leg-id>/` for each leg.
+### SWAO Chat (Enterprise, new in v1.1.0)
 
-**Action required:** None for single-leg users. Multi-leg users: update any
-downstream scripts that read from `wsp/runs/<timestamp>/` directly.
+A new `swao chat` command and ChatScreen TUI entry are available in the Enterprise
+edition. No workspace configuration is required. Chat history is written to
+`wsp/chat/<sessionTs>.ndjson`.
 
-### Publication block profiles (new in v0.10)
+**Action required:** None for Community and Consultant workspaces.
 
-`swao publish` now requires a `--block-profile` flag (or reads from `.swao.yml`).
-Default: `standard`.
+### Security dependency upgrades
 
-```yaml
-# .swao.yml
-publish:
-  block_profile: standard   # standard | executive | technical | regulator
-```
+`fast-uri`, `fastify`, and `liquidjs` were upgraded as security patches. No
+application code changes are required. Run `pnpm install` if building from source.
 
----
-
-## From v0.10--v0.11 workspaces
-
-### Vision pass output (new in v0.11)
-
-LLM Assessment runs that include the vision pass write `vision-calls.ndjson` to
-the leg directory. No migration needed; this is additive.
-
-### Three-tier licensing (new in v0.11)
-
-The two-edition model (Community/Premium) is replaced by a three-tier model
-(Community/Consultant/Enterprise). If you hold a legacy Premium licence key, it
-is compatible with the Enterprise tier binary; no re-issuance is required.
+**Action required:** None.
 
 ---
 
 ## Workspace validation
 
-After any migration step, run:
+After any upgrade, run:
 
 ```bash
 swao health-check
 swao assess --app <your-app-id>
 ```
 
-`swao health-check` runs 16 diagnostic probes and will surface any configuration
-issues introduced by the migration.
+`swao health-check` runs diagnostic probes and will surface any configuration
+issues introduced by the upgrade.
 
 ---
 

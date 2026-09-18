@@ -8,16 +8,15 @@
 //
 //     Community Edition  -  Apache 2.0
 //
-//     Website       :  https://steady-echo-yp4z.here.now/
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
+//     Website       :  https://accenture.github.io/SWAO/
 //     Source Code   :  https://github.com/Accenture/SWAO
 //
 // =======================================================================
 ```
 
-# SWAO v1.0.0 -- Known Issues
+# SWAO v1.1.0 - Known Issues
 
-This document lists confirmed limitations and open issues in the v1.0.0 release.
+This document lists confirmed limitations and open issues in the v1.1.0 release.
 These are known, non-blocking items retained in the backlog. Workarounds are noted
 where available.
 
@@ -66,15 +65,13 @@ Raw signal data is in the WSP NDJSON log. A future release will add the summary 
 
 ---
 
----
-
 ## Docker
 
 ### Docker implementation not smoke-tested against live workloads
 
 **Impact:** Low. The Docker images build and start correctly, but have not been tested
 against a full assessment run with a real workspace volume. The binary-based distribution
-is the primary supported path for v1.0.
+is the primary supported path for v1.1.
 
 ---
 

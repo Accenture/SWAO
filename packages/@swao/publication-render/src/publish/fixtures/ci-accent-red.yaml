@@ -1,4 +1,0 @@
-# CI token fixture: overrides brand accent to red (D1 -- #0930 unit tests).
---brand-accent: "#ff0000"
-dark:
-  --bg-primary: "#1e293b"
