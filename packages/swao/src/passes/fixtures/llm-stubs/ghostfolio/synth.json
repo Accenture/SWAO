@@ -1,0 +1,54 @@
+{
+  "signals": [
+    {
+      "id": "SYNTH-01",
+      "source": "llm_inference",
+      "category": "application",
+      "severity": "positive",
+      "derivation": "Replatform verdict: container-native TypeScript NestJS stack (INV-01); Prisma ORM portable; Redis queue externalised. Primary constraints: EGR-01 Yahoo Finance US-only (migration blocker), EGR-02 AlphaVantage US-only (migration blocker). Confidence medium: two EGR blockers require resolution before OTC cutover.",
+      "evidence": ["INV-01", "EGR-01", "EGR-02", "CRYPTO-01", "TF-03"],
+      "confidence": "high",
+      "implies": ["replatform_verdict_supported", "egr_blockers_gate_migration"]
+    },
+    {
+      "id": "SYNTH-02",
+      "source": "llm_inference",
+      "category": "application",
+      "severity": "informational",
+      "derivation": "Refactor rejected: no fundamental architectural anti-patterns; NestJS maps cleanly to sovereign target. Re-architect rejected: stack is cloud-portable without structural rework. Retain rejected: BaFin DORA compliance gap on current Hetzner tenancy forces migration.",
+      "evidence": ["INV-01", "STATE-01", "EGR-01"],
+      "confidence": "high",
+      "implies": ["refactor_rejected", "retain_rejected"]
+    },
+    {
+      "id": "SYNTH-03",
+      "source": "llm_inference",
+      "category": "infrastructure_platform",
+      "severity": "high",
+      "derivation": "Migration gate: EGR-01 Yahoo Finance and EGR-02 AlphaVantage have no sovereign-cloud equivalents. Path options: (A) self-hosted market data feed; (B) sovereign-certified data provider contract. Gate must resolve before OTC cutover. Contract expiry 2026-09-30 sets hard deadline.",
+      "evidence": ["EGR-01", "EGR-02"],
+      "confidence": "high",
+      "implies": ["egr_blockers_require_resolution_pre_migration"]
+    }
+  ],
+  "assessment": {
+    "seven_r_label": "Replatform",
+    "migration_rationale": "NestJS TypeScript stack is cloud-portable with no architectural anti-patterns. Two US-only market data providers (EGR-01, EGR-02) are migration gates requiring resolution before OTC cutover. Post-migration: JWT upgrade to RS256 (CRYPTO-03), Factor XI build reproducibility (TF-05).",
+    "modernization_position": "migrate_stabilize",
+    "portability_score": 0.61,
+    "landing_zone": "stackit_de_sovereign",
+    "recommended_next_steps": [
+      "Resolve EGR-01: identify sovereign-certified market data feed or self-hosted alternative",
+      "Resolve EGR-02: evaluate AlphaVantage EU contract or open-source alternative",
+      "Upgrade JWT signing from symmetric HMAC to RS256 with KMS-backed key (CRYPTO-03)",
+      "Establish OTC STACKIT tenant and run connectivity tests with sovereign landing zone"
+    ],
+    "migration_blockers": 2,
+    "migration_enablers": [
+      "cloud_portable_typescript_nestjs_stack",
+      "prisma_orm_db_agnostic",
+      "strong_crypto_posture_kdf_mac",
+      "helmet_security_headers"
+    ]
+  }
+}

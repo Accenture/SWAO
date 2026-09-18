@@ -1,0 +1,38 @@
+{
+  "signals": [
+    {
+      "id": "DATA-01",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "high",
+      "derivation": "Prisma schema contains Patient and MedicalRecord models. NHS numbers, names, DOBs, and diagnoses are stored. GDPR Art. 9 special category health data. UK GDPR applies post-Brexit.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "high"
+    },
+    {
+      "id": "DATA-02",
+      "source": "llm_inference",
+      "category": "business_processes",
+      "severity": "medium",
+      "derivation": "NHS data retention requirements apply (10 years for adult patient records). GDPR Art. 17 right to erasure must be balanced against NHS retention obligations.",
+      "evidence": ["prisma/schema.prisma"],
+      "confidence": "medium"
+    },
+    {
+      "id": "DATA-03",
+      "source": "static_analysis",
+      "category": "application",
+      "severity": "informational",
+      "derivation": "jsonwebtoken used for authentication. JWT_SECRET in .env.example. Stateless auth pattern. No evidence of PHI in JWT payload from source scan.",
+      "evidence": ["package.json"],
+      "confidence": "medium"
+    }
+  ],
+  "assessment": {
+    "data_classes": ["health_record", "patient_identifier", "medical_diagnosis"],
+    "regulatory_scope": ["GDPR", "UK_GDPR", "NHS_DSP_Toolkit"],
+    "gdpr_art17_implemented": false,
+    "secrets_in_env": true,
+    "phi_detected": true
+  }
+}

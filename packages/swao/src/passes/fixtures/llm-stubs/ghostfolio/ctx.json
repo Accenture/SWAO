@@ -1,0 +1,69 @@
+{
+  "signals": [
+    {
+      "id": "CTX-01",
+      "source": "llm_inference",
+      "category": "application",
+      "severity": "high",
+      "derivation": "Architecture document (arch-2025-q3.md) claims MongoDB 6.0 with Mongoose ODM. Code evidence (prisma/schema.prisma) confirms PostgreSQL with Prisma ORM. Contradiction detected. Arch doc reliability_weight reduced from 0.9 to 0.4.",
+      "evidence": ["imports/arch-2025-q3.md", "prisma/schema.prisma"],
+      "confidence": "high"
+    },
+    {
+      "id": "CTX-02",
+      "source": "llm_inference",
+      "category": "enablement",
+      "severity": "medium",
+      "derivation": "No CMDB export present in imports/. Infrastructure topology and dependent services cannot be confirmed without CMDB data. Coverage impact: -0.05.",
+      "evidence": [],
+      "confidence": "high"
+    },
+    {
+      "id": "CTX-03",
+      "source": "llm_inference",
+      "category": "enablement",
+      "severity": "low",
+      "derivation": "No FinOps export present in imports/. Cloud cost sizing for STACKIT migration cannot be estimated. Coverage impact: -0.03.",
+      "evidence": [],
+      "confidence": "high"
+    },
+    {
+      "id": "CTX-04",
+      "source": "workshop",
+      "category": "business_processes",
+      "severity": "informational",
+      "derivation": "Workshop transcript confirms: client is FinTrack GmbH (BaFin-regulated). Residency: DE_only. Target: STACKIT. RTO: 4h. RPO: 1h. Regulatory scope: DORA, GDPR, BaFin, BSI C5.",
+      "evidence": ["imports/workshop-transcript.md"],
+      "implies": ["de_only_residency_confirmed", "bsi_c5_required"],
+      "confidence": "high"
+    },
+    {
+      "id": "CTX-05",
+      "source": "llm_inference",
+      "category": "enablement",
+      "severity": "informational",
+      "derivation": "DORA (EU Regulation 2022/2554) is in scope for this client but is not present in the ComplianceRegimeSchema enum in wsp-plan.ts. Gap filed as G-NEW-14. DORA requirements mapped to runbook steps as interim workaround.",
+      "evidence": ["imports/workshop-transcript.md"],
+      "confidence": "high"
+    }
+  ],
+  "assessment": {
+    "context_inputs_found": 2,
+    "contradictions_detected": 1,
+    "confirmed_landing_zone": "stackit_de_sovereign",
+    "residency_requirement": "DE_only",
+    "rto_hours": 4,
+    "rpo_hours": 1
+  },
+  "context_overrides": [
+    {
+      "signal_id": "CTX-01",
+      "input_id": "CTX-IN-01",
+      "override_type": "database_technology_contradiction",
+      "context_claim": "arch-2025-q3.md states database is MongoDB 6.0 with Mongoose ODM",
+      "code_evidence": "prisma/schema.prisma datasource db { provider = \"postgresql\" }",
+      "resolution": "PostgreSQL confirmed; arch-2025-q3.md reliability_weight reduced from 0.9 to 0.4 for all downstream passes",
+      "emitted_by": "CTX-01"
+    }
+  ]
+}

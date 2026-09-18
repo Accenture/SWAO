@@ -1,0 +1,43 @@
+{
+  "name": "@swao/module-powerbi",
+  "version": "0.1.0",
+  "description": "SWAO BI-export module (Community tier): the `export` command (CSV star schema + NDJSON + XLSX bundle for PowerBI) plus its ExportBiScreen and the bundled .pbit PowerBI templates (ADR-0048 modular architecture, Phase 5, #0577). BI export is ungated; the .pbit templates are public artefacts. The only tier gate is the runtime `requireTier('enterprise', { feature: 'export --portfolio' })` on the --portfolio flag (the portfolio data emission, not the template). The host injects its SWAO version (branding is host-only) into the screen.",
+  "license": "SEE LICENSE IN LICENSE",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "typecheck": "tsc -b tsconfig.json",
+    "test": "vitest run --pool forks"
+  },
+  "dependencies": {
+    "@swao/core": "workspace:*",
+    "@swao/tui-kit": "workspace:*",
+    "commander": "^12.1.0",
+    "exceljs": "^4.4.0",
+    "ink": "^4.4.1",
+    "js-yaml": "^4.2.0",
+    "react": "^18.3.1"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.4.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.28",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

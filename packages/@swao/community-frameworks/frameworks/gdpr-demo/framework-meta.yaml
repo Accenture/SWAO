@@ -1,0 +1,58 @@
+# SWAO demo framework metadata -- GDPR_DEMO
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+
+framework:
+  id: GDPR_DEMO
+  name: "GDPR Demo (12 controls) -- Live-Presentation Subset"
+  version: "Regulation (EU) 2016/679 -- demo subset 2026-07-02"
+  authority: "European Parliament and Council of the European Union"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-02"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - eu_data
+    - personal_data
+    - health_data
+    - automated_decisioning
+    - cross_border_transfer
+    - demo
+  assessment_type_scope: [app]
+  description: >
+    Demo-sized subset of the GDPR community framework for live-presentation
+    use with the sovereign-health demo application. Contains 12 controls
+    selected for maximum cross-regime coverage with AI_10_PILLARS_DEMO,
+    NIST_HIPAA_DEMO, and BSI_GRUNDSCHUTZ_2023_DEMO. See Design 066 for
+    selection criteria and demo workflow.
+  references:
+    - "https://gdpr-info.eu/"
+    - "docs/design/066-demo-community-frameworks.md"
+  catalogue_version: "1.1.0"
+  last_reviewed: "2026-07-07"
+
+  signal_prefix: GDPR_DEMO
+
+  cross_mapping_hints:
+    target_frameworks:
+      - AI_10_PILLARS_DEMO
+      - NIST_HIPAA_DEMO
+      - BSI_GRUNDSCHUTZ_2023_DEMO
+
+  # D-LZ-07: sovereignty gate -- mirrors the full GDPR framework so that DEMO
+  # runs produce definitive READY/BLOCKED/SOVEREIGNTY_BLOCKED verdicts rather
+  # than NEEDS_VERIFICATION (#2313). The "DEMO" label in framework metadata and
+  # in all report outputs provides the required disclosure.
+  sovereignty_requirements:
+    require_operator_jurisdiction:
+      - EU-entity
+    required_services:
+      - key_vault
+
+  redistribution_note: >
+    GDPR is EU legislation published by the EUR-Lex Publications Office.
+    This demo subset paraphrases article text for SWAO ingestion.
+
+  replaces: []

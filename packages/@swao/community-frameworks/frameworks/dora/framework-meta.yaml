@@ -1,0 +1,25 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+# Sprint-039 #0358 Phase 1 migration from the standard-scope PoC stub at
+# `swao/controls/standard/dora-controls.yaml`. Thin packaging --
+# control set preserved verbatim from the stub (same 5 controls); only
+# the wrapper graduates to design-029 community shape. Catalogue depth
+# can grow in a future sprint without another wrapper migration.
+
+framework:
+  id: DORA
+  name: "Digital Operational Resilience Act"
+  version: "2024-01"
+  authority: "European Union"
+  contributor:
+    name: "Accenture SWAO team (community packaging)"
+    url: "https://accenture.example/swao/community-frameworks/dora"
+  applicability_hints:
+    - financial_services
+    - eu_critical_infrastructure
+  assessment_type_scope: [app, aud]
+  description: >-
+    EU Regulation 2022/2554 in force since 2025-01-17 covering ICT risk management, incident reporting, digital operational resilience testing, third-party ICT risk, and information sharing for financial entities operating in the European Union.
+  references:
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2554"
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-05-24"

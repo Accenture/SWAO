@@ -1,0 +1,34 @@
+# Manual questionnaire for MEA02 -- Monitor, Evaluate and Assess the System of Internal Control
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: MEA02
+framework_id: COBIT_5
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Is there a documented internal-control register covering both IT general controls and business-process controls?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "ICR-2026 (COSO-aligned)"
+  - id: q2
+    text: "Has internal audit completed a coverage plan against the register for the current year?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "IA plan 2026 -- approved by audit committee 2026-Q1"
+  - id: q3
+    text: "Are control deficiencies tracked through to remediation with named owners and target dates?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Deficiency tracker DT-2026-Q1"
+  - id: q4
+    text: "Are design-effectiveness AND operating-effectiveness assessments performed for high-risk controls?"
+    answer: "no"
+    severity_if_no: high
+    evidence_ref: "Only design-effectiveness tested in 2025; operating-effectiveness deferred"
+  - id: q5
+    text: "Are control test results reported to the audit committee at least semi-annually?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "Audit committee minutes 2025-H2 + 2026-Q1"

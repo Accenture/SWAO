@@ -1,0 +1,85 @@
+# SWAO Community Framework -- ISO/IEC 27001:2022
+
+regime_meta:
+  id: ISO_27001
+  name: "Information Security Management"
+  version: "2022"
+  scope: community
+  authority: "International Organization for Standardization"
+  contributor:
+    name: "Accenture SWAO team (community packaging)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://accenture.example/swao/community-frameworks/iso-27001"
+  applicability_hints: [enterprise, ism, broad_coverage]
+  description: >
+    International standard for Information Security Management Systems
+    (ISMS). The 2022 revision restructured Annex A into 93 controls
+    across four themes: organisational, people, physical, technological.
+  references:
+    - "ISO/IEC 27001:2022"
+    - "ISO/IEC 27002:2022 (controls reference)"
+  last_reviewed: "2026-05-24"
+  catalogue_version: "1.0.0"
+
+controls:
+  - id: ISO_27001_A.5.1
+    title: "Policies for information security"
+    description: >
+      Information security policy and topic-specific policies shall be
+      defined, approved by management, published, communicated to and
+      acknowledged by relevant personnel, and reviewed at planned
+      intervals.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "ISO/IEC 27001:2022 Annex A.5.1"
+
+  - id: ISO_27001_A.8.1
+    title: "User end-point devices"
+    description: >
+      Information stored on, processed by, or accessible via user
+      end-point devices shall be protected.
+    severity_default: medium
+    evidence_basis:
+      - context_input: cmdb_export
+      - signal_prefix: IAM
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.1"
+
+  - id: ISO_27001_A.10.1
+    title: "Cryptographic controls"
+    description: >
+      Rules for the effective use of cryptography, including key
+      management, shall be defined and implemented.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.24 (former A.10.1.1)"
+
+  - id: ISO_27001_A.12.4
+    title: "Logging and monitoring"
+    description: >
+      Logs that record activities, exceptions, faults, and information
+      security events shall be produced, stored, protected, and
+      analysed.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.15-A.8.16"
+
+  - id: ISO_27001_A.13.1
+    title: "Network security management"
+    description: >
+      Networks and network devices shall be secured, managed, and
+      controlled to protect information in systems and applications.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: EGR
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.20-A.8.22"

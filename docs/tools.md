@@ -9,7 +9,7 @@ The Tools menu (option 9 in the main menu) groups utility commands that manage y
 | Lenses | `swao lens list` / `swao lens apply` | Switch between pre-configured analysis lenses (security-focused, data-governance, cloud-migration) |
 | Licence | `swao licence show` / `swao licence activate` | Display current edition and activate a licence key |
 | Credentials | `swao credential set` / `swao credential list` | Store and manage API keys and vault references |
-| Framework install | `swao framework install <name>` | Install additional community frameworks |
+| Framework | [Download from GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) | Community frameworks - download and place in `catalogs/community/<slug>/` |
 | Catalogue update | `swao catalogue update` | Pull the latest LZ provider catalogue and framework updates |
 | Help | `swao --help` / `swao <command> --help` | Full CLI reference |
 

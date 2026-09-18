@@ -1,0 +1,57 @@
+# SWAO demo framework metadata -- NIST_SP_800_66R2_DEMO
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+
+framework:
+  id: NIST_SP_800_66R2_DEMO
+  name: "NIST SP 800-66r2 Demo (12 controls) -- Live-Presentation Subset"
+  version: "NIST SP 800-66r2 / 2024-02 -- demo subset 2026-07-02"
+  authority: "U.S. Department of Health and Human Services -- 45 CFR Part 164 Subpart C; NIST SP 800-66 Revision 2"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-02"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - us_health
+    - phi
+    - electronic_phi
+    - healthcare
+    - hipaa_security_rule
+    - demo
+  assessment_type_scope: [app]
+  description: >
+    Demo-sized subset of the NIST SP 800-66r2 HIPAA community framework for
+    live-presentation use with the sovereign-health demo application. Contains
+    12 controls from the Administrative and Technical Safeguards plus
+    Organisational Requirements, selected for cross-regime coverage with
+    GDPR_DEMO, AI_10_PILLARS_DEMO, and BSI_GRUNDSCHUTZ_2023_DEMO. The
+    healthcare context makes this particularly relevant alongside
+    sovereign-health. See Design 066.
+  references:
+    - "docs/design/066-demo-community-frameworks.md"
+  catalogue_version: "1.1.0"
+  last_reviewed: "2026-07-07"
+
+  signal_prefix: NIST_SP_800_66R2_DEMO
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR_DEMO
+      - AI_10_PILLARS_DEMO
+      - BSI_GRUNDSCHUTZ_2023_DEMO
+
+  # D-LZ-07: sovereignty gate -- mirrors the full NIST_SP_800_66R2 framework so
+  # that DEMO runs produce definitive READY/BLOCKED/SOVEREIGNTY_BLOCKED verdicts
+  # rather than NEEDS_VERIFICATION (#2313). Requires HIPAA-certified CSP regions.
+  sovereignty_requirements:
+    require_certifications:
+      - HIPAA
+
+  redistribution_note: >
+    NIST SP 800-66 Revision 2 is a U.S. Government work product not subject
+    to copyright. HIPAA regulation (45 CFR Part 164) is federal regulation
+    freely reproducible.
+
+  replaces: []

@@ -30,10 +30,10 @@ SWAO supports three assessment surfaces, all available now.
 | <FeatureTooltip tip="Benchmarks multiple LLM providers against sovereignty criteria side by side.">LLM Assessment</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="A second LLM agent independently challenges every finding; surfaces low-confidence assessments. Enterprise edition, requires completed Application Assessment.">Adversarial Challenge Review</FeatureTooltip> | - | - | Yes |
 | **Community frameworks** | | | |
-| <FeatureTooltip tip="14 frameworks available in every edition: GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, DORA, HIPAA / NIST SP 800-66r2, ISO 27001:2022, LLM Selection, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, PCI-DSS v4, SAMA CSF v1, SOC 2 Type II. Install any with: swao framework install.">Community framework library (14 frameworks)</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="11 frameworks available in every edition: GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2, LLM Selection, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, PCI-DSS v4, SAMA CSF v1. Download from the SWAO community-frameworks repository on GitHub.">Community framework library (11 frameworks)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Add your own community framework as a YAML file - no coding required. Supports the same controls schema as the community frameworks.">Custom frameworks (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **Landing Zone Catalogues** | | | |
-| <FeatureTooltip tip="12 cloud providers covered: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, CloudFerro, Exoscale, Hetzner, gridscale, PlusServer, Microsoft Azure EU, AWS eu-central-1 / ESC, Google Cloud EU. Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (12 providers)</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="10 cloud providers covered: STACKIT, OTC (T-Systems), Microsoft Azure EU, Azure Local, AWS eu-central-1, AWS ESC, AWS ISO-E, Google Cloud EU, Delos Cloud, Oracle Cloud (OCI). Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (10 providers)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Add your own cloud or private-cloud provider as a YAML entry. Supports the same check schema as the built-in providers. Run alongside built-in entries immediately.">Custom LZ catalogue entries (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **AI & LLM** | | | |
 | <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM (incl. Bedrock Gateway)</FeatureTooltip> | Yes | Yes | Yes |
@@ -49,6 +49,7 @@ SWAO supports three assessment surfaces, all available now.
 | **Integration** | | | |
 | <FeatureTooltip tip="Load context from your CMDB, ServiceNow exports, FinOps reports, workshop transcripts, or architecture documents. SWAO fuses operational context with code analysis.">Context ingestion (CMDB / docs)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Expose SWAO assessment tools directly to Claude AI via the Model Context Protocol. Ask Claude about your assessment findings in natural language.">MCP integration (Claude AI)</FeatureTooltip> | - | - | Yes |
+| <FeatureTooltip tip="Conversational AI interface built into SWAO. Ask questions about your assessment results, get plain-language explanations of findings, and explore recommendations in a guided chat session. Available from v1.1.0.">SWAO Chat</FeatureTooltip> | - | - | Yes |
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning.">Multi-app portfolio workspace</FeatureTooltip> | - | - | Roadmap |
 | <FeatureTooltip tip="Sector-specific migration runbook templates, executive briefing formats, and industry-vetted DPA skeletons.">Sector-specific engagement templates</FeatureTooltip> | - | - | Yes |
@@ -71,32 +72,46 @@ and informational items - against your workload's signals and your target cloud'
 |---|---|---|
 | STACKIT (Schwarz Group) | Dedicated sovereign | DE / EU |
 | Open Telekom Cloud (T-Systems) | Dedicated sovereign | DE / EU |
-| IONOS Cloud (United Internet) | Dedicated sovereign | EU |
-| OVHcloud (OVH SAS) | EU sovereign | EU |
-| CloudFerro | EU sovereign | EU |
-| Exoscale (A1 / IRIDEOS Group) | Swiss sovereign | CH / EU |
-| Hetzner Cloud | Managed EU | DE / FI |
-| gridscale | Dedicated sovereign | DE |
-| PlusServer | Dedicated sovereign | DE |
-| Microsoft Azure (West Europe) | Hyperscaler EU region | EU |
-| AWS eu-central-1 + ESC | Hyperscaler EU / sovereign | EU |
+| Microsoft Azure (EU regions) | Hyperscaler EU region | EU |
+| Azure Local (on-premises) | On-premises sovereign | Customer-controlled |
+| AWS eu-central-1 | Hyperscaler EU region | EU |
+| AWS ESC (European Sovereign Cloud) | Hyperscaler sovereign | EU |
+| AWS ISO-E | Hyperscaler sovereign sector | EU |
 | Google Cloud (EU regions) | Hyperscaler EU region | EU |
+| Delos Cloud (SAP / Arvato) | Dedicated sovereign | DE |
+| Oracle Cloud Infrastructure (OCI) | Hyperscaler EU / sovereign | EU |
 
-### Customisable and automatically updated
+### Customisable
 
 The catalogue is a plain YAML file. Add your own provider entry - private cloud, managed
 hosting, or internal platform team - using the same check schema as the built-in providers.
 SWAO reads your custom entry immediately; no recompilation required.
 
-Run `swao catalogue update` to pull the latest provider checks and sovereignty evidence from
-the SWAO catalogue repository without upgrading the full binary.
+Download the latest catalogues from GitHub:
+[github.com/Accenture/SWAO/tree/main/lz-catalogues](https://github.com/Accenture/SWAO/tree/main/lz-catalogues)
+
+---
+
+## Community Frameworks
+
+Download community frameworks directly from GitHub and place them in your workspace
+`catalogs/community/<slug>/` directory:
+[github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
+
+---
+
+## LLM Gateway configurations
+
+Pre-built LLM gateway YAML files for Anthropic, OpenAI, Bedrock, Ollama, OpenRouter,
+and vLLM are available for download:
+[github.com/Accenture/SWAO/tree/main/llm-gateway](https://github.com/Accenture/SWAO/tree/main/llm-gateway)
 
 ---
 
 ## Licence
 
-- **Community** - Apache 2.0. Free to use, modify, and distribute. Contributions welcome.
-- **Consultant** - Proprietary. Contact us to request access for your engagement.
-- **Enterprise** - Proprietary. Includes full compliance and custom library, portfolio dashboards, and sector content.
+- **Community** - Apache 2.0. Free to use, modify, and distribute. Community frameworks and LZ catalogues are included in every edition.
+- **Consultant** - Proprietary (SWAO Premium Edition). Adds HTML publication, PDF report, and extended output formats.
+- **Enterprise** - Proprietary (SWAO Premium Edition). Adds portfolio dashboards, MCP integration, SWAO Chat, sector-specific engagement templates, and further exclusive features.
 
 Questions or licence requests: start a [GitHub Discussion](https://github.com/Accenture/SWAO/discussions) or [raise an issue](https://github.com/Accenture/SWAO/issues).

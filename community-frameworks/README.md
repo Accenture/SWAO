@@ -1,3 +1,19 @@
+```
+// =======================================================================
+//
+//                          S  W  A  O
+//
+//     Sovereign Workload Assessment and Onboarding
+//     Community Frameworks
+//
+//     Community Edition  -  Apache 2.0
+//
+//     Website       :  https://accenture.github.io/SWAO/
+//     Source Code   :  https://github.com/Accenture/SWAO
+//
+// =======================================================================
+```
+
 # SWAO Community Frameworks
 
 community frameworks for SWAO - Sovereign Workload Assessment and Onboarding.
@@ -27,18 +43,29 @@ Each framework is a pair of YAML files:
 
 ## How to use
 
-Install a framework into your assessment workspace:
+Frameworks are downloaded manually from GitHub and placed in your workspace.
 
-```bash
-swao framework install GDPR
-swao framework install BSI_C5
-swao framework list   # show all installed and available frameworks
+Browse or download individual framework directories at:
+**https://github.com/Accenture/SWAO/tree/main/community-frameworks**
+
+To add a framework to your workspace, copy the framework directory (e.g. `gdpr/`) into
+your workspace `catalogs/community/<slug>/`. For example:
+
 ```
+my-workspace/
+  catalogs/
+    community/
+      gdpr/
+        framework-meta.yaml
+        controls.yaml
+```
+
+SWAO picks up the framework automatically on the next assessment run.
 
 ## Customising a framework
 
-Copy a framework directory into your workspace `catalogs/community/<slug>/` and edit
-`controls.yaml` to add, remove, or adjust controls for your context.
+Edit `controls.yaml` inside your copied framework directory to add, remove, or adjust
+controls for your context.
 
 Controls use paraphrased language - do not reproduce verbatim text from copyrighted
 standards documents. Paraphrasing is acceptable fair use; verbatim reproduction is not.

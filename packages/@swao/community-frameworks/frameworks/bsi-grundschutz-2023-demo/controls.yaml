@@ -1,0 +1,349 @@
+# SWAO demo framework -- BSI_GRUNDSCHUTZ_2023_DEMO controls
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+#
+# 12 controls selected from BSI IT-Grundschutz Kompendium Edition 2023
+# (72 controls across 8 Schichten) for live demo use.
+# Selection criteria: maximum cross-regime coverage with GDPR_DEMO,
+# AI_10_PILLARS_DEMO, and NIST_HIPAA_DEMO; at least one Anforderung per
+# Schicht; signal-prefix evidence preferred over manual-only.
+# Source: swao/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023/controls.yaml
+
+regime_meta:
+  id: BSI_GRUNDSCHUTZ_2023_DEMO
+  name: "BSI IT-Grundschutz 2023 Demo (12 controls) -- Live-Presentation Subset"
+  version: "Edition 2023 (published January 2023) -- demo subset 2026-07-07"
+  scope: community
+  authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-07"
+  applicability_hints:
+    - german_public_sector
+    - regulated_industry
+    - cloud_workload
+    - on_premise
+    - sovereign_cloud
+    - demo
+  signal_prefix: BSI_GS_DEMO
+  last_reviewed: "2026-07-07"
+  catalogue_version: "1.0.0"
+
+controls:
+  # ========================================================================
+  # Schicht ISMS -- 1 control
+  # ========================================================================
+  - id: BSI_GS_DEMO.ISMS1_A1
+    pillar: "Schicht ISMS -- Sicherheitsmanagement"
+    title: "Management Responsibility for Information Security (ISMS.1.A1)"
+    description: >-
+      The management of the organisation must visibly commit to information
+      security. Management shall ensure that all employees are aware of the
+      information security policy and that security objectives are defined,
+      communicated, and achieved. Management responsibility is the governance
+      anchor for the entire IT-Grundschutz implementation.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/isms1-a1-management-responsibility.md" }
+    references: ["https://www.bsi.bund.de/EN/Topics/ITGrundschutz/itgrundschutz_node.html"]
+    overrides: []
+    maps_to: [ISO_27001_Clause_5.1, ISO_27001_A.5.1]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_01
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.GOV_01
+        relationship: related
+    remediation: "Obtain documented management commitment to the information security policy; assign a named CISO; include information security as a standing board agenda item."
+    tags:
+      - "schicht.isms"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht ORP -- 2 controls
+  # ========================================================================
+  - id: BSI_GS_DEMO.ORP4_A1
+    pillar: "Schicht ORP -- Organisation und Personal"
+    title: "Regulated Identity and Access Management (ORP.4.A1)"
+    description: >-
+      All access to IT systems and data must be regulated through a
+      documented identity and access management process. Users must be
+      assigned only the access rights required for their role (need-to-know
+      / least-privilege). Access rights must be reviewed periodically and
+      revoked promptly when no longer required.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.15, ISO_27001_A.5.18, SOC_2_CC6.3]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_01
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_07
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.IAM_01
+        relationship: related
+    remediation: "Document IAM policy; enforce RBAC or ABAC; automate joiner/mover/leaver flows through IDP; schedule quarterly access reviews."
+    tags:
+      - "schicht.orp"
+      - "anforderung.basis"
+
+  - id: BSI_GS_DEMO.ORP5_A1
+    pillar: "Schicht ORP -- Organisation und Personal"
+    title: "Compliance with Legal and Regulatory Requirements (ORP.5.A1)"
+    description: >-
+      The organisation must identify all legal, regulatory, and contractual
+      obligations relevant to its information processing activities and
+      ensure these are met. A register of applicable obligations must be
+      maintained and reviewed at least annually.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/orp5-a1-legal-requirements.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.31, SOC_2_CC9.1]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART6
+        relationship: related
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART28
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ORG_01
+        relationship: equivalent
+    remediation: "Maintain a regulatory inventory covering GDPR, sector-specific law, and contractual security obligations; assign an owner per obligation; review annually."
+    tags:
+      - "schicht.orp"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht CON -- 2 controls
+  # ========================================================================
+  - id: BSI_GS_DEMO.CON2_A1
+    pillar: "Schicht CON -- Konzepte und Vorgehensweisen"
+    title: "Data Protection Concept (CON.2.A1)"
+    description: >-
+      A data protection concept must be developed and maintained covering
+      all personal data processed by the organisation. The concept must
+      define technical and organisational measures to ensure confidentiality,
+      integrity, and availability of personal data, in line with GDPR Art 32
+      requirements.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.34, GDPR_Art_32]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART32_A
+        relationship: equivalent
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART5_1_F
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_04
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_09
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: related
+    remediation: "Document data flows, classification, and applicable technical/organisational measures; align encryption and access decisions with the data protection concept."
+    tags:
+      - "schicht.con"
+      - "anforderung.basis"
+
+  - id: BSI_GS_DEMO.CON3_A1
+    pillar: "Schicht CON -- Konzepte und Vorgehensweisen"
+    title: "Backup Requirements Analysis (CON.3.A1)"
+    description: >-
+      The requirements for backup and recovery must be formally defined
+      before any backup solution is implemented. The analysis must consider
+      data classification, regulatory retention periods, recovery time
+      objectives (RTO), and recovery point objectives (RPO).
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/con3-a1-backup-requirements.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.13, SOC_2_A1.2]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_17
+        relationship: equivalent
+    remediation: "Document RPO/RTO per system; verify backup procedures meet the defined targets; test recovery at least annually."
+    tags:
+      - "schicht.con"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht OPS -- 2 controls
+  # ========================================================================
+  - id: BSI_GS_DEMO.OPS112_A1
+    pillar: "Schicht OPS -- Betrieb"
+    title: "Change Management Process (OPS.1.1.2.A1)"
+    description: >-
+      All changes to IT systems, applications, and infrastructure components
+      must be managed through a defined change management process. Changes
+      must be reviewed, approved, tested, and documented before deployment
+      to production. Emergency changes require post-implementation review.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops112-a1-change-management.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.32, SOC_2_CC8.1]
+    cross_mapping: []
+    remediation: "Implement a change advisory board (CAB) process; enforce change records in the ITSM tool; track emergency changes for retrospective review."
+    tags:
+      - "schicht.ops"
+      - "anforderung.basis"
+
+  - id: BSI_GS_DEMO.OPS22_A1
+    pillar: "Schicht OPS -- Betrieb"
+    title: "Cloud Usage Strategy (OPS.2.2.A1)"
+    description: >-
+      Before using cloud services, the organisation must define a cloud
+      strategy covering the classification of data permitted in cloud
+      environments, the selection criteria for cloud providers, the required
+      contractual security obligations, and the exit strategy.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/ops22-a1-cloud-strategy.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.23, SOC_2_CC6.6]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART28
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.TAS_01
+        relationship: related
+    remediation: "Document the cloud strategy; classify data by sensitivity and map to approved cloud tiers; include security clauses in cloud-provider agreements."
+    tags:
+      - "schicht.ops"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht DER -- 2 controls
+  # ========================================================================
+  - id: BSI_GS_DEMO.DER21_A1
+    pillar: "Schicht DER -- Detektion und Reaktion"
+    title: "Incident Management Process (DER.2.1.A1)"
+    description: >-
+      A documented incident management process must exist covering incident
+      detection, classification, escalation, containment, eradication,
+      recovery, and post-incident review. The process must define roles,
+      responsibilities, and communication channels for security incidents,
+      including personal data breaches (GDPR Art 33/34).
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/der21-a1-incident-management.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.24, ISO_27001_A.5.26, SOC_2_CC7.3]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_16
+        relationship: equivalent
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_05
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.OBS_01
+        relationship: related
+    remediation: "Document the incident-response plan; conduct a tabletop exercise at least annually; integrate GDPR breach-notification timelines (72h) into the escalation procedure."
+    tags:
+      - "schicht.der"
+      - "anforderung.basis"
+
+  - id: BSI_GS_DEMO.DER4_A1
+    pillar: "Schicht DER -- Detektion und Reaktion"
+    title: "Business Continuity Planning (DER.4.A1)"
+    description: >-
+      A business continuity plan (BCP) must exist that covers the IT systems
+      and processes critical to the organisation. The BCP must define minimum
+      service levels, recovery priorities, key-personnel loss scenarios, and
+      a stakeholder communication procedure for outages.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/der4-a1-bcp.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, SOC_2_A1.3]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_17
+        relationship: related
+    remediation: "Author a BCP; define RPO/RTO aligned with CON.3.A1; schedule an annual BCP test; document the results."
+    tags:
+      - "schicht.der"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht APP -- 1 control
+  # ========================================================================
+  - id: BSI_GS_DEMO.APP44_A1
+    pillar: "Schicht APP -- Anwendungen"
+    title: "Container Orchestration Security Policy (APP.4.4.A1)"
+    description: >-
+      Before deploying containers to production, a formal container
+      orchestration security policy must be created covering RBAC, network
+      policies, image provenance, secrets management, and pod security
+      standards. The policy must be reviewed whenever the orchestration
+      platform or base images change significantly.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/app44-a1-container-policy.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.9, CIS_KUBERNETES_5.x]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.MOD_01
+        relationship: related
+    remediation: "Author a container security policy; enforce RBAC and pod security standards; deploy network policies; replace Kubernetes Secrets with a secrets manager."
+    tags:
+      - "schicht.app"
+      - "anforderung.basis"
+
+  # ========================================================================
+  # Schicht NET -- 1 control
+  # ========================================================================
+  - id: BSI_GS_DEMO.NET11_A1
+    pillar: "Schicht NET -- Netze und Kommunikation"
+    title: "Network Architecture Requirements (NET.1.1.A1)"
+    description: >-
+      A formal network architecture concept must be created and maintained
+      that defines network zones, trust boundaries, permitted traffic flows,
+      and the placement of security controls. The need-to-connect principle
+      must be applied explicitly when authoring firewall and security-group
+      rules.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/net11-a1-network-architecture.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.22, CIS_CSC_12]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART32_A
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.TAS_01
+        relationship: related
+    remediation: "Document network zones and trust boundaries; review firewall rules against the need-to-connect principle; schedule an annual architecture review."
+    tags:
+      - "schicht.net"
+      - "anforderung.basis"

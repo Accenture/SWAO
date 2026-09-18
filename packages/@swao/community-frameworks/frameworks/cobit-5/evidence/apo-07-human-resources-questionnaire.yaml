@@ -1,0 +1,34 @@
+# Manual questionnaire for APO07 -- Manage Human Resources
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: APO07
+framework_id: COBIT_5
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Is there a maintained skills matrix for IT-critical roles?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "HR skills matrix 2026-Q1"
+  - id: q2
+    text: "Are workforce-planning gaps reviewed against the IT strategy at least every six months?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Workforce-planning review 2025-H2 + 2026-H1"
+  - id: q3
+    text: "Are succession plans documented for the named single-points-of-failure?"
+    answer: "no"
+    severity_if_no: medium
+    evidence_ref: ""
+  - id: q4
+    text: "Is performance management running on a documented cadence with calibration across the IT function?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "PM cycle 2025-2026 documented"
+  - id: q5
+    text: "Are exit interviews captured and trends fed back into HR strategy?"
+    answer: "n/a"
+    severity_if_no: low
+    evidence_ref: "Below-threshold attrition; trend analysis suspended for FY26"

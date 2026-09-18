@@ -2,10 +2,16 @@ SPDX-License-Identifier: Apache-2.0
 
 SWAO PREMIUM EDITION NOTICE
 
-Notwithstanding the Apache License 2.0 grant in this file, certain
-components designated as "SWAO Premium Edition" are NOT licensed under the
-Apache License 2.0. Premium Edition components are identifiable by one or
-more of the following markers:
+SWAO is available in three editions:
+
+  - Community Edition: Apache License 2.0. Free to use, modify, and distribute.
+  - Consultant Edition: SWAO Premium Edition. Proprietary; commercial licence required.
+  - Enterprise Edition: SWAO Premium Edition. Proprietary; commercial licence required.
+
+The Consultant and Enterprise editions are collectively designated "SWAO Premium
+Edition". Notwithstanding the Apache License 2.0 grant in this file, SWAO Premium
+Edition components are NOT licensed under the Apache License 2.0. Premium Edition
+components are identifiable by one or more of the following markers:
 
   - A file header comment containing "SWAO Premium Edition" or the tag
     "SWAO-PREMIUM"

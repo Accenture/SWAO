@@ -1,0 +1,365 @@
+# SWAO demo framework -- NIST_SP_800_66R2_DEMO controls
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+#
+# 12 controls selected from NIST SP 800-66r2 (49 controls) for live demo use.
+# Selection: Administrative Safeguards (6 controls) + Technical Safeguards (5)
+# + Organisational Requirements (1). Preference for critical/high severity and
+# signal-prefix evidence; cross-mapped to GDPR_DEMO, AI_10_PILLARS_DEMO,
+# BSI_GRUNDSCHUTZ_2023_DEMO. Relevant to sovereign-health's healthcare domain.
+# Source: swao/packages/@swao/community-frameworks/frameworks/nist-sp-800-66r2-hipaa/controls.yaml
+
+regime_meta:
+  id: NIST_SP_800_66R2_DEMO
+  name: "NIST SP 800-66r2 Demo (12 controls) -- Live-Presentation Subset"
+  version: "NIST SP 800-66r2 / 2024-02 -- demo subset 2026-07-02"
+  scope: community
+  authority: "U.S. Department of Health and Human Services -- 45 CFR Part 164 Subpart C; NIST SP 800-66 Revision 2"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-07"
+  applicability_hints:
+    - us_health
+    - phi
+    - electronic_phi
+    - healthcare
+    - hipaa_security_rule
+    - demo
+  signal_prefix: NIST_SP_800_66R2_DEMO
+  last_reviewed: "2026-07-07"
+  catalogue_version: "1.1.0"
+  redistribution_note: >-
+    NIST SP 800-66 Revision 2 is a U.S. Government work product not subject
+    to copyright. HIPAA regulation (45 CFR Part 164) is federal regulation
+    freely reproducible. Control titles match HIPAA Standards / IS names
+    verbatim; descriptions are paraphrased.
+
+controls:
+  # ========================================================================
+  # Administrative Safeguards (45 CFR 164.308) -- 6 controls
+  # ========================================================================
+  - id: HIPAA_DEMO.ADM_01
+    pillar: "Administrative Safeguards"
+    title: "Risk Analysis (Required) -- 164.308(a)(1)(ii)(A)"
+    description: >-
+      Conduct an accurate and thorough assessment of the potential risks
+      and vulnerabilities to the confidentiality, integrity, and
+      availability of electronic protected health information (ePHI) held
+      by the covered entity or business associate. The assessment must be
+      documented, scoped to all ePHI, and refreshed periodically per
+      NIST SP 800-66r2 Section 5.1.1.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/adm-01-risk-analysis.md" }
+    references: ["NIST.SP.800-66r2.pdf"]
+    overrides: []
+    maps_to: [ISO_27001_Clause_6.1, ISO_27001_A.5.7, SOC_2_CC3.2]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART6
+        relationship: related
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART9
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ISMS1_A1
+        relationship: related
+    remediation: "Run a documented risk assessment against every system that creates, receives, maintains or transmits ePHI; record threats, likelihood, impact, and treatment."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-308"
+
+  - id: HIPAA_DEMO.ADM_02
+    pillar: "Administrative Safeguards"
+    title: "Risk Management (Required) -- 164.308(a)(1)(ii)(B)"
+    description: >-
+      Implement security measures sufficient to reduce risks and
+      vulnerabilities identified in the risk analysis (HIPAA_DEMO.ADM_01)
+      to a reasonable and appropriate level. Risk treatments and residual
+      risks are tracked through to closure.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/adm-02-risk-management.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_Clause_6.1.3, ISO_27001_Clause_8.3, SOC_2_CC3.4]
+    cross_mapping: []
+    remediation: "Maintain a risk treatment plan linking each identified risk to a control or accepted residual; review at least annually."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-308"
+
+  - id: HIPAA_DEMO.ADM_04
+    pillar: "Administrative Safeguards"
+    title: "Information System Activity Review (Required) -- 164.308(a)(1)(ii)(D)"
+    description: >-
+      Implement procedures to regularly review records of information
+      system activity, such as audit logs, access reports, and security
+      incident tracking reports.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.15, SOC_2_CC7.2]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.OBS_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.DER21_A1
+        relationship: related
+    remediation: "Centralise audit logs into a SIEM; define a review cadence per system criticality (daily for high-risk, weekly otherwise); record reviews in a log."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-308"
+
+  - id: HIPAA_DEMO.ADM_08
+    pillar: "Administrative Safeguards"
+    title: "Termination Procedures (Addressable) -- 164.308(a)(3)(ii)(C)"
+    description: >-
+      Implement procedures for terminating access to ePHI when the
+      employment of, or other arrangement with, a workforce member ends.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/adm-08-termination-procedures.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.6.5, SOC_2_CC6.3]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.IAM_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP4_A1
+        relationship: related
+    remediation: "Wire the HR offboarding workflow to the IAM system; revoke all access within a defined SLA (target same-day); log evidence per termination."
+    tags:
+      - "applies-to.phi"
+      - "requirement.addressable"
+      - "section.cfr-164-308"
+
+  - id: HIPAA_DEMO.ADM_16
+    pillar: "Administrative Safeguards"
+    title: "Response and Reporting (Required) -- 164.308(a)(6)(ii)"
+    description: >-
+      Identify and respond to suspected or known security incidents;
+      mitigate, to the extent practicable, harmful effects of security
+      incidents that are known; document security incidents and their
+      outcomes.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/adm-16-incident-response.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.24, ISO_27001_A.5.26, SOC_2_CC7.3, SOC_2_CC7.4]
+    cross_mapping:
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.DER21_A1
+        relationship: equivalent
+    remediation: "Operate a documented incident-response plan: detection, triage, containment, eradication, recovery, post-incident review; integrate with the SIEM."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-308"
+
+  - id: HIPAA_DEMO.ADM_17
+    pillar: "Administrative Safeguards"
+    title: "Data Backup Plan (Required) -- 164.308(a)(7)(ii)(A)"
+    description: >-
+      Establish and implement procedures to create and maintain retrievable
+      exact copies of ePHI.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: DR }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.13, SOC_2_A1.3]
+    cross_mapping:
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON3_A1
+        relationship: equivalent
+    remediation: "Define backup frequency and retention per system criticality; test restore at least annually; record evidence in the backup-test log."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-308"
+
+  # ========================================================================
+  # Technical Safeguards (45 CFR 164.312) -- 5 controls
+  # ========================================================================
+  - id: HIPAA_DEMO.TEC_01
+    pillar: "Technical Safeguards"
+    title: "Unique User Identification (Required) -- 164.312(a)(2)(i)"
+    description: >-
+      Assign a unique name and/or number for identifying and tracking user
+      identity. Shared accounts for ePHI access are prohibited.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.16, SOC_2_CC6.1]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.IAM_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP4_A1
+        relationship: related
+    remediation: "Provision a unique principal per workforce member through the IDP; prohibit shared accounts for interactive ePHI access; audit for orphaned and stale identities."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-312"
+
+  - id: HIPAA_DEMO.TEC_04
+    pillar: "Technical Safeguards"
+    title: "Encryption and Decryption at Rest (Addressable) -- 164.312(a)(2)(iv)"
+    description: >-
+      Implement a mechanism to encrypt and decrypt ePHI at rest. NIST
+      recommends FIPS 140-validated cryptographic modules per
+      NIST SP 800-66r2 Section 5.3.1.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7, GDPR_Art_32]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART32_A
+        relationship: equivalent
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART5_1_F
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON2_A1
+        relationship: related
+    remediation: "Encrypt all ePHI at rest with FIPS 140-validated cryptography; use KMS-managed keys with documented rotation."
+    tags:
+      - "applies-to.phi"
+      - "requirement.addressable"
+      - "section.cfr-164-312"
+
+  - id: HIPAA_DEMO.TEC_05
+    pillar: "Technical Safeguards"
+    title: "Audit Controls (Required) -- 164.312(b)"
+    description: >-
+      Implement hardware, software, and/or procedural mechanisms that
+      record and examine activity in information systems that contain or
+      use ePHI.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.15, SOC_2_CC7.2]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.OBS_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.DER21_A1
+        relationship: related
+    remediation: "Emit immutable audit logs covering authentication, ePHI access, ePHI modification, and administrative actions; retain per the retention policy; review per HIPAA-ADM-04."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-312"
+
+  - id: HIPAA_DEMO.TEC_07
+    pillar: "Technical Safeguards"
+    title: "Person or Entity Authentication (Required) -- 164.312(d)"
+    description: >-
+      Implement procedures to verify that a person or entity seeking access
+      to ePHI is the one claimed.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.17, ISO_27001_A.8.5, SOC_2_CC6.1, GDPR_Art_32]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.IAM_01
+        relationship: equivalent
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP4_A1
+        relationship: related
+    remediation: "Require MFA for all ePHI access (workforce and B2B integrations); use a managed IDP; review authenticator strength against the IAL/AAL profile."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-312"
+
+  - id: HIPAA_DEMO.TEC_09
+    pillar: "Technical Safeguards"
+    title: "Encryption in Transit (Addressable) -- 164.312(e)(2)(ii)"
+    description: >-
+      Implement a mechanism to encrypt ePHI whenever deemed appropriate.
+      Transmission security requires TLS 1.2 or higher for all ePHI
+      transmission paths.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7, GDPR_Art_32]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART32_A
+        relationship: related
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART5_1_F
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON2_A1
+        relationship: related
+    remediation: "Encrypt every ePHI-transmission path (workforce browsers, partner integrations, internal service-to-service); deny cleartext fallback."
+    tags:
+      - "applies-to.phi"
+      - "requirement.addressable"
+      - "section.cfr-164-312"
+
+  # ========================================================================
+  # Organisational Requirements (45 CFR 164.314) -- 1 control
+  # ========================================================================
+  - id: HIPAA_DEMO.ORG_01
+    pillar: "Organisational Requirements"
+    title: "Business Associate Contracts (Required) -- 164.314(a)(2)(i)"
+    description: >-
+      The contract between a covered entity and a business associate must
+      establish the permitted and required uses and disclosures of ePHI;
+      provide that the business associate will safeguard ePHI; require
+      breach reporting; and require termination of the contract for
+      material breach.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/org-01-ba-contracts.md" }
+    references: []
+    overrides: []
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, SOC_2_CC9.2, DORA_Art_28]
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART28
+        relationship: equivalent
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP5_A1
+        relationship: equivalent
+    remediation: "Use a standard BAA template legal has reviewed; require it before any ePHI is shared; track BAA execution per business associate."
+    tags:
+      - "applies-to.phi"
+      - "requirement.required"
+      - "section.cfr-164-314"

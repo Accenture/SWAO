@@ -1,0 +1,9 @@
+As Migration Programme Manager, I have reviewed the Workload Sovereignty Profile and have three delivery concerns that need to be addressed to build a credible programme plan for Sovereign Health.
+
+First, the assessment identifies a hardware refresh forcing function in Q4 2026. This creates a hard deadline that constrains the migration programme timeline significantly. I need to understand whether the current team capacity and available landing zone configuration support a go-live before that deadline, accounting for testing, clinical validation, and change management activities.
+
+Second, the egress analysis flags a dependency on the Anthropic API as a migration blocker. Blockers need remediation plans with owners and dates before a programme baseline can be set. Who is the technical owner of the AI feature, and what is the remediation option -- EU proxy endpoint, self-hosted model, or feature re-scoping? I need this resolved or risk-accepted before sprint planning begins.
+
+Third, the cryptography finding about symmetric JWT signing is marked as medium severity, but in a regulated healthcare environment this could trigger a sign-off dependency from the NHS Digital assurance team. Has the programme included time for a Data Security and Protection Toolkit assessment in the plan, and do we have an assurance contact at the NHS who can confirm scope and timelines?
+
+Where would you like me to start building out the programme dependency map?

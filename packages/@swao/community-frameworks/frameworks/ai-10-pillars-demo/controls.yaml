@@ -1,0 +1,262 @@
+# SWAO demo framework -- AI_10_PILLARS_DEMO controls
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+#
+# All 11 controls from the AI 10 Pillars community framework, packaged as a
+# demo-ready set. The production framework also has 11 controls (one per
+# pillar), so no subset selection was needed.
+# Source: swao/packages/@swao/community-frameworks/frameworks/ai-10-pillars/controls.yaml
+
+regime_meta:
+  id: AI_10_PILLARS_DEMO
+  name: "AI 10 Pillars Demo (11 controls) -- Live-Presentation Subset"
+  version: "2026-Q2 -- demo subset 2026-07-02"
+  scope: community
+  authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-07"
+  applicability_hints:
+    - ai_workload
+    - llm_app
+    - rag_pipeline
+    - genai_application
+    - demo
+  signal_prefix: AI10P_DEMO
+  last_reviewed: "2026-07-07"
+  catalogue_version: "1.1.0"
+
+controls:
+  # Pillar 1 -- Input Security
+  - id: AI10P_DEMO.INP_01
+    pillar: "Input Security"
+    title: "Validate and sanitise all incoming inputs"
+    description: >-
+      Validate and sanitise all incoming inputs to prevent prompt injection
+      and data injection attacks across user-facing entry points (REST,
+      GraphQL, WebSocket).
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_input_security }
+    references: ["https://owasp.org/www-project-llm-prompt-injection"]
+    overrides: []
+    maps_to: []
+    cross_mapping: []
+    remediation: "Implement input validation and sanitisation at all entry points; use schema validation libraries (Zod, Pydantic); test with adversarial prompts."
+
+  # Pillar 2 -- Identity and Access Control
+  - id: AI10P_DEMO.IAM_01
+    pillar: "Identity and Access Control"
+    title: "AuthN/AuthZ across AI APIs"
+    description: >-
+      Manage authentication, authorisation, and user permissions across AI
+      systems, model endpoints, and adjacent APIs. Ensure only authorised
+      users and services can access models and sensitive data.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: IAM }
+    references: ["https://www.nist.gov/identity-access-management"]
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_01
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_07
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP4_A1
+        relationship: related
+    remediation: "Enforce RBAC on all model endpoints; require MFA for admin access; audit AI API access logs weekly."
+
+  # Pillar 3 -- Data Protection
+  - id: AI10P_DEMO.DAT_01
+    pillar: "Data Protection"
+    title: "Encrypt and mask sensitive data"
+    description: >-
+      Secure sensitive data feeding into or returned from AI systems using
+      encryption at rest, in transit, masking for non-production paths, and
+      strict access controls.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: ["GDPR Article 32(1)(a)"]
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART5_1_F
+        relationship: equivalent
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART32_A
+        relationship: equivalent
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_04
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON2_A1
+        relationship: related
+    remediation: "Encrypt all AI training data and inference data at rest and in transit; use KMS-managed keys; mask PII in non-production environments."
+
+  - id: AI10P_DEMO.DAT_02
+    pillar: "Data Protection"
+    title: "Prevent data leakage in AI outputs"
+    description: >-
+      Prevent data leakage, unauthorised access, and compliance violations
+      through AI inference paths (chat logs, embeddings, vector DB rows).
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: DATA }
+    references: []
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART5_1_C
+        relationship: related
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART17
+        relationship: related
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART25
+        relationship: related
+    remediation: "Implement output filtering to detect and redact PII in AI responses; audit vector DB access patterns; set retention limits on chat logs."
+
+  # Pillar 4 -- Model Security
+  - id: AI10P_DEMO.MOD_01
+    pillar: "Model Security"
+    title: "Protect models from theft and adversarial manipulation"
+    description: >-
+      Ensure integrity, reliability, and confidentiality of AI models in
+      storage and at serving time. Protect against model theft, weight
+      extraction, and adversarial manipulation.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_model_security }
+    references: ["https://atlas.mitre.org"]
+    overrides: []
+    maps_to: []
+    cross_mapping: []
+    remediation: "Restrict model-artefact access to a need-to-know set; sign model weights; monitor for unusual inference patterns indicative of extraction attacks."
+
+  # Pillar 5 -- Prompt Security
+  - id: AI10P_DEMO.PRM_01
+    pillar: "Prompt Security"
+    title: "Protect system-prompt integrity"
+    description: >-
+      Prevent manipulation of system prompts and protect instruction
+      integrity. Stop attackers from overriding system rules or extracting
+      hidden system instructions.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_prompt_security }
+    references: ["https://owasp.org/www-project-llm-prompt-injection"]
+    overrides: []
+    maps_to: []
+    cross_mapping: []
+    remediation: "Store system prompts in version control; enforce integrity checks before each inference call; test against prompt-injection patterns."
+
+  # Pillar 6 -- Retrieval Security (RAG)
+  - id: AI10P_DEMO.RAG_01
+    pillar: "Retrieval Security"
+    title: "Secure RAG pipeline and vector store"
+    description: >-
+      Secure data retrieval pipelines, embeddings, and vector databases.
+      Prevent unauthorised data access and poisoning of knowledge sources.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_retrieval_security }
+    references: []
+    overrides: []
+    maps_to: []
+    cross_mapping: []
+    remediation: "Apply row-level access control in the vector DB; validate document provenance before ingestion; monitor for retrieval anomalies."
+
+  # Pillar 7 -- Tool and API Security
+  - id: AI10P_DEMO.TAS_01
+    pillar: "Tool and API Security"
+    title: "Secure tool and external-API integrations"
+    description: >-
+      Secure integrations with external APIs, tools, and plugins used by AI
+      systems. Prevent abuse, unauthorised actions, and exploitation of
+      connected services.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: EGR }
+    references: []
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.OPS22_A1
+        relationship: related
+    remediation: "Enumerate all external tools the AI system can invoke; apply least-privilege API keys; log every tool invocation; rate-limit external calls."
+
+  # Pillar 8 -- Output Guardrails
+  - id: AI10P_DEMO.OUT_01
+    pillar: "Output Guardrails"
+    title: "Filter and constrain AI outputs"
+    description: >-
+      Filter and constrain AI-generated outputs to enforce safety and
+      compliance. Prevent harmful, biased, or sensitive information from
+      reaching users.
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_output_guardrails }
+    references: []
+    overrides: []
+    maps_to: []
+    cross_mapping: []
+    remediation: "Deploy a moderation layer on all AI outputs; define a content policy and enforce it via post-processing; log policy violations."
+
+  # Pillar 9 -- Monitoring and Detection
+  - id: AI10P_DEMO.OBS_01
+    pillar: "Monitoring and Detection"
+    title: "Continuously track usage and anomalies"
+    description: >-
+      Continuously track usage, anomalies, and suspicious behaviour across
+      AI systems. Enable early detection of attacks, misuse, and system
+      vulnerabilities including prompt-injection attempts, jailbreaks, and
+      exfiltration.
+    severity_default: medium
+    evidence_basis:
+      - { signal_prefix: OBS }
+    references: []
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.DER21_A1
+        relationship: related
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_05
+        relationship: related
+    remediation: "Stream AI inference logs to a SIEM; alert on anomalous usage patterns (high token counts, unusual callers, repeated refusals); review weekly."
+
+  # Pillar 10 -- Governance and Compliance
+  - id: AI10P_DEMO.GOV_01
+    pillar: "Governance and Compliance"
+    title: "AI governance and regulatory alignment"
+    description: >-
+      Define policies, audit controls, and regulatory frameworks for AI
+      usage. Ensure responsible AI deployment aligned with legal and ethical
+      standards (EU AI Act, NIST AI RMF).
+    severity_default: high
+    evidence_basis:
+      - { context_input: ai_governance }
+    references:
+      - "https://artificialintelligenceact.eu"
+      - "https://www.nist.gov/itl/ai-risk-management-framework"
+    overrides: []
+    maps_to: []
+    cross_mapping:
+      - target_framework: GDPR_DEMO
+        target_control: GDPR_DEMO.ART22
+        relationship: equivalent
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ISMS1_A1
+        relationship: related
+    remediation: "Publish an AI governance policy; assign an AI risk owner; maintain an AI system register; conduct annual AI risk assessments."

@@ -1,0 +1,46 @@
+# SWAO demo framework metadata -- AI_10_PILLARS_DEMO
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+
+framework:
+  id: AI_10_PILLARS_DEMO
+  name: "AI 10 Pillars Demo (11 controls) -- Live-Presentation Subset"
+  version: "2026-Q2 -- demo subset 2026-07-02"
+  authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-02"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - ai_workload
+    - llm_app
+    - rag_pipeline
+    - genai_application
+    - demo
+  assessment_type_scope: [app]
+  description: >
+    All 11 controls from the AI 10 Pillars community framework, packaged as
+    a demo-ready set for live-presentation use with the sovereign-health
+    demo application. The production AI_10_PILLARS framework also has 11
+    controls (one per pillar), so this demo set is equivalent. Cross-mapped
+    to GDPR_DEMO, NIST_HIPAA_DEMO, and BSI_GRUNDSCHUTZ_2023_DEMO.
+    See Design 066 for demo workflow.
+  references:
+    - "docs/design/066-demo-community-frameworks.md"
+  catalogue_version: "1.1.0"
+  last_reviewed: "2026-07-07"
+
+  signal_prefix: AI10P_DEMO
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR_DEMO
+      - NIST_HIPAA_DEMO
+      - BSI_GRUNDSCHUTZ_2023_DEMO
+
+  redistribution_note: >
+    Based on the AI 10 Pillars framework by Alok Sharan.
+
+  replaces: []

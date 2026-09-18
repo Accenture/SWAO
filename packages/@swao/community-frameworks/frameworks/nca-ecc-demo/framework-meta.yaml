@@ -1,0 +1,58 @@
+# SWAO demo framework metadata -- NCA_ECC_DEMO
+# Hand-authored from the NCA ECC-2:2024 PDF (TLP:White, Document Classification: Public).
+# 20-control subset of NCA_ECC for live-presentation and first-run exploration.
+# Source artefact: docs/custom-frameworks/nca-ecc-2-2024/research-notes.md
+# Issue: #1133
+
+framework:
+  id: NCA_ECC_DEMO
+  name: "NCA ECC Demo (20 controls) -- Live-Presentation Subset"
+  version: "ECC-2:2024 -- demo subset 2026-07-18"
+  authority: "National Cybersecurity Authority (NCA), Kingdom of Saudi Arabia"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-18"
+  applicability_hints:
+    - ksa_regulated_entity
+    - cloud_workload
+    - government_systems
+    - critical_infrastructure
+    - financial_services
+    - demo
+  assessment_type_scope: [app]
+  description: >
+    Demo-sized subset of the NCA ECC-2:2024 community framework for live-presentation
+    use and first-run exploration. Contains 20 controls drawn from all four ECC-2:2024
+    domains: Cybersecurity Governance (5), Cybersecurity Defense (12), Cybersecurity
+    Resilience (1), and Third-Party and Cloud Computing Cybersecurity (2). Selection
+    prioritises controls with automated signal-prefix evidence (IAM, CRYPTO, INFRA, OBS)
+    and controls that cross-map to other demo-tier frameworks (GDPR_DEMO,
+    BSI_GRUNDSCHUTZ_2023_DEMO, NIST_SP_800_66R2_DEMO). Scaffolded on swao init for
+    entities with ksa_regulated_entity or government_systems applicability hints.
+  references:
+    - "https://nca.gov.sa/en/Pages/ECC.aspx"
+    - "docs/custom-frameworks/nca-ecc-2-2024/research-notes.md"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-07-18"
+
+  signal_prefix: NCA_ECC_DEMO
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR_DEMO
+      - BSI_GRUNDSCHUTZ_2023_DEMO
+      - NIST_SP_800_66R2_DEMO
+      - AI_10_PILLARS_DEMO
+
+  redistribution_note: >
+    NCA ECC-2:2024 is issued by the National Cybersecurity Authority of the Kingdom of
+    Saudi Arabia and is classified TLP:White / Document Classification: Public. Control
+    descriptions in this catalogue faithfully paraphrase the subdomain requirement text
+    from the official ECC-2:2024 document for SWAO ingestion. The Arabic version is the
+    binding language for all matters relating to meaning or interpretation. No legal
+    advice is provided; consult the official NCA publication and qualified counsel for
+    interpretation applicable to a specific entity and workload.
+
+  replaces: []

@@ -1,0 +1,31 @@
+# Manual questionnaire for APO04 -- Manage Innovation
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+# Aggregator rule: any `no` at severity matching control severity -> GAP;
+# mix of `yes` + `n/a` -> SATISFIED; presence of `unknown` -> PARTIAL/UNKNOWN.
+
+control_id: APO04
+framework_id: COBIT_5
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Is there a regular (at least quarterly) horizon-scanning forum that reviews emerging technology and business trends?"
+    answer: "yes"
+    severity_if_no: low
+    evidence_ref: "Innovation forum minutes 2026-Q1"
+  - id: q2
+    text: "Does the enterprise maintain a ring-fenced innovation budget separate from BAU IT spend?"
+    answer: "yes"
+    severity_if_no: low
+    evidence_ref: "FY26 budget allocation table"
+  - id: q3
+    text: "Are innovation pilots assessed against pre-agreed exit criteria (continue / pivot / kill)?"
+    answer: "unknown"
+    severity_if_no: low
+    evidence_ref: ""
+  - id: q4
+    text: "Are realised benefits from past pilots tracked back to the steering committee?"
+    answer: "no"
+    severity_if_no: low
+    evidence_ref: ""

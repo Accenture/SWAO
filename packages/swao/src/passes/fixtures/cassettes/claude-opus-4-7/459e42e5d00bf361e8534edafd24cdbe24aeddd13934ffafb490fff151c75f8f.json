@@ -1,0 +1,6 @@
+{
+  "model": "claude-opus-4-7",
+  "prompt_sha256": "459e42e5d00bf361e8534edafd24cdbe24aeddd13934ffafb490fff151c75f8f",
+  "cached_at": "2026-06-03T09:57:41.526Z",
+  "response": "{\"signals\":[{\"id\":\"DATA-01\",\"source\":\"static_analysis\",\"category\":\"application\",\"severity\":\"informational\",\"confidence\":\"high\",\"derivation\":\"No source files were provided in this scan pass, so no evidence is available to classify data types, identify PII, or assess GDPR controls. Per instructions, absence of evidence is not evidence of absence.\",\"evidence\":[\"Source files scanned: 0 files\"],\"outcome\":\"indeterminate\"}],\"assessment\":{\"data_classes\":[],\"gdpr_art17_implemented\":false,\"secrets_in_env\":false}}"
+}

@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "composite": true
+  },
+  "references": [
+    { "path": "../../@swao/core" },
+    { "path": "../../@swao/community-frameworks" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts"
+  ]
+}

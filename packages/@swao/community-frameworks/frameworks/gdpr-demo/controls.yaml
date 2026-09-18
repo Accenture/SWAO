@@ -1,0 +1,353 @@
+# SWAO demo framework -- GDPR_DEMO controls
+# Design reference: docs/design/066-demo-community-frameworks.md
+# Issue: #0717
+#
+# 12 controls selected from GDPR (EU) 2016/679 (53 controls) for live demo use.
+# Selection criteria: maximum cross-regime coverage with AI_10_PILLARS_DEMO,
+# NIST_HIPAA_DEMO, and BSI_GRUNDSCHUTZ_2023_DEMO; at least one control per
+# chapter; automated and inferred evidence kinds preferred.
+# Source: swao/packages/@swao/community-frameworks/frameworks/gdpr/controls.yaml
+
+regime_meta:
+  id: GDPR_DEMO
+  name: "GDPR Demo (12 controls) -- Live-Presentation Subset"
+  version: "Regulation (EU) 2016/679 -- demo subset 2026-07-02"
+  scope: community
+  authority: "European Parliament and Council of the European Union"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    organisation: "Accenture GmbH"
+    date: "2026-07-07"
+  applicability_hints:
+    - eu_data
+    - personal_data
+    - health_data
+    - automated_decisioning
+    - demo
+  signal_prefix: GDPR_DEMO
+  last_reviewed: "2026-07-07"
+  catalogue_version: "1.1.0"
+
+controls:
+  # ======================================================================
+  # Chapter II -- Principles (3 controls)
+  # ======================================================================
+  - id: GDPR_DEMO.ART5_1_A
+    pillar: "Chapter II -- Principles"
+    title: "Lawfulness, fairness and transparency (Art 5(1)(a))"
+    description: >-
+      Personal data shall be processed lawfully, fairly and in a transparent
+      manner in relation to the data subject. Any information addressed to
+      the public or to the data subject shall be concise, easily accessible
+      and easy to understand. Operationalised together with Art 6 (lawful
+      basis) and Art 12-14 (information to data subjects).
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/02-art-5-1-a-lawfulness-fairness-transparency.md" }
+    references: ["https://gdpr-info.eu/art-5-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.34, SOC_2_P1.1, AI10P-DAT-01]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: related
+    remediation: "Document the lawful basis for each processing operation; publish privacy notices in plain language; remove covert tracking."
+    tags:
+      - "applies-to.pii"
+      - "obligation.principle"
+      - "actor.controller-and-processor"
+
+  - id: GDPR_DEMO.ART5_1_C
+    pillar: "Chapter II -- Principles"
+    title: "Data minimisation (Art 5(1)(c))"
+    description: >-
+      Personal data shall be adequate, relevant and limited to what is
+      necessary in relation to the purposes for which they are processed.
+      On review, any field collected but unused at the purpose level is
+      justified or dropped.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/02-art-5-1-c-data-minimisation.md" }
+    references: ["https://gdpr-info.eu/art-5-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.34, SOC_2_C1.1, AI10P-DAT-02]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_02
+        relationship: related
+    remediation: "Audit collected fields against the purpose registry; drop unused attributes; design new collection minimal-first."
+    tags:
+      - "applies-to.pii"
+      - "obligation.principle"
+      - "actor.controller-and-processor"
+
+  - id: GDPR_DEMO.ART5_1_F
+    pillar: "Chapter II -- Principles"
+    title: "Integrity and confidentiality -- security principle (Art 5(1)(f))"
+    description: >-
+      Personal data shall be processed in a manner that ensures appropriate
+      security, including protection against unauthorised or unlawful
+      processing and against accidental loss, destruction or damage, using
+      appropriate technical or organisational measures. Operationalised in
+      Art 32 (security of processing); the principle itself is an Art 83(5)
+      Tier-1 fineable obligation.
+    severity_default: critical
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: ["https://gdpr-info.eu/art-5-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.10, ISO_27001_A.8.24, SOC_2_CC6.1, AI10P-DAT-01]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: equivalent
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_04
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON2_A1
+        relationship: related
+    remediation: "Trace evidence to Art 32 sub-controls; close any technical-control gap surfaced in Art 32 family."
+    tags:
+      - "applies-to.pii"
+      - "obligation.principle"
+      - "actor.controller-and-processor"
+
+  # ======================================================================
+  # Chapter II -- Principles continued (1 control for Art 6 lawful basis)
+  # ======================================================================
+  - id: GDPR_DEMO.ART6
+    pillar: "Chapter II -- Principles"
+    title: "Lawfulness of processing -- six lawful bases (Art 6)"
+    description: >-
+      Processing shall be lawful only if at least one lawful basis applies:
+      (a) consent; (b) contract performance; (c) legal obligation;
+      (d) vital interests; (e) public interest or official authority;
+      (f) legitimate interests (with balancing test). All processing
+      operations must be mapped to a chosen basis before go-live.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/02-art-6-lawful-basis.md" }
+    references: ["https://gdpr-info.eu/art-6-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.34, HIPAA_164.502]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_01
+        relationship: related
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP5_A1
+        relationship: related
+    remediation: "For each processing purpose record the chosen lawful basis; for (f) record the balancing test (LIA)."
+    tags:
+      - "applies-to.pii"
+      - "obligation.principle"
+      - "actor.controller-and-processor"
+
+  # ======================================================================
+  # Chapter II -- Special Categories (1 control -- health data)
+  # ======================================================================
+  - id: GDPR_DEMO.ART9
+    pillar: "Chapter II -- Principles"
+    title: "Processing of special categories of personal data (Art 9)"
+    description: >-
+      Processing of personal data revealing racial or ethnic origin, political
+      opinions, religious beliefs, trade-union membership, genetic data,
+      biometric data for unique identification, data concerning health, sex
+      life or sexual orientation is prohibited unless one of ten specific
+      exceptions in Art 9(2) applies.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/02-art-9-special-categories.md" }
+    references: ["https://gdpr-info.eu/art-9-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.12, ISO_27001_A.8.24, HIPAA_164.514, AI10P-DAT-02]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ADM_01
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_02
+        relationship: related
+    remediation: "Map every special-category processing to the chosen Art 9(2) exception; tighten access controls and encryption at rest beyond the baseline."
+    tags:
+      - "applies-to.pii"
+      - "applies-to.health-data"
+      - "obligation.principle"
+      - "actor.controller-and-processor"
+
+  # ======================================================================
+  # Chapter III -- Data Subject Rights (2 controls)
+  # ======================================================================
+  - id: GDPR_DEMO.ART17
+    pillar: "Chapter III -- Data Subject Rights"
+    title: "Right to erasure -- right to be forgotten (Art 17)"
+    description: >-
+      The data subject has the right to obtain erasure of personal data
+      without undue delay where: data no longer necessary for the purpose;
+      consent withdrawn; objection upheld; data unlawfully processed; legal
+      obligation to erase; or data collected from a child for information
+      society services.
+    severity_default: critical
+    evidence_basis:
+      - { manual_questionnaire: "evidence/03-art-17-erasure-questionnaire.yaml" }
+    references: ["https://gdpr-info.eu/art-17-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.8.10, AI10P-DAT-02]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_02
+        relationship: related
+    remediation: "Document the erasure procedure end-to-end (production stores, backups, downstream pipelines); rehearse it; measure achieved time-to-delete."
+    tags:
+      - "applies-to.pii"
+      - "obligation.right"
+      - "actor.controller-and-processor"
+
+  - id: GDPR_DEMO.ART22
+    pillar: "Chapter III -- Data Subject Rights"
+    title: "Automated individual decision-making including profiling (Art 22)"
+    description: >-
+      The data subject has the right not to be subject to a decision based
+      solely on automated processing, including profiling, which produces
+      legal effects or similarly significantly affects him or her. Sovereign-
+      health's AI-driven diagnostics are directly in scope.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/03-art-22-automated-decisions.md" }
+    references: ["https://gdpr-info.eu/art-22-gdpr/"]
+    overrides: []
+    maps_to: [EU_AI_ACT_Art_14, AI10P-GOV-01, ISO_42001_A.6.3]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.GOV_01
+        relationship: equivalent
+    remediation: "Identify every solely-automated decision; either remove from scope, secure explicit consent, or wire a human-in-the-loop with overturn authority."
+    tags:
+      - "applies-to.pii"
+      - "applies-to.ai"
+      - "obligation.right"
+      - "actor.controller-and-processor"
+
+  # ======================================================================
+  # Chapter IV -- Controller and Processor (3 controls)
+  # ======================================================================
+  - id: GDPR_DEMO.ART25
+    pillar: "Chapter IV -- Controller and Processor"
+    title: "Data protection by design and by default (Art 25)"
+    description: >-
+      The controller shall implement appropriate technical and organisational
+      measures to implement data-protection principles effectively both at
+      the time of determining the means for processing and at the time of
+      processing itself. By default, only personal data necessary for each
+      specific purpose shall be processed.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/04-art-25-privacy-by-design.md" }
+    references: ["https://gdpr-info.eu/art-25-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.8.27, AI10P-DAT-02, AI10P-DAT-01]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_02
+        relationship: related
+    remediation: "Adopt privacy-by-design templates for new services; default-off for non-essential collection; default-private for sharing."
+    tags:
+      - "applies-to.pii"
+      - "obligation.controller"
+      - "actor.controller-only"
+
+  - id: GDPR_DEMO.ART28
+    pillar: "Chapter IV -- Controller and Processor"
+    title: "Processor agreement (Art 28)"
+    description: >-
+      The controller shall use only processors providing sufficient guarantees
+      for appropriate technical and organisational measures. Processing by a
+      processor shall be governed by a contract stipulating that the processor:
+      processes only on documented instructions; ensures confidentiality; takes
+      Art 32 security measures; assists with data-subject rights; deletes or
+      returns data after service completion.
+    severity_default: high
+    evidence_basis:
+      - { context_input: "evidence/04-art-28-processor-agreement.md" }
+    references: ["https://gdpr-info.eu/art-28-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.23, SOC_2_CC9.2, HIPAA_164.504]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.ORG_01
+        relationship: equivalent
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.ORP5_A1
+        relationship: related
+    remediation: "For every processor in scope, execute a written Art 28 contract (DPA); verify the eight required clauses are present."
+    tags:
+      - "applies-to.pii"
+      - "obligation.processor"
+      - "actor.processor-only"
+
+  - id: GDPR_DEMO.ART32_A
+    pillar: "Chapter IV -- Controller and Processor"
+    title: "Security of processing -- pseudonymisation and encryption (Art 32(1)(a))"
+    description: >-
+      Taking into account state-of-the-art costs and the nature, scope,
+      context and purposes of processing as well as the risk, the controller
+      and processor shall implement appropriate technical and organisational
+      measures to ensure a level of security appropriate to the risk,
+      including as appropriate: the pseudonymisation and encryption of
+      personal data.
+    severity_default: high
+    evidence_basis:
+      - { signal_prefix: CRYPTO }
+    references: ["https://gdpr-info.eu/art-32-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.1, PCI_DSS_3.4, HIPAA_164.312_a_2_iv]
+    cross_mapping:
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_04
+        relationship: equivalent
+      - target_framework: NIST_HIPAA_DEMO
+        target_control: HIPAA_DEMO.TEC_09
+        relationship: related
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: equivalent
+      - target_framework: BSI_GRUNDSCHUTZ_2023_DEMO
+        target_control: BSI_GS_DEMO.CON2_A1
+        relationship: related
+    remediation: "Encrypt personal data at rest and in transit with documented key management; apply pseudonymisation where the use case allows."
+    tags:
+      - "applies-to.pii"
+      - "obligation.controller"
+      - "actor.controller-and-processor"
+
+  # ======================================================================
+  # Chapter V -- Third-Country Transfers (1 control)
+  # ======================================================================
+  - id: GDPR_DEMO.ART44
+    pillar: "Chapter V -- Third-Country Transfers"
+    title: "General principle for transfers (Art 44)"
+    description: >-
+      Any transfer of personal data undergoing processing or intended for
+      processing after transfer to a third country or international
+      organisation shall take place only if the conditions in Chapter V are
+      complied with. All provisions in this Chapter shall be applied to
+      ensure that the level of protection guaranteed by this Regulation is
+      not undermined.
+    severity_default: critical
+    evidence_basis:
+      - { context_input: "evidence/05-art-44-transfer-principle.md" }
+    references: ["https://gdpr-info.eu/art-44-gdpr/"]
+    overrides: []
+    maps_to: [ISO_27001_A.5.34, AI10P-DAT-01]
+    cross_mapping:
+      - target_framework: AI_10_PILLARS_DEMO
+        target_control: AI10P_DEMO.DAT_01
+        relationship: related
+    remediation: "Document every cross-border transfer; verify each transfer rests on an Art 45 / 46 / 49 lawful basis."
+    tags:
+      - "applies-to.pii"
+      - "obligation.controller"
+      - "actor.controller-and-processor"
+      - "scope.chapter-v-transfer"

@@ -1,0 +1,96 @@
+# SWAO Community Framework -- DORA (Digital Operational Resilience Act)
+
+regime_meta:
+  id: DORA
+  name: "Digital Operational Resilience Act"
+  version: "2024-01"
+  scope: community
+  authority: "European Union"
+  contributor:
+    name: "Accenture SWAO team (community packaging)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://accenture.example/swao/community-frameworks/dora"
+  applicability_hints: [financial_services, eu_critical_infrastructure]
+  description: >
+    EU Regulation 2022/2554 in force since 2025-01-17 covering ICT risk
+    management, incident reporting, digital operational resilience
+    testing, third-party ICT risk, and information sharing for
+    financial entities operating in the European Union.
+  references:
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2554"
+  last_reviewed: "2026-05-24"
+  catalogue_version: "1.0.0"
+
+controls:
+  - id: DORA_Art_5
+    title: "Governance and organisation"
+    description: >
+      The management body of the financial entity defines, approves,
+      oversees, and is accountable for the implementation of all
+      arrangements related to the ICT risk management framework.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 5"
+
+  - id: DORA_Art_9
+    title: "ICT risk management framework"
+    description: >
+      Financial entities shall maintain a sound, comprehensive, and
+      well-documented ICT risk management framework as part of their
+      overall risk management system, enabling them to address ICT
+      risk quickly, efficiently, and comprehensively.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: TF
+      - signal_prefix: DR
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 9"
+
+  - id: DORA_Art_11
+    title: "Response and recovery"
+    description: >
+      Financial entities shall put in place comprehensive ICT business
+      continuity policies and ICT response and recovery plans to ensure
+      that critical or important functions can be restored after ICT
+      incidents.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: DR
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 11"
+
+  - id: DORA_Art_17
+    title: "ICT-related incident management process"
+    description: >
+      Financial entities shall define, establish, and implement an
+      ICT-related incident management process to detect, manage, and
+      notify ICT-related incidents, including a classification scheme
+      and documented procedures.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+      - context_input: servicenow_tickets
+    references:
+      - "DORA Article 17 to 23"
+
+  - id: DORA_Art_28
+    title: "Third-party ICT service provider risk"
+    description: >
+      Financial entities shall manage ICT third-party risk as an
+      integral component of ICT risk within the ICT risk management
+      framework, including pre-contractual due diligence and ongoing
+      monitoring of providers supporting critical functions.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: SBOM
+      - context_input: solution_arch
+    references:
+      - "DORA Article 28 to 30"
