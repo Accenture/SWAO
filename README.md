@@ -148,7 +148,7 @@ via `swao <subcommand> [flags]`. Use `swao --help` or `swao <subcommand> --help`
 flag details.
 
 Key subcommands: `init`, `assess`, `report`, `doctor`, `framework`, `credential`,
-`log`, `generate-tf`, `export`, `mcp`.
+`log`, `generate-tf`, `export`, `mcp`, `chat` (Enterprise).
 
 Reference: [`docs/runbooks/cli-reference.md`](docs/runbooks/cli-reference.md)
 

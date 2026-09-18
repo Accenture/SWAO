@@ -24,6 +24,97 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.1.0] - 2026-09-17
+
+Minor release: SWAO Chat -- Enterprise-gated multi-turn portfolio chat (sprint-135).
+
+### Added
+
+- `swao chat` CLI command: interactive multi-turn LLM conversation about portfolio
+  assessment results (#2779). Enterprise licence required; blocks at runtime for
+  Community and Consultant tiers via `LicenseGuard.requireTier('enterprise')`.
+- ChatScreen TUI (#2780): Ink-based terminal chat interface with spinner animation,
+  conversation history display, input field, MCP availability badge, and token counter.
+  Accessible from Tools menu (key 9, then key 6).
+- `useChatSession` React hook (#2781, #2782): state machine (init -> mcp-probe ->
+  mcp-tools -> ready <-> thinking), MCP auto-start via `swao mcp --http`, graceful
+  degradation when MCP server is unavailable (falls back to generic system prompt).
+- Chat history persistence (#2782): each turn appended as NDJSON to
+  `wsp/chat/<sessionTs>.ndjson`; token budget guard warns at 80% of connector
+  `defaults.max_tokens` (default 8192).
+- MCP HTTP context fetching: probes localhost:3737 and calls five tools
+  (`swao_workspace_inventory`, `swao_hub`, `swao_signals`, `swao_risks`,
+  `swao_lz_fit`) to build a portfolio context string for the LLM system prompt.
+- `[Enterprise]` badge in Tools menu for chat entry when Enterprise licence is absent.
+- `swao chat` and `ChatScreen` entries added to CLI/TUI parity gate (#2778).
+
+### Changed
+
+- Tools menu key 6 reassigned from Help to Chat; Help moved to key 7.
+- Design 011 status updated to Delivered; version references corrected to v1.1.0.
+- Design 100 status updated to Delivered (BA PoC seed shipped; native implementation
+  delivered in this release).
+
+### Security
+
+- `fast-uri` upgraded from 3.1.0 (3.x branch) to 4.1.5 -- resolves BDSA-2026-32596
+  (MEDIUM). Root cause: a conflicting npm-style `overrides` block in
+  `packages/swao/package.json` was silently pinning the 3.x branch despite the
+  pnpm-workspace.yaml override targeting 4.x. The stale overrides block has been
+  removed; `pnpm-workspace.yaml` is now the single source of truth (#2790).
+- `fastify` upgraded from 5.12.1 to 5.12.5 -- resolves CVE-2026-76169,
+  CVE-2026-84428, CVE-2026-84469, CVE-2026-84504 (HIGH), CVE-2026-16732,
+  CVE-2026-18504 (MEDIUM). pnpm-workspace.yaml override raised to `>=5.12.4`
+  (#2790).
+- `liquidjs` override raised to `>=10.29.0` -- resolves CVE-2026-61556,
+  CVE-2026-69222 (HIGH) defensively. LiquidJS is not a direct dependency in the
+  current release but is an indirect transitive risk; the guard is retained for
+  future package additions (#2790).
+
+### Triaged (no action required)
+
+- `qs` already at 6.16.0 (CVE-2026-82417/82562 -- not affected)
+- `nanoid` already at 6.0.1 (CVE-2026-73086 -- not affected)
+- `@xmldom/xmldom` already at 0.9.12; alert showed net-zero vulnerability delta
+- `browserslist`, `postcss-selector-parser` -- not installed in current tree
+- `next.js` 16.2.3 -- Black Duck false positive; SWAO does not use Next.js
+
+---
+
+## [1.0.2] - 2026-09-17
+
+Patch release: SC-001 BA PREME PoC client-site bug fixes.
+
+### Fixed
+
+- TUI assessment type menu displayed `--type lz-catalog` (invalid alias); corrected to
+  `--type landing-zone-catalog` (#2754).
+- Health-check TUI showed "No probes detected" alongside "All probes passed" for empty
+  probe output; contradictory summary suppressed when zero probes parsed (#2744).
+- LLM gateway live ping misclassified HTTP 503 as "endpoint unreachable" when the
+  open-llm-provider retry back-off (3 s + 6 s + 12 s) exceeded the previous 20 s
+  ping timeout; timeout raised to 35 s and 503 classifier added (#2751).
+- `swao health-check` false-warned "no LLM configured" when a gateway connector was
+  the active provider (not a direct LLM type) (#2752).
+- Connector schema rejected `meta.source: workspace` preventing workspace-seeded
+  connector definitions from loading (#2747).
+- Setup wizard hid the Open LLM Provider option when gateway connectors were present,
+  blocking PREME GenAI Hub configuration via wizard (#2742).
+- Assessment limit defaults in all licence tiers removed; all tiers are now unlimited
+  per the v1.0 tier model (#2741).
+- YAML indentation mismatch in primary block rewrite corrupted `.swao.yml` after wizard
+  reconfiguration (#2746).
+- Corporate proxy support: `git_proxy` and `ssl_verify` fields added to VCS provider
+  configuration (#2749).
+- Enterprise binary PKI: enterprise internal CA certificates now trusted in pkg-bundled
+  binary (#2748).
+- Missing git binary now detected with a clear hint to install the portable Git
+  distribution (#2750).
+- `lz-catalog` assessment type now reads `.swao.yml` LZ region configuration correctly
+  instead of falling back to defaults (#2755).
+
+---
+
 ## [1.0.1] - 2026-09-06
 
 Patch release: obfuscated binary startup hang.
