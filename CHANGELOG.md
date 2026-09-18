@@ -1,20 +1,3 @@
-```
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     Changelog
-//
-//     Community Edition  -  Apache 2.0
-//
-//     Website       :  https://steady-echo-yp4z.here.now/
-//     Technical Docs:  https://accenture.github.io/SWAO/en/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
-```
-
 # Changelog
 
 All notable changes to SWAO are documented in this file.
@@ -26,7 +9,7 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.1.0] - 2026-09-17
 
-Minor release: SWAO Chat -- Enterprise-gated multi-turn portfolio chat (sprint-135).
+Minor release: SWAO Chat, Enterprise-gated multi-turn portfolio chat.
 
 ### Added
 
@@ -57,16 +40,16 @@ Minor release: SWAO Chat -- Enterprise-gated multi-turn portfolio chat (sprint-1
 
 ### Security
 
-- `fast-uri` upgraded from 3.1.0 (3.x branch) to 4.1.5 -- resolves BDSA-2026-32596
+- `fast-uri` upgraded from 3.1.0 (3.x branch) to 4.1.5: resolves BDSA-2026-32596
   (MEDIUM). Root cause: a conflicting npm-style `overrides` block in
   `packages/swao/package.json` was silently pinning the 3.x branch despite the
   pnpm-workspace.yaml override targeting 4.x. The stale overrides block has been
   removed; `pnpm-workspace.yaml` is now the single source of truth (#2790).
-- `fastify` upgraded from 5.12.1 to 5.12.5 -- resolves CVE-2026-76169,
+- `fastify` upgraded from 5.12.1 to 5.12.5: resolves CVE-2026-76169,
   CVE-2026-84428, CVE-2026-84469, CVE-2026-84504 (HIGH), CVE-2026-16732,
   CVE-2026-18504 (MEDIUM). pnpm-workspace.yaml override raised to `>=5.12.4`
   (#2790).
-- `liquidjs` override raised to `>=10.29.0` -- resolves CVE-2026-61556,
+- `liquidjs` override raised to `>=10.29.0`: resolves CVE-2026-61556,
   CVE-2026-69222 (HIGH) defensively. LiquidJS is not a direct dependency in the
   current release but is an indirect transitive risk; the guard is retained for
   future package additions (#2790).

@@ -1,19 +1,3 @@
-```
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     Known Issues
-//
-//     Community Edition  -  Apache 2.0
-//
-//     Website       :  https://accenture.github.io/SWAO/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
-```
-
 # SWAO v1.1.0 - Known Issues
 
 This document lists confirmed limitations and open issues in the v1.1.0 release.
@@ -26,14 +10,6 @@ https://github.com/Accenture/SWAO/issues.
 ---
 
 ## LLM Assessment
-
-### TUI hardcodes --no-crawl (LlmAssessmentScreen)
-
-**Impact:** Low. LlmAssessmentScreen.tsx hard-codes the `--no-crawl` flag, so the
-Playwright live-crawl path is not accessible from the TUI. It is accessible via the
-CLI: `swao assess --llm <id> --passes dynamic`.
-
-**Workaround:** Use the CLI for live-crawl LLM Assessment runs.
 
 ### OpenRouter vision relay not verified
 
