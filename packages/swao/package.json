@@ -72,7 +72,7 @@
     "outputPath": "../../dist-bin"
   },
   "dependencies": {
-    "@fastify/static": "^10.1.2",
+    "@fastify/static": "^10.1.4",
     "@swao/community-frameworks": "workspace:*",
     "@swao/core": "workspace:*",
     "@swao/module-app-assessment": "workspace:*",
@@ -93,10 +93,10 @@
     "@types/pdfkit": "^0.17.6",
     "commander": "^12.1.0",
     "ink": "^4.4.1",
-    "js-yaml": "^4.2.0",
-    "mammoth": "^1.12.0",
+    "js-yaml": "^5.4.2",
+    "mammoth": "^1.12.3",
     "node-pty": "^1.1.0",
-    "pdfkit": "^0.18.0",
+    "pdfkit": "^0.20.2",
     "react": "^18.3.1",
     "yoga-layout-prebuilt": "^1.10.0",
     "zod": "^4.0.0"
