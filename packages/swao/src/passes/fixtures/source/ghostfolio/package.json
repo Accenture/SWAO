@@ -5,9 +5,9 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@nestjs/core": "10.4.2",
-    "@nestjs/common": "10.4.2",
-    "@angular/core": "20.4.0",
+    "@nestjs/core": "11.1.18",
+    "@nestjs/common": "10.4.16",
+    "@angular/core": "22.1.7",
     "prisma": "5.10.0",
     "@prisma/client": "5.10.0",
     "redis": "4.6.0",
