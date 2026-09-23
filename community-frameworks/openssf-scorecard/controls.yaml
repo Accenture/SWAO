@@ -1,0 +1,388 @@
+# SWAO Community Framework -- OpenSSF Security Scorecard
+# Sprint-138 #2805: Scorecard v4/v5, OpenSSF / Linux Foundation.
+# 17 controls across 5 domains. Weighted 0-10 scoring per Scorecard check.
+# Signal prefix: OSS. Scorecard weights are listed in each control's description.
+
+regime_meta:
+  id: OPENSSF_SCORECARD
+  name: "OpenSSF Security Scorecard"
+  version: "v4.13 / v5.0-rc (2024)"
+  scope: community
+  authority: "Open Source Security Foundation (OpenSSF) -- Linux Foundation"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/openssf-scorecard"
+  catalogue_version: "1.0.0"
+  signal_prefix: OSS
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - open_source_project
+    - oss_dependency
+    - supply_chain
+    - github_hosted
+    - community_software
+    - swao_self_assessment
+  description: >-
+    OpenSSF Security Scorecard v4/v5: 17 controls across 5 domains covering the
+    18 automated Scorecard checks. Signal prefix OSS; weighted scoring (0-10 per check).
+  references:
+    - "github.com/ossf/scorecard"
+    - "api.securityscorecards.dev"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # OSS-INT: Code and Repository Integrity (5 controls)
+  # Ensures that the codebase and releases cannot be tampered with
+  # and that code reaches production only through reviewed channels.
+  # ---------------------------------------------------------------
+
+  - id: OSS_INT_1
+    pillar: "OSS-INT -- Code and Repository Integrity"
+    category: INT
+    title: "Branch protection on default branch (Scorecard: Branch-Protection, weight 3)"
+    description: >-
+      The repository's default branch (main/master) must have branch protection
+      rules enabled preventing direct pushes. Required settings: require pull
+      request before merging (at least 1 approval), require status checks to pass
+      before merging, require conversation resolution before merging. Dismiss stale
+      reviews on new commits strongly recommended. Scorecard weight: 3 (moderate).
+      SWAO self-assessment: applied via CODEOWNERS + branch protection rules.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.4
+    references:
+      - "Scorecard check: Branch-Protection"
+      - "github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection"
+
+  - id: OSS_INT_2
+    pillar: "OSS-INT -- Code and Repository Integrity"
+    category: INT
+    title: "Code review required for all changes (Scorecard: Code-Review, weight 3)"
+    description: >-
+      All code changes must be reviewed and approved by at least one other contributor
+      before merging to the default branch. Review must occur via the repository's
+      native PR/MR process with a formal approval. Direct commits to protected
+      branches by privileged accounts should also be auditable. Scorecard weight: 3.
+      Applies to external contributions and maintainer commits alike.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.4
+    references:
+      - "Scorecard check: Code-Review"
+
+  - id: OSS_INT_3
+    pillar: "OSS-INT -- Code and Repository Integrity"
+    category: INT
+    title: "Signed releases (Scorecard: Signed-Releases, weight 4)"
+    description: >-
+      Release artefacts (tarballs, binaries, container images) must be
+      cryptographically signed using GPG, Sigstore/cosign, or equivalent. Signatures
+      must be verifiable without trusting the release host. SHA256 checksums published
+      alongside release artefacts satisfy partial credit; a signed manifest or
+      Sigstore-attested release satisfies full credit. Scorecard weight: 4.
+      SWAO self-assessment: SHA256SUMS published; Sigstore signing is a future goal.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - EU_CRA_VHR_3
+      - ISO_27001_A.8.17
+    references:
+      - "Scorecard check: Signed-Releases"
+
+  - id: OSS_INT_4
+    pillar: "OSS-INT -- Code and Repository Integrity"
+    category: INT
+    title: "No binary artefacts committed to repository (Scorecard: Binary-Artifacts, weight 5)"
+    description: >-
+      No unexplained binary files (compiled executables, JAR files, .exe, .dll, .so,
+      minified JS without source maps, vendored compiled dependencies) should be
+      committed to the source repository. Binary artefacts cannot be audited for
+      security issues and increase supply chain attack surface. Exceptions must be
+      documented and rare. Scorecard weight: 5.
+      SWAO self-assessment: dist-bin/ binaries are excluded from the public repo
+      per issue #2812 (gated).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_8
+      - NIS2_SCM_4
+    references:
+      - "Scorecard check: Binary-Artifacts"
+
+  - id: OSS_INT_5
+    pillar: "OSS-INT -- Code and Repository Integrity"
+    category: INT
+    title: "Pinned dependencies by cryptographic hash (Scorecard: Pinned-Dependencies, weight 7)"
+    description: >-
+      All external dependencies (GitHub Actions, Docker base images, pip packages,
+      npm packages, go modules) should be pinned to a specific cryptographic hash
+      (SHA256 digest or lock file hash) rather than mutable tags or version ranges.
+      Pinning prevents dependency confusion and upstream supply chain attacks.
+      Scorecard weight: 7 (high). In CI: pin action tags to their commit SHA
+      (e.g., uses: actions/checkout@abc1234..., not @v4).
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_1
+      - NIS2_SCM_4
+    references:
+      - "Scorecard check: Pinned-Dependencies"
+
+  # ---------------------------------------------------------------
+  # OSS-VLN: Vulnerability Management (3 controls)
+  # Automated tracking and remediation of known vulnerabilities.
+  # ---------------------------------------------------------------
+
+  - id: OSS_VLN_1
+    pillar: "OSS-VLN -- Vulnerability Management"
+    category: VLN
+    title: "No known open CVEs in dependencies (Scorecard: Vulnerabilities, weight 10)"
+    description: >-
+      The repository must have no open, unfixed vulnerabilities flagged by OSV.dev
+      (Open Source Vulnerabilities database) in its dependencies. Vulnerabilities
+      are queried against the dependency lock file. Any unfixed CVE-severity
+      vulnerability (Critical/High) in a production dependency causes this check
+      to fail. Scorecard weight: 10 (critical). Remediate by updating or patching
+      affected dependencies promptly.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - EU_CRA_VHR_1
+      - NIS2_VHR_2
+      - ISO_27001_A.8.8
+    references:
+      - "Scorecard check: Vulnerabilities"
+      - "OSV.dev -- Open Source Vulnerabilities database"
+
+  - id: OSS_VLN_2
+    pillar: "OSS-VLN -- Vulnerability Management"
+    category: VLN
+    title: "Automated dependency update tool active (Scorecard: Dependency-Update-Tool, weight 10)"
+    description: >-
+      An automated dependency update tool (Dependabot, Renovate, or equivalent) must
+      be configured and actively opening pull requests for dependency version updates.
+      The tool must be configured to cover all ecosystems used by the project (npm,
+      pip, go.mod, GitHub Actions). Scorecard weight: 10 (critical). A configuration
+      file (.github/dependabot.yml or renovate.json) must be present and non-trivially
+      configured (i.e., not disabled for all ecosystems).
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - EU_CRA_VHR_3
+      - NIS2_VHR_2
+    references:
+      - "Scorecard check: Dependency-Update-Tool"
+
+  - id: OSS_VLN_3
+    pillar: "OSS-VLN -- Vulnerability Management"
+    category: VLN
+    title: "Static analysis (SAST) running in CI (Scorecard: SAST, weight 3)"
+    description: >-
+      Static Application Security Testing (SAST) must run as part of the CI pipeline
+      and produce findings that are reviewed before merging. Recognised tools include
+      CodeQL, Semgrep, SonarCloud, Snyk Code, or equivalents. For full Scorecard
+      credit, SAST must run on every pull request, not just scheduled scans.
+      Scorecard weight: 3. SWAO self-assessment: CodeQL runs on PR and push to main
+      via .github/workflows/codeql.yml.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - EU_CRA_SBD_1
+      - ISO_27001_A.8.28
+    references:
+      - "Scorecard check: SAST"
+
+  # ---------------------------------------------------------------
+  # OSS-SCH: Supply Chain Security (4 controls)
+  # CI/CD pipeline security, token hygiene, and packaging integrity.
+  # ---------------------------------------------------------------
+
+  - id: OSS_SCH_1
+    pillar: "OSS-SCH -- Supply Chain Security"
+    category: SCH
+    title: "GitHub Actions tokens use least privilege (Scorecard: Token-Permissions, weight 4)"
+    description: >-
+      GitHub Actions workflows must declare the minimum required permissions for
+      the GITHUB_TOKEN. Workflows must not use `permissions: write-all` or default
+      (permissive) token scope. Each workflow or job should declare only the specific
+      permissions it needs (e.g., `contents: read`, `pull-requests: write`).
+      Scorecard weight: 4. Top-level workflow permissions declaration is mandatory;
+      job-level restrictions are additional best practice.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - NIS2_HRS_3
+      - ISO_27001_A.5.15
+    references:
+      - "Scorecard check: Token-Permissions"
+
+  - id: OSS_SCH_2
+    pillar: "OSS-SCH -- Supply Chain Security"
+    category: SCH
+    title: "No dangerous workflows with script injection risk (Scorecard: Dangerous-Workflow, weight 10)"
+    description: >-
+      GitHub Actions workflows must not contain patterns that enable script injection
+      attacks. Dangerous patterns include: using `${{ github.event.*.body }}` or
+      similar untrusted event inputs directly in `run:` steps; using `pull_request_target`
+      with checkout of the PR head and subsequent use of user-supplied data. Scorecard
+      weight: 10 (critical). Any dangerous workflow pattern causes immediate check
+      failure regardless of partial mitigations.
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_1
+    references:
+      - "Scorecard check: Dangerous-Workflow"
+
+  - id: OSS_SCH_3
+    pillar: "OSS-SCH -- Supply Chain Security"
+    category: SCH
+    title: "Published to package registry from CI only (Scorecard: Packaging, weight 4)"
+    description: >-
+      Packages and release artefacts must be published to package registries
+      (npm, PyPI, Docker Hub, GitHub Releases, etc.) exclusively from an automated
+      CI/CD pipeline, not from local developer machines. CI-generated releases
+      provide an auditable, reproducible build trail. Scorecard weight: 4.
+      Publishing from a tagged CI workflow with provenance (e.g., GitHub OIDC +
+      Sigstore) earns maximum credit.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - EU_CRA_CAF_2
+    references:
+      - "Scorecard check: Packaging"
+
+  - id: OSS_SCH_4
+    pillar: "OSS-SCH -- Supply Chain Security"
+    category: SCH
+    title: "Webhook secrets configured (Scorecard: Webhooks, weight 4)"
+    description: >-
+      All repository and organisation webhooks must be configured with a shared
+      secret so that the receiving server can verify the payload origin. Webhooks
+      without secret validation can be spoofed by third parties, enabling
+      injection of false build triggers or CI events. Scorecard weight: 4. Applies
+      to GitHub App webhooks, Slack integration webhooks, and any other callback
+      URLs registered in repository settings.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "Scorecard check: Webhooks"
+
+  # ---------------------------------------------------------------
+  # OSS-OPS: Operational Security (3 controls)
+  # Vulnerability disclosure, maintenance activity, and external badges.
+  # ---------------------------------------------------------------
+
+  - id: OSS_OPS_1
+    pillar: "OSS-OPS -- Operational Security"
+    category: OPS
+    title: "Security policy published in repository (Scorecard: Security-Policy, weight 1)"
+    description: >-
+      A SECURITY.md file (or equivalent) must be present at the repository root or
+      in the .github/ directory. The security policy must describe the vulnerability
+      disclosure process: how to report, expected response timeline, and scope.
+      Scorecard weight: 1. SWAO self-assessment: SECURITY.md exists at repo root
+      per SPEC.md initial scaffolding. Cross-mapped to EU CRA CVD requirements.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_VHR_2
+      - NIS2_VHR_3
+    references:
+      - "Scorecard check: Security-Policy"
+
+  - id: OSS_OPS_2
+    pillar: "OSS-OPS -- Operational Security"
+    category: OPS
+    title: "Project actively maintained (Scorecard: Maintained, weight 1)"
+    description: >-
+      The repository must show evidence of active maintenance: at least one commit
+      to the default branch within the last 90 days, and the project must not be
+      explicitly archived or deprecated. Unmaintained projects present ongoing
+      vulnerability risk as security issues go unpatched. Scorecard weight: 1.
+      An archived repository automatically fails this check regardless of other scores.
+    severity_default: low
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "Scorecard check: Maintained"
+
+  - id: OSS_OPS_3
+    pillar: "OSS-OPS -- Operational Security"
+    category: OPS
+    title: "CII Best Practices badge (Scorecard: CII-Best-Practices, weight 1)"
+    description: >-
+      The project should earn and display a Linux Foundation Core Infrastructure
+      Initiative (CII) Best Practices badge (passing, silver, or gold). The badge
+      requires self-certification of security best practices across criteria including:
+      vulnerability handling, tests, code review, static analysis, and cryptography.
+      Scorecard weight: 1. Badge is obtained at bestpractices.coreinfrastructure.org.
+    severity_default: low
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "Scorecard check: CII-Best-Practices"
+      - "bestpractices.coreinfrastructure.org"
+
+  # ---------------------------------------------------------------
+  # OSS-CMH: Community Health (2 controls)
+  # Licensing and contributor diversity.
+  # ---------------------------------------------------------------
+
+  - id: OSS_CMH_1
+    pillar: "OSS-CMH -- Community Health"
+    category: CMH
+    title: "Open source license file present (Scorecard: License, weight 3)"
+    description: >-
+      A recognised open-source or source-available license file (LICENSE, LICENSE.txt,
+      LICENSE.md) must be present at the repository root. The license must be machine-
+      readable by standard tooling (SPDX identifier recognised). Scorecard weight: 3.
+      SWAO self-assessment: Apache-2.0 license in LICENSE at repo root.
+      Required for EU CRA compliance (Annex I Part I -- user documentation of
+      applicable terms is an implicit requirement for PDE).
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_12
+    references:
+      - "Scorecard check: License"
+
+  - id: OSS_CMH_2
+    pillar: "OSS-CMH -- Community Health"
+    category: CMH
+    title: "Diverse contributor base (Scorecard: Contributors, weight 1)"
+    description: >-
+      The repository should have contributions from multiple distinct individuals
+      or organisations. Scorecard assesses contributor diversity by counting unique
+      contributor organisations based on email domain in the commit history.
+      A project maintained by a single person or single organisation presents
+      key-person risk. Scorecard weight: 1. Not a hard security control but
+      indicates project health and sustainable maintenance capacity.
+    severity_default: low
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "Scorecard check: Contributors"

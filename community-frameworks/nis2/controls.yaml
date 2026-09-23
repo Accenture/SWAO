@@ -1,0 +1,877 @@
+# SWAO Community Framework -- NIS2 (Network and Information Security Directive 2)
+# Sprint-138 #2804: Directive (EU) 2022/2555, Art. 20 and Art. 21(2)(a-j).
+# 46 controls across 10 domains. EE = Essential Entity; IE = Important Entity.
+
+regime_meta:
+  id: NIS2
+  name: "NIS2 -- Network and Information Security Directive 2"
+  version: "2022-12-27"
+  scope: community
+  authority: "European Union (Directive 2022/2555)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/nis2"
+  catalogue_version: "1.0.0"
+  signal_prefix: NIS2
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - eu_essential_entity
+    - eu_important_entity
+    - energy_sector
+    - health_sector
+    - transport_sector
+    - digital_infrastructure
+    - msp
+  description: >-
+    NIS2 Directive (EU) 2022/2555: 46 controls across 10 domains covering Art. 20
+    governance obligations and Art. 21(2)(a-j) minimum cybersecurity measures.
+  references:
+    - "Directive (EU) 2022/2555 -- OJ L 333, 27.12.2022"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # NIS2-GOV: Governance and Management Body Accountability -- Art. 20
+  # ---------------------------------------------------------------
+
+  - id: NIS2_GOV_1
+    pillar: "NIS2-GOV -- Governance and Management Body Accountability"
+    category: GOV
+    title: "Management body oversight and accountability for cybersecurity"
+    description: >-
+      The management bodies of essential and important entities must approve the
+      cybersecurity risk management measures, oversee their implementation, and be
+      accountable for infringements. Management body members are personally liable
+      for repeated or wilful infringements of Art. 21 measures (NIS2 Art. 20(1)).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+      - ISO_27001_A.5.2
+    references:
+      - "NIS2 Article 20(1)"
+      - "NIS2 Recital 93"
+
+  - id: NIS2_GOV_2
+    pillar: "NIS2-GOV -- Governance and Management Body Accountability"
+    category: GOV
+    title: "Management body cybersecurity training"
+    description: >-
+      Members of the management body of essential and important entities shall follow
+      mandatory cybersecurity training and shall encourage their staff to undertake
+      similar training on a regular basis. Training shall cover risk identification,
+      control assessment practices, and incident reporting obligations (NIS2 Art. 20(2)).
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.3
+    references:
+      - "NIS2 Article 20(2)"
+
+  - id: NIS2_GOV_3
+    pillar: "NIS2-GOV -- Governance and Management Body Accountability"
+    category: GOV
+    title: "Management body approval of cybersecurity measures"
+    description: >-
+      Cybersecurity risk management measures, policies, and remediation plans shall
+      be formally approved by the management body before implementation. The management
+      body shall receive quarterly cybersecurity status updates and approve any material
+      changes to the entity's cybersecurity risk posture.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.1
+    references:
+      - "NIS2 Article 20(1)"
+
+  - id: NIS2_GOV_4
+    pillar: "NIS2-GOV -- Governance and Management Body Accountability"
+    category: GOV
+    title: "National NIS2 authority registration and notification"
+    description: >-
+      Essential and important entities shall register with the relevant national
+      competent authority designated under the NIS2 transposition law. Registration
+      shall include entity category (EE/IE), sector classification, and primary
+      security contact. Any change to registration details shall be notified within
+      two weeks.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "NIS2 Article 3(3)"
+      - "NIS2 Article 27"
+
+  # ---------------------------------------------------------------
+  # NIS2-RSK: Risk Analysis and Security Policies -- Art. 21(2)(a)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_RSK_1
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Cybersecurity risk management framework"
+    description: >-
+      Essential and important entities shall establish a cybersecurity risk management
+      framework addressing the security of their network and information systems. The
+      framework shall be proportionate to the risk and size of the entity, reviewed
+      at least annually, and approved by the management body.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "NIS2 Article 21(1) and 21(2)(a)"
+
+  - id: NIS2_RSK_2
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Cybersecurity risk assessment"
+    description: >-
+      Entities shall perform risk assessments of their network and information systems,
+      identifying threats, vulnerabilities, and potential impacts. Risk assessments shall
+      be documented, reviewed at least annually or after significant changes, and
+      used to prioritise security investments and controls.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "NIS2 Article 21(2)(a)"
+
+  - id: NIS2_RSK_3
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Documented security policies"
+    description: >-
+      A set of board-approved cybersecurity policies covering all NIS2 Art. 21 domains
+      shall be maintained, reviewed annually, and communicated to all relevant staff.
+      Policies shall be proportionate to the entity's size, risk exposure, and sector
+      classification as essential or important.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+    references:
+      - "NIS2 Article 21(2)(a)"
+
+  - id: NIS2_RSK_4
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Security control selection and implementation"
+    description: >-
+      Cybersecurity measures shall be selected and implemented based on the risk
+      assessment, with the aim of ensuring a level of security appropriate to the risk.
+      Technical and organisational measures shall address each of the ten minimum
+      measures specified in NIS2 Art. 21(2).
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "NIS2 Article 21(1) -- proportionate measures"
+
+  - id: NIS2_RSK_5
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Annual security policy review cycle"
+    description: >-
+      Security policies and risk management measures shall be reviewed at least annually
+      and after any major cybersecurity incident, major change to network or information
+      systems, or significant change in the threat landscape affecting the entity's sector.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+    references:
+      - "NIS2 Article 21(2)(a)"
+
+  - id: NIS2_RSK_6
+    pillar: "NIS2-RSK -- Risk Analysis and Security Policies"
+    category: RSK
+    title: "Cybersecurity risk appetite definition"
+    description: >-
+      The management body shall define and formally approve the entity's cybersecurity
+      risk appetite, specifying the level of risk the entity is willing to accept.
+      The risk appetite statement shall inform investment priorities and the
+      proportionality of cybersecurity measures.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "NIS2 Article 21(1)"
+
+  # ---------------------------------------------------------------
+  # NIS2-INC: Incident Handling -- Art. 21(2)(b) and Art. 23
+  # ---------------------------------------------------------------
+
+  - id: NIS2_INC_1
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "Incident detection and classification process"
+    description: >-
+      Entities shall implement mechanisms for detecting cybersecurity incidents affecting
+      their network and information systems. A documented classification process shall
+      determine whether an incident is "significant" (meeting NIS2 Art. 23(3) criteria:
+      severe operational disruption, financial loss, or impact on other entities/sectors).
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+      - ISO_27001_A.5.25
+    references:
+      - "NIS2 Article 21(2)(b)"
+      - "NIS2 Article 23(3)"
+
+  - id: NIS2_INC_2
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "Significant incident determination criteria"
+    description: >-
+      Documented criteria for determining whether a cybersecurity incident is
+      "significant" under NIS2 Art. 23(3) shall be maintained. Criteria include:
+      number of affected users, duration of disruption, geographic spread, economic
+      loss, reputational damage, and risk to public safety or other entities.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.25
+    references:
+      - "NIS2 Article 23(3) -- criteria for significant incidents"
+
+  - id: NIS2_INC_3
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "24-hour early warning to CSIRT and competent authority"
+    description: >-
+      Significant incidents shall trigger an early warning notification to the national
+      CSIRT and/or competent authority within 24 hours of becoming aware of the incident.
+      The early warning shall indicate whether the incident is suspected to be the result
+      of unlawful or malicious acts and whether it may have cross-border impact.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+    references:
+      - "NIS2 Article 23(4)(a) -- early warning (24 hours)"
+
+  - id: NIS2_INC_4
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "72-hour incident notification to competent authority"
+    description: >-
+      An incident notification shall be submitted to the competent authority within
+      72 hours of becoming aware of a significant incident. The notification shall
+      update the early warning and include: initial assessment of severity and impact,
+      indicators of compromise where available, and the status of containment.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+    references:
+      - "NIS2 Article 23(4)(b) -- incident notification (72 hours)"
+
+  - id: NIS2_INC_5
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "Final incident report within one month"
+    description: >-
+      A final incident report shall be submitted to the competent authority within one
+      month of the incident notification. The report shall include: detailed description,
+      type of threat or root cause, applied and ongoing mitigation measures, and
+      cross-border impact where applicable.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+    references:
+      - "NIS2 Article 23(4)(c) -- final report (one month)"
+
+  - id: NIS2_INC_6
+    pillar: "NIS2-INC -- Incident Handling"
+    category: INC
+    title: "Post-incident review and corrective action"
+    description: >-
+      Following any significant incident, a post-incident review shall be conducted
+      within 30 days covering root cause analysis, lessons learned, and corrective
+      actions. Findings shall be reported to the management body and corrective measures
+      tracked to completion.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.26
+    references:
+      - "NIS2 Article 21(2)(b)"
+
+  # ---------------------------------------------------------------
+  # NIS2-BCM: Business Continuity -- Art. 21(2)(c)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_BCM_1
+    pillar: "NIS2-BCM -- Business Continuity"
+    category: BCM
+    title: "Business continuity plan for network and information systems"
+    description: >-
+      Entities shall maintain a documented BCP covering the continuity of network and
+      information systems in the event of cybersecurity incidents. The BCP shall define
+      crisis management roles, fallback procedures, and communication protocols aligned
+      with the entity's criticality classification (EE/IE).
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.29
+    references:
+      - "NIS2 Article 21(2)(c)"
+
+  - id: NIS2_BCM_2
+    pillar: "NIS2-BCM -- Business Continuity"
+    category: BCM
+    title: "Disaster recovery planning and geographic redundancy"
+    description: >-
+      Disaster recovery capabilities shall be implemented for critical network and
+      information systems. Recovery point objectives (RPO) and recovery time objectives
+      (RTO) shall be defined and validated. For essential entities, geographic redundancy
+      shall prevent single-region failure from causing total service loss.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.30
+    references:
+      - "NIS2 Article 21(2)(c)"
+
+  - id: NIS2_BCM_3
+    pillar: "NIS2-BCM -- Business Continuity"
+    category: BCM
+    title: "BCP and DR testing"
+    description: >-
+      Business continuity and disaster recovery plans shall be tested at least annually
+      through tabletop exercises or full failover tests. Test results shall be reviewed
+      by the management body, gaps remediated, and test records retained for at least
+      three years for regulatory inspection.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.30
+    references:
+      - "NIS2 Article 21(2)(c)"
+
+  - id: NIS2_BCM_4
+    pillar: "NIS2-BCM -- Business Continuity"
+    category: BCM
+    title: "Crisis management and emergency communications"
+    description: >-
+      Crisis management procedures shall document the escalation chain, communication
+      protocols (internal and with authorities), and decision authorities for cybersecurity
+      crisis scenarios. Secure emergency communication channels (encrypted voice/text)
+      shall be available and tested annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.26
+    references:
+      - "NIS2 Article 21(2)(c)"
+
+  - id: NIS2_BCM_5
+    pillar: "NIS2-BCM -- Business Continuity"
+    category: BCM
+    title: "Backup and recovery capabilities"
+    description: >-
+      Backup policies defining frequency, retention, and storage requirements for
+      critical systems and data shall be documented and implemented. Backups shall be
+      stored in isolated or geographically separate locations. Restoration procedures
+      shall be tested at least annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.13
+    references:
+      - "NIS2 Article 21(2)(c)"
+
+  # ---------------------------------------------------------------
+  # NIS2-SCM: Supply Chain Security -- Art. 21(2)(d)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_SCM_1
+    pillar: "NIS2-SCM -- Supply Chain Security"
+    category: SCM
+    title: "Supply chain security policy"
+    description: >-
+      Entities shall maintain a documented supply chain security policy covering ICT
+      products and services used in their network and information systems. The policy
+      shall address supplier risk assessment, contractual security requirements, and
+      monitoring of supplier security posture over the duration of the relationship.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+    references:
+      - "NIS2 Article 21(2)(d)"
+
+  - id: NIS2_SCM_2
+    pillar: "NIS2-SCM -- Supply Chain Security"
+    category: SCM
+    title: "Supplier security assessment and due diligence"
+    description: >-
+      Security assessments of suppliers providing ICT products or services critical
+      to the entity's network and information systems shall be conducted before
+      engagement and reviewed at least annually. Assessments shall consider the
+      supplier's security practices, vulnerabilities in their products, and any
+      relevant sector authority guidance on supply chain risk.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+    references:
+      - "NIS2 Article 21(2)(d)"
+
+  - id: NIS2_SCM_3
+    pillar: "NIS2-SCM -- Supply Chain Security"
+    category: SCM
+    title: "Supplier contractual security requirements"
+    description: >-
+      Contracts with ICT suppliers whose products or services are critical to the
+      entity's network and information systems shall include security requirements
+      appropriate to the risk, including: incident notification obligations, audit
+      rights, security update obligations, and data handling restrictions.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.20
+    references:
+      - "NIS2 Article 21(2)(d)"
+
+  - id: NIS2_SCM_4
+    pillar: "NIS2-SCM -- Supply Chain Security"
+    category: SCM
+    title: "Software supply chain security and SBOM"
+    description: >-
+      Software components used in network and information systems critical to the entity
+      shall be inventoried. Vulnerabilities in third-party software components shall be
+      tracked through CVE feeds and remediated within defined timescales. A software
+      bill of materials (SBOM) shall be maintained for critical custom-developed
+      software.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: SBOM
+    maps_to:
+      - ISO_27001_A.8.30
+    references:
+      - "NIS2 Article 21(2)(d)"
+
+  - id: NIS2_SCM_5
+    pillar: "NIS2-SCM -- Supply Chain Security"
+    category: SCM
+    title: "ICT third-party concentration risk monitoring"
+    description: >-
+      Entities shall assess and monitor their dependency on individual ICT suppliers
+      and service providers. Where concentration risk is identified (single supplier
+      for multiple critical functions), risk mitigation measures shall be documented
+      and presented to the management body annually.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+    references:
+      - "NIS2 Article 21(2)(d)"
+
+  # ---------------------------------------------------------------
+  # NIS2-NSC: Network and Information System Security -- Art. 21(2)(e)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_NSC_1
+    pillar: "NIS2-NSC -- Network and Information System Security"
+    category: NSC
+    title: "Network security management and segmentation"
+    description: >-
+      Network and information systems shall be segmented, with firewalls and other
+      controls enforcing least-privilege connectivity between zones. Network topology
+      shall be documented. Monitoring shall detect unauthorised network access and
+      anomalous traffic patterns.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.20
+      - ISO_27001_A.8.22
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_NSC_2
+    pillar: "NIS2-NSC -- Network and Information System Security"
+    category: NSC
+    title: "Endpoint security and patch management"
+    description: >-
+      Endpoint security controls (anti-malware, EDR, configuration management) shall
+      be deployed on all endpoints used to access or operate network and information
+      systems. Vulnerability patches shall be assessed within 30 days of release and
+      applied based on risk classification, with critical patches applied within 72 hours.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.7
+      - ISO_27001_A.8.8
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_NSC_3
+    pillar: "NIS2-NSC -- Network and Information System Security"
+    category: NSC
+    title: "Security monitoring and anomaly detection"
+    description: >-
+      Continuous monitoring for cybersecurity incidents, anomalous activities, and
+      unauthorised access attempts shall be implemented across all critical network and
+      information systems. Monitoring data shall be retained for at least one year and
+      reviewed in the event of an incident.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.15
+      - ISO_27001_A.8.16
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_NSC_4
+    pillar: "NIS2-NSC -- Network and Information System Security"
+    category: NSC
+    title: "Regular security assessments and penetration testing"
+    description: >-
+      Security assessments, including vulnerability assessments and penetration tests
+      of critical network and information systems, shall be conducted at least annually
+      (more frequently for essential entities). Findings shall be remediated within
+      defined timescales and reported to the management body.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.36
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_NSC_5
+    pillar: "NIS2-NSC -- Network and Information System Security"
+    category: NSC
+    title: "Security configuration management and hardening"
+    description: >-
+      Documented security configuration baselines shall be established and enforced
+      for all critical network and information system components. Deviations from
+      approved baselines shall be detected and remediated. Configuration records
+      shall be retained for audit.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.9
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  # ---------------------------------------------------------------
+  # NIS2-CRY: Cryptography -- Art. 21(2)(f)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_CRY_1
+    pillar: "NIS2-CRY -- Cryptography and Encryption"
+    category: CRY
+    title: "Encryption policy and approved cryptographic algorithms"
+    description: >-
+      A documented policy on the use of cryptography shall define approved algorithms,
+      key lengths, and protocols for the protection of network and information systems.
+      The policy shall reference national cryptographic authority guidance (e.g.,
+      BSI TR-02102) and be reviewed annually or when algorithm guidance is updated.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.24
+    references:
+      - "NIS2 Article 21(2)(f)"
+
+  - id: NIS2_CRY_2
+    pillar: "NIS2-CRY -- Cryptography and Encryption"
+    category: CRY
+    title: "Encryption of data at rest and in transit"
+    description: >-
+      Sensitive data processed by network and information systems shall be encrypted
+      at rest and in transit using approved cryptographic algorithms and key lengths.
+      Unencrypted transmission of authentication credentials or sensitive operational
+      data over any network is prohibited.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - ISO_27001_A.8.24
+    references:
+      - "NIS2 Article 21(2)(f)"
+
+  - id: NIS2_CRY_3
+    pillar: "NIS2-CRY -- Cryptography and Encryption"
+    category: CRY
+    title: "Cryptographic key management"
+    description: >-
+      A key management framework shall govern the generation, distribution, storage,
+      rotation, and revocation of cryptographic keys used in the entity's network and
+      information systems. Key rotation schedules shall be defined and enforced.
+      Compromised or expired keys shall be revoked immediately.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - ISO_27001_A.8.24
+    references:
+      - "NIS2 Article 21(2)(f)"
+
+  # ---------------------------------------------------------------
+  # NIS2-HRS: Human Resources Security and Access Control -- Art. 21(2)(i)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_HRS_1
+    pillar: "NIS2-HRS -- Human Resources Security and Access Control"
+    category: HRS
+    title: "Cybersecurity awareness training for management and staff"
+    description: >-
+      Cybersecurity awareness training shall be provided to all staff with access to
+      network and information systems at least annually. Management body members shall
+      receive training covering their specific oversight and approval responsibilities
+      under NIS2 Art. 20. Training records shall be maintained.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.3
+    references:
+      - "NIS2 Article 21(2)(g)"
+      - "NIS2 Article 20(2)"
+
+  - id: NIS2_HRS_2
+    pillar: "NIS2-HRS -- Human Resources Security and Access Control"
+    category: HRS
+    title: "Personnel security screening"
+    description: >-
+      Background checks appropriate to the role and applicable national law shall
+      be conducted on personnel with access to sensitive network and information
+      systems or classified data. Re-vetting shall occur at defined intervals for
+      personnel in high-sensitivity roles.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.1
+    references:
+      - "NIS2 Article 21(2)(i)"
+
+  - id: NIS2_HRS_3
+    pillar: "NIS2-HRS -- Human Resources Security and Access Control"
+    category: HRS
+    title: "Access control based on least privilege"
+    description: >-
+      Access to network and information systems shall be granted on a need-to-know and
+      least-privilege basis. Access control policies shall be documented and enforced
+      through technical controls (RBAC, ABAC). Access rights shall be reviewed at
+      least semi-annually and revoked immediately on role change or departure.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.15
+    references:
+      - "NIS2 Article 21(2)(i)"
+
+  - id: NIS2_HRS_4
+    pillar: "NIS2-HRS -- Human Resources Security and Access Control"
+    category: HRS
+    title: "Privileged access management"
+    description: >-
+      Privileged accounts on critical network and information systems shall be managed
+      through a dedicated privileged access management process. Privileged access shall
+      require multi-factor authentication, session recording, and quarterly review.
+      Generic shared privileged accounts are prohibited.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.2
+    references:
+      - "NIS2 Article 21(2)(i)"
+
+  - id: NIS2_HRS_5
+    pillar: "NIS2-HRS -- Human Resources Security and Access Control"
+    category: HRS
+    title: "Identity lifecycle and offboarding procedures"
+    description: >-
+      Formal processes for provisioning, modifying, and revoking access to network and
+      information systems shall be documented and automated where possible. Access of
+      departing personnel shall be revoked within 24 hours of departure. Inactive
+      accounts shall be disabled after 90 days.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.16
+    references:
+      - "NIS2 Article 21(2)(i)"
+
+  # ---------------------------------------------------------------
+  # NIS2-MFA: Multi-factor Authentication and Secure Communications -- Art. 21(2)(j)
+  # ---------------------------------------------------------------
+
+  - id: NIS2_MFA_1
+    pillar: "NIS2-MFA -- Multi-factor Authentication and Secure Communications"
+    category: MFA
+    title: "MFA for critical systems and remote access"
+    description: >-
+      Multi-factor authentication shall be required for all access to critical network
+      and information systems and for all remote access from external or untrusted
+      networks. For essential entities, hardware MFA tokens or FIDO2/WebAuthn
+      compliant mechanisms are strongly recommended.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.5
+    references:
+      - "NIS2 Article 21(2)(j)"
+
+  - id: NIS2_MFA_2
+    pillar: "NIS2-MFA -- Multi-factor Authentication and Secure Communications"
+    category: MFA
+    title: "Secured voice, video, and text communications"
+    description: >-
+      Internal and external communications related to the operation of critical network
+      and information systems shall use secured (end-to-end encrypted) voice, video,
+      and text communication tools. Use of unencrypted public messaging platforms for
+      sensitive operational discussions is prohibited.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "NIS2 Article 21(2)(j)"
+
+  - id: NIS2_MFA_3
+    pillar: "NIS2-MFA -- Multi-factor Authentication and Secure Communications"
+    category: MFA
+    title: "Secured emergency communication systems"
+    description: >-
+      Secured emergency communication systems shall be available for use during
+      cybersecurity crisis scenarios. Emergency channels shall be independent of the
+      primary network and information systems (to remain functional during incidents)
+      and tested at least annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "NIS2 Article 21(2)(j)"
+
+  # ---------------------------------------------------------------
+  # NIS2-VHR: Vulnerability Management -- Art. 21(2)(e) + Art. 23 reporting
+  # ---------------------------------------------------------------
+
+  - id: NIS2_VHR_1
+    pillar: "NIS2-VHR -- Vulnerability Management"
+    category: VHR
+    title: "Vulnerability identification and risk-based assessment"
+    description: >-
+      Processes for identifying and assessing vulnerabilities in network and information
+      systems shall be implemented, including regular vulnerability scanning, threat
+      intelligence monitoring, and tracking of vendor security advisories. Vulnerabilities
+      shall be classified by severity and impact.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.8
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_VHR_2
+    pillar: "NIS2-VHR -- Vulnerability Management"
+    category: VHR
+    title: "Patch and vulnerability remediation timescales"
+    description: >-
+      Documented remediation timescales for vulnerabilities based on severity shall
+      be defined and enforced: critical vulnerabilities within 72 hours with immediate
+      compensating controls; high within 30 days; medium within 90 days. Exceptions
+      shall require management approval and compensating controls.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.8
+    references:
+      - "NIS2 Article 21(2)(e)"
+
+  - id: NIS2_VHR_3
+    pillar: "NIS2-VHR -- Vulnerability Management"
+    category: VHR
+    title: "Vulnerability disclosure policy"
+    description: >-
+      A vulnerability disclosure policy (VDP) shall be published enabling external
+      researchers to responsibly report vulnerabilities in the entity's systems or
+      services. The VDP shall define the scope, reporting channel, response timelines,
+      and safe harbour statement for good-faith researchers.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "NIS2 Article 21(2)(e)"
+      - "ENISA Guidelines on Coordinated Vulnerability Disclosure"
+
+  - id: NIS2_VHR_4
+    pillar: "NIS2-VHR -- Vulnerability Management"
+    category: VHR
+    title: "Cyber threat intelligence integration"
+    description: >-
+      Entities shall subscribe to sector-specific threat intelligence feeds and CSIRT
+      advisories. Threat intelligence shall be integrated into vulnerability management
+      and incident detection processes. For essential entities, participation in ISAC
+      information sharing is strongly recommended.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.7
+    references:
+      - "NIS2 Article 21(2)(e)"
+      - "NIS2 Article 29 -- sector-specific ISAC"

@@ -1,0 +1,57 @@
+# SWAO Community Framework -- EC Cloud Sovereignty Framework v1.2.1
+# Sprint-139 #2847: 40 controls across 8 SOV domains (SEAL-0 to SEAL-4 maturity).
+# Source: European Commission, October 2025.
+# Used in EUR 180M EU institutional cloud procurement (awarded April 2026).
+
+framework:
+  id: EC_CSF
+  name: "EC Cloud Sovereignty Framework v1.2.1"
+  version: "1.2.1"
+  authority: "European Commission -- Directorate-General for Informatics (DIGIT)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/ec-csf"
+  applicability_hints:
+    - sovereign_cloud
+    - eu_institutional
+    - cloud_service_provider
+    - eu_procurement
+    - digital_sovereignty
+  scoring_mode: binary
+  assessment_type_scope: [lz, aud]
+  description: >-
+    The EC Cloud Sovereignty Framework (CSF) v1.2.1, published by the European
+    Commission in October 2025, defines 8 Sovereignty Objectives (SOV domains)
+    scored via a 5-level maturity system (SEAL-0 to SEAL-4 -- Sovereignty
+    Effectiveness Assurance Level). The framework was used in the EUR 180M EU
+    institutional cloud procurement awarded in April 2026. 40 controls across
+    8 SOV domains: Strategic (SOV-1), Legal (SOV-2), Data (SOV-3), Operational
+    (SOV-4), Supply Chain (SOV-5), Technology (SOV-6), Security (SOV-7), and
+    Environmental (SOV-8). Companion to SecNumCloud v3.2; together they cover
+    the two primary sovereign cloud certification models in the EU institutional
+    ecosystem. Assessment scope: [lz, aud].
+  references:
+    - "EC Cloud Sovereignty Framework v1.2.1 -- European Commission, October 2025"
+    - "EC CSF PDF: https://commission.europa.eu/document/download/09579818-64a6-4dd5-9577-446ab6219113_en"
+    - "EC CSF announcement: https://commission.europa.eu/news-and-media/news/sovereign-cloud-framework-explained-2026-06-01_en"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-22"
+  signal_prefix: ECCSF
+
+  cross_mapping_hints:
+    target_frameworks:
+      - SECNUMCLOUD  # SOV-2 legal = SecNumCloud extraterritoriality; SOV-3 data = SecNumCloud data protection
+      - EUCS         # SOV-7 security domain maps to EUCS High tier security controls
+      - ISO_27001    # SOV-7 security and SOV-3 data domains align with ISO 27001 Annex A
+      - GDPR         # SOV-2 legal and SOV-3 data directly address GDPR Art. 44-46 and Art. 32
+      - NIS2         # SOV-7 security domain aligns with NIS2 Art. 21 security measures
+
+  redistribution_note: >-
+    The EC Cloud Sovereignty Framework v1.2.1 is published by the European Commission
+    and available under the Commission's reuse policy for EU institutional publications.
+    Control descriptions paraphrase the framework's sovereignty objectives for
+    assessment purposes; they do not constitute legal advice or procurement guidance.
+    For authoritative interpretation, consult the European Commission DIGIT or an
+    accredited CSF assessor.
+
+  replaces: []

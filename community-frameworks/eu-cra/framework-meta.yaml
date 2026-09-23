@@ -1,0 +1,66 @@
+# SWAO community framework metadata -- EU Cyber Resilience Act (CRA)
+# Sprint-138 #2804: Regulation (EU) 2024/2847, OJ L, 20 November 2024.
+# In force: 10 December 2024. Most requirements apply from 11 December 2027.
+
+framework:
+  id: EU_CRA
+  name: "EU Cyber Resilience Act (CRA)"
+  version: "2024-12-11"
+  authority: "European Union (Regulation EU 2024/2847)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eu-cra"
+  applicability_hints:
+    - product_vendor
+    - iot_product
+    - eu_market
+    - software_product
+    - hardware_vendor
+    - connected_device
+    - eu_regulated
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    EU Cyber Resilience Act -- Regulation (EU) 2024/2847, OJ L 20.11.2024. In force
+    10 December 2024; most requirements apply from 11 December 2027. Applies to
+    manufacturers of "products with digital elements" (PDE) placed on the EU market --
+    hardware and software products with network connectivity, excluding SaaS, medical
+    devices (MDR/IVDR), aviation (EASA), automotive (UNECE WP.29), and national
+    security. 35 controls across 6 domains: Security by Design (12, Annex I Part I),
+    Vulnerability Handling (8, Annex I Part II), Critical Product requirements (5,
+    Annex II Class I/II), Conformity Assessment (4), Market Surveillance (3), and
+    Software Bill of Materials (3). Mandatory SBOM in machine-readable format per
+    Art. 13. ENISA notification within 24h of actively exploited vulnerability
+    (Art. 14). Cross-mapped to NIS2, ISO_27001, GDPR Art. 25 (data protection by
+    design), and EUCS (for cloud product components).
+  references:
+    - "Regulation (EU) 2024/2847 -- OJ L, 20.11.2024"
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R2847"
+    - "CRA Annex I Part I -- Essential cybersecurity requirements for PDE"
+    - "CRA Annex I Part II -- Vulnerability handling requirements"
+    - "CRA Annex II -- Categories of critical products (Class I/II)"
+    - "CRA Art. 13 -- SBOM requirement"
+    - "CRA Art. 14 -- Actively exploited vulnerability reporting"
+    - "ENISA CRA Implementation Guidance (2024)"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: CRA
+
+  cross_mapping_hints:
+    target_frameworks:
+      - NIS2               # EE/IE that also manufacture PDE face NIS2 + CRA dual obligation
+      - ISO_27001          # CRA SBD requirements map to A.8 secure development controls
+      - GDPR               # CRA Art. 13 SBOM + data minimisation map to GDPR Art. 25 (privacy by design)
+      - EUCS               # Cloud-delivered PDE components overlap EUCS IAM/CRY/DEV domains
+      - DORA               # Financial sector PDE vendors face CRA + DORA dual obligation
+
+  redistribution_note: >-
+    Regulation (EU) 2024/2847 (CRA) is an EU legislative act in the public domain
+    per EUR-Lex terms of reuse. Control descriptions paraphrase the regulation's
+    requirements. This framework represents the manufacturer/vendor perspective;
+    cloud-hosted SaaS is excluded from CRA scope. Consult qualified legal counsel
+    for product classification (PDE vs. excluded category) and Class I/II determination.
+    The December 2027 transition deadline applies to most Art. 21 obligations;
+    Art. 14 reporting obligations apply from September 2026.
+
+  replaces: []

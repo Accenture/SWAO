@@ -1,0 +1,675 @@
+# SWAO Community Framework -- EU Cyber Resilience Act (CRA)
+# Sprint-138 #2804: Regulation (EU) 2024/2847, in force 10 December 2024.
+# Most requirements apply from 11 December 2027. Art. 14 reporting: September 2026.
+# 35 controls across 6 domains. Applies to manufacturers of products with digital elements (PDE).
+
+regime_meta:
+  id: EU_CRA
+  name: "EU Cyber Resilience Act (CRA)"
+  version: "2024-12-11"
+  scope: community
+  authority: "European Union (Regulation EU 2024/2847)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eu-cra"
+  catalogue_version: "1.0.0"
+  signal_prefix: CRA
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - product_vendor
+    - iot_product
+    - eu_market
+    - software_product
+    - hardware_vendor
+    - connected_device
+    - eu_regulated
+  description: >-
+    EU Cyber Resilience Act -- Regulation (EU) 2024/2847, OJ L 20.11.2024.
+    35 controls across 6 domains: Security by Design (12, Annex I Part I),
+    Vulnerability Handling (8, Annex I Part II), Critical Product Classification (5),
+    Conformity Assessment (4), Market Surveillance (3), and Software Bill of Materials (3).
+  references:
+    - "Regulation (EU) 2024/2847 -- OJ L, 20.11.2024"
+    - "CRA Annex I Part I -- Essential cybersecurity requirements for PDE"
+    - "CRA Annex I Part II -- Vulnerability handling requirements"
+    - "CRA Annex II -- Categories of critical products (Class I/II)"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # CRA-SBD: Security by Design -- Annex I Part I (12 controls)
+  # Essential cybersecurity requirements for products with digital elements.
+  # Most Art. 21 obligations apply from 11 December 2027.
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_SBD_1
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "No known exploitable vulnerabilities at market placement"
+    description: >-
+      Products with digital elements shall be placed on the market without any known
+      exploitable vulnerabilities in Annex I Part I scope. Manufacturers shall conduct
+      pre-market security testing proportionate to the product's risk category
+      (default, Class I, or Class II) and document the testing methodology.
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.28
+      - NIS2_VHR_1
+    references:
+      - "CRA Annex I Part I, (1)"
+      - "CRA Article 13(1)"
+
+  - id: EU_CRA_SBD_2
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Secure by default configuration"
+    description: >-
+      Products shall be designed to be delivered in a secure-by-default configuration,
+      disabling unnecessary functionality, ports, and services by default. Any default
+      credentials shall be unique per product instance or require mandatory change on
+      first use. Insecure default configurations are prohibited.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.9
+    references:
+      - "CRA Annex I Part I, (2)"
+
+  - id: EU_CRA_SBD_3
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Authentication and access protection mechanisms"
+    description: >-
+      Products shall implement appropriate authentication mechanisms to protect
+      against unauthorised access. Authentication shall use industry-standard protocols.
+      Shared or generic credentials across multiple product instances are prohibited
+      unless justified by the product's intended purpose.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.5
+    references:
+      - "CRA Annex I Part I, (3)"
+
+  - id: EU_CRA_SBD_4
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Confidentiality protection and data encryption"
+    description: >-
+      Products shall protect the confidentiality of data at rest and in transit
+      using state-of-the-art cryptographic techniques. Where personal data is
+      processed, encryption shall meet GDPR Art. 25 (data protection by design)
+      requirements in addition to CRA Annex I Part I obligations.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - ISO_27001_A.8.24
+      - NIS2_CRY_2
+    references:
+      - "CRA Annex I Part I, (4)"
+
+  - id: EU_CRA_SBD_5
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Data minimisation and privacy by design"
+    description: >-
+      Products shall collect, process, and store only the personal and operational
+      data strictly necessary for their intended purpose. Data minimisation controls
+      shall be implemented in the product design and documented in the technical file.
+      Processing of special categories of personal data shall require explicit design
+      justification.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.34
+    references:
+      - "CRA Annex I Part I, (5)"
+
+  - id: EU_CRA_SBD_6
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Data and firmware integrity protection"
+    description: >-
+      Products shall protect the integrity of data stored, transmitted, or processed
+      by the product and prevent unauthorised modification. Firmware integrity
+      verification mechanisms (e.g., secure boot, signed firmware) shall be implemented
+      for products where firmware modification could compromise security.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.17
+    references:
+      - "CRA Annex I Part I, (6)"
+
+  - id: EU_CRA_SBD_7
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Availability and resilience against denial-of-service"
+    description: >-
+      Products shall be designed to maintain availability and resilience appropriate
+      to their intended use. For network-connected products, protection against denial-
+      of-service (DoS) attacks shall be implemented. Critical product functions shall
+      degrade gracefully rather than fail completely under attack or fault conditions.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.29
+    references:
+      - "CRA Annex I Part I, (7)"
+
+  - id: EU_CRA_SBD_8
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Minimal attack surface design"
+    description: >-
+      Products shall be designed to minimise their attack surface by disabling or
+      removing unnecessary interfaces, protocols, and services. External interfaces
+      shall be documented. Ports, protocols, and services that cannot be disabled
+      shall be documented with security justification.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.20
+    references:
+      - "CRA Annex I Part I, (8)"
+
+  - id: EU_CRA_SBD_9
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Security update and patch delivery mechanism"
+    description: >-
+      Products shall be designed to allow security updates to be installed, preferably
+      automatically or with user notification. The update mechanism shall be
+      authenticated and integrity-protected. Manufacturers shall commit to providing
+      security updates for the product's expected lifetime (minimum 5 years or
+      commercial availability period, whichever is greater).
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex I Part I, (9)"
+      - "CRA Article 13(6) -- support period"
+
+  - id: EU_CRA_SBD_10
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Security event logging and monitoring capability"
+    description: >-
+      Products shall implement security event logging appropriate to their risk
+      category. Log data shall be protected against unauthorised modification.
+      Logs shall include sufficient detail to support incident investigation.
+      Where technically feasible, logs shall be exportable by the user.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.15
+    references:
+      - "CRA Annex I Part I, (10)"
+
+  - id: EU_CRA_SBD_11
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "Factory reset and secure data deletion capability"
+    description: >-
+      Products shall provide the user with a mechanism to securely reset the product
+      to its factory default state, deleting all user data and configuration.
+      The reset mechanism shall be documented in user-facing documentation and shall
+      render personal and operational data unrecoverable.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex I Part I, (11)"
+
+  - id: EU_CRA_SBD_12
+    pillar: "CRA-SBD -- Security by Design (Annex I Part I)"
+    category: SBD
+    title: "User-facing security documentation"
+    description: >-
+      Manufacturers shall provide clear, accessible documentation to users covering:
+      secure configuration instructions, the support period and end-of-security-support
+      date, the process for reporting vulnerabilities, and recommended security practices.
+      Documentation shall be available in the language(s) required by each EU member
+      state where the product is marketed.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex I Part I, (12)"
+      - "CRA Article 13(19) -- language requirements"
+
+  # ---------------------------------------------------------------
+  # CRA-VHR: Vulnerability Handling -- Annex I Part II (8 controls)
+  # Obligations throughout the product lifecycle post-market placement.
+  # Art. 14 reporting obligations apply from September 2026.
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_VHR_1
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "Vulnerability identification and tracking process"
+    description: >-
+      Manufacturers shall establish and maintain a process for identifying, documenting,
+      and tracking vulnerabilities in products with digital elements, including in third-
+      party components. The process shall cover the product's full commercial lifecycle.
+      A vulnerability register shall be maintained and reviewed at least quarterly.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.8
+      - NIS2_VHR_1
+    references:
+      - "CRA Annex I Part II, (1)"
+
+  - id: EU_CRA_VHR_2
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "Coordinated vulnerability disclosure (CVD) policy"
+    description: >-
+      Manufacturers shall publish and maintain a coordinated vulnerability disclosure
+      (CVD) policy enabling external researchers and users to report vulnerabilities.
+      The CVD policy shall define reporting channels, response timescales, safe harbour
+      provisions, and the manufacturer's commitment to acknowledge and investigate reports.
+      A dedicated disclosure contact (e.g., security@vendor.com or CERT portal) is required.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - NIS2_VHR_3
+    references:
+      - "CRA Annex I Part II, (2)"
+
+  - id: EU_CRA_VHR_3
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "Security patches for full product support lifetime"
+    description: >-
+      Manufacturers shall provide security patches for products throughout the product's
+      support period. Security patches shall be made available without undue delay after
+      a vulnerability is confirmed. Patches shall be prioritised by severity: critical
+      patches shall be delivered within 30 days of confirmation.
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Annex I Part II, (3)"
+      - "CRA Article 13(6) -- support period"
+
+  - id: EU_CRA_VHR_4
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "Security updates distributed free of charge"
+    description: >-
+      Security updates shall be provided to users without additional charge. Manufacturers
+      shall not condition the availability of security patches on the purchase of extended
+      support contracts or add-on services. Users shall be notified of available security
+      updates through the product's update mechanism.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex I Part II, (4)"
+
+  - id: EU_CRA_VHR_5
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "24-hour ENISA notification for actively exploited vulnerabilities"
+    description: >-
+      Manufacturers who become aware of an actively exploited vulnerability in their
+      product with digital elements shall notify ENISA within 24 hours of becoming
+      aware. The notification shall include the product details, the nature of the
+      vulnerability, and any mitigations available. This obligation applies from
+      September 2026 (CRA Art. 14 transitional timeline).
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_3
+    references:
+      - "CRA Article 14 -- actively exploited vulnerability reporting"
+      - "CRA Article 14(2a) -- 24-hour notification to ENISA"
+
+  - id: EU_CRA_VHR_6
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "72-hour vulnerability disclosure to ENISA and users"
+    description: >-
+      Within 72 hours of the initial ENISA notification (EU_CRA_VHR_5), manufacturers
+      shall submit a vulnerability notification to ENISA with full details including:
+      CVE identifier (if available), severity assessment (CVSS or equivalent), affected
+      product versions, and recommended user mitigations. Users shall be notified
+      concurrently with the ENISA submission.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Article 14(2b) -- 72-hour notification"
+
+  - id: EU_CRA_VHR_7
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "Software Bill of Materials (SBOM) in machine-readable format"
+    description: >-
+      Manufacturers shall prepare and maintain a software bill of materials (SBOM)
+      for products with digital elements in a machine-readable format (SPDX, CycloneDX,
+      or equivalent). The SBOM shall enumerate all software components, including
+      third-party and open-source components with version identifiers and known
+      dependency relationships.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: SBOM
+    maps_to:
+      - NIS2_SCM_4
+    references:
+      - "CRA Article 13(6) -- SBOM requirement"
+      - "CRA Annex I Part II, (5)"
+
+  - id: EU_CRA_VHR_8
+    pillar: "CRA-VHR -- Vulnerability Handling (Annex I Part II)"
+    category: VHR
+    title: "End-of-security-support (EOS) disclosure to users"
+    description: >-
+      Manufacturers shall clearly disclose the end-of-security-support date for
+      products with digital elements to users at the time of purchase and in
+      product documentation. At EOS, manufacturers shall advise users to replace
+      or cease connected operation of the product. Post-EOS continued operation
+      without security updates shall be explicitly disclosed as a residual risk.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 13(6) -- end of support"
+      - "CRA Annex I Part II, (6)"
+
+  # ---------------------------------------------------------------
+  # CRA-CLS: Critical Product Classification -- Annex II (5 controls)
+  # Class I requires self-assessment or harmonised standard; Class II requires
+  # notified body (third-party) conformity assessment.
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_CLS_1
+    pillar: "CRA-CLS -- Critical Product Classification (Annex II)"
+    category: CLS
+    title: "Product classification determination (default, Class I, Class II)"
+    description: >-
+      Manufacturers shall determine whether their product with digital elements falls
+      into the default category, Annex II Class I (important), or Annex II Class II
+      (critical) based on the product type categories listed in CRA Annex II. The
+      classification shall be documented in the technical file and reviewed whenever
+      the product's functionality or intended use changes materially.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex II -- Product classification table"
+      - "CRA Article 7 -- conformity assessment procedures"
+
+  - id: EU_CRA_CLS_2
+    pillar: "CRA-CLS -- Critical Product Classification (Annex II)"
+    category: CLS
+    title: "Class I conformity assessment via harmonised standard or self-assessment"
+    description: >-
+      Class I products shall demonstrate conformity with Annex I Part I and Part II
+      requirements either by: (a) applying a harmonised standard listed in the Official
+      Journal; or (b) by self-assessment documented in a technical file and Declaration
+      of Conformity. Module A (internal control) procedure applies unless harmonised
+      standards are not available.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 8(1) -- Class I conformity"
+      - "CRA Article 31 -- Declaration of Conformity"
+
+  - id: EU_CRA_CLS_3
+    pillar: "CRA-CLS -- Critical Product Classification (Annex II)"
+    category: CLS
+    title: "Class II mandatory notified body (third-party) assessment"
+    description: >-
+      Class II products shall undergo a third-party conformity assessment by an EU
+      notified body (Module B + C or Module H). Self-assessment is not permitted for
+      Class II products. Manufacturers shall engage a notified body designated under
+      CRA Art. 57 and provide all technical documentation, test reports, and SBOM
+      for assessment.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 8(2) -- Class II third-party assessment"
+      - "CRA Article 57 -- notified bodies"
+
+  - id: EU_CRA_CLS_4
+    pillar: "CRA-CLS -- Critical Product Classification (Annex II)"
+    category: CLS
+    title: "Annex II Class I and II additional security requirements"
+    description: >-
+      Class I and Class II products shall, in addition to Annex I requirements, demonstrate:
+      secure update mechanisms with code signing, hardware security module (HSM) support
+      for cryptographic key storage where technically feasible, and protection against
+      physical tampering for products with physical attack vectors. Class II additionally
+      requires penetration testing by an independent party.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex II -- additional requirements for Class I/II"
+
+  - id: EU_CRA_CLS_5
+    pillar: "CRA-CLS -- Critical Product Classification (Annex II)"
+    category: CLS
+    title: "Hardware security for critical product classes"
+    description: >-
+      For Class I and Class II products with hardware components, hardware security
+      features shall be implemented proportionate to the product's risk and intended
+      use. These may include: Trusted Platform Module (TPM), secure element, hardware
+      random number generator, or equivalent tamper-resistant cryptographic hardware.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Annex II -- hardware security requirements"
+
+  # ---------------------------------------------------------------
+  # CRA-CAF: Conformity Assessment and CE Marking (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_CAF_1
+    pillar: "CRA-CAF -- Conformity Assessment and CE Marking"
+    category: CAF
+    title: "EU Declaration of Conformity (DoC)"
+    description: >-
+      Manufacturers shall draw up an EU Declaration of Conformity before placing
+      a product with digital elements on the EU market. The DoC shall state that
+      the product satisfies the essential cybersecurity requirements in CRA Annex I.
+      The DoC shall be kept up to date throughout the product's lifecycle and made
+      available to market surveillance authorities on request.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 31 -- EU Declaration of Conformity"
+
+  - id: EU_CRA_CAF_2
+    pillar: "CRA-CAF -- Conformity Assessment and CE Marking"
+    category: CAF
+    title: "CE marking with cybersecurity conformity"
+    description: >-
+      Products with digital elements placed on the EU market shall bear the CE marking
+      only after successful completion of the applicable conformity assessment procedure
+      (Module A for default/Class I, or notified body assessment for Class II). The CE
+      marking shall not be affixed before the EU Declaration of Conformity is completed.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 28 -- CE marking"
+
+  - id: EU_CRA_CAF_3
+    pillar: "CRA-CAF -- Conformity Assessment and CE Marking"
+    category: CAF
+    title: "Technical documentation file"
+    description: >-
+      Manufacturers shall compile and maintain a technical documentation file covering:
+      a description of the product design and manufacturing process, risk assessment
+      (Art. 13(2)), cybersecurity measures applied with justification, vulnerability
+      handling procedures, SBOM, test reports, EU DoC, and instructions for use.
+      The technical file shall demonstrate how the product meets Annex I requirements.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "CRA Article 31(7) -- technical documentation"
+      - "CRA Annex V -- technical documentation content"
+
+  - id: EU_CRA_CAF_4
+    pillar: "CRA-CAF -- Conformity Assessment and CE Marking"
+    category: CAF
+    title: "10-year documentation retention"
+    description: >-
+      The EU Declaration of Conformity and technical documentation shall be retained
+      by the manufacturer for a minimum of 10 years after the product is placed on the
+      market or for the support period of the product if longer. Importer and distributor
+      records shall be maintained for the same period to facilitate market surveillance
+      authority traceability requests.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Article 31(8) -- 10-year retention"
+
+  # ---------------------------------------------------------------
+  # CRA-MSV: Market Surveillance and Incident Reporting (3 controls)
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_MSV_1
+    pillar: "CRA-MSV -- Market Surveillance and Incident Reporting"
+    category: MSV
+    title: "24-hour ENISA notification for actively exploited vulnerabilities (cross-reference)"
+    description: >-
+      This control cross-references EU_CRA_VHR_5. Manufacturers shall establish an
+      internal process for monitoring security intelligence sources (CVE feeds, CERT
+      alerts, bug bounty programmes) so that actively exploited vulnerabilities are
+      identified and the 24-hour ENISA notification deadline (Art. 14) is consistently met.
+      A designated security response owner shall be responsible for the ENISA notification
+      workflow.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Article 14 -- notification obligation"
+      - "See also EU_CRA_VHR_5 (primary control)"
+
+  - id: EU_CRA_MSV_2
+    pillar: "CRA-MSV -- Market Surveillance and Incident Reporting"
+    category: MSV
+    title: "Market surveillance authority cooperation"
+    description: >-
+      Manufacturers shall cooperate with market surveillance authorities (MSAs) in
+      member states where the product is marketed. On request from an MSA, manufacturers
+      shall provide all technical documentation, test results, and conformity assessment
+      records within the timeframe stipulated by the MSA. Product recalls or corrective
+      actions ordered by an MSA shall be implemented without undue delay.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Articles 58-66 -- market surveillance"
+
+  - id: EU_CRA_MSV_3
+    pillar: "CRA-MSV -- Market Surveillance and Incident Reporting"
+    category: MSV
+    title: "Product recall and corrective action capability"
+    description: >-
+      Manufacturers shall maintain documented procedures for product recalls and
+      corrective actions in response to serious security incidents or MSA orders.
+      Recall procedures shall include: user notification channels, rollout process
+      for emergency patches, procedures for isolating affected products from
+      network-connected operation, and post-recall verification of remediation.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "CRA Article 13(12) -- corrective actions"
+      - "CRA Article 64 -- market surveillance corrective measures"
+
+  # ---------------------------------------------------------------
+  # CRA-SBM: Software Bill of Materials Management (3 controls)
+  # Cross-cutting: SBM builds on VHR_7 and adds lifecycle management obligations.
+  # ---------------------------------------------------------------
+
+  - id: EU_CRA_SBM_1
+    pillar: "CRA-SBM -- Software Bill of Materials Management"
+    category: SBM
+    title: "SBOM generation at each product release"
+    description: >-
+      A software bill of materials shall be generated for each product version or
+      significant update placed on the EU market. SBOM generation shall be integrated
+      into the software build and release pipeline and produced automatically where
+      tooling permits. SBOM accuracy shall be verified before each release.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: SBOM
+    maps_to:
+      - NIS2_SCM_4
+    references:
+      - "CRA Article 13(6) -- SBOM requirement"
+
+  - id: EU_CRA_SBM_2
+    pillar: "CRA-SBM -- Software Bill of Materials Management"
+    category: SBM
+    title: "SBOM in machine-readable standard format"
+    description: >-
+      SBOMs shall be produced in a recognised machine-readable standard format:
+      SPDX (ISO/IEC 5962) or CycloneDX are the preferred formats. The SBOM shall
+      enumerate all first-party and third-party components including open-source
+      libraries, with PURL identifiers, version information, and known vulnerability
+      cross-references (CVE) where applicable.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: SBOM
+    references:
+      - "CRA Article 13(6) -- SBOM machine-readable format"
+      - "ISO/IEC 5962 -- SPDX specification"
+
+  - id: EU_CRA_SBM_3
+    pillar: "CRA-SBM -- Software Bill of Materials Management"
+    category: SBM
+    title: "SBOM maintenance and update during product lifecycle"
+    description: >-
+      The SBOM shall be updated whenever a component is added, updated, or removed
+      from the product and whenever a new vulnerability is discovered in a listed
+      component. Updated SBOMs shall be retained alongside each product version
+      for the 10-year documentation retention period (EU_CRA_CAF_4). SBOM history
+      shall be available to MSAs on request.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: SBOM
+      - context_input: ops_runbooks
+    references:
+      - "CRA Article 13(6)"
+      - "See also EU_CRA_CAF_4 (10-year retention)"

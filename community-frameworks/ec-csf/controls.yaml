@@ -1,0 +1,733 @@
+# SWAO Community Framework -- EC Cloud Sovereignty Framework v1.2.1
+# Sprint-139 #2847: 40 controls across 8 SOV domains.
+# SEAL maturity mapping: SEAL-3/4 requirements -> high; SEAL-1/2 -> medium; SEAL-0 baseline -> low.
+
+regime_meta:
+  id: EC_CSF
+  name: "EC Cloud Sovereignty Framework v1.2.1"
+  version: "1.2.1"
+  scope: community
+  authority: "European Commission -- Directorate-General for Informatics (DIGIT)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/ec-csf"
+  catalogue_version: "1.0.0"
+  signal_prefix: ECCSF
+  last_reviewed: "2026-09-22"
+  applicability_hints:
+    - sovereign_cloud
+    - eu_institutional
+    - cloud_service_provider
+    - eu_procurement
+    - digital_sovereignty
+  description: >-
+    EC Cloud Sovereignty Framework v1.2.1 (European Commission, October 2025).
+    40 controls across 8 SOV domains assessed at SEAL-0 to SEAL-4 maturity.
+    Used in EUR 180M EU institutional cloud procurement. Companion to
+    SecNumCloud v3.2; together they form the primary EU institutional
+    sovereign cloud assessment model.
+  references:
+    - "EC CSF v1.2.1 -- European Commission, October 2025"
+    - "https://commission.europa.eu/document/download/09579818-64a6-4dd5-9577-446ab6219113_en"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # SOV-1 -- Strategic Sovereignty
+  # Vendor independence, portability strategy, market concentration.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV1_01
+    domain: "SOV-1 -- Strategic Sovereignty"
+    category: SOV1
+    title: "Cloud strategy and vendor independence policy"
+    description: >-
+      The organisation maintains a documented cloud strategy that explicitly
+      addresses vendor independence and avoidance of strategic lock-in.
+      The strategy defines acceptable levels of concentration per provider,
+      portfolio-level portability targets, and a multi-cloud or exit strategy.
+      SEAL-3 requires an approved strategy with annual review; SEAL-4 adds
+      demonstrated evidence of exercised portability options.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_REV_03
+    references:
+      - "EC CSF v1.2.1 SOV-1"
+
+  - id: ECCSF_SOV1_02
+    domain: "SOV-1 -- Strategic Sovereignty"
+    category: SOV1
+    title: "Provider concentration limit"
+    description: >-
+      No single cloud provider accounts for more than 50% of the
+      organisation's critical workload capacity (compute, storage, network)
+      at SEAL-3. The concentration level is measured and reported quarterly.
+      Breaches of the concentration threshold trigger a remediation plan
+      within 90 days.
+    severity_default: medium
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-1"
+
+  - id: ECCSF_SOV1_03
+    domain: "SOV-1 -- Strategic Sovereignty"
+    category: SOV1
+    title: "Cloud exit plan and portability testing"
+    description: >-
+      The organisation maintains an exit plan for each critical cloud service
+      that documents the steps, timelines, and costs of migrating to an
+      alternative provider. Exit plans must be tested at SEAL-4 (at least
+      one simulated migration exercise per 2 years). The exit plan must
+      cover data export, API replacement, and DNS/network cut-over.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - SECNUMCLOUD_REV_01
+    references:
+      - "EC CSF v1.2.1 SOV-1"
+
+  - id: ECCSF_SOV1_04
+    domain: "SOV-1 -- Strategic Sovereignty"
+    category: SOV1
+    title: "Sovereign cloud awareness and skills"
+    description: >-
+      The organisation has designated personnel with documented competence in
+      cloud sovereignty requirements, EU procurement frameworks, and SEAL
+      assessment methodology. SEAL-3 requires at least one certified cloud
+      sovereignty practitioner. Training coverage must be documented annually.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-1"
+
+  # ---------------------------------------------------------------
+  # SOV-2 -- Legal Sovereignty
+  # Jurisdiction, law enforcement access, EU legal framework compliance.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV2_01
+    domain: "SOV-2 -- Legal Sovereignty"
+    category: SOV2
+    title: "EU legal jurisdiction for data processing"
+    description: >-
+      All data processing activities are governed by EU law. The CSP and
+      all subprocessors must be established under the law of an EU member
+      state. Processing contracts must designate an EU member state court
+      as the jurisdiction for dispute resolution. No processing agreement
+      is subject to arbitration outside the EU without CISO approval.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SOV_01
+      - GDPR_Art_44
+    references:
+      - "EC CSF v1.2.1 SOV-2"
+
+  - id: ECCSF_SOV2_02
+    domain: "SOV-2 -- Legal Sovereignty"
+    category: SOV2
+    title: "Extraterritorial law immunity assessment"
+    description: >-
+      Conduct and document an extraterritorial law assessment for every
+      cloud provider in scope. The assessment must evaluate exposure to
+      non-EU data access laws (US CLOUD Act, FISA 702, UK Investigatory
+      Powers Act, and equivalents). SEAL-3 requires a formal legal opinion;
+      SEAL-4 requires contractual indemnification against such exposures.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SOV_01
+      - GDPR_Art_48
+    references:
+      - "EC CSF v1.2.1 SOV-2"
+
+  - id: ECCSF_SOV2_03
+    domain: "SOV-2 -- Legal Sovereignty"
+    category: SOV2
+    title: "Law enforcement request handling procedure"
+    description: >-
+      The CSP must maintain a documented procedure for responding to law
+      enforcement data access requests. Requests from non-EU law enforcement
+      must be challenged before EU courts. The organisation must receive
+      notification (subject to legal constraints) within 72 hours of any
+      access request concerning their data.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SOV_03
+      - GDPR_Art_48
+    references:
+      - "EC CSF v1.2.1 SOV-2"
+
+  - id: ECCSF_SOV2_04
+    domain: "SOV-2 -- Legal Sovereignty"
+    category: SOV2
+    title: "GDPR compliance and DPA engagement"
+    description: >-
+      The cloud service relationship includes a valid Data Processing Agreement
+      (DPA) under GDPR Art. 28. The DPA must specify all subprocessors, their
+      locations, and the safeguards applied. The responsible Data Protection
+      Authority (DPA) must have been identified and engaged for cross-border
+      processing scenarios.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_28
+    references:
+      - "EC CSF v1.2.1 SOV-2"
+
+  # ---------------------------------------------------------------
+  # SOV-3 -- Data Sovereignty
+  # Data residency, portability, encryption, data lifecycle.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV3_01
+    domain: "SOV-3 -- Data Sovereignty"
+    category: SOV3
+    title: "EU data residency enforcement"
+    description: >-
+      All data at rest and all primary data processing must occur within
+      EU member state boundaries. Temporary processing outside the EU (e.g.
+      for CDN or analytics) must be explicitly approved, documented, and
+      minimised in scope. SEAL-3 requires technical enforcement of residency
+      (not only contractual). SEAL-4 requires continuous automated residency
+      monitoring.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - SECNUMCLOUD_SOV_01
+      - GDPR_Art_44
+    references:
+      - "EC CSF v1.2.1 SOV-3"
+
+  - id: ECCSF_SOV3_02
+    domain: "SOV-3 -- Data Sovereignty"
+    category: SOV3
+    title: "Encryption with customer-controlled keys"
+    description: >-
+      Customer data must be encrypted at rest using customer-managed keys
+      (BYOK) or equivalent customer-controlled key management (HYOK/CYOK).
+      The CSP must not have access to plaintext customer data without
+      explicit customer authorisation. Key management infrastructure must
+      be under the customer's direct control or operated by an EU-based
+      HSM service.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: ENCRYPT_AT_REST
+      - context_input: solution_arch
+    maps_to:
+      - SECNUMCLOUD_CRY_01
+      - SECNUMCLOUD_CRY_03
+      - GDPR_Art_32
+    references:
+      - "EC CSF v1.2.1 SOV-3"
+
+  - id: ECCSF_SOV3_03
+    domain: "SOV-3 -- Data Sovereignty"
+    category: SOV3
+    title: "Data classification and labelling"
+    description: >-
+      Implement a data classification scheme covering at minimum: public,
+      internal, confidential, and restricted categories. All data stored
+      in cloud services must be classified and labelled. Storage and access
+      controls must be enforced according to classification level. SEAL-3
+      requires automated classification tooling for unstructured data.
+    severity_default: medium
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.12
+    references:
+      - "EC CSF v1.2.1 SOV-3"
+
+  - id: ECCSF_SOV3_04
+    domain: "SOV-3 -- Data Sovereignty"
+    category: SOV3
+    title: "Data portability and structured export"
+    description: >-
+      Data must be exportable in an open, structured, machine-readable format
+      at any time during the contract, without requiring CSP assistance beyond
+      standard self-service tooling. SEAL-3 requires data export in at least
+      two industry-standard formats. SEAL-4 adds automated pipeline-based
+      export and import with a verified alternative provider.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - SECNUMCLOUD_REV_01
+      - GDPR_Art_20
+    references:
+      - "EC CSF v1.2.1 SOV-3"
+
+  - id: ECCSF_SOV3_05
+    domain: "SOV-3 -- Data Sovereignty"
+    category: SOV3
+    title: "Data deletion and verifiable erasure"
+    description: >-
+      Upon contract termination or explicit data deletion request, all copies
+      of data (primary, backup, archive, replica, log) must be securely
+      deleted within 30 days. The CSP must provide a certificate of deletion.
+      SEAL-4 requires cryptographic proof of deletion (e.g. key destruction
+      for encrypted data) in addition to the certificate.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_REV_02
+      - GDPR_Art_17
+    references:
+      - "EC CSF v1.2.1 SOV-3"
+
+  # ---------------------------------------------------------------
+  # SOV-4 -- Operational Sovereignty
+  # EU-based support, staff vetting, operational independence.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV4_01
+    domain: "SOV-4 -- Operational Sovereignty"
+    category: SOV4
+    title: "EU-based operational support staff"
+    description: >-
+      All operational support personnel with access to customer data or
+      management infrastructure must be employed by or contracted to
+      EU-established entities. Remote support from non-EU locations requires
+      explicit documented authorisation per-incident. SEAL-4 requires
+      real-time monitoring of support access geographic origin.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - SECNUMCLOUD_SOV_02
+    references:
+      - "EC CSF v1.2.1 SOV-4"
+
+  - id: ECCSF_SOV4_02
+    domain: "SOV-4 -- Operational Sovereignty"
+    category: SOV4
+    title: "Operational continuity without parent company dependency"
+    description: >-
+      The CSP's EU operations must be capable of continuing service delivery
+      independently of any non-EU parent company or controlling entity.
+      Document the operational independence plan covering: service continuity,
+      key management independence, and contractual independence in the event
+      of parent company insolvency or sanctions.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SOV_01
+    references:
+      - "EC CSF v1.2.1 SOV-4"
+
+  - id: ECCSF_SOV4_03
+    domain: "SOV-4 -- Operational Sovereignty"
+    category: SOV4
+    title: "Incident response sovereignty"
+    description: >-
+      Security incident response must be conducted exclusively by EU-based
+      personnel with appropriate security clearances. The incident response
+      procedure must not require escalation outside the EU for incidents
+      involving restricted data. SEAL-3 requires a documented incident
+      response runbook that confirms EU-only escalation paths.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - SECNUMCLOUD_INC_01
+      - NIS2_INC_01
+    references:
+      - "EC CSF v1.2.1 SOV-4"
+
+  - id: ECCSF_SOV4_04
+    domain: "SOV-4 -- Operational Sovereignty"
+    category: SOV4
+    title: "SLA monitoring and customer visibility"
+    description: >-
+      Provide customers with real-time or near-real-time visibility into
+      service performance metrics (availability, latency, error rates).
+      SEAL-3 requires a customer-accessible status dashboard. SEAL-4
+      requires API access to performance data enabling customer-built
+      monitoring pipelines.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_TRS_03
+    references:
+      - "EC CSF v1.2.1 SOV-4"
+
+  # ---------------------------------------------------------------
+  # SOV-5 -- Supply Chain Sovereignty
+  # Third-party dependency, open source, component provenance.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV5_01
+    domain: "SOV-5 -- Supply Chain Sovereignty"
+    category: SOV5
+    title: "Supply chain risk assessment"
+    description: >-
+      Conduct and document a supply chain risk assessment covering all
+      critical third-party hardware and software components used in
+      service delivery. Identify components with non-EU provenance and
+      assess the risk of supply chain compromise or forced technology
+      access. SEAL-3 requires an annual assessment updated for new
+      critical dependencies.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SCM_01
+      - NIS2_SCM_01
+    references:
+      - "EC CSF v1.2.1 SOV-5"
+
+  - id: ECCSF_SOV5_02
+    domain: "SOV-5 -- Supply Chain Sovereignty"
+    category: SOV5
+    title: "Software bill of materials and dependency transparency"
+    description: >-
+      Maintain and publish (on request) a Software Bill of Materials (SBOM)
+      for all software components in the service stack, including open source
+      libraries. The SBOM must identify the origin jurisdiction of each
+      component's primary maintainer or controlling entity. Flag components
+      with non-EU controlling entities for additional scrutiny.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SCM_03
+    references:
+      - "EC CSF v1.2.1 SOV-5"
+
+  - id: ECCSF_SOV5_03
+    domain: "SOV-5 -- Supply Chain Sovereignty"
+    category: SOV5
+    title: "EU-preferred sourcing policy"
+    description: >-
+      Establish and document a sourcing policy that gives preference to
+      EU-based hardware and software providers for security-critical components
+      (HSMs, network hardware, operating systems, identity systems). Where
+      non-EU components are used for security-critical roles, document the
+      risk acceptance rationale and compensating controls.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SCM_01
+    references:
+      - "EC CSF v1.2.1 SOV-5"
+
+  - id: ECCSF_SOV5_04
+    domain: "SOV-5 -- Supply Chain Sovereignty"
+    category: SOV5
+    title: "Subprocessor sovereignty chain"
+    description: >-
+      All subprocessors handling customer data must themselves meet SEAL-1
+      or higher requirements for the SOV domains applicable to their service
+      scope. Subprocessor sovereignty assessments must be maintained current
+      (reviewed annually). The complete subprocessor chain must be disclosed
+      to customers.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_SCM_02
+      - GDPR_Art_28
+    references:
+      - "EC CSF v1.2.1 SOV-5"
+
+  # ---------------------------------------------------------------
+  # SOV-6 -- Technology Sovereignty
+  # Open standards, interoperability, proprietary lock-in avoidance.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV6_01
+    domain: "SOV-6 -- Technology Sovereignty"
+    category: SOV6
+    title: "Open standards adoption for critical interfaces"
+    description: >-
+      Critical service interfaces (APIs, data formats, authentication) must
+      use open, published, and royalty-free standards. Proprietary-only
+      interfaces for critical functions are prohibited at SEAL-3. Where
+      proprietary interfaces exist alongside open ones, the open interface
+      must provide equivalent functional coverage. Document deviations.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-6"
+
+  - id: ECCSF_SOV6_02
+    domain: "SOV-6 -- Technology Sovereignty"
+    category: SOV6
+    title: "Proprietary lock-in avoidance assessment"
+    description: >-
+      Conduct an annual lock-in assessment for each cloud service in scope.
+      The assessment must identify proprietary technologies, estimate
+      migration costs, and recommend open alternatives where available.
+      SEAL-3 requires a remediation roadmap for high-lock-in components.
+      SEAL-4 requires demonstrated migration to open alternatives for
+      components assessed as high-lock-in.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-6"
+
+  - id: ECCSF_SOV6_03
+    domain: "SOV-6 -- Technology Sovereignty"
+    category: SOV6
+    title: "API interoperability and documentation"
+    description: >-
+      All service APIs must be documented in a publicly available and
+      machine-readable format (OpenAPI 3.x or equivalent). Documentation
+      must be maintained current within 30 days of any API change.
+      SEAL-3 requires a client-testable sandbox environment for all
+      critical APIs.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-6"
+
+  - id: ECCSF_SOV6_04
+    domain: "SOV-6 -- Technology Sovereignty"
+    category: SOV6
+    title: "Open source preference for infrastructure software"
+    description: >-
+      Prefer open source software for infrastructure components (hypervisors,
+      container orchestration, object storage, identity providers). Where
+      proprietary infrastructure software is used, document the rationale
+      and confirm the availability of an open source alternative migration
+      path. SEAL-4 requires that critical infrastructure software be open
+      source or provide verified open source parity.
+    severity_default: medium
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-6"
+
+  # ---------------------------------------------------------------
+  # SOV-7 -- Security Sovereignty
+  # Technical security (maps to EUCS High / SecNumCloud security chapters).
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV7_01
+    domain: "SOV-7 -- Security Sovereignty"
+    category: SOV7
+    title: "Security certification and continuous assurance"
+    description: >-
+      The cloud service must hold or be working towards a recognised EU
+      cloud security certification (ISO 27001, EUCS, SecNumCloud, BSI C5,
+      or equivalent). SEAL-3 requires an active ISO 27001 certificate covering
+      the service scope. SEAL-4 requires EUCS High or SecNumCloud qualification.
+      Certification must be maintained current with no lapse.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_TRS_01
+      - ISO_27001_Cl.6.1
+    references:
+      - "EC CSF v1.2.1 SOV-7"
+
+  - id: ECCSF_SOV7_02
+    domain: "SOV-7 -- Security Sovereignty"
+    category: SOV7
+    title: "Penetration testing by EU-based assessors"
+    description: >-
+      Annual penetration testing must be conducted by EU-based assessors with
+      appropriate security clearance. Test scope must cover all external-facing
+      APIs, management planes, and customer isolation boundaries. Test reports
+      must be available to customers on request. Critical findings must be
+      remediated within 30 days.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_DEV_02
+    references:
+      - "EC CSF v1.2.1 SOV-7"
+
+  - id: ECCSF_SOV7_03
+    domain: "SOV-7 -- Security Sovereignty"
+    category: SOV7
+    title: "Tenant isolation verification"
+    description: >-
+      Verify cryptographic isolation between customer tenants through independent
+      technical assessment at least annually. The isolation test must confirm
+      that no tenant can access another tenant's data plane, management plane,
+      or metadata. SEAL-4 requires formal security proofs for the isolation
+      mechanism.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - SECNUMCLOUD_NET_01
+    references:
+      - "EC CSF v1.2.1 SOV-7"
+
+  - id: ECCSF_SOV7_04
+    domain: "SOV-7 -- Security Sovereignty"
+    category: SOV7
+    title: "Vulnerability disclosure and patch commitment"
+    description: >-
+      The CSP must publish a vulnerability disclosure policy and commit to
+      patch deployment timelines for critical vulnerabilities. Critical CVEs
+      must be patched within 72 hours for services at SEAL-3. SEAL-4 requires
+      a real-time vulnerability feed provided to customers for their deployed
+      components.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - SECNUMCLOUD_VUL_01
+      - NIS2_NSC_01
+    references:
+      - "EC CSF v1.2.1 SOV-7"
+
+  - id: ECCSF_SOV7_05
+    domain: "SOV-7 -- Security Sovereignty"
+    category: SOV7
+    title: "Encryption sovereignty -- ANSSI or equivalent approved algorithms"
+    description: >-
+      All encryption must use algorithms and key lengths approved by a
+      recognised EU national cybersecurity authority (ANSSI, BSI, NCSC-NL,
+      or equivalent). Algorithms subject to export controls or with known
+      NSA backdoor allegations must not be used as primary encryption
+      mechanisms. Cryptographic agility must be demonstrated at SEAL-4.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: ENCRYPT_AT_REST
+      - signal: ENCRYPT_IN_TRANSIT
+    maps_to:
+      - SECNUMCLOUD_CRY_01
+      - SECNUMCLOUD_CRY_02
+    references:
+      - "EC CSF v1.2.1 SOV-7"
+
+  # ---------------------------------------------------------------
+  # SOV-8 -- Environmental Sovereignty
+  # Energy efficiency, sustainability, carbon reporting.
+  # ---------------------------------------------------------------
+
+  - id: ECCSF_SOV8_01
+    domain: "SOV-8 -- Environmental Sovereignty"
+    category: SOV8
+    title: "Energy efficiency target and PUE reporting"
+    description: >-
+      The CSP must publicly report Power Usage Effectiveness (PUE) for all
+      data centres hosting EU institutional workloads. SEAL-3 requires a PUE
+      of 1.4 or lower. SEAL-4 requires PUE of 1.3 or lower with a published
+      improvement roadmap. PUE reporting must be independently verified
+      annually.
+    severity_default: medium
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_ENV_01
+    references:
+      - "EC CSF v1.2.1 SOV-8"
+
+  - id: ECCSF_SOV8_02
+    domain: "SOV-8 -- Environmental Sovereignty"
+    category: SOV8
+    title: "Renewable energy commitment"
+    description: >-
+      The CSP must source 100% of data centre energy from renewable sources
+      at SEAL-4 (75% at SEAL-3). Renewable sourcing must be demonstrated
+      through verified Guarantees of Origin (GOs) or direct Power Purchase
+      Agreements (PPAs) with EU-based renewable energy generators. Unbundled
+      RECs (Renewable Energy Certificates) from non-EU sources do not qualify.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_ENV_02
+    references:
+      - "EC CSF v1.2.1 SOV-8"
+
+  - id: ECCSF_SOV8_03
+    domain: "SOV-8 -- Environmental Sovereignty"
+    category: SOV8
+    title: "Carbon footprint measurement and reduction"
+    description: >-
+      Measure and publicly report the carbon footprint (Scope 1, 2, and
+      Scope 3 for supply chain and customer usage) of cloud service delivery
+      annually using a recognised methodology (GHG Protocol or ISO 14064).
+      SEAL-3 requires a published reduction target (minimum 5% annual
+      reduction). SEAL-4 requires net-zero commitment with a dated pathway.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - SECNUMCLOUD_ENV_03
+    references:
+      - "EC CSF v1.2.1 SOV-8"
+
+  - id: ECCSF_SOV8_04
+    domain: "SOV-8 -- Environmental Sovereignty"
+    category: SOV8
+    title: "Customer carbon visibility and reporting"
+    description: >-
+      Provide customers with access to estimated carbon footprint data for
+      their cloud workloads, disaggregated by service type and region. SEAL-3
+      requires monthly reporting via a customer dashboard or API. Data must
+      use the same methodology as the CSP's corporate carbon reporting to
+      enable customer Scope 3 accounting.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EC CSF v1.2.1 SOV-8"

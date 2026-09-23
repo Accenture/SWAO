@@ -1,0 +1,56 @@
+# SWAO Community Framework -- EU AI Act (Regulation EU 2024/1689)
+# Sprint-139 #0441: 37 controls across 4 parts (RC/HR/TR/GP).
+# In force: 2024-08-01. Prohibited practices: 2025-02-02.
+# High-risk Annex III systems: 2027-08-02.
+
+framework:
+  id: EU_AI_ACT
+  name: "EU Artificial Intelligence Act"
+  version: "2024-08-01"
+  authority: "European Union (Regulation EU 2024/1689)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eu-ai-act"
+  applicability_hints:
+    - ai_system
+    - high_risk_ai
+    - gpai_provider
+    - automated_decisioning
+    - eu_market
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    EU Regulation 2024/1689 (AI Act) in force since 2024-08-01, establishing
+    a risk-based regulatory framework for artificial intelligence systems placed
+    on or put into service in the EU market. 37 controls across 4 parts: RC
+    (Risk Classification, 5 controls -- Art. 5/6/11/50/51), HR (High-Risk AI
+    Requirements, 18 controls -- Art. 9-17/47/48/72/73, applicable when RC-02
+    identifies a high-risk system), TR (Transparency Obligations, 5 controls
+    -- Art. 13/26/50, applicable for limited-risk or higher), GP (GPAI Model
+    Obligations, 9 controls -- Art. 51-56, applicable when RC-04 identifies a
+    general-purpose AI model). Prohibited practices (Art. 5) are unconditional
+    and in force from 2025-02-02. Cross-mapped to GDPR, EU_CRA, NIS2, and
+    AI_10_PILLARS.
+  references:
+    - "EU Regulation 2024/1689 (AI Act) -- Official Journal 2024-07-12"
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202401689"
+    - "European Commission AI Act Implementation Guide 2025"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-22"
+  signal_prefix: AIACT
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR           # Art. 10 training data -> GDPR Art. 5 purpose limitation; Art. 22 automated decisions
+      - EU_CRA         # Art. 15 cybersecurity requirements overlap with CRA Annex I
+      - NIS2           # Art. 9 risk management and Art. 15 cybersecurity align with NIS2 Art. 21
+      - AI_10_PILLARS  # Deep overlap across data governance, model security, and output guardrails pillars
+
+  redistribution_note: >-
+    EU Regulation 2024/1689 (AI Act) is an EU legislative act in the public
+    domain per EUR-Lex terms of reuse. Control descriptions paraphrase the
+    regulation's requirements; they do not constitute legal advice.
+    Consult qualified legal counsel and your competent authority for
+    jurisdiction-specific implementation guidance.
+
+  replaces: []
