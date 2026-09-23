@@ -23,6 +23,53 @@ For the complete release history see the [GitHub Releases page](https://github.c
 
 ---
 
+## v1.2.0 - 2026-09-22
+
+Minor release: 22 community frameworks, framework depth, MCP file access, dynamic vision intelligence, VitePress docs.
+
+Release page: [github.com/Accenture/SWAO/releases/tag/v1.2.0](https://github.com/Accenture/SWAO/releases/tag/v1.2.0)
+
+**Community Edition downloads** (Apache-2.0, no licence key required)
+
+| Platform | File | SHA-256 |
+|---|---|---|
+| Windows 64-bit | `swao-community-win-x64.exe` | See `SHA256SUMS` on the release page |
+| Linux 64-bit | `swao-community-linux-x64` | See `SHA256SUMS` on the release page |
+| macOS Intel | `swao-community-macos-x64` | See `SHA256SUMS` on the release page |
+| macOS Apple Silicon | `swao-community-macos-arm64` | See `SHA256SUMS` on the release page |
+
+Consultant and Enterprise Edition binaries are available through Accenture.
+
+**What's new**
+
+- 22 bundled community frameworks (19 public YAML + 3 premium): EU AI Act, SecNumCloud,
+  EC CSF, EUCS, KRITIS-DE, NIS2, EU CRA, OpenSSF Scorecard added; depth improvements
+  to ISO 27001:2022, SOC 2, DORA, ISO 27001.
+- `swao_read_file` and `swao_list_directory` MCP tools for LLM file access.
+- Dynamic vision intelligence: `DYN-VIS-<screen>-<N>` signals from screenshot analysis.
+- 11 community framework reference pages on the docs site.
+- Security: fast-uri 4.1.5, fastify 5.12.5, liquidjs guard raised.
+
+**Verifying a download**
+
+Linux / macOS:
+```bash
+sha256sum swao-community-linux-x64
+# compare against SHA256SUMS on the release page
+```
+
+Windows:
+```powershell
+certutil -hashfile swao-community-win-x64.exe SHA256
+```
+
+**SBOM**
+
+A CycloneDX SBOM (`swao-v1.2.0-sbom.cdx.json`) is attached to the
+release page. Verify using any CycloneDX-compatible tool.
+
+---
+
 ## v1.1.0 - 2026-09-17
 
 Minor release: SWAO Chat (Enterprise) and security patch batch.
