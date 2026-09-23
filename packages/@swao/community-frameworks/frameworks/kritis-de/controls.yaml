@@ -1,0 +1,850 @@
+# SWAO Community Framework -- KRITIS-DE
+# Sprint-138 #2802: German KRITIS operators IT security obligations.
+# 40 controls across 7 domains synthesised from BSI KRITIS Orientierungshilfe,
+# sector IT-Sicherheitskataloge, and KRITIS-DachG (2023).
+
+regime_meta:
+  id: KRITIS_DE
+  name: "KRITIS-DE -- German Critical Infrastructure IT Security"
+  version: "2024"
+  scope: community
+  authority: >-
+    Federal Office for Information Security (BSI) / Bundesnetzagentur (BNetzA)
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/kritis-de"
+  catalogue_version: "1.0.0"
+  signal_prefix: KRIT
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - de_kritis
+    - german_critical_infrastructure
+    - energy_sector
+    - water_sector
+    - health_sector
+    - transport_sector
+    - finance_kritis
+    - ict_kritis
+    - de_sovereign
+  description: >-
+    Community packaging of KRITIS IT security obligations under BSIG §8a/§8b.
+    40 controls across 7 domains: Governance (GOV), Asset Inventory (AST),
+    Incident Detection and Reporting (INC), Access Control (IDM), Resilience
+    and Continuity (BCM), Supply Chain (SCM), and Sector-Specific (SEC).
+  references:
+    - "BSI Act (BSIG) §8a and §8b -- IT-Sicherheitsgesetz 2.0 (2021)"
+    - "BSI KRITIS Ordinance (BSI-KritisV)"
+    - "BSI Orientierungshilfe zur Nachweispflicht gemass §8a BSIG"
+    - "KRITIS-DachG (BGBl. 2023)"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # KRIT-GOV: Governance and Accountability (6 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_GOV_1
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "Management accountability for KRITIS IT security"
+    description: >-
+      The KRITIS operator's management board is accountable for implementing
+      "state of the art" (Stand der Technik) IT security measures as required by
+      BSIG §8a. The board must formally document the scope, responsibilities, and
+      delegation of KRITIS security duties, and confirm compliance in the biennial
+      §8a audit report submitted to BSI.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+      - ISO_27001_A.5.2
+      - BSI_C5_OIS-01
+    references:
+      - "BSIG §8a paragraph 1"
+      - "BSI Orientierungshilfe zur Nachweispflicht §8a BSIG"
+
+  - id: KRITIS_DE_GOV_2
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "Biennial §8a security audit and BSI reporting"
+    description: >-
+      KRITIS operators must commission a comprehensive security audit by a
+      BSI-approved auditor (qualified security testing body or recognised industry
+      standard body) at least every two years. The audit report covering all KRITIS
+      systems must be submitted to BSI within three months of the audit completion.
+      Deficiencies identified must be remediated and tracked.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "BSIG §8a paragraph 3"
+      - "BSI list of approved §8a auditors"
+
+  - id: KRITIS_DE_GOV_3
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "KRITIS system scope declaration"
+    description: >-
+      KRITIS operators shall formally identify, document, and declare to BSI all
+      ICT systems, components, and networks that directly support the critical
+      service above the statutory threshold (Schwellenwert) defined in BSI-KritisV.
+      The scope declaration shall be updated whenever the operator's ICT landscape
+      changes materially.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: cmdb_export
+    maps_to:
+      - ISO_27001_A.5.9
+      - BSI_C5_OIS-01
+    references:
+      - "BSI-KritisV Annex -- sector thresholds"
+      - "BSIG §8b paragraph 1"
+
+  - id: KRITIS_DE_GOV_4
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "KRITIS IT security officer designation"
+    description: >-
+      KRITIS operators shall designate a qualified person responsible for IT
+      security (equivalent to a CISO role) with direct reporting to senior
+      management, authority to enforce security measures across KRITIS systems,
+      and sufficient resource to fulfil the function. Contact details must be
+      registered with BSI.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.2
+      - BSI_C5_OIS-02
+    references:
+      - "BSIG §8b paragraph 3"
+      - "BSI Orientierungshilfe §8a Section 3"
+
+  - id: KRITIS_DE_GOV_5
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "KRITIS IT security policies and standards"
+    description: >-
+      A current, board-approved set of KRITIS-specific IT security policies
+      covering all KRITIS domains shall be maintained. Policies shall be reviewed
+      at least annually, and following major ICT incidents. Policies shall be
+      formally communicated to all staff with access to KRITIS systems.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+      - BSI_C5_OIS-01
+      - BSI_C5_OIS-03
+    references:
+      - "BSI Orientierungshilfe §8a BSIG"
+
+  - id: KRITIS_DE_GOV_6
+    pillar: "KRIT-GOV -- Governance and Accountability"
+    category: GOV
+    title: "KRITIS staff security awareness and training"
+    description: >-
+      All staff with access to KRITIS systems shall complete mandatory security
+      awareness training relevant to their role at minimum annually. Training
+      shall cover KRITIS-specific threats, reporting obligations, and acceptable
+      use policies. Training completion shall be documented and tracked.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.3
+      - BSI_C5_HRS-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG"
+
+  # ---------------------------------------------------------------
+  # KRIT-AST: Asset and Network Inventory (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_AST_1
+    pillar: "KRIT-AST -- Asset and Network Inventory"
+    category: AST
+    title: "KRITIS system inventory and criticality classification"
+    description: >-
+      A comprehensive inventory of all ICT systems, components, applications, and
+      services within the KRITIS boundary shall be maintained, including criticality
+      classification (KRITIS-critical, important, supporting). The inventory shall
+      be reviewed at least annually and updated following any significant change to
+      the KRITIS architecture.
+    severity_default: high
+    evidence_basis:
+      - context_input: cmdb_export
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.9
+      - BSI_C5_OIS-04
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Asset Management"
+
+  - id: KRITIS_DE_AST_2
+    pillar: "KRIT-AST -- Asset and Network Inventory"
+    category: AST
+    title: "Network perimeter documentation and segmentation"
+    description: >-
+      The KRITIS network boundary shall be formally documented using network
+      diagrams approved by the KRITIS security officer. KRITIS networks shall be
+      segmented from corporate IT and from the internet. Each perimeter shall have
+      documented firewall or equivalent rules enforcing least-privilege traffic
+      between zones.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: TF
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.20
+      - ISO_27001_A.8.22
+      - BSI_C5_COS-04
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Network Security"
+
+  - id: KRITIS_DE_AST_3
+    pillar: "KRIT-AST -- Asset and Network Inventory"
+    category: AST
+    title: "IT/OT boundary management"
+    description: >-
+      Where KRITIS systems include operational technology (OT) or industrial control
+      systems (ICS/SCADA), the boundary between IT and OT networks shall be formally
+      documented, monitored, and subject to specific security controls. Unidirectional
+      gateways or data diodes shall be used where bidirectional communication is not
+      required.
+    severity_default: high
+    applies_when:
+      has_ot_systems: "true"
+    evidence_basis:
+      - signal_prefix: EGR
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.20
+    references:
+      - "BSI TR-03116 Abschnitt 4 -- IT/OT security"
+      - "IEC 62443 series (Industrial Automation and Control Systems Security)"
+
+  - id: KRITIS_DE_AST_4
+    pillar: "KRIT-AST -- Asset and Network Inventory"
+    category: AST
+    title: "Software inventory and patch lifecycle management"
+    description: >-
+      A register of all software deployed on KRITIS systems shall be maintained,
+      including version, vendor, and end-of-life date. Vendor-issued security
+      patches shall be assessed within 30 days of release and applied within
+      risk-based timescales (critical vulnerabilities: 72 hours with compensating
+      controls; high: 30 days; medium: 90 days).
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - context_input: cmdb_export
+    maps_to:
+      - ISO_27001_A.8.8
+      - BSI_C5_OPS-02
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Patch Management"
+
+  - id: KRITIS_DE_AST_5
+    pillar: "KRIT-AST -- Asset and Network Inventory"
+    category: AST
+    title: "Physical security perimeters for KRITIS systems"
+    description: >-
+      Physical access to server rooms, control rooms, and other areas housing
+      KRITIS systems shall be restricted to authorised personnel, enforced through
+      card-reader or biometric controls, and logged. Physical access logs shall be
+      retained for at least one year and reviewed periodically for anomalies.
+    severity_default: high
+    csp_inherited: true
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.1
+      - ISO_27001_A.7.2
+      - BSI_C5_PRY-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Physical Security"
+
+  # ---------------------------------------------------------------
+  # KRIT-INC: Incident Detection and Reporting (6 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_INC_1
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "Disruption classification and major incident criteria"
+    description: >-
+      KRITIS operators shall maintain documented criteria for classifying ICT
+      disruptions as erhebliche Storung (significant disruption) per BSIG §8b.
+      Classification criteria shall consider duration, scope of affected services,
+      number of affected users, geographic impact, and potential harm to the
+      critical infrastructure service.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.25
+    references:
+      - "BSIG §8b paragraph 4a"
+      - "BSI KRITIS Meldepflicht Leitfaden"
+
+  - id: KRITIS_DE_INC_2
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "Mandatory §8b 2-hour reporting to BSI"
+    description: >-
+      Significant disruptions (erhebliche Storungen) affecting KRITIS systems must
+      be reported to BSI within 2 hours of detection using the BSI MELDUNG
+      notification portal. Reports must include the incident category, affected
+      services, severity level, and initial assessment of impact on the critical
+      infrastructure service.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+    references:
+      - "BSIG §8b paragraph 4a"
+
+  - id: KRITIS_DE_INC_3
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "BSI MELDUNG portal registration and channel testing"
+    description: >-
+      KRITIS operators shall register with the BSI MELDUNG portal in advance of any
+      reportable incident. The reporting channel and account credentials shall be
+      verified at least annually using BSI's test notification process. Backup
+      communication channels (telephone, encrypted email) shall be documented.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "BSI KRITIS Meldewesen -- MELDUNG portal"
+
+  - id: KRITIS_DE_INC_4
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "24x7 security monitoring and SOC capabilities"
+    description: >-
+      KRITIS systems shall be monitored continuously (24x7) for security events.
+      Monitoring shall include intrusion detection, anomaly detection, and
+      centralised log management. Security alerts shall be triaged by trained
+      analysts with documented response procedures and defined escalation paths.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.15
+      - ISO_27001_A.8.16
+      - BSI_C5_SIM-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Monitoring and Detection"
+
+  - id: KRITIS_DE_INC_5
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "Forensic readiness and log retention"
+    description: >-
+      Audit logs from KRITIS systems shall be protected against tampering through
+      cryptographic integrity checks or write-once storage, centrally aggregated,
+      and retained for at least one year (or longer per sector requirements). Log
+      scope shall be sufficient to reconstruct significant ICT security events for
+      forensic investigation.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.15
+      - BSI_C5_SIM-02
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Logging"
+
+  - id: KRITIS_DE_INC_6
+    pillar: "KRIT-INC -- Incident Detection and Reporting"
+    category: INC
+    title: "Post-incident review and corrective action tracking"
+    description: >-
+      Following any significant KRITIS disruption (§8b reportable event), a
+      post-incident review shall be conducted within 30 days. Root cause analysis,
+      lessons learned, and corrective actions shall be documented, tracked to
+      completion, and included in the next §8a audit evidence package.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.26
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Incident Learning"
+
+  # ---------------------------------------------------------------
+  # KRIT-IDM: Access Control and Identity (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_IDM_1
+    pillar: "KRIT-IDM -- Access Control and Identity"
+    category: IDM
+    title: "Multi-factor authentication for KRITIS systems"
+    description: >-
+      Multi-factor authentication (MFA) shall be required for all access to KRITIS
+      systems, including administrator accounts, service accounts accessing sensitive
+      KRITIS data, and all remote access sessions from external or untrusted networks.
+      Hardware tokens or equivalent FIDO2-compliant mechanisms are required for
+      privileged KRITIS access.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.5
+      - BSI_C5_IDM-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Identity and Access Management"
+      - "BSI TR-03116 Teil 4 -- Authentication"
+
+  - id: KRITIS_DE_IDM_2
+    pillar: "KRIT-IDM -- Access Control and Identity"
+    category: IDM
+    title: "Privileged access management for KRITIS systems"
+    description: >-
+      Privileged accounts on KRITIS systems shall be restricted to the minimum
+      necessary individuals. Just-in-time access, dedicated secure admin workstations,
+      and session recording shall be implemented for privileged KRITIS access.
+      Privileged account use shall be reviewed and recertified at least quarterly.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.2
+      - BSI_C5_IDM-02
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Privileged Access"
+
+  - id: KRITIS_DE_IDM_3
+    pillar: "KRIT-IDM -- Access Control and Identity"
+    category: IDM
+    title: "Secure remote access for KRITIS network segments"
+    description: >-
+      Remote access to KRITIS networks shall be permitted only via BSI-approved,
+      end-to-end encrypted VPN or equivalent secure channel. Remote access sessions
+      shall be logged, with logs retained for at least one year. Concurrent remote
+      sessions from the same account to KRITIS systems shall be prohibited.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+      - signal_prefix: EGR
+    maps_to:
+      - ISO_27001_A.8.20
+      - BSI_C5_IDM-04
+    references:
+      - "BSI TR-02102-2 -- IPsec/IKEv2"
+      - "BSI Orientierungshilfe §8a BSIG -- Remote Access"
+
+  - id: KRITIS_DE_IDM_4
+    pillar: "KRIT-IDM -- Access Control and Identity"
+    category: IDM
+    title: "Access review and recertification"
+    description: >-
+      Access rights to KRITIS systems shall be formally reviewed and recertified by
+      the system owner at least every six months. Accounts of departing staff shall
+      be revoked within 24 hours of departure. Inactive accounts shall be disabled
+      after 90 days of inactivity and deleted after one year.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.18
+      - BSI_C5_IDM-03
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Access Reviews"
+
+  - id: KRITIS_DE_IDM_5
+    pillar: "KRIT-IDM -- Access Control and Identity"
+    category: IDM
+    title: "Identity lifecycle and access provisioning process"
+    description: >-
+      Processes for granting, modifying, and revoking access to KRITIS systems shall
+      be formally documented, automated where possible, and require approval from the
+      KRITIS system owner. Access provisioning shall be based on the role of the
+      user, following a documented role model aligned with business functions.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.15
+      - BSI_C5_IDM-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Access Provisioning"
+
+  # ---------------------------------------------------------------
+  # KRIT-BCM: Resilience and Continuity (7 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_BCM_1
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "High availability architecture for KRITIS systems"
+    description: >-
+      KRITIS systems shall be designed and operated to achieve the availability level
+      required by the statutory service threshold. Single points of failure in KRITIS
+      critical paths shall be identified through architecture review and eliminated or
+      mitigated through redundancy, clustering, or failover mechanisms.
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.30
+      - BSI_C5_AVL-01
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Availability"
+      - "BSI-KritisV sector-specific availability thresholds"
+
+  - id: KRITIS_DE_BCM_2
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Business continuity plan for KRITIS services"
+    description: >-
+      A KRITIS-specific business continuity plan (BCP) shall document crisis
+      escalation triggers, crisis management roles, manual fallback procedures for
+      KRITIS service delivery, and external communication protocols. The BCP shall
+      be reviewed annually and following any invocation or significant change.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.29
+      - ISO_27001_A.5.30
+      - BSI_C5_BCM-01
+    references:
+      - "BSIG §8a -- state of the art"
+      - "KRITIS-DachG §13 -- Resilience planning"
+
+  - id: KRITIS_DE_BCM_3
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Recovery time and recovery point objectives for KRITIS"
+    description: >-
+      Maximum tolerable downtime (MTD) and Recovery Point Objectives (RPO) shall be
+      formally defined for all KRITIS systems in consultation with the responsible
+      sector authority. RTO and RPO shall be aligned with the service threshold and
+      validated through regular recovery exercises.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.30
+    references:
+      - "BSI-KritisV -- sector availability requirements"
+      - "KRITIS-DachG -- resilience standards"
+
+  - id: KRITIS_DE_BCM_4
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Backup policies and offline or immutable storage"
+    description: >-
+      Backup policies for KRITIS data shall define frequency, retention, and storage
+      requirements. Critical KRITIS data backups shall be stored in a physically
+      isolated or air-gapped location, protected against ransomware through immutable
+      storage, and encrypted at rest using BSI-approved algorithms.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.13
+      - BSI_C5_BCM-02
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Backup"
+
+  - id: KRITIS_DE_BCM_5
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Recovery exercises and backup restoration testing"
+    description: >-
+      KRITIS recovery plans and backup restoration procedures shall be tested at
+      least annually. Full or partial restoration exercises shall verify that backups
+      are complete, uncorrupted, and that restoration can be completed within defined
+      RTO. Test results shall be documented and deficiencies remediated.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.13
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Recovery Testing"
+
+  - id: KRITIS_DE_BCM_6
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Crisis management team and escalation procedures"
+    description: >-
+      A documented crisis management procedure shall define roles, communication
+      chains, and decision authorities for ICT crisis scenarios affecting KRITIS
+      services. The crisis team shall include IT, operations, and executive
+      management representatives. Contact details for BSI and sector authority
+      shall be maintained and verified annually.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.26
+    references:
+      - "KRITIS-DachG §11 -- Crisis communication"
+
+  - id: KRITIS_DE_BCM_7
+    pillar: "KRIT-BCM -- Resilience and Continuity"
+    category: BCM
+    title: "Resilience scenario planning and stress testing"
+    description: >-
+      KRITIS operators shall conduct scenario-based resilience analyses at least
+      every two years, covering cyberattack, natural disaster, and key personnel
+      loss scenarios. Findings shall inform updates to the BCP and shall be
+      documented for the §8a biennial audit. Participation in national resilience
+      exercises (e.g., LÜKEX or sector exercises) is strongly recommended.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.29
+    references:
+      - "KRITIS-DachG §13 -- Stress testing"
+      - "BSI LÜKEX national exercise programme"
+
+  # ---------------------------------------------------------------
+  # KRIT-SCM: Supply Chain and Third-party Risk (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_SCM_1
+    pillar: "KRIT-SCM -- Supply Chain and Third-party Risk"
+    category: SCM
+    title: "Third-party KRITIS classification and due diligence"
+    description: >-
+      ICT third-party service providers whose services form part of a KRITIS system
+      shall be formally identified and classified as KRITIS-relevant. Pre-contract
+      due diligence shall include a security assessment (audit report, BSI C5
+      attestation, or ISO 27001 certification) appropriate to the criticality of
+      the service.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+      - BSI_C5_OIS-05
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Supply Chain"
+      - "KRITIS-DachG -- third-party obligations"
+
+  - id: KRITIS_DE_SCM_2
+    pillar: "KRIT-SCM -- Supply Chain and Third-party Risk"
+    category: SCM
+    title: "Cloud service provider requirements for KRITIS workloads"
+    description: >-
+      Where cloud services are used to host or process KRITIS workloads, the cloud
+      service provider shall hold a current BSI C5:2020 attestation (Type 2) or
+      equivalent. KRITIS-relevant data shall not be processed or stored outside the
+      European Union without explicit prior approval from BSI and the responsible
+      sector authority.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: cmdb_export
+    maps_to:
+      - BSI_C5_OIS-01
+      - ISO_27001_A.5.19
+    references:
+      - "BSI TR-03116-4 -- KRITIS cloud usage"
+      - "BSI C5:2020 -- Cloud Computing Compliance Criteria Catalogue"
+
+  - id: KRITIS_DE_SCM_3
+    pillar: "KRIT-SCM -- Supply Chain and Third-party Risk"
+    category: SCM
+    title: "Supplier contractual security obligations"
+    description: >-
+      Contracts with suppliers directly supporting KRITIS systems shall include:
+      security requirements aligned with BSIG §8a state-of-the-art, incident
+      notification obligations (within 24 hours of detection), audit rights allowing
+      the KRITIS operator or their auditor to assess the supplier, and data handling
+      and residency restrictions.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.20
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Supplier Obligations"
+
+  - id: KRITIS_DE_SCM_4
+    pillar: "KRIT-SCM -- Supply Chain and Third-party Risk"
+    category: SCM
+    title: "ICT concentration risk monitoring"
+    description: >-
+      KRITIS operators shall assess and document their dependency on individual ICT
+      suppliers or platforms. Where a single supplier supports multiple KRITIS
+      systems or functions, concentration risk mitigation measures (multi-supplier
+      strategy, contractual redundancy, fallback procedures) shall be documented and
+      tested.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: SBOM
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+    references:
+      - "KRITIS-DachG -- concentration risk"
+
+  - id: KRITIS_DE_SCM_5
+    pillar: "KRIT-SCM -- Supply Chain and Third-party Risk"
+    category: SCM
+    title: "Exit strategy for critical ICT suppliers"
+    description: >-
+      Documented exit strategies shall exist for all ICT suppliers providing services
+      that directly support KRITIS functions. Exit strategies shall cover transition
+      planning, data portability, service continuity obligations, and shall be
+      table-top exercised or tested at minimum every three years.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.20
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Exit Planning"
+
+  # ---------------------------------------------------------------
+  # KRIT-SEC: Sector-Specific Requirements (6 controls)
+  # ---------------------------------------------------------------
+
+  - id: KRITIS_DE_SEC_ENE
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "Energy and Water -- IT-Sicherheitskatalog compliance (BNetzA)"
+    description: >-
+      Operators of electricity, gas, and oil networks (§11 EnWG) and water supply
+      systems covered by §8a BSIG must comply with the BNetzA IT-Sicherheitskatalog.
+      This mandates ISO/IEC 27001 certification scoped to the KRITIS network systems,
+      and application of IEC 62351 security controls for SCADA and network
+      communications. The scope and certification shall be declared to BNetzA.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "BNetzA IT-Sicherheitskatalog Strom (2015)"
+      - "BNetzA IT-Sicherheitskatalog Gas (2018)"
+      - "IEC 62351 series -- Power Systems Security"
+
+  - id: KRITIS_DE_SEC_HLT
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "Health sector -- §75c SGB V security measures"
+    description: >-
+      Hospitals and healthcare providers covered by §75c SGB V (Krankenhaus-
+      zukunftsgesetz 2020) must implement specific IT security measures based on
+      BSI's Orientierungshilfe for hospitals. Requirements include network
+      segmentation of clinical systems, endpoint protection, a documented ISMS, and
+      cybersecurity incident response procedures for patient-safety-relevant systems.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "§75c SGB V -- IT-Sicherheit in Krankenhaeusern"
+      - "BSI Orientierungshilfe Krankenhaus-IT"
+
+  - id: KRITIS_DE_SEC_FIN
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "Finance sector -- §54 ZAG and DORA dual obligation"
+    description: >-
+      Payment institutions and e-money institutions regulated under §54 ZAG
+      (Zahlungsdiensteaufsichtsgesetz) must implement specific ICT security measures
+      per BaFin circular and EBA Guidelines (EBA/GL/2019/04). Financial entities
+      at or above the KRITIS threshold face a dual obligation: KRITIS §8a biennial
+      audit AND DORA (EU 2022/2554) ICT risk management framework requirements.
+      Both must be evidenced in the compliance programme.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "§54 ZAG -- Zahlungsdiensteaufsichtsgesetz"
+      - "EBA/GL/2019/04 -- ICT and Security Risk Management"
+      - "DORA Regulation EU 2022/2554"
+
+  - id: KRITIS_DE_SEC_TRN
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "Transport sector -- sector-specific KRITIS security baseline"
+    description: >-
+      Transport and traffic KRITIS operators (aviation, rail, road, inland waterways,
+      maritime) must implement sector-specific security measures per BSI's KRITIS
+      Orientierungshilfe and the requirements of the relevant sector authority
+      (Luftfahrtbundesamt, Eisenbahn-Bundesamt, WSV). Operators shall maintain
+      documented evidence of sector authority engagement and compliance.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "BSI Orientierungshilfe §8a BSIG -- Transport sector"
+      - "Luftsicherheitsgesetz, Allgemeines Eisenbahngesetz"
+
+  - id: KRITIS_DE_SEC_ICT
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "ICT and Telecom sector -- §165 TKG security obligations"
+    description: >-
+      Telecommunications network operators above the KRITIS threshold must comply
+      with §165 TKG (Telekommunikationsgesetz 2021), requiring a documented security
+      concept, ICT incident reporting to BSI and BNetzA, and compliance with
+      state-of-the-art security measures. The security concept must be audited by
+      BSI every three years. Huawei and ZTE components are subject to additional
+      review per BSI §9c TKG.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "§165 TKG -- Telekommunikationsgesetz 2021"
+      - "§9c TKG -- critical components review"
+
+  - id: KRITIS_DE_SEC_DACHG
+    pillar: "KRIT-SEC -- Sector-Specific Requirements"
+    category: SEC
+    title: "KRITIS-DachG extended resilience obligations"
+    description: >-
+      Operators within the expanded KRITIS-DachG scope (Kritis-Dachgesetz, BGBl.
+      2023) must implement additional resilience measures beyond §8a BSIG, including
+      a board-approved resilience plan reviewed by the responsible sector authority,
+      crisis communication protocols registered with BSI, and participation in
+      national resilience exercises when invited by BSI or the sector authority.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "KRITIS-DachG (BGBl. 2023)"
+      - "BSI LÜKEX national exercise programme"

@@ -1,9 +1,7 @@
 # SWAO community framework metadata (design 029 §2.3 + §11)
-# Sprint-039 #0358 Phase 1 migration from the standard-scope PoC stub at
-# `swao/controls/standard/iso-27001-controls.yaml`. Thin packaging --
-# control set preserved verbatim from the stub (same 5 controls); only
-# the wrapper graduates to design-029 community shape. Catalogue depth
-# can grow in a future sprint without another wrapper migration.
+# Sprint-138 #2807: deepened from 5-control PoC stub to full 93-control
+# Annex A. All four 2022 themes covered; 14 physical A.7.x controls
+# carry csp_inherited: true; 11 new 2022 controls labelled.
 
 framework:
   id: ISO_27001
@@ -11,17 +9,38 @@ framework:
   version: "2022"
   authority: "International Organization for Standardization"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/iso-27001"
   applicability_hints:
     - enterprise
     - ism
     - broad_coverage
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
-    International standard for Information Security Management Systems (ISMS). The 2022 revision restructured Annex A into 93 controls across four themes: organisational, people, physical, technological.
+    International standard for Information Security Management Systems
+    (ISMS). The 2022 revision restructured Annex A into 93 controls across
+    four themes: Organisational (A.5, 37 controls), People (A.6, 8
+    controls), Physical (A.7, 14 controls -- csp_inherited for datacenter
+    controls), and Technological (A.8, 34 controls). 11 controls are new in
+    the 2022 revision. Cross-mapped to BSI IT-Grundschutz 2023 and GDPR.
   references:
     - "ISO/IEC 27001:2022"
     - "ISO/IEC 27002:2022 (controls reference)"
-  catalogue_version: "0.1.0"
-  last_reviewed: "2026-05-24"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+
+  cross_mapping_hints:
+    target_frameworks:
+      - BSI_GRUNDSCHUTZ_2023   # bidirectional cross-map via BSI Grundschutz Bausteinen
+      - BSI_C5                 # C5:2020 aligned with ISO 27001 domains
+      - GDPR                   # A.5.34 / A.8.11 / A.8.12 -> GDPR Art.25/32
+      - SOC_2                  # overlapping trust services criteria
+      - DORA                   # ICT risk management alignment (financial sector)
+      - EUCS                   # EUCS Substantial/High baseline uses ISO 27001
+
+  redistribution_note: >-
+    ISO/IEC 27001:2022 and ISO/IEC 27002:2022 are copyright ISO. Control
+    titles and descriptions paraphrase the requirement intent and do not
+    reproduce verbatim standard text. The authoritative text is available
+    from ISO and national standards bodies. No warranty is provided.

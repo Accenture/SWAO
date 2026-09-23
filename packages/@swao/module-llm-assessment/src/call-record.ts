@@ -69,6 +69,8 @@ export const CallRecordSchema = z.object({
     completion: z.number().int().nonnegative(),
     reasoning: z.number().int().nonnegative().optional(),
     cached_prompt: z.number().int().nonnegative().optional(),
+    /** True when completion token count is a char-based estimate (provider reported 0 output_tokens). */
+    completion_estimated: z.literal(true).optional(),
   }),
   cost_usd: z.object({
     computed: z.number().nonnegative().nullable(), // null = no price row (092 s4)

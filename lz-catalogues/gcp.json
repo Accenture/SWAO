@@ -23768,6 +23768,7 @@
       "id": "me-central1",
       "display": "Doha, Qatar",
       "country": "QA",
+      "area": "Middle East",
       "sovereignty": {
         "residency_country": "QA",
         "operator_jurisdiction": "US-entity",
@@ -24533,6 +24534,7 @@
       "id": "me-central2",
       "display": "Dammam, Saudi Arabia",
       "country": "SA",
+      "area": "Middle East",
       "sovereignty": {
         "residency_country": "SA",
         "operator_jurisdiction": "US-entity",
@@ -25297,6 +25299,7 @@
       "id": "me-west1",
       "display": "Tel Aviv, Israel",
       "country": "IL",
+      "area": "Middle East",
       "sovereignty": {
         "residency_country": "IL",
         "operator_jurisdiction": "US-entity",

@@ -152,6 +152,7 @@ export {
   REGIME_ID_REGEX,
   RegimeIdSchema,
   ScopeSchema,
+  FrameworkMetaSchema,
   RegimeMetaSchema,
   RegimeControlSchema,
   RegimeCatalogueSchema,
@@ -160,6 +161,7 @@ export {
 export type {
   RegimeId,
   Scope,
+  FrameworkMeta,
   RegimeMeta,
   RegimeControl,
   RegimeCatalogue,

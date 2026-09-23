@@ -53,7 +53,7 @@ export interface AppYamlOptions {
   passProfile?: string[];
 }
 
-export interface LzCatalogueRegion { id: string; display: string; country?: string; }
+export interface LzCatalogueRegion { id: string; display: string; country?: string; area?: string; }
 export interface LzCatalogueEntry  { provider: string; name: string; regions: LzCatalogueRegion[]; }
 export interface LzCatalogueHint   { entries: LzCatalogueEntry[]; }
 

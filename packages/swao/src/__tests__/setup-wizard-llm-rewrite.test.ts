@@ -23,7 +23,7 @@
 // regex behaviour via a portable helper so future regex changes stay
 // covered. If SetupWizard's regex drifts from this helper, update both.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 function rewriteLlmBlock(yaml: string, llmBlock: string): string {
   const primaryBlock = /( {4}primary:\n)(?: {6}[^\n]*\n?)+/;
@@ -107,5 +107,56 @@ describe('SetupWizard writeLlmToYaml regex (#0405)', () => {
     const result = rewriteLlmBlock(ALREADY_OPENAI_YAML, ANTHROPIC_BLOCK);
     expect(result.split('redactor:').length).toBe(2);
     expect(result.split('type: gitleaks').length).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #2815: writeVisionMaxScreensToYaml -- scaffold template comment + update logic
+// ---------------------------------------------------------------------------
+
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { writeVisionMaxScreensToYaml } from '../tui/screens/wizard/yaml-helpers.js';
+
+describe('writeVisionMaxScreensToYaml (#2815)', () => {
+  const dir = join(tmpdir(), `swao-test-vision-${Date.now()}`);
+  const yaml = join(dir, '.swao.yml');
+
+  beforeAll(() => { mkdirSync(dir, { recursive: true }); });
+  afterAll(() => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* ok */ } });
+
+  it('appends assessment block to a YAML without one', () => {
+    writeFileSync(yaml, VIRGIN_YAML, 'utf-8');
+    writeVisionMaxScreensToYaml(dir, 3);
+    const out = readFileSync(yaml, 'utf-8');
+    expect(out).toContain('assessment:');
+    expect(out).toContain('vision_max_screens: 3');
+  });
+
+  it('updates vision_max_screens when assessment block already exists', () => {
+    writeFileSync(yaml, VIRGIN_YAML + '\nassessment:\n  vision_max_screens: 3\n', 'utf-8');
+    writeVisionMaxScreensToYaml(dir, 5);
+    const out = readFileSync(yaml, 'utf-8');
+    expect(out).toContain('vision_max_screens: 5');
+    expect(out).not.toContain('vision_max_screens: 3');
+  });
+
+  it('removes commented-out assessment block before appending live one', () => {
+    const withComment = VIRGIN_YAML + '\n# assessment:\n#   vision_max_screens: 2  # screenshots per run\n';
+    writeFileSync(yaml, withComment, 'utf-8');
+    writeVisionMaxScreensToYaml(dir, 2);
+    const out = readFileSync(yaml, 'utf-8');
+    expect(out.match(/assessment:/g)?.length).toBe(1); // exactly one live block
+    expect(out).toContain('vision_max_screens: 2');
+  });
+
+  it('preserves the rest of the YAML when appending', () => {
+    writeFileSync(yaml, VIRGIN_YAML, 'utf-8');
+    writeVisionMaxScreensToYaml(dir, 2);
+    const out = readFileSync(yaml, 'utf-8');
+    expect(out).toContain('wsp_version: "0.9"');
+    expect(out).toContain('providers:');
+    expect(out).toContain('redactor:');
   });
 });

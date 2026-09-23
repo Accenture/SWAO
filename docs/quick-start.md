@@ -6,6 +6,14 @@ SWAO is a sovereign workload assessment platform. Given a cloud application, it
 produces: an audit-grade assessment report, a PowerBI dashboard, an HTML publication,
 and a 7R migration verdict - with full traceability on every signal and compliance verdict.
 
+<iframe
+  width="100%"
+  style="aspect-ratio: 16/9; border: none; border-radius: 8px;"
+  src="https://www.youtube.com/embed/WFH7jiuhMj4"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
+
 ---
 
 ## Prerequisites
@@ -104,9 +112,15 @@ or a specific action to take:
 
 All probes green means you are ready to assess.
 
-> See also: [Sample Gallery - Health Check](/samples/#sample-12)
-
 ### Step 3: Run Assessment
+
+<iframe
+  width="100%"
+  style="aspect-ratio: 16/9; border: none; border-radius: 8px;"
+  src="https://www.youtube.com/embed/_7fUUIq7XH4"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
 
 Select **3. Run Assessment** from the main menu. Choose **Application Assessment** (the
 full source-code pipeline). SWAO runs automatically - a live progress bar shows each pass.

@@ -21,7 +21,7 @@ import { getConnector, copyConnectorToWorkspace } from '@swao/module-llm-provide
 import { Header } from '../components/Header.js';
 import { StepBar } from '@swao/tui-kit';
 import { type SetupState, _wizardGuidanceOpen, setWizardGuidanceOpen } from './wizard/shared.js';
-import { writeLlmToYaml, writeSecondaryLlmToYaml } from './wizard/yaml-helpers.js';
+import { writeLlmToYaml, writeSecondaryLlmToYaml, writeVisionMaxScreensToYaml } from './wizard/yaml-helpers.js';
 import { InitStep } from './wizard/steps/InitStep.js';
 import { LlmStep } from './wizard/steps/LlmStep.js';
 import { LlmSecondaryStep } from './wizard/steps/LlmSecondaryStep.js';
@@ -261,9 +261,14 @@ if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { l
       )}
 
       {step === 'playwright' && (
-        <PlaywrightStep onNext={() => {
+        <PlaywrightStep onNext={(visionMaxScreens?: number) => {
           const chromiumPath = findInstalledChromium();
-          if (!loggedSteps.current.has('playwright')) { loggedSteps.current.add('playwright'); try { logPortfolio('info', 'playwright.check.complete', 'Playwright step completed', { context: { chromium_found: chromiumPath !== null, path: chromiumPath ?? undefined } }); } catch { /* best-effort */ } }
+          // #2815: persist vision_max_screens to .swao.yml when Playwright is installed.
+          if (visionMaxScreens !== undefined) {
+            setState(s => ({ ...s, visionMaxScreens }));
+            writeVisionMaxScreensToYaml(state.workDir, visionMaxScreens);
+          }
+          if (!loggedSteps.current.has('playwright')) { loggedSteps.current.add('playwright'); try { logPortfolio('info', 'playwright.check.complete', 'Playwright step completed', { context: { chromium_found: chromiumPath !== null, path: chromiumPath ?? undefined, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ } }
           if (!loggedSteps.current.has('ready')) {
             loggedSteps.current.add('ready');
             // #1766: ensure workspace root is set before the summary event, then emit.

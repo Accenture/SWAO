@@ -1,0 +1,200 @@
+# SWAO Community Framework -- DORA Demo (12 controls)
+# Cross-pillar sample for live-presentation use.
+# Sprint-138 #2801. Full catalogue: dora/controls.yaml (31 controls).
+
+regime_meta:
+  id: DORA_DEMO
+  name: "DORA Demo (12 controls) -- Financial Services Cross-Pillar Sample"
+  version: "2025-01-17 -- demo subset 2026-09-21"
+  scope: community
+  authority: "European Union (Regulation EU 2022/2554)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/dora"
+  catalogue_version: "0.1.0"
+  signal_prefix: DORA
+  last_reviewed: "2026-09-21"
+  applicability_hints: [financial_services, banking]
+  redistribution_note: >-
+    Demo subset of DORA for presentation purposes. Control descriptions
+    paraphrase the regulation requirements; they are not legal advice.
+    Use the full DORA framework for production assessments.
+
+controls:
+
+  - id: DORA_Art_5_1
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "Management body accountability for ICT risk"
+    description: >-
+      The management body of the financial entity defines, approves, and oversees
+      the ICT risk management framework. Management body members shall maintain
+      sufficient knowledge and skills to understand and assess ICT risk and its
+      impact on the entity.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 5"
+
+  - id: DORA_Art_6
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "ICT risk management framework"
+    description: >-
+      Financial entities shall maintain a sound, comprehensive, and well-documented
+      ICT risk management framework as part of their overall risk management system,
+      reviewed at least annually or after major ICT incidents.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 6"
+
+  - id: DORA_Art_9_1
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "Access control and privileged access management"
+    description: >-
+      Financial entities shall implement access control policies based on least
+      privilege and need-to-know. Privileged access shall be managed through
+      dedicated accounts subject to multi-factor authentication and reviewed
+      at least quarterly.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "DORA Article 9"
+
+  - id: DORA_Art_9_2
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "Encryption of data at rest and in transit"
+    description: >-
+      Financial entities shall apply encryption to sensitive data at rest and
+      in transit using state-of-the-art, approved cryptographic algorithms.
+      Encryption keys shall be managed through a dedicated lifecycle process.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "DORA Article 9"
+
+  - id: DORA_Art_10_1
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "Detection of anomalous activities and security alerting"
+    description: >-
+      Financial entities shall implement mechanisms to promptly detect anomalous
+      activities, including network issues and ICT-related incidents. Alerts shall
+      be prioritised, triaged by trained staff, and thresholds tuned regularly.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    references:
+      - "DORA Article 10"
+
+  - id: DORA_Art_11_1
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "ICT business continuity and disaster recovery plans"
+    description: >-
+      Financial entities shall put in place comprehensive ICT business continuity
+      policies and response and recovery plans to ensure critical functions can
+      be restored after ICT incidents. Plans shall be tested at least annually.
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 11"
+
+  - id: DORA_Art_12_1
+    pillar: "Pillar 1 -- ICT Risk Management"
+    category: ICT-RM
+    title: "Backup policies and immutable storage"
+    description: >-
+      Financial entities shall implement backup policies defining backup frequency,
+      retention periods, and storage locations. Backups shall be stored separately
+      from the primary system and protected against ransomware through immutable
+      or air-gapped storage.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 12"
+
+  - id: DORA_Art_15
+    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
+    category: INCIDENT
+    title: "ICT incident management process"
+    description: >-
+      Financial entities shall define, establish, and implement an ICT-related
+      incident management process covering detection, triage, classification,
+      containment, resolution, and post-incident review with a formal escalation
+      path and documented roles.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 15"
+
+  - id: DORA_Art_17
+    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
+    category: INCIDENT
+    title: "Regulatory reporting of major ICT incidents"
+    description: >-
+      Financial entities shall report major ICT incidents to the competent
+      authority via initial notification (within 4-24 hours), intermediate
+      report (within 72 hours), and a final report (within one month) using
+      templates defined in DORA implementing technical standards.
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 17-19"
+
+  - id: DORA_Art_24
+    pillar: "Pillar 3 -- Digital Operational Resilience Testing"
+    category: DORT
+    title: "Digital operational resilience testing programme"
+    description: >-
+      Financial entities shall maintain a comprehensive testing programme
+      covering all ICT systems supporting critical and important functions,
+      with tests of varying complexity reviewed at least annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "DORA Article 24-25"
+
+  - id: DORA_Art_28_1
+    pillar: "Pillar 4 -- ICT Third-party Risk Management"
+    category: TPP
+    title: "Third-party ICT risk strategy and oversight function"
+    description: >-
+      Financial entities shall adopt and regularly review a strategy on ICT
+      third-party risk and designate a function responsible for oversight and
+      due diligence of ICT third-party service providers.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "DORA Article 28"
+
+  - id: DORA_Art_30
+    pillar: "Pillar 4 -- ICT Third-party Risk Management"
+    category: TPP
+    title: "Key contractual provisions and exit strategies"
+    description: >-
+      Contracts with ICT third-party providers supporting critical functions shall
+      include service level descriptions, audit rights, security requirements,
+      incident notification obligations, data portability rights, and documented
+      exit strategies tested annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "DORA Article 30"

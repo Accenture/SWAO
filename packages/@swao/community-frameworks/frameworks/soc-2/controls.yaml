@@ -1,4 +1,21 @@
-# SWAO Community Framework -- SOC 2 Trust Services Criteria
+# SWAO Community Framework -- SOC 2 Trust Services Criteria (TSC 2017, revised 2022)
+#
+# Schema: RegimeCatalogueSchema v0.11 (design 029 §4.5; design 018 §2.1).
+#
+# Source of truth: AICPA Trust Services Criteria 2017 (with 2022 points of focus).
+# The TSC summary is publicly available from aicpa-cima.com; the full AT-C §205
+# guide is a paid document. Descriptions paraphrase the criteria intent.
+#
+# 64 controls across 5 Trust Service Categories:
+#   CC -- Common Criteria (Security, required for all SOC 2 reports): 36 controls
+#   A  -- Availability (optional add-on):                              3 controls
+#   PI -- Processing Integrity (optional add-on):                      5 controls
+#   C  -- Confidentiality (optional add-on):                           2 controls
+#   P  -- Privacy (optional, manual audit scope only):                18 controls
+#
+# CC is required for every SOC 2 report; A, PI, C, P are optional Trust Service
+# Categories that clients may scope in. P criteria require a manual privacy audit
+# and are tagged assessment_type_scope: [aud].
 
 regime_meta:
   id: SOC_2
@@ -7,83 +24,1087 @@ regime_meta:
   scope: community
   authority: "American Institute of Certified Public Accountants (AICPA)"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
-    email: "https://github.com/Accenture/SWAO/discussions"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/soc-2"
-  applicability_hints: [saas, b2b, us_market]
-  description: >
-    AICPA Trust Services Criteria for SOC 2 reports cover security,
-    availability, processing integrity, confidentiality, and privacy.
-    Common Criteria (CC1-CC9) form the security baseline applied across
-    all five categories.
-  references:
-    - "AICPA Trust Services Criteria 2017 (revised 2022)"
-  last_reviewed: "2026-05-24"
   catalogue_version: "1.0.0"
+  signal_prefix: SOC2
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - saas
+    - b2b
+    - us_market
+    - cloud_hosted
+    - enterprise_buyer
+  redistribution_note: >-
+    The AICPA Trust Services Criteria are publicly summarised at
+    aicpa-cima.com. The full AT-C §205 guide is a paid AICPA publication.
+    Control descriptions in this catalogue paraphrase the criteria intent
+    for SWAO machine ingestion; verbatim AICPA text is not reproduced.
+    No warranty is provided; consult a licensed CPA or CISA for
+    interpretation of how criteria apply to a specific engagement.
 
 controls:
+
+  # ============================================================
+  # CC -- Common Criteria (Security) -- Required for all SOC 2
+  # ============================================================
+
+  # ------ CC1: Control Environment (5 criteria) ------
+
   - id: SOC_2_CC1.1
-    title: "Control environment -- integrity and ethical values"
-    description: >
-      The entity demonstrates a commitment to integrity and ethical
-      values. Code of conduct, hiring practices, and training together
-      establish an environment where security policies are taken
-      seriously.
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Integrity and ethical values"
+    description: >-
+      The entity demonstrates a commitment to integrity and ethical values.
+      This includes a code of conduct or ethics policy, enforcement mechanisms,
+      and example-setting by leadership so that ethical behaviour is modelled
+      throughout the organisation.
     severity_default: medium
     evidence_basis:
       - context_input: solution_arch
       - context_input: ops_runbooks
     references:
       - "AICPA TSC CC1.1"
+    maps_to: [ISO_27001_A.5.4, ISO_27001_A.6.2]
 
-  - id: SOC_2_CC2.1
-    title: "Communication and information"
-    description: >
-      The entity obtains or generates relevant, quality information to
-      support the functioning of internal control. Includes documented
-      architecture, threat modelling, and risk assessment outputs.
+  - id: SOC_2_CC1.2
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Board independence and oversight of information security"
+    description: >-
+      The board of directors demonstrates independence from management and
+      exercises oversight responsibility for the development and performance
+      of internal controls, including information security governance.
     severity_default: medium
     evidence_basis:
       - context_input: solution_arch
     references:
-      - "AICPA TSC CC2.1"
+      - "AICPA TSC CC1.2"
+    maps_to: [ISO_27001_A.5.2]
 
-  - id: SOC_2_CC5.1
-    title: "Control activities -- selection and development of controls"
-    description: >
-      The entity selects and develops control activities that
-      contribute to the mitigation of risks to the achievement of
-      objectives to acceptable levels.
+  - id: SOC_2_CC1.3
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Organisational structure, reporting lines and authorities"
+    description: >-
+      Management establishes structures, reporting lines, and appropriate
+      authorities and responsibilities in the pursuit of objectives,
+      including information security roles and clear lines of accountability.
     severity_default: medium
     evidence_basis:
-      - signal_prefix: TF
-      - signal_prefix: PP
+      - context_input: solution_arch
     references:
-      - "AICPA TSC CC5.1-CC5.3"
+      - "AICPA TSC CC1.3"
+    maps_to: [ISO_27001_A.5.2, ISO_27001_A.5.3]
 
-  - id: SOC_2_CC6.1
-    title: "Logical and physical access controls"
-    description: >
-      The entity implements logical access security software,
-      infrastructure, and architectures over protected information
-      assets to protect them from security events.
+  - id: SOC_2_CC1.4
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Commitment to competence"
+    description: >-
+      The entity demonstrates a commitment to attract, develop, and retain
+      competent individuals in alignment with objectives. Security-relevant
+      roles have defined competency requirements and training.
+    severity_default: low
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC1.4"
+    maps_to: [ISO_27001_A.6.3]
+
+  - id: SOC_2_CC1.5
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Accountability for internal control responsibilities"
+    description: >-
+      The entity holds individuals accountable for their internal control
+      responsibilities in the pursuit of objectives. Performance measurement
+      and incentive structures reinforce security accountability.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC1.5"
+    maps_to: [ISO_27001_A.5.4]
+
+  # ------ CC2: Communication and Information (3 criteria) ------
+
+  - id: SOC_2_CC2.1
+    pillar: "CC2 -- Communication and Information"
+    category: CC
+    title: "Relevant, quality information to support internal controls"
+    description: >-
+      The entity obtains or generates relevant, quality information to
+      support the functioning of internal controls. This includes security
+      policies, risk assessment outputs, threat intelligence, and audit
+      findings being available to decision-makers.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC2.1"
+    maps_to: [ISO_27001_A.5.1, ISO_27001_A.5.7]
+
+  - id: SOC_2_CC2.2
+    pillar: "CC2 -- Communication and Information"
+    category: CC
+    title: "Internal communication of information security objectives and responsibilities"
+    description: >-
+      The entity internally communicates information, including objectives
+      and responsibilities for internal control, necessary to support
+      the functioning of the system of internal controls. Security
+      policies must be communicated to all relevant staff.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC2.2"
+    maps_to: [ISO_27001_A.5.1, ISO_27001_A.6.3]
+
+  - id: SOC_2_CC2.3
+    pillar: "CC2 -- Communication and Information"
+    category: CC
+    title: "External communication with parties affecting internal controls"
+    description: >-
+      The entity communicates with external parties regarding matters
+      affecting the functioning of internal controls. This includes
+      disclosures to customers, regulators, and suppliers about security
+      commitments and any material changes.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC2.3"
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20]
+
+  # ------ CC3: Risk Assessment (4 criteria) ------
+
+  - id: SOC_2_CC3.1
+    pillar: "CC3 -- Risk Assessment"
+    category: CC
+    title: "Specification of objectives"
+    description: >-
+      The entity specifies objectives with sufficient clarity to enable
+      the identification and assessment of risks relating to objectives.
+      Security and availability objectives must be documented and reviewed.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC3.1"
+    maps_to: [ISO_27001_A.5.1]
+
+  - id: SOC_2_CC3.2
+    pillar: "CC3 -- Risk Assessment"
+    category: CC
+    title: "Risk identification and analysis"
+    description: >-
+      The entity identifies risks to the achievement of its objectives
+      across the entity and analyses risks as a basis for determining
+      how risks should be managed. Risk assessments must consider threats
+      to the confidentiality, integrity, and availability of the system.
     severity_default: high
     evidence_basis:
-      - signal_prefix: IAM
-      - signal_prefix: CRYPTO
+      - context_input: solution_arch
     references:
-      - "AICPA TSC CC6.1-CC6.8"
+      - "AICPA TSC CC3.2"
+    maps_to: [ISO_27001_A.5.1]
 
-  - id: SOC_2_CC7.1
-    title: "System operations -- detection and monitoring"
-    description: >
-      To meet its objectives, the entity uses detection and monitoring
-      procedures to identify changes to configurations that result in
-      the introduction of new vulnerabilities and susceptibilities to
-      newly discovered vulnerabilities.
+  - id: SOC_2_CC3.3
+    pillar: "CC3 -- Risk Assessment"
+    category: CC
+    title: "Assessment of fraud risk"
+    description: >-
+      The entity considers the potential for fraud in assessing risks to
+      the achievement of objectives. Fraud risk factors including
+      incentive, opportunity, and rationalisation are considered.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC3.3"
+
+  - id: SOC_2_CC3.4
+    pillar: "CC3 -- Risk Assessment"
+    category: CC
+    title: "Identification and assessment of changes affecting internal controls"
+    description: >-
+      The entity identifies and assesses changes that could significantly
+      affect the system of internal control. Change management processes
+      must include security impact assessment for system modifications.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC3.4"
+    maps_to: [ISO_27001_A.8.32]
+
+  # ------ CC4: Monitoring Activities (2 criteria) ------
+
+  - id: SOC_2_CC4.1
+    pillar: "CC4 -- Monitoring Activities"
+    category: CC
+    title: "Ongoing evaluations of internal controls"
+    description: >-
+      The entity selects, develops, and performs ongoing and/or separate
+      evaluations to ascertain whether the components of internal control
+      are present and functioning. Continuous monitoring of security
+      controls is expected.
     severity_default: medium
     evidence_basis:
       - signal_prefix: OBS
-      - signal_prefix: SBOM
+      - context_input: ops_runbooks
     references:
-      - "AICPA TSC CC7.1-CC7.5"
+      - "AICPA TSC CC4.1"
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36]
+
+  - id: SOC_2_CC4.2
+    pillar: "CC4 -- Monitoring Activities"
+    category: CC
+    title: "Communication of internal control deficiencies"
+    description: >-
+      The entity evaluates and communicates internal control deficiencies
+      in a timely manner to those parties responsible for taking corrective
+      action, including senior management and the board of directors.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC4.2"
+    maps_to: [ISO_27001_A.5.36]
+
+  # ------ CC5: Control Activities (3 criteria) ------
+
+  - id: SOC_2_CC5.1
+    pillar: "CC5 -- Control Activities"
+    category: CC
+    title: "Selection and development of control activities to mitigate risks"
+    description: >-
+      The entity selects and develops control activities that contribute
+      to the mitigation of risks to the achievement of objectives to
+      acceptable levels. Controls are calibrated to the nature and
+      magnitude of risk.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: TF
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC5.1"
+    maps_to: [ISO_27001_A.5.15]
+
+  - id: SOC_2_CC5.2
+    pillar: "CC5 -- Control Activities"
+    category: CC
+    title: "Selection and development of general technology controls"
+    description: >-
+      The entity selects and develops general control activities over
+      technology to support the achievement of objectives. Includes
+      configuration management, access control, and system development
+      lifecycle controls applied to the technology infrastructure.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC5.2"
+    maps_to: [ISO_27001_A.8.9, ISO_27001_A.8.19]
+
+  - id: SOC_2_CC5.3
+    pillar: "CC5 -- Control Activities"
+    category: CC
+    title: "Deployment of controls through policies and procedures"
+    description: >-
+      The entity deploys control activities through policies that establish
+      what is expected and procedures that put policies into action. Security
+      policies are documented, approved, and enforced across the organisation.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC5.3"
+    maps_to: [ISO_27001_A.5.1, ISO_27001_A.5.37]
+
+  # ------ CC6: Logical and Physical Access Controls (8 criteria) ------
+
+  - id: SOC_2_CC6.1
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Logical access security controls"
+    description: >-
+      The entity implements logical access security software, infrastructure,
+      and architectures over protected information assets to protect them from
+      security events. Access is restricted based on role and least privilege.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC6.1"
+    maps_to: [ISO_27001_A.5.15, ISO_27001_A.8.3]
+
+  - id: SOC_2_CC6.2
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Access provisioning and removal"
+    description: >-
+      Prior to issuing system credentials and granting system access, the
+      entity registers and authorises new internal and external users whose
+      access is administered by the entity. Deprovisioning occurs promptly
+      on role change or termination.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC6.2"
+    maps_to: [ISO_27001_A.5.16, ISO_27001_A.5.18, ISO_27001_A.6.5]
+
+  - id: SOC_2_CC6.3
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Access removal on role change or termination"
+    description: >-
+      The entity removes access to protected information assets when
+      appropriate based on changes in job responsibilities or on
+      separation from employment. Access rights are reviewed and
+      adjusted on any material change to a user's role.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC6.3"
+    maps_to: [ISO_27001_A.5.18, ISO_27001_A.6.5]
+
+  - id: SOC_2_CC6.4
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Physical access restrictions"
+    description: >-
+      The entity restricts physical access to facilities and protected
+      information assets to authorised personnel. Physical access to
+      datacenters and server rooms is controlled and logged.
+    csp_inherited: true
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC6.4"
+    maps_to: [ISO_27001_A.7.1, ISO_27001_A.7.2]
+
+  - id: SOC_2_CC6.5
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Encryption of data at rest and in transit"
+    description: >-
+      The entity implements controls to protect against unauthorised access
+      to data at rest and in transit. Encryption with approved algorithms
+      is applied to sensitive data stores and all transmission channels.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: EGR
+    references:
+      - "AICPA TSC CC6.5"
+    maps_to: [ISO_27001_A.8.24]
+
+  - id: SOC_2_CC6.6
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Protection against threats from outside system boundaries"
+    description: >-
+      The entity implements controls to prevent or detect and act upon
+      the introduction of unauthorised or malicious software from sources
+      outside of system boundaries, including firewalls, intrusion detection,
+      and anti-malware controls.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC CC6.6"
+    maps_to: [ISO_27001_A.8.7, ISO_27001_A.8.20]
+
+  - id: SOC_2_CC6.7
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Protection and transmission of confidential information"
+    description: >-
+      The entity restricts the transmission, movement, and removal of
+      information to authorised internal and external users and processes,
+      and protects it during transmission, movement, or removal to meet the
+      entity's objectives.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: CRYPTO
+    references:
+      - "AICPA TSC CC6.7"
+    maps_to: [ISO_27001_A.5.14, ISO_27001_A.8.12]
+
+  - id: SOC_2_CC6.8
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Detection of unauthorised changes to infrastructure"
+    description: >-
+      The entity implements controls to prevent or detect and act upon the
+      introduction of unauthorised or malicious software to meet the entity's
+      objectives. Configuration integrity monitoring detects drift from
+      approved baselines.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC CC6.8"
+    maps_to: [ISO_27001_A.8.9, ISO_27001_A.8.16]
+
+  # ------ CC7: System Operations (5 criteria) ------
+
+  - id: SOC_2_CC7.1
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Detection and monitoring of new vulnerabilities"
+    description: >-
+      To meet its objectives, the entity uses detection and monitoring
+      procedures to identify changes to configurations that result in the
+      introduction of new vulnerabilities, and susceptibilities to newly
+      discovered vulnerabilities.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: cmdb_export
+    references:
+      - "AICPA TSC CC7.1"
+    maps_to: [ISO_27001_A.8.8]
+
+  - id: SOC_2_CC7.2
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Monitoring for anomalous activity"
+    description: >-
+      The entity monitors system components and the operation of those
+      components for anomalies that are indicative of malicious acts,
+      natural disasters, and errors affecting the entity's ability to
+      meet its objectives. Alerts are reviewed and triaged.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC CC7.2"
+    maps_to: [ISO_27001_A.8.16]
+
+  - id: SOC_2_CC7.3
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Evaluation of security incidents"
+    description: >-
+      The entity evaluates security events to determine whether they could
+      or have resulted in a failure of the entity to meet its objectives
+      (incidents) and, if so, takes actions to prevent or address such
+      failures.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC CC7.3"
+    maps_to: [ISO_27001_A.5.25, ISO_27001_A.5.26]
+
+  - id: SOC_2_CC7.4
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Incident response"
+    description: >-
+      The entity responds to identified security incidents by executing
+      a defined incident management program to understand, contain,
+      remediate, and communicate about security incidents.
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC7.4"
+    maps_to: [ISO_27001_A.5.26, ISO_27001_A.5.27]
+
+  - id: SOC_2_CC7.5
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Identification of improvements to existing controls"
+    description: >-
+      The entity identifies, develops, and implements activities to
+      recover from identified security incidents and communicates
+      information about the incident and corrective actions to management
+      and the board.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC7.5"
+    maps_to: [ISO_27001_A.5.27]
+
+  # ------ CC8: Change Management (4 criteria) ------
+
+  - id: SOC_2_CC8.1
+    pillar: "CC8 -- Change Management"
+    category: CC
+    title: "Managed infrastructure, data, software, and procedure changes"
+    description: >-
+      The entity authorises, designs, develops or acquires, configures,
+      documents, tests, approves, and implements changes to infrastructure,
+      data, software, and procedures to meet its objectives. Change
+      management gates include security review and approval.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+      - signal_prefix: TF
+    references:
+      - "AICPA TSC CC8.1"
+    maps_to: [ISO_27001_A.8.32]
+
+  - id: SOC_2_CC8.2
+    pillar: "CC8 -- Change Management"
+    category: CC
+    title: "Software acquisition and development controls"
+    description: >-
+      The entity has controls over the acquisition and development of
+      software. Software components must be assessed for security risks
+      before integration, and supply-chain security practices applied.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC8.2"
+    maps_to: [ISO_27001_A.8.25, ISO_27001_A.8.30]
+
+  - id: SOC_2_CC8.3
+    pillar: "CC8 -- Change Management"
+    category: CC
+    title: "Security testing prior to production deployment"
+    description: >-
+      The entity tests system components for security before deploying
+      to the production environment. Test results must meet acceptance
+      criteria before promotion to production.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC8.3"
+    maps_to: [ISO_27001_A.8.29]
+
+  - id: SOC_2_CC8.4
+    pillar: "CC8 -- Change Management"
+    category: CC
+    title: "Data and software migration controls"
+    description: >-
+      The entity has procedures in place to ensure data migrations and
+      software releases are complete, accurate, and authorised. Migration
+      testing and rollback plans are required before production cutover.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC8.4"
+    maps_to: [ISO_27001_A.8.32]
+
+  # ------ CC9: Risk Mitigation (2 criteria) ------
+
+  - id: SOC_2_CC9.1
+    pillar: "CC9 -- Risk Mitigation"
+    category: CC
+    title: "Risk mitigation activities including transfer"
+    description: >-
+      The entity identifies and selects risk mitigation activities for
+      risks arising from potential business disruptions, and identifies,
+      develops, and implements activities to recover from identified
+      risks. Insurance and contractual risk transfer are options.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC9.1"
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30]
+
+  - id: SOC_2_CC9.2
+    pillar: "CC9 -- Risk Mitigation"
+    category: CC
+    title: "Assessment of vendor and business partner risk"
+    description: >-
+      The entity assesses and manages risks associated with vendors and
+      business partners. Supplier risk assessments and contractual security
+      obligations ensure that third-party risk is controlled.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC9.2"
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.22]
+
+  # ============================================================
+  # A -- Availability (optional Trust Service Category)
+  # ============================================================
+
+  - id: SOC_2_A1.1
+    pillar: "A -- Availability"
+    category: A
+    title: "Availability commitments and system requirements"
+    description: >-
+      The entity maintains, monitors, and evaluates current processing
+      capacity and use of system components (infrastructure, data, and
+      software) to manage capacity demand and enable the implementation
+      of additional capacity to help meet its availability objectives.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC A1.1"
+    maps_to: [ISO_27001_A.8.6, ISO_27001_A.8.14]
+
+  - id: SOC_2_A1.2
+    pillar: "A -- Availability"
+    category: A
+    title: "Environmental threats and recovery planning"
+    description: >-
+      The entity authorises, designs, develops or acquires, implements,
+      operates, approves, maintains, and monitors environmental
+      protections, software, data back-up processes, and recovery
+      infrastructure to meet its availability commitments and system
+      requirements.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC A1.2"
+    maps_to: [ISO_27001_A.8.13, ISO_27001_A.5.29]
+
+  - id: SOC_2_A1.3
+    pillar: "A -- Availability"
+    category: A
+    title: "Recovery plan testing"
+    description: >-
+      The entity tests recovery plan procedures to meet its availability
+      commitments and system requirements. Disaster recovery and business
+      continuity plans are tested at defined intervals and after significant
+      changes.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC A1.3"
+    maps_to: [ISO_27001_A.5.30]
+
+  # ============================================================
+  # PI -- Processing Integrity (optional Trust Service Category)
+  # ============================================================
+
+  - id: SOC_2_PI1.1
+    pillar: "PI -- Processing Integrity"
+    category: PI
+    title: "Complete, accurate, and timely processing"
+    description: >-
+      The entity obtains or generates, uses, and communicates relevant,
+      quality information regarding the objectives related to processing,
+      including definitions of data processed and product and service
+      specifications, to support the use of products and services.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC PI1.1"
+
+  - id: SOC_2_PI1.2
+    pillar: "PI -- Processing Integrity"
+    category: PI
+    title: "System inputs are complete, accurate, and authorised"
+    description: >-
+      The entity implements policies and procedures over system inputs,
+      including controls over completeness and accuracy, to meet the
+      entity's processing integrity commitments and system requirements.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC PI1.2"
+
+  - id: SOC_2_PI1.3
+    pillar: "PI -- Processing Integrity"
+    category: PI
+    title: "System processing is complete, accurate, timely, and authorised"
+    description: >-
+      The entity implements policies and procedures over system processing
+      and output activities, including controls over completeness, accuracy,
+      timeliness, and authorisation, to meet the entity's processing
+      integrity commitments and system requirements.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC PI1.3"
+
+  - id: SOC_2_PI1.4
+    pillar: "PI -- Processing Integrity"
+    category: PI
+    title: "System outputs are complete, accurate, and distributed"
+    description: >-
+      The entity implements policies and procedures to make available or
+      deliver output completely, accurately, and timely in accordance with
+      specifications to meet the entity's processing integrity commitments
+      and system requirements.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC PI1.4"
+
+  - id: SOC_2_PI1.5
+    pillar: "PI -- Processing Integrity"
+    category: PI
+    title: "Detection and correction of processing errors"
+    description: >-
+      The entity implements policies and procedures to store inputs,
+      items in processing, and outputs completely and accurately in
+      accordance with system specifications to meet the entity's
+      processing integrity commitments and system requirements.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC PI1.5"
+
+  # ============================================================
+  # C -- Confidentiality (optional Trust Service Category)
+  # ============================================================
+
+  - id: SOC_2_C1.1
+    pillar: "C -- Confidentiality"
+    category: C
+    title: "Identification and maintenance of confidential information"
+    description: >-
+      The entity identifies and maintains confidential information to meet
+      the entity's objectives related to confidentiality. Confidential
+      information is classified and protected throughout its lifecycle.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC C1.1"
+    maps_to: [ISO_27001_A.5.12, ISO_27001_A.5.13]
+
+  - id: SOC_2_C1.2
+    pillar: "C -- Confidentiality"
+    category: C
+    title: "Disposal of confidential information"
+    description: >-
+      The entity disposes of confidential information to meet the entity's
+      objectives related to confidentiality. Confidential data is securely
+      deleted or destroyed at end-of-life in accordance with data
+      classification requirements.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC C1.2"
+    maps_to: [ISO_27001_A.8.10, ISO_27001_A.7.14]
+
+  # ============================================================
+  # P -- Privacy (optional, manual audit scope)
+  # assessment_type_scope: [aud] -- privacy criteria require manual
+  # audit review; SWAO cannot auto-assess from signals alone.
+  # ============================================================
+
+  - id: SOC_2_P1.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Privacy notice provided to data subjects"
+    description: >-
+      The entity provides notice to data subjects about its objectives
+      related to privacy. A clear, accessible privacy notice is published
+      covering the types of personal information collected, purposes of
+      use, and rights of data subjects.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P1.1"
+    maps_to: [GDPR_Art_13, GDPR_Art_14]
+
+  - id: SOC_2_P2.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Choice and consent for personal information collection"
+    description: >-
+      The entity communicates choices available regarding the collection,
+      use, retention, disclosure, and disposal of personal information to
+      data subjects and the implications, if any, of each choice. Explicit
+      consent mechanisms are implemented where required.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P2.1"
+    maps_to: [GDPR_Art_6, GDPR_Art_7]
+
+  - id: SOC_2_P3.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Collection of personal information consistent with objectives"
+    description: >-
+      The entity collects personal information only for the purposes
+      identified in the entity's objectives related to privacy. Collection
+      is limited to what is adequate, relevant, and not excessive in
+      relation to the stated purpose (data minimisation).
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P3.1"
+    maps_to: [GDPR_Art_5, GDPR_Art_25]
+
+  - id: SOC_2_P3.2
+    pillar: "P -- Privacy"
+    category: P
+    title: "Explicit consent for sensitive personal information"
+    description: >-
+      The entity collects sensitive personal information only for the
+      purposes identified in the entity's objectives related to privacy,
+      using explicit consent mechanisms or other lawful bases as required
+      by applicable regulation.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P3.2"
+    maps_to: [GDPR_Art_9]
+
+  - id: SOC_2_P4.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Use of personal information limited to stated purpose"
+    description: >-
+      The entity limits the use of personal information to the purposes
+      identified in the privacy notice and consented to by data subjects,
+      unless a different use is otherwise permitted by law.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P4.1"
+    maps_to: [GDPR_Art_5, GDPR_Art_6]
+
+  - id: SOC_2_P4.2
+    pillar: "P -- Privacy"
+    category: P
+    title: "Personal information retained only as long as necessary"
+    description: >-
+      The entity retains personal information for no longer than necessary
+      to fulfil the stated purposes or as required by law. Retention
+      schedules are defined, implemented, and enforced through automated
+      deletion or manual review processes.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P4.2"
+    maps_to: [GDPR_Art_5, ISO_27001_A.5.33]
+
+  - id: SOC_2_P4.3
+    pillar: "P -- Privacy"
+    category: P
+    title: "Secure disposal of personal information"
+    description: >-
+      The entity disposes of personal information in accordance with its
+      privacy objectives. Secure deletion procedures prevent inadvertent
+      disclosure of personal information on decommissioned media or systems.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P4.3"
+    maps_to: [GDPR_Art_17, ISO_27001_A.8.10]
+
+  - id: SOC_2_P5.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Access to personal information for data subjects"
+    description: >-
+      The entity provides data subjects with access to their personal
+      information for review and correction in accordance with the
+      entity's objectives related to privacy. Access request workflows
+      and response timelines are documented.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P5.1"
+    maps_to: [GDPR_Art_15, GDPR_Art_16]
+
+  - id: SOC_2_P5.2
+    pillar: "P -- Privacy"
+    category: P
+    title: "Correction of personal information upon request"
+    description: >-
+      The entity corrects, amends, or appends personal information based
+      on a request from data subjects and communicates the correction to
+      third parties, if applicable. Correction workflows have defined
+      response timelines.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P5.2"
+    maps_to: [GDPR_Art_16]
+
+  - id: SOC_2_P6.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Disclosure of personal information to third parties"
+    description: >-
+      The entity discloses personal information to third parties with the
+      consent of data subjects or as otherwise required or permitted by
+      law or regulation. Third-party disclosures are logged and can be
+      audited.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P6.1"
+    maps_to: [GDPR_Art_6, GDPR_Art_28]
+
+  - id: SOC_2_P6.2
+    pillar: "P -- Privacy"
+    category: P
+    title: "Third-party disclosure consistent with privacy commitments"
+    description: >-
+      The entity creates and retains a complete, accurate, and timely
+      record of authorised disclosures of personal information.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P6.2"
+
+  - id: SOC_2_P6.3
+    pillar: "P -- Privacy"
+    category: P
+    title: "Disclosure to legally authorised requests"
+    description: >-
+      The entity only discloses personal information to law enforcement
+      or regulatory bodies as authorised by applicable law or regulation,
+      and takes steps to validate the authority of requestors.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P6.3"
+
+  - id: SOC_2_P6.4
+    pillar: "P -- Privacy"
+    category: P
+    title: "Personal information not shared beyond stated purposes"
+    description: >-
+      The entity refrains from the sale of personal information or its
+      use for secondary purposes not consented to by the data subject.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P6.4"
+    maps_to: [GDPR_Art_5]
+
+  - id: SOC_2_P6.5
+    pillar: "P -- Privacy"
+    category: P
+    title: "Third parties to which information is disclosed are identified"
+    description: >-
+      The entity provides data subjects with the names or categories of
+      third parties to which their personal information may be disclosed,
+      including sub-processors of a cloud service provider.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P6.5"
+    maps_to: [GDPR_Art_13, GDPR_Art_28]
+
+  - id: SOC_2_P6.6
+    pillar: "P -- Privacy"
+    category: P
+    title: "Breach notification to affected parties"
+    description: >-
+      The entity notifies affected data subjects and regulatory bodies of
+      privacy breaches in a timely manner as required by applicable law
+      and privacy commitments.
+    assessment_type_scope: [aud]
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P6.6"
+    maps_to: [GDPR_Art_33, GDPR_Art_34]
+
+  - id: SOC_2_P6.7
+    pillar: "P -- Privacy"
+    category: P
+    title: "Personal information disclosed only through secure means"
+    description: >-
+      The entity discloses personal information in a secure manner and
+      ensures that communications with data subjects and third parties
+      protect the confidentiality of the information disclosed.
+    assessment_type_scope: [aud]
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: EGR
+    references:
+      - "AICPA TSC P6.7"
+    maps_to: [GDPR_Art_32, ISO_27001_A.5.14]
+
+  - id: SOC_2_P7.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Quality and accuracy of personal information"
+    description: >-
+      The entity collects and maintains personal information that is
+      accurate, complete, current, and relevant based on the purposes
+      identified in the privacy notice. Processes exist for data subjects
+      to update their information.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC P7.1"
+    maps_to: [GDPR_Art_5]
+
+  - id: SOC_2_P8.1
+    pillar: "P -- Privacy"
+    category: P
+    title: "Monitoring and enforcement of privacy policies"
+    description: >-
+      The entity monitors compliance with its privacy objectives and
+      provides mechanisms for data subjects to raise concerns. Privacy
+      complaints are tracked, investigated, and resolved within defined
+      timelines.
+    assessment_type_scope: [aud]
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC P8.1"
+    maps_to: [GDPR_Art_77]

@@ -7,7 +7,7 @@ framework:
   id: LLM_SELECTION
   name: "LLM Selection Framework for Sovereign Deployment"
   version: "1.0"
-  authority: "Accenture SWAO team -- community framework (Design 063)"
+  authority: "SWAO Development Team (Accenture) -- community framework (Design 063)"
   contributor:
     name: "SWAO Development Team (Accenture)"
     url: "https://github.com/Accenture/SWAO"

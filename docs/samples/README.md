@@ -17,8 +17,11 @@
 # SWAO Sample Gallery
 
 Screenshots from real assessment runs, covering the CLI, Power BI reports, the terminal
-interface, and the Claude Desktop MCP connector. All captures are from SWAO v0.4.8 against
+interface, and the Claude Desktop MCP connector. All captures are from SWAO v1.1.0 against
 live workspaces.
+
+Live published HTML reports from SWAO runs are available at the
+[SWAO here.now demo site](https://steady-echo-yp4z.here.now/).
 
 ---
 

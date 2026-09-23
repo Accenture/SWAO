@@ -4,6 +4,20 @@ SWAO analyses a cloud application and produces an auditor-grade assessment repor
 in a single command - or through the guided terminal interface. No external services,
 no data uploads, no call-home.
 
+<a href="https://www.youtube.com/watch?v=WvBnFoKzil4" target="_blank" rel="noopener"
+   style="display:block;position:relative;max-width:720px;margin:24px auto;">
+  <img
+    src="https://img.youtube.com/vi/WvBnFoKzil4/maxresdefault.jpg"
+    alt="What is SWAO? Full Product Overview"
+    style="width:100%;border-radius:6px;display:block;" />
+  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);border-radius:6px;">
+    <svg width="64" height="44" viewBox="0 0 68 48">
+      <path d="M66.5 7.5C65.7 4.6 63.4 2.3 60.5 1.5 55.2 0 34 0 34 0S12.8 0 7.5 1.5C4.6 2.3 2.3 4.6 1.5 7.5 0 12.8 0 24s1.5 11.2 1.5 11.2c.8 2.9 3.1 5.2 6 6C12.8 48 34 48 34 48s21.2 0 26.5-1.5c2.9-.8 5.2-3.1 6-6C68 35.2 68 24 68 24S68 12.8 66.5 7.5z" fill="#ff0000"/>
+      <path d="M27 34l18-10-18-10v20z" fill="#fff"/>
+    </svg>
+  </span>
+</a>
+
 ---
 
 ## The guided interface (TUI)

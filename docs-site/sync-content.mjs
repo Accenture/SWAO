@@ -62,6 +62,12 @@ const DE_RUNBOOKS_FOLDER = {
   filter: (name) => name.endsWith('.md'),
 };
 
+const FRAMEWORKS_FOLDER = {
+  src: 'frameworks',
+  dst: 'frameworks',
+  filter: (name) => name.endsWith('.md'),
+};
+
 const ASSESSMENT_FOLDER = {
   src: 'assessment',
   dst: 'assessment',
@@ -108,6 +114,22 @@ for (const { src, dst } of FILES) {
       if (!TEMPLATE_FOLDER.filter(file)) continue;
       copyFileSync(join(s, file), join(d, file));
       console.log(`  copied: ${TEMPLATE_FOLDER.src}/${file} -> manual/${TEMPLATE_FOLDER.dst}/${file}`);
+    }
+  } else {
+    console.warn(`[warn] source folder missing: ${s}`);
+  }
+}
+
+// Copy framework reference pages from docs/frameworks/ -> manual/frameworks/
+{
+  const s = join(srcRoot, FRAMEWORKS_FOLDER.src);
+  const d = join(dstRoot, FRAMEWORKS_FOLDER.dst);
+  if (existsSync(s)) {
+    mkdirSync(d, { recursive: true });
+    for (const file of readdirSync(s)) {
+      if (!FRAMEWORKS_FOLDER.filter(file)) continue;
+      copyFileSync(join(s, file), join(d, file));
+      console.log(`  copied: ${FRAMEWORKS_FOLDER.src}/${file} -> manual/${FRAMEWORKS_FOLDER.dst}/${file}`);
     }
   } else {
     console.warn(`[warn] source folder missing: ${s}`);

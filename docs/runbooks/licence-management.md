@@ -8,16 +8,16 @@ SWAO ships in three tiers - Community, Consultant, and Enterprise - each unlocki
 
 | Feature | Community | Consultant | Enterprise |
 |---|---|---|---|
-| Core assessment (static, compliance, context passes) | Yes | Yes | Yes |
-| LLM pass (dynamic analysis) | Yes | Yes | Yes |
-| PDF report generation | No | Yes | Yes |
-| Report gallery + publish | No | Yes | Yes |
-| HTML Editor (interactive evidence editor, swao publish --edit) | No | No | Yes |
-| Power BI export bundle | No | No | Yes |
-| Custom community frameworks | No | Yes | Yes |
-| Multi-app portfolio assessments | No | No | Roadmap |
-| Enterprise SSO + audit log | No | No | Yes |
-| Priority support SLA | No | Yes | Yes |
+| Core assessment (static, compliance, context passes) | ✓ | ✓ | ✓ |
+| LLM pass (dynamic analysis) | ✓ | ✓ | ✓ |
+| PDF report generation | - | ✓ | ✓ |
+| Report gallery + publish | - | ✓ | ✓ |
+| HTML Editor (interactive evidence editor, swao publish --edit) | - | - | ✓ |
+| Power BI export bundle | - | - | ✓ |
+| Custom community frameworks | - | ✓ | ✓ |
+| Multi-app portfolio assessments | - | - | Roadmap |
+| Enterprise SSO + audit log | - | - | ✓ |
+| Priority support SLA | - | ✓ | ✓ |
 
 Community edition runs without any licence key. All capabilities are available locally with no registration required.
 

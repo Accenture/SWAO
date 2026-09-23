@@ -1,0 +1,69 @@
+# SWAO community framework metadata -- NIS2
+# Sprint-138 #2804: NIS2 Directive (EU) 2022/2555, in force from 2023-01-16.
+# Transposition deadline: 17 October 2024 for EU member states.
+
+framework:
+  id: NIS2
+  name: "NIS2 -- Network and Information Security Directive 2"
+  version: "2022-12-27"
+  authority: "European Union (Directive 2022/2555)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/nis2"
+  applicability_hints:
+    - eu_essential_entity
+    - eu_important_entity
+    - energy_sector
+    - health_sector
+    - transport_sector
+    - digital_infrastructure
+    - msp
+    - eu_regulated
+    - water_sector
+    - banking
+    - financial_market
+    - public_administration
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    NIS2 Directive (EU) 2022/2555 replacing NIS1. Transposition deadline 17 October
+    2024 in EU member states. Applies to medium and large Essential Entities (EE) and
+    Important Entities (IE) in 18 regulated sectors: energy, transport, banking,
+    financial market infrastructure, health, water/wastewater, digital infrastructure,
+    ICT service management (MSPs), public administration, space, and 8 additional
+    "important entity" sectors. 46 controls across 10 domains covering the 10 minimum
+    cybersecurity measures (Art. 21) and management body obligations (Art. 20). Incident
+    reporting follows a three-tier timeline: 24h early warning, 72h notification, 1 month
+    final report (Art. 23). Cross-mapped to ISO_27001, DORA (financial sector overlap),
+    GDPR Art. 32 (technical measures), and BSI_GRUNDSCHUTZ_2023 (German NIS2UmsuCG
+    transposition).
+  references:
+    - "Directive (EU) 2022/2555 -- NIS2 -- OJ L 333, 27.12.2022"
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022L2555"
+    - "ENISA NIS2 Implementation Guidance (2023)"
+    - "NIS2UmsuCG -- German transposition draft (2024)"
+    - "Art. 21: Ten minimum cybersecurity risk management measures"
+    - "Art. 23: Incident reporting obligations"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: NIS2
+
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001            # NIS2 Art. 21 measures align extensively with ISO 27001
+      - DORA                 # Financial sector essential entities have dual NIS2 + DORA obligation
+      - GDPR                 # GDPR Art. 32 technical measures overlap NIS2 Art. 21(2)(a-j)
+      - EU_CRA               # Entities that also supply products face NIS2 + EU CRA obligation
+      - KRITIS_DE            # German NIS2UmsuCG overlaps with BSIG §8a for KRITIS operators
+      - BSI_GRUNDSCHUTZ_2023 # German NIS2 transposition references BSI methodology
+      - EUCS                 # Digital infrastructure EE may also pursue EUCS certification
+
+  redistribution_note: >-
+    NIS2 (Directive EU 2022/2555) is an EU legislative act in the public domain
+    under EUR-Lex terms of reuse. Control descriptions paraphrase the directive's
+    requirements. National transposition laws vary; consult the applicable member
+    state law and a qualified legal advisor for jurisdiction-specific obligations.
+    The 10 minimum measures in Art. 21 apply to both essential and important entities
+    with proportionality (IE face lower audit and enforcement intensity than EE).
+
+  replaces: []

@@ -1,0 +1,61 @@
+# SWAO Community Framework metadata -- OpenSSF Scorecard
+# Sprint-138 #2805: OpenSSF Security Scorecard v4/v5.
+# Automated security posture scoring for open-source projects and OSS dependencies.
+
+framework:
+  id: OPENSSF_SCORECARD
+  name: "OpenSSF Security Scorecard"
+  version: "v4.13 / v5.0-rc (2024)"
+  authority: "Open Source Security Foundation (OpenSSF) -- Linux Foundation"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/openssf-scorecard"
+  applicability_hints:
+    - open_source_project
+    - oss_dependency
+    - supply_chain
+    - github_hosted
+    - community_software
+    - swao_self_assessment
+    - inner_source
+  scoring_mode: weighted
+  assessment_type_scope: [app, aud]
+  description: >-
+    OpenSSF Security Scorecard -- automated security scoring tool for open-source
+    projects maintained by the Open Source Security Foundation (OpenSSF / Linux
+    Foundation). v4 ships 18 checks on a 0-10 scale with published weights; each
+    check assesses a distinct aspect of a project's security posture. Widely adopted
+    by CNCF, Linux Foundation, and Google OSS projects; referenced by CISA "Securing
+    the Software Supply Chain" (2022) and NIST SSDF SP 800-218. 17 controls across
+    5 domains: Code and Repository Integrity (OSS-INT, 5), Vulnerability Management
+    (OSS-VLN, 3), Supply Chain Security (OSS-SCH, 4), Operational Security (OSS-OPS,
+    3), and Community Health (OSS-CMH, 2). Cross-mapped to EU CRA (Annex I/II),
+    NIS2 supply chain, and NIST SSDF. SWAO's own public repo should score 8+ on
+    this framework. Scorecard results for GitHub repos are queryable via the public
+    REST API at api.securityscorecards.dev.
+  references:
+    - "OpenSSF Scorecard: github.com/ossf/scorecard"
+    - "Scorecard check definitions: github.com/ossf/scorecard/blob/main/docs/checks.md"
+    - "OpenSSF Scorecards API: api.securityscorecards.dev"
+    - "CISA Securing the Software Supply Chain (2022)"
+    - "NIST SP 800-218 -- Secure Software Development Framework (SSDF)"
+    - "OpenSSF + NIST SSDF alignment: openssf.org/blog/2022/01/12"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: OSS
+
+  cross_mapping_hints:
+    target_frameworks:
+      - EU_CRA           # Annex I Part II vulnerability handling + binary artefact controls align
+      - NIS2             # NIS2 SCM supply chain + VHR vulnerability management overlap
+      - ISO_27001        # ISO A.8.28 (secure coding), A.8.8 (vulnerability management), A.5.19 (supply chain)
+      - GDPR             # Dependency hygiene indirectly supports Art. 32 technical measures
+
+  redistribution_note: >-
+    OpenSSF Scorecard is an Apache 2.0 open-source project. Check names, descriptions,
+    and scoring criteria are from the public scorecard documentation and are reproduced
+    here under Apache 2.0 terms. Scores are computed at runtime by the scorecard tool
+    or queried via the public API; SWAO presents the control checklist and assessment
+    guidance, not a replacement for running the tool.
+
+  replaces: []

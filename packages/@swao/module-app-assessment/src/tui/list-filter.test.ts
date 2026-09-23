@@ -107,6 +107,27 @@ describe('filterList', () => {
     const result = filterList(options, 'eu', o => o.label);
     expect(result.map(r => r.value)).toEqual(['stackit:eu01', 'stackit:eu02']);
   });
+
+  // #2799: GCP me-* regions now include "(Middle East)" in the label via the area field.
+  it('filters GCP Middle East regions by "middle" -- label includes area "(Middle East)"', () => {
+    const options = [
+      { value: 'gcp:me-central1', label: 'GCP / me-central1 - Doha, Qatar [QA] (Middle East)' },
+      { value: 'gcp:me-central2', label: 'GCP / me-central2 - Dammam, Saudi Arabia [SA] (Middle East)' },
+      { value: 'gcp:me-west1',    label: 'GCP / me-west1 - Tel Aviv, Israel [IL] (Middle East)' },
+      { value: 'gcp:us-central1', label: 'GCP / us-central1 - Council Bluffs, Iowa [US]' },
+    ];
+    const result = filterList(options, 'middle', o => o.label);
+    expect(result.map(r => r.value)).toEqual(['gcp:me-central1', 'gcp:me-central2', 'gcp:me-west1']);
+  });
+
+  it('filters GCP Middle East regions by "me-" ID prefix', () => {
+    const options = [
+      { value: 'gcp:me-central1', label: 'GCP / me-central1 - Doha, Qatar [QA] (Middle East)' },
+      { value: 'gcp:us-central1', label: 'GCP / us-central1 - Council Bluffs, Iowa [US]' },
+    ];
+    const result = filterList(options, 'me-', o => o.label);
+    expect(result.map(r => r.value)).toEqual(['gcp:me-central1']);
+  });
 });
 
 // ---------------------------------------------------------------------------

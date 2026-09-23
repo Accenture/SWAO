@@ -1,0 +1,186 @@
+# SWAO Community Framework -- ISO/IEC 27001:2022 Demo Subset
+# 12-control cross-sector sample for live-presentation use.
+# Sprint-138 #2807. Full catalogue: iso-27001/controls.yaml (93 controls).
+
+regime_meta:
+  id: ISO_27001_DEMO
+  name: "ISO 27001:2022 Demo (12 controls) -- Cross-Sector Sample"
+  version: "2022 -- demo subset 2026-09-21"
+  scope: community
+  authority: "International Organization for Standardization"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/iso-27001"
+  catalogue_version: "0.1.0"
+  signal_prefix: ISO27K
+  last_reviewed: "2026-09-21"
+  applicability_hints: [enterprise, ism]
+  redistribution_note: >-
+    Demo subset of ISO/IEC 27001:2022 for presentation purposes. Control
+    descriptions paraphrase the standard; verbatim ISO text is not
+    reproduced. Use the full ISO_27001 framework for production assessments.
+
+controls:
+
+  - id: ISO_27001_A.5.1
+    pillar: "Organisational controls (A.5)"
+    title: "Policies for information security"
+    description: >-
+      Information security policies shall be defined, approved by
+      management, published, communicated to personnel, and reviewed
+      at planned intervals.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "ISO/IEC 27001:2022 Annex A.5.1"
+
+  - id: ISO_27001_A.5.15
+    pillar: "Organisational controls (A.5)"
+    title: "Access control"
+    description: >-
+      Rules to control physical and logical access to information and
+      other associated assets shall be established based on business
+      and information security requirements.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "ISO/IEC 27001:2022 Annex A.5.15"
+
+  - id: ISO_27001_A.5.23
+    pillar: "Organisational controls (A.5)"
+    title: "Information security for use of cloud services"
+    description: >-
+      Processes for acquisition, use, management, and exit from cloud
+      services shall be established in accordance with the organisation's
+      information security requirements.
+    introduced: "ISO27001:2022"
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "ISO/IEC 27001:2022 Annex A.5.23"
+
+  - id: ISO_27001_A.6.3
+    pillar: "People controls (A.6)"
+    title: "Information security awareness, education and training"
+    description: >-
+      Personnel and relevant interested parties shall receive appropriate
+      information security awareness, education, and training relevant to
+      their job function.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "ISO/IEC 27001:2022 Annex A.6.3"
+
+  - id: ISO_27001_A.7.1
+    pillar: "Physical controls (A.7)"
+    title: "Physical security perimeters"
+    description: >-
+      Physical perimeters shall be defined and used to protect areas that
+      contain information and other associated assets. For cloud workloads
+      the CSP manages physical datacenter perimeters.
+    csp_inherited: true
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "ISO/IEC 27001:2022 Annex A.7.1"
+
+  - id: ISO_27001_A.7.4
+    pillar: "Physical controls (A.7)"
+    title: "Physical security monitoring"
+    description: >-
+      Premises shall be continuously monitored for unauthorised physical
+      access. CSPs provide continuous datacenter monitoring; on-premises
+      facilities require equivalent controls.
+    introduced: "ISO27001:2022"
+    csp_inherited: true
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "ISO/IEC 27001:2022 Annex A.7.4"
+
+  - id: ISO_27001_A.8.2
+    pillar: "Technological controls (A.8)"
+    title: "Privileged access rights"
+    description: >-
+      Privileged access rights shall be restricted and managed based on
+      least privilege and reviewed regularly. Temporary elevation shall
+      be time-limited and logged.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.2"
+
+  - id: ISO_27001_A.8.5
+    pillar: "Technological controls (A.8)"
+    title: "Secure authentication"
+    description: >-
+      Secure authentication technologies and procedures shall be
+      implemented based on information access restrictions. Multi-factor
+      authentication shall be enforced for privileged and remote access.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.5"
+
+  - id: ISO_27001_A.8.8
+    pillar: "Technological controls (A.8)"
+    title: "Management of technical vulnerabilities"
+    description: >-
+      Information about technical vulnerabilities shall be obtained in a
+      timely fashion and the organisation's exposure evaluated so that
+      appropriate measures can be taken to address the associated risk.
+    severity_default: high
+    evidence_basis:
+      - context_input: cmdb_export
+      - signal_prefix: OBS
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.8"
+
+  - id: ISO_27001_A.8.15
+    pillar: "Technological controls (A.8)"
+    title: "Logging"
+    description: >-
+      Logs recording activities, exceptions, faults, and information
+      security events shall be produced, stored, protected, and analysed.
+      Log integrity shall be maintained and logs retained as required.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.15"
+
+  - id: ISO_27001_A.8.24
+    pillar: "Technological controls (A.8)"
+    title: "Use of cryptography"
+    description: >-
+      Rules for the effective use of cryptography, including key
+      management, shall be defined and implemented. Approved algorithms
+      and key lengths shall be mandated in policy and enforced technically.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.24"
+
+  - id: ISO_27001_A.8.28
+    pillar: "Technological controls (A.8)"
+    title: "Secure coding"
+    description: >-
+      Secure coding principles shall be applied to software development.
+      Secure coding standards, training, and tooling such as SAST and SCA
+      shall be used to prevent introduction of known vulnerability classes.
+    introduced: "ISO27001:2022"
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "ISO/IEC 27001:2022 Annex A.8.28"

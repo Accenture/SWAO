@@ -88,10 +88,11 @@ function buildLzCatalogueHint(): LzCatalogueHint | null {
         return [{
           provider: c.provider,
           name: c.name,
-          regions: (catalogue.regions as Array<{ id: string; display?: string; country?: string }>).map(r => ({
+          regions: (catalogue.regions as Array<{ id: string; display?: string; country?: string; area?: string }>).map(r => ({
             id: r.id,
             display: r.display ?? r.id,
             country: r.country,
+            area: r.area,
           })),
         }];
       } catch { return []; }

@@ -19,7 +19,7 @@ import { spawn } from 'child_process';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { LicenseGuard, findWorkspace } from '@swao/core';
-import { HeaderView, type LicenseStateView } from '@swao/tui-kit';
+import { HeaderView, ProgressBar, type LicenseStateView } from '@swao/tui-kit';
 import { HealthCheckProbeList } from './components/HealthCheckProbeList.js';
 import { parseHealthCheckOutput } from './components/health-check-parse.js';
 
@@ -107,7 +107,12 @@ export function HealthCheckScreen({ onBack, version }: HealthCheckScreenProps) {
   // #2744: count parsed probes so the summary can distinguish "zero probes" from
   // "probes ran and all passed". Avoids calling parseHealthCheckOutput twice in
   // the render by memoising the count alongside the existing lines state.
-  const parsedProbeCount = useMemo(() => parseHealthCheckOutput(lines).length, [lines]);
+  // #2841: also extract total probe count from the [N/M] header for the progress bar.
+  const { parsedProbeCount, totalProbeCount } = useMemo(() => {
+    const probes = parseHealthCheckOutput(lines);
+    const last = probes[probes.length - 1];
+    return { parsedProbeCount: probes.length, totalProbeCount: last?.total ?? 0 };
+  }, [lines]);
 
   // #0798: guard navigation so Escape does not fire while GuidanceBox is expanded.
   const guidanceOpenRef = useRef(false);
@@ -129,6 +134,18 @@ export function HealthCheckScreen({ onBack, version }: HealthCheckScreenProps) {
         </Box>
       )}
       {!done && <Text color="yellow">Running environment checks...</Text>}
+      {/* #2841: progress bar -- shown while probes are streaming and [N/M] is parseable */}
+      {!done && totalProbeCount > 0 && (
+        <Box marginTop={1}>
+          <ProgressBar
+            value={parsedProbeCount}
+            total={totalProbeCount}
+            label={`${parsedProbeCount}/${totalProbeCount} probes`}
+            color="cyan"
+            width={28}
+          />
+        </Box>
+      )}
       <HealthCheckProbeList
         lines={lines}
         done={done}

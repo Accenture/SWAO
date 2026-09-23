@@ -53,6 +53,32 @@ const ReplacesEntrySchema = z.union([
   }),
 ]);
 
+// Design 104 §5.1: typed schema for framework-meta.yaml (raw yaml.load passthrough
+// in framework.ts cmdInfo/readReplaces; this schema is used by compliance-registry.ts
+// when building the bundled registry from Phase 3 onwards). Exported for Phase 2
+// publication-model typing; call sites added in Phase 3.
+export const FrameworkMetaSchema = z.object({
+  framework: z.object({
+    id: RegimeIdSchema,
+    name: z.string().min(3).max(120).optional(),
+    version: z.string().min(1).optional(),
+    contributor: z.union([
+      z.string().min(1),
+      ContributorSchema,
+    ]).optional(),
+    description: z.string().optional(),
+    applicability_hints: z.array(z.string()).default([]),
+    replaces: z.array(ReplacesEntrySchema).optional(),
+    // Design 104 §5.1 new meta fields.
+    scoring_mode: z.enum(['binary', 'maturity', 'score']).default('binary'),
+    effective_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    next_review_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    national_overlay_of: RegimeIdSchema.optional(),
+    companion_standards: z.array(z.string()).default([]),
+    assessment_type_scope: z.array(z.string()).default([]),
+  }),
+});
+
 export const RegimeMetaSchema = z.object({
   id: RegimeIdSchema,
   name: z.string().min(3).max(120),
@@ -73,6 +99,14 @@ export const RegimeMetaSchema = z.object({
   signal_prefix: z.string().optional(),
   source_sha256: z.string().optional(),
   replaces: z.array(ReplacesEntrySchema).optional(),
+  // Design 104 §5.1: extended meta-model fields (sprint-138 #2817). All optional
+  // / defaulted so existing controls.yaml files without these fields continue
+  // to parse cleanly (additive-only change).
+  scoring_mode: z.enum(['binary', 'maturity', 'score']).default('binary'),
+  effective_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  next_review_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  national_overlay_of: RegimeIdSchema.optional(),
+  companion_standards: z.array(z.string()).default([]),
 });
 
 // Evidence-basis variants per design 029 §4.5. The first three (signal_prefix,
@@ -88,6 +122,12 @@ const EvidenceBasisEntrySchema = z.union([
   z.object({ local_signal_regex: z.string().min(3) }),
   z.object({ manual_questionnaire: z.string().regex(/\.ya?ml$/) }),
   z.object({ external_scanner: z.string().regex(/^[a-z_]+::.+/) }),
+  // Design 104 §5.2: new evidence-basis variants (sprint-138 #2817).
+  z.object({ scorecard_api: z.string() }),
+  z.object({ csp_certification: z.string() }),
+  z.object({ regulatory_approval: z.string() }),
+  z.object({ sbom_scan: z.string() }),
+  z.object({ apm_export: z.string() }),
 ]);
 
 export const RegimeControlSchema = z.object({
@@ -110,6 +150,20 @@ export const RegimeControlSchema = z.object({
   // CLI `swao framework info <id>` surfaces tags to the operator; PowerBI
   // slicers are a sprint-039 follow-up.
   tags: z.array(z.string()).default([]),
+  // Design 104 §5.2: extended control fields (sprint-138 #2817). All optional
+  // / defaulted so existing controls.yaml files without these fields continue
+  // to parse cleanly (additive-only change).
+  csp_inherited: z.boolean().default(false),
+  csp_evidence_required: z.array(z.string()).default([]),
+  // applies_when: YAML key-value map evaluated against framework_context in
+  // .swao.yml (Q-CODE-7 decision). Missing keys -> not_assessed/not_applicable.
+  applies_when: z.record(z.string(), z.string()).optional(),
+  maturity_required: z.number().int().min(0).max(5).optional(),
+  score_threshold: z.number().int().min(0).max(10).optional(),
+  regulatory_basis: z.string().optional(),
+  official_control_id: z.string().optional(),
+  reliability: z.enum(['automated', 'verified', 'self-asserted']).optional(),
+  layer: z.enum(['runtime', 'devops', 'governance']).optional(),
 });
 
 export const RegimeCatalogueSchema = z.object({
@@ -134,6 +188,7 @@ export const RegimeIndexSchema = z.object({
 
 export type RegimeId = z.infer<typeof RegimeIdSchema>;
 export type Scope = z.infer<typeof ScopeSchema>;
+export type FrameworkMeta = z.infer<typeof FrameworkMetaSchema>;
 export type RegimeMeta = z.infer<typeof RegimeMetaSchema>;
 export type RegimeControl = z.infer<typeof RegimeControlSchema>;
 export type RegimeCatalogue = z.infer<typeof RegimeCatalogueSchema>;

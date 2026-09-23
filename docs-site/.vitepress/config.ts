@@ -52,40 +52,18 @@ const deSidebar = {
       ],
     },
     {
-      text: '1. Workspace-Setup',
-      link: '/de/workspace-setup',
-    },
-    {
-      text: '2. Health Check',
-      link: '/de/health-check',
-    },
-    {
-      text: '3. Bewertung durchführen',
-      link: '/assessment/',
-    },
-    {
-      text: '4. Bericht erstellen',
-      link: '/de/generate-report',
-    },
-    {
-      text: '5. HTML veröffentlichen',
-      link: '/de/publish-html',
-    },
-    {
-      text: '6. BI exportieren',
-      link: '/de/export-bi',
-    },
-    {
-      text: '7. Portfolio-Betrieb',
-      link: '/de/portfolio',
-    },
-    {
-      text: '8. TF-Module erstellen',
-      link: '/de/generate-tf',
-    },
-    {
-      text: '9. Werkzeuge',
-      link: '/de/tools',
+      text: 'SWAO verwenden',
+      items: [
+        { text: '1. Workspace-Setup', link: '/de/workspace-setup' },
+        { text: '2. Health Check', link: '/de/health-check' },
+        { text: '3. Bewertung durchführen', link: '/assessment/' },
+        { text: '4. Bericht erstellen', link: '/de/generate-report' },
+        { text: '5. HTML veröffentlichen', link: '/de/publish-html' },
+        { text: '6. BI exportieren', link: '/de/export-bi' },
+        { text: '7. Portfolio-Betrieb', link: '/de/portfolio' },
+        { text: '8. TF-Module erstellen', link: '/de/generate-tf' },
+        { text: '9. Werkzeuge', link: '/de/tools' },
+      ],
     },
     {
       text: 'Beispiele + Screenshots',
@@ -178,46 +156,44 @@ export default defineConfig({
           ],
         },
         {
-          text: '1. Workspace Setup',
-          link: '/workspace-setup',
-        },
-        {
-          text: '2. Health Check',
-          link: '/health-check',
-        },
-        {
-          text: '3. Run Assessment',
-          link: '/assessment/',
+          text: 'Using SWAO',
           items: [
-            { text: 'Application', link: '/assessment/application' },
-            { text: 'Landing Zone', link: '/assessment/landing-zone' },
-            { text: 'LLM', link: '/assessment/llm' },
-            { text: 'Dimension catalogue', link: '/assessment-dimension-catalogue' },
+            { text: '1. Workspace Setup', link: '/workspace-setup' },
+            { text: '2. Health Check', link: '/health-check' },
+            {
+              text: '3. Run Assessment',
+              link: '/assessment/',
+              collapsed: true,
+              items: [
+                { text: 'Application', link: '/assessment/application' },
+                { text: 'Landing Zone', link: '/assessment/landing-zone' },
+                { text: 'LLM', link: '/assessment/llm' },
+                { text: 'Dimension catalogue', link: '/assessment-dimension-catalogue' },
+              ],
+            },
+            { text: '4. Generate Report', link: '/generate-report' },
+            { text: '5. Publish HTML', link: '/publish-html' },
+            { text: '6. Export BI', link: '/export-bi' },
+            { text: '7. Portfolio Operations', link: '/portfolio' },
+            { text: '8. Generate TF Modules', link: '/generate-tf' },
+            { text: '9. Tools', link: '/tools' },
           ],
         },
         {
-          text: '4. Generate Report',
-          link: '/generate-report',
-        },
-        {
-          text: '5. Publish HTML',
-          link: '/publish-html',
-        },
-        {
-          text: '6. Export BI',
-          link: '/export-bi',
-        },
-        {
-          text: '7. Portfolio Operations',
-          link: '/portfolio',
-        },
-        {
-          text: '8. Generate TF Modules',
-          link: '/generate-tf',
-        },
-        {
-          text: '9. Tools',
-          link: '/tools',
+          text: 'Community Frameworks',
+          items: [
+            { text: 'ISO/IEC 27001:2022', link: '/frameworks/iso-27001' },
+            { text: 'SOC 2', link: '/frameworks/soc-2' },
+            { text: 'DORA', link: '/frameworks/dora' },
+            { text: 'NIS2', link: '/frameworks/nis2' },
+            { text: 'EU CRA', link: '/frameworks/eu-cra' },
+            { text: 'EUCS', link: '/frameworks/eucs' },
+            { text: 'KRITIS-DE', link: '/frameworks/kritis-de' },
+            { text: 'OpenSSF Scorecard', link: '/frameworks/openssf-scorecard' },
+            { text: 'EU AI Act', link: '/frameworks/eu-ai-act' },
+            { text: 'SecNumCloud v3.2', link: '/frameworks/secnumcloud' },
+            { text: 'EC Cloud Sovereignty Framework', link: '/frameworks/ec-csf' },
+          ],
         },
         {
           text: 'Samples + screenshots',

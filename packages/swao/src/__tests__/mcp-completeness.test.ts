@@ -85,6 +85,9 @@ const EXPECTED_TOOLS = new Set([
   'swao_workspace_inventory',
   // #2772 (sprint-134) -- SWAO Chat history persistence tool.
   'swao_chat_history',
+  // sprint-136 -- workspace file access tools for MCP context.
+  'swao_list_directory',
+  'swao_read_file',
 ]);
 
 describe('MCP completeness gate (#0261)', () => {

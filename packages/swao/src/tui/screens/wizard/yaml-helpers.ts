@@ -86,6 +86,31 @@ export function writeLlmToYaml(
   } catch { /* non-fatal */ }
 }
 
+// #2815: write assessment.vision_max_screens to .swao.yml.
+// If an `assessment:` block already exists, updates the field.
+// Otherwise appends the block at the end of the file.
+export function writeVisionMaxScreensToYaml(workDir: string, maxScreens: number): void {
+  const yamlPath = join(workDir, '.swao.yml');
+  if (!existsSync(yamlPath)) return;
+  try {
+    let yaml = readFileSync(yamlPath, 'utf-8');
+    const valueStr = `assessment:\n  vision_max_screens: ${maxScreens}\n`;
+    if (/^assessment:/m.test(yaml)) {
+      // Replace or insert the vision_max_screens line inside the existing block.
+      if (/^ {2}vision_max_screens: \d+/m.test(yaml)) {
+        yaml = yaml.replace(/^ {2}vision_max_screens: \d+/m, `  vision_max_screens: ${maxScreens}`);
+      } else {
+        yaml = yaml.replace(/^(assessment:\n)/m, `$1  vision_max_screens: ${maxScreens}\n`);
+      }
+    } else {
+      // Remove existing commented-out assessment block before appending the live one.
+      yaml = yaml.replace(/^# assessment:\n(?:^#.*\n)*/m, '');
+      yaml = yaml.trimEnd() + '\n\n' + valueStr;
+    }
+    writeFileSync(yamlPath, yaml, 'utf-8');
+  } catch { /* non-fatal */ }
+}
+
 // #1768: write providers.llm.secondary block to .swao.yml.
 // Inserts a `secondary:` sibling of `primary:` under `providers.llm:`.
 // If a secondary block already exists it is replaced. Mirrors writeLlmToYaml.

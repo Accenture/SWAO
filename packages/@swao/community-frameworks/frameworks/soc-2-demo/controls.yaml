@@ -1,0 +1,200 @@
+# SWAO Community Framework -- SOC 2 Trust Services Criteria Demo Subset
+# 12-control CC security baseline sample for live-presentation use.
+# Sprint-138 #2808. Full catalogue: soc-2/controls.yaml (64 controls).
+
+regime_meta:
+  id: SOC_2_DEMO
+  name: "SOC 2 Trust Services Criteria Demo (12 controls) -- CC Security Sample"
+  version: "2017-revised -- demo subset 2026-09-21"
+  scope: community
+  authority: "American Institute of Certified Public Accountants (AICPA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/soc-2"
+  catalogue_version: "0.1.0"
+  signal_prefix: SOC2
+  last_reviewed: "2026-09-21"
+  applicability_hints: [saas, b2b]
+  redistribution_note: >-
+    Demo subset of SOC 2 Trust Services Criteria for presentation purposes.
+    Control descriptions paraphrase AICPA criteria; verbatim AICPA text is
+    not reproduced. Use the full SOC_2 framework for production assessments.
+
+controls:
+
+  - id: SOC_2_CC1.1
+    pillar: "CC1 -- Control Environment"
+    category: CC
+    title: "Integrity and ethical values"
+    description: >-
+      The entity demonstrates a commitment to integrity and ethical values
+      through a code of conduct, enforcement mechanisms, and example-setting
+      by leadership so that ethical behaviour is modelled throughout the
+      organisation.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC1.1"
+
+  - id: SOC_2_CC2.1
+    pillar: "CC2 -- Communication and Information"
+    category: CC
+    title: "Relevant, quality information to support internal controls"
+    description: >-
+      The entity obtains or generates relevant, quality information to
+      support the functioning of internal controls, including security
+      policies, risk assessments, and audit findings.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC2.1"
+
+  - id: SOC_2_CC3.2
+    pillar: "CC3 -- Risk Assessment"
+    category: CC
+    title: "Risk identification and analysis"
+    description: >-
+      The entity identifies risks to the achievement of its objectives
+      and analyses those risks as a basis for determining how they should
+      be managed, including CIA risks to the system.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC3.2"
+
+  - id: SOC_2_CC4.1
+    pillar: "CC4 -- Monitoring Activities"
+    category: CC
+    title: "Ongoing evaluations of internal controls"
+    description: >-
+      The entity selects, develops, and performs ongoing evaluations to
+      ascertain whether the components of internal control are present
+      and functioning. Continuous monitoring of security controls is expected.
+    severity_default: medium
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC4.1"
+
+  - id: SOC_2_CC5.2
+    pillar: "CC5 -- Control Activities"
+    category: CC
+    title: "Selection and development of general technology controls"
+    description: >-
+      The entity selects and develops general control activities over
+      technology including configuration management, access control, and
+      system development lifecycle controls.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC5.2"
+
+  - id: SOC_2_CC6.1
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Logical access security controls"
+    description: >-
+      The entity implements logical access security software, infrastructure,
+      and architectures over protected information assets to protect them
+      from security events. Access is restricted based on role and least
+      privilege.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    references:
+      - "AICPA TSC CC6.1"
+
+  - id: SOC_2_CC6.5
+    pillar: "CC6 -- Logical and Physical Access Controls"
+    category: CC
+    title: "Encryption of data at rest and in transit"
+    description: >-
+      The entity implements controls to protect against unauthorised access
+      to data at rest and in transit. Encryption with approved algorithms
+      is applied to sensitive data stores and all transmission channels.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: EGR
+    references:
+      - "AICPA TSC CC6.5"
+
+  - id: SOC_2_CC7.2
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Monitoring for anomalous activity"
+    description: >-
+      The entity monitors system components and operation for anomalies
+      indicative of malicious acts, natural disasters, and errors affecting
+      its ability to meet objectives. Alerts are reviewed and triaged.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    references:
+      - "AICPA TSC CC7.2"
+
+  - id: SOC_2_CC7.4
+    pillar: "CC7 -- System Operations"
+    category: CC
+    title: "Incident response"
+    description: >-
+      The entity responds to identified security incidents by executing
+      a defined incident management programme to understand, contain,
+      remediate, and communicate about security incidents.
+    severity_default: critical
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC CC7.4"
+
+  - id: SOC_2_CC8.1
+    pillar: "CC8 -- Change Management"
+    category: CC
+    title: "Managed changes to infrastructure, data, and software"
+    description: >-
+      The entity authorises, designs, develops, configures, documents, tests,
+      approves, and implements changes to infrastructure, data, software, and
+      procedures to meet its objectives. Security review is part of the change
+      gate.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+      - signal_prefix: TF
+    references:
+      - "AICPA TSC CC8.1"
+
+  - id: SOC_2_CC9.2
+    pillar: "CC9 -- Risk Mitigation"
+    category: CC
+    title: "Assessment of vendor and business partner risk"
+    description: >-
+      The entity assesses and manages risks associated with vendors and
+      business partners. Supplier risk assessments and contractual security
+      obligations ensure that third-party risk is controlled.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "AICPA TSC CC9.2"
+
+  - id: SOC_2_A1.2
+    pillar: "A -- Availability"
+    category: A
+    title: "Environmental threats and recovery planning"
+    description: >-
+      The entity implements recovery infrastructure including data backup,
+      redundancy, and disaster recovery plans to meet its availability
+      commitments and system requirements.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "AICPA TSC A1.2"

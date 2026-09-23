@@ -835,7 +835,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
       return [...entry.regions]
         .sort((a, b) => a.id.localeCompare(b.id))
         .map(r => ({
-          label: `${pid.toUpperCase()} / ${r.id} - ${r.display}${r.country ? ` [${r.country}]` : ''}`,
+          label: `${pid.toUpperCase()} / ${r.id} - ${r.display}${r.country ? ` [${r.country}]` : ''}${r.area ? ` (${r.area})` : ''}`,
           value: `${pid}:${r.id}`,
         }));
     });

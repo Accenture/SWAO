@@ -1,0 +1,747 @@
+# SWAO Community Framework -- EU AI Act (Regulation EU 2024/1689)
+# Sprint-139 #0441: 37 controls across 4 parts.
+# Prohibited practices (RC-01/Art. 5): in force 2025-02-02.
+# High-risk requirements (HR): in force 2027-08-02 for Annex III systems.
+# All other provisions: in force 2024-08-01.
+
+regime_meta:
+  id: EU_AI_ACT
+  name: "EU Artificial Intelligence Act"
+  version: "2024-08-01"
+  scope: community
+  authority: "European Union (Regulation EU 2024/1689)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eu-ai-act"
+  catalogue_version: "1.0.0"
+  signal_prefix: AIACT
+  last_reviewed: "2026-09-22"
+  applicability_hints:
+    - ai_system
+    - high_risk_ai
+    - gpai_provider
+    - automated_decisioning
+    - eu_market
+  description: >-
+    EU Regulation 2024/1689 (AI Act) risk-based framework for AI systems.
+    37 controls across 4 parts: RC (risk classification), HR (high-risk
+    requirements -- applicable when RC-02 identifies high-risk), TR
+    (transparency -- applicable for limited-risk or higher), GP (GPAI
+    obligations -- applicable when RC-04 identifies a GPAI model).
+  references:
+    - "EU Regulation 2024/1689 (AI Act) -- Official Journal 2024-07-12"
+    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202401689"
+    - "European Commission AI Act Implementation Guide 2025"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # Part RC -- Risk Classification (Articles 5, 6, 11, 50, 51)
+  # Unconditional -- assess for every AI system in scope.
+  # ---------------------------------------------------------------
+
+  - id: AIACT_RC_01
+    part: "Part RC -- Risk Classification"
+    category: RC
+    title: "Prohibited AI practices check"
+    description: >-
+      Verify the AI system does not implement any practice prohibited under
+      Art. 5: subliminal manipulation, exploitation of vulnerability,
+      social scoring by public authorities, real-time biometric
+      surveillance in public spaces (with limited exceptions), inferring
+      sensitive attributes, emotion recognition in workplace/education, or
+      AI-based profiling to predict criminal behaviour. Prohibited practices
+      have been in force since 2025-02-02.
+    severity_default: critical
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ai_system_description
+    maps_to:
+      - GDPR_Art_5
+      - AI_10_PILLARS_P08
+    references:
+      - "EU AI Act Article 5"
+
+  - id: AIACT_RC_02
+    part: "Part RC -- Risk Classification"
+    category: RC
+    title: "High-risk AI system identification"
+    description: >-
+      Determine whether the AI system qualifies as high-risk under Art. 6
+      and Annex III: safety components of regulated products (Machinery,
+      Radio Equipment, Medical Devices, Aviation, Vehicles, Marine, Railways)
+      or standalone high-risk AI uses (biometrics, critical infrastructure,
+      education, employment, essential services, law enforcement, migration,
+      administration of justice, democratic processes). If high-risk,
+      all Part HR controls apply.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ai_system_description
+    maps_to:
+      - GDPR_Art_22
+    references:
+      - "EU AI Act Article 6 and Annex III"
+
+  - id: AIACT_RC_03
+    part: "Part RC -- Risk Classification"
+    category: RC
+    title: "Limited-risk AI transparency flag"
+    description: >-
+      Determine whether the AI system falls into the limited-risk category
+      under Art. 50: chatbots, emotion recognition systems, deepfake
+      generators, or AI-generated content systems. If limited-risk,
+      Part TR transparency controls apply. Note that high-risk systems
+      (RC-02) also carry TR obligations.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EU AI Act Article 50"
+
+  - id: AIACT_RC_04
+    part: "Part RC -- Risk Classification"
+    category: RC
+    title: "General-purpose AI model identification"
+    description: >-
+      Determine whether the system places a general-purpose AI (GPAI) model
+      on the EU market under Art. 51. GPAI models trained on broad data,
+      displaying significant generality, and capable of performing a wide
+      range of tasks trigger Part GP obligations. Models with systemic risk
+      (training compute above 10^25 FLOPs) trigger additional Art. 55
+      obligations.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ai_system_description
+    maps_to:
+      - AI_10_PILLARS_P02
+    references:
+      - "EU AI Act Articles 51-52"
+
+  - id: AIACT_RC_05
+    part: "Part RC -- Risk Classification"
+    category: RC
+    title: "Risk classification documentation"
+    description: >-
+      Document the risk classification decision for the AI system in the
+      technical file (Annex IV). The file must record the classification
+      rationale, applicable Annex III categories examined, and the basis
+      for any determination of non-high-risk status. This documentation
+      must be available for inspection by national competent authorities.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 11 and Annex IV"
+
+  # ---------------------------------------------------------------
+  # Part HR -- High-Risk AI Requirements (Articles 9-17, 47-48, 72-73)
+  # Applicable when AIACT_RC_02 verdict: high-risk system identified.
+  # Most provisions apply from 2027-08-02 for Annex III systems.
+  # ---------------------------------------------------------------
+
+  - id: AIACT_HR_01
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Risk management system establishment"
+    description: >-
+      Establish, implement, document, and maintain a risk management system
+      for the high-risk AI system throughout its lifecycle (Art. 9). The
+      system must identify and analyse known and foreseeable risks, evaluate
+      risks from use in combination with other systems, and adopt appropriate
+      risk mitigation measures. Annual review required.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: risk_register
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_RSK_01
+      - ISO_27001_A.8.2
+    references:
+      - "EU AI Act Article 9"
+
+  - id: AIACT_HR_02
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Training data governance -- representativeness and bias"
+    description: >-
+      Ensure training, validation, and test datasets are subject to data
+      governance practices covering: data collection, examination for biases,
+      relevance, representativeness, completeness, and freedom from errors
+      (Art. 10(2)). Document measures taken to detect and address biases
+      that may lead to discriminatory outcomes.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: data_inventory
+    maps_to:
+      - GDPR_Art_5
+      - AI_10_PILLARS_P05
+    references:
+      - "EU AI Act Article 10 paragraph 2"
+
+  - id: AIACT_HR_03
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Validation and test data separation"
+    description: >-
+      Maintain separation of training, validation, and test datasets to
+      prevent data leakage from influencing model performance evaluation
+      (Art. 10(3)). Document dataset provenance, split rationale, and
+      measures to prevent cross-contamination.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - AI_10_PILLARS_P05
+    references:
+      - "EU AI Act Article 10 paragraph 3"
+
+  - id: AIACT_HR_04
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Training data documentation and lineage"
+    description: >-
+      Document the provenance, composition, collection methods, labelling
+      procedures, and any pre-processing applied to training datasets
+      (Art. 10(5)). Documentation must be retained and made available to
+      competent authorities on request.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: data_inventory
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_30
+    references:
+      - "EU AI Act Article 10 paragraph 5"
+
+  - id: AIACT_HR_05
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Technical documentation completeness"
+    description: >-
+      Prepare and maintain technical documentation per Annex IV before placing
+      the high-risk AI system on the market (Art. 11). Required content:
+      general description, design specifications and development process,
+      monitoring and functioning, validation and testing results, applied
+      standards, EU declaration of conformity, and post-market monitoring plan.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 11 and Annex IV"
+
+  - id: AIACT_HR_06
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Automatic logging and audit trail"
+    description: >-
+      Ensure the high-risk AI system automatically generates logs of its
+      operation to enable monitoring of operation against intended purpose
+      (Art. 12). Logs must capture at minimum: activation periods, input
+      data reference, system decisions, and any human oversight interventions.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - signal: STATE_LOG_ENABLED
+    maps_to:
+      - NIS2_INC_01
+      - ISO_27001_A.8.15
+    references:
+      - "EU AI Act Article 12"
+
+  - id: AIACT_HR_07
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Log retention period"
+    description: >-
+      Retain logs generated by the high-risk AI system for a minimum period
+      appropriate to the intended purpose and applicable sector regulations
+      (Art. 12(1)). For biometric systems, minimum 6 months. For other
+      high-risk systems, minimum 12 months unless sector law requires longer.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: ops_runbooks
+      - signal: STATE_LOG_RETENTION_DAYS
+    maps_to:
+      - ISO_27001_A.8.15
+    references:
+      - "EU AI Act Article 12 paragraph 1"
+
+  - id: AIACT_HR_08
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Transparency information to deployers"
+    description: >-
+      Provide deployers with instructions for use that include: provider
+      identity and contact, intended purpose, level of accuracy, limitations,
+      conditions of use, categories of persons and data processed, and any
+      foreseeable misuse scenarios (Art. 13). Instructions must be in a
+      language accessible to deployers.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 13"
+
+  - id: AIACT_HR_09
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Human oversight -- stop and override capability"
+    description: >-
+      Design the high-risk AI system with adequate human oversight measures
+      including: ability to interrupt, stop, and override the system (Art.
+      14(4)). Operators must be able to fully understand system capabilities
+      and limitations and intervene in its operation at any time.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - AI_10_PILLARS_P07
+    references:
+      - "EU AI Act Article 14 paragraph 4"
+
+  - id: AIACT_HR_10
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Human oversight -- operator training and competence"
+    description: >-
+      Ensure deployers assign human oversight to persons with necessary
+      competence, training, and authority to exercise it (Art. 14(5)).
+      Document the training programme for operators responsible for
+      overseeing high-risk AI output.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - AI_10_PILLARS_P07
+    references:
+      - "EU AI Act Article 14 paragraph 5"
+
+  - id: AIACT_HR_11
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Accuracy metric specification"
+    description: >-
+      Define and document accuracy, robustness, and cybersecurity metrics
+      appropriate to the intended purpose of the high-risk AI system
+      (Art. 15(1)). Metrics must be declared in technical documentation
+      and validated against the test dataset.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 15 paragraph 1"
+
+  - id: AIACT_HR_12
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Robustness against adversarial inputs"
+    description: >-
+      Implement technical measures to ensure the high-risk AI system is
+      resilient against adversarial inputs designed to alter its outputs
+      (Art. 15(3)). Document the robustness testing approach, including
+      adversarial testing methods applied.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_05
+      - AI_10_PILLARS_P09
+    references:
+      - "EU AI Act Article 15 paragraph 3"
+
+  - id: AIACT_HR_13
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Cybersecurity measures for high-risk AI systems"
+    description: >-
+      Implement cybersecurity measures commensurate with the risks of the
+      high-risk AI system (Art. 15(5)). Measures must address vulnerabilities
+      introduced by AI-specific attack vectors, including training data
+      poisoning, model extraction, and adversarial examples. Cross-reference
+      EU CRA requirements where the system qualifies as a product with digital
+      elements.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_01
+      - NIS2_NSC_01
+    references:
+      - "EU AI Act Article 15 paragraph 5"
+
+  - id: AIACT_HR_14
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Quality management system"
+    description: >-
+      Establish a quality management system covering the full development
+      lifecycle of the high-risk AI system (Art. 17). The QMS must address:
+      strategy, design, development, testing, deployment, post-market
+      monitoring, and human oversight procedures.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.1
+    references:
+      - "EU AI Act Article 17"
+
+  - id: AIACT_HR_15
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Post-market monitoring plan"
+    description: >-
+      Implement a post-market monitoring system that actively and systematically
+      collects and analyses data about the system's performance after deployment
+      (Art. 72). The plan must specify monitoring metrics, data collection
+      methods, review cadence, and escalation thresholds.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to: []
+    references:
+      - "EU AI Act Article 72"
+
+  - id: AIACT_HR_16
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "Serious incident reporting to competent authority"
+    description: >-
+      Report serious incidents involving the high-risk AI system to the
+      relevant national competent authority without undue delay (Art. 73).
+      A serious incident means any event causing death, serious damage to
+      health, or property, or serious fundamental rights infringement. Report
+      within 15 days of becoming aware.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_04
+    references:
+      - "EU AI Act Article 73"
+
+  - id: AIACT_HR_17
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "EU declaration of conformity"
+    description: >-
+      Draw up and maintain an EU declaration of conformity confirming the
+      high-risk AI system complies with the AI Act (Art. 47). The declaration
+      must include provider identity, system description, applicable standards
+      and conformity assessment procedures applied, and authorised signatory.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 47"
+
+  - id: AIACT_HR_18
+    part: "Part HR -- High-Risk AI Requirements"
+    category: HR
+    title: "CE marking on high-risk AI product"
+    description: >-
+      Affix the CE marking to high-risk AI systems that are also regulated
+      products under EU product safety legislation (Art. 48). The CE marking
+      must be affixed before placing the product on the market and must be
+      visible, legible, and indelible.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 48"
+
+  # ---------------------------------------------------------------
+  # Part TR -- Transparency Obligations (Articles 13, 26, 50)
+  # Applicable when RC-03 flags limited-risk, or RC-02 flags high-risk.
+  # ---------------------------------------------------------------
+
+  - id: AIACT_TR_01
+    part: "Part TR -- Transparency Obligations"
+    category: TR
+    title: "Chatbot AI disclosure to users"
+    description: >-
+      Ensure users are informed they are interacting with an AI system when
+      operating a chatbot or conversational AI (Art. 50(1)). The disclosure
+      must be clear, prominent, and given at the beginning of interaction.
+      Exception: obvious context (e.g. voice assistant marketed as AI).
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - AI_10_PILLARS_P06
+    references:
+      - "EU AI Act Article 50 paragraph 1"
+
+  - id: AIACT_TR_02
+    part: "Part TR -- Transparency Obligations"
+    category: TR
+    title: "Emotion recognition system disclosure"
+    description: >-
+      Inform natural persons exposed to emotion recognition systems of the
+      system's operation (Art. 50(3)). Disclosure must be given prior to
+      any emotion inference taking place. The disclosure must identify the
+      type of emotion data being inferred.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - GDPR_Art_13
+    references:
+      - "EU AI Act Article 50 paragraph 3"
+
+  - id: AIACT_TR_03
+    part: "Part TR -- Transparency Obligations"
+    category: TR
+    title: "Deepfake labelling"
+    description: >-
+      Label deepfakes (AI-generated or manipulated image, audio, or video
+      content depicting real persons, places, or events in a false way) in a
+      way that is detectable and clearly indicates the artificial origin
+      (Art. 50(4)). The labelling obligation applies regardless of whether
+      the content could deceive a reasonable person.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EU AI Act Article 50 paragraph 4"
+
+  - id: AIACT_TR_04
+    part: "Part TR -- Transparency Obligations"
+    category: TR
+    title: "AI-generated content labelling"
+    description: >-
+      Mark AI-generated content (text, images, audio, video) in a
+      machine-readable format to enable downstream detection (Art. 50(2)).
+      Where technically feasible, embed metadata or watermarks indicating
+      AI origin. Labelling is required before public distribution.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to: []
+    references:
+      - "EU AI Act Article 50 paragraph 2"
+
+  - id: AIACT_TR_05
+    part: "Part TR -- Transparency Obligations"
+    category: TR
+    title: "Deployer transparency obligations"
+    description: >-
+      Deployers of high-risk AI systems that make decisions with legal or
+      similarly significant effects must inform affected persons of the
+      exposure to the AI system, the logic involved, and their right to
+      explanation (Art. 26(11)). Notification must precede or accompany
+      any decision taken by or with the AI system.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_22
+    references:
+      - "EU AI Act Article 26 paragraph 11"
+
+  # ---------------------------------------------------------------
+  # Part GP -- GPAI Model Obligations (Articles 51-56)
+  # Applicable when AIACT_RC_04 identifies a GPAI model on EU market.
+  # ---------------------------------------------------------------
+
+  - id: AIACT_GP_01
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "GPAI model technical documentation"
+    description: >-
+      Draw up and keep up-to-date technical documentation for the GPAI model
+      including training methodology, model architecture, capabilities and
+      limitations, and safety evaluations (Art. 53(1)(a)). Documentation must
+      be provided to the AI Office on request.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - AI_10_PILLARS_P02
+    references:
+      - "EU AI Act Article 53 paragraph 1(a)"
+
+  - id: AIACT_GP_02
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "Training data copyright compliance"
+    description: >-
+      Implement a policy to comply with EU copyright law in relation to
+      training data, including the text and data mining exceptions (Art.
+      53(1)(c)). Maintain a sufficiently detailed summary of content used
+      for training. The summary must be publicly available in machine-readable
+      format.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: data_inventory
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_6
+    references:
+      - "EU AI Act Article 53 paragraph 1(c)"
+
+  - id: AIACT_GP_03
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "GPAI model capability summary"
+    description: >-
+      Publish a summary of the GPAI model's capabilities, limitations, and
+      performance evaluations (Art. 53(1)(b)). The summary must be publicly
+      accessible and cover benchmark results, known limitations, and intended
+      deployment contexts.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 53 paragraph 1(b)"
+
+  - id: AIACT_GP_04
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "Energy consumption reporting"
+    description: >-
+      Report the known or estimated energy consumption of the GPAI model
+      during training and inference (Art. 55(1)(a)). This obligation applies
+      to GPAI models with systemic risk (training compute >= 10^25 FLOPs).
+      Report annually to the AI Office.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 55 paragraph 1(a)"
+
+  - id: AIACT_GP_05
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "Adversarial testing for systemic-risk GPAI"
+    description: >-
+      Conduct adversarial testing (red-teaming) of GPAI models with systemic
+      risk to identify and mitigate critical risks (Art. 55(1)(b)). Testing
+      must cover misuse scenarios, harmful output generation, and
+      safety-relevant capabilities. Engage qualified third-party testers where
+      needed.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - AI_10_PILLARS_P09
+    references:
+      - "EU AI Act Article 55 paragraph 1(b)"
+
+  - id: AIACT_GP_06
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "Cybersecurity measures for systemic-risk GPAI"
+    description: >-
+      Implement appropriate cybersecurity protections for systemic-risk GPAI
+      models and their physical infrastructure (Art. 55(1)(c)). Measures must
+      address model weight theft, inference attacks, prompt injection, and
+      training data exfiltration risks.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - EU_CRA_SBD_01
+      - NIS2_NSC_01
+    references:
+      - "EU AI Act Article 55 paragraph 1(c)"
+
+  - id: AIACT_GP_07
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "Serious incident reporting for systemic-risk GPAI"
+    description: >-
+      Report serious incidents or malfunctions of systemic-risk GPAI models
+      to the AI Office without undue delay (Art. 55(1)(d)). Incidents include
+      outputs causing deaths, serious physical harm, fundamental rights
+      violations, or critical infrastructure disruption.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_04
+    references:
+      - "EU AI Act Article 55 paragraph 1(d)"
+
+  - id: AIACT_GP_08
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "GPAI code of practice adherence"
+    description: >-
+      Adhere to the AI Code of Practice developed under Art. 56 for GPAI
+      model providers. The code of practice sets out the methodologies and
+      detailed rules for compliance with the GPAI obligations. Monitor
+      updates to the code; update compliance programme within 6 months of
+      revision.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 56"
+
+  - id: AIACT_GP_09
+    part: "Part GP -- GPAI Model Obligations"
+    category: GP
+    title: "AI Office notification for systemic-risk GPAI"
+    description: >-
+      Notify the AI Office when a GPAI model meets the systemic risk threshold
+      (Art. 52). Notification must occur before placing the model on the market
+      and include the training compute estimate. Update the AI Office if the
+      threshold is subsequently reached after initial release.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "EU AI Act Article 52"

@@ -1,0 +1,1361 @@
+# SWAO Community Framework -- EUCS (EU Cloud Security Certification Scheme)
+# Sprint-138 #2803: ENISA candidate scheme, 3 assurance levels.
+# 66 controls across 12 domains. Status: candidate scheme (not yet regulation).
+# Tags eucs:basic / eucs:substantial / eucs:high indicate minimum assurance level.
+
+regime_meta:
+  id: EUCS
+  name: "EU Cloud Security Certification Scheme (EUCS)"
+  version: "candidate-2024"
+  scope: community
+  authority: "European Union Agency for Cybersecurity (ENISA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eucs"
+  catalogue_version: "1.0.0"
+  signal_prefix: EUCS
+  multi_domain_axes: true
+  last_reviewed: "2026-09-21"
+  applicability_hints:
+    - eu_cloud_provider
+    - eu_sovereign_cloud
+    - iaas_provider
+    - paas_provider
+    - saas_provider
+    - eu_regulated
+    - cloud_certification
+  description: >-
+    ENISA EUCS candidate scheme: 66 controls across 12 domains at 3 assurance
+    levels (Basic, Substantial, High). Targets cloud service providers
+    certifying offerings to EU customers and authorities.
+  references:
+    - "ENISA EUCS candidate scheme v1.0 (December 2020)"
+    - "https://www.enisa.europa.eu/publications/eucs-cloud-scheme"
+    - "EU Cybersecurity Act (Regulation EU 2019/881) Art. 46-65"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # EUCS-GRC: Governance and Risk Management (8 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_GRC_1
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:basic"]
+    title: "Information security policy"
+    description: >-
+      The cloud service provider shall maintain a documented, board-approved
+      information security policy covering all EUCS-certified cloud services.
+      The policy shall be reviewed at least annually and communicated to all
+      personnel and relevant third parties.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.1
+      - BSI_C5_OIS-01
+    references:
+      - "EUCS GRC section -- governance requirements"
+
+  - id: EUCS_GRC_2
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:basic"]
+    title: "Risk management framework"
+    description: >-
+      The CSP shall maintain a risk management framework for identifying, assessing,
+      and treating information security risks affecting EUCS-certified services.
+      Risk assessments shall be reviewed at least annually and following significant
+      changes to the service or threat landscape.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.35
+      - BSI_C5_OIS-02
+    references:
+      - "EUCS GRC section -- risk management"
+
+  - id: EUCS_GRC_3
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:substantial"]
+    title: "Security roles and responsibilities"
+    description: >-
+      Security roles including CISO, security team, and data protection officer
+      (where applicable) shall be formally documented with defined authority and
+      accountability. Roles shall be adequately resourced and separation of duties
+      enforced between security operations and audit functions.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.2
+      - BSI_C5_OIS-02
+    references:
+      - "EUCS GRC section -- roles and responsibilities"
+
+  - id: EUCS_GRC_4
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:substantial"]
+    title: "Information security management system (ISMS)"
+    description: >-
+      The CSP shall maintain a formal ISMS per ISO/IEC 27001 scope covering all
+      EUCS-certified cloud services. The ISMS shall be certified or attested by an
+      accredited third party. Internal audits shall be performed at least annually.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.35
+    references:
+      - "EUCS GRC section -- ISMS requirement"
+      - "ISO/IEC 27001:2022 -- Information security management systems"
+
+  - id: EUCS_GRC_5
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:substantial"]
+    title: "Legal and regulatory compliance management"
+    description: >-
+      The CSP shall maintain processes to identify, track, and comply with all
+      applicable legal, regulatory, and contractual security requirements across
+      all jurisdictions where EUCS-certified services are operated or marketed.
+      A compliance register shall be maintained and reviewed at least annually.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.31
+    references:
+      - "EUCS GRC section -- compliance management"
+
+  - id: EUCS_GRC_6
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:high"]
+    title: "Customer transparency on security posture"
+    description: >-
+      The CSP shall publish a current security attestation (BSI C5 Type 2, SOC 2
+      Type II, or EUCS certificate) and maintain a publicly accessible security
+      disclosure policy. Significant changes to the security posture shall be
+      communicated to customers with advance notice.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_OIS-04
+    references:
+      - "EUCS AUD section -- transparency"
+
+  - id: EUCS_GRC_7
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:high"]
+    title: "Supply chain risk governance"
+    description: >-
+      Board-level oversight of ICT supply chain risks shall be established with a
+      documented supplier risk management strategy. Critical hardware and software
+      suppliers shall be assessed for security posture; an approved vendor list shall
+      be maintained for EUCS High-assurance infrastructure components.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+      - BSI_C5_OIS-05
+    references:
+      - "EUCS DEV section -- supply chain governance"
+
+  - id: EUCS_GRC_8
+    pillar: "EUCS-GRC -- Governance and Risk Management"
+    category: GRC
+    tags: ["eucs:high"]
+    title: "Continuous improvement and lessons learned"
+    description: >-
+      The CSP shall maintain a formal process to incorporate security incident
+      learnings, audit findings, and threat intelligence into the ISMS and
+      security controls. Improvement actions shall be tracked and reported to
+      management at least quarterly.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.7
+    references:
+      - "EUCS GRC section -- continual improvement"
+
+  # ---------------------------------------------------------------
+  # EUCS-HRS: Human Resources Security (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_HRS_1
+    pillar: "EUCS-HRS -- Human Resources Security"
+    category: HRS
+    tags: ["eucs:basic"]
+    title: "Pre-employment screening"
+    description: >-
+      Background checks appropriate to the role and applicable data protection law
+      shall be conducted on all personnel with access to EUCS-certified cloud
+      service production environments or customer data before employment or
+      assignment commences.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.1
+      - BSI_C5_HRS-01
+    references:
+      - "EUCS HRS section -- personnel screening"
+
+  - id: EUCS_HRS_2
+    pillar: "EUCS-HRS -- Human Resources Security"
+    category: HRS
+    tags: ["eucs:substantial"]
+    title: "Mandatory security awareness training"
+    description: >-
+      All personnel with access to EUCS-covered services shall complete role-
+      appropriate security awareness training at least annually. Training records
+      shall be maintained. Personnel with privileged access shall receive additional
+      security training covering the specific risks and responsibilities of their role.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.3
+      - BSI_C5_HRS-02
+    references:
+      - "EUCS HRS section -- security training"
+
+  - id: EUCS_HRS_3
+    pillar: "EUCS-HRS -- Human Resources Security"
+    category: HRS
+    tags: ["eucs:substantial"]
+    title: "Confidentiality agreements and acceptable use policy"
+    description: >-
+      All personnel and contractors with access to customer data in EUCS-covered
+      environments shall sign a confidentiality agreement (NDA) and an acceptable
+      use policy (AUP) before access is granted. Agreements shall be reviewed and
+      re-signed at least every two years.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.6
+    references:
+      - "EUCS HRS section -- confidentiality"
+
+  - id: EUCS_HRS_4
+    pillar: "EUCS-HRS -- Human Resources Security"
+    category: HRS
+    tags: ["eucs:high"]
+    title: "Enhanced vetting for privileged staff"
+    description: >-
+      Personnel with administrative access to EUCS High-assurance infrastructure
+      shall undergo enhanced background verification including criminal record
+      check, identity verification, and reference check. Re-vetting shall occur
+      every three years or following a significant personal circumstance change.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - BSI_C5_HRS-01
+    references:
+      - "EUCS HRS section -- privileged personnel vetting"
+
+  # ---------------------------------------------------------------
+  # EUCS-ASM: Asset Management (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_ASM_1
+    pillar: "EUCS-ASM -- Asset Management"
+    category: ASM
+    tags: ["eucs:substantial"]
+    title: "Cloud service asset inventory"
+    description: >-
+      A comprehensive inventory of all assets (hardware, software, data, and
+      cloud infrastructure components) used to deliver EUCS-certified services
+      shall be maintained. The inventory shall record asset owner, classification,
+      and location. Updates shall occur within 24 hours of any change.
+    severity_default: medium
+    evidence_basis:
+      - context_input: cmdb_export
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.9
+      - BSI_C5_OIS-04
+    references:
+      - "EUCS ASM section -- asset inventory"
+
+  - id: EUCS_ASM_2
+    pillar: "EUCS-ASM -- Asset Management"
+    category: ASM
+    tags: ["eucs:substantial"]
+    title: "Customer data classification scheme"
+    description: >-
+      The CSP shall implement a data classification scheme covering customer data
+      processed by the cloud service, at minimum: public, restricted, and
+      confidential. Classification shall determine encryption, access control, and
+      handling requirements for each data category.
+    severity_default: high
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.12
+      - BSI_C5_DAT-01
+    references:
+      - "EUCS ASM section -- data classification"
+
+  - id: EUCS_ASM_3
+    pillar: "EUCS-ASM -- Asset Management"
+    category: ASM
+    tags: ["eucs:substantial"]
+    title: "Asset lifecycle management"
+    description: >-
+      Formal processes for provisioning, configuration, maintenance, and secure
+      decommissioning of assets in the EUCS scope shall be documented and followed.
+      Decommissioned assets shall be securely erased or destroyed before disposal,
+      with documented evidence retained for at least two years.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+      - context_input: cmdb_export
+    maps_to:
+      - ISO_27001_A.5.9
+      - BSI_C5_OPS-05
+    references:
+      - "EUCS ASM section -- asset lifecycle"
+
+  - id: EUCS_ASM_4
+    pillar: "EUCS-ASM -- Asset Management"
+    category: ASM
+    tags: ["eucs:high"]
+    title: "Approved hardware list for EUCS High infrastructure"
+    description: >-
+      Only hardware from a formally maintained approved hardware list may be used
+      in EUCS High-assurance infrastructure. The list shall include supply chain
+      security requirements (country of manufacture, security vetting status). Any
+      deviation shall require documented risk acceptance from the CISO.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: cmdb_export
+    maps_to:
+      - BSI_C5_OIS-05
+    references:
+      - "EUCS ASM section -- approved hardware (High level)"
+
+  - id: EUCS_ASM_5
+    pillar: "EUCS-ASM -- Asset Management"
+    category: ASM
+    tags: ["eucs:high"]
+    title: "Certified media destruction and data erasure"
+    description: >-
+      Storage media used for EUCS High-assurance services shall be securely erased
+      using methods validated against NIST SP 800-88 or equivalent, or physically
+      destroyed. A destruction certificate shall be retained for at least five years.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.7.14
+      - BSI_C5_DAT-01
+    references:
+      - "EUCS ASM section -- media destruction (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-IAM: Access Control (8 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_IAM_1
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:basic"]
+    title: "Access control policy"
+    description: >-
+      A documented access control policy shall define least privilege, need-to-know,
+      and segregation of duties principles for all access to EUCS-covered systems.
+      The policy shall be reviewed at least annually and communicated to all
+      personnel with system access.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.15
+      - BSI_C5_IDM-01
+    references:
+      - "EUCS IAM section -- access control policy"
+
+  - id: EUCS_IAM_2
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:basic"]
+    title: "User account lifecycle management"
+    description: >-
+      Formal processes for creating, modifying, and revoking user accounts on
+      EUCS-covered systems shall be documented and enforced. Accounts shall be
+      provisioned only after approval by the system owner. Accounts of departing
+      personnel shall be revoked within 24 hours.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.16
+      - BSI_C5_IDM-03
+    references:
+      - "EUCS IAM section -- account management"
+
+  - id: EUCS_IAM_3
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:substantial"]
+    title: "Multi-factor authentication for administrative access"
+    description: >-
+      Multi-factor authentication shall be required for all administrative access to
+      EUCS-covered production systems and for all remote access from external or
+      untrusted networks. FIDO2/WebAuthn or hardware tokens are required for
+      privileged access at Substantial and above.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.5
+      - BSI_C5_IDM-01
+    references:
+      - "EUCS IAM section -- multi-factor authentication"
+
+  - id: EUCS_IAM_4
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:substantial"]
+    title: "Privileged access management"
+    description: >-
+      Privileged accounts on EUCS-covered systems shall be restricted to designated
+      individuals. Session monitoring and recording shall be implemented for
+      privileged access. Privileged account use shall be reviewed and recertified
+      at least quarterly. Generic shared admin accounts are prohibited.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.2
+      - BSI_C5_IDM-02
+    references:
+      - "EUCS IAM section -- privileged access"
+
+  - id: EUCS_IAM_5
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:substantial"]
+    title: "Customer identity and access management capabilities"
+    description: >-
+      The CSP shall provide documented IAM capabilities enabling customers to manage
+      their own user accounts, roles, and access policies within the cloud service.
+      Capabilities shall include multi-factor authentication enforcement, access
+      logging, and role-based access control (RBAC) or equivalent.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.5.15
+      - BSI_C5_IDM-04
+    references:
+      - "EUCS IAM section -- customer IAM"
+
+  - id: EUCS_IAM_6
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:high"]
+    title: "Physical and logical isolation of customer environments"
+    description: >-
+      EUCS High-level services shall implement strict isolation between customer
+      environments at network, compute, and storage layers. Shared resources that
+      could permit cross-tenant data access or inference are prohibited. Isolation
+      assurance shall be verified through regular penetration testing.
+    severity_default: critical
+    evidence_basis:
+      - signal_prefix: IAM
+      - signal_prefix: EGR
+    maps_to:
+      - ISO_27001_A.8.22
+      - BSI_C5_COS-04
+    references:
+      - "EUCS IAM section -- tenant isolation (High level)"
+
+  - id: EUCS_IAM_7
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:high"]
+    title: "Just-in-time access for privileged operations"
+    description: >-
+      Privileged access to EUCS High-assurance systems shall be granted only for
+      defined, time-limited windows with automated revocation on expiry. No
+      standing privileged access shall exist for production EUCS High systems.
+      All just-in-time access requests shall require multi-party approval.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+    maps_to:
+      - ISO_27001_A.8.2
+      - BSI_C5_IDM-02
+    references:
+      - "EUCS IAM section -- JIT access (High level)"
+
+  - id: EUCS_IAM_8
+    pillar: "EUCS-IAM -- Access Control"
+    category: IAM
+    tags: ["eucs:high"]
+    title: "Zero-trust network access principles"
+    description: >-
+      Access to EUCS High-assurance infrastructure shall be based on continuous
+      verification of identity and device health, not assumed network-location trust.
+      Micro-segmentation or software-defined perimeters shall enforce least-privilege
+      access to individual services regardless of network position.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: IAM
+      - signal_prefix: EGR
+    maps_to:
+      - BSI_C5_COS-04
+    references:
+      - "EUCS IAM section -- zero trust (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-CRY: Cryptography and Key Management (6 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_CRY_1
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:substantial"]
+    title: "Encryption of customer data at rest"
+    description: >-
+      Customer data at rest in EUCS-certified services shall be encrypted using
+      BSI-recommended algorithms (AES-256 or equivalent per BSI TR-02102-1).
+      Default encryption shall be enabled without customer configuration. Data
+      stored in backup or archive media shall also be encrypted.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - ISO_27001_A.8.24
+      - BSI_C5_CRY-01
+    references:
+      - "EUCS CRY section -- data at rest encryption"
+      - "BSI TR-02102-1 -- Cryptographic Mechanisms"
+
+  - id: EUCS_CRY_2
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:substantial"]
+    title: "Encryption of data in transit"
+    description: >-
+      All customer data in transit between customer and cloud service, and between
+      internal service components, shall be encrypted using TLS 1.2 or higher with
+      BSI-approved cipher suites (per BSI TR-02102-2). Unencrypted protocols
+      (HTTP, FTP, SMTP without STARTTLS) are prohibited for sensitive data paths.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: EGR
+    maps_to:
+      - ISO_27001_A.8.24
+      - BSI_C5_CRY-02
+    references:
+      - "EUCS CRY section -- data in transit encryption"
+      - "BSI TR-02102-2 -- TLS/DTLS"
+
+  - id: EUCS_CRY_3
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:substantial"]
+    title: "Cryptographic key management framework"
+    description: >-
+      A formal key management framework shall govern the generation, distribution,
+      storage, rotation, and revocation of cryptographic keys for EUCS-certified
+      services. Key rotation schedules shall be documented and enforced. Expired or
+      compromised keys shall be revoked and replaced within defined timescales.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - ISO_27001_A.8.24
+      - BSI_C5_CRY-03
+    references:
+      - "EUCS CRY section -- key management"
+
+  - id: EUCS_CRY_4
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:high"]
+    title: "Customer-managed encryption keys (BYOK/HYOK)"
+    description: >-
+      EUCS High-certified services shall offer customers the ability to manage their
+      own encryption keys (Bring Your Own Key or Hold Your Own Key) for at-rest
+      data encryption. Customer-managed keys shall be stored in the customer's HSM
+      or a CSP-hosted HSM under the customer's exclusive control.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - BSI_C5_CRY-03
+    references:
+      - "EUCS CRY section -- BYOK/HYOK (High level)"
+
+  - id: EUCS_CRY_5
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:high"]
+    title: "Hardware security module (HSM) key storage"
+    description: >-
+      Encryption keys for EUCS High-certified services shall be stored and processed
+      exclusively in hardware security modules (HSMs) validated to FIPS 140-2 Level 3
+      or Common Criteria EAL4+ or equivalent. HSMs shall be tamper-evident and
+      physically located within the EU.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: CRYPTO
+    maps_to:
+      - BSI_C5_CRY-01
+    references:
+      - "EUCS CRY section -- HSM key storage (High level)"
+      - "FIPS 140-2 Level 3"
+
+  - id: EUCS_CRY_6
+    pillar: "EUCS-CRY -- Cryptography and Key Management"
+    category: CRY
+    tags: ["eucs:high"]
+    title: "Cryptographic agility and algorithm migration"
+    description: >-
+      The CSP shall demonstrate documented capability to migrate cryptographic
+      algorithms within 12 months of BSI issuing a deprecation notice, without
+      service disruption or data loss. Algorithm migration procedures shall be tested
+      at least every three years. Post-quantum algorithm readiness shall be addressed
+      per BSI guidance.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - BSI_C5_CRY-01
+    references:
+      - "EUCS CRY section -- cryptographic agility (High level)"
+      - "BSI TR-02102-1 -- algorithm recommendations and key lengths"
+
+  # ---------------------------------------------------------------
+  # EUCS-PHY: Physical and Environmental Security (5 controls)
+  # PHY controls are CSP datacenter responsibilities (csp_inherited
+  # from CSP's EUCS or C5 attestation for cloud customers).
+  # ---------------------------------------------------------------
+
+  - id: EUCS_PHY_1
+    pillar: "EUCS-PHY -- Physical and Environmental Security"
+    category: PHY
+    tags: ["eucs:basic"]
+    title: "Physical access controls and multi-zone perimeter"
+    description: >-
+      Data centres hosting EUCS-certified services shall implement multi-zone
+      physical access controls with at minimum: external perimeter (fence/barriers),
+      building access (card or biometric), and server hall access (card or biometric
+      with logged entry). Physical access logs shall be retained for at least 90 days.
+    severity_default: high
+    csp_inherited: true
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.1
+      - ISO_27001_A.7.2
+      - BSI_C5_PRY-01
+    references:
+      - "EUCS PHY section -- physical access"
+
+  - id: EUCS_PHY_2
+    pillar: "EUCS-PHY -- Physical and Environmental Security"
+    category: PHY
+    tags: ["eucs:substantial"]
+    title: "Environmental monitoring and alerting"
+    description: >-
+      Automated monitoring of temperature, humidity, power (UPS, generator),
+      and fire suppression systems in EUCS-certified data centres shall be
+      implemented with alerting to operations staff. Environmental monitoring
+      alerts shall be tested at least quarterly.
+    severity_default: medium
+    csp_inherited: true
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.5
+      - BSI_C5_PRY-03
+    references:
+      - "EUCS PHY section -- environmental controls"
+
+  - id: EUCS_PHY_3
+    pillar: "EUCS-PHY -- Physical and Environmental Security"
+    category: PHY
+    tags: ["eucs:substantial"]
+    title: "CCTV coverage and physical security monitoring"
+    description: >-
+      CCTV cameras shall cover all data centre entry/exit points and server hall
+      access doors. Recordings shall be retained for at least 90 days and reviewed
+      in the event of a physical security incident. Camera integrity shall be
+      verified monthly.
+    severity_default: medium
+    csp_inherited: true
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.4
+      - BSI_C5_PRY-02
+    references:
+      - "EUCS PHY section -- physical monitoring"
+
+  - id: EUCS_PHY_4
+    pillar: "EUCS-PHY -- Physical and Environmental Security"
+    category: PHY
+    tags: ["eucs:high"]
+    title: "Mandatory escort for visitor access to EUCS High areas"
+    description: >-
+      Unescorted visitor access to areas hosting EUCS High-assurance infrastructure
+      is prohibited. All visitors shall be logged, issued with a dated badge, and
+      escorted by an authorised employee at all times. Visitor logs shall be retained
+      for at least one year.
+    severity_default: high
+    csp_inherited: true
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.2
+      - BSI_C5_PRY-01
+    references:
+      - "EUCS PHY section -- visitor access (High level)"
+
+  - id: EUCS_PHY_5
+    pillar: "EUCS-PHY -- Physical and Environmental Security"
+    category: PHY
+    tags: ["eucs:high"]
+    title: "Dedicated or physically isolated EUCS High infrastructure"
+    description: >-
+      EUCS High-certified services shall be hosted on infrastructure physically
+      dedicated to or isolated from lower-assurance workloads. Physical separation
+      shall be verified through an independent audit as part of the certification
+      assessment. Shared physical infrastructure with non-EU entities is prohibited.
+    severity_default: critical
+    csp_inherited: true
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_PRY-04
+    references:
+      - "EUCS PHY section -- dedicated infrastructure (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-OPS: Operations Management (8 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_OPS_1
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:basic"]
+    title: "Change management process"
+    description: >-
+      A formal change management process shall govern all changes to EUCS-covered
+      systems, including testing requirements, approval gates, and rollback procedures.
+      Emergency changes shall require retrospective approval within 24 hours. Change
+      records shall be retained for at least one year.
+    severity_default: medium
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.32
+      - BSI_C5_OPS-01
+    references:
+      - "EUCS OPS section -- change management"
+
+  - id: EUCS_OPS_2
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:basic"]
+    title: "Vulnerability management and patching"
+    description: >-
+      Vulnerability scanning of EUCS-covered systems shall be performed at least
+      monthly. Critical severity vulnerabilities shall be patched within 72 hours
+      with compensating controls applied immediately. A vulnerability register shall
+      track all open vulnerabilities, their severity, and remediation status.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.8
+      - BSI_C5_OPS-02
+    references:
+      - "EUCS OPS section -- vulnerability management"
+
+  - id: EUCS_OPS_3
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:substantial"]
+    title: "Configuration management and security baselines"
+    description: >-
+      Documented, approved security configuration baselines shall be established and
+      enforced for all hardware and software components in the EUCS scope. Deviations
+      from the baseline shall be detected automatically and remediated within defined
+      timescales. Configuration drift shall be reviewed monthly.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.9
+      - BSI_C5_OPS-03
+    references:
+      - "EUCS OPS section -- configuration management"
+
+  - id: EUCS_OPS_4
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:substantial"]
+    title: "Network security management"
+    description: >-
+      Firewalls, intrusion detection/prevention systems (IDS/IPS), and network
+      traffic monitoring shall enforce least-privilege connectivity between all
+      service zones in the EUCS scope. Network rules shall be documented, approved,
+      and reviewed at least quarterly. Overly permissive rules shall be flagged.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.20
+      - BSI_C5_COS-01
+    references:
+      - "EUCS OPS section -- network security"
+
+  - id: EUCS_OPS_5
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:substantial"]
+    title: "Centralised security log management"
+    description: >-
+      Security-relevant logs from all EUCS-covered components shall be collected into
+      a centralised, tamper-evident log management platform. Logs shall be retained
+      for at least one year (longer for High level or regulatory requirements). Log
+      completeness shall be verified monthly.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.15
+      - BSI_C5_SIM-01
+    references:
+      - "EUCS OPS section -- log management"
+
+  - id: EUCS_OPS_6
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:substantial"]
+    title: "Malware and endpoint protection"
+    description: >-
+      Anti-malware and endpoint protection controls shall be deployed on all
+      applicable systems in the EUCS scope. Malware signatures and detection engines
+      shall be updated daily. Endpoint detection and response (EDR) capabilities
+      shall be deployed for administrative workstations and production servers.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: TF
+    maps_to:
+      - ISO_27001_A.8.7
+      - BSI_C5_OPS-04
+    references:
+      - "EUCS OPS section -- malware protection"
+
+  - id: EUCS_OPS_7
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:high"]
+    title: "24x7 SIEM with analyst coverage"
+    description: >-
+      A security information and event management (SIEM) platform with real-time
+      correlation rules shall be operated 24x7 by trained security analysts for
+      EUCS High-certified services. Alert response SLAs shall be defined and
+      measured: critical alerts within 15 minutes; high within 1 hour.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+    maps_to:
+      - ISO_27001_A.8.16
+      - BSI_C5_SIM-02
+    references:
+      - "EUCS OPS section -- SIEM (High level)"
+
+  - id: EUCS_OPS_8
+    pillar: "EUCS-OPS -- Operations Management"
+    category: OPS
+    tags: ["eucs:high"]
+    title: "Annual third-party penetration testing"
+    description: >-
+      An annual penetration test of EUCS High-certified services shall be conducted
+      by a qualified external testing team. The scope shall include network,
+      application, and cloud configuration testing. All critical and high findings
+      shall be remediated and verified within 90 days. Test results shall be provided
+      to the EUCS conformity assessment body.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.36
+      - BSI_C5_OPS-06
+    references:
+      - "EUCS OPS section -- penetration testing (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-BCP: Business Continuity and Resilience (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_BCP_1
+    pillar: "EUCS-BCP -- Business Continuity and Resilience"
+    category: BCP
+    tags: ["eucs:substantial"]
+    title: "Business continuity plan for cloud services"
+    description: >-
+      A documented BCP covering all EUCS-certified cloud services shall define
+      escalation triggers, crisis management roles, manual fallback procedures,
+      and communication protocols for service outage scenarios. The BCP shall be
+      approved by the CISO and reviewed annually.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.29
+      - BSI_C5_BCM-01
+    references:
+      - "EUCS BCP section -- business continuity"
+
+  - id: EUCS_BCP_2
+    pillar: "EUCS-BCP -- Business Continuity and Resilience"
+    category: BCP
+    tags: ["eucs:substantial"]
+    title: "Disaster recovery capabilities and geographic redundancy"
+    description: >-
+      Disaster recovery infrastructure shall be located in a geographically separate
+      region from the primary service location. RPO and RTO shall be formally defined,
+      contractually committed in the service agreement, and validated through annual
+      DR exercises. Both primary and DR locations shall reside within the EU.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.30
+      - BSI_C5_BCM-02
+    references:
+      - "EUCS BCP section -- disaster recovery"
+
+  - id: EUCS_BCP_3
+    pillar: "EUCS-BCP -- Business Continuity and Resilience"
+    category: BCP
+    tags: ["eucs:substantial"]
+    title: "Annual BCP and DR testing"
+    description: >-
+      Business continuity and disaster recovery plans for EUCS-certified services
+      shall be tested at least annually using realistic failure scenarios. Full or
+      partial failover exercises shall validate that RPO and RTO commitments can
+      be achieved. Test results shall be documented and deficiencies remediated.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.30
+    references:
+      - "EUCS BCP section -- BCP/DR testing"
+
+  - id: EUCS_BCP_4
+    pillar: "EUCS-BCP -- Business Continuity and Resilience"
+    category: BCP
+    tags: ["eucs:high"]
+    title: "Multi-region redundancy and automatic failover"
+    description: >-
+      EUCS High-certified services shall be deployed across at least two
+      geographically distinct EU regions with automatic failover (RTO < 30 minutes)
+      and synchronous or near-synchronous replication (RPO < 15 minutes for critical
+      workloads). Inter-region traffic shall be encrypted and authenticated.
+    severity_default: critical
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.30
+      - BSI_C5_AVL-02
+    references:
+      - "EUCS BCP section -- multi-region (High level)"
+
+  - id: EUCS_BCP_5
+    pillar: "EUCS-BCP -- Business Continuity and Resilience"
+    category: BCP
+    tags: ["eucs:high"]
+    title: "SLA with availability commitments and compensation"
+    description: >-
+      EUCS High-certified services shall offer customers a contractually binding
+      SLA with a minimum 99.9% monthly uptime commitment. The SLA shall include
+      a service credit mechanism triggered by availability breaches and a root
+      cause report within 72 hours of any major outage.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "EUCS BCP section -- SLA commitments (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-INC: Incident Management (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_INC_1
+    pillar: "EUCS-INC -- Incident Management"
+    category: INC
+    tags: ["eucs:basic"]
+    title: "Incident management process"
+    description: >-
+      A documented security incident management process covering detection, triage,
+      classification, containment, eradication, recovery, and post-incident review
+      shall be maintained for all EUCS-certified services. The process shall include
+      defined severity levels and response time targets for each level.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+      - BSI_C5_INM-01
+    references:
+      - "EUCS INC section -- incident management"
+
+  - id: EUCS_INC_2
+    pillar: "EUCS-INC -- Incident Management"
+    category: INC
+    tags: ["eucs:substantial"]
+    title: "Customer incident notification"
+    description: >-
+      The CSP shall notify affected customers of security incidents impacting their
+      data or service availability within 72 hours of detection. Notification shall
+      include incident description, affected services, initial impact assessment, and
+      remediation steps. A final root cause report shall be provided within 30 days.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+      - BSI_C5_INM-02
+    references:
+      - "EUCS INC section -- customer notification"
+
+  - id: EUCS_INC_3
+    pillar: "EUCS-INC -- Incident Management"
+    category: INC
+    tags: ["eucs:substantial"]
+    title: "Regulatory incident reporting to national authorities"
+    description: >-
+      Security incidents meeting NIS2 Art. 23 or sector-specific authority thresholds
+      shall be reported to the relevant national cybersecurity authority within the
+      defined timescales (initial notification within 24 hours; full report within 72
+      hours; final report within one month). Reporting channels shall be tested annually.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.24
+    references:
+      - "EUCS INC section -- regulatory reporting"
+      - "NIS2 Art. 23 -- incident notification"
+
+  - id: EUCS_INC_4
+    pillar: "EUCS-INC -- Incident Management"
+    category: INC
+    tags: ["eucs:high"]
+    title: "Forensic capability and chain-of-custody evidence"
+    description: >-
+      The CSP shall maintain forensic readiness enabling investigation of security
+      incidents affecting EUCS High services with chain-of-custody evidence
+      preservation. Forensic tools, trained personnel, and documented procedures
+      shall be available 24x7. Forensic investigation capability shall be tested
+      at least annually.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - signal_prefix: OBS
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.28
+      - BSI_C5_SIM-03
+    references:
+      - "EUCS INC section -- forensic capability (High level)"
+
+  # ---------------------------------------------------------------
+  # EUCS-DEV: Secure Development and Supply Chain (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_DEV_1
+    pillar: "EUCS-DEV -- Secure Development and Supply Chain"
+    category: DEV
+    tags: ["eucs:substantial"]
+    title: "Secure software development lifecycle (SSDLC)"
+    description: >-
+      Security requirements, threat modelling, and security testing shall be
+      integrated into the SDLC for all CSP-developed components used in EUCS-
+      certified services. Security review gates shall be mandatory at design,
+      pre-release, and post-deployment stages.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.25
+      - BSI_C5_DEV-01
+    references:
+      - "EUCS DEV section -- secure development"
+
+  - id: EUCS_DEV_2
+    pillar: "EUCS-DEV -- Secure Development and Supply Chain"
+    category: DEV
+    tags: ["eucs:substantial"]
+    title: "Software composition analysis and SBOM"
+    description: >-
+      Third-party software components used in EUCS-certified services shall be
+      inventoried through a software bill of materials (SBOM). Known vulnerabilities
+      in third-party components shall be tracked via CVE feeds and remediated within
+      defined timescales based on severity.
+    severity_default: high
+    evidence_basis:
+      - signal_prefix: SBOM
+    maps_to:
+      - ISO_27001_A.8.30
+      - BSI_C5_DEV-03
+    references:
+      - "EUCS DEV section -- software composition"
+
+  - id: EUCS_DEV_3
+    pillar: "EUCS-DEV -- Secure Development and Supply Chain"
+    category: DEV
+    tags: ["eucs:high"]
+    title: "Supply chain security assurance for critical components"
+    description: >-
+      The CSP shall assess the security posture of all critical hardware and software
+      suppliers providing components used in EUCS High-assurance infrastructure.
+      An approved component list shall be maintained and enforced. Suppliers shall
+      provide verifiable security attestations (audit reports, certifications).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.19
+      - BSI_C5_OIS-05
+    references:
+      - "EUCS DEV section -- supply chain assurance (High level)"
+
+  - id: EUCS_DEV_4
+    pillar: "EUCS-DEV -- Secure Development and Supply Chain"
+    category: DEV
+    tags: ["eucs:high"]
+    title: "Code review and automated security testing for EUCS High"
+    description: >-
+      All production code changes for EUCS High-certified services shall be subject
+      to mandatory peer review and automated security testing (SAST and DAST) before
+      deployment. Security findings of critical or high severity shall block
+      deployment until remediated. Testing results shall be retained for audit.
+    severity_default: high
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.26
+      - BSI_C5_DEV-02
+    references:
+      - "EUCS DEV section -- code review (High level)"
+
+  - id: EUCS_DEV_5
+    pillar: "EUCS-DEV -- Secure Development and Supply Chain"
+    category: DEV
+    tags: ["eucs:high"]
+    title: "Hardware and firmware integrity verification"
+    description: >-
+      Hardware and firmware in EUCS High-assurance infrastructure shall be
+      verified for integrity using Secure Boot, TPM attestation, or equivalent
+      mechanisms. Any integrity violation shall trigger automated alerting and
+      incident response. Firmware update procedures shall be authenticated.
+    severity_default: high
+    csp_inherited: true
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_OIS-05
+    references:
+      - "EUCS DEV section -- firmware integrity (High level)"
+      - "UEFI Secure Boot, TPM 2.0 attestation"
+
+  # ---------------------------------------------------------------
+  # EUCS-DPI: Data Portability and Interoperability (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_DPI_1
+    pillar: "EUCS-DPI -- Data Portability and Interoperability"
+    category: DPI
+    tags: ["eucs:high"]
+    title: "Customer data portability and export"
+    description: >-
+      The CSP shall provide documented and tested procedures for customers to export
+      all their data in a standard, non-proprietary format (e.g., open database
+      formats, standard file formats) within a defined SLA (maximum 30 days from
+      request). Data exports shall preserve data integrity and completeness.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_DAT-02
+    references:
+      - "EUCS DPI section -- data portability"
+
+  - id: EUCS_DPI_2
+    pillar: "EUCS-DPI -- Data Portability and Interoperability"
+    category: DPI
+    tags: ["eucs:high"]
+    title: "Secure data deletion on contract termination"
+    description: >-
+      Upon contract termination, the CSP shall delete all customer data, including
+      backups and replicas, within a defined period (maximum 90 days), using
+      certified deletion methods. The CSP shall provide the customer with documented
+      confirmation of deletion, including date, scope, and method used.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.14
+      - BSI_C5_DAT-01
+    references:
+      - "EUCS DPI section -- data deletion"
+
+  - id: EUCS_DPI_3
+    pillar: "EUCS-DPI -- Data Portability and Interoperability"
+    category: DPI
+    tags: ["eucs:high"]
+    title: "Open API standards for interoperability"
+    description: >-
+      Customer-facing APIs for EUCS High-certified services shall conform to
+      documented, versioned, and publicly available standards (e.g., OpenAPI 3.x,
+      CAMARA, ETSI standards) enabling integration with alternative cloud providers
+      or on-premises systems. API deprecation shall be announced with minimum 12
+      months notice.
+    severity_default: medium
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "EUCS DPI section -- API interoperability"
+
+  - id: EUCS_DPI_4
+    pillar: "EUCS-DPI -- Data Portability and Interoperability"
+    category: DPI
+    tags: ["eucs:high"]
+    title: "Vendor lock-in prevention and migration support"
+    description: >-
+      The CSP shall document all proprietary dependencies (APIs, data formats,
+      operational procedures) that could impede customer migration and provide
+      migration guides and tooling to facilitate transition to alternative providers.
+      Lock-in assessment shall be conducted annually and disclosed to customers.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "EUCS DPI section -- lock-in prevention"
+
+  # ---------------------------------------------------------------
+  # EUCS-AUD: Transparency and Audit (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: EUCS_AUD_1
+    pillar: "EUCS-AUD -- Transparency and Audit"
+    category: AUD
+    tags: ["eucs:substantial"]
+    title: "Third-party security attestation"
+    description: >-
+      The CSP shall hold a current third-party security attestation covering all
+      EUCS-certified services: BSI C5 Type 2, SOC 2 Type II, or equivalent
+      recognised by ENISA. The attestation scope shall map to the EUCS-certified
+      service scope. Attestation reports shall be available to customers under NDA.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_OIS-04
+    references:
+      - "EUCS AUD section -- third-party attestation"
+
+  - id: EUCS_AUD_2
+    pillar: "EUCS-AUD -- Transparency and Audit"
+    category: AUD
+    tags: ["eucs:substantial"]
+    title: "Customer audit rights"
+    description: >-
+      Customers (or their designated qualified auditors) shall have contractual rights
+      to audit the CSP's compliance with EUCS requirements within the customer's
+      scope. Audits shall be scheduled with reasonable notice (minimum 30 days) and
+      results kept confidential. CSP shall provide documentary evidence on request.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - BSI_C5_OIS-03
+    references:
+      - "EUCS AUD section -- audit rights"
+
+  - id: EUCS_AUD_3
+    pillar: "EUCS-AUD -- Transparency and Audit"
+    category: AUD
+    tags: ["eucs:high"]
+    title: "Formal EUCS certification by accredited CAB"
+    description: >-
+      For EUCS High-level services, the CSP shall obtain and maintain formal EUCS
+      certification from an ENISA-recognised conformity assessment body (CAB).
+      Annual surveillance audits shall be conducted. Loss of certification shall be
+      disclosed to all affected customers and competent authorities within 30 days.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    references:
+      - "EUCS AUD section -- formal certification (High level)"
+      - "EU Cybersecurity Act Art. 56 -- European cybersecurity certification"
+
+  - id: EUCS_AUD_4
+    pillar: "EUCS-AUD -- Transparency and Audit"
+    category: AUD
+    tags: ["eucs:high"]
+    title: "Regulatory authority access and inspection capability"
+    description: >-
+      For EUCS High-certified services, the CSP shall maintain documented procedures
+      enabling national cybersecurity authority (e.g., BSI, ANSSI) inspection access.
+      Access procedures shall balance security with authority access rights under the
+      EU Cybersecurity Act. Capability shall be tested with the authority at least
+      every three years.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    references:
+      - "EUCS AUD section -- authority access (High level)"
+      - "EU Cybersecurity Act Art. 58 -- national cybersecurity certification authorities"

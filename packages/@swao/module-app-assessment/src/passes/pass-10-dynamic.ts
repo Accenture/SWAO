@@ -203,12 +203,12 @@ export async function runDynamicPass(
     // DYN-10 failure is non-fatal.
   }
 
-  // Phase 3 -- vision analysis of Playwright screenshots (#1802).
+  // Phase 3 -- vision analysis of Playwright screenshots (#1802, #2814).
   // Gated on: (a) visionOpts provided by assess.ts, (b) ctx.llm.completeVision defined.
-  // Each screen with a JPEG buffer is sent to the configured LLM connector.
-  // TODO-PROMPT: DYN-11 (PII visible in UI), DYN-12 (sovereignty label), DYN-13 (embedded widget).
-  // Prompts are structural placeholders -- tune before production use.
+  // Each screen is sent to the LLM which returns a VisionFinding[] JSON array.
+  // Signal IDs: DYN-VIS-<screen_index>-<N> (per-finding, per-screen).
   let visionScreensAnalysed = 0;
+  let visionSignalsEmitted = 0;
   if (visionOpts && ctx.llm?.completeVision) {
     const maxScreens = visionOpts.maxScreens ?? 5;
     const screensWithImages = crawlResult.screens
@@ -219,54 +219,61 @@ export async function runDynamicPass(
       const img = screen.screenshotJpeg as Buffer;
       try {
         const visionPrompt =
-          'You are a data sovereignty and privacy auditor. Analyse this screenshot of a running application. ' +
-          'Identify: (1) any personally identifiable information (PII) visible in the UI (names, IDs, medical data); ' +
-          '(2) any sovereignty or classification labels rendered on screen; ' +
-          '(3) any embedded third-party widgets or iframes. ' +
-          'Respond with JSON: { "pii_visible": true|false, "pii_detail": "...", ' +
-          '"sovereignty_label": "..." | null, "embedded_widgets": ["..."] | [] }';
+          'You are a data sovereignty and privacy auditor reviewing a screenshot of a running web application. ' +
+          'Return ONLY a JSON array of findings. Each finding must follow this schema exactly:\n' +
+          '{\n' +
+          '  "finding_type": "pii_exposure" | "missing_label" | "version_leakage" | "missing_consent" | "third_party_widget" | "other",\n' +
+          '  "description": "<concise one-sentence description of the finding>",\n' +
+          '  "severity": "critical" | "high" | "medium" | "low" | "informational"\n' +
+          '}\n\n' +
+          'Finding type guidance:\n' +
+          '- pii_exposure: personally identifiable information visible in the rendered UI (names, IDs, health data, financial data)\n' +
+          '- missing_label: no data classification or sovereignty label visible where one is expected\n' +
+          '- version_leakage: software version, stack details, or internal paths exposed in the UI\n' +
+          '- missing_consent: cookie consent banner, GDPR notice, or data processing disclosure absent or non-compliant\n' +
+          '- third_party_widget: embedded external widget, iframe, or tracking element from a third-party domain\n' +
+          '- other: any other sovereignty or privacy concern not covered above\n\n' +
+          'If no findings are present, return an empty array: []\n' +
+          'Return ONLY the JSON array. No preamble, no explanation, no markdown code block.';
 
         const raw = await ctx.llm.completeVision(visionPrompt, [img]);
         visionScreensAnalysed++;
 
-        // Parse response and emit signals.
-        let parsed: { pii_visible?: boolean; pii_detail?: string; sovereignty_label?: string | null; embedded_widgets?: string[] } = {};
-        try { parsed = JSON.parse(raw) as typeof parsed; } catch { /* non-JSON response -- skip signal emission */ }
+        // Parse the VisionFinding[] array and emit per-screen indexed signals.
+        type VisionFinding = {
+          finding_type: 'pii_exposure' | 'missing_label' | 'version_leakage' | 'missing_consent' | 'third_party_widget' | 'other';
+          description: string;
+          severity: 'critical' | 'high' | 'medium' | 'low' | 'informational';
+        };
+        let findings: VisionFinding[] = [];
+        try {
+          const trimmed = raw.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+          const parsed: unknown = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            findings = (parsed as unknown[]).filter(
+              (f): f is VisionFinding =>
+                typeof f === 'object' && f !== null &&
+                typeof (f as Record<string, unknown>)['finding_type'] === 'string' &&
+                typeof (f as Record<string, unknown>)['description'] === 'string' &&
+                typeof (f as Record<string, unknown>)['severity'] === 'string',
+            );
+          }
+        } catch { /* non-JSON response -- no signals emitted for this screen */ }
 
-        if (parsed.pii_visible) {
+        const screenSignalsBefore = signals.length;
+        findings.forEach((finding, n) => {
           signals.push({
-            id: 'DYN-11',
+            id: `DYN-VIS-${screen.index}-${n + 1}`,
             source: 'dynamic_analysis',
             category: 'application',
-            severity: 'high',
-            derivation: `Vision analysis detected PII visible in the rendered UI of screen "${screen.url}". ` +
-              `${parsed.pii_detail ?? 'Details unavailable.'}`,
+            severity: finding.severity,
+            derivation: `[${finding.finding_type}] ${finding.description} (screen ${screen.index}: ${screen.url})`,
             evidence: [`screen ${screen.index}: ${screen.url}`],
             confidence: 'medium',
           });
-        }
-        if (parsed.sovereignty_label) {
-          signals.push({
-            id: 'DYN-12',
-            source: 'dynamic_analysis',
-            category: 'application',
-            severity: 'informational',
-            derivation: `Vision analysis identified a sovereignty or classification label on screen "${screen.url}": "${parsed.sovereignty_label}".`,
-            evidence: [`screen ${screen.index}: ${screen.url}`, `label: ${parsed.sovereignty_label}`],
-            confidence: 'medium',
-          });
-        }
-        if (Array.isArray(parsed.embedded_widgets) && parsed.embedded_widgets.length > 0) {
-          signals.push({
-            id: 'DYN-13',
-            source: 'dynamic_analysis',
-            category: 'application',
-            severity: 'medium',
-            derivation: `Vision analysis detected embedded third-party widget(s) on screen "${screen.url}": ${parsed.embedded_widgets.join(', ')}.`,
-            evidence: [`screen ${screen.index}: ${screen.url}`, ...parsed.embedded_widgets.map((w) => `widget: ${w}`)],
-            confidence: 'medium',
-          });
-        }
+        });
+        const screenSignalsEmitted = signals.length - screenSignalsBefore;
+        visionSignalsEmitted += screenSignalsEmitted;
 
         // Write call artefact to passes/ (same format as other pass artefacts).
         if (ctx.passesDir) {
@@ -276,7 +283,8 @@ export async function runDynamicPass(
             screen: { index: screen.index, url: screen.url },
             prompt: visionPrompt,
             response: raw,
-            signals_emitted: signals.filter((s) => ['DYN-11', 'DYN-12', 'DYN-13'].includes(s.id)).length,
+            findings_parsed: findings.length,
+            signals_emitted: screenSignalsEmitted,
           };
           const outPath = join(ctx.passesDir, `10-dynamic-vision-${slug}-call-1.yaml`);
           try { writeFileSync(outPath, dump(artefact, { lineWidth: 120 }), 'utf-8'); } catch { /* non-fatal */ }
@@ -312,8 +320,9 @@ export async function runDynamicPass(
       pii_form_fields_flagged: phase2PiiFieldsFlagged,
       third_party_scripts_total: phase2ThirdPartyScriptsTotal,
       cookie_consent_present: phase2CookieConsentPresent,
-      // Phase 3 vision summary (#1802)
+      // Phase 3 vision summary (#1802, #2814)
       vision_screens_analysed: visionScreensAnalysed,
+      vision_signals_emitted: visionSignalsEmitted,
     },
   };
 }

@@ -46,7 +46,7 @@ frameworks:
 
   - id: NIST_SP_800_66R2
     folder: nist-sp-800-66r2-hipaa
-    contributor: "Accenture SWAO team (community packaging)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "NIST SP 800-66r2 / 2024-02"
     applicability_hints:
       - us_health
@@ -65,7 +65,7 @@ frameworks:
 
   - id: PCI_DSS
     folder: pci-dss
-    contributor: "Accenture SWAO team (community packaging)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "4.0"
     applicability_hints:
       - payments
@@ -79,30 +79,63 @@ frameworks:
 
   - id: ISO_27001
     folder: iso-27001
-    contributor: "Accenture SWAO team (community packaging)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "2022"
     applicability_hints:
       - enterprise
       - ism
       - broad_coverage
     description: >
-      ISO/IEC 27001:2022 thin community packaging (sprint-039 #0358
-      Phase 1 migration from the standard-scope stub). 5-control PoC
-      depth; the 2022 revision's full 93-control Annex A is a future
-      authoring deepening.
+      ISO/IEC 27001:2022 full Annex A community packaging (sprint-138
+      #2807). 93 controls across 4 themes: Organisational (A.5, 37
+      controls), People (A.6, 8 controls), Physical (A.7, 14 controls
+      -- csp_inherited for datacenter controls), Technological (A.8,
+      34 controls). 11 new 2022 controls labelled. Cross-mapped to
+      BSI Grundschutz 2023 and GDPR.
+
+  - id: ISO_27001_DEMO
+    folder: iso-27001-demo
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2022 -- demo subset 2026-09-21"
+    applicability_hints:
+      - enterprise
+      - ism
+    description: >
+      ISO/IEC 27001:2022 demo subset (12 controls, cross-sector sample)
+      for live-presentation use. Covers A.5.1 (policies), A.5.15
+      (access control), A.5.23 (cloud services), A.6.3 (awareness),
+      A.7.1 (perimeters), A.7.4 (monitoring), A.8.2 (privileged
+      access), A.8.5 (auth), A.8.8 (vulnerabilities), A.8.15
+      (logging), A.8.24 (cryptography), A.8.28 (secure coding).
 
   - id: SOC_2
     folder: soc-2
-    contributor: "Accenture SWAO team (community packaging)"
+    contributor: "SWAO Development Team (Accenture)"
     version: "2017-revised"
     applicability_hints:
       - saas
       - b2b
       - us_market
+      - cloud_hosted
+      - enterprise_buyer
     description: >
-      SOC 2 Trust Services Criteria thin community packaging (sprint-039
-      #0358 Phase 1 migration from the standard-scope stub). 5-control
-      PoC depth covering the CC security baseline.
+      SOC 2 Trust Services Criteria full packaging (sprint-138 #2808).
+      64 controls across 5 Trust Service Categories: CC (36, required),
+      A (3, availability), PI (5, processing integrity), C (2,
+      confidentiality), P (18, privacy -- aud scope). Cross-mapped to
+      ISO_27001, GDPR (P), BSI_C5.
+
+  - id: SOC_2_DEMO
+    folder: soc-2-demo
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2017-revised -- demo subset 2026-09-21"
+    applicability_hints:
+      - saas
+      - b2b
+    description: >
+      SOC 2 Trust Services Criteria demo subset (12 controls, CC security
+      baseline sample) for live-presentation use. Covers CC1.1, CC2.1,
+      CC3.2, CC4.1, CC5.2, CC6.1, CC6.5, CC7.2, CC7.4, CC8.1, CC9.2, A1.2.
 
   - id: BSI_C5
     folder: bsi-c5
@@ -126,17 +159,79 @@ frameworks:
 
   - id: DORA
     folder: dora
-    contributor: "Accenture SWAO team (community packaging)"
-    version: "2024-01"
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2025-01-17"
     applicability_hints:
       - financial_services
       - eu_critical_infrastructure
+      - banking
+      - insurance
+      - payment_institution
+      - investment_firm
     description: >
-      DORA (EU Regulation 2022/2554) thin community packaging
-      (sprint-039 #0358 Phase 1 migration from the standard-scope stub).
-      5-control PoC depth covering ICT risk + incident reporting +
-      operational resilience testing + third-party ICT risk + info
-      sharing.
+      DORA (EU Regulation 2022/2554) full community packaging (sprint-138
+      #2801). 31 controls across 5 pillars: ICT-RM (18, Art 5-14), INCIDENT
+      (4, Art 15-19), DORT (3, Art 24-26), TPP (5, Art 28-31), SHARING
+      (1, Art 45). Cross-mapped to ISO_27001 and NIS2. Controls with
+      assessment_type_scope: [aud] require manual audit evidence.
+
+  - id: DORA_DEMO
+    folder: dora-demo
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2025-01-17 -- demo subset 2026-09-21"
+    applicability_hints:
+      - financial_services
+      - banking
+    description: >
+      DORA demo subset (12 controls, cross-pillar sample) for
+      live-presentation use. Covers Art 5_1, 6, 9_1, 9_2, 10_1, 11_1,
+      12_1 (Pillar 1), Art 15, 17 (Pillar 2), Art 24 (Pillar 3),
+      Art 28_1, 30 (Pillar 4). Use the full DORA framework for
+      production assessments.
+
+  - id: KRITIS_DE
+    folder: kritis-de
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2024"
+    applicability_hints:
+      - de_kritis
+      - german_critical_infrastructure
+      - energy_sector
+      - water_sector
+      - health_sector
+      - transport_sector
+      - finance_kritis
+      - ict_kritis
+      - de_sovereign
+    description: >
+      KRITIS-DE community packaging (sprint-138 #2802). 40 controls across 7
+      domains: Governance (6), Asset Inventory (5), Incident Detection and
+      Reporting (6), Access Control (5), Resilience and Continuity (7), Supply
+      Chain (5), Sector-Specific (6 -- Energy/Water, Health, Finance, Transport,
+      ICT/Telecom, KRITIS-DachG). Synthesised from BSI Orientierungshilfe §8a
+      BSIG, sector IT-Sicherheitskataloge, and KRITIS-DachG (2023). Cross-mapped
+      to BSI_C5, BSI_GRUNDSCHUTZ_2023, ISO_27001, and DORA (finance/ICT sectors).
+
+  - id: EUCS
+    folder: eucs
+    contributor: "SWAO Development Team (Accenture)"
+    version: "candidate-2024"
+    applicability_hints:
+      - eu_cloud_provider
+      - eu_sovereign_cloud
+      - iaas_provider
+      - paas_provider
+      - saas_provider
+      - eu_regulated
+      - cloud_certification
+    description: >
+      ENISA EU Cloud Security Certification Scheme (EUCS) community packaging
+      (sprint-138 #2803). Candidate scheme; formal adoption by EU delegated act
+      in preparation (2024-2026). 66 controls across 12 domains at 3 assurance
+      levels (Basic/Substantial/High): GRC (8), HRS (4), ASM (5), IAM (8),
+      CRY (6), PHY (5), OPS (8), BCP (5), INC (4), DEV (5), DPI (4), AUD (4).
+      EUCS High is the de-facto EU sovereign cloud certification equivalent to
+      BSI C5. Cross-mapped to BSI_C5, ISO_27001, SOC_2, GDPR.
 
   - id: LLM_SELECTION
     folder: llm-selection
@@ -332,6 +427,156 @@ frameworks:
       Governance, Risk Management and Compliance, Cybersecurity Operations,
       Third-Party Cybersecurity, and Cyber Resilience.
 
+  # ---- Sprint-138 #2805: OpenSSF Security Scorecard ----
+
+  - id: OPENSSF_SCORECARD
+    folder: openssf-scorecard
+    contributor: "SWAO Development Team (Accenture)"
+    version: "v4.13 / v5.0-rc (2024)"
+    applicability_hints:
+      - open_source_project
+      - oss_dependency
+      - supply_chain
+      - github_hosted
+      - community_software
+      - swao_self_assessment
+    description: >
+      OpenSSF Security Scorecard community packaging (sprint-138 #2805). Automated
+      security posture scoring for open-source projects, maintained by the Open Source
+      Security Foundation (OpenSSF / Linux Foundation). 17 controls across 5 domains:
+      Code and Repository Integrity (OSS-INT, 5), Vulnerability Management (OSS-VLN, 3),
+      Supply Chain Security (OSS-SCH, 4), Operational Security (OSS-OPS, 3), and
+      Community Health (OSS-CMH, 2). Covers all 18 Scorecard v4 checks with
+      published weights (0-10). Scorecard results queryable via api.securityscorecards.dev.
+      Cross-mapped to EU CRA (Annex I/II), NIS2 (supply chain), ISO_27001. SWAO itself
+      should score 8+ on this framework.
+
+  # ---- Sprint-138 #2804: EU regulatory frameworks -- NIS2 and EU CRA ----
+
+  - id: NIS2
+    folder: nis2
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2022-12-27"
+    applicability_hints:
+      - eu_essential_entity
+      - eu_important_entity
+      - energy_sector
+      - health_sector
+      - transport_sector
+      - digital_infrastructure
+      - msp
+      - eu_regulated
+      - water_sector
+      - banking
+      - financial_market
+      - public_administration
+    description: >
+      NIS2 Directive (EU) 2022/2555 community packaging (sprint-138 #2804). 46 controls
+      across 10 domains: Governance (GOV, 4), Risk Analysis (RSK, 6), Incident Handling
+      (INC, 6), Business Continuity (BCM, 5), Supply Chain Security (SCM, 5), Network
+      and Information System Security (NSC, 5), Cryptography (CRY, 3), Human Resources
+      Security (HRS, 5), MFA and Secure Communications (MFA, 3), Vulnerability
+      Management (VHR, 4). Incident reporting: 24h early warning, 72h notification,
+      1 month final report (Art. 23). Cross-mapped to ISO_27001, DORA (financial
+      sector dual-obligation), GDPR Art. 32, EU_CRA, and BSI_GRUNDSCHUTZ_2023.
+
+  - id: EU_CRA
+    folder: eu-cra
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2024-12-11"
+    applicability_hints:
+      - product_vendor
+      - iot_product
+      - eu_market
+      - software_product
+      - hardware_vendor
+      - connected_device
+      - eu_regulated
+    description: >
+      EU Cyber Resilience Act (EU) 2024/2847 community packaging (sprint-138 #2804).
+      In force 10 December 2024; most requirements apply from 11 December 2027;
+      Art. 14 reporting obligations from September 2026. 35 controls across 6 domains:
+      Security by Design (SBD, 12 -- Annex I Part I essential requirements), Vulnerability
+      Handling (VHR, 8 -- Annex I Part II lifecycle obligations), Critical Product
+      Classification (CLS, 5 -- Annex II Class I/II), Conformity Assessment (CAF, 4
+      -- EU DoC + CE marking + technical file), Market Surveillance (MSV, 3), and
+      Software Bill of Materials (SBM, 3). Mandatory SBOM in machine-readable format
+      (Art. 13). ENISA notification within 24h of actively exploited vulnerability
+      (Art. 14). Cross-mapped to NIS2, ISO_27001, GDPR, EUCS, and DORA.
+
+  # ---- Sprint-139 #0441: EU AI Act ----
+
+  - id: EU_AI_ACT
+    folder: eu-ai-act
+    contributor: "SWAO Development Team (Accenture)"
+    version: "2024-08-01"
+    applicability_hints:
+      - ai_system
+      - high_risk_ai
+      - gpai_provider
+      - automated_decisioning
+      - eu_market
+    description: >
+      EU Artificial Intelligence Act (Regulation EU 2024/1689) community packaging
+      (sprint-139 #0441). In force 2024-08-01; prohibited practices from 2025-02-02;
+      high-risk Annex III obligations from 2027-08-02. 37 controls across 4 parts:
+      Risk Classification (RC, 5 -- unconditional), High-Risk Requirements (HR, 18
+      -- applies when RC-02 = high-risk), Transparency Obligations (TR, 5 -- applies
+      for limited-risk or higher), GPAI Model Obligations (GP, 9 -- applies when
+      RC-04 = GPAI model on EU market). Conditional applicability: RC controls gate
+      HR/TR/GP. Signal prefix: AIACT. Assessment scope: [app, aud]. Cross-mapped to
+      GDPR, EU_CRA, NIS2, and AI_10_PILLARS.
+
+  # ---- Sprint-139 #0425: SecNumCloud v3.2 (ANSSI) ----
+
+  - id: SECNUMCLOUD
+    folder: secnumcloud
+    contributor: "SWAO Development Team (Accenture)"
+    version: "3.2"
+    applicability_hints:
+      - sovereign_cloud
+      - french_public_sector
+      - eu_restricted_data
+      - cloud_service_provider
+      - diffusion_restreinte
+    description: >
+      SecNumCloud v3.2 (ANSSI) community packaging (sprint-139 #0425). French sovereign
+      cloud qualification framework from the Agence nationale de la securite des systemes
+      d'information. As of July 2026, 9 providers hold qualification (OVHcloud, S3NS,
+      Orange, Outscale, others). 61 controls across 19 chapters: Governance (GOV, 3),
+      Human Resources (HRS, 3), Physical Security (PHY, 3), Asset Management (AST, 3),
+      Access Control (IAM, 4), Cryptography (CRY, 3), Network Security (NET, 4), Secure
+      Development (DEV, 3), Vulnerability Management (VUL, 3), Incident Management
+      (INC, 3), Business Continuity (BCM, 3), Compliance (CPL, 2), Logging (LOG, 4),
+      Configuration (CFG, 3), Supply Chain (SCM, 3), Reversibility (REV, 3), Data
+      Sovereignty (SOV, 3), Transparency (TRS, 3), Environment (ENV, 3). Signal prefix:
+      SECNUM. Assessment scope: [lz, aud]. Cross-mapped to EUCS, BSI_C5, ISO_27001,
+      GDPR, NIS2.
+
+  # ---- Sprint-139 #2847: EC Cloud Sovereignty Framework v1.2.1 ----
+
+  - id: EC_CSF
+    folder: ec-csf
+    contributor: "SWAO Development Team (Accenture)"
+    version: "1.2.1"
+    applicability_hints:
+      - sovereign_cloud
+      - eu_institutional
+      - cloud_service_provider
+      - eu_procurement
+      - digital_sovereignty
+    description: >
+      EC Cloud Sovereignty Framework v1.2.1 (European Commission, October 2025) community
+      packaging (sprint-139 #2847). Used in EUR 180M EU institutional cloud procurement
+      (awarded April 2026). 40 controls across 8 SOV domains with SEAL-0 to SEAL-4
+      maturity levels: Strategic Sovereignty (SOV-1, 4), Legal Sovereignty (SOV-2, 4),
+      Data Sovereignty (SOV-3, 5), Operational Sovereignty (SOV-4, 4), Supply Chain
+      Sovereignty (SOV-5, 4), Technology Sovereignty (SOV-6, 4), Security Sovereignty
+      (SOV-7, 5), Environmental Sovereignty (SOV-8, 4). SEAL-3/4 requirements map to
+      severity: high; SEAL-1/2 to severity: medium. Signal prefix: ECCSF. Assessment
+      scope: [lz, aud]. Companion to SECNUMCLOUD. Cross-mapped to SECNUMCLOUD, EUCS,
+      ISO_27001, GDPR, NIS2.
+
 # Sprint-039 #0358 Phase 1 COMPLETE: all 7 flagship regimes are now
 # community-shape (5 thin migrations this sprint + GDPR/HIPAA already
 # community via earlier sprints). Phase 3 of #0358 then deletes
@@ -347,3 +592,7 @@ frameworks:
 # 2026-07-26 #1226: COBIT_5 removed from binary bundle (D-02). ISACA COBIT 5 is
 # not freely redistributable; users install from GitHub as a custom framework.
 # The cobit-5/ folder is deleted; the PDF stays in docs/custom-frameworks/.
+# Sprint-138 #2804: NIS2 (46 controls, 10 domains) and EU_CRA (35 controls, 6 domains) added.
+# Sprint-139 #0441: EU_AI_ACT (37 controls, 4 parts -- RC/HR/TR/GP, conditional applicability) added.
+# Sprint-139 #0425: SECNUMCLOUD (61 controls, 19 chapters -- ANSSI sovereign cloud qualification) added.
+# Sprint-139 #2847: EC_CSF (40 controls, 8 SOV domains -- SEAL-0 to SEAL-4 maturity) added.

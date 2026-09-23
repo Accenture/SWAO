@@ -1,9 +1,6 @@
 # SWAO community framework metadata (design 029 §2.3 + §11)
-# Sprint-039 #0358 Phase 1 migration from the standard-scope PoC stub at
-# `swao/controls/standard/soc2-controls.yaml`. Thin packaging --
-# control set preserved verbatim from the stub (same 5 controls); only
-# the wrapper graduates to design-029 community shape. Catalogue depth
-# can grow in a future sprint without another wrapper migration.
+# Sprint-138 #2808: deepened from 5-control PoC stub to full 64-control
+# Trust Services Criteria coverage across all 5 categories.
 
 framework:
   id: SOC_2
@@ -11,16 +8,40 @@ framework:
   version: "2017-revised"
   authority: "American Institute of Certified Public Accountants (AICPA)"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/soc-2"
   applicability_hints:
     - saas
     - b2b
     - us_market
+    - cloud_hosted
+    - enterprise_buyer
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
-    AICPA Trust Services Criteria for SOC 2 reports cover security, availability, processing integrity, confidentiality, and privacy. Common Criteria (CC1-CC9) form the security baseline applied across all five categories.
+    AICPA Trust Services Criteria for SOC 2 reports. 64 controls across
+    5 Trust Service Categories: CC (36 controls, security -- required for
+    all SOC 2 reports), A (3, availability), PI (5, processing integrity),
+    C (2, confidentiality), P (18, privacy -- manual audit scope only).
+    Cross-mapped to ISO 27001, GDPR (P category), and BSI C5.
   references:
     - "AICPA Trust Services Criteria 2017 (revised 2022)"
-  catalogue_version: "0.1.0"
-  last_reviewed: "2026-05-24"
+    - "AICPA AT-C Section 205 -- Examination Engagements"
+    - "CSA Cloud Controls Matrix v4 (CCM-to-SOC2 cross-mapping)"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001        # bidirectional: CC6/CC7/CC8 <-> A.8 controls
+      - BSI_C5           # C5:2020 explicitly cross-maps to SOC 2 CC
+      - GDPR             # P category <-> GDPR Art 5/6/7/13/32/33
+      - EUCS             # EUCS Substantial/High overlaps CC6/CC7
+      - NIS2             # CC6.6/CC7/CC8 overlap with NIS2 Art 21
+
+  redistribution_note: >-
+    The AICPA Trust Services Criteria are publicly summarised at
+    aicpa-cima.com. The full AT-C §205 guide is a paid AICPA publication.
+    Control descriptions paraphrase the criteria intent; verbatim AICPA
+    text is not reproduced. No warranty is provided; consult a licensed
+    CPA or CISA for engagement-specific interpretation.

@@ -1,5 +1,13 @@
 # 1. Workspace Setup
 
+<iframe
+  width="100%"
+  style="aspect-ratio: 16/9; border: none; border-radius: 8px;"
+  src="https://www.youtube.com/embed/J-4LXaI3mqU"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen>
+</iframe>
+
 The **Workspace Setup** wizard runs when you select option 1 from the SWAO main menu. It initialises your engagement folder and writes a `.swao.yml` configuration file in one guided flow.
 
 ## What the wizard configures

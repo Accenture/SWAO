@@ -198,7 +198,9 @@ function ChatSessionView({ onBack, workspace, appId, model }: ChatScreenProps) {
     2 +                          // Input line + margin
     3                            // Footer: hint line, URL, marginTop
   );
-  const availableRows = Math.max(3, termRows - chromeRows);
+  // #2842: subtract 2 extra rows as a safety buffer -- the outer Box padding={1}
+  // consumes 1 row at the bottom, and estimation rounding can claim another row.
+  const availableRows = Math.max(3, termRows - chromeRows - 2);
 
   // Build the visible window: start from viewEnd = (total - clampedOffset) and
   // walk backwards accumulating height until the budget is exhausted.

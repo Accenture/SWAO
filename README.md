@@ -63,10 +63,12 @@ or runs by default in full sweeps (skip with `--no-crawl`).
 (`gpt-4o-mini` default; `gpt-5-mini` / `gpt-5` configurable), Ollama
 (air-gapped, local models), stub (CI / offline).
 
-**Community Frameworks:** 11 community frameworks ship bundled and free (GDPR,
-AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2, LLM
-Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, PCI-DSS v4, SAMA
-CSF v1). Install into a workspace via `swao framework install <id>`.
+**Community Frameworks:** 22 community frameworks ship bundled and free (GDPR,
+ISO 27001, DORA, NIS2, EU AI Act, EUCS, EU CRA, BSI C5, KRITIS-DE, SecNumCloud,
+EC Cloud Sovereignty Framework, SOC 2, OpenSSF Scorecard, PCI-DSS, SAMA CSF,
+NCA CCC, NCA ECC, BSI IT-Grundschutz, HIPAA/NIST, AI 10 Pillars, LLM Selection,
+and more). Install into a workspace via `swao framework install <id>`, or download
+all 22 as a standalone zip from the [Releases page](https://github.com/Accenture/SWAO/releases/latest).
 
 > **Operator references**
 > - **CLI command reference:** [`docs/runbooks/cli-reference.md`](docs/runbooks/cli-reference.md)
@@ -82,7 +84,7 @@ CSF v1). Install into a workspace via `swao framework install <id>`.
 
 ```
 Accenture/SWAO/
-+-- community-frameworks/  # 11 compliance framework YAMLs (download + customise)
++-- community-frameworks/  # 22 compliance framework YAMLs (download + customise)
 +-- lz-catalogues/         # Landing zone catalogue definitions
 +-- llm-gateway/           # LLM provider gateway configuration examples
 +-- examples/
@@ -98,7 +100,7 @@ Accenture/SWAO/
 
 | Directory | What it contains |
 |---|---|
-| [`community-frameworks/`](community-frameworks/) | 11 community framework YAML files (NIST CSF, ISO 27001, CIS, etc.) - download, customise, and drop into your `catalogs/` directory |
+| [`community-frameworks/`](community-frameworks/) | 22 community framework YAML files -- download, customise, and drop into your `catalogs/` directory; also available as a standalone zip from the Releases page |
 | [`lz-catalogues/`](lz-catalogues/) | Landing zone catalogue definitions for supported cloud providers; used by `swao assess --type landing-zone` |
 | [`llm-gateway/`](llm-gateway/) | LLM provider gateway configuration examples for OpenRouter, Azure OpenAI, Ollama, and others |
 | [`examples/`](examples/) | Sample assessment workspaces and published HTML artefacts; more samples will be added in upcoming releases |
@@ -235,31 +237,45 @@ cross-compiled for `linux/amd64` and `linux/arm64`; pull either via
 
 ## Community Frameworks
 
-SWAO ships 11 bundled community frameworks (Apache-2.0, free to use):
+SWAO ships 22 bundled community frameworks (Apache-2.0, free to use):
 
 | ID | Framework | Sector |
 |---|---|---|
-| `GDPR` | General Data Protection Regulation 2016/679 | Cross-sector, EU |
-| `AI_10_PILLARS` | AI 10 Pillars - Accenture responsible AI framework | AI/ML, cross-sector |
+| `AI_10_PILLARS` | AI 10 Pillars -- Accenture responsible AI framework | AI/ML, cross-sector |
 | `BSI_C5` | BSI Cloud Computing Compliance Criteria Catalogue 2020 | Cloud, Germany |
 | `BSI_IT_GRUNDSCHUTZ_2023` | BSI IT-Grundschutz 2023 | IT security, Germany |
-| `NIST_SP_800_66R2` | NIST SP 800-66r2 / HIPAA Security Rule guidance | Healthcare, US |
-| `LLM_SELECTION` | LLM Selection - sovereignty benchmarking for AI providers | AI/ML, cross-sector |
+| `DORA` | Digital Operational Resilience Act (EU 2022/2554) | Financial, EU |
+| `EC_CSF` | EC Cloud Sovereignty Framework v1.2.1 | Sovereign cloud, EU |
+| `EU_AI_ACT` | EU Artificial Intelligence Act (EU 2024/1689) | AI/ML, EU |
+| `EU_CRA` | EU Cyber Resilience Act (EU 2024/2847) | Product security, EU |
+| `EUCS` | EU Cloud Security Certification Scheme (ENISA) | Cloud, EU |
+| `GDPR` | General Data Protection Regulation 2016/679 | Cross-sector, EU |
+| `ISO_27001` | ISO/IEC 27001:2022 Information Security Management | Cross-sector, global |
+| `KRITIS_DE` | KRITIS-DE German Critical Infrastructure IT Security | Critical infrastructure, DE |
+| `LLM_SELECTION` | LLM Selection -- sovereignty benchmarking for AI providers | AI/ML, cross-sector |
 | `NCA_CCC_2_2024_CSP` | NCA Cloud Cybersecurity Controls 2.0 (Cloud Service Provider) | Cloud, Saudi Arabia |
 | `NCA_CCC_2_2024_CST` | NCA Cloud Cybersecurity Controls 2.0 (Cloud Service Tenant) | Cloud, Saudi Arabia |
 | `NCA_ECC_2_2024` | NCA Essential Cybersecurity Controls 2.0 | Cybersecurity, Saudi Arabia |
-| `PCI_DSS` | PCI DSS 4.0.1 - Payment Card Industry Data Security Standard | Financial, global |
+| `NIS2` | NIS2 Directive (EU 2022/2555) | Critical infrastructure, EU |
+| `NIST_SP_800_66R2_HIPAA` | NIST SP 800-66r2 / HIPAA Security Rule guidance | Healthcare, US |
+| `OPENSSF_SCORECARD` | OpenSSF Security Scorecard | Open source, global |
+| `PCI_DSS` | PCI DSS 4.0.1 -- Payment Card Industry Data Security Standard | Financial, global |
 | `SAMA_CSF_V1` | SAMA Cyber Security Framework v1.0 | Financial, Saudi Arabia |
+| `SECNUMCLOUD` | SecNumCloud v3.2 -- ANSSI Sovereign Cloud Certification | Sovereign cloud, FR/EU |
+| `SOC_2` | SOC 2 Trust Services Criteria (AICPA 2017-revised) | SaaS/cloud, US |
 
-Install a framework into the active workspace:
+All 22 frameworks ship inside the binary. Use the CLI to copy any framework into your
+active workspace, or download the standalone zip from the
+[Releases page](https://github.com/Accenture/SWAO/releases/latest) for offline use
+and customisation without the CLI.
 
 ```bash
 swao framework list                 # enumerate bundled + installed frameworks
-swao framework install GDPR         # copy bundled framework into workspace
-swao framework info NIST_SP_800_66R2  # print authority, controls count, contributor
+swao framework install GDPR         # copy bundled framework YAML into workspace
+swao framework info ISO_27001       # print authority, controls count, contributor
 ```
 
-Organisations can author custom frameworks by providing a `framework-meta.yaml` +
+Organisations can also author custom frameworks by providing a `framework-meta.yaml` +
 `controls.yaml` pair and placing them in `catalogs/community/<slug>/`.
 
 ---

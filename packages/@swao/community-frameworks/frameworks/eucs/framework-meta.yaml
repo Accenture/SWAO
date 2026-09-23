@@ -1,0 +1,65 @@
+# SWAO community framework metadata -- EUCS
+# Sprint-138 #2803: EU Cloud Security Certification Scheme (ENISA candidate scheme).
+# Status: candidate scheme; formal adoption by EU delegated act in preparation.
+
+framework:
+  id: EUCS
+  name: "EU Cloud Security Certification Scheme (EUCS)"
+  version: "candidate-2024"
+  authority: "European Union Agency for Cybersecurity (ENISA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/eucs"
+  applicability_hints:
+    - eu_cloud_provider
+    - eu_sovereign_cloud
+    - iaas_provider
+    - paas_provider
+    - saas_provider
+    - eu_regulated
+    - cloud_certification
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    ENISA EU Cloud Security Certification Scheme (EUCS), candidate scheme
+    published December 2020, under delegated act preparation by the European
+    Commission (2024-2026). Three assurance levels: Basic (foundational
+    security for lower-risk cloud services), Substantial (enhanced controls
+    for significant cybersecurity risk), and High (stringent controls for
+    sensitive EU data, equivalent to BSI C5 High / sovereign cloud). 66 controls
+    across 12 domains: GRC (8), HRS (4), ASM (5), IAM (8), CRY (6), PHY (5),
+    OPS (8), BCP (5), INC (4), DEV (5), DPI (4), AUD (4). Controls are tagged
+    by minimum assurance level (eucs:basic, eucs:substantial, eucs:high). This
+    framework targets cloud service providers (CSPs) certifying their offerings;
+    cloud customers may use it to evaluate CSP certification status. Cross-mapped
+    to BSI_C5, ISO_27001, GDPR, SOC_2. NOTE: EUCS is a candidate scheme -- frame
+    use as certification preparation, not yet a mandatory regulation.
+  references:
+    - "ENISA EUCS candidate scheme v1.0 (December 2020)"
+    - "https://www.enisa.europa.eu/publications/eucs-cloud-scheme"
+    - "EU Cybersecurity Act (Regulation EU 2019/881) Art. 46-65"
+    - "ENISA EUCS v1.1 working group reports (2022-2024)"
+    - "ISO/IEC 27017:2015 -- Cloud-specific security controls"
+    - "ISO/IEC 27018:2019 -- PII protection in public clouds"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: EUCS
+
+  cross_mapping_hints:
+    target_frameworks:
+      - BSI_C5              # BSI C5 is the de-facto EUCS High reference in Germany
+      - ISO_27001           # Substantial/High baseline ISMS requirement maps to ISO 27001
+      - SOC_2               # CC6/CC7/CC8 overlap EUCS IAM/OPS/INC
+      - GDPR                # EUCS DPI and INC domains align with GDPR Art 32-33
+      - KRITIS_DE           # High-assurance KRITIS-DE cloud KRITIS workloads
+      - DORA                # Finance sector CSPs face EUCS + DORA dual obligation
+
+  redistribution_note: >-
+    The EUCS candidate scheme is published by ENISA under EU open publication
+    terms. Control descriptions paraphrase the scheme's requirements for machine
+    ingestion; they do not constitute legal advice. The candidate scheme may
+    change before formal adoption as an EU delegated act under the EU
+    Cybersecurity Act. Consult an ENISA-recognised conformity assessment body
+    (CAB) for authoritative certification guidance.
+
+  replaces: []

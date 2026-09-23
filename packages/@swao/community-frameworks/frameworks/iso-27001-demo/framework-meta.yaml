@@ -1,0 +1,28 @@
+# SWAO community framework metadata -- ISO 27001:2022 demo subset
+# 12-control cross-sector sample for live-presentation use.
+# Sprint-138 #2807.
+
+framework:
+  id: ISO_27001_DEMO
+  name: "ISO 27001:2022 Demo (12 controls) -- Cross-Sector Sample"
+  version: "2022 -- demo subset 2026-09-21"
+  authority: "International Organization for Standardization"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - enterprise
+    - ism
+  scoring_mode: binary
+  description: >-
+    Demo subset of ISO/IEC 27001:2022 for live-presentation use. Twelve
+    controls sampled across all four Annex A themes to illustrate SWAO
+    assessment breadth: policies, access control, cloud security, people
+    awareness, physical perimeters, monitoring, privileged access,
+    authentication, vulnerability management, logging, cryptography, and
+    secure coding. Use the full ISO_27001 framework for production
+    assessments.
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-09-21"
+
+  replaces: []

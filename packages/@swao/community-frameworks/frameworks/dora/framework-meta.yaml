@@ -1,25 +1,55 @@
 # SWAO community framework metadata (design 029 §2.3 + §11)
-# Sprint-039 #0358 Phase 1 migration from the standard-scope PoC stub at
-# `swao/controls/standard/dora-controls.yaml`. Thin packaging --
-# control set preserved verbatim from the stub (same 5 controls); only
-# the wrapper graduates to design-029 community shape. Catalogue depth
-# can grow in a future sprint without another wrapper migration.
+# Sprint-138 #2801: deepened from 5-control PoC stub to full 31-control
+# coverage of DORA Regulation EU 2022/2554 across all 5 pillars.
 
 framework:
   id: DORA
   name: "Digital Operational Resilience Act"
-  version: "2024-01"
-  authority: "European Union"
+  version: "2025-01-17"
+  authority: "European Union (Regulation EU 2022/2554)"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/dora"
   applicability_hints:
     - financial_services
     - eu_critical_infrastructure
+    - banking
+    - insurance
+    - payment_institution
+    - investment_firm
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
-    EU Regulation 2022/2554 in force since 2025-01-17 covering ICT risk management, incident reporting, digital operational resilience testing, third-party ICT risk, and information sharing for financial entities operating in the European Union.
+    EU Regulation 2022/2554 (DORA) in force since 2025-01-17, covering ICT
+    risk management, incident reporting, digital operational resilience testing
+    (DORT), third-party ICT risk management (TPP), and information sharing
+    for financial entities in the European Union. 31 controls across 5 pillars:
+    ICT-RM (18, Articles 5-14), INCIDENT (4, Articles 15-19), DORT (3, Articles
+    24-26), TPP (5, Articles 28-31), SHARING (1, Article 45). Controls with
+    assessment_type_scope: [aud] require manual audit or regulatory evidence.
+    Cross-mapped to ISO 27001:2022 and NIS2 (Directive EU 2022/2555).
   references:
+    - "EU Regulation 2022/2554 (DORA) -- Official Journal 2022-12-27"
     - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2554"
-  catalogue_version: "0.1.0"
-  last_reviewed: "2026-05-24"
+    - "ENISA DORA Implementation Guide 2024"
+    - "EBA Guidelines on ICT and Security Risk Management (EBA/GL/2019/04)"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: DORA
+
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001      # extensive overlap -- Art 5-14 maps to A.5/A.8 themes
+      - NIS2           # NIS2 Art 21 essential entity requirements parallel DORA Pillar 1-2
+      - BSI_C5         # C5:2020 OPS/AVL/INM domains overlap DORA Pillars 1-2
+      - SOC_2          # CC6/CC7/CC8 overlap DORA Art 7-10
+      - GDPR           # Art 32 technical measures; Art 33-34 breach notification
+
+  redistribution_note: >-
+    DORA (Regulation EU 2022/2554) is an EU legislative act in the public
+    domain per EUR-Lex terms of reuse. Control descriptions paraphrase the
+    regulation's requirements; they do not constitute legal advice.
+    Consult qualified legal counsel and your competent authority for
+    jurisdiction-specific implementation guidance.
+
+  replaces: []

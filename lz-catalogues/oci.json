@@ -10,7 +10,8 @@
       "source_note": "Hand-curated from Oracle documentation (retrieved 2026-08-11). Two distinct OCI products are encoded here, distinguished by region ID: standard OCI (oc1 realm, operator Oracle Corporation USA) and OCI EU Sovereign Cloud (oc19 realm, operator Oracle EU Sovereign Cloud legal entities with EU-resident staff only). Standard regions use domain oraclecloud.com; sovereign regions use oraclecloud.eu (console cloud.oracle.eu). CLOUD Act: Oracle Corporation is US-incorporated; CLOUD Act and FISA 702 attach to all standard regions regardless of data centre location. EU Sovereign Cloud: EU-only operations materially reduce but do not eliminate US extraterritorial exposure (Oracle Corporation remains US parent company); CLOUD Act retained, FISA 702 omitted for sovereign regions given EU-only personnel nexus -- see Design 096 D-096-03 for legal review recommendation and OQ-6. Certifications: BSI C5 Type II confirmed for eu-frankfurt-1 (Accorp Partners blog 2025; cloud13.ch 2025-07-28). BSI C5 also confirmed for eu-frankfurt-2 (EU Sovereign Cloud; cloud13.ch 2025-07-28). ISO 27001 (27001/27017/27018/27701), SOC 1/2/3, CSA STAR Level 2, PCI DSS confirmed for all commercial regions (Oracle Cloud Compliance portal). TISAX: no evidence found; do not include without ENX portal confirmation (Design 096 OQ-3). IT-Grundschutz: Oracle references framework alignment but no BSI-IGZ certificate published as of 2026-08-11 (Design 096 OQ-2). Key management: OCI Vault supports BYOK (import own key material) and HYOK/External KMS (keys stored outside OCI, only key references in OCI) via FIPS 140-2 Level 3 HSMs. Source: docs.oracle.com/en-us/iaas/Content/General/Concepts/regions.htm (region list); docs.oracle.com/en-us/iaas/Content/sovereign-cloud/eu-sovereign-cloud.htm (sovereign region IDs, endpoints, realm); docs.oracle.com/en-us/iaas/Content/KeyManagement/Concepts/keyoverview.htm (vault/BYOK/HYOK); docs.oracle.com/en-us/iaas/Content/home.htm (service catalog); cpl.thalesgroup.com/blog/data-security/oci-customers-manage-encryption-keys-cloud-service (HYOK confirmation). eu-amsterdam-1 and other standard EU regions (eu-paris-1, eu-marseille-1, eu-milan-1, eu-stockholm-1) share the same service set as eu-frankfurt-1 with residency_country and certification adjustments (BSI_C5 not confirmed outside Frankfurt). eu-madrid-2 is the DR pair for eu-frankfurt-2 and shares the same service list. ARM Ampere (A1) shapes are NOT available in EU Sovereign Cloud. Free Tier is NOT available in EU Sovereign Cloud."
     },
     "confidence": "medium",
-    "regions_count": 4
+    "regions_count": 6,
+    "last_updated": "2026-09-20"
   },
   "regions": [
     {
@@ -2242,6 +2243,126 @@
             "provider-managed"
           ],
           "last_verified": "2026-08-11",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "me-dubai-1",
+      "display": "UAE East (Dubai)",
+      "country": "AE",
+      "area": "Middle East",
+      "sovereignty": {
+        "residency_country": "AE",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal)",
+          "status": "ga",
+          "fulfills": ["vm_compute"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": ["object_storage"],
+          "capabilities": ["versioning"],
+          "key_custody": ["provider-managed", "byok"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "Block Storage",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": ["block_storage"],
+          "capabilities": [],
+          "key_custody": ["provider-managed", "byok"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "VCN",
+          "name": "Virtual Cloud Network",
+          "status": "ga",
+          "fulfills": ["vpc"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        }
+      ]
+    },
+    {
+      "id": "me-jeddah-1",
+      "display": "Saudi Arabia West (Jeddah)",
+      "country": "SA",
+      "area": "Middle East",
+      "sovereignty": {
+        "residency_country": "SA",
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": [
+          "ISO_27001",
+          "SOC_2"
+        ]
+      },
+      "services": [
+        {
+          "code": "Compute",
+          "name": "Compute (VMs, Bare Metal)",
+          "status": "ga",
+          "fulfills": ["vm_compute"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "Object Storage",
+          "name": "Object Storage",
+          "status": "ga",
+          "fulfills": ["object_storage"],
+          "capabilities": ["versioning"],
+          "key_custody": ["provider-managed", "byok"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "Block Storage",
+          "name": "Block Volume",
+          "status": "ga",
+          "fulfills": ["block_storage"],
+          "capabilities": [],
+          "key_custody": ["provider-managed", "byok"],
+          "last_verified": "2026-09-20",
+          "source": "curated"
+        },
+        {
+          "code": "VCN",
+          "name": "Virtual Cloud Network",
+          "status": "ga",
+          "fulfills": ["vpc"],
+          "capabilities": [],
+          "key_custody": ["provider-managed"],
+          "last_verified": "2026-09-20",
           "source": "curated"
         }
       ]

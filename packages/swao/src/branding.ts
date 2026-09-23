@@ -21,7 +21,7 @@
 
 // Kept as a literal so release-version-consistency.gate.mjs can parse it.
 // bump-version.mjs updates this constant in lockstep with package.json.
-export const SWAO_VERSION = '1.1.0';
+export const SWAO_VERSION = '1.2.0';
 
 export const SWAO_LANDING_URL = 'https://accenture.github.io/SWAO/en/';
 

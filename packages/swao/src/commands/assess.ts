@@ -2052,6 +2052,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 crawlConfig.authType = 'form';
               }
             }
+            // #2823/#2824: read opt-in flag from .swao.yml assessment block.
+            // Cloud vision (any provider except ollama) is blocked unless allow_cloud_vision: true.
+            const allowCloudVision = (swaoYml.assessment as Record<string, unknown> | undefined)?.['allow_cloud_vision'] === true;
             if (crawlConfig) {
               console.log('[info] Running Pass 10 -- dynamic_analysis (Playwright crawl)...');
               const crawlStart = Date.now();
@@ -2073,17 +2076,34 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 if (llmConfigured) {
                   try {
                     visionLlm = createLlmProvider(opts.app, 'dynamic-vision', llmProviderConfig);
-                    const isCloud = visionLlm.name === 'anthropic' || visionLlm.name === 'openai';
-                    if (isCloud) {
+                    // #2824: treat any provider that is not explicitly local (ollama) as off-box cloud.
+                    const isCloud = visionLlm.name !== 'ollama';
+                    if (isCloud && !allowCloudVision) {
+                      // Fail closed: skip vision, do not send screenshots to cloud.
                       console.warn(
-                        '[SOVEREIGNTY WARNING] Pass 10 dynamic_analysis -- Playwright screenshots will be sent to ' +
-                        `the configured ${visionLlm.name} cloud connector for vision analysis. Screenshots may contain ` +
-                        'PII from authenticated app screens. Confirm this is acceptable for your data classification.',
+                        `[info] Pass 10 vision analysis skipped: cloud connector "${visionLlm.name}" detected but ` +
+                        'allow_cloud_vision is not set in .swao.yml. Add "allow_cloud_vision: true" under the ' +
+                        'assessment block to enable screenshot upload to cloud LLMs.',
                       );
-                    }
-                    logApp(opts.app, 'info', 'dynamic.vision.start', 'Pass 10 vision analysis starting', {
-                      context: { max_screens: visionMaxScreens, provider: visionLlm.name, model: visionLlm.model },
-                    });
+                      logApp(opts.app, 'warn', 'dynamic.vision.skipped', 'Pass 10 vision analysis skipped: cloud connector without allow_cloud_vision opt-in', {
+                        context: { provider: visionLlm.name, reason: 'allow_cloud_vision_not_set' },
+                      });
+                      visionLlm = undefined;
+                      effectiveVisionLlm = undefined;
+                    } else {
+                      if (isCloud) {
+                        console.warn(
+                          '[SOVEREIGNTY WARNING] Pass 10 dynamic_analysis -- Playwright screenshots will be sent to ' +
+                          `the configured ${visionLlm.name} cloud connector for vision analysis. Screenshots may contain ` +
+                          'PII from authenticated app screens. allow_cloud_vision is set -- proceeding.',
+                        );
+                        logApp(opts.app, 'warn', 'dynamic.vision.cloud', 'Pass 10 cloud vision enabled via allow_cloud_vision', {
+                          context: { provider: visionLlm.name },
+                        });
+                      }
+                      logApp(opts.app, 'info', 'dynamic.vision.start', 'Pass 10 vision analysis starting', {
+                        context: { max_screens: visionMaxScreens, provider: visionLlm.name, model: visionLlm.model },
+                      });
                     // #1997 Gap 1: route live Playwright vision calls through the leg
                     // recorder so they appear in per-leg NDJSON with call_type:'vision'.
                     const visionTracking = new UsageTrackingLlmProvider(visionLlm);
@@ -2091,6 +2111,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                     if (legRecorder) {
                       legRecorder.setPass('10-dynamic', 'dynamic-vision');
                       effectiveVisionLlm = legRecorder.wrap(visionTracking, () => visionTracking.snapshot());
+                    }
                     }
                   } catch {
                     visionLlm = undefined;
@@ -2167,6 +2188,18 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                   if (syntheticScreens.length > 0) {
                     let visionLlm: ReturnType<typeof createLlmProvider> | undefined;
                     try { visionLlm = createLlmProvider(opts.app, 'dynamic-vision', llmProviderConfig); } catch { /* skip */ }
+                    // #2823/#2824: gate cloud vision behind allow_cloud_vision opt-in (same as live-crawl path).
+                    if (visionLlm && visionLlm.name !== 'ollama' && !allowCloudVision) {
+                      console.warn(
+                        `[info] Pass 10 parity-baseline vision skipped: cloud connector "${visionLlm.name}" detected but ` +
+                        'allow_cloud_vision is not set in .swao.yml. Add "allow_cloud_vision: true" under the ' +
+                        'assessment block to enable screenshot upload to cloud LLMs.',
+                      );
+                      logApp(opts.app, 'warn', 'dynamic.vision.skipped', 'Pass 10 parity-baseline vision skipped: cloud connector without allow_cloud_vision opt-in', {
+                        context: { provider: visionLlm.name, reason: 'allow_cloud_vision_not_set', source: 'parity-baseline' },
+                      });
+                      visionLlm = undefined;
+                    }
                     if (visionLlm) {
                       // Route vision calls through the leg recorder so they appear in
                       // per-leg NDJSON with call_type:'vision' (#1997 Gap 1).

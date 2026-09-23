@@ -1,0 +1,24 @@
+# SWAO community framework metadata -- SOC 2 Trust Services Criteria demo subset
+# 12-control CC security baseline sample for live-presentation use.
+# Sprint-138 #2808.
+
+framework:
+  id: SOC_2_DEMO
+  name: "SOC 2 Trust Services Criteria Demo (12 controls) -- CC Security Sample"
+  version: "2017-revised -- demo subset 2026-09-21"
+  authority: "American Institute of Certified Public Accountants (AICPA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - saas
+    - b2b
+  scoring_mode: binary
+  description: >-
+    Demo subset of SOC 2 Trust Services Criteria for live-presentation use.
+    Twelve controls sampled from the CC security baseline and A availability
+    category. Use the full SOC_2 framework for production assessments.
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-09-21"
+
+  replaces: []

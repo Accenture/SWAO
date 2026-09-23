@@ -309,7 +309,10 @@ export function createRecordingProvider(
         // #2011: vision providers often report 0 output_tokens; fall back to a
         // character-based estimate (same pattern as promptTok || tokensEst above).
         const completionEst = Math.ceil(response.length / 4);
-        const completionTok = Math.max(0, after.output_tokens - before.output_tokens) || completionEst;
+        const rawCompletionTok = Math.max(0, after.output_tokens - before.output_tokens);
+        const completionTok = rawCompletionTok || completionEst;
+        // #2798: flag when the char-based fallback was used (provider reported 0 output_tokens).
+        const completionEstimated = rawCompletionTok === 0;
         const reasoningTok = after.reasoning_tokens !== undefined && before.reasoning_tokens !== undefined
           ? Math.max(0, after.reasoning_tokens - before.reasoning_tokens)
           : undefined;
@@ -327,6 +330,7 @@ export function createRecordingProvider(
             prompt: promptTok || tokensEst,
             completion: completionTok,
             ...(reasoningTok !== undefined ? { reasoning: reasoningTok } : {}),
+            ...(completionEstimated ? { completion_estimated: true as const } : {}),
           },
           cost_usd: {
             computed: deps.costSource === 'local' ? null : Math.max(0, Math.round(costDelta * 1e6) / 1e6),

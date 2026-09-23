@@ -181,6 +181,9 @@ export async function fetchPortfolioContext(
     { label: 'Signals and Findings',   toolName: 'swao_signals',             args: appArgs  },
     { label: 'Risk Register',          toolName: 'swao_risks',               args: appArgs  },
     { label: 'Landing Zone Readiness', toolName: 'swao_portfolio_lz',        args: baseArgs },
+    // #2792: workspace file tree + key config at session init so the LLM can answer file questions.
+    { label: 'Workspace Files',        toolName: 'swao_list_directory',      args: {} },
+    { label: 'Workspace Config',       toolName: 'swao_read_file',           args: { file_path: '.swao.yml' } },
   ];
 
   const parts: string[] = [];
@@ -191,7 +194,14 @@ export async function fetchPortfolioContext(
     } catch { /* graceful skip */ }
   }
 
-  return parts.join('\n\n');
+  // #2828: cap context size so the system prompt stays within the model's input window.
+  const MAX_CONTEXT_CHARS = 80_000;
+  const joined = parts.join('\n\n');
+  if (joined.length > MAX_CONTEXT_CHARS) {
+    return joined.slice(0, MAX_CONTEXT_CHARS) +
+      '\n\n[Context truncated to fit chat session limits. Use specific questions to query individual data.]';
+  }
+  return joined;
 }
 
 /**

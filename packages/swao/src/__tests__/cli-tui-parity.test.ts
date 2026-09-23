@@ -370,6 +370,9 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_workspace_inventory',
   // #2772 (sprint-134) -- SWAO Chat history persistence tool.
   'swao_chat_history',
+  // sprint-136 -- workspace file access tools for MCP context.
+  'swao_list_directory',
+  'swao_read_file',
   // Sprint-104 prompt name + argument names (picked up by the name-regex scanner
   // from the swao_evidence_interview prompt definition in server.ts).
   'swao_evidence_interview',

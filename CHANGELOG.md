@@ -7,6 +7,63 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+---
+
+## [1.2.0] - 2026-09-22
+
+Minor release: 22 community frameworks, EU AI Act + SecNumCloud + EC CSF, VitePress
+documentation, framework test suite, Dynamic Vision Intelligence, MCP file access
+(sprints 135-139).
+
+### Added
+
+- EU AI Act framework (37 controls, RC/HR/TR/GP parts, conditional applicability)
+  (#0441, sprint-139).
+- SecNumCloud v3.2 framework (65 controls, 19 ANSSI chapters, [lz, aud] scope)
+  (#0425, sprint-139).
+- EC Cloud Sovereignty Framework v1.2.1 (40 controls, 8 SOV domains, SEAL maturity)
+  (#2847, sprint-139).
+- EUCS deepened to 66 controls across 12 domains at Basic/Substantial/High assurance
+  levels (#2803, sprint-138).
+- ISO 27001:2022 deepened to 93 controls (4 themes, 11 new 2022 controls, 14
+  csp_inherited physical controls) (#2807, sprint-138).
+- SOC 2 deepened to 64 controls (5 TSC categories) (#2808, sprint-138).
+- DORA deepened to 31 controls (5 pillars) (#2801, sprint-138).
+- KRITIS-DE framework (40 controls, 7 domains, BSIG §8a obligations) (#2802).
+- NIS2 framework (46 controls, Art. 21 measures + Art. 23 incident reporting) (#2804).
+- EU CRA framework (35 controls, Annex I/II, mandatory SBOM, Art. 14 reporting) (#2804).
+- OpenSSF Security Scorecard framework (17 controls, weighted mode) (#2805).
+- Community frameworks test suite: 124 tests (A1-A6 structural + registry + round-trip)
+  (#1332, sprint-139).
+- VitePress: 11 community framework reference pages and "Community Frameworks" sidebar
+  section (#2845, sprint-139).
+- YouTube Quick Start embed in quick-start.md (#2846, sprint-139).
+- Dynamic vision pass: `DYN-VIS-<screen>-<N>` signals from LLM screenshot analysis
+  (#2814, sprint-136).
+- MCP tools `swao_read_file` and `swao_list_directory` for LLM workspace file access
+  (#2792, sprint-136).
+- `vision_max_screens` config key; SetupWizard Playwright step (#2815, sprint-136).
+- GCP and OCI Middle East lz-catalog regions (#2799 #2800, sprint-136).
+
+### Changed
+
+- EUCS `multi_domain_axes: true` in regime_meta; gdpr-demo ART44 tag corrected (#1564).
+- Community framework count: 14 -> 22.
+- SWAO Chat session init primes LLM context via `swao_list_directory` +
+  `swao_read_file` (#2792, sprint-136).
+
+### Security
+
+- `@nestjs/core`, `@nestjs/common`, `@angular/core` bumped in ghostfolio test fixture
+  to clear Dependabot alerts #143-#145 (#2844, sprint-139).
+- `fast-uri` 3.x -> 4.1.5 (BDSA-2026-32596) (#2790, sprint-135).
+- `fastify` -> 5.12.5 (CVE-2026-76169/84428/84469/84504) (#2790, sprint-135).
+- `liquidjs` override -> >=10.29.0 (CVE-2026-61556/69222) (#2790, sprint-135).
+
+---
+
 ## [1.1.0] - 2026-09-17
 
 Minor release: SWAO Chat, Enterprise-gated multi-turn portfolio chat.

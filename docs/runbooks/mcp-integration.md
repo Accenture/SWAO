@@ -58,14 +58,13 @@ directly (binary mode) vs. `node` pointing at `dist/index.js` (source mode).
 
 ## 2. Binary mode: placing the files
 
-The binary distribution ships three executables and a Windows batch launcher.
+The binary distribution ships three executables.
 All files are found in `dist-bin/` of the SWAO repository, or delivered as a
 release archive.
 
 | File | Platform | Purpose |
 |---|---|---|
 | `swao-enterprise-win.exe` | Windows | Self-contained CLI and MCP server |
-| `swao.bat` | Windows | Interactive menu launcher (terminal use only, not for MCP) |
 | `swao-macos` | macOS | Self-contained CLI and MCP server |
 | `swao-linux` | Linux | Self-contained CLI and MCP server |
 
@@ -73,7 +72,7 @@ release archive.
 
 1. Create a permanent folder for the binary, for example `C:\tools\swao\`.
    Avoid `Downloads` or any folder that may be cleared.
-2. Copy `swao-enterprise-win.exe` (and optionally `swao.bat`) into that folder.
+2. Copy `swao-enterprise-win.exe` into that folder.
 3. Optionally add `C:\tools\swao\` to your `PATH` so you can run `swao` from
    any terminal. This is not required for MCP.
 

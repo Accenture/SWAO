@@ -1,0 +1,1216 @@
+# SWAO Community Framework -- SecNumCloud v3.2 (ANSSI)
+# Sprint-139 #0425: 65 controls across 19 chapters.
+# Severity mapping: mandatory requirements -> high; conditional/recommended -> medium.
+
+regime_meta:
+  id: SECNUMCLOUD
+  name: "SecNumCloud v3.2 -- ANSSI Sovereign Cloud Certification"
+  version: "3.2"
+  scope: community
+  authority: "ANSSI -- Agence nationale de la securite des systemes d'information (France)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/secnumcloud"
+  catalogue_version: "1.0.0"
+  signal_prefix: SECNUM
+  last_reviewed: "2026-09-22"
+  applicability_hints:
+    - sovereign_cloud
+    - french_public_sector
+    - eu_restricted_data
+    - cloud_service_provider
+    - diffusion_restreinte
+  description: >-
+    SecNumCloud v3.2 qualification framework by ANSSI. 65 controls across
+    19 chapters covering governance, physical security, access control,
+    cryptography, network security, supply chain, data sovereignty, and
+    reversibility. Targets cloud service providers seeking French sovereign
+    cloud qualification for DR-equivalent sensitive data processing.
+  references:
+    - "ANSSI SecNumCloud v3.2 -- ssi.gouv.fr"
+    - "SecNumCloud v3.2.a English translation (ITIF)"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # Chapter 1 -- Governance and Risk Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_GOV_01
+    chapter: "Chapter 1 -- Governance and Risk Management"
+    category: GOV
+    title: "Information security governance structure"
+    description: >-
+      Establish and maintain a formal information security governance structure
+      with defined roles, responsibilities, and accountability for cloud service
+      security. The CSP must designate a Chief Information Security Officer (CISO)
+      or equivalent with sufficient authority and independence to enforce security
+      requirements. The governance structure must cover the full scope of
+      SecNumCloud-qualified services.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.2
+      - NIS2_GOV_01
+    references:
+      - "SecNumCloud v3.2 Chapter 1"
+
+  - id: SECNUM_GOV_02
+    chapter: "Chapter 1 -- Governance and Risk Management"
+    category: GOV
+    title: "Risk assessment and treatment process"
+    description: >-
+      Conduct and document a formal information security risk assessment for
+      the cloud service scope, using a recognised methodology (e.g. EBIOS
+      Risk Manager, ISO 27005). The risk treatment plan must be approved by
+      senior management, with residual risk explicitly accepted by the
+      authorised risk owner. Repeat the assessment at least annually and
+      whenever a significant change occurs.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: risk_register
+    maps_to:
+      - ISO_27001_Cl.6.1
+      - NIS2_RSK_01
+    references:
+      - "SecNumCloud v3.2 Chapter 1"
+
+  - id: SECNUM_GOV_03
+    chapter: "Chapter 1 -- Governance and Risk Management"
+    category: GOV
+    title: "Security policy and management commitment"
+    description: >-
+      Publish and enforce a top-level information security policy covering the
+      SecNumCloud service scope. Senior management must formally endorse the
+      policy. Policies must be reviewed annually and communicated to all
+      personnel with security responsibilities.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.1
+    references:
+      - "SecNumCloud v3.2 Chapter 1"
+
+  # ---------------------------------------------------------------
+  # Chapter 2 -- Human Resources Security
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_HRS_01
+    chapter: "Chapter 2 -- Human Resources Security"
+    category: HRS
+    title: "Background screening for security-sensitive roles"
+    description: >-
+      Conduct background checks on all personnel with privileged access to
+      SecNumCloud infrastructure before assignment. Checks must verify identity,
+      criminal record (where legally permitted), and professional references.
+      For roles handling Diffusion Restreinte (DR) data, habilitation under
+      the French national security framework may be required.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.6.1
+    references:
+      - "SecNumCloud v3.2 Chapter 2"
+
+  - id: SECNUM_HRS_02
+    chapter: "Chapter 2 -- Human Resources Security"
+    category: HRS
+    title: "Security awareness and training programme"
+    description: >-
+      Provide mandatory security awareness training to all personnel on joining
+      and annually thereafter. Role-specific training must be provided for
+      personnel with privileged access, development responsibilities, or
+      customer-facing security functions. Document training completion rates.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.6.3
+    references:
+      - "SecNumCloud v3.2 Chapter 2"
+
+  - id: SECNUM_HRS_03
+    chapter: "Chapter 2 -- Human Resources Security"
+    category: HRS
+    title: "Personnel offboarding and access revocation"
+    description: >-
+      Revoke all physical and logical access rights upon termination or role
+      change within 24 hours of departure. Return all assets (tokens, smart
+      cards, devices). Conduct a documented offboarding process including
+      non-disclosure obligation reminder.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.6.5
+    references:
+      - "SecNumCloud v3.2 Chapter 2"
+
+  # ---------------------------------------------------------------
+  # Chapter 3 -- Physical and Environmental Security
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_PHY_01
+    chapter: "Chapter 3 -- Physical and Environmental Security"
+    category: PHY
+    title: "Secure perimeter and access control for data centres"
+    description: >-
+      Implement physical perimeter security for all data centres hosting
+      SecNumCloud-qualified infrastructure. Requirements include: secure
+      perimeter with controlled entry, security personnel or CCTV monitoring,
+      and mantrap or airlock access for sensitive zones. Physical access must
+      be logged and reviewed monthly.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.1
+    references:
+      - "SecNumCloud v3.2 Chapter 3"
+
+  - id: SECNUM_PHY_02
+    chapter: "Chapter 3 -- Physical and Environmental Security"
+    category: PHY
+    title: "Environmental controls for infrastructure protection"
+    description: >-
+      Deploy environmental controls in all data centres including: uninterruptible
+      power supply (UPS), backup generators, fire suppression systems, cooling
+      redundancy, and flood/water detection. Power and cooling must meet N+1
+      minimum redundancy for SecNumCloud-qualified service zones.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.7.5
+    references:
+      - "SecNumCloud v3.2 Chapter 3"
+
+  - id: SECNUM_PHY_03
+    chapter: "Chapter 3 -- Physical and Environmental Security"
+    category: PHY
+    title: "EU-based physical infrastructure location"
+    description: >-
+      All data centres hosting SecNumCloud-qualified services must be physically
+      located within the European Union. Server hardware, storage, and networking
+      equipment must not be subject to physical access by entities outside the EU
+      without explicit documented authorisation.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - GDPR_Art_44
+    references:
+      - "SecNumCloud v3.2 Chapter 3"
+
+  # ---------------------------------------------------------------
+  # Chapter 4 -- Asset Management and Lifecycle
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_AST_01
+    chapter: "Chapter 4 -- Asset Management and Lifecycle"
+    category: AST
+    title: "Hardware asset inventory and lifecycle management"
+    description: >-
+      Maintain a complete, current inventory of all hardware assets used to
+      deliver SecNumCloud-qualified services. The inventory must record asset
+      type, location, owner, lifecycle status, and disposal date. Conduct
+      reconciliation against the inventory at least quarterly.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.9
+    references:
+      - "SecNumCloud v3.2 Chapter 4"
+
+  - id: SECNUM_AST_02
+    chapter: "Chapter 4 -- Asset Management and Lifecycle"
+    category: AST
+    title: "Secure disposal of storage media"
+    description: >-
+      Apply cryptographic erasure or physical destruction to all storage media
+      before disposal or reuse. Document the destruction process with a
+      certificate of destruction. Media containing customer data must be
+      destroyed in-house or by a certified EU-based destruction service.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.7.14
+    references:
+      - "SecNumCloud v3.2 Chapter 4"
+
+  - id: SECNUM_AST_03
+    chapter: "Chapter 4 -- Asset Management and Lifecycle"
+    category: AST
+    title: "Software asset inventory and licence compliance"
+    description: >-
+      Maintain an inventory of all software components used in the delivery of
+      SecNumCloud-qualified services, including open source and third-party
+      libraries. Track licence compliance and verify software provenance.
+      Unauthorised software must be prevented via application whitelisting.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.9
+    references:
+      - "SecNumCloud v3.2 Chapter 4"
+
+  # ---------------------------------------------------------------
+  # Chapter 5 -- Access Control and Authentication
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_IAM_01
+    chapter: "Chapter 5 -- Access Control and Authentication"
+    category: IAM
+    title: "Privileged access management and least-privilege"
+    description: >-
+      Implement least-privilege access for all privileged accounts. Privileged
+      access must be time-limited, approved per-session, and logged end-to-end.
+      Privileged accounts must not be used for non-administrative tasks.
+      A Privileged Access Management (PAM) solution must be in place.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: IAM_PRIVILEGED_ACCESS
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.2
+      - NIS2_NSC_01
+    references:
+      - "SecNumCloud v3.2 Chapter 5"
+
+  - id: SECNUM_IAM_02
+    chapter: "Chapter 5 -- Access Control and Authentication"
+    category: IAM
+    title: "Multi-factor authentication for privileged and remote access"
+    description: >-
+      Enforce multi-factor authentication (MFA) for all privileged account
+      access and all remote access to SecNumCloud infrastructure. MFA must
+      use a second factor resistant to phishing attacks (hardware token,
+      smartcard, or FIDO2). SMS or voice OTP are not accepted as a second
+      factor for privileged access.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: IAM_MFA_ENABLED
+    maps_to:
+      - ISO_27001_A.8.5
+    references:
+      - "SecNumCloud v3.2 Chapter 5"
+
+  - id: SECNUM_IAM_03
+    chapter: "Chapter 5 -- Access Control and Authentication"
+    category: IAM
+    title: "Access review and certification"
+    description: >-
+      Conduct quarterly reviews of all privileged and administrative access
+      rights to SecNumCloud infrastructure. Reviews must confirm that access
+      remains necessary and appropriate to the user's role. Excess rights
+      must be revoked within 5 business days of the review.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.18
+    references:
+      - "SecNumCloud v3.2 Chapter 5"
+
+  - id: SECNUM_IAM_04
+    chapter: "Chapter 5 -- Access Control and Authentication"
+    category: IAM
+    title: "Identity segregation -- operator and customer planes"
+    description: >-
+      Implement strict identity separation between CSP operator identities and
+      customer tenant identities. CSP operators must not be able to access
+      customer data planes without explicit per-incident authorisation. Identity
+      boundary violations must generate automated security alerts.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.2
+    references:
+      - "SecNumCloud v3.2 Chapter 5"
+
+  # ---------------------------------------------------------------
+  # Chapter 6 -- Cryptography
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_CRY_01
+    chapter: "Chapter 6 -- Cryptography"
+    category: CRY
+    title: "Encryption at rest for customer data"
+    description: >-
+      Encrypt all customer data at rest using algorithms and key lengths
+      approved by ANSSI (currently AES-256 or equivalent). Customer-managed
+      keys (BYOK) or CSP-managed keys with customer-controlled key rotation
+      must be available. Encryption must be applied at the volume or object
+      storage layer, not only at the file level.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: ENCRYPT_AT_REST
+    maps_to:
+      - ISO_27001_A.8.24
+      - GDPR_Art_32
+    references:
+      - "SecNumCloud v3.2 Chapter 6"
+
+  - id: SECNUM_CRY_02
+    chapter: "Chapter 6 -- Cryptography"
+    category: CRY
+    title: "Encryption in transit using approved protocols"
+    description: >-
+      Enforce encryption for all data in transit between customer and cloud
+      service, and between internal service components, using TLS 1.2 or
+      higher with ANSSI-approved cipher suites. TLS 1.0 and 1.1 must be
+      disabled. Certificate lifecycle management must prevent expired
+      certificates in production.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: ENCRYPT_IN_TRANSIT
+    maps_to:
+      - ISO_27001_A.8.24
+      - GDPR_Art_32
+    references:
+      - "SecNumCloud v3.2 Chapter 6"
+
+  - id: SECNUM_CRY_03
+    chapter: "Chapter 6 -- Cryptography"
+    category: CRY
+    title: "Cryptographic key management"
+    description: >-
+      Implement a key management system covering key generation, storage,
+      distribution, rotation, and destruction. Keys must be generated using
+      certified random number generators. Key storage must use Hardware Security
+      Modules (HSMs) certified to FIPS 140-2 Level 3 or Common Criteria
+      EAL4+. Master keys must never leave the HSM in clear text.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.24
+    references:
+      - "SecNumCloud v3.2 Chapter 6"
+
+  # ---------------------------------------------------------------
+  # Chapter 7 -- Network Security and Filtering
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_NET_01
+    chapter: "Chapter 7 -- Network Security and Filtering"
+    category: NET
+    title: "Network segmentation and tenant isolation"
+    description: >-
+      Implement cryptographic network isolation between customer tenants. No
+      tenant must be able to observe or interfere with another tenant's network
+      traffic. Segment the SecNumCloud infrastructure into management, operator,
+      and customer data planes with separate network paths.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.22
+      - NIS2_NSC_01
+    references:
+      - "SecNumCloud v3.2 Chapter 7"
+
+  - id: SECNUM_NET_02
+    chapter: "Chapter 7 -- Network Security and Filtering"
+    category: NET
+    title: "Firewall and network filtering controls"
+    description: >-
+      Deploy stateful firewalls and network filtering at all boundaries of
+      the SecNumCloud service perimeter. Default-deny posture: only explicitly
+      approved traffic flows are permitted. Firewall rule changes must follow
+      a change management process with documented justification and approver.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.20
+    references:
+      - "SecNumCloud v3.2 Chapter 7"
+
+  - id: SECNUM_NET_03
+    chapter: "Chapter 7 -- Network Security and Filtering"
+    category: NET
+    title: "DDoS protection and resilience"
+    description: >-
+      Implement DDoS mitigation capabilities to protect SecNumCloud service
+      availability. Mitigation must be capable of absorbing volumetric attacks
+      at the network ingress. Conduct DDoS simulation exercises annually.
+      Upstream peering and transit agreements must include anti-spoofing measures.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - NIS2_RSL_01
+    references:
+      - "SecNumCloud v3.2 Chapter 7"
+
+  - id: SECNUM_NET_04
+    chapter: "Chapter 7 -- Network Security and Filtering"
+    category: NET
+    title: "Secure remote administration channels"
+    description: >-
+      Restrict all remote administration of SecNumCloud infrastructure to
+      dedicated, encrypted, and monitored channels. Administration must not
+      traverse customer data networks. Use jump hosts or bastion hosts for
+      operator access; disable direct SSH/RDP from internet-facing networks.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.22
+    references:
+      - "SecNumCloud v3.2 Chapter 7"
+
+  # ---------------------------------------------------------------
+  # Chapter 8 -- Secure Development
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_DEV_01
+    chapter: "Chapter 8 -- Secure Development"
+    category: DEV
+    title: "Secure software development lifecycle (SSDLC)"
+    description: >-
+      Implement a secure software development lifecycle covering requirements,
+      design, development, testing, and deployment for all software components
+      used in the SecNumCloud service. Security requirements must be defined
+      at project inception. Threat modelling must be conducted for high-impact
+      components.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.8.25
+    references:
+      - "SecNumCloud v3.2 Chapter 8"
+
+  - id: SECNUM_DEV_02
+    chapter: "Chapter 8 -- Secure Development"
+    category: DEV
+    title: "Code review and security testing"
+    description: >-
+      Conduct security-focused code reviews for all changes to SecNumCloud
+      service components. Automated static analysis (SAST) and software
+      composition analysis (SCA) must be integrated into the CI pipeline.
+      Penetration testing by an ANSSI-accredited PASSI must be performed
+      annually and after major releases.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.8.29
+    references:
+      - "SecNumCloud v3.2 Chapter 8"
+
+  - id: SECNUM_DEV_03
+    chapter: "Chapter 8 -- Secure Development"
+    category: DEV
+    title: "Test environment separation"
+    description: >-
+      Maintain strict separation between production and test/development
+      environments. Production data must not be used in test environments
+      without explicit CISO approval and anonymisation. Test environments
+      must not be accessible from the internet unless explicitly required
+      and approved.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.31
+    references:
+      - "SecNumCloud v3.2 Chapter 8"
+
+  # ---------------------------------------------------------------
+  # Chapter 9 -- Patch Management and Vulnerability Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_VUL_01
+    chapter: "Chapter 9 -- Patch Management and Vulnerability Management"
+    category: VUL
+    title: "Vulnerability scanning and management process"
+    description: >-
+      Conduct automated vulnerability scanning of all SecNumCloud infrastructure
+      components at least weekly. Critical vulnerabilities must be triaged within
+      24 hours of detection. Patch deployment timelines: critical vulnerabilities
+      within 72 hours; high within 30 days; medium within 90 days.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: VULN_SCAN_ENABLED
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_NSC_01
+      - ISO_27001_A.8.8
+    references:
+      - "SecNumCloud v3.2 Chapter 9"
+
+  - id: SECNUM_VUL_02
+    chapter: "Chapter 9 -- Patch Management and Vulnerability Management"
+    category: VUL
+    title: "Patch management and deployment cadence"
+    description: >-
+      Implement a formal patch management process covering identification,
+      testing, approval, deployment, and verification. Emergency patches must
+      bypass normal change windows but still require post-deployment documentation.
+      Patch compliance rate must be tracked and reported to the CISO monthly.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.8
+    references:
+      - "SecNumCloud v3.2 Chapter 9"
+
+  - id: SECNUM_VUL_03
+    chapter: "Chapter 9 -- Patch Management and Vulnerability Management"
+    category: VUL
+    title: "Responsible disclosure and bug bounty programme"
+    description: >-
+      Operate or participate in a responsible disclosure programme for
+      security vulnerabilities in SecNumCloud services. Publish a clear
+      vulnerability disclosure policy on the CSP website. Acknowledge
+      reports within 5 business days and communicate resolution timelines.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - NIS2_NSC_01
+    references:
+      - "SecNumCloud v3.2 Chapter 9"
+
+  # ---------------------------------------------------------------
+  # Chapter 10 -- Incident Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_INC_01
+    chapter: "Chapter 10 -- Incident Management"
+    category: INC
+    title: "Security incident response process"
+    description: >-
+      Implement and maintain a documented security incident response process
+      covering detection, classification, containment, eradication, recovery,
+      and post-incident review. An incident response team must be available
+      24/7. The process must define escalation paths and communication
+      responsibilities for security incidents affecting SecNumCloud services.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_01
+      - ISO_27001_A.5.26
+    references:
+      - "SecNumCloud v3.2 Chapter 10"
+
+  - id: SECNUM_INC_02
+    chapter: "Chapter 10 -- Incident Management"
+    category: INC
+    title: "Security incident notification to customers"
+    description: >-
+      Notify affected customers of security incidents impacting their data
+      or service availability within 72 hours of detection. Initial
+      notifications must include the nature of the incident, systems affected,
+      actions taken, and a point of contact. Follow-up reports must be
+      provided until the incident is resolved.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_03
+      - GDPR_Art_33
+    references:
+      - "SecNumCloud v3.2 Chapter 10"
+
+  - id: SECNUM_INC_03
+    chapter: "Chapter 10 -- Incident Management"
+    category: INC
+    title: "ANSSI notification for major security incidents"
+    description: >-
+      Report major security incidents affecting SecNumCloud-qualified services
+      to ANSSI within 24 hours of detection. A major incident is one that
+      affects the confidentiality or integrity of customer data, or the
+      availability of qualified services for more than 4 hours. Provide a
+      detailed incident report within 5 business days.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_INC_04
+    references:
+      - "SecNumCloud v3.2 Chapter 10"
+
+  # ---------------------------------------------------------------
+  # Chapter 11 -- Business Continuity
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_BCM_01
+    chapter: "Chapter 11 -- Business Continuity"
+    category: BCM
+    title: "Business continuity and disaster recovery plan"
+    description: >-
+      Maintain a documented business continuity and disaster recovery plan
+      covering all SecNumCloud-qualified services. The plan must define
+      Recovery Time Objectives (RTOs) and Recovery Point Objectives (RPOs)
+      aligned with the service SLA. Plans must be tested at least annually
+      through full failover exercises.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.5.30
+      - NIS2_RSL_01
+    references:
+      - "SecNumCloud v3.2 Chapter 11"
+
+  - id: SECNUM_BCM_02
+    chapter: "Chapter 11 -- Business Continuity"
+    category: BCM
+    title: "Geographic redundancy and data replication"
+    description: >-
+      Deploy SecNumCloud infrastructure with geographic redundancy across at
+      least two physically separate EU data centre locations. Customer data
+      replication between sites must be synchronous for critical services
+      or asynchronous with a documented and tested RPO. Failover must be
+      achievable without CSP manual intervention.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.5.30
+    references:
+      - "SecNumCloud v3.2 Chapter 11"
+
+  - id: SECNUM_BCM_03
+    chapter: "Chapter 11 -- Business Continuity"
+    category: BCM
+    title: "Backup and restoration testing"
+    description: >-
+      Perform automated backups of all customer data in SecNumCloud services
+      at a frequency consistent with the agreed RPO. Restore from backup
+      must be tested quarterly for representative data sets. Test results
+      must be documented and reviewed by the CISO.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.13
+    references:
+      - "SecNumCloud v3.2 Chapter 11"
+
+  # ---------------------------------------------------------------
+  # Chapter 12 -- Compliance and Legal Requirements
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_CPL_01
+    chapter: "Chapter 12 -- Compliance and Legal Requirements"
+    category: CPL
+    title: "French and EU legal framework compliance"
+    description: >-
+      Demonstrate compliance with applicable French and EU laws governing
+      cloud services, including GDPR, French data protection law (Loi
+      Informatique et Libertes as amended), Network and Information Security
+      (NIS2) requirements, and sector-specific regulations. Maintain a
+      regulatory compliance register.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_5
+      - NIS2_GOV_01
+    references:
+      - "SecNumCloud v3.2 Chapter 12"
+
+  - id: SECNUM_CPL_02
+    chapter: "Chapter 12 -- Compliance and Legal Requirements"
+    category: CPL
+    title: "Intellectual property and licence compliance"
+    description: >-
+      Ensure all software used in SecNumCloud service delivery is properly
+      licensed and that open source licence obligations are met. Conduct
+      annual licence compliance audits. Document all third-party software
+      and its licence terms.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.32
+    references:
+      - "SecNumCloud v3.2 Chapter 12"
+
+  # ---------------------------------------------------------------
+  # Chapter 13 -- Audit and Logging
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_LOG_01
+    chapter: "Chapter 13 -- Audit and Logging"
+    category: LOG
+    title: "Security event logging coverage"
+    description: >-
+      Enable security event logging for all SecNumCloud infrastructure
+      components including: authentication events, privileged operations,
+      configuration changes, network traffic anomalies, and security alert
+      triggers. Logs must be forwarded to a centralised log management
+      platform in near-real-time.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: STATE_LOG_ENABLED
+    maps_to:
+      - ISO_27001_A.8.15
+      - NIS2_NSC_01
+    references:
+      - "SecNumCloud v3.2 Chapter 13"
+
+  - id: SECNUM_LOG_02
+    chapter: "Chapter 13 -- Audit and Logging"
+    category: LOG
+    title: "Log integrity and tamper protection"
+    description: >-
+      Protect security logs from unauthorised modification or deletion.
+      Log management systems must use write-once or cryptographically
+      chained log storage. Log access must be restricted to authorised
+      security operations personnel. Log deletion must require dual approval.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.15
+    references:
+      - "SecNumCloud v3.2 Chapter 13"
+
+  - id: SECNUM_LOG_03
+    chapter: "Chapter 13 -- Audit and Logging"
+    category: LOG
+    title: "Log retention period"
+    description: >-
+      Retain security event logs for a minimum of 12 months, with at least
+      3 months available for immediate online query. For events related to
+      security incidents, retain logs for 5 years or until legal proceedings
+      related to the incident are concluded, whichever is longer.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - signal: STATE_LOG_RETENTION_DAYS
+    maps_to:
+      - ISO_27001_A.8.15
+    references:
+      - "SecNumCloud v3.2 Chapter 13"
+
+  - id: SECNUM_LOG_04
+    chapter: "Chapter 13 -- Audit and Logging"
+    category: LOG
+    title: "Security monitoring and alerting"
+    description: >-
+      Operate a Security Operations Centre (SOC) or equivalent continuous
+      monitoring function covering SecNumCloud infrastructure 24/7. Security
+      alerts must be triaged within 15 minutes of generation. The SOC must
+      maintain playbooks for the 20 highest-priority alert types.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - NIS2_NSC_01
+    references:
+      - "SecNumCloud v3.2 Chapter 13"
+
+  # ---------------------------------------------------------------
+  # Chapter 14 -- Cloud Configuration Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_CFG_01
+    chapter: "Chapter 14 -- Cloud Configuration Management"
+    category: CFG
+    title: "Hardened configuration baselines"
+    description: >-
+      Define and enforce hardened configuration baselines for all
+      SecNumCloud infrastructure components (hypervisors, OS images, network
+      devices, management tooling). Baselines must be based on recognised
+      standards (CIS Benchmarks, DISA STIGs, or ANSSI configuration guides).
+      Deviations from baselines must be documented and approved.
+    severity_default: high
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.9
+    references:
+      - "SecNumCloud v3.2 Chapter 14"
+
+  - id: SECNUM_CFG_02
+    chapter: "Chapter 14 -- Cloud Configuration Management"
+    category: CFG
+    title: "Change management for infrastructure components"
+    description: >-
+      Implement a formal change management process for all changes to
+      SecNumCloud infrastructure. Changes must be approved before implementation,
+      tested in a non-production environment, and documented with rollback
+      procedures. Emergency changes must be retrospectively approved within
+      24 hours.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+    maps_to:
+      - ISO_27001_A.8.32
+    references:
+      - "SecNumCloud v3.2 Chapter 14"
+
+  - id: SECNUM_CFG_03
+    chapter: "Chapter 14 -- Cloud Configuration Management"
+    category: CFG
+    title: "Infrastructure-as-code and configuration drift detection"
+    description: >-
+      Manage SecNumCloud infrastructure configuration using infrastructure-as-code
+      (IaC) tools with version control. Implement automated configuration drift
+      detection that alerts when production configuration deviates from the
+      approved baseline. Remediate drift within 24 hours of detection.
+    severity_default: medium
+    assessment_type_scope: [lz]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - ISO_27001_A.8.9
+    references:
+      - "SecNumCloud v3.2 Chapter 14"
+
+  # ---------------------------------------------------------------
+  # Chapter 15 -- Supply Chain and Third-Party Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_SCM_01
+    chapter: "Chapter 15 -- Supply Chain and Third-Party Management"
+    category: SCM
+    title: "Third-party supplier security assessment"
+    description: >-
+      Conduct security assessments of all critical third-party suppliers
+      contributing to SecNumCloud service delivery. Assessments must verify
+      the supplier's security posture against SecNumCloud-equivalent
+      requirements. Contracts must include security obligations, audit rights,
+      and incident notification requirements.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.22
+      - NIS2_SCM_01
+    references:
+      - "SecNumCloud v3.2 Chapter 15"
+
+  - id: SECNUM_SCM_02
+    chapter: "Chapter 15 -- Supply Chain and Third-Party Management"
+    category: SCM
+    title: "EU-based subprocessor requirement"
+    description: >-
+      Restrict subprocessors of customer data to entities established in the
+      EU and not subject to extraterritorial laws from non-EU jurisdictions
+      that could compel access to customer data (e.g. CLOUD Act, FISA 702).
+      Maintain a public register of all subprocessors. Notify customers at
+      least 30 days before adding a new subprocessor.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_28
+    references:
+      - "SecNumCloud v3.2 Chapter 15"
+
+  - id: SECNUM_SCM_03
+    chapter: "Chapter 15 -- Supply Chain and Third-Party Management"
+    category: SCM
+    title: "Software bill of materials (SBOM) for service components"
+    description: >-
+      Maintain and provide on request a Software Bill of Materials (SBOM)
+      covering all software components used in SecNumCloud service delivery.
+      The SBOM must identify all open source dependencies, their versions,
+      and known vulnerabilities. Update the SBOM with each service release.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - ISO_27001_A.5.22
+    references:
+      - "SecNumCloud v3.2 Chapter 15"
+
+  # ---------------------------------------------------------------
+  # Chapter 16 -- Reversibility and Portability
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_REV_01
+    chapter: "Chapter 16 -- Reversibility and Portability"
+    category: REV
+    title: "Customer data export capability"
+    description: >-
+      Provide customers with the ability to export their data in a documented,
+      open, and interoperable format without proprietary lock-in. Data export
+      must be available at any time during the contract and for 30 days after
+      contract termination. Export must not require CSP assistance beyond
+      standard self-service tooling.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - GDPR_Art_20
+    references:
+      - "SecNumCloud v3.2 Chapter 16"
+
+  - id: SECNUM_REV_02
+    chapter: "Chapter 16 -- Reversibility and Portability"
+    category: REV
+    title: "Service termination and data deletion"
+    description: >-
+      Commit to a documented service termination process that guarantees
+      complete and verifiable deletion of customer data within 30 days of
+      contract end. Deletion must cover all backups, replicas, and log data
+      containing customer information. Provide a certificate of deletion.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_17
+    references:
+      - "SecNumCloud v3.2 Chapter 16"
+
+  - id: SECNUM_REV_03
+    chapter: "Chapter 16 -- Reversibility and Portability"
+    category: REV
+    title: "Migration assistance for service portability"
+    description: >-
+      Provide documented migration guidance and tooling to assist customers
+      in migrating their workloads to an alternative provider. Migration
+      assistance must include data export tooling, API documentation, and
+      architecture migration guides. CSP must not impose financial or
+      technical barriers to migration.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 16"
+
+  # ---------------------------------------------------------------
+  # Chapter 17 -- Data Sovereignty and Extraterritoriality
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_SOV_01
+    chapter: "Chapter 17 -- Data Sovereignty and Extraterritoriality"
+    category: SOV
+    title: "No extraterritorial law exposure for customer data"
+    description: >-
+      Ensure that customer data stored or processed in SecNumCloud-qualified
+      services is not subject to access by non-EU jurisdictions under
+      extraterritorial laws (e.g. US CLOUD Act, FISA 702, UK Investigatory
+      Powers Act). CSP must be established under EU law with no parent
+      company or controlling entity outside the EU that could be compelled
+      to produce data.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_44
+      - GDPR_Art_48
+    references:
+      - "SecNumCloud v3.2 Chapter 17"
+
+  - id: SECNUM_SOV_02
+    chapter: "Chapter 17 -- Data Sovereignty and Extraterritoriality"
+    category: SOV
+    title: "EU-based support staff access restrictions"
+    description: >-
+      Restrict access to customer data and management infrastructure to
+      personnel employed by or contracted to the CSP's EU-established legal
+      entity. Remote support from non-EU locations is prohibited without
+      explicit customer consent and documented authorisation. Implement
+      technical controls to enforce geographic access restrictions.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    maps_to:
+      - GDPR_Art_44
+    references:
+      - "SecNumCloud v3.2 Chapter 17"
+
+  - id: SECNUM_SOV_03
+    chapter: "Chapter 17 -- Data Sovereignty and Extraterritoriality"
+    category: SOV
+    title: "Immunity from foreign law enforcement requests"
+    description: >-
+      Establish documented procedures for responding to law enforcement
+      data access requests. Requests from non-EU law enforcement must be
+      refused or challenged before EU courts unless required by an EU
+      instrument. Notify the affected customer of all law enforcement
+      data access requests (subject to legal constraints on notification).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_48
+    references:
+      - "SecNumCloud v3.2 Chapter 17"
+
+  # ---------------------------------------------------------------
+  # Chapter 18 -- Transparency and Certification
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_TRS_01
+    chapter: "Chapter 18 -- Transparency and Certification"
+    category: TRS
+    title: "SecNumCloud qualification maintenance"
+    description: >-
+      Maintain active SecNumCloud qualification from ANSSI by completing
+      the required audit cycle (initial audit by PASSI + ANSSI review;
+      surveillance audits as required). Qualification must remain valid
+      and uninterrupted for services marketed as SecNumCloud-qualified.
+      Immediately notify ANSSI of any material change that may affect
+      qualification status.
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 18"
+
+  - id: SECNUM_TRS_02
+    chapter: "Chapter 18 -- Transparency and Certification"
+    category: TRS
+    title: "Security transparency report"
+    description: >-
+      Publish an annual transparency report covering: law enforcement data
+      access requests received and refused, security incidents affecting
+      customers, changes to subprocessors, and updates to the service
+      security model. The report must be publicly available and cover the
+      complete calendar year.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to:
+      - GDPR_Art_5
+    references:
+      - "SecNumCloud v3.2 Chapter 18"
+
+  - id: SECNUM_TRS_03
+    chapter: "Chapter 18 -- Transparency and Certification"
+    category: TRS
+    title: "Service level commitments and reporting"
+    description: >-
+      Publish and contractually commit to Service Level Agreements (SLAs)
+      covering availability, performance, and security incident response
+      times for SecNumCloud-qualified services. Report actual SLA performance
+      to customers monthly. Proactively notify customers of SLA breaches
+      within 24 hours of detection.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 18"
+
+  # ---------------------------------------------------------------
+  # Chapter 19 -- Environmental and Energy Management
+  # ---------------------------------------------------------------
+
+  - id: SECNUM_ENV_01
+    chapter: "Chapter 19 -- Environmental and Energy Management"
+    category: ENV
+    title: "Power usage effectiveness (PUE) target"
+    description: >-
+      Maintain a Power Usage Effectiveness (PUE) ratio of 1.5 or lower across
+      all data centres hosting SecNumCloud-qualified services. Report actual
+      PUE to customers and ANSSI annually. Continuous improvement targets
+      must be set and documented in the environmental management plan.
+    severity_default: medium
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 19"
+
+  - id: SECNUM_ENV_02
+    chapter: "Chapter 19 -- Environmental and Energy Management"
+    category: ENV
+    title: "Renewable energy sourcing"
+    description: >-
+      Source a minimum of 50% of data centre energy consumption from
+      renewable sources (wind, solar, hydro). Demonstrate renewable sourcing
+      via verified Guarantees of Origin (GOs) or Power Purchase Agreements
+      (PPAs). Report renewable energy percentage in the annual transparency
+      report.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 19"
+
+  - id: SECNUM_ENV_03
+    chapter: "Chapter 19 -- Environmental and Energy Management"
+    category: ENV
+    title: "Carbon footprint reporting"
+    description: >-
+      Measure and report the carbon footprint (Scope 1, 2, and material Scope 3)
+      of SecNumCloud service delivery annually. Use a recognised carbon
+      accounting methodology (GHG Protocol or ISO 14064). Publish results in
+      the transparency report and set year-on-year reduction targets.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_documentation
+    maps_to: []
+    references:
+      - "SecNumCloud v3.2 Chapter 19"

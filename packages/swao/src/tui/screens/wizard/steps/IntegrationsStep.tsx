@@ -22,7 +22,6 @@ import { claudeDesktopConfigPath } from '@swao/module-health-check';
 import { GuidanceBox } from '@swao/tui-kit';
 import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
 import { patchClaudeDesktopConfig } from '../../../mcp-config.js';
-import { ConfirmContinue } from './InitStep.js';
 
 // -- Step 4: Claude Desktop MCP config ------------------------------------
 
@@ -137,8 +136,15 @@ export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext
 
 // -- Step 6: Playwright / Chromium (optional) --------------------------------
 
-export function PlaywrightStep({ onNext }: { onNext: () => void }) {
+const DEFAULT_VISION_SCREENS = 2;
+const MIN_VISION_SCREENS = 1;
+const MAX_VISION_SCREENS = 10;
+
+export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number) => void }) {
   const [playwrightOk, setPlaywrightOk] = useState<boolean | null>(null);
+  // #2815: when Playwright IS installed, ask for vision_max_screens before advancing.
+  const [visionPhase, setVisionPhase] = useState(false);
+  const [visionInput, setVisionInput] = useState(String(DEFAULT_VISION_SCREENS));
 
   useEffect(() => {
     // #0799: use filesystem-based detection from @swao/core (safe in PKG binaries).
@@ -154,8 +160,26 @@ export function PlaywrightStep({ onNext }: { onNext: () => void }) {
   // guard in useInput always reads false even when the panel is open.
   const playwrightGuidanceOpenRef = useRef(false);
 
+  const commitVisionPhase = () => {
+    const parsed = parseInt(visionInput, 10);
+    const screens = isNaN(parsed)
+      ? DEFAULT_VISION_SCREENS
+      : Math.min(MAX_VISION_SCREENS, Math.max(MIN_VISION_SCREENS, parsed));
+    onNext(screens);
+  };
+
   useInput((_input, key) => {
-    if ((key.return || key.escape) && !playwrightGuidanceOpenRef.current) onNext();
+    if (visionPhase) {
+      if (key.return) { commitVisionPhase(); return; }
+      if (key.escape) { onNext(DEFAULT_VISION_SCREENS); return; }
+      if (key.backspace || key.delete) { setVisionInput(v => v.slice(0, -1)); return; }
+      if (/^\d$/.test(_input)) { setVisionInput(v => (v + _input).slice(0, 2)); return; }
+      return;
+    }
+    if ((key.return || key.escape) && !playwrightGuidanceOpenRef.current) {
+      if (playwrightOk) { setVisionPhase(true); } else { onNext(); }
+      return;
+    }
     if (_input === '9' || _input === 's') {
       if (process.platform === 'win32') {
         const child = spawn('cmd', ['/c', 'start', 'cmd'], { detached: true, stdio: ['ignore', 'ignore', 'ignore'] });
@@ -180,6 +204,30 @@ export function PlaywrightStep({ onNext }: { onNext: () => void }) {
     />
   );
 
+  // #2815: vision_max_screens sub-phase (only reached when Playwright is installed).
+  if (visionPhase) {
+    const screens = parseInt(visionInput, 10);
+    const valid = !isNaN(screens) && screens >= MIN_VISION_SCREENS && screens <= MAX_VISION_SCREENS;
+    return (
+      <Box flexDirection="column">
+        <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
+        <Text color="green">Chromium is installed.</Text>
+        <Box marginTop={1} flexDirection="column">
+          <Text bold>Vision analysis: how many screenshots should SWAO send to the LLM per assessment?</Text>
+          <Text dimColor>More screens = higher coverage + higher LLM cost. Recommended: 2-5.</Text>
+          <Text dimColor>The value is written to .swao.yml as <Text bold>assessment.vision_max_screens</Text> and can be changed anytime.</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text>  Screens (1-{MAX_VISION_SCREENS}, default {DEFAULT_VISION_SCREENS}): </Text>
+          <Text color={valid ? 'cyanBright' : 'yellow'}>{visionInput || '_'}</Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>Enter a number and press <Text bold>Enter</Text>, or press <Text bold>Esc</Text> to use the default ({DEFAULT_VISION_SCREENS}).</Text>
+        </Box>
+      </Box>
+    );
+  }
+
   if (playwrightOk === null) {
     return (
       <Box flexDirection="column">
@@ -196,8 +244,7 @@ export function PlaywrightStep({ onNext }: { onNext: () => void }) {
         <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
         <Text color="green">Chromium is installed -- the dynamic UI crawler pass is available.</Text>
         <Text dimColor>SWAO will capture screenshots and analyse web app UI flows during assessments.</Text>
-        <Box marginTop={1}><Text dimColor>Press Enter to continue...</Text></Box>
-        <ConfirmContinue onConfirm={onNext} onBack={onNext} />
+        <Box marginTop={1}><Text dimColor>Press Enter to configure vision settings and continue...</Text></Box>
         {crawlerGuidance}
       </Box>
     );

@@ -159,7 +159,7 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
     expect(calledTools).not.toContain('swao_lz_fit');
   });
 
-  it('calls the expected 5 tools in order (#2789)', async () => {
+  it('calls the expected 7 tools in order (#2789, #2792)', async () => {
     await fetchPortfolioContext(mockSession, '/ws');
     expect(calledTools).toEqual([
       'swao_workspace_inventory',
@@ -167,6 +167,8 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
       'swao_signals',
       'swao_risks',
       'swao_portfolio_lz',
+      'swao_list_directory',
+      'swao_read_file',
     ]);
   });
 

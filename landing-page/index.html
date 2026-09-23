@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SWAO -- Sovereign Workload Assessment and Onboarding</title>
+  <title>SWAO - Sovereign Workload Assessment and Onboarding</title>
   <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <meta name="description" content="AI-accelerated cloud compliance assessments. From weeks to minutes. Community Edition by Accenture." />
 
   <!-- Open Graph -->
-  <meta property="og:title"        content="SWAO -- Sovereign Workload Assessment and Onboarding" />
+  <meta property="og:title"        content="SWAO - Sovereign Workload Assessment and Onboarding" />
   <meta property="og:description"  content="AI-accelerated cloud compliance. Audit-grade traceability. Community Edition by Accenture." />
   <meta property="og:image"        content="https://accenture.github.io/SWAO/social-preview.png" />
   <meta property="og:url"          content="https://steady-echo-yp4z.here.now/" />
   <meta property="og:type"         content="website" />
   <meta name="twitter:card"        content="summary_large_image" />
   <meta name="twitter:image"       content="https://accenture.github.io/SWAO/social-preview.png" />
-  <meta name="twitter:title"       content="SWAO -- Sovereign Workload Assessment and Onboarding" />
+  <meta name="twitter:title"       content="SWAO - Sovereign Workload Assessment and Onboarding" />
   <meta name="twitter:description" content="AI-accelerated cloud compliance. Audit-grade traceability. Community Edition by Accenture." />
 
   <style>
@@ -475,6 +475,7 @@
     }
 
     .fw-pill:hover { background-color: var(--purple); color: #000; }
+    a.fw-pill { text-decoration: none; color: var(--purple); cursor: pointer; }
 
     .framework-note { margin-top: 24px; text-align: center; font-size: 14px; color: var(--grey-text); }
 
@@ -698,7 +699,7 @@
       <p class="hero-subheadline">
         SWAO (Sovereign Workload Assessment and Onboarding) analyses your cloud workloads against
         industry compliance frameworks, produces audit-grade evidence, and generates a migration
-        plan -- all in a single command. Community Edition is free and open source.
+        plan - all in a single command. Community Edition is free and open source.
       </p>
       <div class="hero-ctas">
         <a class="btn-primary"   href="https://accenture.github.io/SWAO/getting-started" target="_blank" rel="noopener">Get started free</a>
@@ -712,7 +713,7 @@
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
-            <span class="terminal-title">swao -- terminal</span>
+            <span class="terminal-title">swao - terminal</span>
           </div>
           <div class="terminal-body"><span class="t-prompt">$</span><span class="t-cmd"> swao assess --app sovereign-health --framework gdpr</span>
 
@@ -738,14 +739,14 @@
   <section id="why-swao" class="section-divider" aria-labelledby="why-heading">
     <div class="container">
       <h2 class="section-heading" id="why-heading">Why SWAO?</h2>
-      <p class="section-subheading">Traditional cloud compliance assessments take weeks of manual effort across multiple teams. SWAO compresses the entire workflow into a single automated pipeline -- from code to compliance evidence to migration plan.</p>
+      <p class="section-subheading">Traditional cloud compliance assessments take weeks of manual effort across multiple teams. SWAO compresses the entire workflow into a single automated pipeline - from code to compliance evidence to migration plan.</p>
       <div class="value-grid">
 
         <div class="value-card">
           <div class="value-card-label">Speed</div>
           <h3 class="value-card-title">Weeks to minutes</h3>
           <p class="value-card-body">
-            A full framework evaluation -- source code, infrastructure, dynamic UI -- completes in
+            A full framework evaluation - source code, infrastructure, dynamic UI - completes in
             minutes. What used to require a team of consultants and a spreadsheet now runs from a
             single command. Re-assess after every change to catch compliance drift early.
           </p>
@@ -757,7 +758,7 @@
           <p class="value-card-body">
             Every finding cites the exact file, line number, or screen element that triggered it.
             SWAO produces HTML evidence packs, Power BI dashboards, and structured JSON that
-            auditors and GRC platforms can consume directly -- no manual transcription.
+            auditors and GRC platforms can consume directly - no manual transcription.
           </p>
         </div>
 
@@ -772,6 +773,24 @@
         </div>
 
       </div>
+
+      <div style="margin-top: 48px; display: flex; justify-content: center;">
+        <a href="https://www.youtube.com/watch?v=WvBnFoKzil4" target="_blank" rel="noopener"
+           style="display: block; position: relative; width: 100%; max-width: 640px; border-radius: 4px; overflow: hidden; text-decoration: none;">
+          <img
+            src="https://img.youtube.com/vi/WvBnFoKzil4/maxresdefault.jpg"
+            alt="What is SWAO? Full Product Overview"
+            style="width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover;" />
+          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.35);">
+            <svg width="68" height="48" viewBox="0 0 68 48" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));">
+              <path d="M66.5 7.5C65.7 4.6 63.4 2.3 60.5 1.5 55.2 0 34 0 34 0S12.8 0 7.5 1.5C4.6 2.3 2.3 4.6 1.5 7.5 0 12.8 0 24s1.5 11.2 1.5 11.2c.8 2.9 3.1 5.2 6 6C12.8 48 34 48 34 48s21.2 0 26.5-1.5c2.9-.8 5.2-3.1 6-6C68 35.2 68 24 68 24S68 12.8 66.5 7.5z" fill="#ff0000"/>
+              <path d="M27 34l18-10-18-10v20z" fill="#fff"/>
+            </svg>
+            <span style="color: #fff; font-size: 13px; font-weight: 600; margin-top: 10px; letter-spacing: 0.04em;">What is SWAO? Full Product Overview</span>
+          </div>
+        </a>
+      </div>
+
     </div>
   </section>
 
@@ -779,7 +798,7 @@
   <section id="for-your-team" class="section-divider" aria-labelledby="stakeholders-heading">
     <div class="container">
       <h2 class="section-heading" id="stakeholders-heading">Built for every role in your programme</h2>
-      <p class="section-subheading">From the consultant running the assessment on a laptop to the CISO signing off on compliance evidence -- SWAO serves each stakeholder with the output they need.</p>
+      <p class="section-subheading">From the consultant running the assessment on a laptop to the CISO signing off on compliance evidence - SWAO serves each stakeholder with the output they need.</p>
 
       <div class="stakeholder-grid">
 
@@ -789,7 +808,7 @@
           <div class="stakeholder-body">
             Run a full Rehost / Replatform / Refactor analysis for an application in a single
             command. SWAO produces a portable Workload Sovereignty Profile (WSP) that carries the
-            assessment forward into planning and onboarding -- no re-entry, no drift between phases.
+            assessment forward into planning and onboarding - no re-entry, no drift between phases.
             <ul>
               <li>Single binary, works on a laptop or client-hosted container</li>
               <li>Unlimited assessments in Community Edition (no licence required)</li>
@@ -808,8 +827,8 @@
             single run) give a complete picture without duplicate effort.
             <ul>
               <li>HTML evidence packs and structured JSON for GRC platforms</li>
-              <li>Full human-override audit trail -- every manual decision is logged</li>
-              <li>11 frameworks included free: GDPR, BSI C5, AI 10 Pillars, NCA, SAMA, PCI-DSS, and more</li>
+              <li>Full human-override audit trail - every manual decision is logged</li>
+              <li>22 frameworks included free: GDPR, ISO 27001, DORA, NIS2, EU AI Act, BSI C5, EUCS, and more</li>
               <li>Confidence scoring flags areas that need human review</li>
             </ul>
           </div>
@@ -839,7 +858,7 @@
             your compliance findings directly from the editor. Ask about control status, browse
             blockers, and get remediation guidance without leaving your workflow.
             <ul>
-              <li>MCP server on localhost:3737 -- connects to Claude Code and Cursor</li>
+              <li>MCP server on localhost:3737 - connects to Claude Code and Cursor</li>
               <li>Integrate findings into Jira, GitHub Issues, or Azure Boards</li>
               <li>SAST, container scan, IaC scan, and secrets detection built in</li>
               <li>Re-assess after every PR to detect compliance regression</li>
@@ -855,7 +874,7 @@
   <section class="section-divider" aria-labelledby="arch-heading">
     <div class="container">
       <h2 class="section-heading" id="arch-heading">How SWAO works</h2>
-      <p class="section-subheading">A 14-pass analysis pipeline reads your workload, evaluates it against compliance frameworks, and produces a single portable artefact -- the Workload Sovereignty Profile -- that drives everything downstream.</p>
+      <p class="section-subheading">A 14-pass analysis pipeline reads your workload, evaluates it against compliance frameworks, and produces a single portable artefact - the Workload Sovereignty Profile - that drives everything downstream.</p>
 
       <div class="pipeline-wrap">
         <div class="pipeline">
@@ -911,7 +930,7 @@
             <div class="pipe-items">
               <div class="pipe-out-item">
                 <strong>WSP.yaml</strong>
-                <small>Portable, versioned, machine-readable -- flows into planning and onboarding</small>
+                <small>Portable, versioned, machine-readable - flows into planning and onboarding</small>
               </div>
               <div class="pipe-out-item">
                 <strong>HTML Evidence Report</strong>
@@ -953,7 +972,7 @@
         <div class="value-card">
           <div class="value-card-label">Deployment Mode B-DevX</div>
           <h3 class="value-card-title">meshStack Building Block</h3>
-          <p class="value-card-body">SWAO deployed as a Developer Portal Building Block on meshStack. Application teams self-serve assessments from the platform they already operate -- no consultant needed for each run.</p>
+          <p class="value-card-body">SWAO deployed as a Developer Portal Building Block on meshStack. Application teams self-serve assessments from the platform they already operate - no consultant needed for each run.</p>
         </div>
       </div>
     </div>
@@ -963,28 +982,36 @@
   <section id="frameworks" class="section-divider" aria-labelledby="frameworks-heading">
     <div class="container">
       <h2 class="section-heading" id="frameworks-heading">Community Frameworks</h2>
-      <p class="section-subheading">14 compliance frameworks included in every edition -- free, open, and continuously updated. No licence required to run any of them.</p>
+      <p class="section-subheading">22 compliance frameworks included in every edition - free, open, and continuously updated. No licence required to run any of them.</p>
 
       <div class="framework-grid">
-        <span class="fw-pill">GDPR</span>
-        <span class="fw-pill">HIPAA / NIST SP 800-66r2</span>
-        <span class="fw-pill">AI 10 Pillars</span>
-        <span class="fw-pill">BSI C5</span>
-        <span class="fw-pill">BSI IT-Grundschutz 2023</span>
-        <span class="fw-pill">DORA</span>
-        <span class="fw-pill">ISO 27001:2022</span>
-        <span class="fw-pill">LLM Selection</span>
-        <span class="fw-pill">NCA CCC 2024 (CSP)</span>
-        <span class="fw-pill">NCA CCC 2024 (CST)</span>
-        <span class="fw-pill">NCA ECC 2024</span>
-        <span class="fw-pill">PCI-DSS v4</span>
-        <span class="fw-pill">SAMA CSF v1</span>
-        <span class="fw-pill">SOC 2 Type II</span>
+        <a class="fw-pill" href="#fw-gdpr">GDPR</a>
+        <a class="fw-pill" href="#fw-hipaa">HIPAA / NIST SP 800-66r2</a>
+        <a class="fw-pill" href="#fw-ai10pillars">AI 10 Pillars</a>
+        <a class="fw-pill" href="#fw-bsi-c5">BSI C5</a>
+        <a class="fw-pill" href="#fw-bsi-it">BSI IT-Grundschutz 2023</a>
+        <a class="fw-pill" href="#fw-dora">DORA</a>
+        <a class="fw-pill" href="#fw-iso27001">ISO 27001:2022</a>
+        <a class="fw-pill" href="#fw-llm-selection">LLM Selection</a>
+        <a class="fw-pill" href="#fw-nca-csp">NCA CCC 2024 (CSP)</a>
+        <a class="fw-pill" href="#fw-nca-cst">NCA CCC 2024 (CST)</a>
+        <a class="fw-pill" href="#fw-nca-ecc">NCA ECC 2024</a>
+        <a class="fw-pill" href="#fw-pci-dss">PCI-DSS v4</a>
+        <a class="fw-pill" href="#fw-sama-csf">SAMA CSF v1</a>
+        <a class="fw-pill" href="#fw-soc2">SOC 2 Type II</a>
+        <a class="fw-pill" href="#fw-eucs">EUCS</a>
+        <a class="fw-pill" href="#fw-nis2">NIS2</a>
+        <a class="fw-pill" href="#fw-eu-cra">EU Cyber Resilience Act</a>
+        <a class="fw-pill" href="#fw-kritis-de">KRITIS-DE</a>
+        <a class="fw-pill" href="#fw-openssf">OpenSSF Scorecard</a>
+        <a class="fw-pill" href="#fw-eu-ai-act">EU AI Act</a>
+        <a class="fw-pill" href="#fw-secnumcloud">SecNumCloud v3.2</a>
+        <a class="fw-pill" href="#fw-ec-csf">EC Cloud Sovereignty Framework</a>
       </div>
 
       <div class="fw-detail-grid">
 
-        <div class="fw-card">
+        <div class="fw-card" id="fw-gdpr">
           <div class="fw-card-header">
             <span class="fw-card-name">GDPR</span>
             <span class="fw-card-tag">EU / Data Privacy</span>
@@ -992,7 +1019,7 @@
           <p class="fw-card-body">
             The General Data Protection Regulation is the European Union's primary law governing
             the collection, processing, and storage of personal data for EU residents. It applies
-            to any organisation -- worldwide -- that processes EU citizen data.
+            to any organisation - worldwide - that processes EU citizen data.
           </p>
           <div class="fw-card-benefit">
             <strong>Assessment benefit:</strong> SWAO evaluates 47 controls covering data residency
@@ -1002,7 +1029,7 @@
           </div>
         </div>
 
-        <div class="fw-card">
+        <div class="fw-card" id="fw-hipaa">
           <div class="fw-card-header">
             <span class="fw-card-name">HIPAA</span>
             <span class="fw-card-tag">US / Healthcare</span>
@@ -1015,13 +1042,13 @@
           </p>
           <div class="fw-card-benefit">
             <strong>Assessment benefit:</strong> SWAO checks administrative, physical, and technical
-            safeguards -- ePHI encryption, workforce access controls, audit logging, automatic
-            logoff, data backup, and disaster recovery configurations -- against the HIPAA Security
+            safeguards - ePHI encryption, workforce access controls, audit logging, automatic
+            logoff, data backup, and disaster recovery configurations - against the HIPAA Security
             Rule's required and addressable implementation specifications.
           </div>
         </div>
 
-        <div class="fw-card">
+        <div class="fw-card" id="fw-ai10pillars">
           <div class="fw-card-header">
             <span class="fw-card-name">AI 10 Pillars</span>
             <span class="fw-card-tag">Responsible AI</span>
@@ -1039,7 +1066,7 @@
           </div>
         </div>
 
-        <div class="fw-card">
+        <div class="fw-card" id="fw-bsi-c5">
           <div class="fw-card-header">
             <span class="fw-card-name">BSI C5</span>
             <span class="fw-card-tag">Cloud / Germany</span>
@@ -1052,9 +1079,77 @@
           </p>
           <div class="fw-card-benefit">
             <strong>Assessment benefit:</strong> SWAO evaluates 62 controls across all 17 BSI C5
-            domains -- from organisation and personnel through cryptography, network security,
+            domains - from organisation and personnel through cryptography, network security,
             logging, and business continuity. Essential for cloud providers serving German public
             or regulated private sector clients.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-dora">
+          <div class="fw-card-header">
+            <span class="fw-card-name">DORA</span>
+            <span class="fw-card-tag">EU / Financial Services</span>
+          </div>
+          <p class="fw-card-body">
+            The Digital Operational Resilience Act (Regulation EU 2022/2554) has been mandatory since
+            17 January 2025 for banks, insurers, investment firms, payment institutions, and ICT
+            third-party providers operating in the EU.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 31 controls across 5 pillars: ICT
+            risk management, incident reporting, resilience testing, TPP risk, and information
+            sharing - surfacing gaps and evidence requirements for each pillar.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-eucs">
+          <div class="fw-card-header">
+            <span class="fw-card-name">EUCS</span>
+            <span class="fw-card-tag">EU / Cloud Certification</span>
+          </div>
+          <p class="fw-card-body">
+            The ENISA EU Cloud Security Certification Scheme - 66 controls across 12 security
+            domains at three assurance levels (Basic, Substantial, High). The primary EU-wide
+            cloud security certification for IaaS, PaaS, and SaaS providers.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO maps your cloud service posture to the EUCS
+            assurance level required by EU customers or authorities, surfacing domain gaps at the
+            correct assurance tier.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-nis2">
+          <div class="fw-card-header">
+            <span class="fw-card-name">NIS2</span>
+            <span class="fw-card-tag">EU / Critical Infrastructure</span>
+          </div>
+          <p class="fw-card-body">
+            NIS2 (Directive 2022/2555) applies to medium and large essential and important entities
+            across 18 EU sectors, with transposition deadline October 2024. Its ten minimum security
+            measures (Art. 21) and three-tier incident reporting (Art. 23) are the core obligations.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 46 controls covering all Art. 21
+            measures - from access control and cryptography to supply chain security and business
+            continuity - with evidence indicators per control.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-eu-ai-act">
+          <div class="fw-card-header">
+            <span class="fw-card-name">EU AI Act</span>
+            <span class="fw-card-tag">EU / Artificial Intelligence</span>
+          </div>
+          <p class="fw-card-body">
+            Regulation EU 2024/1689 in force since August 2024. Prohibited AI practices apply from
+            February 2025; high-risk AI system obligations apply from August 2027. Covers risk
+            classification, high-risk requirements, transparency, and GPAI model obligations.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO runs Risk Classification first, then evaluates
+            only the applicable downstream controls - HR for high-risk systems, TR for limited-risk
+            and above, GP for GPAI models. 37 controls total.
           </div>
         </div>
 
@@ -1066,7 +1161,7 @@
           <p class="fw-card-body">
             NIST Special Publication 800-66 Revision 2 provides prescriptive implementation
             guidance for the HIPAA Security Rule. Where HIPAA defines the regulatory requirements,
-            NIST SP 800-66 R2 specifies concrete technical controls -- making it the reference of
+            NIST SP 800-66 R2 specifies concrete technical controls - making it the reference of
             choice for healthcare organisations seeking NIST alignment alongside HIPAA compliance.
           </p>
           <div class="fw-card-benefit">
@@ -1079,14 +1174,276 @@
           </div>
         </div>
 
+        <div class="fw-card" id="fw-iso27001">
+          <div class="fw-card-header">
+            <span class="fw-card-name">ISO 27001:2022</span>
+            <span class="fw-card-tag">Information Security / Global</span>
+          </div>
+          <p class="fw-card-body">
+            ISO/IEC 27001:2022 is the international standard for Information Security Management
+            Systems. The 2022 revision restructured the control set into 93 controls across four
+            themes - Organisational, People, Physical, and Technological - adding 11 new controls
+            for cloud security, threat intelligence, and data masking.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 93 controls with 14 cloud-relevant
+            controls marked as CSP-inherited, giving a clear split between what your workload must
+            demonstrate and what your cloud provider already covers by default.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-bsi-it">
+          <div class="fw-card-header">
+            <span class="fw-card-name">BSI IT-Grundschutz 2023</span>
+            <span class="fw-card-tag">IT Security / Germany</span>
+          </div>
+          <p class="fw-card-body">
+            BSI IT-Grundschutz provides modular, prescriptive IT security guidance for German
+            public sector organisations and regulated enterprises. Security measures are organised
+            into building blocks (Bausteine) covering infrastructure, systems, applications, and
+            organisation - forming the basis for BSI certification in Germany.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO maps workloads to the cloud-relevant
+            IT-Grundschutz building blocks covering server security, network, web services,
+            identity, and logging - surfacing gaps against the 2023 edition requirements.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-soc2">
+          <div class="fw-card-header">
+            <span class="fw-card-name">SOC 2 Type II</span>
+            <span class="fw-card-tag">SaaS / Cloud / US</span>
+          </div>
+          <p class="fw-card-body">
+            The AICPA Trust Services Criteria define the security baseline for SaaS and cloud
+            service providers demonstrating controls to enterprise customers. Five TSC categories
+            cover Security (CC), Availability, Processing Integrity, Confidentiality, and Privacy.
+            Security is mandatory; the remaining categories are selected per engagement scope.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 64 controls across all five TSC
+            categories, producing evidence indicators suitable for Type II audit sampling periods.
+            Security category findings align directly with GDPR and ISO 27001 outputs.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-eu-cra">
+          <div class="fw-card-header">
+            <span class="fw-card-name">EU Cyber Resilience Act</span>
+            <span class="fw-card-tag">Product Security / EU</span>
+          </div>
+          <p class="fw-card-body">
+            Regulation EU 2024/2847 introduces mandatory cybersecurity requirements for all
+            hardware and software products with digital elements sold in the EU. Critical products
+            (class I/II) must comply from June 2027; all other products from December 2027. Annex I
+            defines security requirements and vulnerability handling obligations.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 35 controls covering secure design,
+            default configuration, vulnerability disclosure, SBOM completeness, and incident
+            reporting timelines against both Annex I Part I (security) and Part II (vulnerability
+            handling) obligations.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-kritis-de">
+          <div class="fw-card-header">
+            <span class="fw-card-name">KRITIS-DE</span>
+            <span class="fw-card-tag">Critical Infrastructure / Germany</span>
+          </div>
+          <p class="fw-card-body">
+            KRITIS-DE implements BSIG §8a obligations for operators of critical infrastructure
+            in Germany across 10 sectors - energy, water, transport, health, finance, food,
+            and digital infrastructure. Operators must apply state-of-the-art IT security measures
+            and submit proof of compliance every two years to BSI.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 40 controls across 7 domains:
+            governance, risk management, incident response, business continuity, supply chain,
+            physical security, and technical controls - producing the evidence package required
+            for the biennial BSI audit submission.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-openssf">
+          <div class="fw-card-header">
+            <span class="fw-card-name">OpenSSF Scorecard</span>
+            <span class="fw-card-tag">Open Source / Global</span>
+          </div>
+          <p class="fw-card-body">
+            The Open Source Security Foundation Scorecard defines 17 automated security checks
+            covering supply chain integrity, CI/CD security, dependency management, vulnerability
+            response, and code review practices. Weighted scoring produces a 0-10 summary score
+            used in procurement decisions and supply chain risk assessments.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO runs all 17 Scorecard checks against
+            application source repositories, identifying missing branch protection, unsigned
+            artefacts, unpinned dependencies, and absent security policies - with per-check
+            remediation guidance.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-pci-dss">
+          <div class="fw-card-header">
+            <span class="fw-card-name">PCI-DSS v4</span>
+            <span class="fw-card-tag">Payment Security / Global</span>
+          </div>
+          <p class="fw-card-body">
+            PCI DSS 4.0.1 is mandatory for any organisation that stores, processes, or transmits
+            payment card data. The 2024 revision introduced 64 new requirements focused on targeted
+            risk analysis, customised implementation, and stronger authentication. All PCI DSS
+            v3.2.1 deadline extensions expired in March 2025.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates workloads against all 12 PCI DSS
+            requirements - from network segmentation and cardholder data protection through access
+            control, monitoring, and penetration testing requirements - flagging in-scope components
+            and control gaps.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-sama-csf">
+          <div class="fw-card-header">
+            <span class="fw-card-name">SAMA CSF v1</span>
+            <span class="fw-card-tag">Financial / Saudi Arabia</span>
+          </div>
+          <p class="fw-card-body">
+            The Saudi Arabian Monetary Authority Cyber Security Framework v1.0 is mandatory for
+            all SAMA-regulated financial institutions - banks, insurance companies, fintech
+            providers, and payment processors. Five domains cover Leadership and Governance, Risk
+            Management and Compliance, Operations, Third-Party Risk, and Cyber Resilience.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates controls across all five SAMA
+            domains, identifying gaps in cloud governance, third-party vendor risk, incident
+            response readiness, and resilience architecture for Saudi-regulated financial workloads.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-nca-csp">
+          <div class="fw-card-header">
+            <span class="fw-card-name">NCA CCC 2024 - Cloud Service Provider</span>
+            <span class="fw-card-tag">Cloud Security / Saudi Arabia</span>
+          </div>
+          <p class="fw-card-body">
+            The Saudi National Cybersecurity Authority Cloud Cybersecurity Controls v2.0 (CSP
+            edition) defines mandatory requirements for cloud service providers operating in Saudi
+            Arabia, particularly those serving public sector or critical infrastructure clients.
+            Updated in 2024 with stronger controls for data localisation and supply chain security.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates CSP-side controls covering data
+            residency, isolation, logging, penetration testing, cryptography, and incident
+            reporting - with Saudi data localisation requirements explicitly flagged per control.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-nca-cst">
+          <div class="fw-card-header">
+            <span class="fw-card-name">NCA CCC 2024 - Cloud Service Tenant</span>
+            <span class="fw-card-tag">Cloud Security / Saudi Arabia</span>
+          </div>
+          <p class="fw-card-body">
+            The NCA Cloud Cybersecurity Controls v2.0 (Tenant edition) defines security obligations
+            for organisations consuming cloud services in Saudi Arabia. It complements the CSP
+            edition by addressing tenant responsibilities for access management, data classification,
+            configuration, and incident response within shared cloud environments.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates tenant-side controls covering
+            identity and access management, data classification, security configuration, monitoring,
+            and shared-responsibility boundary awareness for Saudi cloud deployments.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-nca-ecc">
+          <div class="fw-card-header">
+            <span class="fw-card-name">NCA ECC 2024</span>
+            <span class="fw-card-tag">Cybersecurity / Saudi Arabia</span>
+          </div>
+          <p class="fw-card-body">
+            The NCA Essential Cybersecurity Controls v2.0 are mandatory for all Saudi government
+            entities and critical national infrastructure operators. Five domains cover
+            Cybersecurity Governance, Risk Management, Compliance, Human Aspects, and Technology
+            Controls - establishing the baseline cybersecurity floor for Saudi digital government.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates workloads against ECC controls
+            covering asset management, access control, vulnerability management, secure
+            configuration, logging, and incident response - producing a gap analysis against
+            Saudi government compliance requirements.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-llm-selection">
+          <div class="fw-card-header">
+            <span class="fw-card-name">LLM Selection</span>
+            <span class="fw-card-tag">AI/ML / Cross-sector</span>
+          </div>
+          <p class="fw-card-body">
+            Accenture's LLM Selection framework provides sovereignty benchmarking criteria for
+            evaluating AI and large language model providers. It assesses data residency, training
+            data jurisdiction, fine-tuning data handling, inference endpoint location, and
+            contractual data processing guarantees - enabling informed LLM provider selection
+            under sovereign or regulated workload constraints.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates LLM-integrated workloads against
+            provider-specific sovereignty criteria, surfacing risks when inference or training
+            data crosses jurisdictional boundaries relevant to GDPR, NIS2, or national AI
+            regulations.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-secnumcloud">
+          <div class="fw-card-header">
+            <span class="fw-card-name">SecNumCloud v3.2</span>
+            <span class="fw-card-tag">Sovereign Cloud / France and EU</span>
+          </div>
+          <p class="fw-card-body">
+            SecNumCloud v3.2 is the ANSSI qualification scheme for sovereign cloud services in
+            France and a reference standard for EU sovereign cloud procurement. Nine qualified
+            providers hold or pursue qualification. Its 65 controls across 19 chapters cover
+            governance, supply chain, physical, technical, and operational security at the
+            highest EU sovereign cloud assurance tier.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates landing zone and governance
+            posture against SecNumCloud chapter requirements, identifying gaps for organisations
+            seeking qualification or procuring from qualified providers under French or EU
+            sovereign cloud mandates.
+          </div>
+        </div>
+
+        <div class="fw-card" id="fw-ec-csf">
+          <div class="fw-card-header">
+            <span class="fw-card-name">EC Cloud Sovereignty Framework</span>
+            <span class="fw-card-tag">Sovereign Cloud / EU</span>
+          </div>
+          <p class="fw-card-body">
+            The European Commission Cloud Sovereignty Framework v1.2.1 (October 2025) defines
+            sovereignty requirements for cloud procurement across EU institutions. Eight SOV
+            domains - Strategic, Legal, Data, Operational, Supply Chain, Technology, Security,
+            and Environmental - are assessed at SEAL-0 to SEAL-4 maturity levels. Used in
+            EUR 180M EU institutional cloud procurement.
+          </p>
+          <div class="fw-card-benefit">
+            <strong>Assessment benefit:</strong> SWAO evaluates 40 controls across all eight SOV
+            domains, producing a SEAL maturity score per domain and an overall sovereignty posture
+            profile for organisations procuring or delivering EU institutional cloud services.
+          </div>
+        </div>
+
       </div>
 
       <!-- CUSTOM FRAMEWORKS -->
       <div class="custom-fw-box">
         <h3 class="custom-fw-title">Build your own framework</h3>
         <p class="custom-fw-body">
-          Not covered by the 14 community frameworks? SWAO's framework format is a plain YAML
-          file -- no TypeScript, no compilation, no specialist tooling required. Define your own
+          Not covered by the 22 community frameworks? SWAO's framework format is a plain YAML
+          file - no TypeScript, no compilation, no specialist tooling required. Define your own
           controls, risk levels, remediation guidance, and regime metadata. Point SWAO at your
           YAML file and it runs immediately alongside the community frameworks.
         </p>
@@ -1109,7 +1466,7 @@
   <section id="lz-catalogues" class="section-divider" aria-labelledby="lz-heading">
     <div class="container">
       <h2 class="section-heading" id="lz-heading">Landing Zone Catalogues</h2>
-      <p class="section-subheading">SWAO ships with a curated catalogue of cloud providers -- covering major hyperscalers and EU-dedicated sovereign clouds. Each provider entry defines a set of readiness checks that SWAO validates automatically during a Landing Zone Assessment. The catalogue is customisable and updated with every SWAO release.</p>
+      <p class="section-subheading">SWAO ships with a curated catalogue of cloud providers - covering major hyperscalers and EU-dedicated sovereign clouds. Each provider entry defines a set of readiness checks that SWAO validates automatically during a Landing Zone Assessment. The catalogue is customisable and updated with every SWAO release.</p>
 
       <div class="framework-grid">
         <span class="fw-pill">STACKIT (Schwarz Group)</span>
@@ -1136,7 +1493,7 @@
           <p class="fw-card-body">
             Dedicated sovereign cloud providers operating under EU or national legal jurisdiction.
             These providers offer contractual data residency guarantees, EU-domiciled operating
-            entities, and -- in several cases -- BSI C5 or ISO 27001 attestations. SWAO's
+            entities, and - in several cases - BSI C5 or ISO 27001 attestations. SWAO's
             catalogue includes provider-specific checks tailored to each platform's service
             portfolio, Terraform resource types, and sovereignty evidence.
           </p>
@@ -1154,7 +1511,7 @@
             <span class="fw-card-tag">Microsoft Azure (West Europe), AWS eu-central-1 + ESC, Google Cloud EU</span>
           </div>
           <p class="fw-card-body">
-            Major hyperscalers with EU-located regions and -- in the case of AWS ESC -- dedicated
+            Major hyperscalers with EU-located regions and - in the case of AWS ESC - dedicated
             sovereign cloud infrastructure. SWAO evaluates these providers against the same
             sovereignty and compliance criteria as the dedicated EU clouds, surfacing the controls
             that are satisfied, the gaps that remain, and the configuration changes required to
@@ -1172,7 +1529,7 @@
       <div class="custom-fw-box">
         <h3 class="custom-fw-title">Add your own landing zone</h3>
         <p class="custom-fw-body">
-          The cloud provider catalogue is a plain YAML file -- no TypeScript, no compilation.
+          The cloud provider catalogue is a plain YAML file - no TypeScript, no compilation.
           Add a new provider entry with its service portfolio, sovereignty evidence, and
           readiness checks. Point SWAO at your YAML and it runs immediately alongside the
           built-in providers. Custom entries are ideal for private cloud platforms, managed
@@ -1305,7 +1662,7 @@
 
             <tr class="group-header"><td colspan="4">Frameworks</td></tr>
             <tr>
-              <td>14 Community Frameworks (AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, DORA, GDPR, ISO 27001:2022, LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIST SP 800-66r2 / HIPAA, PCI-DSS v4, SAMA CSF v1, SOC 2 Type II)</td>
+              <td>22 Community Frameworks (AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, DORA, EC CSF, EU AI Act, EU CRA, EUCS, GDPR, ISO 27001:2022, KRITIS-DE, LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIS2, NIST SP 800-66r2 / HIPAA, OpenSSF Scorecard, PCI-DSS v4, SAMA CSF v1, SecNumCloud v3.2, SOC 2 Type II)</td>
               <td class="yes">Yes</td>
               <td class="yes">Yes</td>
               <td class="yes">Yes</td>
@@ -1399,13 +1756,13 @@
   <section class="section-divider" aria-labelledby="reports-heading">
     <div class="container">
       <h2 class="section-heading" id="reports-heading">See real assessment results</h2>
-      <p class="section-subheading">Live HTML publications generated by SWAO against the Sovereign Health demo workspace. Open in your browser -- no login required.</p>
+      <p class="section-subheading">Live HTML publications generated by SWAO against the Sovereign Health demo workspace. Open in your browser - no login required.</p>
 
       <div class="fw-grid" style="margin-top:2.5rem;">
 
         <div class="fw-card">
           <div class="fw-card-header">Application Assessment</div>
-          <div class="fw-card-body">Full GDPR + BSI C5 compliance report for a fictitious patient-management application. Signal findings, risk register, and 7R migration strategy -- all sourced from static and LLM analysis.</div>
+          <div class="fw-card-body">Full GDPR + BSI C5 compliance report for a fictitious patient-management application. Signal findings, risk register, and 7R migration strategy - all sourced from static and LLM analysis.</div>
           <div style="margin-top:1rem;">
             <a class="btn-secondary" href="https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-23T17-29-27-sovereign-health.html" target="_blank" rel="noopener">Open live report</a>
           </div>
@@ -1421,7 +1778,7 @@
 
         <div class="fw-card">
           <div class="fw-card-header">LLM Assessment</div>
-          <div class="fw-card-body">Multi-LLM sovereignty benchmarking report. Evaluates language models against data-residency, GDPR, and BSI C5 requirements -- per-model verdicts with sourced rationale.</div>
+          <div class="fw-card-body">Multi-LLM sovereignty benchmarking report. Evaluates language models against data-residency, GDPR, and BSI C5 requirements - per-model verdicts with sourced rationale.</div>
           <div style="margin-top:1rem;">
             <a class="btn-secondary" href="https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24-08-32-09-llm-assessment.html" target="_blank" rel="noopener">Open live report</a>
           </div>

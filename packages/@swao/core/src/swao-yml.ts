@@ -224,6 +224,11 @@ export const SwaoYmlSchema = z
       .optional(),
     crawl: SwaoYmlCrawlSchema.nullish(),
     context_inputs: z.array(z.object({}).passthrough()).optional(),
+    // Design 104 Q-CODE-7: applies_when evaluation context (sprint-138 #2817).
+    // Key-value map matched against RegimeControl.applies_when at assessment time;
+    // controls whose applies_when keys are absent or mismatched emit not_assessed
+    // with reason not_applicable. Engine logic in Phase 4 (#2820).
+    framework_context: z.record(z.string(), z.string()).optional(),
     workspace: SwaoYmlWorkspaceSchema.optional(),
     engagement: SwaoYmlEngagementSchema.optional(),
     assessment: SwaoYmlAssessmentSchema.optional(),

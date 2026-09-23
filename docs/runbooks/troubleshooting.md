@@ -279,3 +279,50 @@ If `swao.bat` is not present, download it from the same GitHub release page as t
 **Note on startup delay:** The first launch after download (or after a Windows update)
 may show a 5-20 second blank terminal. This is normal -- it is the V8 snapshot
 being decompressed by the pkg runtime. Subsequent launches are faster.
+
+---
+
+## Support bundle
+
+If you cannot resolve an issue using the guidance above, generate a support bundle and send it to the SWAO team. The bundle collects all diagnostic data the team needs to reproduce and investigate the problem in one command.
+
+### What the bundle contains
+
+| Item | Description |
+|---|---|
+| `health-check.txt` | Full output of `swao health-check` (LLM, credentials, workspace, licence, Playwright probes) |
+| `version.txt` | Binary version, platform, Node.js version, OS details |
+| `swao.yml` | Active workspace configuration with all secret-shaped values redacted |
+| `logs/` | Session event log (NDJSON) from the most recent assessment run |
+| `frameworks.txt` | List of active community frameworks |
+| `licence-status.txt` | Licence tier and expiry (key value is masked) |
+
+The bundle does **not** include API keys, credential vault contents, assessment finding details, application source code, or any data from `portfolio/apps/`.
+
+### Generate the bundle
+
+```bash
+swao support-bundle
+```
+
+This creates a timestamped archive in the current directory:
+
+```
+swao-support-2026-09-22T14-30-00.zip
+```
+
+To specify a different output directory:
+
+```bash
+swao support-bundle --out /tmp/support
+```
+
+### Send the bundle
+
+Email the archive to [swao-tool@accenture.com](mailto:swao-tool@accenture.com?subject=SWAO%20Support%20Bundle) with a short description of:
+
+- The command that failed and the exact error message
+- The platform (Windows / macOS / Linux) and whether you are using the binary or source mode
+- Whether the issue is reproducible or intermittent
+
+The SWAO team aims to respond within two business days.

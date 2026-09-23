@@ -899,7 +899,10 @@ export function buildWorkspaceSwaoYml(params: WorkspaceSwaoYmlParams): string {
     `#   cover_subtitle: "Cloud Sovereignty Assessment"\n` +
     `#   classification_band: "Accenture Internal, Confidential"\n` +
     `#   engagement_lead: "${ownerLead}"\n` +
-    `#   logo_name: "SWAO"\n`
+    `#   logo_name: "SWAO"\n` +
+    `\n` +
+    `# assessment:\n` +
+    `#   vision_max_screens: 2  # screenshots sent to LLM vision pass per assessment run\n`
   );
 }
 

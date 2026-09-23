@@ -1,0 +1,59 @@
+# SWAO Community Framework -- SecNumCloud v3.2 (ANSSI)
+# Sprint-139 #0425: 65 controls across 19 chapters.
+# Authoritative source (French): ssi.gouv.fr
+# English translation: ITIF-hosted v3.2.a English version.
+
+framework:
+  id: SECNUMCLOUD
+  name: "SecNumCloud v3.2 -- ANSSI Sovereign Cloud Certification"
+  version: "3.2"
+  authority: "ANSSI -- Agence nationale de la securite des systemes d'information (France)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/secnumcloud"
+  applicability_hints:
+    - sovereign_cloud
+    - french_public_sector
+    - eu_restricted_data
+    - cloud_service_provider
+    - diffusion_restreinte
+  scoring_mode: binary
+  assessment_type_scope: [lz, aud]
+  description: >-
+    SecNumCloud v3.2 is the ANSSI (French National Cybersecurity Agency)
+    qualification framework for cloud service providers handling sensitive
+    data. It is the primary sovereign cloud certification in the EU
+    institutional ecosystem and requires providers to demonstrate compliance
+    with 19 security chapters spanning governance, physical security, access
+    control, cryptography, network security, supply chain, data sovereignty,
+    and reversibility. As of July 2026, 9 providers hold SecNumCloud
+    qualification (including OVHcloud, S3NS/Thales-Google, Orange, Outscale).
+    The framework targets cloud landing zones and governance posture ([lz, aud])
+    with a focus on Diffusion Restreinte (DR)-equivalent data protection and
+    EU legal jurisdiction requirements. 65 controls grouped by chapter.
+  references:
+    - "ANSSI SecNumCloud v3.2 (French authoritative): https://www.ssi.gouv.fr/entreprise/qualifications/prestataires-de-services-de-confiance/prestataires-de-service-informatique-en-nuage-secnumcloud/"
+    - "SecNumCloud v3.2.a English translation (ITIF): https://www2.itif.org/2021-secnumcloud-3.2.a-english-version.pdf"
+    - "ANSSI qualification list: https://www.ssi.gouv.fr/en/actualite/secnumcloud-list-of-qualified-providers/"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-22"
+  signal_prefix: SECNUM
+
+  cross_mapping_hints:
+    target_frameworks:
+      - EUCS         # SecNumCloud is the primary reference for EUCS High tier data sovereignty requirements
+      - BSI_C5       # Chapter-level alignment with BSI C5 trust criteria
+      - ISO_27001    # ISO 27001 Annex A controls map across all 19 chapters
+      - GDPR         # Chapters 17 (sovereignty) and 12 (compliance) directly address GDPR Art.44-46 transfers
+      - NIS2         # Chapter 10 (incident) and Chapter 11 (continuity) align with NIS2 Art.21
+
+  redistribution_note: >-
+    SecNumCloud v3.2 is published by ANSSI (Agence nationale de la securite
+    des systemes d'information) under French sovereign authority. The English
+    translation (v3.2.a) is hosted by the Information Technology and Innovation
+    Foundation (ITIF). Control descriptions in this framework paraphrase the
+    published requirements for assessment purposes; they do not constitute legal
+    advice. For authoritative interpretation, consult ANSSI directly or an
+    accredited SecNumCloud audit body (PASSI).
+
+  replaces: []

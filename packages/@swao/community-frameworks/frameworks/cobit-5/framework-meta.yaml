@@ -8,7 +8,7 @@ framework:
   version: "2012 (ISBN 978-1-60420-237-3)"
   authority: "ISACA -- Information Systems Audit and Control Association"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/cobit-5"
   applicability_hints:
     - it_governance
@@ -17,6 +17,7 @@ framework:
     - risk_management
     - service_management
     - regulatory_alignment
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
     Community packaging of ISACA COBIT 5 as a SWAO community catalogue. COBIT

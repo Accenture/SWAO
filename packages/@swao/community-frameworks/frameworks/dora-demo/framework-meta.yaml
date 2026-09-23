@@ -1,0 +1,25 @@
+# SWAO community framework metadata -- DORA demo subset
+# 12-control cross-pillar sample for live-presentation use.
+# Sprint-138 #2801.
+
+framework:
+  id: DORA_DEMO
+  name: "DORA Demo (12 controls) -- Financial Services Cross-Pillar Sample"
+  version: "2025-01-17 -- demo subset 2026-09-21"
+  authority: "European Union (Regulation EU 2022/2554)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO/discussions"
+  applicability_hints:
+    - financial_services
+    - banking
+  scoring_mode: binary
+  description: >-
+    Demo subset of DORA (Digital Operational Resilience Act) for live-presentation
+    use. Twelve controls sampled across all 5 DORA pillars: ICT risk management,
+    incident management, digital operational resilience testing, third-party risk,
+    and information sharing. Use the full DORA framework for production assessments.
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-09-21"
+
+  replaces: []

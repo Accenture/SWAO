@@ -189,8 +189,20 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
           const loaded = connectors[0];
           const { provider } = createProviderFromConnector(loaded, { model });
           providerRef.current = provider;
-          const maxTokens = loaded.file.connector.defaults?.max_tokens ?? 8192;
-          safeSet(setTokenBudget, maxTokens);
+          // #2828: use context window (input capacity) not max_tokens (output limit).
+          // max_tokens is the response cap (e.g. 8192); the context window is much larger.
+          const modelName = (loaded.file.connector as { model?: string }).model ?? '';
+          const knownContextWindows: Array<[RegExp, number]> = [
+            [/claude/i, 200_000],
+            [/gpt-4o/i, 128_000],
+            [/gpt-4/i, 128_000],
+            [/gemini-1\.5/i, 1_000_000],
+            [/gemini/i, 128_000],
+            [/llama/i, 128_000],
+          ];
+          const contextWindow = knownContextWindows.find(([re]) => re.test(modelName))?.[1] ?? 100_000;
+          const inputBudget = Math.floor(contextWindow * 0.85);
+          safeSet(setTokenBudget, inputBudget);
         }
       } catch { /* connector load failure is non-fatal -- no LLM = status error later */ }
 
@@ -289,6 +301,22 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
 
   const sendMessage = useCallback(async (content: string): Promise<void> => {
     if (status !== 'ready' || !providerRef.current) return;
+
+    // #2829: intercept /clear before sending to LLM.
+    if (content.trim() === '/clear') {
+      const systemTurn: ChatTurn = { ts: new Date().toISOString(), role: 'system', content: systemPromptRef.current };
+      setMessages([systemTurn]);
+      setTotalTokensIn(0);
+      const confirmTurn: ChatTurn = {
+        ts: new Date().toISOString(),
+        role: 'assistant',
+        content: 'Session cleared. Context reset.',
+      };
+      setMessages(prev => [...prev, confirmTurn]);
+      try { appendTurn(historyPathRef.current, confirmTurn); } catch { /* non-fatal */ }
+      safeSet(setStatus, 'ready');
+      return;
+    }
 
     safeSet(setStatus, 'thinking');
 

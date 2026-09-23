@@ -12,7 +12,7 @@ framework:
   version: "NIST SP 800-66r2 / 2024-02"
   authority: "U.S. Department of Health and Human Services -- 45 CFR Part 164 Subpart C (Security Rule); implementation guidance from NIST SP 800-66 Revision 2 (February 2024)"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/nist-sp-800-66r2-hipaa"
   applicability_hints:
     - us_health
@@ -22,6 +22,7 @@ framework:
     - covered_entity
     - business_associate
     - hipaa_security_rule
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
     Community packaging of the HIPAA Security Rule (45 CFR Part 164 Subpart C)

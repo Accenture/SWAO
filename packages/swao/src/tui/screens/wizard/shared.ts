@@ -43,6 +43,8 @@ export interface SetupState {
   // #2355: secondary LLM provider (set when llm-secondary step completes)
   llmSecondaryProvider?: LlmProvider;
   llmSecondaryModel?: string;
+  // #2815: vision screen count (set when Playwright step completes with Playwright installed)
+  visionMaxScreens?: number;
 }
 
 // #0760: module-level flag tracks whether any GuidanceBox in the wizard is

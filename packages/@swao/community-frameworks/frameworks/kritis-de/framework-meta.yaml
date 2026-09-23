@@ -1,0 +1,66 @@
+# SWAO community framework metadata -- KRITIS-DE
+# Sprint-138 #2802: German KRITIS operators (BSIG §8a) IT security obligations.
+# New framework synthesised from BSI KRITIS guidance, sector-specific catalogs,
+# and the Orientierungshilfe zur Nachweispflicht gemass §8a BSIG.
+
+framework:
+  id: KRITIS_DE
+  name: "KRITIS-DE -- German Critical Infrastructure IT Security"
+  version: "2024"
+  authority: >-
+    Federal Office for Information Security (BSI) -- Bundesamt fuer Sicherheit
+    in der Informationstechnik; Bundesnetzagentur (BNetzA) for energy/water.
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/kritis-de"
+  applicability_hints:
+    - de_kritis
+    - german_critical_infrastructure
+    - energy_sector
+    - water_sector
+    - health_sector
+    - transport_sector
+    - finance_kritis
+    - ict_kritis
+    - de_sovereign
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    Community packaging of German KRITIS IT security obligations under BSIG
+    §8a and §8b (IT-Sicherheitsgesetz, most recently amended 2021). 40 controls
+    across 7 domains: Governance (KRIT-GOV, 6), Asset Inventory (KRIT-AST, 5),
+    Incident Detection and Reporting (KRIT-INC, 6), Access Control (KRIT-IDM, 5),
+    Resilience and Continuity (KRIT-BCM, 7), Supply Chain (KRIT-SCM, 5), and
+    Sector-Specific Requirements (KRIT-SEC, 6). Controls synthesised from BSI
+    KRITIS Orientierungshilfe, sector-specific IT-Sicherheitskataloge, and
+    KRITIS-DachG (2023). Cross-mapped to BSI_C5, BSI_GRUNDSCHUTZ_2023,
+    ISO_27001:2022, and DORA (for finance/ICT sectors with dual obligation).
+    Controls with assessment_type_scope: [aud] require §8a-certified auditor
+    sign-off or sector authority approval.
+  references:
+    - "BSI Act (BSIG) §8a and §8b -- IT-Sicherheitsgesetz 2.0 (2021)"
+    - "BSI KRITIS Ordinance (BSI-KritisV) -- sector thresholds"
+    - "BSI Orientierungshilfe zur Nachweispflicht gemass §8a BSIG"
+    - "https://www.bsi.bund.de/EN/Themen/KRITIS-und-regulierte-Unternehmen/"
+    - "IT-Sicherheitskatalog Strom und Gas (BNetzA, 2015 + 2018 amendment)"
+    - "KRITIS-DachG (KRITIS-Dachgesetz, BGBl. 2023)"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-09-21"
+  signal_prefix: KRIT
+
+  cross_mapping_hints:
+    target_frameworks:
+      - BSI_C5               # cloud-hosted KRITIS systems require C5 Type 2
+      - BSI_GRUNDSCHUTZ_2023 # ISMS methodology baseline for KRITIS operators
+      - ISO_27001            # BNetzA IT-Sicherheitskatalog mandates ISO 27001 for energy/water
+      - DORA                 # Finance + ICT sectors have dual KRITIS + DORA obligation
+      - NIS2                 # NIS2 Art 21 essential entity requirements overlap KRITIS §8a
+
+  redistribution_note: >-
+    KRITIS controls are synthesised from publicly available BSI guidance
+    documents and sector authority publications. BSI and BNetzA guidance
+    documents are published under German government open-content terms.
+    This framework does not constitute legal advice. Operators must consult
+    a BSI-approved auditor for their §8a compliance evidence.
+
+  replaces: []

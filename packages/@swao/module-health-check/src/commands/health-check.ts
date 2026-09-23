@@ -884,7 +884,7 @@ export interface BuildHealthCheckContext {
   credentialVaultProbe: CredentialVaultProbeResult;
 }
 
-async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): Promise<BuildHealthCheckContext> {
+async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, onProbeLine?: (line: string) => void): Promise<BuildHealthCheckContext> {
   let licenseProbe: LicenseProbeResult;
   let licenseInvalid = false;
   let fingerprint: string = 'unknown';
@@ -912,6 +912,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): P
     }
   }
   logPortfolio('info', 'health-check.probe.complete', `probe: license status=${licenseProbe.status}`, { context: { probe: 'license', status: licenseProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatLicenseProbeLine(licenseProbe));
 
   // Playwright probe is host-injected + deferred (sprint-038 #0350): the host
   // supplies a thunk that lazy-imports playwright-driver so `--version` /
@@ -927,41 +928,49 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): P
   });
   const playwrightProbe: PlaywrightProbeResult = await host.buildPlaywrightProbe();
   logPortfolio('info', 'health-check.probe.complete', `probe: playwright status=${playwrightProbe.status}`, { context: { probe: 'playwright', status: playwrightProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatPlaywrightProbeLine(playwrightProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: mcp', { context: { probe: 'mcp' } });
   const mcpProbe: McpProbeResult = buildMcpProbe();
   logPortfolio('info', 'health-check.probe.complete', `probe: mcp status=${mcpProbe.status}`, { context: { probe: 'mcp', status: mcpProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatMcpProbeLine(mcpProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: community_frameworks', { context: { probe: 'community_frameworks' } });
   const communityFrameworksProbe = buildCommunityFrameworksProbe(workspacePath);
   logPortfolio('info', 'health-check.probe.complete', `probe: community_frameworks status=${communityFrameworksProbe.status}`, { context: { probe: 'community_frameworks', status: communityFrameworksProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatCommunityFrameworksProbeLine(communityFrameworksProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: imports', { context: { probe: 'imports' } });
   const importsProbe = host.buildImportsProbe(workspacePath);
   logPortfolio('info', 'health-check.probe.complete', `probe: imports status=${importsProbe.status}`, { context: { probe: 'imports', status: importsProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatImportsProbeLine(importsProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: traceability', { context: { probe: 'traceability' } });
   const traceabilityProbe = buildTraceabilityProbe(workspacePath);
   logPortfolio('info', 'health-check.probe.complete', `probe: traceability status=${traceabilityProbe.status}`, { context: { probe: 'traceability', status: traceabilityProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatTraceabilityProbeLine(traceabilityProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: bi_export', { context: { probe: 'bi_export' } });
   const biExportProbe = buildBiExportProbe(workspacePath);
   logPortfolio('info', 'health-check.probe.complete', `probe: bi_export status=${biExportProbe.status}`, { context: { probe: 'bi_export', status: biExportProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatBiExportProbeLine(biExportProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: scope', { context: { probe: 'scope' } });
   const scopeProbe = buildScopeProbe(workspacePath);  // #0263 Phase 2
   logPortfolio('info', 'health-check.probe.complete', `probe: scope status=${scopeProbe.status}`, { context: { probe: 'scope', status: scopeProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatScopeProbeLine(scopeProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: prerequisites', { context: { probe: 'prerequisites' } });
   const prerequisitesProbe = buildPrerequisitesProbe();  // #0326 sprint-036
   logPortfolio('info', 'health-check.probe.complete', `probe: prerequisites status=${prerequisitesProbe.status}`, { context: { probe: 'prerequisites', status: prerequisitesProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatPrerequisitesProbeLine(prerequisitesProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: vcs_auth', {
@@ -969,16 +978,19 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): P
   });
   const vcsAuthProbe = await host.buildVcsAuthProbe(workspacePath);  // #0326 sprint-036
   logPortfolio('info', 'health-check.probe.complete', `probe: vcs_auth status=${vcsAuthProbe.status}`, { context: { probe: 'vcs_auth', status: vcsAuthProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatVcsAuthProbeLine(vcsAuthProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: ingestion', { context: { probe: 'ingestion' } });
   const ingestionProbe = buildIngestionProbe(workspacePath);  // #0970
   logPortfolio('info', 'health-check.probe.complete', `probe: ingestion status=${ingestionProbe.status}`, { context: { probe: 'ingestion', status: ingestionProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatIngestionFolderProbeLine(ingestionProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: iac_toolchain', { context: { probe: 'iac_toolchain' } });
   const iacToolchainProbe = buildIaCToolchainProbe();  // #1328 design 085 OI-05
   logPortfolio('info', 'health-check.probe.complete', `probe: iac_toolchain status=${iacToolchainProbe.status}`, { context: { probe: 'iac_toolchain', status: iacToolchainProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatIaCToolchainProbeLine(iacToolchainProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: llm_gateway', {
@@ -992,16 +1004,19 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): P
   // #2318: include message in log when probe is not ok so support bundle captures the reason.
   // #2251: add status field (string) to match all other probe.complete events; ok:boolean kept for compat.
   logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayProbe.ok ? 'ok' : 'fail', ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok ? {} : { message: llmGatewayProbe.message }), elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatLlmGatewayLine(llmGatewayProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: wsp_metadata', { context: { probe: 'wsp_metadata' } });
   const wspMetadataProbe = buildWspMetadataProbe(workspacePath);  // #1509 engagement placeholder guard
   logPortfolio('info', 'health-check.probe.complete', `probe: wsp_metadata status=${wspMetadataProbe.status}`, { context: { probe: 'wsp_metadata', status: wspMetadataProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatWspMetadataProbeLine(wspMetadataProbe));
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: lz_catalogue_coverage', { context: { probe: 'lz_catalogue_coverage' } });
   const lzCatalogueCoverageProbe = buildLzCatalogueCoverageProbe(workspacePath);  // #1698
   logPortfolio('info', 'health-check.probe.complete', `probe: lz_catalogue_coverage status=${lzCatalogueCoverageProbe.status}`, { context: { probe: 'lz_catalogue_coverage', status: lzCatalogueCoverageProbe.status, gaps: lzCatalogueCoverageProbe.gaps_count, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatLzCatalogueCoverageProbeLine(lzCatalogueCoverageProbe));
   // #2222: persist per-file provenance (hash, origin, last_updated) so Support Bundle
   // captures full catalogue detail without requiring text-format health-check output.
   logPortfolio('info', 'health-check.lz-catalogue-provenance', 'LZ catalogue provenance', {
@@ -1012,6 +1027,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps): P
   logPortfolio('info', 'health-check.probe.start', 'probe: credential_vault', { context: { probe: 'credential_vault' } });
   const credentialVaultProbe = buildCredentialVaultProbe();  // #2325
   logPortfolio('info', 'health-check.probe.complete', `probe: credential_vault status=${credentialVaultProbe.status}`, { context: { probe: 'credential_vault', status: credentialVaultProbe.status, key_count: credentialVaultProbe.keyCount, categories: credentialVaultProbe.categories, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatCredentialVaultProbeLine(credentialVaultProbe));
 
   return {
     licenseProbe,
@@ -1137,7 +1153,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           dev_build: process.env['SWAO_DEV_BUILD'] === '1',
         },
       });
-      const ctx = await gatherProbes(workspacePath, host);
+      const onProbeLine = opts.format === 'text' ? console.log : undefined;
+      const ctx = await gatherProbes(workspacePath, host, onProbeLine);
       const {
         licenseProbe,
         licenseInvalid,
@@ -1333,22 +1350,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         // #2229: explicit exit so LLM gateway HTTP connections do not hold event loop.
         process.exit(0);
       } else {
-        console.log(formatLicenseProbeLine(licenseProbe));
-        console.log(formatPlaywrightProbeLine(playwrightProbe));
-        console.log(formatMcpProbeLine(mcpProbe));
-        console.log(formatCommunityFrameworksProbeLine(communityFrameworksProbe));
-        console.log(formatImportsProbeLine(importsProbe));
-        console.log(formatTraceabilityProbeLine(traceabilityProbe));
-        console.log(formatBiExportProbeLine(biExportProbe));
-        console.log(formatScopeProbeLine(scopeProbe));
-        console.log(formatPrerequisitesProbeLine(prerequisitesProbe));
-        console.log(formatVcsAuthProbeLine(vcsAuthProbe));
-        console.log(formatIngestionFolderProbeLine(ingestionProbe));
-        console.log(formatIaCToolchainProbeLine(iacToolchainProbe));
-        console.log(formatLlmGatewayLine(llmGatewayProbe));
-        console.log(formatWspMetadataProbeLine(wspMetadataProbe));
-        console.log(formatLzCatalogueCoverageProbeLine(lzCatalogueCoverageProbe));
-        console.log(formatCredentialVaultProbeLine(credentialVaultProbe));
+        // Probe lines are already emitted by the onProbeLine callback inside gatherProbes().
 
         // #0470 + #0476 + #0516: LLM config, LZR staleness, temperature, placeholders, source
         const maxAge = readLzrMaxAgeDays(workspacePath);
