@@ -85,15 +85,25 @@ function aliasBase(alias: string): string {
 }
 
 /** Select the best model from the discovered list for an alias.
- *  Strategy: find all models whose ID starts with the alias base (same
- *  vendor/family), then pick the last one alphabetically (highest version
- *  in most naming conventions). Returns null when no match. */
+ *  Primary: startsWith(base). Fallback: vendor-scoped token match to handle
+ *  providers that insert version numbers mid-name (e.g. google/gemini-2.5-flash
+ *  for alias base google/gemini-flash). Returns null when no match. */
 function pickBestModel(alias: string, discoveredIds: string[]): string | null {
   const base = aliasBase(alias);
-  const candidates = discoveredIds
-    .filter((id) => id.startsWith(base))
+
+  // Primary pass: strict prefix match (vendor/family-version-*)
+  const candidates = discoveredIds.filter((id) => id.startsWith(base)).sort();
+  if (candidates.length > 0) return candidates[candidates.length - 1]!;
+
+  // Fallback: vendor-scoped family-token match (#2863).
+  const slashIdx = base.indexOf('/');
+  if (slashIdx === -1) return null;
+  const vendor = base.slice(0, slashIdx + 1);
+  const tokens = base.slice(slashIdx + 1).split('-').filter(Boolean);
+  const tokenCandidates = discoveredIds
+    .filter((id) => id.startsWith(vendor) && tokens.every((t) => id.includes(t)))
     .sort();
-  return candidates.length > 0 ? candidates[candidates.length - 1]! : null;
+  return tokenCandidates.length > 0 ? tokenCandidates[tokenCandidates.length - 1]! : null;
 }
 
 /** Resolve a `~vendor/family-latest` alias to a concrete model ID.

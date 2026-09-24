@@ -20,11 +20,12 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 
-// Matches tier-named Windows binaries (swao-enterprise-win-x64.exe, swao-consultant-win-x64.exe,
-// swao-community-win-x64.exe) and Unix platform binaries (swao-linux-x64, swao-darwin-arm64).
-// The optional -x64 group handles both the versioned release name (win-x64.exe) and any
-// legacy rename (win.exe) so the key-scan is forward-compatible with both forms.
-const SWAO_BIN_RE = /swao-(?:enterprise|consultant|community)-win(?:-x64)?\.exe$|swao-(?:linux|darwin|macos)-(?:x64|arm64)$/;
+// Matches all tier-named release binaries (#2713):
+//   Windows : swao-{enterprise,consultant,community}-win[-x64].exe
+//   Unix    : swao-{enterprise,consultant,community}-{linux,darwin,macos}-{x64,arm64}
+// The tier segment is optional to remain compatible with un-tiered legacy names
+// (e.g. swao-linux-x64 from pre-v1.0 deployments).
+const SWAO_BIN_RE = /swao-(?:(?:enterprise|consultant|community)-)?(?:win(?:-x64)?\.exe|(?:linux|darwin|macos)-(?:x64|arm64))$/;
 
 // On Windows, Claude Desktop may be installed as an MSIX package. MSIX filesystem
 // virtualization means Claude Desktop reads its config from a different path than

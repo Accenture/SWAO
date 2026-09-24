@@ -1929,7 +1929,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         // #2406: convert filename-format timestamp (2026-08-30T14-05-33) to ISO 8601
         const runTsIso = runTs.replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3.000Z');
         // #2404: add human-readable display_name to each leg for JSON/YAML output
-        const legsWithDisplayName = legs.map(leg => ({
+        const legsWithDisplayName = legs.map((leg: { id: string; connector: string; model: string; primary: boolean }) => ({
           ...leg,
           display_name: `${leg.connector.charAt(0).toUpperCase() + leg.connector.slice(1)} / ${leg.model}`,
         }));

@@ -25,6 +25,7 @@ function run(args: string): string {
   try {
     return execSync(`node "${CLI}" ${args}`, {
       encoding: 'utf-8',
+      stdio: 'pipe',
       env: { ...process.env },
     });
   } catch (err: unknown) {

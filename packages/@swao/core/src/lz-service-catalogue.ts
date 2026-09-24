@@ -76,6 +76,8 @@ export const LzRegionSchema = z.object({
   country: z.string().optional(),
   sovereignty: LzSovereigntyFactsSchema.optional(),
   services: z.array(LzServiceSchema).default([]),
+  /** Geographic grouping label used by some providers (e.g. "Middle East"). */
+  area: z.string().optional(),
 }).strict();
 
 // --- Catalogue metadata block (D-LZ-06) ----------------------------------

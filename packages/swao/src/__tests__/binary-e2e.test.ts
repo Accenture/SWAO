@@ -309,6 +309,16 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     const hasComplete = events.some(e => e?.code === 'lz.assessment.complete');
     expect(hasStart).toBe(true);
     expect(hasComplete).toBe(true);
+    // #2591: run-context.yaml must record assessment_type: landing-zone-catalog,
+    // not application (silent fallback regression guard).
+    const runsDir = join(APP_DIR, 'wsp', 'runs');
+    const runDirs = existsSync(runsDir) ? readdirSync(runsDir).sort() : [];
+    const latestRunDir = runDirs[runDirs.length - 1];
+    if (latestRunDir) {
+      const runCtxPath = join(runsDir, latestRunDir, 'run-context.yaml');
+      expect(existsSync(runCtxPath)).toBe(true);
+      expect(readFileSync(runCtxPath, 'utf-8')).toContain('assessment_type: landing-zone-catalog');
+    }
   });
 
   // ── report subcommand ────────────────────────────────────────────────────

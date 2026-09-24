@@ -1519,7 +1519,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           writeFileSync(join(lzRunDir, 'run-context.yaml'), dump(lzRunCtx), 'utf-8');
           // #2503: write findings.yaml placeholder so WSP monitor and tooling can detect a
           // completed LZ catalog run (mirrors the app assessment findings.yaml pattern).
-          try { writeFileSync(join(lzRunDir, 'findings.yaml'), 'findings:\n  []\n', 'utf-8'); } catch { /* best-effort */ }
+          try { writeFileSync(join(lzRunDir, 'findings.yaml'), dump({ findings: [] }), 'utf-8'); } catch { /* best-effort */ }
 
           // #1505/#1510: Write primary LZ selection to a workspace-level pointer file.
           // Never mutate a previous run's wsp.yaml -- each run's output files are immutable
@@ -2928,17 +2928,28 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             `[ok]  Plan derived  ->  wsp/runs/${runTs}/wsp-plan.yaml  ` +
               `(${r.regimesIncluded.join(',') || 'no regimes'}, ${r.controlsCount} controls, ${r.findingsCount} findings, ${r.risksCount} risks)`,
           );
+          // #2674: populate findings.yaml from wsp-plan.yaml compliance controls.
+          try {
+            const planRaw = load(readFileSync(r.planPath, 'utf-8')) as {
+              compliance?: { regimes?: Array<{ id?: string; controls?: Array<Record<string, unknown>> }> };
+            } | null;
+            const regimes = planRaw?.compliance?.regimes ?? [];
+            const flatFindings = regimes.flatMap(regime =>
+              (regime.controls ?? []).map(ctrl => ({
+                id: ctrl['id'],
+                title: ctrl['title'] ?? '',
+                severity: ctrl['severity'] ?? 'medium',
+                outcome: ctrl['outcome'] ?? 'UNKNOWN',
+                regime: regime.id ?? '',
+                assessed_at: String(ctrl['assessed_at'] ?? assessedAt),
+              })),
+            );
+            writeFileSync(join(runDir, 'findings.yaml'), dump({ findings: flatFindings }), 'utf-8');
+          } catch (findingsErr) {
+            console.warn(`[warn] findings.yaml write failed: ${(findingsErr as Error).message}`);
+          }
         } catch (e) {
           console.warn(`[warn] Plan derivation failed: ${(e as Error).message}`);
-        }
-
-        // #2425: write a run-level diagnostic findings.yaml so the WSP monitor
-        // and tooling can confirm the run completed (machine-readable health file).
-        // Assessment findings are in wsp-plan.yaml; this file covers run diagnostics.
-        try {
-          writeFileSync(join(runDir, 'findings.yaml'), 'findings:\n  []\n', 'utf-8');
-        } catch (e) {
-          console.warn(`[warn] findings.yaml write failed: ${(e as Error).message}`);
         }
 
         // PII post-run scrub + report flush (#0354, design 032 §13). Runs

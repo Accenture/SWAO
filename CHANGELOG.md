@@ -11,6 +11,33 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.1] - 2026-09-24
+
+Patch release: Docker CI binary-wrap approach + 11 bug fixes (sprint-140).
+
+### Fixed
+
+- Docker image publish: pnpm workspace install no-op in Docker resolved by
+  binary-wrap approach -- pkg binary copied directly into debian:bookworm-slim
+- `swao assess --type landing-zone-catalog` silently ran wrong assessment type (#2591)
+- GCP LZ catalogue Zod crash on regions with `area` field (#2850)
+- OpenRouter `~google/gemini-flash-latest` alias resolves to invalid model (#2863)
+- `swao diff` shows `unknown` provider and false "Provider changed" warning (#2864)
+- MCP welcome string used hardcoded sprint-tagged version (#2718)
+- `CHALLENGE_ALIAS_MAP` not applied in `handleReadChallenge` (#2720)
+- Enterprise tier gate missing before MCP server start (#2725)
+- `SWAO_BIN_RE` regex did not match tier-named Unix release binaries (#2713)
+- LZ catalog HTML publication missing verdict sections -- #2434 regression (#2592)
+- `findings.yaml` always written as empty array (#2674)
+- `swao init` did not persist default workspace path for MCP (#2719)
+
+### Changed
+
+- Docker images now use binary-wrap approach (arm64 images use native linux-arm64 binary)
+- GHA actions upgraded to Node.js 24-compatible versions (#2851, #2865)
+
+---
+
 ## [1.2.0] - 2026-09-22
 
 Minor release: 22 community frameworks, EU AI Act + SecNumCloud + EC CSF, VitePress

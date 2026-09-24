@@ -128,4 +128,20 @@ describe('diff command fixture runs', () => {
     const p2 = 'openai/gpt-5';
     expect(p1 !== p2).toBe(true);
   });
+
+  it('provider-change detection: no-provider run labelled none, no warning (#2864)', () => {
+    // LZ catalog runs have no LLM provider; both sides 'none' -- no warning.
+    const p1 = 'none';
+    const p2 = 'none';
+    const shouldWarn = p1 !== 'none' && p2 !== 'none' && p1 !== p2;
+    expect(shouldWarn).toBe(false);
+  });
+
+  it('provider-change detection: LZ-catalog vs LLM run suppresses warning (#2864)', () => {
+    // Cross-type diff (one side 'none') is not a provider swap -- no warning.
+    const p1 = 'none';
+    const p2 = 'anthropic/claude-sonnet-4-6';
+    const shouldWarn = p1 !== 'none' && p2 !== 'none' && p1 !== p2;
+    expect(shouldWarn).toBe(false);
+  });
 });

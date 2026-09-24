@@ -107,6 +107,30 @@ describe('patchClaudeDesktopConfig', () => {
     expect(parsed.mcpServers['swao']?.command).toBe('/new/swao-linux-x64');
   });
 
+  // CI audit gate: SWAO_BIN_RE must match every actual release binary filename (#2713).
+  // Tier-named Unix binaries (swao-enterprise-linux-x64) were not covered by the
+  // previous regex and would not be detected as existing SWAO entries.
+  it.each([
+    ['swao-community-win-x64.exe',   'C:\\swao\\rc-1\\swao-community-win-x64.exe'],
+    ['swao-consultant-win-x64.exe',  'C:\\swao\\rc-1\\swao-consultant-win-x64.exe'],
+    ['swao-enterprise-linux-x64',    '/opt/swao/swao-enterprise-linux-x64'],
+    ['swao-community-linux-x64',     '/opt/swao/swao-community-linux-x64'],
+    ['swao-consultant-linux-x64',    '/opt/swao/swao-consultant-linux-x64'],
+    ['swao-enterprise-macos-x64',    '/Applications/swao-enterprise-macos-x64'],
+    ['swao-community-macos-x64',     '/Applications/swao-community-macos-x64'],
+    ['swao-enterprise-macos-arm64',  '/Applications/swao-enterprise-macos-arm64'],
+  ])('detects existing %s entry and updates it in-place', (_name, oldBinary) => {
+    mockConfig({ mcpServers: { 'swao': { command: oldBinary, args: ['mcp'] } } });
+    const getWritten = captureWrite();
+    const newBinary = 'C:\\swao\\rc-2\\swao-enterprise-win-x64.exe';
+
+    const result = patchClaudeDesktopConfig(CONFIG, newBinary);
+
+    expect(result).toBe('patched');
+    const parsed = JSON.parse(getWritten()) as { mcpServers: Record<string, { command: string }> };
+    expect(parsed.mcpServers['swao']?.command).toBe(newBinary);
+  });
+
   it('returns error when writeFileSync throws', () => {
     vi.mocked(existsSync).mockReturnValue(false);
     vi.mocked(mkdirSync).mockReturnValue(undefined as unknown as string);

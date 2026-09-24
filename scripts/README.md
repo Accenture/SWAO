@@ -1,19 +1,3 @@
-```
-// =======================================================================
-//
-//                          S  W  A  O
-//
-//     Sovereign Workload Assessment and Onboarding
-//     Community Build Scripts
-//
-//     Community Edition  -  Apache 2.0
-//
-//     Website       :  https://accenture.github.io/SWAO/
-//     Source Code   :  https://github.com/Accenture/SWAO
-//
-// =======================================================================
-```
-
 # Scripts
 
 Helper scripts for operators who build or deploy SWAO from this repository.

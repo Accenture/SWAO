@@ -143,7 +143,31 @@ describe('regionFulfills -- +<cap> capability qualifier', () => {
 // LzServiceSchema accepts max_version field
 // ---------------------------------------------------------------------------
 
-import { LzServiceSchema } from './lz-service-catalogue.js';
+import { LzServiceSchema, LzRegionSchema } from './lz-service-catalogue.js';
+
+// ---------------------------------------------------------------------------
+// LzRegionSchema accepts optional area field (#2850)
+// ---------------------------------------------------------------------------
+
+describe('LzRegionSchema', () => {
+  it('accepts a region with the area field (#2850 -- GCP regions carry area: "Middle East")', () => {
+    const result = LzRegionSchema.safeParse({
+      id: 'me-central1',
+      display: 'Doha, Qatar',
+      country: 'QA',
+      area: 'Middle East',
+      services: [],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.area).toBe('Middle East');
+  });
+
+  it('accepts a region without the area field', () => {
+    const result = LzRegionSchema.safeParse({ id: 'eu-central-1', services: [] });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.area).toBeUndefined();
+  });
+});
 
 describe('LzServiceSchema', () => {
   it('accepts a service with max_version', () => {

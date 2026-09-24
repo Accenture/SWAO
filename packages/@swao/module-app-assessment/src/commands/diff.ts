@@ -113,12 +113,12 @@ function findLatestRuns(workspaceAppDir: string, count: number): string[] {
 function printDiff(run1: RunSummary, run2: RunSummary, ts1: string, ts2: string): void {
   console.log(`\nswao diff: ${ts1} -> ${ts2}\n`);
 
-  const p1 = run1.provider ? `${run1.provider}/${run1.model ?? '?'}` : 'unknown';
-  const p2 = run2.provider ? `${run2.provider}/${run2.model ?? '?'}` : 'unknown';
+  const p1 = run1.provider ? `${run1.provider}/${run1.model ?? '?'}` : 'none';
+  const p2 = run2.provider ? `${run2.provider}/${run2.model ?? '?'}` : 'none';
   console.log(`  Run 1:  ${ts1}  [${p1}]`);
   console.log(`  Run 2:  ${ts2}  [${p2}]`);
 
-  if (p1 !== p2) {
+  if (p1 !== 'none' && p2 !== 'none' && p1 !== p2) {
     console.log(`\n  [!] Provider changed: ${p1} -> ${p2}.`);
     console.log(`      Score differences are not meaningful due to provider change.\n`);
   } else {

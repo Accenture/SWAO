@@ -108,4 +108,12 @@ describe('resolveModelAlias (#1817)', () => {
     const result = await resolveModelAlias('~google/gemini-flash-latest', noDiscovery, 'key');
     expect(result).toBe('google/gemini-flash');
   });
+
+  it('resolves ~google/gemini-flash-latest via token-match fallback when prefix no longer exists (#2863)', async () => {
+    // Discovery has google/gemini-2.5-flash (version injected mid-name); prefix
+    // google/gemini-flash matches nothing -- token fallback picks the right model.
+    mockDiscovery(DISCOVERY_MODELS);
+    const result = await resolveModelAlias('~google/gemini-flash-latest', MOCK_CONNECTOR, 'sk-or-test');
+    expect(result).toBe('google/gemini-2.5-flash');
+  });
 });

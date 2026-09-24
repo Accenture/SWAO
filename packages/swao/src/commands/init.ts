@@ -13,6 +13,7 @@
 //
 // ================================================================
 import { Command } from 'commander';
+import { saveDefaultWorkspace } from '@swao/core';
 import {
   copyFileSync,
   existsSync,
@@ -1001,6 +1002,7 @@ export function registerInit(program: Command): void {
       }
       console.log(`[ok]  Ingestion drop folder scaffolded -> ${join(appDir, 'ingestion')}`);
       console.log(appDir);
+      saveDefaultWorkspace(workspaceDir);
       // #2228: explicit exit so stdout flushes to Windows named pipes (piped stdout).
       process.exit(0);
     });
