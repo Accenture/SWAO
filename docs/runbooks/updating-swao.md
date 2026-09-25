@@ -14,7 +14,7 @@ https://github.com/Accenture/SWAO/releases
 
 Each release page lists:
 
-- Versioned binaries for each platform (`swao-enterprise-win.exe`, `swao-linux-x64`, `swao-linux-arm64`, `swao-darwin-x64`, `swao-darwin-arm64`)
+- Versioned binaries for each platform (`swao-enterprise-win-x64.exe`, `swao-enterprise-linux-x64`, `swao-enterprise-linux-arm64`, `swao-enterprise-macos-x64`, `swao-enterprise-macos-arm64`)
 - `sha256sums.txt` -- SHA-256 checksums for every binary
 - `CHANGELOG.md` excerpt -- summary of changes since the previous release
 
@@ -52,8 +52,8 @@ grep "swao-${PLATFORM}" /tmp/sha256sums.txt
 
 ```powershell
 $Version = "0.5.1"
-$BinaryUrl = "https://github.com/Accenture/SWAO/releases/download/v${Version}/swao-enterprise-win.exe"
-$ChecksumUrl = "https://github.com/Accenture/SWAO/releases/download/v${Version}/sha256sums.txt"
+$BinaryUrl = "https://github.com/Accenture/SWAO/releases/download/v${Version}/swao-enterprise-win-x64.exe"
+$ChecksumUrl = "https://github.com/Accenture/SWAO/releases/download/v${Version}/SHA256SUMS"
 
 Invoke-WebRequest -Uri $BinaryUrl -OutFile "$env:TEMP\swao-new.exe"
 Invoke-WebRequest -Uri $ChecksumUrl -OutFile "$env:TEMP\sha256sums.txt"
@@ -62,7 +62,7 @@ Invoke-WebRequest -Uri $ChecksumUrl -OutFile "$env:TEMP\sha256sums.txt"
 $Hash = (Get-FileHash -Path "$env:TEMP\swao-new.exe" -Algorithm SHA256).Hash.ToLower()
 
 # Read expected hash from checksum file
-$Expected = (Select-String -Path "$env:TEMP\sha256sums.txt" -Pattern "swao-enterprise-win.exe").Line.Split(" ")[0]
+$Expected = (Select-String -Path "$env:TEMP\SHA256SUMS" -Pattern "swao-enterprise-win-x64.exe").Line.Split(" ")[0]
 
 if ($Hash -eq $Expected) {
     Write-Host "Checksum verified: $Hash"
@@ -92,13 +92,13 @@ xattr -dr com.apple.quarantine /usr/local/bin/swao
 
 ```powershell
 # Stop any running SWAO processes first
-Stop-Process -Name "swao-win-x64" -ErrorAction SilentlyContinue
+Stop-Process -Name "swao-enterprise-win-x64" -ErrorAction SilentlyContinue
 
 # Replace the binary
-Move-Item -Force "$env:TEMP\swao-new.exe" "C:\Tools\swao\swao-enterprise-win.exe"
+Move-Item -Force "$env:TEMP\swao-new.exe" "C:\Tools\swao\swao-enterprise-win-x64.exe"
 
 # Re-unblock after replacement
-Unblock-File -Path "C:\Tools\swao\swao-enterprise-win.exe"
+Unblock-File -Path "C:\Tools\swao\swao-enterprise-win-x64.exe"
 ```
 
 ---

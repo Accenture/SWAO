@@ -21,11 +21,11 @@ Dateinamen der Windows-Binaries:
 
 | Edition | Dateiname |
 |---|---|
-| Community (Open Source) | `swao-community-win.exe` |
+| Community (Open Source) | `swao-community-win-x64.exe` |
 | Consultant | `swao-consultant-win-x64.exe` |
 | Enterprise | `swao-enterprise-win-x64.exe` |
 
-Fuer macOS und Linux entsprechend `swao-community-darwin-x64`, `swao-community-linux-x64` usw.
+Fuer macOS und Linux entsprechend `swao-community-macos-x64`, `swao-community-linux-x64` usw.
 
 ## Nach dem Download
 
@@ -35,7 +35,7 @@ chmod +x swao-community-linux-x64
 ./swao-community-linux-x64 --version
 
 # Windows: Binary per Doppelklick oder in PowerShell
-.\swao-community-win.exe --version
+.\swao-community-win-x64.exe --version
 ```
 
 Anschliessend mit [Workspace-Setup](/de/workspace-setup) fortfahren.
@@ -49,7 +49,7 @@ Die Datei `SHA256SUMS` im Release enthaelt kryptografische Pruefwerte fuer alle 
 sha256sum --check SHA256SUMS
 
 # Windows (PowerShell)
-Get-FileHash swao-community-win.exe -Algorithm SHA256
+Get-FileHash swao-community-win-x64.exe -Algorithm SHA256
 ```
 
 ## Naechste Schritte

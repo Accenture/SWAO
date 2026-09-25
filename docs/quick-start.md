@@ -32,9 +32,9 @@ Download the binary for your platform from the [SWAO Releases page](https://gith
 
 | Platform | File |
 |---|---|
-| Windows x64 | `swao-community-win.exe` |
-| macOS Apple Silicon | `swao-community-darwin-arm64` |
-| macOS Intel | `swao-community-darwin-x64` |
+| Windows x64 | `swao-community-win-x64.exe` |
+| macOS Apple Silicon | `swao-community-macos-arm64` |
+| macOS Intel | `swao-community-macos-x64` |
 | Linux x64 | `swao-community-linux-x64` |
 
 ```bash
