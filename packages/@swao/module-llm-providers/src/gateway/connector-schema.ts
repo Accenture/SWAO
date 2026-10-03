@@ -13,6 +13,7 @@
 //  Source Code   :  https://github.com/Accenture/SWAO
 //
 // ================================================================
+// v1.0
 
 import { z } from 'zod';
 import { load as loadYaml } from 'js-yaml';
@@ -107,6 +108,11 @@ const AuthSchema = z.object({
   /** 'bearer' (default) prefixes the key with 'Bearer '; 'raw' sends it verbatim
    *  (e.g. Anthropic x-api-key). */
   scheme: z.enum(['bearer', 'raw']).default('bearer'),
+  // #2743: shell command whose trimmed stdout is used as the Bearer token.
+  // Intended for short-lived ADFS/SSO tokens that cannot be stored statically.
+  // token_ttl_s: cache duration in seconds (default: 300s -- suits ADFS 60min tokens).
+  token_command: z.string().min(1).optional(),
+  token_ttl_s: z.number().int().positive().optional(),
 }).strict();
 
 const DefaultsSchema = z.object({

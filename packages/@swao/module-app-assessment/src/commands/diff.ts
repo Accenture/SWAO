@@ -13,11 +13,17 @@
 //
 // ================================================================
 
+// v1.1
 import type { Command } from 'commander';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { load as loadYaml } from 'js-yaml';
 import { RunManifestSchema, findWorkspace } from '@swao/core';
+
+// Run-type categories for cross-type detection (#2868).
+// 'llm'     -- standard assessment run with an LLM provider configured.
+// 'lz_only' -- LZ-catalog or source-only run; llm block absent or provider unset.
+type RunType = 'llm' | 'lz_only';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +40,7 @@ interface RunSummary {
   assessed_at: string;
   provider?: string;
   model?: string;
+  runType: RunType;
   signals: DiffSignal[];
   score?: number;
 }
@@ -64,6 +71,8 @@ function loadRunSummary(runDir: string): RunSummary | null {
     } catch { /* skip malformed */ }
   }
 
+  const runType: RunType = provider ? 'llm' : 'lz_only';
+
   // Collect signals from all pass YAMLs
   const passesDir = join(runDir, 'passes');
   const signals: DiffSignal[] = [];
@@ -89,7 +98,7 @@ function loadRunSummary(runDir: string): RunSummary | null {
     } catch { /* skip */ }
   }
 
-  return { run_id: runId, assessed_at: assessedAt, provider, model, signals, score };
+  return { run_id: runId, assessed_at: assessedAt, provider, model, runType, signals, score };
 }
 
 function resolveRunDir(workspaceAppDir: string, runTs: string): string {
@@ -118,7 +127,14 @@ function printDiff(run1: RunSummary, run2: RunSummary, ts1: string, ts2: string)
   console.log(`  Run 1:  ${ts1}  [${p1}]`);
   console.log(`  Run 2:  ${ts2}  [${p2}]`);
 
-  if (p1 !== 'none' && p2 !== 'none' && p1 !== p2) {
+  // #2868: when run types differ (one has an LLM provider, the other does not),
+  // emit a cross-type warning instead of the misleading "Provider changed" alert.
+  if (run1.runType !== run2.runType) {
+    const label1 = run1.runType === 'llm' ? 'LLM assessment' : 'LZ-catalog / source-only';
+    const label2 = run2.runType === 'llm' ? 'LLM assessment' : 'LZ-catalog / source-only';
+    console.log(`\n  [!] Warning: cross-run-type comparison (${label1} vs ${label2}).`);
+    console.log(`      Signal and score deltas are not meaningful across run types.\n`);
+  } else if (p1 !== 'none' && p2 !== 'none' && p1 !== p2) {
     console.log(`\n  [!] Provider changed: ${p1} -> ${p2}.`);
     console.log(`      Score differences are not meaningful due to provider change.\n`);
   } else {

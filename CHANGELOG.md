@@ -11,6 +11,67 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.2] - 2026-10-03
+
+Patch release: 31 field bug fixes from the BA PREME PoC run + smoke script improvements
+(sprint-142).
+
+### Fixed
+
+- Connector `open-llm` not registered in v1.2.1 -- use `openai` connector with `base_url` (#2889)
+- `.swao.yml` `base_url` silently ignored when `connector:` key is also set (#2893)
+- `swao chat` reports "No LLM connector configured" even when `.swao.yml` has connector (#2895)
+- TUI Setup Wizard sets connector `vllm-generic` for custom OpenAI-compatible endpoint (#2886)
+- TUI connectivity check shows "endpoint unreachable (timeout)" on TLS certificate error;
+  now surfaces TLS cause within 2 s with actionable fix hint (#2894)
+- `tls.reject_unauthorized: false` connector YAML field added to scope TLS bypass per
+  connector without process-wide `NODE_TLS_REJECT_UNAUTHORIZED=0` (#2894)
+- `open-llm-provider` `fetch()` ignores `HTTPS_PROXY` / `HTTP_PROXY` env vars; now
+  passes undici `ProxyAgent` dispatcher when proxy env vars are set (#2891)
+- SWAO Node.js binary does not inherit Windows system proxy on corporate network; three-tier
+  proxy detection added to `SWAO-Session-Setup.ps1` (#2890)
+- `open-llm-provider` URL construction produces double `/v1` when `base_url` ends in `/v1`
+  and model id has leading slash (#2892)
+- Expired ADFS JWT 401 during assessment recorded as WSP finding instead of connectivity
+  error; now throws `ConnectivityFailureError` with `reason: auth` (#2899)
+- `swao health-check` LLM gateway probe reports "authentication failed" when token env var
+  is absent; now distinguishes missing token from wrong token (#2897)
+- `swao health-check` MCP config path probe uses stale hardcoded username (#2898)
+- `swao health-check` Node.js prerequisites probe reports garbled module path (#2896)
+- Challenge subprocess DNF when ADFS token expires mid-assess run; gateway probe now
+  classifies JWT expiry and surfaces actionable message (#2901)
+- ADFS Bearer token pasted in cleartext in `SWAO-Session-Setup.ps1` terminal output (#2888)
+- Model-not-in-catalogue warning fires once per pass per leg instead of once per run (#2900)
+- OpenRouter `google/gemini-flash-1.5` deprecated (404); removed from smoke and docs (#2867)
+- `swao diff` false "Provider changed: X -> unknown" when comparing cross-run-type runs (#2868)
+- DOCX extraction fails with `DOMParser.parseFromString: mimeType undefined` on
+  structurally non-conformant DOCX files; fallback to raw ZIP XML extraction added (#2869)
+- Community binary "Previous licence expired" wording shown when higher-tier licence is
+  present; tier precedence check corrected (#2664)
+- LZ HTML publication missing Stakeholder Challenge block -- LZCA findings not rendered (#2701)
+- GRC report control count mismatch; coverage/scope inconsistency in multi-regime runs (#2722)
+- MCP server binary stale after workspace upgrade; Claude Desktop config not refreshed (#2877)
+- Connector dynamic ADFS token refresh for short-lived tokens (#2743)
+
+### Added
+
+- `tls.ca_bundle` connector YAML field (schema reserved for future use) (#2894)
+- Smoke script: `--ExpectedVersion` parameter + binary version assertion (#2871)
+- Smoke script: G2 diff now compares same-type runs (app-vs-app) rather than cross-type (#2872)
+- Smoke script: Community binary functional assessment phase (Phase H) (#2873)
+- Smoke script: compliance-regime assessment step (BSI C5 / GDPR lens) (#2874)
+- Smoke script: E5 portal step OK assertion after publication (#2875)
+- Smoke script: challenge steps use `-AllowFail` and empty-dir guard (#2879)
+- `SHA256SUMS-security.txt` generation added to release workflow (#2876)
+
+### Security
+
+- `SWAO-Session-Setup.ps1` ADFS token no longer echoed to terminal (#2888)
+- BlackDuck SCA: `express@5.2.1` (via MCP SDK) flagged CRITICAL (8 BDSA advisories);
+  no patch available at time of release -- deferred pending upstream fix (#2902)
+
+---
+
 ## [1.2.1] - 2026-09-24
 
 Patch release: Docker CI binary-wrap approach + 11 bug fixes (sprint-140).

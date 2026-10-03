@@ -131,19 +131,22 @@ export function resolveRunDirs(workspaceAppDir: string): {
   runManifestPath: string;
 } {
   const wspDir = join(workspaceAppDir, 'wsp');
-  const latestFile = join(wspDir, 'latest.txt');
-  if (existsSync(latestFile)) {
-    try {
-      const latestPath = readFileSync(latestFile, 'utf-8').trim();
-      const runDir = join(wspDir, latestPath);
-      if (existsSync(runDir)) {
-        return {
-          wspDir,
-          passesDir: join(runDir, 'passes'),
-          runManifestPath: join(runDir, 'run-manifest.json'),
-        };
-      }
-    } catch { /* fall through */ }
+  // #2722: check latest-application.txt first (matches loader.ts priority), then latest.txt.
+  for (const ptr of ['latest-application.txt', 'latest.txt']) {
+    const latestFile = join(wspDir, ptr);
+    if (existsSync(latestFile)) {
+      try {
+        const latestPath = readFileSync(latestFile, 'utf-8').trim();
+        const runDir = join(wspDir, latestPath);
+        if (existsSync(runDir)) {
+          return {
+            wspDir,
+            passesDir: join(runDir, 'passes'),
+            runManifestPath: join(runDir, 'run-manifest.json'),
+          };
+        }
+      } catch { /* fall through */ }
+    }
   }
   return {
     wspDir,
@@ -354,6 +357,8 @@ export function generateReport(workspaceAppDir: string, appId: string): ReportDa
     signalCounts,
     blockers,
     topFindings,
+    // #2722: expose full sorted signal list for GRC view completeness.
+    allSignals: [...allSignals].sort((a, b) => severityRank(a.severity) - severityRank(b.severity)),
     nextSteps,
     duration,
     engagement: engagementHasAny ? engagement : undefined,
@@ -697,15 +702,20 @@ interface RawPlan {
   };
 }
 
-/** Resolve the latest run dir from wspDir (reads latest.txt if present). */
+/** Resolve the latest run dir from wspDir.
+ *  #2722: mirrors loader.ts priority -- latest-application.txt first, then
+ *  latest.txt, then falls back to the flat wsp/ slot when neither pointer
+ *  exists or neither points to a valid run directory. */
 function resolveRunDir(wspDir: string): string {
-  const latestFile = join(wspDir, 'latest.txt');
-  if (existsSync(latestFile)) {
-    try {
-      const latestPath = readFileSync(latestFile, 'utf-8').trim(); // "runs/2026-..."
-      const runDir = join(wspDir, latestPath);
-      if (existsSync(runDir)) return runDir;
-    } catch { /* fall through */ }
+  for (const ptr of ['latest-application.txt', 'latest.txt']) {
+    const latestFile = join(wspDir, ptr);
+    if (existsSync(latestFile)) {
+      try {
+        const latestPath = readFileSync(latestFile, 'utf-8').trim();
+        const runDir = join(wspDir, latestPath);
+        if (existsSync(runDir)) return runDir;
+      } catch { /* fall through */ }
+    }
   }
   return wspDir;
 }
@@ -785,12 +795,18 @@ export function formatViewCompliance(data: ReportData, wspDir: string): string {
   const plan = loadPlan(wspDir);
   const regulatory = spine.client_scenario?.regulatory?.join(', ') ?? '--';
 
-  const complianceSignals = [...data.topFindings, ...data.blockers]
+  // #2722 Bug #3: use allSignals so medium/low DATA and CTX signals (not in
+  // topFindings or blockers) are not silently dropped from the compliance view.
+  // Fall back to the union of topFindings + blockers for stubs that pre-date
+  // the allSignals field. Sort by severity before the cap so the most severe
+  // compliance-relevant signals are always kept.
+  const complianceSignals = (data.allSignals ?? [...data.topFindings, ...data.blockers])
     .filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i)
     .filter(s => {
       const prefix = s.id.split('-')[0];
-      return ['DATA', 'CRYPTO', 'EGR'].includes(prefix) || s.severity === 'critical' || s.severity === 'high';
+      return ['DATA', 'CRYPTO', 'EGR', 'CTX'].includes(prefix) || s.severity === 'critical' || s.severity === 'high';
     })
+    .sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
     .slice(0, 10);
 
   const regimes = plan.compliance?.regimes ?? [];

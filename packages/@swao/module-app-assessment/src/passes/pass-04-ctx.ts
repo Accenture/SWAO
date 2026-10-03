@@ -37,18 +37,16 @@ function readFileSync_safe(filePath: string): string | null {
 const CTX_SKIP_TOP_DIRS = new Set(['source', 'catalogs', 'llm-gateway']);
 
 // Patterns for files that are not engagement context and must be excluded from CTX
-// ingestion. SBOM CSV exports and lock files consume large prompt budgets while
-// contributing no architecture context. Matched against the relative file path (#1349/#1351).
+// ingestion. SBOM exports consume large prompt budgets while contributing no
+// architecture context. Matched against the relative file path (#1349/#1351).
+//
+// #1356: lock-file patterns (package-lock.json, pnpm-lock.yaml, yarn.lock, etc.)
+// are not listed here -- the extension allowlist (line ~89) only admits .md, .txt,
+// .yaml, .yml, .json, .csv, so .lock files never reach isExcluded(). Listing them
+// here was dead code and is now removed.
 const CTX_EXCLUDE_PATTERNS: RegExp[] = [
   /(?:^|[/\\])(?:[^/\\]*(?:sbom|bom)[^/\\]*)\.xlsx\.[^/\\]*\.csv$/i,  // SBOM Excel sheet exports (e.g. SBOM-app.xlsx.Sheet.csv, bom.xlsx.ffae1b.csv)
   /\.cdx\.json$/i,             // CycloneDX SBOM exports
-  /package-lock\.json$/i,
-  /pnpm-lock\.yaml$/i,
-  /yarn\.lock$/i,
-  /Cargo\.lock$/i,
-  /Gemfile\.lock$/i,
-  /poetry\.lock$/i,
-  /composer\.lock$/i,
 ];
 
 function isExcluded(relPath: string): boolean {

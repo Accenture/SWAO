@@ -17,9 +17,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createProviderFromConnector } from './resolve.js';
+// #2743: intercept execSync so token_command tests are deterministic and cross-platform.
+import { execSync } from 'node:child_process';
+import { createProviderFromConnector, clearConnectorTokenCache } from './resolve.js';
 import { getConnector } from './connector-loader.js';
 import { createLlmProvider } from '../factory.js';
+
+vi.mock('node:child_process', () => ({ execSync: vi.fn() }));
 
 let workspaceRoot: string;
 let gwDir: string;
@@ -195,6 +199,82 @@ describe('createProviderFromConnector (#1397-#1399)', () => {
   });
 });
 
+describe('createProviderFromConnector -- opts.baseUrl overrides connector file (#2893)', () => {
+  it('overrides connector base_url when opts.baseUrl is provided', () => {
+    writeConnector('test-hub.yaml', BASE_LINES);
+    const r = createProviderFromConnector(load(), { baseUrl: 'https://custom-override.example.com' });
+    expect(r.provenance.base_url).toBe('https://custom-override.example.com');
+  });
+
+  it('uses connector base_url when opts.baseUrl is not provided', () => {
+    writeConnector('test-hub.yaml', BASE_LINES);
+    const r = createProviderFromConnector(load(), {});
+    expect(r.provenance.base_url).toBe('https://hub.example.internal');
+  });
+
+  it('createLlmProvider passes baseUrl from config to connector (#2893)', async () => {
+    writeConnector('test-hub.yaml', BASE_LINES);
+    createLlmProvider(undefined, undefined, {
+      connector: 'test-hub',
+      workspaceRoot,
+      baseUrl: 'https://from-swao-yml.example.com',
+    });
+    const { getLastGatewayProvenance } = await import('../factory.js');
+    expect(getLastGatewayProvenance()?.base_url).toBe('https://from-swao-yml.example.com');
+  });
+});
+
+describe('resolveCredential -- env var priority over vault (#2901)', () => {
+  const DUAL_AUTH_LINES = [
+    'schema_version: "1.0"',
+    'connector:',
+    '  id: dual-auth',
+    '  name: Dual Auth Hub',
+    '  protocol: openai-chat',
+    '  base_url: https://hub.example.internal',
+    '  auth:',
+    '    env_var: SWAO_TEST_HUB_KEY',
+    '    credential_key: swao-hub-api-key',
+    '    header: Authorization',
+    '    scheme: bearer',
+    '  models:',
+    '    default: test-model',
+  ];
+
+  it('uses env var value when both env_var and credential_key are present (#2901)', async () => {
+    writeConnector('dual-auth.yaml', DUAL_AUTH_LINES);
+    process.env['SWAO_TEST_HUB_KEY'] = 'live-session-token';
+    const captured: { headers?: Record<string, string> } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      captured.headers = init.headers as Record<string, string>;
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: 'ok' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }), { status: 200 });
+    });
+    const r = createProviderFromConnector(load('dual-auth'), {});
+    await r.provider.complete('test');
+    expect(captured.headers?.['Authorization']).toBe('Bearer live-session-token');
+  });
+
+  it('falls back gracefully when env var absent and vault unavailable (#2901)', async () => {
+    writeConnector('dual-auth.yaml', DUAL_AUTH_LINES);
+    delete process.env['SWAO_TEST_HUB_KEY'];
+    const captured: { headers?: Record<string, string> } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      captured.headers = init.headers as Record<string, string>;
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: 'ok' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }), { status: 200 });
+    });
+    const r = createProviderFromConnector(load('dual-auth'), {});
+    await r.provider.complete('test');
+    // Vault is unavailable in test environment; no credential -> header omitted entirely.
+    expect(captured.headers?.['Authorization']).toBeUndefined();
+  });
+});
+
 describe('createLlmProvider gateway path (#1398)', () => {
   it('resolves a connector id from config and records provenance', async () => {
     writeConnector('test-hub.yaml', BASE_LINES);
@@ -215,5 +295,135 @@ describe('createLlmProvider gateway path (#1398)', () => {
     const p = createLlmProvider(undefined, undefined, { type: 'ollama', model: 'llama3.3' });
     expect(p.name).toBe('ollama');
     expect(p.model).toBe('llama3.3');
+  });
+});
+
+describe('token_command -- dynamic ADFS/SSO token support (#2743)', () => {
+  const mockExec = vi.mocked(execSync);
+
+  const TOKEN_CMD_LINES = [
+    'schema_version: "1.0"',
+    'connector:',
+    '  id: adfs-hub',
+    '  name: ADFS Hub',
+    '  protocol: openai-chat',
+    '  base_url: https://llm.enterprise.example',
+    '  auth:',
+    '    token_command: "get-adfs-token.sh"',
+    '    token_ttl_s: 300',
+    '    header: Authorization',
+    '    scheme: bearer',
+    '  models:',
+    '    default: gpt-4o',
+  ];
+
+  beforeEach(() => {
+    clearConnectorTokenCache();
+    mockExec.mockReset();
+  });
+
+  afterEach(() => clearConnectorTokenCache());
+
+  it('uses token from token_command as the API key', async () => {
+    mockExec.mockReturnValue('test-adfs-token\n');
+    writeConnector('adfs-hub.yaml', TOKEN_CMD_LINES);
+    const captured: { headers?: Record<string, string> } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      captured.headers = init.headers as Record<string, string>;
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: '{"ok":true}' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }), { status: 200 });
+    });
+    const c = getConnector('adfs-hub', { workspaceRoot });
+    if (!c) throw new Error('connector not found');
+    const r = createProviderFromConnector(c, {});
+    await r.provider.complete('test');
+    expect(captured.headers?.['Authorization']).toBe('Bearer test-adfs-token');
+    expect(mockExec).toHaveBeenCalledOnce();
+  });
+
+  it('caches the token and does not re-run the command within TTL', async () => {
+    mockExec.mockReturnValue('cached-token\n');
+    writeConnector('adfs-hub.yaml', TOKEN_CMD_LINES);
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{}' } }],
+      usage: { prompt_tokens: 5, completion_tokens: 5 },
+    }), { status: 200 }));
+    const c = getConnector('adfs-hub', { workspaceRoot });
+    if (!c) throw new Error('connector not found');
+    const r = createProviderFromConnector(c, {});
+    await r.provider.complete('first call');
+    const r2 = createProviderFromConnector(c, {});
+    await r2.provider.complete('second call');
+    // Token was cached after the first createProviderFromConnector -- only one execSync call.
+    expect(mockExec).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to static credential when token_command fails', async () => {
+    mockExec.mockImplementation(() => { throw new Error('auth command failed'); });
+    const FALLBACK_LINES = [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: adfs-hub',
+      '  name: ADFS Hub',
+      '  protocol: openai-chat',
+      '  base_url: https://llm.enterprise.example',
+      '  auth:',
+      '    token_command: "get-adfs-token.sh"',
+      '    token_ttl_s: 300',
+      '    env_var: SWAO_TEST_HUB_KEY',
+      '    header: Authorization',
+      '    scheme: bearer',
+      '  models:',
+      '    default: gpt-4o',
+    ];
+    process.env['SWAO_TEST_HUB_KEY'] = 'static-fallback-key';
+    writeConnector('adfs-hub.yaml', FALLBACK_LINES);
+    const captured: { headers?: Record<string, string> } = {};
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      captured.headers = init.headers as Record<string, string>;
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: '{}' } }],
+        usage: { prompt_tokens: 5, completion_tokens: 5 },
+      }), { status: 200 });
+    });
+    const c = getConnector('adfs-hub', { workspaceRoot });
+    if (!c) throw new Error('connector not found');
+    const r = createProviderFromConnector(c, {});
+    await r.provider.complete('test');
+    // token_command throws -> falls back to env_var SWAO_TEST_HUB_KEY.
+    expect(captured.headers?.['Authorization']).toBe('Bearer static-fallback-key');
+  });
+
+  it('retries once with a fresh token on HTTP 401, verifying the token changed (#2743)', async () => {
+    // execSync returns a different token on the force-refresh path.
+    mockExec
+      .mockReturnValueOnce('first-token\n')
+      .mockReturnValueOnce('fresh-token\n');
+    writeConnector('adfs-hub.yaml', TOKEN_CMD_LINES);
+    let callCount = 0;
+    const capturedHeaders: Array<Record<string, string>> = [];
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      callCount++;
+      capturedHeaders.push(init.headers as Record<string, string>);
+      if (callCount === 1) return new Response('Unauthorized', { status: 401 });
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: '{"ok":true}' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }), { status: 200 });
+    });
+    const c = getConnector('adfs-hub', { workspaceRoot });
+    if (!c) throw new Error('connector not found');
+    const r = createProviderFromConnector(c, {});
+    const result = await r.provider.complete('test');
+    expect(result).toBe('{"ok":true}');
+    // Two fetch calls: initial 401 + immediate retry after token refresh.
+    expect(callCount).toBe(2);
+    // Token actually changed between the 401 and the retry.
+    expect(capturedHeaders[0]?.['Authorization']).toBe('Bearer first-token');
+    expect(capturedHeaders[1]?.['Authorization']).toBe('Bearer fresh-token');
+    // execSync called twice: once for initial token, once for force-refresh on 401.
+    expect(mockExec).toHaveBeenCalledTimes(2);
   });
 });

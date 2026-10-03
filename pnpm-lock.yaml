@@ -7,17 +7,18 @@ settings:
 overrides:
   fast-uri: '>=4.1.5'
   form-data: '>=4.0.6'
-  hono: '>=4.13.5'
+  hono: '>=4.13.7'
   ws: '>=8.21.0'
   vite: '>=7.3.5 <9.0.0'
   vitest: '>=4.1.11 <5.0.0'
   '@vitest/mocker': '>=4.1.11 <5.0.0'
-  ip-address: '>=10.3.1'
+  ip-address: '>=10.7.1'
   uuid: '>=11.0.0'
   tmp: '>=0.2.6'
-  js-yaml: '>=5.2.2'
+  js-yaml: '>=5.4.1'
   adm-zip: '>=0.6.1'
-  brace-expansion: '>=5.0.9'
+  brace-expansion: '>=5.0.11'
+  undici: '>=6.28.1'
   body-parser: '>=2.3.0'
   find-my-way: '>=9.7.0'
   postcss: '>=8.5.26'
@@ -52,8 +53,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -201,8 +202,8 @@ importers:
         specifier: ^20.0.0
         version: 20.19.43
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -213,8 +214,8 @@ importers:
   packages/@swao/core:
     dependencies:
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       zod:
         specifier: ^4.0.0
         version: 4.4.3
@@ -256,8 +257,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
@@ -308,8 +309,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       zod:
         specifier: ^3.23.0
         version: 3.25.76
@@ -348,8 +349,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -391,8 +392,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -440,8 +441,8 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       zod:
         specifier: ^4.0.0
         version: 4.4.3
@@ -487,8 +488,11 @@ importers:
         specifier: workspace:*
         version: link:../core
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
+      undici:
+        specifier: '>=6.28.1'
+        version: 8.11.2
       zod:
         specifier: ^4.0.0
         version: 4.4.3
@@ -521,8 +525,8 @@ importers:
         specifier: ^4.4.0
         version: 4.4.0
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.9
@@ -555,8 +559,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -586,8 +590,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       zod:
         specifier: ^4.0.0
         version: 4.4.3
@@ -696,8 +700,8 @@ importers:
         specifier: ^4.4.1
         version: 4.4.1(@types/react@18.3.31)(react@18.3.1)
       js-yaml:
-        specifier: '>=5.2.2'
-        version: 5.2.2
+        specifier: '>=5.4.1'
+        version: 5.4.2
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
@@ -710,6 +714,9 @@ importers:
       react:
         specifier: ^18.3.1
         version: 18.3.1
+      undici:
+        specifier: '>=6.28.1'
+        version: 8.11.2
       yoga-layout-prebuilt:
         specifier: ^1.10.0
         version: 1.10.0
@@ -1136,7 +1143,7 @@ packages:
     resolution: {integrity: sha512-bjD221KPLoJTWUwso1J6fGKiTXEUFedG/s0visavY4zakFPkeGURMRNly+FhBHs7T8Dz4qHaZIMX9ZoJHSJtKA==}
     engines: {node: '>=20'}
     peerDependencies:
-      hono: '>=4.13.5'
+      hono: '>=4.13.7'
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -1709,8 +1716,8 @@ packages:
   bowser@2.14.1:
     resolution: {integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==}
 
-  brace-expansion@5.0.9:
-    resolution: {integrity: sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==}
+  brace-expansion@5.0.12:
+    resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
 
   braces@3.0.3:
@@ -2315,8 +2322,8 @@ packages:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
     engines: {node: '>= 0.4'}
 
-  hono@4.13.5:
-    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
+  hono@4.13.12:
+    resolution: {integrity: sha512-6E2QDAc9Ick9Sq77ZrGS/dk2WUYni91aufTw6LJKpV7w8kW5/GxVUc650FOADOmlwg3K+f7Pun6XlV+pYmW6gw==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -2404,8 +2411,8 @@ packages:
   inversify@7.11.0:
     resolution: {integrity: sha512-yZDprSSr8TyVeMGI/AOV4ws6gwjX22hj9Z8/oHAVpJORY6WRFTcUzhnZtibBUHEw2U8ArvHcR+i863DplQ3Cwg==}
 
-  ip-address@10.4.0:
-    resolution: {integrity: sha512-oSK96Grm3aP6OrS263xVxbNDGVL7rzBtYdpGqlDG8iQdoenDoTs/nkki+DflYbAEE8Xl6o5YxhxlrKvI3nqKXQ==}
+  ip-address@10.7.3:
+    resolution: {integrity: sha512-A1kdq/tSb5QjvKvAMgIoEvDBIgL7qaqVP/jkvSwYYRZ9iEzvPpopxp2wQfu3SuZRHtpHNxMn8Fs0bS+gf5Xmwg==}
     engines: {node: '>= 12'}
 
   ipaddr.js@1.9.1:
@@ -2536,8 +2543,8 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  js-yaml@5.2.2:
-    resolution: {integrity: sha512-dayzUzKkJ1MkuUtZglSebU43utNXH0OWQByK9rKOOuYIO8M5TV1y+n8ALMdG0rdzBnfNkOmZEqrURepb0ejqBw==}
+  js-yaml@5.4.2:
+    resolution: {integrity: sha512-m+aqu+LwO1O6sIopafj8HUVl5aawITwZQe/yHpMCKjaWBaA/d07B/QdMb3529REftiU+RMMHL3Vlsw3hON7vWg==}
     hasBin: true
 
   jsdom@25.0.1:
@@ -3474,9 +3481,9 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@6.28.0:
-    resolution: {integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==}
-    engines: {node: '>=18.17'}
+  undici@8.11.2:
+    resolution: {integrity: sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ==}
+    engines: {node: '>=22.19.0'}
 
   unicode-properties@1.4.1:
     resolution: {integrity: sha512-CLjCCLQ6UuMxWnbIylkisbRj31qxHPAurvena/0iwSVbQ2G1VY5/HjV0IRabOEbDHlzZlRdCrD4NhB0JtU40Pg==}
@@ -4051,7 +4058,7 @@ snapshots:
       globals: 13.24.0
       ignore: 5.3.2
       import-fresh: 3.3.1
-      js-yaml: 5.2.2
+      js-yaml: 5.4.2
       minimatch: 3.1.5
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -4140,9 +4147,9 @@ snapshots:
       fastq: 1.20.1
       glob: 13.0.6
 
-  '@hono/node-server@2.0.11(hono@4.13.5)':
+  '@hono/node-server@2.0.11(hono@4.13.12)':
     dependencies:
-      hono: 4.13.5
+      hono: 4.13.12
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
@@ -4208,7 +4215,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.29.0(zod@4.4.3)':
     dependencies:
-      '@hono/node-server': 2.0.11(hono@4.13.5)
+      '@hono/node-server': 2.0.11(hono@4.13.12)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -4218,7 +4225,7 @@ snapshots:
       eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.5.2(express@5.2.1)
-      hono: 4.13.5
+      hono: 4.13.12
       jose: 6.2.3
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
@@ -4486,7 +4493,7 @@ snapshots:
       is-buffer: 2.0.5
       is-node-process: 1.2.0
       throttleit: 2.1.0
-      undici: 6.28.0
+      undici: 8.11.2
 
   '@vercel/cli-config@0.2.4':
     dependencies:
@@ -4754,7 +4761,7 @@ snapshots:
 
   bowser@2.14.1: {}
 
-  brace-expansion@5.0.9:
+  brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
 
@@ -5092,7 +5099,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       is-path-inside: 3.0.3
-      js-yaml: 5.2.2
+      js-yaml: 5.4.2
       json-stable-stringify-without-jsonify: 1.0.1
       levn: 0.4.1
       lodash.merge: 4.6.2
@@ -5165,7 +5172,7 @@ snapshots:
   express-rate-limit@8.5.2(express@5.2.1):
     dependencies:
       express: 5.2.1
-      ip-address: 10.4.0
+      ip-address: 10.7.3
 
   express@5.2.1:
     dependencies:
@@ -5457,7 +5464,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.13.5: {}
+  hono@4.13.12: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
@@ -5565,7 +5572,7 @@ snapshots:
     transitivePeerDependencies:
       - reflect-metadata
 
-  ip-address@10.4.0: {}
+  ip-address@10.7.3: {}
 
   ipaddr.js@1.9.1: {}
 
@@ -5695,7 +5702,7 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  js-yaml@5.2.2:
+  js-yaml@5.4.2:
     dependencies:
       argparse: 2.0.1
 
@@ -5950,19 +5957,19 @@ snapshots:
 
   minimatch@10.2.5:
     dependencies:
-      brace-expansion: 5.0.9
+      brace-expansion: 5.0.12
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 5.0.9
+      brace-expansion: 5.0.12
 
   minimatch@5.1.9:
     dependencies:
-      brace-expansion: 5.0.9
+      brace-expansion: 5.0.12
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 5.0.9
+      brace-expansion: 5.0.12
 
   minimist@1.2.8: {}
 
@@ -6595,7 +6602,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@6.28.0: {}
+  undici@8.11.2: {}
 
   unicode-properties@1.4.1:
     dependencies:

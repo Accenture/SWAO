@@ -12,6 +12,7 @@
 //  Source Code   :  https://github.com/Accenture/SWAO
 //
 // ================================================================
+// v1.0
 
 // Generic OpenAI-compatible LLM driver (Design 082 §4.6).
 //
@@ -34,6 +35,8 @@
 import type { LlmProvider, LlmUsage, LlmTrace, EmbeddingProvider, EmbeddingResult } from './types.js';
 import { CredentialStore, redactPreLlm, recordRedaction, logPortfolio, logApp } from '@swao/core';
 import { LlmConnectivityError } from './anthropic.js';
+import { ConnectivityFailureError } from './errors.js';
+import { Agent, ProxyAgent } from 'undici';
 
 const DEFAULT_MAX_TOKENS = 32768;
 const MAX_RETRIES = 3;
@@ -46,6 +49,26 @@ function isRetryable(err: unknown): boolean {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * #2894 Part B: build a scoped undici Agent or ProxyAgent for TLS bypass.
+ * Exported so packages that can't directly import undici (pnpm strict isolation)
+ * can obtain a correctly typed dispatcher without a direct undici dep.
+ *
+ * Returns `undefined` when no override is needed, or a scoped Agent/ProxyAgent
+ * that disables cert validation for that one connector's fetch calls only --
+ * does NOT affect any other outbound request in the process.
+ */
+export function buildFetchDispatcher(opts: { rejectUnauthorized?: boolean }): unknown {
+  const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+  if (opts.rejectUnauthorized === false) {
+    if (proxyUrl) {
+      return new ProxyAgent({ uri: proxyUrl, connect: { rejectUnauthorized: false } });
+    }
+    return new Agent({ connect: { rejectUnauthorized: false } });
+  }
+  return undefined;
 }
 
 function resolveApiKey(argKey: string | undefined): string {
@@ -81,6 +104,13 @@ export interface OpenLlmGatewayOpts {
   maxTokens?: number;
   /** App id for dual-logging to app-events alongside portfolio-events (#1691). */
   appId?: string;
+  /** #2894 Part B: when false, TLS cert validation is disabled for this connector
+   *  via a scoped undici Agent -- does NOT affect other outbound requests in the process. */
+  rejectUnauthorized?: boolean;
+  /** #2743: called on HTTP 401 to fetch a fresh ADFS/SSO token; return value replaces
+   *  the current apiKey and the request is retried once. When undefined, 401 throws
+   *  immediately as before. The returned token must NOT be logged by this function. */
+  tokenRefresh?: () => string | undefined;
 }
 
 const RESERVED_BODY_KEYS = ['model', 'messages', 'stream'];
@@ -88,13 +118,15 @@ const RESERVED_BODY_KEYS = ['model', 'messages', 'stream'];
 export class OpenLlmProvider implements LlmProvider {
   readonly name = 'open-llm-provider' as const;
   readonly model: string;
-  private readonly apiKey: string;
+  private apiKey: string;
   private readonly baseUrl: string;
   private readonly completionsUrl: string;
   private readonly temperature: number;
   private readonly seed: number | undefined;
   private readonly costPerToken: { inputPerMillion: number; outputPerMillion: number } | undefined;
   private readonly gateway: OpenLlmGatewayOpts;
+  // #2894: scoped dispatcher (ProxyAgent, Agent with rejectUnauthorized:false, or both combined).
+  private readonly dispatcher: ProxyAgent | Agent | undefined;
   private lastUsage: LlmUsage | undefined;
   private _lastTrace: LlmTrace | undefined;
   /** Which response field carried the text on the last call (#1690). */
@@ -125,6 +157,18 @@ export class OpenLlmProvider implements LlmProvider {
     gatewayOpts?: OpenLlmGatewayOpts,
   ) {
     this.gateway = gatewayOpts ?? {};
+    const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+    const tlsRejectUnauthorized = gatewayOpts?.rejectUnauthorized;
+    // #2894 Part B: build a scoped undici dispatcher that combines proxy and TLS options.
+    if (proxyUrl && tlsRejectUnauthorized === false) {
+      this.dispatcher = new ProxyAgent({ uri: proxyUrl, connect: { rejectUnauthorized: false } });
+    } else if (proxyUrl) {
+      this.dispatcher = new ProxyAgent(proxyUrl);
+    } else if (tlsRejectUnauthorized === false) {
+      this.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+    } else {
+      this.dispatcher = undefined;
+    }
     this.apiKey = resolveApiKey(apiKey);
 
     const resolvedModel = model ?? process.env['SWAO_OPEN_LLM_MODEL'];
@@ -143,11 +187,17 @@ export class OpenLlmProvider implements LlmProvider {
         'Set providers.llm.primary.baseUrl in .swao.yml or export SWAO_OPEN_LLM_URL=<url>.',
       );
     }
-    this.baseUrl = resolvedBaseUrl.replace(/\/$/, '');
+    // Strip trailing slash and any trailing /v1 so the constructed completionsUrl
+    // never produces a double /v1 when the caller already includes it (#2892).
+    this.baseUrl = resolvedBaseUrl.replace(/\/$/, '').replace(/\/v1$/, '');
 
-    // effectivePrefix = modelPrefix ?? '/' + model
+    // Normalise model segment: strip any leading slashes so a model id such as
+    // '/Llama-3.3-70B...' (common in PREME PREPROD catalogue entries) does not
+    // produce a double slash in the path (#2892).
+    const modelSegment = '/' + this.model.replace(/^\/+/, '');
+    // effectivePrefix = modelPrefix ?? modelSegment
     // Using ?? (not ||) so that an empty string disables path routing.
-    const effectivePrefix = modelPrefix ?? ('/' + this.model);
+    const effectivePrefix = modelPrefix ?? modelSegment;
     this.completionsUrl = `${this.baseUrl}${effectivePrefix}/v1/chat/completions`;
 
     this.temperature = temperature ?? 0;
@@ -188,12 +238,22 @@ export class OpenLlmProvider implements LlmProvider {
     const authKey = this.gateway.authHeader ?? 'Authorization';
     const authVal = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
     const extraHeaders: Record<string, string> = this.gateway.headers ?? {};
-    const response = await fetch(this.completionsUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', [authKey]: authVal, ...extraHeaders },
-      body,
-    });
+    const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+      this.completionsUrl,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', [authKey]: authVal, ...extraHeaders },
+        body,
+        ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
+      },
+    );
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new ConnectivityFailureError(
+          'auth',
+          `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid.`,
+        );
+      }
       const text = await response.text();
       throw new Error(`OpenLlmProvider vision request failed: ${response.status} ${text.slice(0, 300)}`);
     }
@@ -246,6 +306,9 @@ export class OpenLlmProvider implements LlmProvider {
     });
 
     let lastError: Error = new Error('unreachable');
+    // #2743: one token refresh is allowed per send() call; tracked here so we
+    // do not loop endlessly if the refreshed token is also rejected.
+    let tokenRefreshed = false;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       if (attempt > 0) {
         const delayMs = RETRY_BASE_MS * Math.pow(2, attempt - 1);
@@ -279,17 +342,43 @@ export class OpenLlmProvider implements LlmProvider {
         // connector parse time). Defaults reproduce pre-gateway behaviour.
         const authHeaderName = this.gateway.authHeader ?? 'Authorization';
         const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
-        const response = await fetch(this.completionsUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(this.gateway.headers ?? {}),
-            ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
+        const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+          this.completionsUrl,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(this.gateway.headers ?? {}),
+              ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
+            },
+            body,
+            ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
           },
-          body,
-        });
+        );
 
         if (!response.ok) {
+          // #2899: 401 means the token is wrong or expired -- not a transient error.
+          // Abort immediately with a typed error so the leg can surface a clear hint
+          // rather than recording a malformed WSP finding.
+          if (response.status === 401) {
+            // #2743: try a one-shot token refresh before giving up.
+            // Reset attempt to -1 so the loop increments to 0 (no backoff delay
+            // between the 401 and the immediate refresh retry).
+            if (this.gateway.tokenRefresh && !tokenRefreshed) {
+              const fresh = this.gateway.tokenRefresh();
+              if (fresh) {
+                this.apiKey = fresh;
+                tokenRefreshed = true;
+                attempt = -1;
+                continue;
+              }
+            }
+            throw new ConnectivityFailureError(
+              'auth',
+              `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid. ` +
+              `Re-authenticate (swao setup or update SWAO_ADFS_TOKEN) and retry.`,
+            );
+          }
           const text = await response.text();
           // #2584: strip known PII fields from LLM provider error bodies before
           // logging. OpenRouter error JSON can contain a user_id field that
@@ -452,6 +541,7 @@ export class OpenLlmProvider implements LlmProvider {
         return responseText;
       } catch (err) {
         if (err instanceof LlmConnectivityError) throw err;
+        if (err instanceof ConnectivityFailureError) throw err;
         if (isRetryable(err) && attempt < MAX_RETRIES) {
           lastError = err as Error;
           continue;
@@ -493,14 +583,20 @@ export class OpenLlmEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<EmbeddingResult> {
-    const response = await fetch(this.embedUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+    const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+    const proxyAgent = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+    const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+      this.embedUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify({ inputs: text }),
+        ...(proxyAgent ? { dispatcher: proxyAgent } : {}),
       },
-      body: JSON.stringify({ inputs: text }),
-    });
+    );
 
     if (!response.ok) {
       const errText = await response.text();

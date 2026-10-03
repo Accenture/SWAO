@@ -711,14 +711,15 @@ function formatVcsAuthProbeLine(probe: VcsAuthProbeResult): string {
 // self-describing with a bracketed state prefix ([PASS] / [WARNING] / [N/A]).
 // Map that prefix to the same aligned status token the other probe lines use
 // so the output stays visually uniform.
-export function formatLlmGatewayLine(probe: { ok: boolean; message: string }): string {
+export function formatLlmGatewayLine(probe: { ok: boolean | null; message: string }): string {
   const LABEL_W = 26;
   const label = pad('[13/16] LLM gateway', LABEL_W);
   const m = probe.message.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
-  const msgState = m ? m[1]!.toUpperCase() : (probe.ok ? 'PASS' : 'FAIL');
+  const msgState = m ? m[1]!.toUpperCase() : (probe.ok === true ? 'PASS' : probe.ok === null ? 'N/A' : 'FAIL');
   // #2366: probe.ok is authoritative; a [WARNING] message prefix must not
   // downgrade a failed probe to WARN in the TUI output.
-  const state = (!probe.ok && msgState !== 'FAIL') ? 'FAIL' : msgState;
+  // #2897: ok === null = SKIP (credential not loaded); only ok === false forces FAIL.
+  const state = (probe.ok === false && msgState !== 'FAIL') ? 'FAIL' : msgState;
   const body = m ? m[2]! : probe.message;
   switch (state) {
     case 'PASS':
@@ -845,8 +846,8 @@ export interface HealthCheckPayload {
   // #0970: workspace-level ingestion folder probe.
   ingestion: IngestionProbeResult;
   iac_toolchain: IaCToolchainProbeResult;
-  /** #1402 sprint-113: SWAO LLM-Gateway connector discovery + validation. */
-  llm_gateway: { ok: boolean; message: string };
+  /** #1402 sprint-113: SWAO LLM-Gateway connector discovery + validation. #2897: ok: null = credential not loaded (SKIP). */
+  llm_gateway: { ok: boolean | null; message: string };
   /** #1509: engagement.name placeholder guard. */
   wsp_metadata: WspMetadataProbeResult;
   /** #1698: LZ catalogue service-dep coverage check. */
@@ -876,7 +877,7 @@ export interface BuildHealthCheckContext {
   scopeProbe: ScopeProbeResult;
   prerequisitesProbe: PrerequisitesProbeResult;
   vcsAuthProbe: VcsAuthProbeResult;
-  llmGatewayProbe: { ok: boolean; message: string };
+  llmGatewayProbe: { ok: boolean | null; message: string };
   ingestionProbe: IngestionProbeResult;
   iacToolchainProbe: IaCToolchainProbeResult;
   wspMetadataProbe: WspMetadataProbeResult;
@@ -1003,7 +1004,8 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   const llmGatewayProbe = await host.llmGatewayProbe.run({ workspacePath });  // #1402 sprint-113
   // #2318: include message in log when probe is not ok so support bundle captures the reason.
   // #2251: add status field (string) to match all other probe.complete events; ok:boolean kept for compat.
-  logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayProbe.ok ? 'ok' : 'fail', ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok ? {} : { message: llmGatewayProbe.message }), elapsed_ms: Date.now() - t0 } });
+  // #2897: ok: null = credential not loaded (skip) -- distinct from fail.
+  logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayProbe.ok === true ? 'ok' : llmGatewayProbe.ok === null ? 'skip' : 'fail', ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok !== true ? { message: llmGatewayProbe.message } : {}), elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatLlmGatewayLine(llmGatewayProbe));
 
   t0 = Date.now();
@@ -1115,8 +1117,8 @@ export function buildHealthCheckLogContext(
       vcs_auth: probeEntry(ctx.vcsAuthProbe),
       ingestion: { ...probeEntry(ctx.ingestionProbe), file_count: ctx.ingestionProbe.file_count },
       iac_toolchain: probeEntry(ctx.iacToolchainProbe),
-      // #2318: include message when probe is not ok.
-      llm_gateway: { status: ctx.llmGatewayProbe.ok ? 'ok' : 'fail', ...(ctx.llmGatewayProbe.ok ? {} : { message: ctx.llmGatewayProbe.message }) },
+      // #2318: include message when probe is not ok. #2897: null = skip (credential not loaded).
+      llm_gateway: { status: ctx.llmGatewayProbe.ok === true ? 'ok' : ctx.llmGatewayProbe.ok === null ? 'skip' : 'fail', ...(ctx.llmGatewayProbe.ok !== true ? { message: ctx.llmGatewayProbe.message } : {}) },
       wsp_metadata: probeEntry(ctx.wspMetadataProbe),
       lz_catalogue_coverage: { ...probeEntry(ctx.lzCatalogueCoverageProbe), gaps_count: ctx.lzCatalogueCoverageProbe.gaps_count },
       credential_vault: { ...probeEntry(ctx.credentialVaultProbe), key_count: ctx.credentialVaultProbe.keyCount, categories: ctx.credentialVaultProbe.categories },
@@ -1181,7 +1183,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
       if (playwrightProbe.status === 'fail') hcFailedProbes.push('playwright');
       if (communityFrameworksProbe.status === 'fail') hcFailedProbes.push('community-frameworks');
       if (prerequisitesProbe.status === 'fail') hcFailedProbes.push('prerequisites');
-      if (!llmGatewayProbe.ok) hcFailedProbes.push('llm-gateway');
+      if (llmGatewayProbe.ok === false) hcFailedProbes.push('llm-gateway');  // #2897: null = skip, not failure
       if (credentialVaultProbe.status === 'fail') hcFailedProbes.push('credential-vault');
       // #1047: scope and traceability probes return 'absent' when no apps exist.
       // Report this in the summary so the operator knows the check was partial.
@@ -1379,7 +1381,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           (vcsAuthProbe.status === 'fail' ? 1 : 0) +
           // #2222: align text-format exit code with NDJSON fail_count; ok=false only
           // when primary connector fails (secondary-only failures are ok=true via #2392).
-          (!llmGatewayProbe.ok ? 1 : 0) +
+          // #2897: ok === null = credential not loaded (skip); does not count as failure.
+          (llmGatewayProbe.ok === false ? 1 : 0) +
           (credentialVaultProbe.status === 'fail' ? 1 : 0);
         if (failCount === 0) {
           console.log('\nAll probes passed.');

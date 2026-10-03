@@ -20,6 +20,17 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import type { LlmProvider } from './shared.js';
 
+// #2886: infer the gateway connector id from the base URL provided by the user.
+// loopback addresses -> vllm-generic (local unauthenticated vLLM instance)
+// everything else   -> open-llm     (remote HTTPS endpoint with bearer token)
+export function inferOpenLlmConnectorId(baseUrl: string): 'vllm-generic' | 'open-llm' {
+  try {
+    const { hostname } = new URL(baseUrl);
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return 'vllm-generic';
+  } catch { /* malformed URL -- treat as remote */ }
+  return 'open-llm';
+}
+
 // #2746: detect the actual indentation of the `primary:` key in the YAML file.
 // Templates may use 2- or 4-spaces-per-level; the hardcoded 6-space child prefix
 // was wrong whenever the template used 4-space-per-level indentation.
@@ -55,8 +66,10 @@ export function writeLlmToYaml(
     } else if (provider === 'ollama') {
       llmBlock = `      type: ollama\n      endpoint: "${endpoint}"\n      model: ${model}`;
     } else if (provider === 'open-llm-provider') {
+      // #2886: gateway connector path -- loopback -> vllm-generic, remote HTTPS -> open-llm.
       // Bearer token stored in credential store -- never written to .swao.yml (Design 082 D-04).
-      llmBlock = `      type: open-llm-provider\n      baseUrl: "${openLlmBase}"\n      model: ${model}\n      temperature: 0`;
+      const connectorId = inferOpenLlmConnectorId(openLlmBase);
+      llmBlock = `      connector: ${connectorId}\n      baseUrl: "${openLlmBase}"\n      model: ${model}\n      temperature: 0`;
     } else {
       return; // skip -- leave as ~
     }
@@ -135,7 +148,9 @@ export function writeSecondaryLlmToYaml(
     } else if (provider === 'ollama') {
       llmBlock = `      type: ollama\n      endpoint: "${endpoint}"\n      model: ${model}`;
     } else if (provider === 'open-llm-provider') {
-      llmBlock = `      type: open-llm-provider\n      baseUrl: "${openLlmBase}"\n      model: ${model}\n      temperature: 0`;
+      // #2886: gateway connector path -- loopback -> vllm-generic, remote HTTPS -> open-llm.
+      const connectorId = inferOpenLlmConnectorId(openLlmBase);
+      llmBlock = `      connector: ${connectorId}\n      baseUrl: "${openLlmBase}"\n      model: ${model}\n      temperature: 0`;
     } else {
       return;
     }

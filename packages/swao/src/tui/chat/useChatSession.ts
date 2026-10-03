@@ -37,9 +37,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { load } from 'js-yaml';
 import type { ChatTurn } from '@swao/core';
 import { findWorkspace } from '@swao/core';
-import { listConnectors, createProviderFromConnector } from '@swao/module-llm-providers';
+import { getConnector, listConnectors, createProviderFromConnector } from '@swao/module-llm-providers';
 import type { LlmProvider } from '@swao/module-llm-providers';
 import { registerChild } from '../child-process-registry.js';
 import {
@@ -54,6 +57,18 @@ import {
   buildSystemPrompt,
   type McpSession,
 } from './mcp-context.js';
+
+// #2895: read providers.llm.primary.connector from .swao.yml without a full parse.
+export function readSwaoYmlConnectorId(ws: string): string | undefined {
+  try {
+    const p = join(ws, '.swao.yml');
+    if (!existsSync(p)) return undefined;
+    const parsed = load(readFileSync(p, 'utf-8')) as Record<string, unknown>;
+    const llm = ((parsed?.['providers'] as Record<string, unknown>)?.['llm']) as Record<string, unknown> | undefined;
+    const primary = llm?.['primary'] as Record<string, unknown> | undefined;
+    return primary?.['connector'] as string | undefined;
+  } catch { return undefined; }
+}
 
 export type ChatStatus = 'init' | 'mcp-probe' | 'mcp-tools' | 'ready' | 'thinking' | 'error';
 
@@ -181,17 +196,25 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
       workspaceRef.current = ws;
       historyPathRef.current = chatHistoryPath(ws, sessionTs);
 
-      // Load LLM provider from workspace connectors
+      // Load LLM provider from workspace connectors.
+      // #2895: priority chain:
+      //   1. SWAO_LLM_CONNECTOR env var
+      //   2. providers.llm.primary.connector from .swao.yml
+      //   3. First workspace connector discovered by listConnectors()
       safeSet(setStatusDetail, 'loading LLM connector');
       try {
-        const { connectors } = listConnectors({ workspaceRoot: ws });
-        if (connectors.length > 0) {
-          const loaded = connectors[0];
+        const namedId = process.env['SWAO_LLM_CONNECTOR'] ?? readSwaoYmlConnectorId(ws);
+        let loaded = namedId ? getConnector(namedId, { workspaceRoot: ws }) : undefined;
+        if (!loaded) {
+          const { connectors } = listConnectors({ workspaceRoot: ws });
+          if (connectors.length > 0) loaded = connectors[0];
+        }
+        if (loaded) {
           const { provider } = createProviderFromConnector(loaded, { model });
           providerRef.current = provider;
           // #2828: use context window (input capacity) not max_tokens (output limit).
           // max_tokens is the response cap (e.g. 8192); the context window is much larger.
-          const modelName = (loaded.file.connector as { model?: string }).model ?? '';
+          const modelName = loaded.file.connector.models.default ?? '';
           const knownContextWindows: Array<[RegExp, number]> = [
             [/claude/i, 200_000],
             [/gpt-4o/i, 128_000],

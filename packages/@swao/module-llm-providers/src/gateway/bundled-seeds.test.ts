@@ -25,8 +25,8 @@ const SEEDS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../../
 describe('bundled llm-gateway seeds (#1396)', () => {
   const files = readdirSync(SEEDS_DIR).filter(f => f.endsWith('.yaml') && !f.startsWith('_'));
 
-  it('ships the six expected seeds plus the template', () => {
-    expect(files.sort()).toEqual(['anthropic.yaml', 'bedrock.yaml', 'ollama.yaml', 'openai.yaml', 'openrouter.yaml', 'vllm-generic.yaml']);
+  it('ships the seven expected seeds plus the template (#2886 adds open-llm)', () => {
+    expect(files.sort()).toEqual(['anthropic.yaml', 'bedrock.yaml', 'ollama.yaml', 'open-llm.yaml', 'openai.yaml', 'openrouter.yaml', 'vllm-generic.yaml']);
     expect(readdirSync(SEEDS_DIR)).toContain('_template.yaml');
   });
 
@@ -65,10 +65,10 @@ describe('bundled llm-gateway seeds (#1396)', () => {
     }
   });
 
-  it('the dev-path loader discovers all six seeds (bundle path verified at binary gate)', () => {
+  it('the dev-path loader discovers all seven seeds (#2886 adds open-llm; bundle path verified at binary gate)', () => {
     const r = listConnectors();
     const ids = r.connectors.filter(c => c.origin === 'bundled').map(c => c.file.connector.id);
-    for (const id of ['anthropic', 'bedrock', 'openai', 'ollama', 'openrouter', 'vllm-generic']) {
+    for (const id of ['anthropic', 'bedrock', 'openai', 'ollama', 'openrouter', 'vllm-generic', 'open-llm']) {
       expect(ids).toContain(id);
     }
     expect(r.warnings).toEqual([]);

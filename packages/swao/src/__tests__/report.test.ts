@@ -415,6 +415,48 @@ describe('swao report --view compliance (#0079)', () => {
     const data = generateReport(SOVEREIGN_HEALTH_APP, 'sovereign-health');
     expect(() => formatViewCompliance(data, SOVEREIGN_HEALTH_WSP)).not.toThrow();
   });
+
+  // #2722 Bug #3: generateReport must now populate allSignals so the GRC view
+  // can source from the full signal list rather than just topFindings + blockers.
+  it('#2722 sovereign-health -- generateReport populates allSignals with all pass signals', () => {
+    const data = generateReport(SOVEREIGN_HEALTH_APP, 'sovereign-health');
+    // allSignals must exist and be >= topFindings (full list, not trimmed to top-3).
+    expect(data.allSignals).toBeDefined();
+    expect((data.allSignals ?? []).length).toBeGreaterThanOrEqual(data.topFindings.length);
+    // Every topFinding must appear in allSignals.
+    const allIds = new Set((data.allSignals ?? []).map(s => s.id));
+    for (const f of data.topFindings) {
+      expect(allIds.has(f.id)).toBe(true);
+    }
+  });
+
+  // #2722 Bug #3 regression: synthetic ReportData with a medium CTX signal outside
+  // topFindings confirms the fix without fixture dependency.
+  it('#2722 synthetic -- medium CTX signal outside top-3 appears in compliance view', () => {
+    const base = generateReport(GHOSTFOLIO_APP, 'ghostfolio');
+    const syntheticData = {
+      ...base,
+      allSignals: [
+        { id: 'EGR-01', severity: 'critical', derivation: 'critical egress signal' },
+        { id: 'DATA-01', severity: 'high', derivation: 'high data signal' },
+        { id: 'DATA-02', severity: 'high', derivation: 'high data signal 2' },
+        // CTX-12 is medium -- it would be outside topFindings (which only keeps top-3)
+        // and not in blockers (not critical or high EGR/SBOM). Old code dropped it.
+        { id: 'CTX-12', severity: 'medium', derivation: 'medium ctx signal outside top-3' },
+      ],
+      topFindings: [
+        { id: 'EGR-01', severity: 'critical', derivation: 'critical egress signal' },
+        { id: 'DATA-01', severity: 'high', derivation: 'high data signal' },
+        { id: 'DATA-02', severity: 'high', derivation: 'high data signal 2' },
+      ],
+      blockers: [
+        { id: 'EGR-01', severity: 'critical', derivation: 'critical egress signal' },
+      ],
+    };
+    const text = formatViewCompliance(syntheticData, GHOSTFOLIO_WSP);
+    // CTX-12 must appear even though it is not in topFindings or blockers.
+    expect(text).toContain('CTX-12');
+  });
 });
 
 describe('swao report --view finops (#0079)', () => {

@@ -13,10 +13,14 @@
 //
 // ================================================================
 
-// Unit tests for extractProseFromResponse and formatChatPrompt (#2786 follow-up).
+// Unit tests for extractProseFromResponse, formatChatPrompt (#2786 follow-up), and
+// readSwaoYmlConnectorId (#2895).
 
-import { describe, it, expect } from 'vitest';
-import { extractProseFromResponse, formatChatPrompt } from './useChatSession.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { extractProseFromResponse, formatChatPrompt, readSwaoYmlConnectorId } from './useChatSession.js';
 import type { ChatTurn } from '@swao/core';
 
 describe('extractProseFromResponse (#2786)', () => {
@@ -100,6 +104,54 @@ describe('extractProseFromResponse (#2786)', () => {
       language: 'de',
     });
     expect(extractProseFromResponse(raw)).toBe('Guten Tag! Ich bin der SWAO Portfolio Advisor.');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// readSwaoYmlConnectorId (#2895)
+// ---------------------------------------------------------------------------
+
+let tmpDir: string;
+
+beforeEach(() => {
+  tmpDir = mkdtempSync(join(tmpdir(), 'swao-chat-session-'));
+  mkdirSync(tmpDir, { recursive: true });
+});
+
+afterEach(() => {
+  rmSync(tmpDir, { recursive: true, force: true });
+});
+
+describe('readSwaoYmlConnectorId (#2895)', () => {
+  it('returns the connector id from .swao.yml providers.llm.primary.connector', () => {
+    writeFileSync(join(tmpDir, '.swao.yml'), [
+      'providers:',
+      '  llm:',
+      '    primary:',
+      '      connector: preme-preprod',
+      '      model: /gemma-4',
+    ].join('\n') + '\n', 'utf-8');
+    expect(readSwaoYmlConnectorId(tmpDir)).toBe('preme-preprod');
+  });
+
+  it('returns undefined when .swao.yml has no connector field', () => {
+    writeFileSync(join(tmpDir, '.swao.yml'), [
+      'providers:',
+      '  llm:',
+      '    primary:',
+      '      type: anthropic',
+      '      model: claude-opus-5',
+    ].join('\n') + '\n', 'utf-8');
+    expect(readSwaoYmlConnectorId(tmpDir)).toBeUndefined();
+  });
+
+  it('returns undefined when .swao.yml does not exist', () => {
+    expect(readSwaoYmlConnectorId(tmpDir)).toBeUndefined();
+  });
+
+  it('returns undefined when providers block is absent', () => {
+    writeFileSync(join(tmpDir, '.swao.yml'), 'workspace:\n  name: test\n', 'utf-8');
+    expect(readSwaoYmlConnectorId(tmpDir)).toBeUndefined();
   });
 });
 

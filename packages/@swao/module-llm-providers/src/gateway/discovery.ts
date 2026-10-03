@@ -18,6 +18,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dump as dumpYaml } from 'js-yaml';
 import { CredentialStore } from '@swao/core';
+import { Agent } from 'undici';
 import type { LoadedConnector } from './connector-loader.js';
 import type { ConnectorFile, ConnectorModelEntry } from './connector-schema.js';
 
@@ -70,7 +71,7 @@ function resolveKey(loaded: LoadedConnector): string | undefined {
  */
 export async function discoverModels(
   loaded: LoadedConnector,
-  opts?: { timeoutMs?: number },
+  opts?: { timeoutMs?: number; rejectUnauthorized?: boolean },
 ): Promise<DiscoverResult> {
   const connector = loaded.file.connector;
   const endpoint = connector.models.discovery_endpoint;
@@ -80,16 +81,21 @@ export async function discoverModels(
   const key = resolveKey(loaded);
   const authHeaderName = connector.auth.header;
   const authValue = connector.auth.scheme === 'raw' ? key : (key ? `Bearer ${key}` : undefined);
+  // #2894 Part B: scoped TLS agent -- does not affect other outbound requests.
+  const tlsAgent = opts?.rejectUnauthorized === false
+    ? new Agent({ connect: { rejectUnauthorized: false } })
+    : undefined;
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(url, {
       method: 'GET',
       headers: {
         ...(connector.headers ?? {}),
         ...(authValue ? { [authHeaderName]: authValue } : {}),
       },
       signal: AbortSignal.timeout(opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      ...(tlsAgent ? { dispatcher: tlsAgent } : {}),
     });
   } catch (err) {
     return { ok: false, error: `discovery fetch failed for '${connector.id}': ${String(err instanceof Error ? err.message : err)}` };

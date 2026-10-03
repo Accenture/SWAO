@@ -1,0 +1,33 @@
+# SWAO LLM-Gateway connector -- remote OpenAI-compatible endpoint (Design 090)
+# Use this connector for any OpenAI-compatible API hosted on a remote HTTPS
+# endpoint: enterprise GenAI hubs, PREME, Azure OpenAI, hosted vLLM, etc.
+# The base_url below is a placeholder -- override it in .swao.yml via baseUrl:.
+# Token stored in the SWAO credential vault (see auth.credential_key).
+schema_version: "1.0"
+connector:
+  id: open-llm
+  name: Remote OpenAI-compatible endpoint (GenAI Hub / PREME / hosted vLLM)
+  protocol: openai-chat
+  base_url: https://api.example.com
+  # No vLLM model-path routing for remote endpoints; model sent in request body only.
+  path_prefix: ""
+  auth:
+    credential_key: open-llm-api-key
+    env_var: SWAO_OPEN_LLM_API_KEY
+    header: Authorization
+    scheme: bearer
+  models:
+    default: served-model
+  defaults:
+    temperature: 0
+  cost_per_token:
+    input_per_million: 0
+    output_per_million: 0
+  sovereignty:
+    data_residency: provider-defined
+    zero_retention: false
+    notes: Sovereignty facts depend on the remote provider -- amend for your deployment.
+  meta:
+    source: bundled
+    last_reviewed: "2026-10-03"
+    contributor: Accenture SWAO team

@@ -28,7 +28,8 @@ import { createProviderFromConnector } from './resolve.js';
 import { resolveModelAlias } from './alias-resolver.js';
 
 export interface GatewayProbeContribution {
-  ok: boolean;
+  // #2897: null = credential not loaded (skip live ping; run session setup first).
+  ok: boolean | null;
   message: string;
 }
 
@@ -129,12 +130,22 @@ export function classifyPingFailure(rawMessage: string, opts: { credentialKey?: 
     return `model '${opts.model}' rejected by the platform -- check the model id`;
   }
   if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('invalid api key') || msg.includes('authentication')) {
+    // #2897: ADFS/JWT token expiry -- distinct from a wrong key; re-login is the fix.
+    if (/jwt is expired|token is expired|jwt expired|access token.*expired/i.test(rawMessage)) {
+      return `authentication token expired (JWT) -- re-run 'swao session setup' to refresh the ADFS token${keyHint}`;
+    }
     // #2410: detect endpoint/key mismatch -- OpenRouter key used against api.openai.com is the
     // most common operator error (sk-or-v1* keys must go to openrouter.ai, not openai.com).
     if (opts.baseUrl && /openai\.com/i.test(opts.baseUrl) && opts.credentialKey) {
       return `authentication failed -- endpoint is api.openai.com but the credential key may be an OpenRouter key. If you have an OpenRouter key (sk-or-v1*), set base_url to https://openrouter.ai/api/v1 in the connector${keyHint}`;
     }
     return `authentication failed -- API key missing, wrong, or revoked${keyHint}`;
+  }
+  // #2894 Part A: TLS cert errors fail fast (< 2 s); surface before the generic
+  // timeout/unreachable check so operators see the real cause, not "35 s timeout".
+  if (/ERR_TLS_|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_HAS_EXPIRED|DEPTH_ZERO_SELF_SIGNED|SELF_SIGNED_CERT_IN_CHAIN|UNABLE_TO_GET_ISSUER_CERT/i.test(rawMessage)) {
+    return `TLS certificate error -- endpoint reachable but cert not trusted by Node.js. ` +
+      `Fix: set NODE_EXTRA_CA_CERTS=<ca-bundle.pem>, or set tls.reject_unauthorized: false in the connector YAML${keyHint}`;
   }
   if (msg.includes('timed out') || msg.includes('timeout')) {
     return `no response within ${PING_TIMEOUT_MS / 1000}s -- endpoint unreachable or overloaded`;
@@ -162,14 +173,47 @@ async function pingActiveConnector(
       message: `[WARNING] active connector '${active.connector}' not found -- available: ${available.join(', ') || '(none)'}`,
     };
   }
-  const credentialKey = loaded.file.connector.auth?.credential_key;
+  const auth = loaded.file.connector.auth;
+  const credentialKey = auth?.credential_key;
+  const envVar = auth?.env_var;
+
+  // #2897: env var = live session token; vault = may be expired (ADFS 60-min TTL).
   // Resolve ~-prefix model aliases before pinging (#1817).
   let apiKey: string | undefined;
-  if (credentialKey) {
+  if (envVar) {
+    // Env-var-configured connectors: check env var first (#2901 order).
+    apiKey = process.env[envVar] || undefined;
+    if (!apiKey) {
+      // Env var absent. Check vault -- if vault holds a key it is likely stale (ADFS TTL).
+      // Return ok: null so the operator gets a clear "run session-setup" hint rather than
+      // a misleading 401 that looks like a wrong key.
+      let vaultHasKey = false;
+      if (credentialKey) {
+        try {
+          const store = new CredentialStore().loadSync();
+          vaultHasKey = credentialKey in store && !!store[credentialKey];
+        } catch { /* vault unavailable */ }
+      }
+      const vaultHint = vaultHasKey
+        ? ` The credential vault holds a stored key that may be expired (ADFS token TTL 60 min).`
+        : '';
+      return {
+        ok: null,
+        message: `[N/A] ${envVar} not set in this terminal -- live ping skipped.${vaultHint} Re-run 'swao session setup' to refresh the token, then run health-check again.`,
+      };
+    }
+  } else if (credentialKey) {
+    // Vault-only connector (static API key; no env_var configured).
     try {
       const store = new CredentialStore().loadSync();
       apiKey = store[credentialKey] || undefined;
     } catch { /* store unavailable */ }
+    if (!apiKey) {
+      return {
+        ok: null,
+        message: `[N/A] credential '${credentialKey}' not loaded -- run 'swao session setup' to load the API key before the live ping`,
+      };
+    }
   }
   const activeModel = active.model
     ? await resolveModelAlias(active.model, loaded.file.connector, apiKey)
@@ -191,7 +235,14 @@ async function pingActiveConnector(
       message: `[PASS] live ping OK -- connector '${active.connector}', model '${model}', ${ms} ms round trip`,
     };
   } catch (err) {
-    const raw = err instanceof Error ? err.message : String(err);
+    // #2894 Part A: Node.js fetch() wraps TLS errors as TypeError("fetch failed") with
+    // err.cause carrying the TLS error code. Build the raw message to include the cause
+    // so classifyPingFailure can match TLS patterns rather than the generic "fetch failed".
+    let raw = err instanceof Error ? err.message : String(err);
+    if (err instanceof Error && err.cause instanceof Error) {
+      const causeCode = (err.cause as { code?: string }).code;
+      if (causeCode) raw = `${raw}: ${causeCode} (${err.cause.message})`;
+    }
     return {
       ok: false,
       message: `[WARNING] connector '${active.connector}' live ping FAILED: ` +
@@ -231,15 +282,38 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
       const ping = await pingActiveConnector(workspaceRoot, { connector: spec.connector, model: spec.model });
       results.push({ label: spec.label, ping });
     }
-    const failed = results.filter(r => !r.ping.ok);
+    // #2897: ok === false = hard failure; ok === null = credential not loaded (SKIP).
+    const failed = results.filter(r => r.ping.ok === false);
+    const skipped = results.filter(r => r.ping.ok === null);
     if (failed.length === 0) {
-      const primaryMsg = results[0]!.ping.message;
+      if (skipped.length === 0) {
+        // All connectors passed.
+        const primaryMsg = results[0]!.ping.message;
+        const suffix = results.length > 1
+          ? ` (${results.length} connectors checked: ${results.map(r => r.label).join(', ')})`
+          : '';
+        return {
+          ok: true,
+          message: `${primaryMsg}${suffix}; ${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace)`,
+        };
+      }
+      // Some credentials not loaded -- no hard failure but live ping was skipped.
+      const primaryResult = results.find(r => r.label === 'primary') ?? results[0]!;
+      if (primaryResult.ping.ok === null) {
+        return {
+          ok: null,
+          message: `${primaryResult.ping.message}; ${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace)`,
+        };
+      }
+      // Primary passed; secondary/leg credential(s) not loaded -- informational only.
+      const primaryMsg = primaryResult.ping.message;
       const suffix = results.length > 1
         ? ` (${results.length} connectors checked: ${results.map(r => r.label).join(', ')})`
         : '';
       return {
         ok: true,
-        message: `${primaryMsg}${suffix}; ${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace)`,
+        message: `${primaryMsg}${suffix}; ${skipped.length} secondary/leg credential(s) not loaded -- run 'swao session setup'; ` +
+          `${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace)`,
       };
     }
 

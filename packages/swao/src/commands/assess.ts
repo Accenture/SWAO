@@ -958,6 +958,27 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                       '--connector', leg.connector,
                       ...(leg.model !== 'default' ? ['--model', leg.model] : []),
                     ];
+                    // #2901: inject the parent's live token so the challenge subprocess
+                    // does not re-read an expired vault entry. The parent's token (loaded
+                    // at session start) is valid; the vault copy may be expired by the time
+                    // challenge passes run (ADFS TTL = 60 min, 4-leg runs can exceed this).
+                    const challengeLoaded = getConnector(leg.connector, { workspaceRoot });
+                    const challengeTokenEnv: Record<string, string> = {};
+                    if (challengeLoaded) {
+                      const cAuth = challengeLoaded.file.connector.auth;
+                      if (cAuth.env_var) {
+                        const liveToken = process.env[cAuth.env_var]
+                          ?? (() => {
+                            try {
+                              const credKey = cAuth.credential_key;
+                              if (!credKey) return '';
+                              const store = new CredentialStore().loadSync();
+                              return (credKey in store && store[credKey]) ? store[credKey] : '';
+                            } catch { return ''; }
+                          })();
+                        if (liveToken) challengeTokenEnv[cAuth.env_var] = liveToken;
+                      }
+                    }
                     const spawnResult = await new Promise<{ exitCode: number | null }>((res) => {
                       const child = spawn(
                         cmd,
@@ -970,7 +991,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                           cwd: workspaceRoot,
                           // Forward SWAO_LLM_ASSESSMENT_* so challenge
                           // subprocess streams CallRecords to the leg sink (#1819).
-                          env: { ...process.env, ...legEnv, PKG_EXECPATH: '' },
+                          env: { ...process.env, ...legEnv, ...challengeTokenEnv, PKG_EXECPATH: '' },
                           stdio: 'ignore',
                           windowsHide: true,
                         },
@@ -1102,13 +1123,31 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                       '--connector', leg.connector,
                       ...(leg.model !== 'default' ? ['--model', leg.model] : []),
                     ];
+                    // #2901: same live-token injection as spawnChallenge.
+                    const lzLoaded = getConnector(leg.connector, { workspaceRoot });
+                    const lzTokenEnv: Record<string, string> = {};
+                    if (lzLoaded) {
+                      const lzAuth = lzLoaded.file.connector.auth;
+                      if (lzAuth.env_var) {
+                        const lzLiveToken = process.env[lzAuth.env_var]
+                          ?? (() => {
+                            try {
+                              const credKey = lzAuth.credential_key;
+                              if (!credKey) return '';
+                              const store = new CredentialStore().loadSync();
+                              return (credKey in store && store[credKey]) ? store[credKey] : '';
+                            } catch { return ''; }
+                          })();
+                        if (lzLiveToken) lzTokenEnv[lzAuth.env_var] = lzLiveToken;
+                      }
+                    }
                     const spawnResultLz = await new Promise<{ exitCode: number | null }>((res) => {
                       const childLz = spawn(
                         cmdLz,
                         challengeLzArgs,
                         {
                           cwd: workspaceRoot,
-                          env: { ...process.env, ...legEnv, PKG_EXECPATH: '' },
+                          env: { ...process.env, ...legEnv, ...lzTokenEnv, PKG_EXECPATH: '' },
                           stdio: 'ignore',
                           windowsHide: true,
                         },

@@ -1,0 +1,50 @@
+# SWAO Enterprise Edition -- Docker (sprint-128, ADR-0056)
+#
+# Binary-wrap approach: packages the pre-built swao-enterprise-linux-* binary
+# (produced by the build CI job) into a minimal Debian container.
+# No pnpm workspace install required -- the pkg binary is self-contained
+# (Node.js runtime + compiled sources + native modules all bundled).
+#
+# Sprint-140 pivot: pnpm workspace install reliably no-ops inside Docker across
+# all environments (Alpine, Debian, pnpm@9/10/11, frozen/non-frozen). The binary
+# produced by the native build job is already tested and published; wrapping it
+# eliminates the pnpm-in-Docker issue class entirely.
+#
+# Built by: private CI (release-enterprise.yml publish-container)
+# Push target: ghcr.io/accenture-cloud-first-tech/swao-enterprise:*
+#
+# Usage:
+#   docker pull ghcr.io/accenture-cloud-first-tech/swao-enterprise:latest
+#   docker run --rm -v $(pwd):/workspace -v /path/to/licence.json:/licence.json \
+#              ghcr.io/accenture-cloud-first-tech/swao-enterprise:latest --version
+#
+# Licence file: mount via `-v licence.json:/licence.json`. See ADR-0056 OQ-097-04.
+
+FROM debian:bookworm-slim
+WORKDIR /workspace
+ENV SWAO_BINARY_TIER=enterprise
+
+# Runtime prerequisites:
+#   git            -- `swao assess` shells out to `git clone` for source ingestion
+#   openssh-client -- the SSH-key clone path alongside HTTPS+PAT
+#   ca-certificates -- Debian slim ships it; explicit for clarity
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git openssh-client ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# BINARY_NAME is injected by the CI matrix (swao-enterprise-linux-x64 for amd64,
+# swao-enterprise-linux-arm64 for arm64). It is a file inside the ./docker-build/
+# build context, produced by the build job and downloaded as an artifact.
+ARG BINARY_NAME=swao-enterprise-linux-x64
+COPY ${BINARY_NAME} /usr/local/bin/swao
+RUN chmod +x /usr/local/bin/swao
+
+# OCI labels -- consumed by ghcr.io UI, image inspectors.
+LABEL org.opencontainers.image.title="SWAO Enterprise" \
+      org.opencontainers.image.description="SWAO -- Sovereign Workload Assessment and Onboarding (Enterprise Edition, proprietary)" \
+      org.opencontainers.image.vendor="Accenture" \
+      org.opencontainers.image.licenses="Proprietary" \
+      org.opencontainers.image.source="https://github.com/Accenture/SWAO"
+
+# /workspace is the operator's bind-mounted portfolio; SWAO reads + writes it.
+ENTRYPOINT ["/usr/local/bin/swao"]

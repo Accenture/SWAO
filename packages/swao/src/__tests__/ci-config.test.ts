@@ -184,7 +184,7 @@ describe('Tracker integrity (#0120)', { sequential: true }, () => {
       // Accept both `state:` (legacy format, sprint <= 105) and `status:` (current format, sprint >= 106).
       expect(fm['state'] ?? fm['status'], `${file}: missing state/status field`).toBe('closed');
     }
-  }, 30_000); // 640+ files; Windows filesystem overhead per readFileSync exceeds 5s default
+  }, 120_000); // 2348+ files (sprint-142); Windows readFileSync overhead scales linearly; was 30s for 640 files
 
   // Skips when the resolved bash can't reach sync.sh (e.g. WSL bash in the
   // Windows dev sandbox); runs in CI (Linux) and under Git Bash. #0592.

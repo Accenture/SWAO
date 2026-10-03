@@ -41,10 +41,14 @@ export interface PrerequisitesProbeResult {
 
 /**
  * Run `<cmd> <versionArg>` with a small timeout and return the first
- * line of stdout (where most CLI tools print "tool version X.Y.Z"). Returns
- * null if the tool isn't on PATH or the call timed out.
+ * line of stdout matching `linePattern` (or the first line when no pattern
+ * is given). Returns null if the tool isn't on PATH or the call timed out.
+ *
+ * `linePattern` is used for node: inside a pkg binary the runtime emits its
+ * module-resolution path alongside the version, so scanning all output lines
+ * for /^v\d+\.\d+\.\d+/ is more robust than taking the first line (#2896).
  */
-function detectTool(cmd: string, versionArg: string): string | null {
+function detectTool(cmd: string, versionArg: string, linePattern?: RegExp): string | null {
   try {
     const result = spawnSync(cmd, [versionArg], {
       encoding: 'utf-8',
@@ -55,12 +59,15 @@ function detectTool(cmd: string, versionArg: string): string | null {
       // Some tools (ssh -V) write to stderr and exit 0 / non-zero; combine.
       const merged = (result.stdout ?? '') + (result.stderr ?? '');
       if (!merged) return null;
-      return merged.split('\n')[0]?.trim() ?? null;
+      const lines = merged.split('\n').map(l => l.trim()).filter(Boolean);
+      if (linePattern) return lines.find(l => linePattern.test(l)) ?? null;
+      return lines[0] ?? null;
     }
     if (result.error || result.status === null) return null;
     const out = (result.stdout ?? result.stderr ?? '').toString();
-    const firstLine = out.split('\n')[0]?.trim();
-    return firstLine && firstLine.length > 0 ? firstLine : null;
+    const lines = out.split('\n').map(l => l.trim()).filter(Boolean);
+    if (linePattern) return lines.find(l => linePattern.test(l)) ?? null;
+    return lines[0] ?? null;
   } catch {
     return null;
   }
@@ -71,8 +78,9 @@ export function buildPrerequisitesProbe(): PrerequisitesProbeResult {
   const gitVersion = detectTool('git', '--version');
   // `ssh -V` -> "OpenSSH_9.0p1, OpenSSL ..." (writes to stderr)
   const sshVersion = detectTool('ssh', '-V');
-  // `node --version` -> "v22.11.0"
-  const nodeVersion = detectTool('node', '--version');
+  // `node --version` -> "v22.11.0"; scan all lines because pkg binaries may
+  // emit extra module-path lines alongside the version string (#2896).
+  const nodeVersion = detectTool('node', '--version', /^v\d+\.\d+\.\d+/);
   // Pass 14 malware scan tools -- optional; warn when any are absent so operators
   // know what to install before running `swao assess --passes malware`.
   // gitleaks uses a positional `version` subcommand rather than `--version`.

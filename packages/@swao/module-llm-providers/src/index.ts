@@ -15,10 +15,11 @@
 
 export type { LlmProvider, LlmUsage, LlmTrace, EmbeddingProvider, EmbeddingResult } from './types.js';
 export { anthropicCostUsd } from './types.js';
-export { OpenLlmProvider, OpenLlmEmbeddingProvider } from './open-llm-provider.js';
+export { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 export { FixedLlmProvider } from './fixed.js';
 export { OllamaLlmProvider } from './ollama.js';
 export { AnthropicLlmProvider, LlmConnectivityError } from './anthropic.js';
+export { ConnectivityFailureError } from './errors.js';
 export { createLlmProvider } from './factory.js';
 export { LlmCacheLayer } from './cache.js';
 export { UsageTrackingLlmProvider, mergeUsage } from './usage-tracker.js';

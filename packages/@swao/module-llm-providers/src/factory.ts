@@ -129,6 +129,8 @@ export function createLlmProvider(
     const resolved = createProviderFromConnector(loaded, {
       model: config?.model ?? process.env['SWAO_LLM_MODEL'],
       env: config?.env,
+      // #2893: propagate base_url from .swao.yml to override the connector file's base_url.
+      baseUrl: config?.baseUrl,
       // #1691: propagate appId for dual-logging to app-events.
       appId: _appId,
     });

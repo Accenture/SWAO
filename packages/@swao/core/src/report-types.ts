@@ -71,6 +71,9 @@ export interface ReportData {
   challengeFindings?: ChallengeAgentFinding[];
   /** #2432: indicates why challenge data is absent, for the report header note. */
   challengeStatus?: 'included' | 'not-run' | 'not-available';
+  /** #2722: full deduplicated signal list sorted by severity, for GRC view completeness.
+   *  Optional for backward compat with ReportData stubs built outside generateReport. */
+  allSignals?: SignalEntry[];
 }
 
 // ---------------------------------------------------------------------------

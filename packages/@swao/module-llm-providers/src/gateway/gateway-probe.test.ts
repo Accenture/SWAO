@@ -51,6 +51,19 @@ describe('classifyPingFailure (#1410)', () => {
     expect(classifyPingFailure('fetch failed: ECONNREFUSED 127.0.0.1:11434', opts)).toContain('endpoint unreachable');
   });
 
+  // #2897: ADFS JWT expiry -- distinct from wrong API key; re-login is the fix.
+  it('maps "Jwt is expired" onto the token-expired hint, not the generic auth hint', () => {
+    const msg = classifyPingFailure('HTTP 401 Unauthorized: Jwt is expired', opts);
+    expect(msg).toContain('token expired');
+    expect(msg).toContain('swao session setup');
+    expect(msg).not.toContain('API key missing');
+  });
+
+  it('maps "token is expired" onto the token-expired hint (case-insensitive)', () => {
+    const msg = classifyPingFailure('HTTP 401: Token is expired, please re-authenticate', opts);
+    expect(msg).toContain('token expired');
+  });
+
   it('falls back to the raw message when unclassified', () => {
     expect(classifyPingFailure('weird driver explosion', opts)).toBe('weird driver explosion');
   });
@@ -122,6 +135,87 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
     const r = await buildLlmGatewayProbe(dir);
     expect(r.ok).toBe(false);
     expect(r.message).toContain("active connector 'no-such-platform' not found");
+  });
+
+  // #2897: credential key configured in connector YAML but not loaded in the
+  // credential store -- should return ok: null (SKIP) with a session-setup hint,
+  // not attempt the live ping and report a misleading 401 authentication failure.
+  it('returns ok: null when the connector credential key is not in the credential store', async () => {
+    writeFileSync(join(dir, '.swao.yml'), [
+      'providers:',
+      '  llm:',
+      '    primary:',
+      '      connector: auth-required',
+      '      model: test-model',
+    ].join('\n'), 'utf-8');
+    const gwDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
+    const { mkdirSync } = await import('node:fs');
+    mkdirSync(gwDir, { recursive: true });
+    writeFileSync(join(gwDir, 'auth-required.yaml'), [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: auth-required',
+      '  name: Auth Required Endpoint',
+      '  protocol: openai-chat',
+      '  base_url: https://api.example.com/v1',
+      '  auth:',
+      '    credential_key: missing-api-key-that-is-not-in-store',
+      '  models:',
+      '    default: test-model',
+      '  meta:',
+      '    source: user',
+    ].join('\n'), 'utf-8');
+    const r = await buildLlmGatewayProbe(dir);
+    expect(r.ok).toBeNull();
+    expect(r.message).toContain('[N/A]');
+    expect(r.message).toContain('missing-api-key-that-is-not-in-store');
+    expect(r.message).toContain('swao session setup');
+  });
+
+  // #2897: connector has env_var configured (ADFS/token-based auth); env var absent in this
+  // terminal -> ok: null + hint to run session-setup, NOT a live ping that would give a
+  // misleading 401 from an expired vault token.
+  it('returns ok: null with env-var hint when env_var connector is missing from process.env (#2897)', async () => {
+    writeFileSync(join(dir, '.swao.yml'), [
+      'providers:',
+      '  llm:',
+      '    primary:',
+      '      connector: preme-preprod',
+      '      model: /Llama-3.3-70B',
+    ].join('\n'), 'utf-8');
+    const gwDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
+    const { mkdirSync } = await import('node:fs');
+    mkdirSync(gwDir, { recursive: true });
+    writeFileSync(join(gwDir, 'preme-preprod.yaml'), [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: preme-preprod',
+      '  name: BA PREME GenAI Hub (PREPROD)',
+      '  protocol: openai-chat',
+      '  base_url: https://preme-genai-hub-preprod.example.com',
+      '  auth:',
+      '    credential_key: openai-api-key',
+      '    env_var: SWAO_OPEN_LLM_API_KEY',
+      '    header: Authorization',
+      '    scheme: bearer',
+      '  models:',
+      '    default: /Llama-3.3-70B',
+      '  meta:',
+      '    source: user',
+    ].join('\n'), 'utf-8');
+    delete process.env['SWAO_OPEN_LLM_API_KEY'];
+    const r = await buildLlmGatewayProbe(dir);
+    expect(r.ok).toBeNull();
+    expect(r.message).toContain('[N/A]');
+    expect(r.message).toContain('SWAO_OPEN_LLM_API_KEY');
+    expect(r.message).toContain('session setup');
+  });
+
+  // #2894 Part A: TLS error codes in err.cause are extracted into the classifyPingFailure message.
+  it('classifyPingFailure maps TLS cert error codes onto the TLS hint (#2894)', () => {
+    const tlsMsg = classifyPingFailure('fetch failed: UNABLE_TO_VERIFY_LEAF_SIGNATURE (unable to verify the first certificate)', { model: 'test-model' });
+    expect(tlsMsg).toContain('TLS certificate error');
+    expect(tlsMsg).toContain('NODE_EXTRA_CA_CERTS');
   });
 
   it('reads the active connector from the workspace .swao.yml and reports ping failures actionably', async () => {

@@ -288,7 +288,7 @@ export interface TuiScreenContribution {
 export interface ProbeContribution {
   id: string;
   name: string;
-  run: (ctx: WorkspaceContext) => Promise<{ ok: boolean; message: string }>;
+  run: (ctx: WorkspaceContext) => Promise<{ ok: boolean | null; message: string }>;
 }
 
 export interface AssessmentTypeContribution {

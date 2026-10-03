@@ -1,8 +1,6 @@
 version: 2
 updates:
-  # Dependency updates are managed via the private development repository.
-  # PRs are disabled here (open-pull-requests-limit: 0) to prevent divergence.
-  # Re-enable and sync to the private repo before merging any dependency changes.
+  # Keep GitHub Actions used in our workflows up to date.
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -10,7 +8,7 @@ updates:
       day: monday
       time: "07:00"
       timezone: Europe/Berlin
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 5
     labels:
       - chore
       - dependencies
@@ -21,6 +19,9 @@ updates:
 
   - package-ecosystem: npm
     directory: /packages/swao
+    # Fixture packages in src/passes/fixtures/source/ simulate client source code
+    # for unit tests. They are NEVER installed or executed; ignore CVE alerts on them.
+    # See issue #0524 for tracking and eventual fixture isolation solution.
     ignore:
       - dependency-name: "express"
         versions: [">=0"]
@@ -49,7 +50,7 @@ updates:
       day: monday
       time: "07:00"
       timezone: Europe/Berlin
-    open-pull-requests-limit: 0
+    open-pull-requests-limit: 5
     labels:
       - chore
       - dependencies

@@ -3,7 +3,7 @@
 // deferred to the dedicated TUI test sprint (Design 098 section 7.3).
 
 import { describe, it, expect } from 'vitest';
-import { buildPingRequest, isPermanentFailure } from './useLlmPing.js';
+import { buildPingRequest, isPermanentFailure, isTlsError } from './useLlmPing.js';
 
 const PING_PROMPT = 'SWAO connectivity check. Reply with the single word: OK';
 
@@ -200,5 +200,62 @@ describe('isPermanentFailure', () => {
 
   it('returns true for 400 Bad Request', () => {
     expect(isPermanentFailure(400)).toBe(true);
+  });
+});
+
+// ── isTlsError (#2894 Part A) ─────────────────────────────────────────────────
+
+describe('isTlsError (#2894)', () => {
+  it('returns true for UNABLE_TO_VERIFY_LEAF_SIGNATURE', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' });
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('returns true for CERT_HAS_EXPIRED', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'CERT_HAS_EXPIRED' });
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('returns true for SELF_SIGNED_CERT_IN_CHAIN', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'SELF_SIGNED_CERT_IN_CHAIN' });
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('returns true for DEPTH_ZERO_SELF_SIGNED_CERT', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'DEPTH_ZERO_SELF_SIGNED_CERT' });
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('returns true for ERR_TLS_CERT_ALTNAME_INVALID', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'ERR_TLS_CERT_ALTNAME_INVALID' });
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('detects TLS error code in err.cause when fetch() wraps it (Node.js fetch pattern)', () => {
+    const cause = Object.assign(new Error('TLS handshake failed'), { code: 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY' });
+    const err = new TypeError('fetch failed');
+    (err as { cause?: unknown }).cause = cause;
+    expect(isTlsError(err)).toBe(true);
+  });
+
+  it('returns false for ECONNREFUSED (port closed, not a TLS error)', () => {
+    const err = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+    expect(isTlsError(err)).toBe(false);
+  });
+
+  it('returns false for ETIMEDOUT (network timeout, not a TLS error)', () => {
+    const err = Object.assign(new Error('connect ETIMEDOUT'), { code: 'ETIMEDOUT' });
+    expect(isTlsError(err)).toBe(false);
+  });
+
+  it('returns false for AbortError (timeout, not a TLS error)', () => {
+    const err = Object.assign(new Error('The user aborted a request.'), { name: 'AbortError' });
+    expect(isTlsError(err)).toBe(false);
+  });
+
+  it('returns false for non-Error values', () => {
+    expect(isTlsError('a string')).toBe(false);
+    expect(isTlsError(null)).toBe(false);
+    expect(isTlsError(42)).toBe(false);
   });
 });

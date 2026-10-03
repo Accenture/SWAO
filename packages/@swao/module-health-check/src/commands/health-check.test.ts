@@ -39,9 +39,11 @@ const TEMP_HOME = join(tmpdir(), `swao-health-check-test-${process.pid}`);
 beforeEach(() => {
   mkdirSync(TEMP_HOME, { recursive: true });
   _paths.statePath = join(TEMP_HOME, '.swao-state.json');
-  _paths.licensePath = join(TEMP_HOME, '.swao-license.json');
+  _paths.licensePath = join(TEMP_HOME, 'licence.json');
+  _paths.legacyLicencePath = join(TEMP_HOME, '.swao-license.json');  // isolate from real machine file (#2879-test-fix)
   if (existsSync(_paths.statePath)) rmSync(_paths.statePath);
   if (existsSync(_paths.licensePath)) rmSync(_paths.licensePath);
+  if (existsSync(_paths.legacyLicencePath)) rmSync(_paths.legacyLicencePath);
 });
 
 afterEach(() => {
@@ -455,6 +457,20 @@ describe('formatLlmGatewayLine -- #2366 ok-vs-message-prefix alignment', () => {
   it('shows INFO when ok=true and message has [N/A] prefix', () => {
     const line = formatLlmGatewayLine({ ok: true, message: '[N/A] no LLM provider configured' });
     expect(line).toContain('INFO');
+  });
+
+  // #2897: ok === null = credential not loaded (SKIP) -- must show INFO, not FAIL.
+  it('shows INFO when ok=null and message has [N/A] prefix (#2897)', () => {
+    const line = formatLlmGatewayLine({ ok: null, message: "[N/A] credential 'preme-api-key' not loaded -- run 'swao session setup'" });
+    expect(line).toContain('INFO');
+    expect(line).not.toContain('FAIL');
+    expect(line).not.toContain('WARN');
+  });
+
+  it('shows INFO when ok=null with no bracketed prefix (fallback) (#2897)', () => {
+    const line = formatLlmGatewayLine({ ok: null, message: 'credential not loaded' });
+    expect(line).toContain('INFO');
+    expect(line).not.toContain('FAIL');
   });
 
   // #2222: partial-failure (primary OK, secondary FAIL) must show ok in the table,

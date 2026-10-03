@@ -31,6 +31,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OpenLlmProvider, OpenLlmEmbeddingProvider } from './open-llm-provider.js';
 import { LlmConnectivityError } from './anthropic.js';
+import { ConnectivityFailureError } from './errors.js';
 import { createLlmProvider } from './factory.js';
 
 const ORIGINAL_FETCH = global.fetch;
@@ -515,5 +516,131 @@ describe('OpenLlmEmbeddingProvider', () => {
     expect(results[0].vector).toEqual([0.1, 0.2]);
     expect(results[1].vector).toEqual([0.3, 0.4]);
     expect(mock).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ConnectivityFailureError on 401 (#2899)
+// ---------------------------------------------------------------------------
+
+describe('OpenLlmProvider -- ConnectivityFailureError on 401', () => {
+  afterEach(() => {
+    global.fetch = ORIGINAL_FETCH;
+    vi.restoreAllMocks();
+  });
+
+  it('throws ConnectivityFailureError with reason auth on HTTP 401', async () => {
+    mockFetchOnce(errorResponse(401, 'unauthorized'));
+    const p = new OpenLlmProvider('expired-token', 'my-model', 'https://host.example.com');
+    await expect(p.complete('hello')).rejects.toBeInstanceOf(ConnectivityFailureError);
+  });
+
+  it('ConnectivityFailureError.reason is auth on HTTP 401', async () => {
+    mockFetchOnce(errorResponse(401, 'unauthorized'));
+    const p = new OpenLlmProvider('expired-token', 'my-model', 'https://host.example.com');
+    try {
+      await p.complete('hello');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ConnectivityFailureError);
+      expect((err as ConnectivityFailureError).reason).toBe('auth');
+    }
+  });
+
+  it('does NOT retry on 401 -- fails immediately without retry delay', async () => {
+    const mock = vi.fn().mockResolvedValue(errorResponse(401, 'unauthorized') as Response);
+    global.fetch = mock as unknown as typeof fetch;
+    const p = new OpenLlmProvider('expired-token', 'my-model', 'https://host.example.com');
+    await expect(p.complete('hello')).rejects.toBeInstanceOf(ConnectivityFailureError);
+    // Only one fetch call -- no retry
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// URL construction -- base_url with trailing /v1 (#2892)
+// ---------------------------------------------------------------------------
+
+describe('OpenLlmProvider URL construction -- base_url with trailing /v1', () => {
+  afterEach(() => {
+    global.fetch = ORIGINAL_FETCH;
+    vi.restoreAllMocks();
+  });
+
+  it('strips trailing /v1 from baseUrl to avoid double /v1 with empty modelPrefix', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    // Common mistake: user includes /v1 in baseUrl AND uses empty modelPrefix
+    const p = new OpenLlmProvider(undefined, 'gpt-4o', 'https://api.openai.com/v1', '');
+    await p.complete('test');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    // Should NOT produce https://api.openai.com/v1/v1/chat/completions
+    expect(url).toBe('https://api.openai.com/v1/chat/completions');
+    expect(url).not.toContain('/v1/v1/');
+  });
+
+  it('strips trailing /v1 from baseUrl with default model prefix', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const p = new OpenLlmProvider(undefined, 'my-model', 'https://endpoint.example.com/v1/');
+    await p.complete('test');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://endpoint.example.com/my-model/v1/chat/completions');
+    expect(url).not.toContain('/v1/v1/');
+  });
+
+  it('model with leading slash does not produce double slash in URL (#2892)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    // PREME PREPROD catalogue entries use leading-slash model ids
+    const p = new OpenLlmProvider(undefined, '/Llama-3.3-70B-Instruct-FP8-Dynamic', 'https://preme.example.com/v1');
+    await p.complete('test');
+
+    const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://preme.example.com/Llama-3.3-70B-Instruct-FP8-Dynamic/v1/chat/completions');
+    // toBe above is an exact-match; a path-level double-slash would cause it to fail already
+    expect(new URL(url).pathname).not.toContain('//');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HTTPS_PROXY env var passes dispatcher to fetch (#2891)
+// ---------------------------------------------------------------------------
+
+describe('OpenLlmProvider -- HTTPS_PROXY dispatcher', () => {
+  afterEach(() => {
+    global.fetch = ORIGINAL_FETCH;
+    vi.restoreAllMocks();
+    delete process.env['HTTPS_PROXY'];
+    delete process.env['HTTP_PROXY'];
+  });
+
+  it('passes dispatcher option when HTTPS_PROXY is set', async () => {
+    process.env['HTTPS_PROXY'] = 'http://proxy.corp.example.com:8080';
+    const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const p = new OpenLlmProvider('tok', 'my-model', 'https://host.example.com');
+    await p.complete('hello');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, Record<string, unknown>];
+    expect(init).toHaveProperty('dispatcher');
+  });
+
+  it('omits dispatcher option when no proxy env var is set', async () => {
+    delete process.env['HTTPS_PROXY'];
+    delete process.env['HTTP_PROXY'];
+    const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const p = new OpenLlmProvider('tok', 'my-model', 'https://host.example.com');
+    await p.complete('hello');
+
+    const [, init] = fetchMock.mock.calls[0] as [string, Record<string, unknown>];
+    expect(init).not.toHaveProperty('dispatcher');
   });
 });

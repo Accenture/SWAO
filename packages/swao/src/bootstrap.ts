@@ -54,7 +54,8 @@ import { registerSetup } from './commands/setup.js';
 // injects the resolved swao CLI invocation (McpHostDeps) so the MCP tools spawn
 // the correct entry after the module's extraction; module-mcp must not import
 // host code, so the host mediates.
-import { registerMcp, type McpHostDeps } from '@swao/module-mcp';
+import { registerMcp, type McpHostDeps, type McpInstallDeps } from '@swao/module-mcp';
+import { patchClaudeDesktopConfig } from './tui/mcp-config.js';
 import { registerInstallPlaywright } from './commands/install-playwright.js';
 import { registerRegimeSelect } from './commands/regime-select.js';
 // #0577: export command + ExportBiScreen + the star writers relocated to
@@ -189,7 +190,15 @@ export function buildProgram(deps: BootstrapDeps): Command {
   registerSetup(program);
   // #0574/#0579: the MCP server spawns the same resolved swao CLI as the
   // portfolio orchestrator; the descriptor is computed by the entry.
-  registerMcp(program, deps.cliSpawnDescriptor, SWAO_VERSION);
+  // #2877: inject the Claude Desktop config path and patchConfig function so
+  // `swao mcp install` can update the config without module-mcp importing host code.
+  const mcpInstallDeps: McpInstallDeps = {
+    configPath: process.env['APPDATA']
+      ? join(process.env['APPDATA'], 'Claude', 'claude_desktop_config.json')
+      : join(process.env['HOME'] ?? '~', 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
+    patchConfig: patchClaudeDesktopConfig,
+  };
+  registerMcp(program, deps.cliSpawnDescriptor, SWAO_VERSION, mcpInstallDeps);
   registerInstallPlaywright(program);
   registerRegimeSelect(program);
   registerExport(program);

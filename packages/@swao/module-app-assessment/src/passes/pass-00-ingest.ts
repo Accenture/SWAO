@@ -27,6 +27,7 @@ import {
 import { join, relative, extname, basename, dirname } from 'path';
 import { createHash } from 'crypto';
 import { classifyFile } from '../normalize/classifier.js';
+import { docxToMarkdown } from '../normalize/transformer.js';
 import { ingestPulumiStacks } from '@swao/module-iac-scan';
 
 /**
@@ -229,8 +230,7 @@ async function extractBinary(
     }
 
     if (ext === '.docx' || ext === '.doc') {
-      const mammoth = await import('mammoth');
-      const { value } = await mammoth.convertToMarkdown({ path: sourceAbs });
+      const value = await docxToMarkdown(sourceAbs);
       const ts = new Date().toISOString();
       const outPath = targetAbs + '.extracted.md';
       writeFileSync(outPath, `<!-- extracted from: ${fileName} at ${ts} -->\n\n${value}`, 'utf-8');

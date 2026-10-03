@@ -169,6 +169,68 @@ describe('parseConnectorYaml (#1394)', () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.file.connector.tls).toBeUndefined();
   });
+
+  it('accepts token_command with optional token_ttl_s (#2743)', () => {
+    const yaml = [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: adfs-hub',
+      '  name: ADFS-gated Hub',
+      '  protocol: openai-chat',
+      '  base_url: https://llm.enterprise.example',
+      '  auth:',
+      '    token_command: "az account get-access-token --query accessToken -o tsv"',
+      '    token_ttl_s: 3300',
+      '    header: Authorization',
+      '    scheme: bearer',
+      '  models:',
+      '    default: gpt-4o',
+    ].join('\n');
+    const r = parseConnectorYaml(yaml, 'adfs-hub.yaml');
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.file.connector.auth.token_command).toBe('az account get-access-token --query accessToken -o tsv');
+      expect(r.file.connector.auth.token_ttl_s).toBe(3300);
+    }
+  });
+
+  it('accepts token_command without token_ttl_s (TTL defaults to caller logic, #2743)', () => {
+    const yaml = [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: adfs-hub',
+      '  name: ADFS-gated Hub',
+      '  protocol: openai-chat',
+      '  base_url: https://llm.enterprise.example',
+      '  auth:',
+      '    token_command: "get-token.sh"',
+      '    header: Authorization',
+      '    scheme: bearer',
+      '  models:',
+      '    default: gpt-4o',
+    ].join('\n');
+    const r = parseConnectorYaml(yaml, 'adfs-hub.yaml');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.file.connector.auth.token_ttl_s).toBeUndefined();
+  });
+
+  it('rejects token_ttl_s <= 0 (#2743)', () => {
+    const yaml = [
+      'schema_version: "1.0"',
+      'connector:',
+      '  id: adfs-hub',
+      '  name: ADFS-gated Hub',
+      '  protocol: openai-chat',
+      '  base_url: https://llm.enterprise.example',
+      '  auth:',
+      '    token_command: "get-token.sh"',
+      '    token_ttl_s: 0',
+      '  models:',
+      '    default: gpt-4o',
+    ].join('\n');
+    const r = parseConnectorYaml(yaml, 'adfs-hub.yaml');
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe('looksLikeSecret (#1394)', () => {

@@ -8,6 +8,7 @@
 //   useLlmPing       -- React hook: manages running/ok/fail state + cleanup
 
 import { useState, useEffect, useRef } from 'react';
+import { buildFetchDispatcher } from '@swao/module-llm-providers';
 
 export type LlmPingStatus = 'idle' | 'running' | 'ok' | 'fail';
 
@@ -25,6 +26,8 @@ export interface PingGatewayConnector {
   base_url: string;
   models: { default: string };
   credential_key?: string;
+  /** #2894 Part B: when false, cert validation is disabled via a scoped undici Agent. */
+  rejectUnauthorized?: boolean;
 }
 
 export type LlmPingTarget =
@@ -110,6 +113,27 @@ export function isPermanentFailure(httpStatus: number): boolean {
   return httpStatus >= 400 && httpStatus < 500 && httpStatus !== 429;
 }
 
+const TLS_ERROR_CODES = new Set([
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'UNABLE_TO_GET_CRL',
+  'CERT_HAS_EXPIRED',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'ERR_TLS_INVALID_PROTOCOL_VERSION',
+  'ERR_SSL_WRONG_VERSION_NUMBER',
+]);
+
+/** #2894 Part A: detect TLS certificate errors thrown by Node.js during TLS handshake.
+ *  fetch() wraps these as a TypeError with the TLS error in err.cause -- check both. */
+export function isTlsError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const code = (err as { code?: string }).code
+    ?? ((err as { cause?: { code?: string } }).cause?.code);
+  return TLS_ERROR_CODES.has(code ?? '');
+}
+
 export interface UseLlmPingOptions {
   /** Null/undefined disables the hook and keeps status 'idle'. */
   target: LlmPingTarget | null | undefined;
@@ -156,11 +180,16 @@ export function useLlmPing(options: UseLlmPingOptions): LlmPingResult & { trigge
     void (async () => {
       try {
         const req = buildPingRequest(target);
-        const resp = await fetch(req.url, {
+        // #2894 Part B: scoped Agent when the gateway connector disables cert validation.
+        const tlsAgent = (target.kind === 'gateway' && target.connector.rejectUnauthorized === false)
+          ? buildFetchDispatcher({ rejectUnauthorized: false })
+          : undefined;
+        const resp = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(req.url, {
           method: req.method,
           headers: req.headers,
           body: req.body,
           signal: controller.signal,
+          ...(tlsAgent ? { dispatcher: tlsAgent } : {}),
         });
         clearTimeout(tid);
         if (resp.ok) {
@@ -176,11 +205,25 @@ export function useLlmPing(options: UseLlmPingOptions): LlmPingResult & { trigge
       } catch (err) {
         clearTimeout(tid);
         const isAbort = (err as Error).name === 'AbortError';
-        update({
-          status: 'fail',
-          message: isAbort ? `no response after ${timeoutMs / 1000}s` : (err as Error).message.slice(0, 80),
-          permanent: false,
-        });
+        if (isTlsError(err)) {
+          update({
+            status: 'fail',
+            // #2894 Part A: surface the TLS cause immediately with actionable guidance.
+            message:
+              'TLS certificate error -- endpoint is reachable but its cert is not trusted ' +
+              'by Node.js. Fix: set NODE_TLS_REJECT_UNAUTHORIZED=0 before launching SWAO, ' +
+              'or set tls.reject_unauthorized: false in the connector YAML.',
+            permanent: false,
+          });
+        } else {
+          update({
+            status: 'fail',
+            message: isAbort
+              ? `no response after ${timeoutMs / 1000}s`
+              : (err as Error).message.slice(0, 120),
+            permanent: false,
+          });
+        }
       }
     })();
 

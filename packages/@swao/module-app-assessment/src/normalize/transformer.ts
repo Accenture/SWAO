@@ -19,8 +19,10 @@
 // docxToMarkdown: extracts Markdown text from a DOCX file via mammoth.
 // pdfToText: stub -- returns a placeholder for v1 scope.
 
+// v1.1
 import { basename } from 'node:path';
 import ExcelJS from 'exceljs';
+import AdmZip from 'adm-zip';
 // #0683: static import so esbuild inlines mammoth into the SEA bundle.
 // Type shape declared in mammoth.d.ts (no official @types/mammoth).
 import mammoth from 'mammoth';
@@ -83,11 +85,60 @@ function cellToString(cell: ExcelJS.CellValue | undefined | null): string {
 
 /**
  * Extract text from a DOCX file and return it as Markdown.
- * Uses mammoth; returns the value string from the conversion result.
+ * Uses mammoth as the primary extractor. If mammoth throws (e.g. when a
+ * DOCX's [Content_Types].xml lacks the Override for /word/document.xml,
+ * causing jsdom to receive an undefined mimeType -- #2869), falls back to
+ * reading word/document.xml directly from the ZIP and extracting <w:t> text.
  */
 export async function docxToMarkdown(filePath: string): Promise<string> {
-  const result = await mammoth.convertToMarkdown({ path: filePath });
-  return result.value;
+  try {
+    const result = await mammoth.convertToMarkdown({ path: filePath });
+    return result.value;
+  } catch {
+    // #2869: degrade gracefully for structurally non-conformant DOCX files.
+    console.warn(`[swao normalize] mammoth failed on ${basename(filePath)}; falling back to raw XML extraction`);
+    return docxZipExtract(filePath);
+  }
+}
+
+/**
+ * Last-resort DOCX text extractor: reads word/document.xml directly from the
+ * ZIP archive and extracts text from <w:t> elements, grouped by paragraph.
+ * Preserves paragraph breaks but no rich Markdown structure.
+ */
+export function docxZipExtract(filePath: string): string {
+  const zip = new AdmZip(filePath);
+  const entry = zip.getEntry('word/document.xml');
+  if (!entry) return '';
+  const xml = entry.getData().toString('utf-8');
+  return docxXmlToText(xml);
+}
+
+/**
+ * Extract plain text from OOXML word/document.xml content.
+ * Splits on paragraph boundaries (<w:p>) and collects <w:t> text nodes.
+ * Decodes common XML entities (&amp; &lt; &gt; &quot; &apos;).
+ */
+export function docxXmlToText(xml: string): string {
+  const lines = xml.split(/<w:p[ \/>]/).map((para) => {
+    const texts: string[] = [];
+    const re = /<w:t(?:[^>]*)?>([^<]*)<\/w:t>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(para)) !== null) {
+      if (m[1]) texts.push(decodeXmlEntities(m[1]));
+    }
+    return texts.join('');
+  });
+  return lines.filter((l) => l.trim().length > 0).join('\n\n');
+}
+
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 }
 
 /**
