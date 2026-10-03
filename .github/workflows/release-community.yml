@@ -38,7 +38,7 @@ jobs:
             "swao-community-macos-x64" \
             "swao-community-macos-arm64"; do
             gh release download "$VERSION" \
-              --repo "${{ secrets.SWAO_PRIVATE_REPO }}" \
+              --repo "Accenture-Cloud-First-Tech/315556_swao" \
               --pattern "$ASSET" \
               --dir dist-community
           done
