@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.2.2)'
+        required: true
 
 permissions:
   contents: write
@@ -18,7 +23,7 @@ jobs:
 
       - name: Set version
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Download Community binaries from private release
         env:
@@ -32,6 +37,7 @@ jobs:
           for ASSET in \
             "swao-community-win-x64.exe" \
             "swao-community-linux-x64" \
+            "swao-community-linux-arm64" \
             "swao-community-macos-x64" \
             "swao-community-macos-arm64"; do
             gh release download "$VERSION" \
@@ -47,6 +53,7 @@ jobs:
           cd dist-community
           sha256sum swao-community-win-x64.exe \
                     swao-community-linux-x64 \
+                    swao-community-linux-arm64 \
                     swao-community-macos-x64 \
                     swao-community-macos-arm64 > checksums.sha256
           cat checksums.sha256
@@ -57,14 +64,23 @@ jobs:
           cdxgen -o dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
             --no-recurse --spec-version 1.5 .
 
-      - name: Upload assets to public release
+      - name: Create and upload public release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
+          # Create the release if it does not yet exist, then upload assets.
+          # --verify-tag ensures the tag is present before creating the release.
+          # The || true guard makes this idempotent when the release already exists.
+          gh release create "$VERSION" \
+            --title "SWAO Community Edition $VERSION" \
+            --notes "Community Edition release. See the [release notes](https://github.com/Accenture/SWAO/releases/tag/$VERSION) for details." \
+            --verify-tag \
+            || true
           gh release upload "$VERSION" \
             dist-community/swao-community-win-x64.exe \
             dist-community/swao-community-linux-x64 \
+            dist-community/swao-community-linux-arm64 \
             dist-community/swao-community-macos-x64 \
             dist-community/swao-community-macos-arm64 \
             dist-community/checksums.sha256 \
