@@ -91,7 +91,7 @@
     "@swao/module-terraform": "workspace:*",
     "@swao/tui-kit": "workspace:*",
     "@types/pdfkit": "^0.17.6",
-    "commander": "^12.1.0",
+    "commander": "^15.0.0",
     "ink": "^4.4.1",
     "js-yaml": "^4.2.0",
     "mammoth": "^1.12.0",
