@@ -244,7 +244,7 @@ function formatLzComparisonTable(data: LzReportData): string[] {
     '-'.repeat(100),
   ];
   for (const t of data.targets) {
-    const fws  = parseFrameworksFromStatement(t.sovereigntyStatement).join(', ') || '--';
+    const fws  = parseFrameworksFromStatement(t.sovereigntyStatement).join(', ') || '-';
     const svcs = parseServicesFromItems(t.items).join(', ') || '(catalogue-only)';
     // #1241: append /DEMO when no sovereignty requirements were active and verdict is READY.
     // #2409: drop /STRUCTURAL|CERTIFICATION|MIXED from summary row to avoid overflow;
@@ -264,7 +264,7 @@ function formatLzComparisonTable(data: LzReportData): string[] {
 }
 
 export function formatLzText(data: LzReportData): string {
-  const title = `SWAO Landing Zone Assessment Report -- ${data.appId}`;
+  const title = `SWAO Landing Zone Assessment Report: ${data.appId}`;
   // #2272: engagement header appears before the report title, consistent with app reports.
   const lines: string[] = [];
   if (data.engagement) {
@@ -273,10 +273,10 @@ export function formatLzText(data: LzReportData): string {
     if (e.client_code)      lines.push(`Client code:      ${e.client_code}`);
     if (e.partnership_lead) lines.push(`Partnership lead: ${e.partnership_lead}`);
     if (e.start_date)       lines.push(`Start date:       ${e.start_date}`);
-    lines.push(`Assessed:         ${data.assessedAt || '--'}`);
+    lines.push(`Assessed:         ${data.assessedAt || '-'}`);
     lines.push('');
   }
-  lines.push(title, '='.repeat(title.length), `Assessed:  ${data.assessedAt || '--'}`, `Mode:      ${data.assessmentMode}`, '');
+  lines.push(title, '='.repeat(title.length), `Assessed:  ${data.assessedAt || '-'}`, `Mode:      ${data.assessmentMode}`, '');
 
   if (data.targets.length === 0) {
     lines.push('No LZ assessment targets found. Run: swao assess --lzcat');
@@ -321,7 +321,7 @@ export function formatLzText(data: LzReportData): string {
   }
 
   if (data.challengeFindings.length === 0) {
-    lines.push('Stakeholder Challenge Findings: none -- run the LZ Sovereignty Challenge to generate.');
+    lines.push('Stakeholder Challenge Findings: none. Run the LZ Sovereignty Challenge to generate.');
     lines.push('');
   } else {
     lines.push('Stakeholder Challenge Findings');
@@ -448,7 +448,7 @@ export function buildLzTargetRows(data: LzReportData): LzTargetRow[] {
     csp:    t.provider,
     region: t.region,
     verdict: t.overall,
-    frameworks: parseFrameworksFromStatement(t.sovereigntyStatement).join(', ') || '--',
+    frameworks: parseFrameworksFromStatement(t.sovereigntyStatement).join(', ') || '-',
     services: parseServicesFromItems(t.items).join(', ') || '(catalogue-only)',
     mode: t.assessmentMode === 'catalogue-sovereignty-only' && !t.sovereigntyActive
       ? 'Demo'
@@ -483,7 +483,7 @@ function buildLzReportDataStubInternal(data: LzReportData, agentId: string | nul
     v === 'READY' ? 'READY' : v === 'READY_WITH_CHANGES' ? 'READY*' : 'BLOCKED';
   const landingZone = totalTargets > 0
     ? data.targets.map(t => `${t.provider}/${t.region} (${verdictAbbr(t.overall)})`).join(', ')
-    : '--';
+    : '-';
 
   const blockers: SignalEntry[] = blockedTargets.map(t => ({
     id: `LZ-${t.provider}-${t.region}`.replace(/[^A-Za-z0-9-]/g, '-').toUpperCase(),

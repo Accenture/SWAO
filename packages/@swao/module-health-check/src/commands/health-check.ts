@@ -588,6 +588,12 @@ function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResul
   const LABEL_W = 26;
   const label = pad('[4/16] Community frameworks', LABEL_W);
   if (probe.status === 'absent') {
+    // #2910: when bundled frameworks are available, emit 'ok' with an explanatory note
+    // instead of a misleading INFO warning. Bundled frameworks are always functional;
+    // the workspace catalog dir is optional (run `swao init` to install local copies).
+    if (probe.bundled_count > 0) {
+      return `  ${label}  ok    ${probe.bundled_count} bundled frameworks available (no workspace-level overrides -- run \`swao init\` to install local copies)`;
+    }
     return `  ${label}  INFO  no catalogs at ${probe.catalogs_dir} (run \`swao init\`)`;
   }
   if (probe.status === 'fail') {

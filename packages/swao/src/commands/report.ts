@@ -69,9 +69,16 @@ function truncate(s: string, max = 100): string {
   return first.length > max ? first.slice(0, max - 3) + '...' : first;
 }
 
-/** Normalise LLM-emitted em-dashes and en-dashes to ASCII equivalents. */
+/** Normalise dashes in LLM-emitted and WSP-stored text.
+ * Project guardrail: no em-dash, en-dash, or double-dash in report output.
+ * U+2014 em-dash -> comma; U+2013 en-dash -> single hyphen;
+ * ASCII " -- " (double-dash separator) -> ", ".
+ */
 export function normalizeDashes(text: string): string {
-  return text.replace(/\u2014/g, '--').replace(/\u2013/g, '-');
+  return text
+    .replace(/\u2014/g, ',')
+    .replace(/\u2013/g, '-')
+    .replace(/ -- /g, ', ');
 }
 
 /**
@@ -345,6 +352,52 @@ export function generateReport(workspaceAppDir: string, appId: string): ReportDa
           })),
       });
     }
+
+    // #2916: fallback -- parse combined.yaml when no individual agent files were found.
+    // combined.yaml embeds each agent's YAML report as a string in reports[].report.
+    if (challengeFindings.length === 0) {
+      const combinedPath = join(challengeDir, 'combined.yaml');
+      if (existsSync(combinedPath)) {
+        const combined = loadYaml(combinedPath) as {
+          reports?: Array<{
+            agent_id?: string;
+            agent_role?: string;
+            report?: string;
+          }>;
+        } | null;
+        for (const entry of combined?.reports ?? []) {
+          if (!entry.agent_id || !entry.report) continue;
+          let innerFindings: Array<{
+            id?: string;
+            concern?: string;
+            evidence_gap?: string;
+            recommended_question?: string;
+          }> = [];
+          try {
+            const innerParsed = load(entry.report) as { findings?: Array<Record<string, unknown>> } | null;
+            if (Array.isArray(innerParsed?.findings)) {
+              innerFindings = innerParsed.findings as typeof innerFindings;
+            }
+          } catch { /* skip malformed inner YAML */ }
+          const agentRole = (AGENT_IDS as Record<string, string>)[entry.agent_id] ?? (entry.agent_role ?? entry.agent_id);
+          const validFindings = innerFindings
+            .filter(f => f.id && f.concern)
+            .map(f => ({
+              id: f.id!,
+              concern: f.concern!,
+              evidenceGap: f.evidence_gap,
+              recommendedQuestion: f.recommended_question,
+            }));
+          if (validFindings.length > 0) {
+            challengeFindings.push({
+              agentId: entry.agent_id,
+              agentRole,
+              findings: validFindings,
+            });
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -402,7 +455,7 @@ export function buildLicenseeBranding(): LicenseeBranding {
 
   const tierLabel = state.tier === 'enterprise' ? 'Enterprise' : 'Consultant';
   const orgSuffix = state.organisation ? `, ${state.organisation}` : '';
-  const expSuffix = state.exp ? ` -- expires ${state.exp}` : '';
+  const expSuffix = state.exp ? ` - expires ${state.exp}` : '';
 
   const text = [
     `Generated for:     ${state.licensee}${orgSuffix}`,
@@ -439,11 +492,11 @@ export function formatEngagementHeader(data: ReportData): string {
   const eng = data.engagement;
   if (!eng) return '';
   const lines = [
-    `Engagement:        ${eng.name ?? '--'}`,
-    `Client code:       ${eng.client_code ?? '--'}`,
-    `Partnership lead:  ${eng.partnership_lead ?? '--'}`,
-    `Start date:        ${eng.start_date ?? '--'}`,
-    `Assessed:          ${data.assessedAt || '--'}`,
+    `Engagement:        ${eng.name ?? '-'}`,
+    `Client code:       ${eng.client_code ?? '-'}`,
+    `Partnership lead:  ${eng.partnership_lead ?? '-'}`,
+    `Start date:        ${eng.start_date ?? '-'}`,
+    `Assessed:          ${data.assessedAt || '-'}`,
     '',
   ];
   return lines.join('\n');
@@ -454,7 +507,7 @@ function pad(s: string, width: number): string {
 }
 
 export function formatText(data: ReportData): string {
-  const title = `SWAO Assessment Report -- ${data.appId}`;
+  const title = `SWAO Assessment Report: ${data.appId}`;
   const header = formatEngagementHeader(data);
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
@@ -468,7 +521,7 @@ export function formatText(data: ReportData): string {
     ...(data.duration ? [`Duration:      ${data.duration}`] : []),
     // #2432: challenge status note so the reader knows whether challenge data was included.
     ...(data.challengeStatus === 'not-available'
-      ? ['Challenge:     not included (Community Edition -- Enterprise feature)']
+      ? ['Challenge:     not included (Community Edition, Enterprise feature)']
       : data.challengeStatus === 'not-run'
         ? ['Challenge:     not included (no challenge run found for this app)']
         : []),
@@ -485,6 +538,10 @@ export function formatText(data: ReportData): string {
     if (n > 0) lines.push(`  ${pad(sev, 14)}${String(n).padStart(countWidth)}`);
   }
   lines.push(`  ${pad('total', 14)}${String(data.signalCounts.total).padStart(countWidth)}`);
+
+  // #2916: challenge assessment intro for application-architect persona
+  const archChallenge = findChallengeForPersona(data, 'application-architect');
+  if (archChallenge) lines.push(...formatChallengeIntro(archChallenge));
 
   lines.push('');
   if (data.blockers.length > 0) {
@@ -520,6 +577,9 @@ export function formatText(data: ReportData): string {
     }
   }
 
+  // #2916: stakeholder challenge findings section (conditional -- omit when no challenge run)
+  if (archChallenge) lines.push(...formatChallengeSection(archChallenge));
+
   return lines.join('\n');
 }
 
@@ -541,10 +601,10 @@ export function formatLlmText(d: LlmTextReportInput): string {
   const engLines: string[] = [];
   if (d.engagement) {
     const e = d.engagement;
-    engLines.push(`Engagement:        ${e.name ?? '--'}`);
-    engLines.push(`Client code:       ${e.client_code ?? '--'}`);
-    engLines.push(`Partnership lead:  ${e.partnership_lead ?? '--'}`);
-    engLines.push(`Start date:        ${e.start_date ?? '--'}`);
+    engLines.push(`Engagement:        ${e.name ?? '-'}`);
+    engLines.push(`Client code:       ${e.client_code ?? '-'}`);
+    engLines.push(`Partnership lead:  ${e.partnership_lead ?? '-'}`);
+    engLines.push(`Start date:        ${e.start_date ?? '-'}`);
     engLines.push('');
   }
   const lines: string[] = [...engLines, title, '='.repeat(title.length), `Run:  ${d.runTs}`, `App:  ${d.appId}`, ''];
@@ -570,7 +630,7 @@ export function formatLlmText(d: LlmTextReportInput): string {
     for (const g of d.groups) {
       lines.push(`  ${g.group}`);
       for (const leg of d.legs) {
-        const score = g.score[leg.id] != null ? String(g.score[leg.id]!.toFixed(1)) : '--';
+        const score = g.score[leg.id] != null ? String(g.score[leg.id]!.toFixed(1)) : '-';
         const rank  = g.rank[leg.id]  != null ? `  rank #${g.rank[leg.id]}` : '';
         lines.push(`    ${leg.id.padEnd(12)} ${score.padStart(6)}${rank}`);
       }
@@ -581,7 +641,7 @@ export function formatLlmText(d: LlmTextReportInput): string {
   // Final scores
   lines.push('Final Scores', '-'.repeat(30));
   for (const leg of d.legs) {
-    const score   = d.scores[leg.id] != null ? String(d.scores[leg.id]!.toFixed(1)) : '--';
+    const score   = d.scores[leg.id] != null ? String(d.scores[leg.id]!.toFixed(1)) : '-';
     const rank    = d.ranks[leg.id]  != null ? `  rank #${d.ranks[leg.id]}` : '';
     const primary = leg.primary ? '  (primary)' : '';
     lines.push(`  ${leg.id.padEnd(12)} ${score.padStart(6)}${rank}${primary}`);
@@ -744,18 +804,23 @@ function loadLzCatalogueFit(wspDir: string): RawLzCatFit | null {
 export function formatViewExec(data: ReportData, wspDir: string): string {
   const spine = loadSpine(wspDir);
   const plain = SEVEN_R_PLAIN[data.sevenRLabel] ?? `${data.sevenRLabel} disposition.`;
-  const confidence = spine.overall?.confidence ?? spine.assessment_scores?.seven_r?.confidence ?? '--';
+  const confidence = spine.overall?.confidence ?? spine.assessment_scores?.seven_r?.confidence ?? '-';
   const portability = spine.overall?.portability_score !== undefined
     ? `${Math.round(spine.overall.portability_score * 100)}%`
-    : '--';
+    : '-';
 
   const header = formatEngagementHeader(data);
+  // #2916: challenge assessment intro for business-owner persona
+  const execChallenge = findChallengeForPersona(data, 'business-owner');
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
-    `SWAO Assessment Report -- ${data.appId} (Executive View)`,
+    `SWAO Assessment Report: ${data.appId} (Executive View)`,
     '='.repeat(55),
     `Assessed:       ${data.assessedAt}`,
-    `Landing zone:   ${data.landingZone || '--'}`,
+    `Landing zone:   ${data.landingZone || '-'}`,
+  ];
+  if (execChallenge) lines.push(...formatChallengeIntro(execChallenge));
+  lines.push(
     '',
     'Migration Recommendation',
     '------------------------',
@@ -766,7 +831,7 @@ export function formatViewExec(data: ReportData, wspDir: string): string {
     '',
     plain,
     '',
-  ];
+  );
 
   if (data.blockers.length > 0) {
     lines.push('Migration Blockers (must resolve before go-live)');
@@ -787,13 +852,16 @@ export function formatViewExec(data: ReportData, wspDir: string): string {
     lines.push('');
   }
 
+  // #2916: stakeholder challenge findings section
+  if (execChallenge) lines.push(...formatChallengeSection(execChallenge));
+
   return lines.join('\n');
 }
 
 export function formatViewCompliance(data: ReportData, wspDir: string): string {
   const spine = loadSpine(wspDir);
   const plan = loadPlan(wspDir);
-  const regulatory = spine.client_scenario?.regulatory?.join(', ') ?? '--';
+  const regulatory = spine.client_scenario?.regulatory?.join(', ') ?? '-';
 
   // #2722 Bug #3: use allSignals so medium/low DATA and CTX signals (not in
   // topFindings or blockers) are not silently dropped from the compliance view.
@@ -812,21 +880,24 @@ export function formatViewCompliance(data: ReportData, wspDir: string): string {
   const regimes = plan.compliance?.regimes ?? [];
 
   const header = formatEngagementHeader(data);
+  // #2916: challenge assessment intro for grc-compliance-officer persona
+  const compChallenge = findChallengeForPersona(data, 'grc-compliance-officer');
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
-    `SWAO Assessment Report -- ${data.appId} (GRC / Compliance View)`,
+    `SWAO Assessment Report: ${data.appId} (GRC / Compliance View)`,
     '='.repeat(60),
     `Assessed:       ${data.assessedAt}`,
     `Regulatory:     ${regulatory}`,
     `Coverage score: ${data.coverageScore}`,
-    '',
   ];
+  if (compChallenge) lines.push(...formatChallengeIntro(compChallenge));
+  lines.push('');
 
   if (regimes.length > 0) {
     lines.push('Regime Coverage');
     lines.push('---------------');
     for (const r of regimes) {
-      lines.push(`  ${(r.name ?? '--').padEnd(14)} ${r.status ?? '--'}`);
+      lines.push(`  ${(r.name ?? '-').padEnd(14)} ${r.status ?? '-'}`);
       if (r.gaps && r.gaps.length > 0) {
         for (const g of r.gaps) lines.push(`    gap: ${g}`);
       }
@@ -862,6 +933,9 @@ export function formatViewCompliance(data: ReportData, wspDir: string): string {
     lines.push('');
   }
 
+  // #2916: stakeholder challenge findings section
+  if (compChallenge) lines.push(...formatChallengeSection(compChallenge));
+
   return lines.join('\n');
 }
 
@@ -870,7 +944,7 @@ export function formatViewFinops(data: ReportData, wspDir: string): string {
   const lzCat = loadLzCatalogueFit(wspDir);
   const portability = spine.overall?.portability_score !== undefined
     ? `${Math.round(spine.overall.portability_score * 100)}%`
-    : '--';
+    : '-';
 
   const egressSignals = [...data.topFindings, ...data.blockers]
     .filter((s, i, arr) => arr.findIndex(x => x.id === s.id) === i)
@@ -883,18 +957,21 @@ export function formatViewFinops(data: ReportData, wspDir: string): string {
   const lz = spine.landing_zone;
 
   const header = formatEngagementHeader(data);
+  // #2916: challenge assessment intro for finops-lead persona
+  const finopsChallenge = findChallengeForPersona(data, 'finops-lead');
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
-    `SWAO Assessment Report -- ${data.appId} (FinOps View)`,
+    `SWAO Assessment Report: ${data.appId} (FinOps View)`,
     '='.repeat(52),
     `Assessed:                          ${data.assessedAt}`,
-    `Current infrastructure (detected): ${data.landingZone || '--'}`,
+    `Current infrastructure (detected): ${data.landingZone || '-'}`,
     `Portability:                       ${portability}`,
-    '',
   ];
+  if (finopsChallenge) lines.push(...formatChallengeIntro(finopsChallenge));
+  lines.push('');
 
   if (lzCat) {
-    const targetLz = `${lzCat.provider || '--'} / ${lzCat.region || '--'}`;
+    const targetLz = `${lzCat.provider || '-'} / ${lzCat.region || '-'}`;
     lines.push('Recommended Target Infrastructure');
     lines.push('----------------------------------');
     lines.push(`  Target landing zone: ${targetLz}`);
@@ -930,6 +1007,9 @@ export function formatViewFinops(data: ReportData, wspDir: string): string {
   lines.push(`  ${'total'.padEnd(14)} ${data.signalCounts.total}`);
   lines.push('');
 
+  // #2916: stakeholder challenge findings section
+  if (finopsChallenge) lines.push(...formatChallengeSection(finopsChallenge));
+
   return lines.join('\n');
 }
 
@@ -940,26 +1020,29 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
   const scenario = spine.client_scenario;
 
   const header = formatEngagementHeader(data);
+  // #2916: challenge assessment intro for programme-manager persona
+  const pmChallenge = findChallengeForPersona(data, 'programme-manager');
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
-    `SWAO Assessment Report -- ${data.appId} (Migration / Programme Manager View)`,
+    `SWAO Assessment Report: ${data.appId} (Migration / Programme Manager View)`,
     '='.repeat(74),
     `Assessed:                          ${data.assessedAt}`,
     `7R Verdict:                        ${data.sevenRLabel}`,
     `Coverage:                          ${data.coverageScore}`,
-    `Current infrastructure (detected): ${data.landingZone || '--'}`,
-    ...(lzCat ? [`Target landing zone:               ${lzCat.provider || '--'} / ${lzCat.region || '--'}`] : []),
+    `Current infrastructure (detected): ${data.landingZone || '-'}`,
+    ...(lzCat ? [`Target landing zone:               ${lzCat.provider || '-'} / ${lzCat.region || '-'}`] : []),
     ...(scenario?.migration_trigger ? [`Migration trigger:                 ${scenario.migration_trigger}`] : []),
     ...(scenario?.target_go_live ? [`Target go-live:                    ${scenario.target_go_live}`] : []),
     ...(scenario?.rto_hours !== undefined ? [`RTO:                               ${scenario.rto_hours}h`] : []),
     ...(scenario?.rpo_hours !== undefined ? [`RPO:                               ${scenario.rpo_hours}h`] : []),
-    '',
   ];
+  if (pmChallenge) lines.push(...formatChallengeIntro(pmChallenge));
+  lines.push('');
 
   // Migration blockers
   if (data.blockers.length > 0) {
-    lines.push('Blockers -- must resolve before cutover');
-    lines.push('---------------------------------------');
+    lines.push('Blockers - must resolve before cutover');
+    lines.push('--------------------------------------');
     for (const b of data.blockers) {
       lines.push(`  ${severityLabel(b.severity)} ${b.id.padEnd(10)} ${truncate(b.derivation, 76)}`);
     }
@@ -975,9 +1058,9 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
     lines.push('Migration Runbook');
     lines.push('-----------------');
     for (const comp of runbook) {
-      lines.push(`  ${comp.component ?? '--'}  (${comp.disposition ?? '--'})`);
+      lines.push(`  ${comp.component ?? '-'}  (${comp.disposition ?? '-'})`);
       for (const step of (comp.steps ?? [])) {
-        const stepPrefix = `    ${(step.id ?? '--').padEnd(8)}  `;
+        const stepPrefix = `    ${(step.id ?? '-').padEnd(8)}  `;
         const stepCont   = ' '.repeat(stepPrefix.length);
         lines.push(...wrapLines(step.action ?? '', stepPrefix, stepCont));
       }
@@ -991,8 +1074,8 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
     lines.push('Risk Register');
     lines.push('-------------');
     for (const r of risks) {
-      const riskId  = r.risk_id ?? r.id ?? '--';
-      const sevLabel = severityLabel(r.likelihood ?? r.severity ?? '--');
+      const riskId  = r.risk_id ?? r.id ?? '-';
+      const sevLabel = severityLabel(r.likelihood ?? r.severity ?? '-');
       const statusTag = r.status && r.status !== 'open' ? ` [${r.status}]` : '';
       const rPrefix = `  ${sevLabel} ${riskId.padEnd(10)}${statusTag}  `;
       const rCont   = ' '.repeat((`  ${sevLabel} ${riskId.padEnd(10)}  `).length);
@@ -1011,7 +1094,7 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
       if (r.evidence_ids?.length) lines.push(`${rCont}evidence:   ${r.evidence_ids.join(', ')}`);
       if (r.override) {
         const ov = r.override;
-        lines.push(`${rCont}[OVERRIDE by ${ov.author ?? 'unknown'} (${ov.role ?? '--'}) at ${ov.timestamp ?? '--'}]`);
+        lines.push(`${rCont}[OVERRIDE by ${ov.author ?? 'unknown'} (${ov.role ?? '-'}) at ${ov.timestamp ?? '-'}]`);
         if (r.machine_outcome) lines.push(`${rCont}machine verdict: ${r.machine_outcome}`);
         if (ov.rationale) {
           const ovPrefix = `${rCont}  rationale: `;
@@ -1034,6 +1117,9 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
     }
     lines.push('');
   }
+
+  // #2916: stakeholder challenge findings section
+  if (pmChallenge) lines.push(...formatChallengeSection(pmChallenge));
 
   return lines.join('\n');
 }
@@ -1253,12 +1339,12 @@ export function formatViewAuditor(data: ReportData, wspDir: string): string {
   const header = formatEngagementHeader(data);
   const lines: string[] = [
     ...(header ? header.split('\n') : []),
-    `SWAO Assessment Report -- ${data.appId} (Auditor View)`,
+    `SWAO Assessment Report: ${data.appId} (Auditor View)`,
     '='.repeat(60),
     `Assessed:        ${data.assessedAt}`,
     `7R verdict:      ${data.sevenRLabel}`,
     `Coverage score:  ${data.coverageScore}`,
-    `Active regimes:  ${[...new Set(controls.map((c) => c.regime))].sort().join(', ') || '--'}`,
+    `Active regimes:  ${[...new Set(controls.map((c) => c.regime))].sort().join(', ') || '-'}`,
     `Signals:         ${total} total  |  positive ${positive}  |  neutral ${neutral}  |  indeterminate ${indeterminate}`,
     '',
   ];
@@ -1303,7 +1389,7 @@ export function formatViewAuditor(data: ReportData, wspDir: string): string {
         if (c.derived_from) lines.push(`    Human input / audit: ${c.derived_from}`);
         if (c.override) {
           const ov = c.override;
-          lines.push(`    [OVERRIDE by ${ov.author ?? 'unknown'} (${ov.role ?? '--'}) at ${ov.timestamp ?? '--'}]`);
+          lines.push(`    [OVERRIDE by ${ov.author ?? 'unknown'} (${ov.role ?? '-'}) at ${ov.timestamp ?? '-'}]`);
           if (c.machine_outcome) lines.push(`    Machine verdict: ${c.machine_outcome}`);
           if (ov.rationale) {
             for (const line of wrapLine(ov.rationale, 70, '      ')) lines.push(line);
@@ -1389,7 +1475,7 @@ export function formatViewAuditor(data: ReportData, wspDir: string): string {
       lines.push('    (none)');
     } else {
       for (const b of closedSpots) {
-        const src = b.input_provided ? ` -- input: ${b.input_provided}` : ' -- native SWAO coverage';
+        const src = b.input_provided ? ` - input: ${b.input_provided}` : ' - native SWAO coverage';
         lines.push(`    - ${b.id}: ${b.name ?? ''}${src}`);
       }
     }
@@ -1474,6 +1560,60 @@ function wrapLine(text: string, max: number, indent: string): string[] {
   }
   if (line.length > indent.length) out.push(line);
   return out;
+}
+
+// #2916: persona-specific challenge helpers ----------------------------------------
+
+/** Return the challenge findings for the given canonical agent ID, if available. */
+function findChallengeForPersona(data: ReportData, agentId: string): ChallengeAgentFinding | undefined {
+  return data.challengeFindings?.find(cf => cf.agentId === agentId);
+}
+
+/**
+ * Format a "Challenge Assessment" intro paragraph using the challenge agent's
+ * first finding concern. Inserted near the top of each persona view.
+ */
+function formatChallengeIntro(challenge: ChallengeAgentFinding): string[] {
+  if (challenge.findings.length === 0) return [];
+  const first = challenge.findings[0];
+  const label = `Challenge Assessment - ${challenge.agentRole}`;
+  const lines: string[] = [
+    '',
+    label,
+    '-'.repeat(label.length),
+  ];
+  lines.push(...wrapLines(first.concern, '  ', '  '));
+  if (challenge.findings.length > 1) {
+    lines.push('');
+    lines.push(...wrapLines(challenge.findings[1].concern, '  ', '  '));
+  }
+  return lines;
+}
+
+/**
+ * Format the full "Stakeholder Challenge Findings" section.
+ * Appended at the end of each persona view when challenge data is present.
+ */
+function formatChallengeSection(challenge: ChallengeAgentFinding): string[] {
+  const lines: string[] = [
+    '',
+    'Stakeholder Challenge Findings',
+    '------------------------------',
+    `Agent:    ${challenge.agentRole}`,
+    '',
+  ];
+  for (const f of challenge.findings) {
+    lines.push(`  ${f.id}`);
+    lines.push(...wrapLines(f.concern, '    Concern:  ', '              '));
+    if (f.evidenceGap) {
+      lines.push(...wrapLines(f.evidenceGap, '    Gap:      ', '              '));
+    }
+    if (f.recommendedQuestion) {
+      lines.push(...wrapLines(f.recommendedQuestion, '    Question: ', '              '));
+    }
+    lines.push('');
+  }
+  return lines;
 }
 
 // Canonical view renderers keyed on persona agent ID (#0286, sprint-039).

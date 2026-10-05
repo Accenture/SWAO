@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import type { LlmProvider, LlmUsage, LlmTrace } from './types.js';
+import type { LlmProvider, LlmUsage, LlmTrace, LlmTool } from './types.js';
 import { anthropicCostUsd } from './types.js';
 import { redactPreLlm, recordRedaction, logPortfolio, logApp } from '@swao/core';
 
@@ -423,4 +423,176 @@ export class AnthropicLlmProvider implements LlmProvider {
     });
     throw new LlmConnectivityError(lastError.message);
   }
+
+  /**
+   * Multi-turn chat with dynamic MCP tool-calling (#2915).
+   *
+   * Mirrors what Claude Desktop does: passes the full MCP tool manifest to
+   * the Anthropic API, detects stop_reason='tool_use', executes each named
+   * tool via the onToolCall callback (which calls the MCP server), injects
+   * tool_result blocks, and loops until stop_reason='end_turn' or maxIterations.
+   *
+   * Egress redaction: user message text and tool result content are both
+   * scrubbed through redactPreLlm before reaching the API (#0354 / CLAUDE.md §5.7).
+   */
+  async completeWithTools(params: {
+    system: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    tools: LlmTool[];
+    onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
+    maxIterations?: number;
+  }): Promise<string> {
+    const { system, messages: initialMessages, tools, onToolCall, maxIterations = 10 } = params;
+
+    // Internal API message shape (Anthropic Messages API)
+    type ApiContentBlock = {
+      type: string;
+      text?: string;
+      id?: string;
+      name?: string;
+      input?: Record<string, unknown>;
+      tool_use_id?: string;
+      content?: string;
+    };
+    type ApiMessage = {
+      role: 'user' | 'assistant';
+      content: string | ApiContentBlock[];
+    };
+
+    // Redact user message content before any LLM call (#0354 / CLAUDE.md §5.7)
+    const llmMessages: ApiMessage[] = initialMessages.map(m => {
+      if (m.role === 'user') {
+        const { text: scrubbed, counts } = redactPreLlm(m.content);
+        recordRedaction({ provider: this.name, model: this.model, input_chars: m.content.length, scrubbed_chars: scrubbed.length, counts });
+        return { role: 'user' as const, content: scrubbed };
+      }
+      return { role: m.role as 'user' | 'assistant', content: m.content };
+    });
+
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let lastTextResponse = '';
+
+    for (let iteration = 0; iteration < maxIterations; iteration++) {
+      // #0482: omit temperature for models that deprecated it (claude-opus-4-7+)
+      const bodyObj: Record<string, unknown> = {
+        model: this.model,
+        max_tokens: this.maxTokens,
+        stream: false,
+        system,
+        tools: tools.map(t => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
+        messages: llmMessages,
+      };
+      if (this.temperature !== 0) bodyObj['temperature'] = this.temperature;
+
+      logPortfolio('info', 'provider.llm.anthropic.tool-call-attempt',
+        `Anthropic ${this.model} tool-call iteration ${iteration + 1}/${maxIterations}`, {
+          context: { provider: 'anthropic', model: this.model, iteration: iteration + 1, tool_count: tools.length },
+        });
+
+      const response = await fetch(this.messagesUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': this.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(bodyObj),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        // #0482: retry without temperature if model deprecated it
+        if (response.status === 400 && this.temperature !== 0 && /temperature.*deprecated|deprecated.*temperature/i.test(errText)) {
+          delete bodyObj['temperature'];
+          const retry = await fetch(this.messagesUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify(bodyObj),
+            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          });
+          if (!retry.ok) {
+            const rt = await retry.text();
+            throw new Error(`Anthropic tool-call failed: ${retry.status} ${rt.slice(0, 300)}`);
+          }
+          // Treat the retry response as terminal (one-shot; tool loop continues next iteration)
+          const retryData = await retry.json() as { content: ApiContentBlock[]; stop_reason: string; usage?: { input_tokens?: number; output_tokens?: number } };
+          totalInputTokens += retryData.usage?.input_tokens ?? 0;
+          totalOutputTokens += retryData.usage?.output_tokens ?? 0;
+          this.lastUsage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens, cost_usd: anthropicCostUsd(this.model, totalInputTokens, totalOutputTokens) };
+          const retryText = (retryData.content ?? []).filter(b => b.type === 'text').map(b => b.text ?? '').join('');
+          this._lastTrace = { scrubbedPrompt: '[tool-call chat, temperature retry]', response: retryText };
+          return retryText;
+        }
+        throw new Error(`Anthropic tool-call failed: ${response.status} ${errText.slice(0, 300)}`);
+      }
+
+      const data = await response.json() as {
+        content: ApiContentBlock[];
+        stop_reason: string;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      };
+
+      // Accumulate token usage
+      totalInputTokens += data.usage?.input_tokens ?? 0;
+      totalOutputTokens += data.usage?.output_tokens ?? 0;
+      this.lastUsage = {
+        input_tokens: totalInputTokens,
+        output_tokens: totalOutputTokens,
+        cost_usd: anthropicCostUsd(this.model, totalInputTokens, totalOutputTokens),
+      };
+
+      // Collect text blocks from this response
+      const textContent = (data.content ?? [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text ?? '')
+        .join('');
+      if (textContent) lastTextResponse = textContent;
+
+      if (data.stop_reason !== 'tool_use') {
+        this._lastTrace = { scrubbedPrompt: `[tool-call chat, ${iteration + 1} iterations]`, response: lastTextResponse };
+        return lastTextResponse;
+      }
+
+      // Add assistant message (including tool_use blocks) to conversation
+      llmMessages.push({ role: 'assistant', content: data.content });
+
+      // Execute each tool_use block and collect results
+      const toolUseBlocks = (data.content ?? []).filter(b => b.type === 'tool_use');
+      const toolResultBlocks: ApiContentBlock[] = [];
+
+      for (const block of toolUseBlocks) {
+        const toolInput = (block.input ?? {}) as Record<string, unknown>;
+        let rawResult = '';
+        try {
+          rawResult = await onToolCall(block.name ?? '', toolInput);
+        } catch (e) {
+          rawResult = `[Tool error: ${String(e instanceof Error ? e.message : e)}]`;
+        }
+        // Redact tool result before feeding back to LLM (#0354 / CLAUDE.md §5.7)
+        const { text: scrubbedResult, counts } = redactPreLlm(rawResult);
+        recordRedaction({ provider: this.name, model: this.model, input_chars: rawResult.length, scrubbed_chars: scrubbedResult.length, counts });
+
+        logPortfolio('info', 'provider.llm.anthropic.tool-result',
+          `MCP tool '${block.name}' returned ${rawResult.length} chars (${scrubbedResult.length} after redaction)`, {
+            context: { tool: block.name, raw_chars: rawResult.length, scrubbed_chars: scrubbedResult.length },
+          });
+
+        toolResultBlocks.push({
+          type: 'tool_result',
+          tool_use_id: block.id ?? '',
+          content: scrubbedResult,
+        });
+      }
+
+      // Add tool results as next user message and loop
+      llmMessages.push({ role: 'user', content: toolResultBlocks });
+    }
+
+    // Max iterations reached -- return whatever text we have
+    this._lastTrace = { scrubbedPrompt: `[tool-call chat, max ${maxIterations} iterations]`, response: lastTextResponse };
+    return lastTextResponse;
+  }
+
 }

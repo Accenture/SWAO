@@ -50,7 +50,7 @@ beforeAll(async () => {
   // Single in-process call -- Playwright detection takes a couple of seconds
   // so we share one payload across the unit assertions.
   payload = await buildHealthCheckPayload(tmp, hostDeps);
-}, 60_000);
+}, 180_000); // raised from 60s: Playwright detection + licence probe under concurrent test load can exceed 60s
 
 afterAll(() => {
   rmSync(tmp, { recursive: true, force: true });

@@ -227,6 +227,36 @@ function ChatSessionView({ onBack, workspace, appId, model }: ChatScreenProps) {
   const olderCount = viewStart;
   const newerCount = allVisible.length - viewEnd;
 
+  // Bound the last visible message so the input line always stays on-screen.
+  // The viewport loop guarantees all non-last messages fit; the last message is
+  // always included unconditionally to avoid blank screens, so it may overflow.
+  // Cap it here by counting how many of its content lines fit in the remaining budget.
+  const rowsUsedByNonLast = displayMessages.slice(0, -1).reduce(
+    (acc, m) => acc + estimateMessageRows(m, termCols),
+    0,
+  );
+  const rowsBudgetForLast = availableRows - rowsUsedByNonLast;
+  let lastMsgLineCap: number | undefined;
+  if (displayMessages.length > 0) {
+    const lastMsg = displayMessages[displayMessages.length - 1];
+    const lastEstimate = estimateMessageRows(lastMsg, termCols) - 1; // no trailing margin on last item
+    if (lastEstimate > rowsBudgetForLast) {
+      const usableW = Math.max(10, termCols - 6);
+      // Reserve: 1 label row + 1 truncation notice row; remainder is content budget.
+      const contentBudget = Math.max(1, rowsBudgetForLast - 2);
+      let rowsAccum = 0;
+      let lineCap = 0;
+      for (const line of lastMsg.content.split('\n')) {
+        const lineRows = Math.max(1, Math.ceil((line.length || 1) / usableW));
+        if (rowsAccum + lineRows > contentBudget) break;
+        rowsAccum += lineRows;
+        lineCap++;
+      }
+      const totalLines = lastMsg.content.split('\n').length;
+      if (lineCap < totalLines) lastMsgLineCap = lineCap;
+    }
+  }
+
   return (
     <Box flexDirection="column" padding={1}>
       <Header subtitle="Chat with Portfolio" />
@@ -246,17 +276,29 @@ function ChatSessionView({ onBack, workspace, appId, model }: ChatScreenProps) {
           {allVisible.length === 0 && isReady && (
             <Text dimColor>No messages yet. Type a question and press Enter.</Text>
           )}
-          {displayMessages.map((msg, i) => (
-            <Box key={viewStart + i} marginBottom={i < displayMessages.length - 1 ? 1 : 0} flexDirection="column">
-              {/* Single template string avoids Ink multi-child expression artefacts (#2784) */}
-              <Text bold color={msg.role === 'user' ? 'cyanBright' : 'greenBright'}>
-                {`${msg.role === 'user' ? 'You' : 'SWAO'}${msg.model ? ` (${msg.model})` : ''}:`}
-              </Text>
-              <Box marginLeft={2}>
-                <Text wrap="wrap">{msg.content}</Text>
+          {displayMessages.map((msg, i) => {
+            const isLastDisplay = i === displayMessages.length - 1;
+            const displayContent = isLastDisplay && lastMsgLineCap !== undefined
+              ? msg.content.split('\n').slice(0, lastMsgLineCap).join('\n')
+              : msg.content;
+            const isTruncated = isLastDisplay && lastMsgLineCap !== undefined;
+            return (
+              <Box key={viewStart + i} marginBottom={i < displayMessages.length - 1 ? 1 : 0} flexDirection="column">
+                {/* Single template string avoids Ink multi-child expression artefacts (#2784) */}
+                <Text bold color={msg.role === 'user' ? 'cyanBright' : 'greenBright'}>
+                  {`${msg.role === 'user' ? 'You' : 'SWAO'}${msg.model ? ` (${msg.model})` : ''}:`}
+                </Text>
+                <Box marginLeft={2}>
+                  <Text wrap="wrap">{displayContent}</Text>
+                </Box>
+                {isTruncated && (
+                  <Box marginLeft={2}>
+                    <Text dimColor>[response clipped -- scroll up or enlarge terminal]</Text>
+                  </Box>
+                )}
               </Box>
-            </Box>
-          ))}
+            );
+          })}
         </Box>
       )}
 
@@ -311,7 +353,7 @@ function ChatSessionView({ onBack, workspace, appId, model }: ChatScreenProps) {
       {/* Footer -- single template string prevents token-count from bleeding into URL (#2784) */}
       <Box marginTop={1}>
         <Text dimColor>
-          {`Enter to send   Esc to exit${clampedOffset > 0 ? '   Up/Down to scroll' : ''}${session.mcpAvailable ? '   [MCP: ok]' : '   [MCP: offline]'}${session.totalTokensIn > 0 ? `   [tokens: ${session.totalTokensIn}/${session.tokenBudget}]` : ''}`}
+          {`Enter to send   Esc to exit${clampedOffset > 0 ? '   Up/Down to scroll' : ''}${session.mcpAvailable ? `   [MCP: ok (${session.mcpToolCount} tools)]` : '   [MCP: offline]'}${session.totalTokensIn > 0 ? `   [tokens: ${session.totalTokensIn}/${session.tokenBudget}]` : ''}`}
         </Text>
       </Box>
       <Box>

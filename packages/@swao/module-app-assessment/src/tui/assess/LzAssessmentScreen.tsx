@@ -771,6 +771,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
                 setAppLzCatProviders(selected);
                 setAppLzCatFrameworks([]);
                 setAppLzRegionFilter('');
+                // #2716: emit assess.lz.provider.selected for Design 098 observability.
+                try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider(s) selected', { context: { app_id: app, providers: selected } }); } catch { /* best-effort */ }
                 setPhase('input-lz-frameworks');
               }}
             />
@@ -785,6 +787,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
                 setAppLzCatProviders([v]);
                 setAppLzCatFrameworks([]);
                 setAppLzRegionFilter('');
+                // #2716: emit assess.lz.provider.selected for Design 098 observability.
+                try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider selected', { context: { app_id: app, providers: [v] } }); } catch { /* best-effort */ }
                 setPhase('input-lz-frameworks');
               }}
               active
@@ -819,6 +823,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
           visibleCount={passVisibleCount}
           onConfirm={(selected) => {
             setAppLzCatFrameworks(selected);
+            // #2716: emit assess.lz.frameworks.selected for Design 098 observability.
+            try { logApp(app, 'info', 'assess.lz.frameworks.selected', 'LZ compliance frameworks selected', { context: { app_id: app, frameworks: selected, count: selected.length } }); } catch { /* best-effort */ }
             setPhase('input-lz-region');
           }}
           onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
@@ -898,6 +904,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
                   if (selected.length === 0) return;
                   persistLzCatTargets(workspace, app, selected); // #2755
                   setAppLzCatTargets(selected);
+                  // #2716: emit assess.lz.region.selected for Design 098 observability.
+                  try { logApp(app, 'info', 'assess.lz.region.selected', 'LZ target region(s) selected', { context: { app_id: app, targets: selected, count: selected.length } }); } catch { /* best-effort */ }
                   beginRun();
                 }}
               />

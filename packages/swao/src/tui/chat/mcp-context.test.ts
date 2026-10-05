@@ -16,7 +16,7 @@
 // Unit tests for MCP context helpers (#2781 #2789).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext } from './mcp-context.js';
+import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext, listMcpTools } from './mcp-context.js';
 import type { McpSession } from './mcp-context.js';
 
 describe('parseSseBody (#2781)', () => {
@@ -159,7 +159,7 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
     expect(calledTools).not.toContain('swao_lz_fit');
   });
 
-  it('calls the expected 7 tools in order (#2789, #2792)', async () => {
+  it('calls the expected 8 tools in order (#2789, #2792, #2913)', async () => {
     await fetchPortfolioContext(mockSession, '/ws');
     expect(calledTools).toEqual([
       'swao_workspace_inventory',
@@ -169,6 +169,7 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
       'swao_portfolio_lz',
       'swao_list_directory',
       'swao_read_file',
+      'swao_read_challenge',
     ]);
   });
 
@@ -176,5 +177,48 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
     await fetchPortfolioContext(mockSession, '/ws');
     expect(calledTools).toContain('swao_signals');
     expect(calledTools).toContain('swao_risks');
+  });
+});
+
+describe('listMcpTools (#2915)', () => {
+  const mockSession: McpSession = { sessionId: 'test', port: 3737 };
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('converts MCP inputSchema to Anthropic input_schema format', async () => {
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      text: async () => 'data: ' + JSON.stringify({
+        jsonrpc: '2.0',
+        result: {
+          tools: [
+            { name: 'swao_risks', description: 'Get risks', inputSchema: { type: 'object', properties: { app_id: { type: 'string' } } } },
+            { name: 'swao_signals', description: 'Get signals', inputSchema: { type: 'object', properties: {} } },
+          ],
+        },
+      }) + '\n',
+    }));
+
+    const tools = await listMcpTools(mockSession);
+    expect(tools).toHaveLength(2);
+    expect(tools[0].name).toBe('swao_risks');
+    expect(tools[0].description).toBe('Get risks');
+    expect(tools[0].input_schema).toMatchObject({ type: 'object' });
+    expect(tools[1].name).toBe('swao_signals');
+  });
+
+  it('returns empty array on HTTP failure', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, text: async () => 'error' }));
+    const tools = await listMcpTools(mockSession);
+    expect(tools).toEqual([]);
+  });
+
+  it('returns empty array when tools/list result has no tools array', async () => {
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      text: async () => 'data: {"jsonrpc":"2.0","result":{}}\n',
+    }));
+    const tools = await listMcpTools(mockSession);
+    expect(tools).toEqual([]);
   });
 });

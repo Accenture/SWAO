@@ -53,10 +53,13 @@ import {
 } from './chat-history.js';
 import {
   initMcpSession,
+  callMcpTool,
+  listMcpTools,
   fetchPortfolioContext,
   buildSystemPrompt,
   type McpSession,
 } from './mcp-context.js';
+import type { LlmTool } from '@swao/module-llm-providers';
 
 // #2895: read providers.llm.primary.connector from .swao.yml without a full parse.
 export function readSwaoYmlConnectorId(ws: string): string | undefined {
@@ -90,6 +93,9 @@ export interface ChatSessionState {
   statusDetail: string;
   messages: ChatTurn[];
   mcpAvailable: boolean;
+  /** Number of MCP tools available for dynamic tool-calling (#2915). 0 = no tool loop. */
+  mcpToolCount: number;
+  /** Estimated current context size in tokens (chars/4 across system prompt + all messages). */
   totalTokensIn: number;
   /** Token budget from the configured connector (or 8192 default). */
   tokenBudget: number;
@@ -170,11 +176,13 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
   const [statusDetail, setStatusDetail] = useState('');
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [mcpAvailable, setMcpAvailable] = useState(false);
+  const [mcpToolCount, setMcpToolCount] = useState(0);
   const [totalTokensIn, setTotalTokensIn] = useState(0);
   const [tokenBudget, setTokenBudget] = useState(8192);
 
   const mcpChildRef = useRef<ChildProcess | null>(null);
   const mcpSessionRef = useRef<McpSession | null>(null);
+  const mcpToolsRef = useRef<LlmTool[]>([]);
   const providerRef = useRef<LlmProvider | null>(null);
   const workspaceRef = useRef<string>('');
   const historyPathRef = useRef<string>('');
@@ -224,7 +232,7 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
             [/llama/i, 128_000],
           ];
           const contextWindow = knownContextWindows.find(([re]) => re.test(modelName))?.[1] ?? 100_000;
-          const inputBudget = Math.floor(contextWindow * 0.85);
+          const inputBudget = Math.floor(contextWindow * 0.92);
           safeSet(setTokenBudget, inputBudget);
         }
       } catch { /* connector load failure is non-fatal -- no LLM = status error later */ }
@@ -280,10 +288,19 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
         }
       }
 
-      // Fetch MCP context (if session established)
+      // Fetch MCP tool manifest and portfolio context (if session established)
       let context = '';
       if (mcpSession) {
         safeSet(setStatus, 'mcp-tools');
+        safeSet(setStatusDetail, 'loading MCP tools');
+        try {
+          // #2915: fetch full tool manifest so the LLM can call tools dynamically
+          // (same as Claude Desktop -- tools/list -> pass to every Anthropic API call)
+          const tools = await listMcpTools(mcpSession);
+          mcpToolsRef.current = tools;
+          safeSet(setMcpToolCount, tools.length);
+        } catch { /* non-fatal -- tool calling degrades gracefully */ }
+
         safeSet(setStatusDetail, 'loading portfolio context');
         try {
           context = await fetchPortfolioContext(mcpSession, ws, appId);
@@ -355,15 +372,19 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
     // Append user turn to history
     try { appendTurn(historyPathRef.current, userTurn); } catch { /* non-fatal */ }
 
-    // Check token budget before calling LLM
-    const estimatedIn = estimateTokens(systemPromptRef.current) + estimateTokens(content);
-    const newTotalIn = totalTokensIn + estimatedIn;
+    // Check token budget before calling LLM.
+    // Estimate CURRENT context size (not cumulative): system prompt + all prior messages + new user message.
+    // This avoids the double-counting issue where each API call's full input_tokens would accumulate.
+    const contextChars = systemPromptRef.current.length
+      + messages.reduce((s, m) => s + m.content.length, 0)
+      + content.length;
+    const contextEstimate = Math.ceil(contextChars / 4);
 
-    if (isOverBudget(newTotalIn, tokenBudget)) {
+    if (isOverBudget(contextEstimate, tokenBudget, 0.85)) {
       const budgetTurn: ChatTurn = {
         ts: new Date().toISOString(),
         role: 'assistant',
-        content: `[Warning] Approaching token budget (${newTotalIn}/${tokenBudget} estimated tokens used). Start a new session with /clear or restart the chat to continue.`,
+        content: `[Warning] Approaching token budget (${contextEstimate}/${tokenBudget} estimated tokens used). Start a new session with /clear or restart the chat to continue.`,
       };
       setMessages(prev => [...prev, budgetTurn]);
       try { appendTurn(historyPathRef.current, budgetTurn); } catch { /* non-fatal */ }
@@ -372,28 +393,54 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
     }
 
     try {
-      // Format: system prompt + prior conversation history + new user message.
-      // `messages` is the state BEFORE the new user turn; `content` is appended last.
-      const conversationPrompt = formatChatPrompt(messages, content);
-      const rawResponse = await providerRef.current.complete(conversationPrompt);
-      // Strip JSON envelope and unescape \\n before storing in history (#2786)
-      const responseText = extractProseFromResponse(rawResponse);
+      let responseText: string;
 
-      const usage = providerRef.current.getLastUsage?.();
-      const tokensIn = usage?.input_tokens ?? estimatedIn;
+      const provider = providerRef.current;
+      const mcpSession = mcpSessionRef.current;
+      const tools = mcpToolsRef.current;
+
+      // #2915: use dynamic tool-calling when available (Claude Desktop parity).
+      // Requires: provider supports completeWithTools, MCP session is active, tools were fetched.
+      if (provider.completeWithTools && mcpSession && tools.length > 0) {
+        // Convert ChatTurn history to the flat messages format (filter system messages)
+        const llmMessages = messages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+        llmMessages.push({ role: 'user', content });
+
+        responseText = await provider.completeWithTools({
+          system: systemPromptRef.current,
+          messages: llmMessages,
+          tools,
+          onToolCall: (name: string, input: Record<string, unknown>) => callMcpTool(mcpSession, name, input),
+        });
+        // Tool-calling responses are already prose -- no JSON stripping needed
+      } else {
+        // Fallback: format as a single prompt string (no tool calling)
+        const conversationPrompt = formatChatPrompt(messages, content);
+        const rawResponse = await provider.complete(conversationPrompt);
+        // Strip JSON envelope and unescape \\n before storing in history (#2786)
+        responseText = extractProseFromResponse(rawResponse);
+      }
+
+      const usage = provider.getLastUsage?.();
       const tokensOut = usage?.output_tokens ?? estimateTokens(responseText);
 
       const assistantTurn: ChatTurn = {
         ts: new Date().toISOString(),
         role: 'assistant',
         content: responseText,
-        model: providerRef.current.model,
-        tokens_in: tokensIn,
+        model: provider.model,
+        tokens_in: contextEstimate,
         tokens_out: tokensOut,
       };
 
       setMessages(prev => [...prev, assistantTurn]);
-      setTotalTokensIn(prev => prev + tokensIn);
+      // Track current context size (not cumulative) -- includes assistant response for next check.
+      const contextAfter = Math.ceil(
+        (systemPromptRef.current.length + currentMessages.reduce((s, m) => s + m.content.length, 0) + responseText.length) / 4
+      );
+      setTotalTokensIn(contextAfter);
       try { appendTurn(historyPathRef.current, assistantTurn); } catch { /* non-fatal */ }
     } catch (err) {
       const errorTurn: ChatTurn = {
@@ -421,6 +468,7 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
     statusDetail,
     messages,
     mcpAvailable,
+    mcpToolCount,
     totalTokensIn,
     tokenBudget,
     sendMessage,

@@ -222,6 +222,6 @@ describe('formatViewAuditor (#0171)', () => {
   it('handles missing wsp-plan.yaml gracefully (no Regime sections)', () => {
     const out = formatViewAuditor(baseData, wspDir);
     expect(out).toMatch(/Auditor View/);
-    expect(out).toMatch(/Active regimes:\s+--/);
+    expect(out).toMatch(/Active regimes:\s+-/);
   });
 });

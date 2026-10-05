@@ -11,6 +11,52 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.3] - 2026-10-04
+
+Patch release: SWAO Chat UX, MCP stability, smoke and test infrastructure, observability gaps
+(sprint-143).
+
+### Fixed
+
+- SWAO Chat message history pane overflows terminal when > 5 messages exchanged; sliding-window
+  line cap applied in `ChatScreen.tsx` to keep input prompt always visible (#2912)
+- `swao_challenge` MCP tool returned only the challenge directory path, not the file content;
+  `handleChallenge()` now reads and returns the YAML text (#2721)
+- `binary-e2e.test.ts` referenced stale binary name without `-x64` suffix; all E2E tests
+  silently skipped; correct name applied (#2706)
+- Health-check [4/16] `community-frameworks` probe shows "no catalogs at ..." INFO when
+  frameworks are bundled in the binary; `bundled_count` field added to probe result; formatter
+  now shows "ok -- N bundled frameworks available" when `bundled_count > 0` (#2910)
+- Smoke G2 diff compared cross-run-type pairs (app vs. LZ) and emitted spurious "Provider
+  changed" warning; now captures run IDs after C1 and C3 steps and passes `--run1 / --run2`
+  explicitly for same-type comparison (#2907, #2911)
+- Smoke OpenRouter leg used deprecated model; updated to `meta-llama/llama-3.3-70b-instruct`
+  (#2906)
+
+### Added
+
+- `build-community.mjs` runs `--version` + JSON-parse smoke check on the finished bundle
+  before script exits; silent bundle breakage is now caught at build time (#2705)
+- SWAO Chat `fetchPortfolioContext` pre-loads challenge findings via `swao_read_challenge` as
+  the 8th MCP tool; challenge data is available in the chat system prompt from session start
+  (#2913)
+- `SetupWizard` emits `setup.wizard.step.*` events at each observable phase (#2714)
+- `AppAssessmentScreen` emits `assess.app.select.confirmed` event when the user confirms the
+  application selection (#2715)
+- `LzAssessmentScreen` emits `assess.lz.frameworks.confirmed` and `assess.lz.region.confirmed`
+  events at framework and region selection steps (#2716)
+- App persona reports (technical, exec, compliance, finops, migration-manager) now include a
+  per-persona "Challenge Assessment" intro section and a conditional "Stakeholder Challenge
+  Findings" section rendered from `combined.yaml` (new) or individual `AA_*.yaml` challenge
+  files; section fully omitted when no challenge was run -- no empty pages (#2916)
+
+### Changed
+
+- TUI header version sourced from `SWAO_VERSION` exported by `branding.ts`; no version
+  literals remain in render code (#2914)
+
+---
+
 ## [1.2.2] - 2026-10-03
 
 Patch release: 31 field bug fixes from the BA PREME PoC run + smoke script improvements

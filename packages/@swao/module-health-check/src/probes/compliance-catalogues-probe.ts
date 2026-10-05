@@ -22,6 +22,7 @@ import {
   resolveCatalogsDir,
   type RegimeRegistry,
 } from '@swao/core';
+import { communityFrameworksDir } from '@swao/community-frameworks';
 
 export type CommunityFrameworksProbeStatus = 'ok' | 'warn' | 'absent' | 'fail';
 
@@ -42,6 +43,9 @@ export interface CommunityFrameworksProbeResult {
   // design 029 §11 unified scope. The counter increments for every regime
   // resolved to scope='community' by the registry walker.
   community_count: number;
+  // #2910: bundled frameworks always available via binary; counted separately
+  // from workspace-level catalog so the probe can emit 'ok' on fresh workspaces.
+  bundled_count: number;
   collisions: string[];
   warnings: string[];
   errors: string[];
@@ -175,11 +179,21 @@ export function buildCommunityFrameworksProbe(
   workspacePath: string,
 ): CommunityFrameworksProbeResult {
   const catalogsDir = resolveCatalogsDir(workspacePath);
+  // #2910: count bundled frameworks (always available via binary) regardless of workspace state.
+  let bundledCount = 0;
+  try {
+    if (existsSync(communityFrameworksDir)) {
+      bundledCount = readdirSync(communityFrameworksDir, { withFileTypes: true })
+        .filter(e => e.isDirectory() && !e.name.startsWith('_')).length;
+    }
+  } catch { /* best-effort */ }
+
   const result: CommunityFrameworksProbeResult = {
     status: 'absent',
     catalogs_dir: catalogsDir,
     standard_count: 0,
     community_count: 0,
+    bundled_count: bundledCount,
     collisions: [],
     warnings: [],
     errors: [],
@@ -187,6 +201,8 @@ export function buildCommunityFrameworksProbe(
   };
 
   if (!existsSync(catalogsDir)) {
+    // #2910: status stays 'absent' (workspace catalog not installed), but bundled_count
+    // is populated so the formatter can show a non-alarming message when bundled > 0.
     return result;
   }
 

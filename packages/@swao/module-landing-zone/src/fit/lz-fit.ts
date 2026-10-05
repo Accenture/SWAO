@@ -227,7 +227,7 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
       // Custom LZ mode: available and enabled in the deployed LZ.
       items.push({ ...base, verdict: 'SUPPORTED',
         detail: catalogueMode
-          ? `${req.code} is offered in ${region.id} -- available for provisioning.`
+          ? `${req.code} is offered in ${region.id}, available for provisioning.`
           : `${req.code} is available and provisioned.` });
     }
   }

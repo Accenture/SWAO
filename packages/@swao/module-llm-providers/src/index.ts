@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-export type { LlmProvider, LlmUsage, LlmTrace, EmbeddingProvider, EmbeddingResult } from './types.js';
+export type { LlmProvider, LlmUsage, LlmTrace, LlmTool, EmbeddingProvider, EmbeddingResult } from './types.js';
 export { anthropicCostUsd } from './types.js';
 export { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 export { FixedLlmProvider } from './fixed.js';

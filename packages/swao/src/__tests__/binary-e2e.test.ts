@@ -39,8 +39,8 @@ vi.setConfig({ testTimeout: 60_000 });
 
 const REPO_ROOT      = resolve(__dirname, '../../../../');
 const PRIVATE_ROOT   = resolve(__dirname, '../../../../../');
-const BIN_WIN        = join(REPO_ROOT, 'dist-bin', 'swao-enterprise-win.exe');
-const BIN_COMMUNITY  = join(REPO_ROOT, 'dist-bin', 'swao-community-win.exe');
+const BIN_WIN        = join(REPO_ROOT, 'dist-bin', 'swao-enterprise-win-x64.exe');
+const BIN_COMMUNITY  = join(REPO_ROOT, 'dist-bin', 'swao-community-win-x64.exe');
 const SOURCE_FIXTURE = join(PRIVATE_ROOT, 'examples', 'portfolio-workspace', 'portfolio');
 
 // #0193: clone the canonical fixture to tmp so the binary's runtime
@@ -57,7 +57,7 @@ let APP_DIR: string;
 // licence-guard finds no file and falls back cleanly to Community.
 let SANDBOX_HOME: string;
 
-const BIN_CONSULTANT = join(REPO_ROOT, 'dist-bin', 'swao-consultant-win.exe');
+const BIN_CONSULTANT = join(REPO_ROOT, 'dist-bin', 'swao-consultant-win-x64.exe');
 
 const hasBinary           = existsSync(BIN_WIN);
 const hasCommunityBinary  = existsSync(BIN_COMMUNITY);
@@ -127,6 +127,7 @@ afterAll(() => {
 function run(args: string[], cwd: string = WORKSPACE): { stdout: string; stderr: string; status: number } {
   return runBinary(BIN_WIN, args, cwd, {
     ...process.env, HOME: SANDBOX_HOME, USERPROFILE: SANDBOX_HOME, HOMEDRIVE: '', HOMEPATH: '',
+    LOCALAPPDATA: SANDBOX_HOME, APPDATA: SANDBOX_HOME,
   });
 }
 
@@ -205,7 +206,7 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
   it('framework info GDPR prints contributor from the embedded asset', () => {
     const { stdout, status } = run(['framework', 'info', 'GDPR']);
     expect(status).toBe(0);
-    expect(stdout).toContain('Helmut Schindlwick');
+    expect(stdout).toContain('SWAO Development Team (Accenture)');
   });
 
   // #0337: --passes filter must gate Pass 10 (dynamic_analysis); previously
@@ -386,9 +387,7 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     expect(content).toContain('LZ Comparison');
     expect(content).toContain('Verdict Summary');
     expect(content).toContain('Sovereignty Gate Analysis');
-    // At least one SOVEREIGNTY_BLOCKED target (aws/eu-central-1 in the fixture).
-    expect(content).toContain('SOVEREIGNTY_BLOCKED');
-    // At least one READY target (aws-esc or stackit).
+    // The preceding assess test evaluates stackit:eu01 only (GDPR → READY).
     expect(content).toContain('READY');
   });
 
@@ -719,7 +718,8 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     const emptyHome = mkdtempSync(join(tmpdir(), 'swao-e2e-nolicense-'));
     try {
       const result = runBinary(BIN_WIN, ['challenge', '--app', 'sovereign-health', '--agent', 'grc-compliance-officer'],
-        WORKSPACE, { ...process.env, HOME: emptyHome, USERPROFILE: emptyHome, HOMEDRIVE: '', HOMEPATH: '' },
+        WORKSPACE, { ...process.env, HOME: emptyHome, USERPROFILE: emptyHome, HOMEDRIVE: '', HOMEPATH: '',
+          LOCALAPPDATA: emptyHome, APPDATA: emptyHome },
       );
       expect(result.status).toBe(2);
     } finally {
@@ -751,6 +751,7 @@ describe.skipIf(!hasCommunityBinary)('Community binary -- upgrade-required gate 
   function runCommunity(args: string[]): { stdout: string; stderr: string; status: number } {
     return runBinary(BIN_COMMUNITY, args, communityWorkspace, {
       ...process.env, HOME: communityHome, USERPROFILE: communityHome, HOMEDRIVE: '', HOMEPATH: '',
+      LOCALAPPDATA: communityHome, APPDATA: communityHome,
     });
   }
 
@@ -807,6 +808,7 @@ describe.skipIf(!hasConsultantBinary)('Consultant binary -- tier-specific comman
   function runConsultant(args: string[]): { stdout: string; stderr: string; status: number } {
     return runBinary(BIN_CONSULTANT, args, consultantWorkspace, {
       ...process.env, HOME: consultantHome, USERPROFILE: consultantHome, HOMEDRIVE: '', HOMEPATH: '',
+      LOCALAPPDATA: consultantHome, APPDATA: consultantHome,
     });
   }
 

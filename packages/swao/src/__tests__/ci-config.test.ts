@@ -190,11 +190,11 @@ describe('Tracker integrity (#0120)', { sequential: true }, () => {
   // Windows dev sandbox); runs in CI (Linux) and under Git Bash. #0592.
   it.skipIf(!SYNC_SH_RUNNABLE)('sync.sh validate exits 0 against current tracker state', () => {
     // sync.sh shells out and may take 10-30s; raise vitest timeout above the default 5s.
-    const result = spawnSync('bash', [SYNC_SH_BASH_PATH, 'validate'], { encoding: 'utf-8', timeout: 120000 });
+    const result = spawnSync('bash', [SYNC_SH_BASH_PATH, 'validate'], { encoding: 'utf-8', timeout: 240000 });
     if (result.status !== 0) {
       console.error('[sync.sh validate stdout]', result.stdout);
       console.error('[sync.sh validate stderr]', result.stderr);
     }
     expect(result.status).toBe(0);
-  }, 150000); // 150s -- sync.sh runs git + node scripts; larger tracker slows it on Windows
+  }, 270000); // 270s -- sync.sh runs git + node scripts; raised from 150s at sprint-142 (2348 files) to 270s at sprint-143 (2931 files)
 });

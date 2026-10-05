@@ -1252,6 +1252,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     if (!id) return;
     setApp(id);
     setEditOnlyMode(false);
+    // #2715: emit assess.app.select.confirmed so the operator can trace which app was picked.
+    try { logApp(id, 'info', 'assess.app.select.confirmed', 'Application selected for assessment', { context: { app_id: id, assessment_type: 'application' } }); } catch { /* best-effort */ }
     // Self-heal: ensure ingestion/ exists for apps created before sprint-070.
     if (workspace) {
       try { scaffold.ingestion(join(workspace, 'apps', id)); } catch { /* best-effort */ }

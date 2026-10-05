@@ -35,6 +35,13 @@ export interface LlmTrace {
   response: string;
 }
 
+/** Tool definition in Anthropic-compatible format (used by SWAO Chat tool-calling, #2915). */
+export interface LlmTool {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+}
+
 export interface LlmProvider {
   /** Provider type identifier; recorded in run-manifest.llm.provider. */
   readonly name: LlmProviderName;
@@ -42,6 +49,19 @@ export interface LlmProvider {
    *  recorded in run-manifest.llm.model. */
   readonly model: string;
   complete(prompt: string): Promise<string>;
+  /**
+   * Multi-turn chat with dynamic MCP tool-calling (#2915).
+   * Passes tool definitions to the LLM; handles tool_use -> MCP call -> tool_result loop.
+   * Optional: providers that do not support tool calling leave this undefined.
+   * Callers must check before invoking.
+   */
+  completeWithTools?(params: {
+    system: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    tools: LlmTool[];
+    onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
+    maxIterations?: number;
+  }): Promise<string>;
   /**
    * Vision-capable completion (#1802). Sends one or more JPEG image buffers
    * alongside a text prompt. Optional -- providers that do not support vision

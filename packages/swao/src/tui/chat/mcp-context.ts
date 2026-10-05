@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-// MCP HTTP probe + tool call helpers for the Chat screen (#2781).
+// MCP HTTP probe + tool call helpers for the Chat screen (#2781 #2915).
 //
 // The SWAO MCP server uses StreamableHTTPServerTransport (MCP SDK).
 // Protocol: POST /mcp with JSON-RPC 2.0; response is text/event-stream;
@@ -21,6 +21,8 @@
 //
 // All exported functions are pure async -- no React, no singletons --
 // so they are testable in isolation against a mock fetch.
+
+import type { LlmTool } from '@swao/module-llm-providers';
 
 /** Parse SSE response body: extract and join all "data: ..." lines. */
 export function parseSseBody(body: string): string {
@@ -151,6 +153,58 @@ export async function callMcpTool(
 }
 
 /**
+ * Fetch the full tool manifest from the MCP server (#2915).
+ *
+ * Mirrors what Claude Desktop does at session start: calls tools/list and
+ * converts MCP tool definitions (inputSchema) to Anthropic format (input_schema)
+ * so they can be passed directly to the Anthropic Messages API.
+ * Returns an empty array on any failure (graceful degradation).
+ */
+export async function listMcpTools(session: McpSession, timeoutMs = 10_000): Promise<LlmTool[]> {
+  const url = `http://localhost:${session.port}/mcp`;
+  const body = JSON.stringify({
+    jsonrpc: '2.0',
+    id: Date.now(),
+    method: 'tools/list',
+    params: {},
+  });
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/event-stream',
+        'mcp-session-id': session.sessionId,
+      },
+      body,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!resp.ok) return [];
+    const text = await resp.text();
+    const jsonStr = parseSseBody(text);
+    const parsed = JSON.parse(jsonStr) as {
+      result?: {
+        tools?: Array<{
+          name: string;
+          description?: string;
+          inputSchema?: Record<string, unknown>;
+        }>;
+      };
+    };
+    const tools = parsed.result?.tools ?? [];
+    return tools.map(t => ({
+      name: t.name,
+      description: t.description ?? '',
+      input_schema: t.inputSchema ?? { type: 'object', properties: {} },
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Collect portfolio context from existing MCP tools. Gracefully skips failures.
  *
  * Tool selection rationale (#2789 revised):
@@ -184,6 +238,8 @@ export async function fetchPortfolioContext(
     // #2792: workspace file tree + key config at session init so the LLM can answer file questions.
     { label: 'Workspace Files',        toolName: 'swao_list_directory',      args: {} },
     { label: 'Workspace Config',       toolName: 'swao_read_file',           args: { file_path: '.swao.yml' } },
+    // #2913 scoped: include challenge findings so the model can answer "what did stakeholders raise?"
+    { label: 'Challenge Findings',     toolName: 'swao_read_challenge',      args: appArgs  },
   ];
 
   const parts: string[] = [];

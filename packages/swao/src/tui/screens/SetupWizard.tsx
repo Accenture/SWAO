@@ -146,7 +146,12 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
             saveDefaultWorkspace(workDir);
             setWorkspaceRoot(workDir);
             // #2389: align event code with Design 098 wizard.init.* prefix taxonomy.
-if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { logPortfolio('info', 'wizard.init.complete', 'Workspace initialised', { context: { wsp_version: '0.9', engagement_name: engagementName } }); } catch { /* best-effort */ } }
+            // #2714: also emit wizard.engagement.complete for Design 098 observability.
+            if (!loggedSteps.current.has('init')) {
+              loggedSteps.current.add('init');
+              try { logPortfolio('info', 'wizard.init.complete', 'Workspace initialised', { context: { wsp_version: '0.9', engagement_name: engagementName } }); } catch { /* best-effort */ }
+              try { logPortfolio('info', 'wizard.engagement.complete', 'Engagement details confirmed', { context: { work_dir: workDir, has_engagement_name: !!engagementName, has_client_code: !!clientCode } }); } catch { /* best-effort */ }
+            }
             setStep('llm');
           }}
         />
@@ -180,6 +185,8 @@ if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { l
               loggedSteps.current.add('llm');
               try { setWorkspaceRoot(state.workDir); } catch { /* best-effort */ }
               try { logPortfolio('info', 'wizard.step.complete', 'LLM provider configured', { context: { step: 'llm', provider, model: model || null } }); } catch { /* best-effort */ }
+              // #2714: step-specific event for Design 098 observability.
+              try { logPortfolio('info', 'wizard.llm.configured', 'Primary LLM provider configured', { context: { provider, model: model || null } }); } catch { /* best-effort */ }
             }
             setStep('llm-secondary');
           }}
@@ -202,6 +209,8 @@ if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { l
               } catch { /* best-effort */ }
             }
             try { logPortfolio('info', 'wizard.step.complete', 'Secondary LLM provider configured', { context: { step: 'llm-secondary', provider, model: model || null } }); } catch { /* best-effort */ }
+            // #2714: step-specific event for Design 098 observability.
+            try { logPortfolio('info', 'wizard.llm.secondary.configured', 'Secondary LLM provider configured', { context: { provider, model: model || null } }); } catch { /* best-effort */ }
             // #2355: store secondary provider so credentials step can prompt for its key.
             // #2365: also store model so ready screen can display it.
             setState(prev => ({ ...prev, llmSecondaryProvider: provider, llmSecondaryModel: model }));
@@ -251,6 +260,8 @@ if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { l
             loggedSteps.current.add('mcp');
             try { setWorkspaceRoot(state.workDir); } catch { /* best-effort */ }
             try { logPortfolio('info', 'wizard.step.complete', 'MCP client step completed', { context: { step: 'claude-desktop' } }); } catch { /* best-effort */ }
+            // #2714: step-specific event for Design 098 observability.
+            try { logPortfolio('info', 'wizard.integrations.mcp.complete', 'MCP client configuration complete', { context: { step: 'claude-desktop' } }); } catch { /* best-effort */ }
           }
           setStep('playwright');
         }} />
@@ -268,7 +279,12 @@ if (!loggedSteps.current.has('init')) { loggedSteps.current.add('init'); try { l
             setState(s => ({ ...s, visionMaxScreens }));
             writeVisionMaxScreensToYaml(state.workDir, visionMaxScreens);
           }
-          if (!loggedSteps.current.has('playwright')) { loggedSteps.current.add('playwright'); try { logPortfolio('info', 'playwright.check.complete', 'Playwright step completed', { context: { chromium_found: chromiumPath !== null, path: chromiumPath ?? undefined, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ } }
+          if (!loggedSteps.current.has('playwright')) {
+            loggedSteps.current.add('playwright');
+            try { logPortfolio('info', 'playwright.check.complete', 'Playwright step completed', { context: { chromium_found: chromiumPath !== null, path: chromiumPath ?? undefined, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ }
+            // #2714: step-specific event for Design 098 observability.
+            try { logPortfolio('info', 'wizard.integrations.playwright.complete', 'Playwright integration step complete', { context: { chromium_found: chromiumPath !== null, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ }
+          }
           if (!loggedSteps.current.has('ready')) {
             loggedSteps.current.add('ready');
             // #1766: ensure workspace root is set before the summary event, then emit.
