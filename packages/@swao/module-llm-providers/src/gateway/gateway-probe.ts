@@ -131,7 +131,9 @@ export function classifyPingFailure(rawMessage: string, opts: { credentialKey?: 
   }
   if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('invalid api key') || msg.includes('authentication')) {
     // #2897: ADFS/JWT token expiry -- distinct from a wrong key; re-login is the fix.
-    if (/jwt is expired|token is expired|jwt expired|access token.*expired/i.test(rawMessage)) {
+    const lc = rawMessage.toLowerCase();
+    if (/jwt is expired|token is expired|jwt expired/i.test(rawMessage) ||
+        (lc.includes('access token') && lc.includes('expired'))) {
       return `authentication token expired (JWT) -- re-run 'swao session setup' to refresh the ADFS token${keyHint}`;
     }
     // #2410: detect endpoint/key mismatch -- OpenRouter key used against api.openai.com is the

@@ -133,12 +133,16 @@ export function docxXmlToText(xml: string): string {
 }
 
 function decodeXmlEntities(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
+  return s.replace(/&(?:amp|lt|gt|quot|apos);/g, (entity) => {
+    switch (entity) {
+      case '&amp;': return '&';
+      case '&lt;': return '<';
+      case '&gt;': return '>';
+      case '&quot;': return '"';
+      case '&apos;': return "'";
+      default: return entity;
+    }
+  });
 }
 
 /**

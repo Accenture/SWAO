@@ -29,7 +29,8 @@
 //   - TEI 1.8 embed request and flat/batch response parsing
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { OpenLlmProvider, OpenLlmEmbeddingProvider } from './open-llm-provider.js';
+import { Agent, ProxyAgent } from 'undici';
+import { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 import { LlmConnectivityError } from './anthropic.js';
 import { ConnectivityFailureError } from './errors.js';
 import { createLlmProvider } from './factory.js';
@@ -642,5 +643,44 @@ describe('OpenLlmProvider -- HTTPS_PROXY dispatcher', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, Record<string, unknown>];
     expect(init).not.toHaveProperty('dispatcher');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildFetchDispatcher -- NODE_TLS_REJECT_UNAUTHORIZED env var (#2934)
+// ---------------------------------------------------------------------------
+
+describe('buildFetchDispatcher -- NODE_TLS_REJECT_UNAUTHORIZED env var', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('returns an Agent when NODE_TLS_REJECT_UNAUTHORIZED=0 and no proxy', () => {
+    vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
+    const d = buildFetchDispatcher({});
+    expect(d).toBeInstanceOf(Agent);
+  });
+
+  it('returns a ProxyAgent when NODE_TLS_REJECT_UNAUTHORIZED=0 and HTTPS_PROXY is set', () => {
+    vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '0');
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.example.com:8080');
+    const d = buildFetchDispatcher({});
+    expect(d).toBeInstanceOf(ProxyAgent);
+  });
+
+  it('returns undefined when no proxy and NODE_TLS_REJECT_UNAUTHORIZED is unset (regression)', () => {
+    const d = buildFetchDispatcher({});
+    expect(d).toBeUndefined();
+  });
+
+  it('returns a ProxyAgent when HTTPS_PROXY set and TLS verify is on (regression)', () => {
+    process.env['HTTPS_PROXY'] = 'http://proxy.example.com:8080';
+    const d = buildFetchDispatcher({});
+    expect(d).toBeInstanceOf(ProxyAgent);
+  });
+
+  it('returns an Agent when rejectUnauthorized:false passed as opt and no proxy (regression)', () => {
+    const d = buildFetchDispatcher({ rejectUnauthorized: false });
+    expect(d).toBeInstanceOf(Agent);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@swao/swao",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "SWAO CLI -- Sovereign Workload Assessment and Onboarding",
   "license": "SEE LICENSE IN LICENSE",
   "private": true,
@@ -149,7 +149,9 @@
       "fastify": ">=5.12.4",
       "@xmldom/xmldom": ">=0.8.15",
       "vitest": ">=4.1.11 <5.0.0",
-      "@vitest/mocker": ">=4.1.11 <5.0.0"
+      "@vitest/mocker": ">=4.1.11 <5.0.0",
+      "proxy-addr": ">=2.0.8",
+      "source-map-js": ">=1.2.2"
     }
   }
 }

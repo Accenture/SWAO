@@ -36,6 +36,11 @@ overrides:
   'qs': '>=6.16.0'
   'fastify': '>=5.12.4'
   '@xmldom/xmldom': '>=0.8.15'
+  # #2932 sprint-144: proxy-addr (CRITICAL GHSA-jqcg-44mw-7w3h via @modelcontextprotocol/sdk>express)
+  # source-map-js (HIGH GHSA-68fv-2mgg-jv7q via vitest>postcss)
+  # sprintf-js: no patch available (latest 1.1.3 < advisory threshold); added to ignoreGhsas
+  'proxy-addr': '>=2.0.8'
+  'source-map-js': '>=1.2.2'
 
 onlyBuiltDependencies:
   - esbuild
@@ -47,4 +52,5 @@ allowBuilds:
 
 auditConfig:
   ignoreGhsas:
-    - GHSA-vfj7-8cjw-p6xm
+    - GHSA-vfj7-8cjw-p6xm  # braces: no patch available (fix requires >=3.0.4, not yet published)
+    - GHSA-hp3w-g68c-fv3c  # sprintf-js: no patch available (fix requires >=1.1.4, latest is 1.1.3)

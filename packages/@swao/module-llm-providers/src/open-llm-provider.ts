@@ -62,11 +62,15 @@ function sleep(ms: number): Promise<void> {
  */
 export function buildFetchDispatcher(opts: { rejectUnauthorized?: boolean }): unknown {
   const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
-  if (opts.rejectUnauthorized === false) {
+  const tlsSkip = opts.rejectUnauthorized === false || process.env['NODE_TLS_REJECT_UNAUTHORIZED'] === '0';
+  if (tlsSkip) {
     if (proxyUrl) {
       return new ProxyAgent({ uri: proxyUrl, connect: { rejectUnauthorized: false } });
     }
     return new Agent({ connect: { rejectUnauthorized: false } });
+  }
+  if (proxyUrl) {
+    return new ProxyAgent(proxyUrl);
   }
   return undefined;
 }
@@ -160,11 +164,15 @@ export class OpenLlmProvider implements LlmProvider {
     const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
     const tlsRejectUnauthorized = gatewayOpts?.rejectUnauthorized;
     // #2894 Part B: build a scoped undici dispatcher that combines proxy and TLS options.
-    if (proxyUrl && tlsRejectUnauthorized === false) {
+    // Also honour NODE_TLS_REJECT_UNAUTHORIZED=0 for proxy tunnels: undici's ProxyAgent
+    // uses its own TLS stack and does NOT read that env var unless we pass it explicitly.
+    // This matters for corporate MITM proxies whose CA is not in Node.js's default bundle.
+    const tlsSkip = tlsRejectUnauthorized === false || process.env['NODE_TLS_REJECT_UNAUTHORIZED'] === '0';
+    if (proxyUrl && tlsSkip) {
       this.dispatcher = new ProxyAgent({ uri: proxyUrl, connect: { rejectUnauthorized: false } });
     } else if (proxyUrl) {
       this.dispatcher = new ProxyAgent(proxyUrl);
-    } else if (tlsRejectUnauthorized === false) {
+    } else if (tlsSkip) {
       this.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
     } else {
       this.dispatcher = undefined;

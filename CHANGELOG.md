@@ -11,6 +11,42 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.4] - 2026-10-05
+
+Patch release: security patches (Dependabot, CodeQL), PREME PoC connector fixes
+(sprint-144).
+
+### Fixed
+
+- `buildFetchDispatcher` and inline class dispatcher now honour `NODE_TLS_REJECT_UNAUTHORIZED=0`
+  env var; undici `ProxyAgent` does not read that env var via its own TLS stack (#2934)
+- `parseConnectorYaml` accepts YAML with a leading UTF-8 BOM; `js-yaml` strips it per YAML 1.2
+  spec; BOM-prefixed connector YAML written by `SWAO-Session-Setup.ps1` pre-v1.10 silently
+  failed to resolve the connector -- v1.11 writes BOM-free (#2935, #2937)
+- CodeQL `js/double-escaping`: `decodeXmlEntities` (transformer.ts) now uses a single-pass
+  regex switch; eliminates double-unescaping of `&amp;lt;` chains (#2933)
+- CodeQL `js/polynomial-redos`: `gateway-probe.ts` token-expiry check replaced `access
+  token.*expired` regex with two `lc.includes()` calls; linear time, ReDoS-safe (#2933)
+- `undici` override raised to `>=8.10.2` in scripts/; installed 8.11.2 (10 Dependabot alerts)
+- `brace-expansion` raised to 5.0.12 in swao-premium lockfile (3 Dependabot alerts) (#2932)
+- `proxy-addr` raised to `>=2.0.8` (CRITICAL GHSA-jqcg-44mw-7w3h via MCP SDK>express) (#2932)
+- `source-map-js` raised to `>=1.2.2` (HIGH GHSA-68fv-2mgg-jv7q via vitest>postcss) (#2932)
+- `sprintf-js` and `braces` (no patch available) added to `auditConfig.ignoreGhsas`; dev-only
+  transitive deps, not shipped in binaries (#2932)
+
+### Added
+
+- TLS env var test suite for `buildFetchDispatcher` covering no-proxy, proxy, and regression
+  cases; added to `open-llm-provider.test.ts` (#2934)
+- BOM connector YAML test confirming `parseConnectorYaml` accepts BOM-prefixed input (#2937)
+
+### Changed
+
+- `SWAO-Session-Setup.ps1` v1.11: BOM-free connector YAML write; PREME-neutral naming (#2935)
+- `SWAO-Assess.ps1` v1.7: PREME-neutral naming throughout (#2935)
+
+---
+
 ## [1.2.3] - 2026-10-04
 
 Patch release: SWAO Chat UX, MCP stability, smoke and test infrastructure, observability gaps

@@ -119,6 +119,12 @@ describe('parseConnectorYaml (#1394)', () => {
     expect(parseConnectorYaml('- just\n- a list\n', 'x.yaml').ok).toBe(false);
   });
 
+  it('accepts connector YAML prefixed with a UTF-8 BOM (#2937)', () => {
+    const r = parseConnectorYaml('﻿' + VALID.trimStart(), 'preme-preprod.yaml');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.file.connector.id).toBe('openrouter');
+  });
+
   it('rejects non-kebab-case ids and bad env var names', () => {
     expect(parseConnectorYaml(VALID.replace('id: openrouter', 'id: Open_Router'), 'x.yaml').ok).toBe(false);
     expect(parseConnectorYaml(VALID.replace('SWAO_OPENROUTER_API_KEY', 'lower_case'), 'x.yaml').ok).toBe(false);
