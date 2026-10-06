@@ -27,7 +27,7 @@ jobs:
 
       - name: Download Community binaries from private release
         env:
-          PRIVATE_RELEASE_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           # Download Community binaries attached to the matching private release.
@@ -45,8 +45,6 @@ jobs:
               --pattern "$ASSET" \
               --dir dist-community
           done
-        env:
-          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
 
       - name: Generate checksums
         run: |
