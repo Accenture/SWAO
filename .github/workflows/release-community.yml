@@ -4,11 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to release (e.g. v1.2.4)'
-        required: true
 
 permissions:
   contents: write
@@ -23,11 +18,11 @@ jobs:
 
       - name: Set version
         id: version
-        run: echo "VERSION=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Download Community binaries from private release
         env:
-          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+          PRIVATE_RELEASE_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           # Download Community binaries attached to the matching private release.
@@ -37,7 +32,6 @@ jobs:
           for ASSET in \
             "swao-community-win-x64.exe" \
             "swao-community-linux-x64" \
-            "swao-community-linux-arm64" \
             "swao-community-macos-x64" \
             "swao-community-macos-arm64"; do
             gh release download "$VERSION" \
@@ -45,13 +39,14 @@ jobs:
               --pattern "$ASSET" \
               --dir dist-community
           done
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
 
       - name: Generate checksums
         run: |
           cd dist-community
           sha256sum swao-community-win-x64.exe \
                     swao-community-linux-x64 \
-                    swao-community-linux-arm64 \
                     swao-community-macos-x64 \
                     swao-community-macos-arm64 > checksums.sha256
           cat checksums.sha256
@@ -62,16 +57,6 @@ jobs:
           cdxgen -o dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
             --no-recurse --spec-version 1.5 .
 
-      - name: Create public release (idempotent)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          gh release create "$VERSION" \
-            --repo Accenture/SWAO \
-            --title "$VERSION" \
-            --notes "Community Edition release $VERSION" || true
-
       - name: Upload assets to public release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -80,7 +65,6 @@ jobs:
           gh release upload "$VERSION" \
             dist-community/swao-community-win-x64.exe \
             dist-community/swao-community-linux-x64 \
-            dist-community/swao-community-linux-arm64 \
             dist-community/swao-community-macos-x64 \
             dist-community/swao-community-macos-arm64 \
             dist-community/checksums.sha256 \

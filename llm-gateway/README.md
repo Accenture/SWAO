@@ -33,8 +33,11 @@ Browse and download configurations from GitHub:
 | `anthropic.yaml` | Anthropic Claude (API) |
 | `bedrock.yaml` | Amazon Bedrock Gateway |
 | `ollama.yaml` | Ollama (self-hosted, local models) |
+| `open-llm.yaml` | Remote OpenAI-compatible endpoint (generic) |
 | `openai.yaml` | OpenAI (API) |
 | `openrouter.yaml` | OpenRouter (multi-provider proxy) |
+| `preme-preprod.yaml` | PREME GenAI Hub PREPROD (BA internal, ADFS-gated) |
+| `preme-prod.yaml` | PREME GenAI Hub PROD (BA internal, ADFS-gated) |
 | `vllm-generic.yaml` | vLLM (self-hosted, generic endpoint) |
 | `_template.yaml` | Template for custom gateway configurations |
 

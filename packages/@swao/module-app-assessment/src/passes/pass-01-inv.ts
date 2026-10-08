@@ -284,24 +284,45 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
       // #0660: extract service_dep signals from Cargo.toml (Rust workspaces)
       // INV-10..INV-99 reserved for service_dep signals; service name carried
       // in derivation + implies so the ID only needs to be a valid INV-NN.
+      // #2945: also scan member-crate Cargo.toml files one level deep when the
+      // root file is a [workspace] manifest (no direct deps in workspace root).
       const cargoContent = readFileSync_safe(join(sourcePath, 'Cargo.toml'));
       if (cargoContent && detected.includes('Rust')) {
-        const cargoDeps = extractCargoServiceDeps(cargoContent);
+        const allCargoContents: Array<{ content: string; relPath: string }> = [
+          { content: cargoContent, relPath: 'Cargo.toml' },
+        ];
+        if (/^\[workspace\]/m.test(cargoContent)) {
+          const membersM = cargoContent.match(/\bmembers\s*=\s*\[([^\]]*)\]/s);
+          if (membersM) {
+            const memberPaths = (membersM[1] ?? '')
+              .match(/"([^"]+)"|'([^']+)'/g)
+              ?.map((q) => q.replace(/["']/g, '')) ?? [];
+            for (const member of memberPaths) {
+              const memberCargoPath = join(sourcePath, member, 'Cargo.toml');
+              const memberContent = readFileSync_safe(memberCargoPath);
+              if (memberContent) {
+                allCargoContents.push({ content: memberContent, relPath: `${member}/Cargo.toml` });
+              }
+            }
+          }
+        }
         const seen = new Set<string>();
         let serviceDepIdx = 10;
-        for (const { service, note } of cargoDeps) {
-          if (seen.has(service)) continue;
-          seen.add(service);
-          signals.push({
-            id: `INV-${String(serviceDepIdx++).padStart(2, '0')}`,
-            source: 'static_analysis',
-            category: 'application',
-            severity: 'informational',
-            derivation: `Rust project requires ${service} (detected via ${note} in Cargo.toml).`,
-            evidence: ['Cargo.toml'],
-            confidence: 'high',
-            implies: [`service_dep:${service}`],
-          });
+        for (const { content, relPath } of allCargoContents) {
+          for (const { service, note } of extractCargoServiceDeps(content)) {
+            if (seen.has(service)) continue;
+            seen.add(service);
+            signals.push({
+              id: `INV-${String(serviceDepIdx++).padStart(2, '0')}`,
+              source: 'static_analysis',
+              category: 'application',
+              severity: 'informational',
+              derivation: `Rust project requires ${service} (detected via ${note} in ${relPath}).`,
+              evidence: [relPath],
+              confidence: 'high',
+              implies: [`service_dep:${service}`],
+            });
+          }
         }
       }
     } else {

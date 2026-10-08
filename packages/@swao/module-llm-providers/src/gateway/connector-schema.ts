@@ -185,6 +185,7 @@ const ConnectorSchema = z.object({
   cost_per_token: CostSchema.optional(),
   environments: z.record(z.string(), EnvironmentSchema).optional(),
   active_env: z.string().optional(),
+  context_window_k: z.number().int().positive().optional(),
   sovereignty: SovereigntySchema.optional(),
   meta: MetaSchema.optional(),
   tls: TlsSchema.optional(),

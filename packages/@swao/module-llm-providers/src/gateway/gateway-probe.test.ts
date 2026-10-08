@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildLlmGatewayProbe, classifyPingFailure } from './gateway-probe.js';
@@ -248,4 +248,16 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
     expect(r.ok).toBe(false);
     expect(r.message).toContain("connector 'dead-local' live ping FAILED");
   }, 30_000);
+
+  // #2953: on pre-Design-090 workspaces, wsp/inputs/llm-gateway/ is not seeded.
+  // buildLlmGatewayProbe must scaffold the directory on first health-check run.
+  it('scaffolds wsp/inputs/llm-gateway/ when directory is absent (#2953)', async () => {
+    const gatewayDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
+    expect(existsSync(gatewayDir)).toBe(false);
+    // Probe without an active connector (no .swao.yml) -- just discovery.
+    await buildLlmGatewayProbe(dir);
+    expect(existsSync(gatewayDir)).toBe(true);
+    // README must be present
+    expect(existsSync(join(gatewayDir, 'README.md'))).toBe(true);
+  });
 });

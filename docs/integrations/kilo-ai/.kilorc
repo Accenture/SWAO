@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "swao": {
+      "url": "http://localhost:3737/mcp",
+      "tools": [
+        {
+          "name": "swao_health_check",
+          "description": "Run SWAO health-check probes against the current workspace and return structured probe results."
+        },
+        {
+          "name": "swao_assess",
+          "description": "Run a SWAO sovereignty assessment against an application workspace. Returns pass results and open signals."
+        },
+        {
+          "name": "swao_report",
+          "description": "Generate a SWAO sovereignty report for a previously assessed application. Returns report text."
+        }
+      ]
+    }
+  },
+  "models": {
+    "default": {
+      "provider": "openai-compatible",
+      "baseUrl": "${PREME_GENAI_HUB_BASE_URL}",
+      "model": "qwen3-8b",
+      "apiKey": "${PREME_GENAI_HUB_API_KEY}"
+    }
+  }
+}

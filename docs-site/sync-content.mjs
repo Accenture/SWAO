@@ -86,12 +86,6 @@ const DE_SAMPLES_FOLDER = {
   filter: (name) => name.endsWith('.md'),
 };
 
-const DE_FRAMEWORKS_FOLDER = {
-  src: 'de/frameworks',
-  dst: 'de/frameworks',
-  filter: (name) => name.endsWith('.md'),
-};
-
 console.log(`Syncing ${srcRoot} -> ${dstRoot}`);
 
 if (existsSync(dstRoot)) {
@@ -222,22 +216,6 @@ for (const { src, dst } of FILES) {
   }
 }
 
-// Copy DE framework stubs from docs/de/frameworks/ -> manual/de/frameworks/ (#2960)
-{
-  const s = join(srcRoot, DE_FRAMEWORKS_FOLDER.src);
-  const d = join(dstRoot, DE_FRAMEWORKS_FOLDER.dst);
-  if (existsSync(s)) {
-    mkdirSync(d, { recursive: true });
-    for (const file of readdirSync(s)) {
-      if (!DE_FRAMEWORKS_FOLDER.filter(file)) continue;
-      copyFileSync(join(s, file), join(d, file));
-      console.log(`  copied: ${DE_FRAMEWORKS_FOLDER.src}/${file} -> manual/${DE_FRAMEWORKS_FOLDER.dst}/${file}`);
-    }
-  } else {
-    console.warn(`[warn] source folder missing: ${s}`);
-  }
-}
-
 // Copy sample images (PNG/JPG/WEBP) from docs/samples/ -> manual/samples/
 {
   const s = join(srcRoot, 'samples');
@@ -250,33 +228,6 @@ for (const { src, dst } of FILES) {
       copyFileSync(join(s, file), join(d, file));
       console.log(`  copied: samples/${file} -> manual/samples/${file}`);
     }
-  }
-}
-
-// EN/DE parity check (#2960): list EN pages that have no DE equivalent.
-// Printed as warnings so CI can detect drift even without --strict.
-{
-  function collectMd(dir, prefix, set) {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        collectMd(join(dir, entry.name), prefix ? `${prefix}/${entry.name}` : entry.name, set);
-      } else if (entry.name.endsWith('.md') && entry.name !== 'index.md') {
-        set.add(prefix ? `${prefix}/${entry.name}` : entry.name);
-      }
-    }
-  }
-  const enPages = new Set();
-  const dePages = new Set();
-  collectMd(dstRoot, '', enPages);
-  collectMd(join(dstRoot, 'de'), '', dePages);
-  const enOnly = [...enPages].filter(p => !p.startsWith('de/'));
-  const missingDe = enOnly.filter(p => !dePages.has(p));
-  if (missingDe.length > 0) {
-    console.warn(`[parity] ${missingDe.length} EN page(s) have no DE equivalent:`);
-    for (const p of missingDe) console.warn(`         ${p}`);
-  } else {
-    console.log('[parity] EN/DE parity OK.');
   }
 }
 

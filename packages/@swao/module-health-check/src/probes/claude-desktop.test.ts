@@ -69,10 +69,11 @@ describe('claudeDesktopConfigPath()', () => {
 describe('buildMcpProbe()', () => {
   it('returns not_installed status when config path does not exist', async () => {
     const { buildMcpProbe } = await import('./claude-desktop.js');
-    // Works on machines where Claude Desktop is not installed
-    // If config exists we just check the return shape instead.
-    const result = buildMcpProbe();
-    expect(['ok', 'missing_entry', 'binary_not_found', 'not_installed']).toContain(result.status);
+    // Works on machines where Claude Desktop is not installed.
+    // Pass versionRunner: () => true to avoid slow subprocess calls on machines
+    // that have Claude Desktop installed and a valid SWAO entry (#2908).
+    const result = buildMcpProbe({ versionRunner: () => true });
+    expect(['ok', 'missing_entry', 'binary_not_found', 'binary_unreachable', 'not_installed']).toContain(result.status);
     expect(typeof result.configPath).toBe('string');
     expect(result.configPath.endsWith('claude_desktop_config.json')).toBe(true);
   });
@@ -82,28 +83,23 @@ describe('buildMcpProbe()', () => {
 
     const tmpDir = join(tmpdir(), `swao-test-mcp-${Date.now()}`);
     mkdirSync(tmpDir, { recursive: true });
-    const fakeConfig = join(tmpDir, 'claude_desktop_config.json');
-    const fakeBin = join(tmpDir, 'swao-fake');
-    writeFileSync(fakeBin, '#!/bin/sh\n', 'utf-8');
-    writeFileSync(fakeConfig, JSON.stringify({
+    const fakeCfg = join(tmpDir, 'claude_desktop_config.json');
+    const fakeBin = join(tmpDir, 'swao-enterprise-win-x64.exe');
+    writeFileSync(fakeBin, 'placeholder', 'utf-8');
+    writeFileSync(fakeCfg, JSON.stringify({
       mcpServers: { swao: { command: fakeBin, args: ['mcp'] } },
     }), 'utf-8');
 
-    // Temporarily override the module resolution isn't feasible without DI,
-    // so we test the probe logic directly using a fixture approach:
-    // Read the config manually and assert the probe shape when called normally.
-    // This test validates the module returns a well-shaped result.
-    const result = buildMcpProbe();
-    expect(result).toHaveProperty('status');
-    expect(result).toHaveProperty('configPath');
-    expect(result).toHaveProperty('commandPath');
+    const result = buildMcpProbe({ configPathOverride: fakeCfg, versionRunner: () => true });
+    expect(result.status).toBe('ok');
+    expect(result.commandPath).toBe(fakeBin);
 
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('result has status, configPath, and commandPath fields', async () => {
     const { buildMcpProbe } = await import('./claude-desktop.js');
-    const result = buildMcpProbe();
+    const result = buildMcpProbe({ versionRunner: () => true });
     expect(Object.keys(result)).toContain('status');
     expect(Object.keys(result)).toContain('configPath');
     expect(Object.keys(result)).toContain('commandPath');
@@ -134,10 +130,12 @@ describe('buildMcpProbe() -- SWAO_MCP_CONTEXT short-circuit (#0154)', () => {
     const prev = process.env['SWAO_MCP_CONTEXT'];
     process.env['SWAO_MCP_CONTEXT'] = '0';
     try {
-      const result = buildMcpProbe();
+      // Pass versionRunner to avoid slow subprocess on machines with Claude
+      // Desktop installed and a valid SWAO entry (#2908).
+      const result = buildMcpProbe({ versionRunner: () => true });
       // Falls through to config-file inspection; status is whatever the
       // host environment actually produces.
-      expect(['ok', 'missing_entry', 'binary_not_found', 'not_installed']).toContain(result.status);
+      expect(['ok', 'missing_entry', 'binary_not_found', 'binary_unreachable', 'not_installed']).toContain(result.status);
     } finally {
       if (prev === undefined) delete process.env['SWAO_MCP_CONTEXT'];
       else process.env['SWAO_MCP_CONTEXT'] = prev;
@@ -169,3 +167,72 @@ describe('doctor probe label rename (#0154)', () => {
 // The `swao_import path traversal guard (#0142)` source-assertion tests moved
 // to the host's mcp/server.test.ts (#0573): they read the host MCP server
 // source, which this module cannot reach.
+
+// ---------------------------------------------------------------------------
+// buildMcpProbe -- WARN states (#2908)
+// ---------------------------------------------------------------------------
+
+describe('buildMcpProbe() -- binary_not_found WARN state (#2908)', () => {
+  it('returns binary_not_found when config points to a non-existent binary', async () => {
+    const { buildMcpProbe } = await import('./claude-desktop.js');
+
+    const tmpDir = join(tmpdir(), `swao-test-mcp-nf-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    const fakeCfg = join(tmpDir, 'claude_desktop_config.json');
+    writeFileSync(fakeCfg, JSON.stringify({
+      mcpServers: { swao: { command: join(tmpDir, 'swao-enterprise-win-x64.exe'), args: ['mcp'] } },
+    }), 'utf-8');
+
+    const result = buildMcpProbe({ configPathOverride: fakeCfg });
+    expect(result.status).toBe('binary_not_found');
+    expect(result.commandPath).toContain('swao-enterprise-win-x64.exe');
+
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+});
+
+describe('buildMcpProbe() -- binary_unreachable WARN state (#2908)', () => {
+  it('returns binary_unreachable when binary exists but version check fails', async () => {
+    const { buildMcpProbe } = await import('./claude-desktop.js');
+
+    const tmpDir = join(tmpdir(), `swao-test-mcp-ur-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    const fakeBin = join(tmpDir, 'swao-enterprise-win-x64.exe');
+    writeFileSync(fakeBin, 'not-a-real-binary', 'utf-8');
+    const fakeCfg = join(tmpDir, 'claude_desktop_config.json');
+    writeFileSync(fakeCfg, JSON.stringify({
+      mcpServers: { swao: { command: fakeBin, args: ['mcp'] } },
+    }), 'utf-8');
+
+    const result = buildMcpProbe({
+      configPathOverride: fakeCfg,
+      versionRunner: (_cmd: string) => false,
+    });
+    expect(result.status).toBe('binary_unreachable');
+    expect(result.commandPath).toBe(fakeBin);
+
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns ok when binary exists and version check succeeds', async () => {
+    const { buildMcpProbe } = await import('./claude-desktop.js');
+
+    const tmpDir = join(tmpdir(), `swao-test-mcp-ok-${Date.now()}`);
+    mkdirSync(tmpDir, { recursive: true });
+    const fakeBin = join(tmpDir, 'swao-enterprise-win-x64.exe');
+    writeFileSync(fakeBin, 'placeholder', 'utf-8');
+    const fakeCfg = join(tmpDir, 'claude_desktop_config.json');
+    writeFileSync(fakeCfg, JSON.stringify({
+      mcpServers: { swao: { command: fakeBin, args: ['mcp'] } },
+    }), 'utf-8');
+
+    const result = buildMcpProbe({
+      configPathOverride: fakeCfg,
+      versionRunner: (_cmd: string) => true,
+    });
+    expect(result.status).toBe('ok');
+    expect(result.commandPath).toBe(fakeBin);
+
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+});

@@ -213,6 +213,17 @@ export const SwaoYmlLlmAssessmentSchema = z.object({
     }
   });
 
+// Design 106 s6: per-workspace context configuration (#2968).
+// allocations: per-pass char limit overrides (integer 10,000-500,000).
+// categories: per-category relevance multipliers (float 0.0-1.0) applied on top
+//   of per-pass code defaults in context-file-weights.ts.
+export const SwaoYmlContextSchema = z.object({
+  allocations: z.record(z.string(), z.number().int().min(10_000).max(500_000)).optional(),
+  categories: z.record(z.string(), z.number().min(0).max(1)).optional(),
+});
+
+export type SwaoYmlContext = z.infer<typeof SwaoYmlContextSchema>;
+
 export const SwaoYmlSchema = z
   .object({
     source: z
@@ -236,6 +247,7 @@ export const SwaoYmlSchema = z
     publication: SwaoYmlPublicationSchema.optional(),
     iac: SwaoYmlIacSchema.optional(),
     llm_assessment: SwaoYmlLlmAssessmentSchema.optional(),
+    context: SwaoYmlContextSchema.optional(),
   })
   .passthrough();
 

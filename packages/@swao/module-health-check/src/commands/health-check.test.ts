@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -26,7 +26,7 @@ import type { LicensePayload } from '@swao/core';
 // binary-excluded); its test moved to the host's crawl/playwright-driver.test.ts
 // (#0573). The PlaywrightProbeResult type-shape assertions stay here because the
 // type is defined in this module.
-import { type LicenseProbeResult, type PlaywrightProbeResult, buildLicenseProbe, checkLlmProviderConfig, checkLzrSnapshots, checkLlmTemperature, checkLlmContextWindow, checkPlaceholderInputs, checkLzrCoveragePerApp, formatLlmGatewayLine } from './health-check.js';
+import { type LicenseProbeResult, type PlaywrightProbeResult, buildLicenseProbe, checkLlmProviderConfig, checkLzrSnapshots, checkLlmTemperature, checkLlmContextWindow, checkPlaceholderInputs, checkLzrCoveragePerApp, formatLlmGatewayLine, checkContextConfig, checkImageSidecars, seedIngestionSidecarExample } from './health-check.js';
 
 function isoInDays(days: number): string {
   const d = new Date();
@@ -481,5 +481,158 @@ describe('formatLlmGatewayLine -- #2366 ok-vs-message-prefix alignment', () => {
     expect(line).toContain('ok');
     expect(line).not.toContain('WARN');
     expect(line).not.toContain('FAIL');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #2968 -- checkContextConfig: .swao.yml context block validation
+// ---------------------------------------------------------------------------
+
+describe('checkContextConfig (#2968)', () => {
+  const TEMP_CTX = join(tmpdir(), `swao-ctx-config-test-${process.pid}`);
+
+  beforeEach(() => { mkdirSync(TEMP_CTX, { recursive: true }); });
+  afterEach(() => { rmSync(TEMP_CTX, { recursive: true, force: true }); });
+
+  function writeYml(content: string): void {
+    writeFileSync(join(TEMP_CTX, '.swao.yml'), content, 'utf-8');
+  }
+
+  it('returns empty array when no .swao.yml is present', () => {
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toEqual([]);
+  });
+
+  it('returns empty array when .swao.yml has no context block', () => {
+    writeYml('assessment:\n  type: application\n');
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toEqual([]);
+  });
+
+  it('returns empty array for a valid context block', () => {
+    writeYml([
+      'context:',
+      '  allocations:',
+      '    ctx: 80000',
+      '  categories:',
+      '    architecture: 1.0',
+      '    terraform: 0.7',
+    ].join('\n'));
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toEqual([]);
+  });
+
+  it('returns [ERROR] when context.allocations value is below 10000', () => {
+    writeYml('context:\n  allocations:\n    ctx: 5000\n');
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatch(/^\[ERROR\] context\.allocations\.ctx/);
+    expect(msgs[0]).toContain('5000');
+  });
+
+  it('returns [ERROR] when context.allocations value exceeds 500000', () => {
+    writeYml('context:\n  allocations:\n    ctx: 600000\n');
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatch(/^\[ERROR\] context\.allocations\.ctx/);
+    expect(msgs[0]).toContain('600000');
+  });
+
+  it('returns [ERROR] when context.categories value is > 1.0', () => {
+    writeYml('context:\n  categories:\n    architecture: 1.5\n');
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatch(/^\[ERROR\] context\.categories\.architecture/);
+    expect(msgs[0]).toContain('1.5');
+  });
+
+  it('returns [WARN] for unknown category name with valid value', () => {
+    writeYml('context:\n  categories:\n    infrastracture: 0.8\n');
+    const msgs = checkContextConfig(TEMP_CTX);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatch(/^\[WARN\] context\.categories\.infrastracture/);
+    expect(msgs[0]).toContain('typo');
+  });
+
+  it('returns empty array when workspacePath is null', () => {
+    const msgs = checkContextConfig(null);
+    expect(msgs).toEqual([]);
+  });
+});
+
+// #2956 -- image sidecar check + seeding
+describe('checkImageSidecars (#2956)', () => {
+  let tmpRoot: string;
+  beforeEach(() => { tmpRoot = mkdtempSync(join(tmpdir(), 'swao-img-sidecar-')); });
+  afterEach(() => { rmSync(tmpRoot, { recursive: true, force: true }); });
+
+  function makeImg(app: string, filename: string): void {
+    const dir = join(tmpRoot, 'apps', app, 'ingestion');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, filename), Buffer.alloc(0));
+  }
+
+  it('returns empty array when apps/ does not exist', () => {
+    expect(checkImageSidecars(tmpRoot)).toEqual([]);
+  });
+
+  it('returns empty array when no image files are present', () => {
+    makeImg('sovereign-health', 'architecture.md');
+    expect(checkImageSidecars(tmpRoot)).toEqual([]);
+  });
+
+  it('warns for PNG image without sidecar', () => {
+    makeImg('sovereign-health', '06-01-Compute-Networking.png');
+    const msgs = checkImageSidecars(tmpRoot);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toContain('[WARN]');
+    expect(msgs[0]).toContain('06-01-Compute-Networking.png');
+    expect(msgs[0]).toContain('06-01-Compute-Networking.png.description.txt');
+  });
+
+  it('returns empty array when image has a matching sidecar', () => {
+    makeImg('sovereign-health', 'diagram.jpg');
+    writeFileSync(join(tmpRoot, 'apps', 'sovereign-health', 'ingestion', 'diagram.jpg.description.txt'), 'A network diagram.');
+    expect(checkImageSidecars(tmpRoot)).toEqual([]);
+  });
+
+  it('warns for multiple extensions: jpg, jpeg, gif, bmp, webp', () => {
+    for (const ext of ['jpg', 'jpeg', 'gif', 'bmp', 'webp']) {
+      makeImg('app-a', `image.${ext}`);
+    }
+    const msgs = checkImageSidecars(tmpRoot);
+    expect(msgs).toHaveLength(5);
+  });
+
+  it('warns for each app separately', () => {
+    makeImg('app-a', 'net.png');
+    makeImg('app-b', 'arch.png');
+    const msgs = checkImageSidecars(tmpRoot);
+    expect(msgs).toHaveLength(2);
+    expect(msgs.some(m => m.includes('app-a'))).toBe(true);
+    expect(msgs.some(m => m.includes('app-b'))).toBe(true);
+  });
+});
+
+describe('seedIngestionSidecarExample (#2956)', () => {
+  let tmpRoot: string;
+  beforeEach(() => { tmpRoot = mkdtempSync(join(tmpdir(), 'swao-seed-sidecar-')); });
+  afterEach(() => { rmSync(tmpRoot, { recursive: true, force: true }); });
+
+  it('creates wsp/inputs/ingestion-sidecar.example.txt when it does not exist', () => {
+    seedIngestionSidecarExample(tmpRoot);
+    const destPath = join(tmpRoot, 'wsp', 'inputs', 'ingestion-sidecar.example.txt');
+    expect(existsSync(destPath)).toBe(true);
+    const content = readFileSync(destPath, 'utf-8');
+    expect(content).toContain('.description.txt');
+  });
+
+  it('does not overwrite an existing example file', () => {
+    const inputsDir = join(tmpRoot, 'wsp', 'inputs');
+    mkdirSync(inputsDir, { recursive: true });
+    const destPath = join(inputsDir, 'ingestion-sidecar.example.txt');
+    writeFileSync(destPath, 'existing content', 'utf-8');
+    seedIngestionSidecarExample(tmpRoot);
+    expect(readFileSync(destPath, 'utf-8')).toBe('existing content');
   });
 });

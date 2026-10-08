@@ -17,15 +17,17 @@
 //
 // xlsxToCsv: converts the first sheet of an XLSX file to CSV string.
 // docxToMarkdown: extracts Markdown text from a DOCX file via mammoth.
-// pdfToText: stub -- returns a placeholder for v1 scope.
+// pdfToText: extracts plain text from a PDF via pdf-parse (#2966).
 
-// v1.1
+// v1.2
+import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import ExcelJS from 'exceljs';
 import AdmZip from 'adm-zip';
 // #0683: static import so esbuild inlines mammoth into the SEA bundle.
 // Type shape declared in mammoth.d.ts (no official @types/mammoth).
 import mammoth from 'mammoth';
+import pdfParse from 'pdf-parse';
 
 /**
  * Convert the first worksheet of an XLSX file to a CSV string.
@@ -145,15 +147,34 @@ function decodeXmlEntities(s: string): string {
   });
 }
 
-/**
- * Extract text from a plain (text-based) PDF.
- * Sprint-047 stub -- returns a placeholder comment.
- * A real extraction library (pdf-parse, pdfjs-dist) would go here.
- */
+/** Extract plain text from a PDF file via pdf-parse (#2966). */
 export async function pdfToText(filePath: string): Promise<string> {
-  const name = basename(filePath);
-  console.warn(
-    `[swao normalize] PDF text extraction not yet implemented; manual review required for: ${name}`,
-  );
-  return `// PDF text extraction requires manual review for file: ${name}`;
+  try {
+    const buf = readFileSync(filePath);
+    const data = await pdfParse(buf);
+    return data.text ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Extract slide text from a PPTX file via adm-zip + DrawingML (#2967). */
+export function pptxToText(filePath: string): string {
+  try {
+    const zip = new AdmZip(filePath);
+    const slideEntries = zip.getEntries()
+      .filter(e => /^ppt\/slides\/slide\d+\.xml$/.test(e.entryName))
+      .sort((a, b) => a.entryName.localeCompare(b.entryName));
+
+    const lines: string[] = [];
+    for (const entry of slideEntries) {
+      const xml = entry.getData().toString('utf8');
+      const matches = [...xml.matchAll(/<a:t[^>]*>([^<]*)<\/a:t>/g)];
+      const slideText = matches.map(m => m[1].trim()).filter(Boolean).join(' ');
+      if (slideText) lines.push(slideText);
+    }
+    return lines.join('\n\n');
+  } catch {
+    return '';
+  }
 }

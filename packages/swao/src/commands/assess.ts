@@ -48,6 +48,7 @@ import { findWorkspace, setWorkspaceRoot } from '@swao/core';
 // orchestrator-supplied inputs beyond PassContext). The 12 uniform passes are
 // looked up via AssessOrchestrator (#0549).
 import { runDynamicPass, runLzrPass, findLzrInputFiles } from '../passes/index.js';
+import { computeContextBudget } from '../passes/context-budget.js';
 import { assessOrchestrator, appAssessmentType, runIngestPrePass, derivePlanForRun, loadAcceptedRun, loadPriorSignals } from '@swao/module-app-assessment';
 // #1434: the audit assessment surface (its module included) was removed;
 // `--type audit` stays in KNOWN_ASSESSMENT_TYPES and routes to the router's
@@ -636,6 +637,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
     .option('--lz-frameworks <ids>', 'Comma-separated community framework IDs to activate sovereignty gate for LZ assessment (e.g. BSI_C5,GDPR). Falls back to frameworks in .swao.yml.')
     .option('--portfolio', 'Assess all apps in the workspace (Enterprise feature)', false)
     .option('--malware-fail-on-detection', 'Exit 5 when a MAL-01 or MAL-03 detection is present in the malware pass', false)
+    .option('--fail-on <condition>', 'Exit 6 when any signal matches the condition (e.g. severity=critical, severity=high). Checks all completed passes.')
     .option('--model <modelId>', 'Override the LLM model for this run (takes precedence over providers.llm.primary.model in .swao.yml). Priority: --model flag > .swao.yml > SWAO_ANTHROPIC_MODEL / SWAO_OPENAI_MODEL env var. Example: --model claude-opus-4-8')
     .option('--llm <connector[:model]>', 'SWAO LLM-Gateway connector (Design 090) with optional model, e.g. --llm openrouter:mistralai/mistral-large. Connectors are discovered from bundled seeds + wsp/inputs/llm-gateway/.')
     .option('--skip-llm', 'Skip LLM-dependent passes (ctx, comp, blocks) -- run static and Playwright passes only. Shorthand for --passes without ctx,comp,blocks. Alias: --no-llm', false)
@@ -674,6 +676,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         lzFrameworks?: string;
         portfolio: boolean;
         malwareFailOnDetection: boolean;
+        failOn?: string;
         model?: string;
         llm?: string;
         skipLlm: boolean;
@@ -1438,7 +1441,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             const overall = (lzReport['overall'] as string) ?? 'UNKNOWN';
             try {
               logPortfolio('info', 'lz.assessment.provider.complete', `LZ fit complete: ${lzP}/${lzR} -- ${overall}`, {
-                context: { app: opts.app, provider: lzP, region: lzR, verdict: overall, elapsed_ms: fitMs },
+                context: { app: opts.app, provider: lzP, region: lzR, verdict: overall, duration_ms: fitMs, elapsed_ms: fitMs },
               });
             } catch { /* best-effort */ }
             // #2288: mirror provider.complete to app-events for cross-file correlation.
@@ -1627,6 +1630,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 providers_run: lzRawTargets.length,
                 ready: lzTargetResults.filter(r => r.overall === 'READY').length,
                 blocked: lzTargetResults.filter(r => r.overall !== 'READY').length,
+                duration_ms: lzElapsedMs,
                 elapsed_ms: lzElapsedMs,
               },
             });
@@ -1636,7 +1640,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           try {
             const lzElapsedMs = Date.now() - lzStart.getTime();
             logPortfolio('info', 'swao.run.complete', 'LZ Catalog Assessment complete', {
-              context: { type: 'lz-catalog', app: opts.app, overall_verdict: lzOverallVerdict, elapsed_ms: lzElapsedMs },
+              context: { type: 'lz-catalog', app: opts.app, overall_verdict: lzOverallVerdict, duration_ms: lzElapsedMs, elapsed_ms: lzElapsedMs },
             });
           } catch { /* best-effort */ }
 
@@ -2019,6 +2023,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const llmConnectivityFailedPasses: Array<{ pass: string; reason: 'connectivity_failure' | 'provider_error' }> = [];
         // Captured for --malware-fail-on-detection gate; null when malware pass was not requested.
         let malwarePassResult: PassResult | null = null;
+        // Accumulated for --fail-on gate; only populated when the flag is set.
+        const failOnSignals: Array<{ id: string; severity: string; pass: string }> = [];
 
         // Pass 00 (INGEST) pre-pass (#0551 / #0962 / #0963). Normalises any
         // files dropped in <app>/ingestion/ into the structured wsp/inputs/
@@ -2043,6 +2049,15 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             `(${countStr})  ->  wsp/inputs/ + ingestion-manifest.json`,
           );
         }
+
+        // #2959: pre-compute CTX prompt budget from active connector's context window.
+        const connectorForBudget = llmProviderConfig?.connector
+          ? getConnector(llmProviderConfig.connector, { workspaceRoot })
+          : undefined;
+        const ctxPromptBudget = computeContextBudget({
+          context_window_k: connectorForBudget?.file.connector.context_window_k,
+          model: connectorForBudget?.file.connector.models.default,
+        });
 
         for (const passKey of requestedPasses) {
           // #1282: DYN (Pass 10) is dispatched inline at its natural position in the
@@ -2287,7 +2302,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             // #2390: mirror pass.complete to the portfolio event log (same pattern as
             // logPortfolio at line ~2384 for the standard pass loop).
             logPortfolio('info', 'assessment.pass.complete', 'Pass 10 dynamic_analysis complete', {
-              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', status: 'ok', elapsed_ms: Date.now() - dynamicPassStart, app: opts.app, pass_id: `${runTs}-p10-dynamic` },
+              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', status: 'ok', duration_ms: Date.now() - dynamicPassStart, elapsed_ms: Date.now() - dynamicPassStart, app: opts.app, pass_id: `${runTs}-p10-dynamic` },
             });
             continue;
           }
@@ -2337,6 +2352,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             assessedAt,
             llm: recordedLlm ?? trackingLlm ?? baseLlm,
             passesDir, // #1055: lets synthesis read prior passes during an active run
+            ctxPromptBudget, // #2959: connector-aware budget
           };
 
           console.log(`[info] Running Pass ${passDef.num} -- ${passDef.name}...`);
@@ -2397,7 +2413,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                   });
                   // #1769: portfolio-level failure event.
                   logPortfolio('error', 'assessment.pass.complete', connMsg, {
-                    context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'failed', elapsed_ms: Date.now() - passStart, reason: 'llm-connectivity-failure', app: opts.app },
+                    context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'failed', duration_ms: Date.now() - passStart, elapsed_ms: Date.now() - passStart, reason: 'llm-connectivity-failure', app: opts.app },
                   });
                   llmConnectivityFailedPasses.push({ pass: passDef.name, reason: 'connectivity_failure' });
                   result = {
@@ -2625,12 +2641,12 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           });
           // #1769: unconditional portfolio-events for monitoring / audit trail.
           logPortfolio('info', 'assessment.pass.complete', `Pass ${passDef.num} ${passDef.name} complete`, {
-            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, elapsed_ms: passMs, app: opts.app, pass_id: passId },
+            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, duration_ms: passMs, elapsed_ms: passMs, app: opts.app, pass_id: passId },
           });
           // #1695: per-pass portfolio-events for LLM Assessment legs.
           if (process.env['SWAO_LLM_ASSESSMENT_LEG_ID']) {
             logPortfolio('info', 'llm-assessment.pass.complete', `leg pass complete: ${passKey}`, {
-              context: { leg_id: process.env['SWAO_LLM_ASSESSMENT_LEG_ID'], pass_id: `${passDef.num}-${passKey}`, elapsed_ms: passMs, signals: result.signals.length },
+              context: { leg_id: process.env['SWAO_LLM_ASSESSMENT_LEG_ID'], pass_id: `${passDef.num}-${passKey}`, duration_ms: passMs, elapsed_ms: passMs, signals: result.signals.length },
             });
           }
 
@@ -2647,6 +2663,16 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             iter,
           });
           totalSignals += result.signals.length;
+          if (opts.failOn) {
+            const eqIdx = opts.failOn.indexOf('=');
+            const field = eqIdx >= 0 ? opts.failOn.slice(0, eqIdx) : opts.failOn;
+            const val   = eqIdx >= 0 ? opts.failOn.slice(eqIdx + 1) : '';
+            if (field === 'severity' && val) {
+              for (const sig of result.signals) {
+                if (sig.severity === val) failOnSignals.push({ id: sig.id, severity: sig.severity ?? '', pass: passKey });
+              }
+            }
+          }
         }
 
         // #1282: DYN (Pass 10) is dispatched inline within the main pass loop
@@ -2719,6 +2745,10 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               process.exit(5);
             }
           }
+        }
+        if (opts.failOn && failOnSignals.length > 0) {
+          console.error(`[error] --fail-on ${opts.failOn}: ${failOnSignals.length} signal(s) matched (${failOnSignals.map((s) => s.id).join(', ')}).`);
+          process.exit(6);
         }
 
         // LZ Catalogue fit (all tiers, inline during App assessment).

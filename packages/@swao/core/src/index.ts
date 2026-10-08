@@ -76,6 +76,7 @@ export {
   SwaoYmlPublicationSchema,
   SwaoYmlLlmAssessmentSchema,
   SwaoYmlLlmAssessmentLegSchema,
+  SwaoYmlContextSchema,
 } from './swao-yml.js';
 export type {
   SwaoYml,
@@ -84,6 +85,7 @@ export type {
   SwaoYmlPublication,
   SwaoYmlLlmAssessment,
   SwaoYmlLlmAssessmentLeg,
+  SwaoYmlContext,
 } from './swao-yml.js';
 // PII redaction (#0591): relocated from @swao/swao so the app-assessment
 // module's `normalize` command can redact without importing from @swao/swao.

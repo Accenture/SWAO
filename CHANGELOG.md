@@ -11,6 +11,41 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.0] - 2026-10-08
+
+Minor release: support bundle v2.3, kilo.ai MCP integration (Phase 1), duration_ms
+observability, --fail-on exit-code gate, kilo-context export, LZ verdict fix,
+NODE_ENV production flag (sprint-147).
+
+### Added
+
+- Support bundle v2.3: NDJSON activity cache, connector metadata inventory,
+  challenge-agent registry, 7-day error-context retention; `swao support-bundle`
+  command (#3014, #3015, #3016, #3019)
+- kilo.ai MCP integration Phase 1: `.kilorc` descriptor, install guide, MCP
+  streamable-HTTP endpoint at `/mcp`; BA workspace scaffold for kilo.ai Phase 2
+  assessment (#2969, #3020, #3021)
+- `swao export --format kilo-context`: emit WSP as kilo.ai context YAML for
+  in-IDE sovereignty queries (#3021)
+- `--fail-on` flag: exit non-zero when assessment findings meet severity threshold;
+  enables CI/CD gate use of SWAO output (#3022)
+- `duration_ms` field on all assessment events alongside existing `elapsed_ms`;
+  aligns with Design 098 event schema (#2970)
+- Startup heartbeat in `open-llm-provider` for cold-start observability (#3013)
+
+### Fixed
+
+- LZ verdict sections missing from catalog output; `regionSummaries.length > 0`
+  guard corrected (#2993)
+- Binary entry point sets `NODE_ENV=production` to suppress dev-mode warnings
+  and enable production optimisations (#3018)
+
+### Changed
+
+- SWAO CI/CD runbook updated with MCP smoke-test checkpoint (#3012)
+
+---
+
 ## [1.2.4] - 2026-10-05
 
 Patch release: security patches (Dependabot, CodeQL), PREME PoC connector fixes

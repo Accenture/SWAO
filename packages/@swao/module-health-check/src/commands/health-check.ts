@@ -15,7 +15,8 @@
 
 import type { Command } from 'commander';
 import { resolve, join, extname, isAbsolute } from 'path';
-import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
+import { load } from 'js-yaml';
 import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot } from '@swao/core';
 import { createHash } from 'crypto';
 import { resolveProviderCatalogue, LzCatalogueSchemaError, resolveLzCataloguesDir, loadLzCatalogueIndex } from '@swao/module-landing-zone';
@@ -104,6 +105,119 @@ export function checkLzrSnapshots(workspacePath: string, maxAgeDays = LZR_STALEN
         }
       }
     } catch { /* skip unreadable */ }
+  }
+  return warnings;
+}
+
+// ---------------------------------------------------------------------------
+// #2968 -- context.allocations + context.categories validation
+// ---------------------------------------------------------------------------
+
+const KNOWN_CTX_CATEGORIES = new Set([
+  'architecture', 'compliance', 'intake', 'workshops', 'docs', 'terraform', 'operations', 'structured',
+]);
+
+/** Validate .swao.yml context block. Returns errors ([ERROR] prefix) and warnings ([WARN] prefix). */
+export function checkContextConfig(workspacePath: string | null): string[] {
+  const messages: string[] = [];
+  if (!workspacePath) return messages;
+  const ymlPath = join(workspacePath, '.swao.yml');
+  if (!existsSync(ymlPath)) return messages;
+  let parsed: { context?: { allocations?: Record<string, unknown>; categories?: Record<string, unknown> } } | null;
+  try {
+    parsed = load(readFileSync(ymlPath, 'utf-8')) as typeof parsed;
+  } catch {
+    return messages;
+  }
+  const ctx = parsed?.context;
+  if (!ctx) return messages;
+
+  for (const [key, val] of Object.entries(ctx.allocations ?? {})) {
+    if (typeof val !== 'number' || !Number.isInteger(val) || val < 10_000 || val > 500_000) {
+      messages.push(`[ERROR] context.allocations.${key}: must be an integer between 10,000 and 500,000 (got ${val})`);
+    }
+  }
+
+  for (const [key, val] of Object.entries(ctx.categories ?? {})) {
+    if (typeof val !== 'number' || val < 0 || val > 1) {
+      messages.push(`[ERROR] context.categories.${key}: must be a number between 0.0 and 1.0 (got ${val})`);
+    } else if (!KNOWN_CTX_CATEGORIES.has(key)) {
+      messages.push(`[WARN] context.categories.${key}: unknown category name (typo?). Known categories: ${[...KNOWN_CTX_CATEGORIES].join(', ')}`);
+    }
+  }
+
+  return messages;
+}
+
+// ---------------------------------------------------------------------------
+// #2956 -- image sidecar check and template seeding
+// ---------------------------------------------------------------------------
+
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']);
+
+const SIDECAR_TEMPLATE = [
+  '# Sidecar description for: <image-filename>',
+  '#',
+  '# Paste a written description of this image here. SWAO will include',
+  '# this text in the context ingestion pass (Pass 04) instead of the image file.',
+  '#',
+  '# Tips:',
+  '#   - Describe what the diagram shows: components, data flows, trust boundaries.',
+  '#   - Include names visible in the diagram (service names, endpoints, zones).',
+  '#   - A 3-5 sentence description is sufficient for LLM coverage.',
+  '#   - Save this file as <image-filename>.description.txt next to the image.',
+  '#',
+  '# Example: 06-01-Compute-Networking.png.description.txt',
+  '# "The diagram shows two compute clusters (app-tier and db-tier) connected via',
+  '#  an internal VPC with no public ingress. All external traffic enters through',
+  '#  an ALB in a DMZ subnet. The db-tier has no outbound internet route."',
+].join('\n') + '\n';
+
+/** Seed `wsp/inputs/ingestion-sidecar.example.txt` if it does not exist yet. */
+export function seedIngestionSidecarExample(workspacePath: string): void {
+  const inputsDir = join(workspacePath, 'wsp', 'inputs');
+  const destPath = join(inputsDir, 'ingestion-sidecar.example.txt');
+  if (existsSync(destPath)) return;
+  try {
+    mkdirSync(inputsDir, { recursive: true });
+    writeFileSync(destPath, SIDECAR_TEMPLATE, 'utf-8');
+  } catch { /* non-fatal: seeding failure must not break health-check */ }
+}
+
+/** Warn for every image file in apps/<app>/ingestion/** that lacks a .description.txt sidecar. */
+export function checkImageSidecars(workspacePath: string): string[] {
+  const warnings: string[] = [];
+  const appsDir = join(workspacePath, 'apps');
+  if (!existsSync(appsDir)) return warnings;
+  let appNames: string[];
+  try {
+    appNames = readdirSync(appsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch { return warnings; }
+  for (const appId of appNames) {
+    const ingestionDir = join(appsDir, appId, 'ingestion');
+    if (!existsSync(ingestionDir)) continue;
+    function walk(dir: string): void {
+      let entries: string[];
+      try { entries = readdirSync(dir); } catch { return; }
+      for (const entry of entries) {
+        const full = join(dir, entry);
+        try {
+          const st = statSync(full);
+          if (st.isDirectory()) { walk(full); continue; }
+          if (!IMAGE_EXTENSIONS.has(extname(entry).toLowerCase())) continue;
+          const sidecar = full + '.description.txt';
+          if (!existsSync(sidecar)) {
+            warnings.push(
+              `[WARN] ingestion/${appId}: ${entry} has no .description.txt sidecar` +
+              ` -- add ${entry}.description.txt to include this image in LLM pass coverage`,
+            );
+          }
+        } catch { /* skip unreadable */ }
+      }
+    }
+    walk(ingestionDir);
   }
   return warnings;
 }
@@ -579,6 +693,8 @@ function formatMcpProbeLine(probe: McpProbeResult): string {
       return `  ${label}  WARN  swao server entry missing from Claude Desktop config (run Setup Wizard to fix)`;
     case 'binary_not_found':
       return `  ${label}  WARN  swao binary path in config not found: ${probe.commandPath}`;
+    case 'binary_unreachable':
+      return `  ${label}  WARN  swao binary found but did not respond to --version: ${probe.commandPath}`;
     case 'not_installed':
       return `  ${label}  INFO  Claude Desktop not installed (config file absent)`;
   }
@@ -868,6 +984,10 @@ export interface HealthCheckPayload {
   lzr_coverage_info: string[];
   source_accessibility_warnings: string[];
   run_accumulation_warnings: string[];
+  /** #2968: .swao.yml context block validation messages. */
+  context_config_messages: string[];
+  /** #2956: image files in apps/<app>/ingestion/ without a .description.txt sidecar. */
+  image_sidecar_warnings: string[];
 }
 
 export interface BuildHealthCheckContext {
@@ -1084,6 +1204,8 @@ export async function buildHealthCheckPayload(workspacePath: string, host: Healt
     lzr_coverage_info: checkLzrCoveragePerApp(workspacePath),
     source_accessibility_warnings: checkSourceAccessibility(workspacePath),
     run_accumulation_warnings: checkRunAccumulation(workspacePath),
+    context_config_messages: checkContextConfig(workspacePath),
+    image_sidecar_warnings: checkImageSidecars(workspacePath),
     lz_catalogue_coverage: ctx.lzCatalogueCoverageProbe,
     credential_vault: ctx.credentialVaultProbe,
   };
@@ -1148,6 +1270,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
 
       const workspacePath = opts.workspace ? resolve(opts.workspace) : process.cwd();
       setWorkspaceRoot(workspacePath);
+      seedIngestionSidecarExample(workspacePath); // #2956: seed sidecar template into wsp/inputs/
       // #1685: include environment context in health-check.start for support bundle diagnostics.
       let startTier = 'unknown';
       try { startTier = LicenseGuard.load().state.tier ?? 'unknown'; } catch { /* best-effort */ }
@@ -1263,6 +1386,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           lzr_coverage_info: lzrCoverageInfo,
           source_accessibility_warnings: checkSourceAccessibility(workspacePath),
           run_accumulation_warnings: checkRunAccumulation(workspacePath),
+          context_config_messages: checkContextConfig(workspacePath),
+          image_sidecar_warnings: checkImageSidecars(workspacePath),
         };
         console.log(JSON.stringify(payload, null, 2));
         // #0550: llmProviderErrors is now WARN-level (LLM-optional); it no
@@ -1371,6 +1496,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         for (const msg of checkLzCatalogueProvenance(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkSourceAccessibility(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkRunAccumulation(workspacePath)) { console.log(`  ${msg}`); }
+        for (const msg of checkContextConfig(workspacePath)) { console.log(`  ${msg}`); }
+        for (const msg of checkImageSidecars(workspacePath)) { console.log(`  ${msg}`); }
 
         console.log(`\n  Machine fingerprint: ${fingerprint}  (needed when requesting a license key)`);
         if (licenseProbe.warning) {

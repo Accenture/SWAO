@@ -16,18 +16,32 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, copyFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
 import { claudeDesktopConfigPath } from '@swao/module-health-check';
 import { GuidanceBox } from '@swao/tui-kit';
 import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
 import { patchClaudeDesktopConfig } from '../../../mcp-config.js';
 
+// Derive the stable binary path: swao-enterprise-win-x64.exe in the same
+// folder as the running binary. If the running binary already has that name,
+// no copy is needed (#2908).
+function resolveStableBinaryPath(): string {
+  const stableName = 'swao-enterprise-win-x64.exe';
+  const stablePath = join(dirname(process.execPath), stableName);
+  if (process.execPath === stablePath) return stablePath;
+  try {
+    copyFileSync(process.execPath, stablePath);
+  } catch { /* copy failed -- fall back to current path */ }
+  return existsSync(stablePath) ? stablePath : process.execPath;
+}
+
 // -- Step 4: Claude Desktop MCP config ------------------------------------
 
 export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext: () => void }) {
   const configPath = claudeDesktopConfigPath();
-  const binaryPath = process.execPath;
+  const binaryPath = resolveStableBinaryPath();
   const installed = existsSync(configPath);
 
   // Check current state once at mount

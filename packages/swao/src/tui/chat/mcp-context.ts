@@ -22,6 +22,8 @@
 // All exported functions are pure async -- no React, no singletons --
 // so they are testable in isolation against a mock fetch.
 
+import { readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { LlmTool } from '@swao/module-llm-providers';
 
 /** Parse SSE response body: extract and join all "data: ..." lines. */
@@ -205,19 +207,37 @@ export async function listMcpTools(session: McpSession, timeoutMs = 10_000): Pro
 }
 
 /**
+ * Returns app IDs that have at least one directory under wsp/runs/ (#2951).
+ * Used to enumerate assessed apps for portfolio-mode context loading.
+ */
+export function listAssessedApps(workspace: string): string[] {
+  const runsDir = join(workspace, 'wsp', 'runs');
+  if (!existsSync(runsDir)) return [];
+  try {
+    return readdirSync(runsDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Collect portfolio context from existing MCP tools. Gracefully skips failures.
  *
- * Tool selection rationale (#2789 revised):
+ * Tool selection rationale (#2789 revised, #2951):
  * - swao_workspace_inventory: app list, ingested files, installed frameworks, run history
  * - swao_portfolio_summary:   cross-app 7R verdicts, coverage/portability scores
  *   (replaces swao_hub which is a write action that generates HTML, not a read tool)
- * - swao_signals:             complete signals + evidence per app
- * - swao_risks:               risk register per app
  * - swao_portfolio_lz:        LZ readiness rollup across all apps
  *   (replaces swao_lz_fit which requires provider+region -- unavailable at session init)
+ * - swao_signals:             complete signals + evidence, called per assessed app
+ * - swao_risks:               risk register, called per assessed app
+ * - swao_read_challenge:      challenge findings, called per assessed app
  *
- * All consumers of the MCP server (SWAO chat, Claude Desktop, etc.) benefit from
- * improvements to the existing tools rather than adding parallel WSP-dump tools.
+ * When appId is absent (portfolio mode), all assessed apps are enumerated from
+ * wsp/runs/ and signals/risks/challenge are fetched for each. When appId is
+ * provided, only that app is fetched (existing --app behaviour unchanged).
  */
 export async function fetchPortfolioContext(
   session: McpSession,
@@ -225,29 +245,52 @@ export async function fetchPortfolioContext(
   appId?: string,
 ): Promise<string> {
   const baseArgs: Record<string, unknown> = { workspace_path: workspace };
-  const appArgs: Record<string, unknown> = appId
-    ? { workspace_path: workspace, app_id: appId }
-    : baseArgs;
 
-  const sections: Array<{ label: string; toolName: string; args: Record<string, unknown> }> = [
+  // Portfolio-level tools: always fetched once, independent of app scope.
+  const globalSections: Array<{ label: string; toolName: string; args: Record<string, unknown> }> = [
     { label: 'Workspace Inventory',    toolName: 'swao_workspace_inventory', args: baseArgs },
     { label: 'Portfolio Summary',      toolName: 'swao_portfolio_summary',   args: baseArgs },
-    { label: 'Signals and Findings',   toolName: 'swao_signals',             args: appArgs  },
-    { label: 'Risk Register',          toolName: 'swao_risks',               args: appArgs  },
     { label: 'Landing Zone Readiness', toolName: 'swao_portfolio_lz',        args: baseArgs },
-    // #2792: workspace file tree + key config at session init so the LLM can answer file questions.
+    // #2792: workspace file tree + key config at session init
     { label: 'Workspace Files',        toolName: 'swao_list_directory',      args: {} },
     { label: 'Workspace Config',       toolName: 'swao_read_file',           args: { file_path: '.swao.yml' } },
-    // #2913 scoped: include challenge findings so the model can answer "what did stakeholders raise?"
-    { label: 'Challenge Findings',     toolName: 'swao_read_challenge',      args: appArgs  },
   ];
 
   const parts: string[] = [];
-  for (const { label, toolName, args } of sections) {
+  for (const { label, toolName, args } of globalSections) {
     try {
       const text = await callMcpTool(session, toolName, args, 15_000);
       if (text.trim()) parts.push(`## ${label}\n${text.trim()}`);
     } catch { /* graceful skip */ }
+  }
+
+  // Per-app tools: signals, risks, challenge findings.
+  // In portfolio mode (no --app), enumerate all apps that have been assessed.
+  const appsToFetch = appId ? [appId] : listAssessedApps(workspace);
+
+  if (appsToFetch.length === 0) {
+    parts.push(
+      '## Assessment Data\n' +
+      '[No completed assessments found in this workspace. ' +
+      'Run `swao assess` first to populate signals and risks.]',
+    );
+  } else {
+    for (const id of appsToFetch) {
+      const args: Record<string, unknown> = { workspace_path: workspace, app_id: id };
+      const suffix = appsToFetch.length > 1 ? ` (${id})` : '';
+      const appSections = [
+        { label: `Signals and Findings${suffix}`, toolName: 'swao_signals'      },
+        { label: `Risk Register${suffix}`,        toolName: 'swao_risks'        },
+        // #2913 scoped: challenge findings so the model can answer stakeholder questions
+        { label: `Challenge Findings${suffix}`,   toolName: 'swao_read_challenge' },
+      ];
+      for (const { label, toolName } of appSections) {
+        try {
+          const text = await callMcpTool(session, toolName, args, 15_000);
+          if (text.trim()) parts.push(`## ${label}\n${text.trim()}`);
+        } catch { /* graceful skip */ }
+      }
+    }
   }
 
   // #2828: cap context size so the system prompt stays within the model's input window.

@@ -16,28 +16,33 @@
 // `swao support-bundle` -- collect a PII-free diagnostic bundle of SWAO event
 // logs and environment info for support hand-off (#1515, #1599).
 //
-// Bundle v2.2 contents:
-//   manifest.json            -- SWAO version, OS, Node, license tier, pii_attestation
+// Bundle v2.3 contents (#2965):
+//   manifest.json            -- SWAO version, OS, Node, license tier, pii_attestation, prior_bundles
 //   execution-trace.ndjson   -- event codes + timestamps + PII-redacted message and context (#2421)
 //   environment.json         -- platform, arch, node_version, swao_env_vars, runtime_mode,
 //                               cwd_depth, node_env, binary_signature (no hostname, no paths)
 //   error-context.json       -- error-level events with PII-redacted context + message_redacted
 //   workspace-config.json    -- sanitised .swao.yml with secrets redacted
 //   workspace-structure.json -- wsp/apps directory tree (metadata only, no file content)
-//   run-manifests.json       -- latest run-manifest.json per app (stats only)
+//   run-manifests.json       -- latest run-manifest.json per app + false_positive_detail +
+//                               lz_challenge + ctx_diagnostics (#2965)
 //   licence-state.json       -- binary_tier + license_tier + effective_tier + counts + expiry (#2422)
 //   lz-catalogue-meta.json   -- catalogue version + provider list
 //   health-check.json        -- fresh health-check snapshot (--json mode)
-//   pass-inventory.json      -- (v2.1) passes completed in latest run per app
-//   llm-legs-summary.json    -- (v2.1) LLM leg/pass status + latency from latest LLM assessment
+//   pass-inventory.json      -- (v2.1) passes completed in latest run per app + pass_summary
+//                               for LLM-driven passes 03/04/11 (#2965)
+//   llm-legs-summary.json    -- (v2.1) LLM leg/pass status + latency; score_complete flag (#2965)
 //   frameworks-used.json     -- (v2.1) community framework IDs configured per app
 //   challenge-agents.json    -- (v2.1) challenge agent inventory + last-run presence per app
 //   chat-transcripts.ndjson  -- (v2.2) merged + redacted chat turns from wsp/chat/*.ndjson (#2771)
 //   agent-runs-index.json    -- (v2.2) index of wsp/agent-runs/ entries (#2771)
-//   chat-session-stats.json  -- (v2.2) session count, turn counts, model usage (#2771)
+//   chat-session-stats.json  -- (v2.2) session count, turn counts, model usage, per-session
+//                               breakdown with suspicious flag (#2965)
+//   connector-meta.json      -- (v2.3) connector yaml metadata without credentials (#2965)
 //
 // Explicitly excluded from every file: prompt content, document text, API keys,
-// engagement name, email addresses, absolute filesystem paths, username, hostname.
+// engagement name, email addresses, absolute filesystem paths, username, hostname,
+// base_url (partner-identifying endpoint).
 
 import type { Command } from 'commander';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -54,7 +59,7 @@ import { SWAO_VERSION } from '../branding.js';
 import { buildTar } from '../util/tar-write.js';
 import { emptyCounts, redactPiiValue } from '../util/redact-pii.js';
 
-export const BUNDLE_VERSION = '2.2';
+export const BUNDLE_VERSION = '2.3';
 
 function listLogFiles(workspaceRoot: string): string[] {
   const out: string[] = [];
@@ -288,12 +293,20 @@ function computeBinarySignature(): { sha256_prefix: string; size_bytes: number |
   }
 }
 
-function buildPassInventory(workspaceRoot: string): Record<string, unknown> {
+interface PassInventoryResult {
+  passes: Record<string, unknown>;
+  false_positive_detail: Record<string, Array<{ signal_id: string; reason: string }>>;
+  ctx_diagnostics: Record<string, Record<string, unknown>>;
+}
+
+function buildPassInventory(workspaceRoot: string): PassInventoryResult {
   const result: Record<string, unknown> = {};
+  const fpDetail: Record<string, Array<{ signal_id: string; reason: string }>> = {};
+  const ctxDiag: Record<string, Record<string, unknown>> = {};
   const appsDir = join(workspaceRoot, 'apps');
-  if (!existsSync(appsDir)) return result;
+  if (!existsSync(appsDir)) return { passes: result, false_positive_detail: fpDetail, ctx_diagnostics: ctxDiag };
   let appNames: string[];
-  try { appNames = readdirSync(appsDir); } catch { return result; }
+  try { appNames = readdirSync(appsDir); } catch { return { passes: result, false_positive_detail: fpDetail, ctx_diagnostics: ctxDiag }; }
 
   for (const app of appNames) {
     let isDir = false;
@@ -351,7 +364,11 @@ function buildPassInventory(workspaceRoot: string): Record<string, unknown> {
       signals_emitted?: number;
       exit_status?: string;
       size_bytes: number;
+      pass_summary?: Record<string, unknown>;
     }> = [];
+    const appFpDetail: Array<{ signal_id: string; reason: string }> = [];
+    const appCtxDangling: Array<{ signal_id: string; unresolved_ref: string }> = [];
+    const LLM_PASS_PREFIXES = ['03', '04', '11'];
     let passFiles: string[];
     try { passFiles = readdirSync(passesDir); } catch { continue; }
     for (const f of passFiles) {
@@ -359,21 +376,57 @@ function buildPassInventory(workspaceRoot: string): Record<string, unknown> {
       const passId = f.replace(/\.ya?ml$/, '');
       try {
         const st = statSync(join(passesDir, f));
-        // duration_ms: from run manifest (wall_clock_ms keyed by pass name)
         let duration_ms: number | undefined = wallClockByPass.get(passId);
         let signals_emitted: number | undefined;
         let exit_status: string | undefined;
+        let pass_summary: Record<string, unknown> | undefined;
         try {
           const passData = loadYaml(readFileSync(join(passesDir, f), 'utf-8')) as Record<string, unknown>;
-          // signals_emitted: count of the top-level signals array (PassFileSchema)
           const signals = passData['signals'];
           if (Array.isArray(signals)) signals_emitted = signals.length;
-          // exit_status: pass header status field (complete/stub/not_applicable)
           const passHeader = passData['pass'] as Record<string, unknown> | undefined;
           if (passHeader && typeof passHeader['status'] === 'string') exit_status = passHeader['status'];
-          // duration_ms fallback: if not in run manifest, check pass file directly
           if (duration_ms === undefined && typeof passData['duration_ms'] === 'number') {
             duration_ms = passData['duration_ms'];
+          }
+          if (Array.isArray(signals)) {
+            for (const sig of signals as Array<Record<string, unknown>>) {
+              // Gap 1: collect signals flagged as false positives
+              if (sig['false_positive_flag'] === true) {
+                const sigId = typeof sig['id'] === 'string' ? sig['id'] : 'unknown';
+                appFpDetail.push({ signal_id: sigId, reason: 'evidence-not-found' });
+              }
+              // Gap 7: collect context gaps from pass-04
+              if (passId.startsWith('04')) {
+                const gaps = sig['context_gaps'];
+                if (Array.isArray(gaps) && typeof sig['id'] === 'string') {
+                  for (const gap of gaps as Array<Record<string, unknown>>) {
+                    const ref = typeof gap['file'] === 'string' ? gap['file'] : null;
+                    if (ref) appCtxDangling.push({ signal_id: sig['id'] as string, unresolved_ref: ref });
+                  }
+                }
+              }
+            }
+            // Gap 3: pass_summary for LLM-driven passes 03, 04, 11
+            if (LLM_PASS_PREFIXES.some(p => passId.startsWith(p))) {
+              const byStatus: Record<string, number> = {};
+              const regimes = new Set<string>();
+              const topGaps: string[] = [];
+              for (const sig of signals as Array<Record<string, unknown>>) {
+                const status = typeof sig['status'] === 'string' ? sig['status'] : 'unknown';
+                byStatus[status] = (byStatus[status] ?? 0) + 1;
+                const fw = typeof sig['framework_id'] === 'string' ? sig['framework_id']
+                  : (typeof sig['regime'] === 'string' ? sig['regime'] : null);
+                if (fw) regimes.add(fw);
+                if ((status === 'gap' || status === 'non-compliant' || status === 'partial')
+                  && typeof sig['id'] === 'string' && topGaps.length < 5) {
+                  topGaps.push(sig['id'] as string);
+                }
+              }
+              pass_summary = { signals_by_status: byStatus };
+              if (regimes.size > 0) pass_summary['regimes_evaluated'] = [...regimes].sort();
+              if (topGaps.length > 0) pass_summary['top_gaps'] = topGaps;
+            }
           }
         } catch { /* enrichment failed -- include size_bytes only */ }
         const entry: {
@@ -382,19 +435,23 @@ function buildPassInventory(workspaceRoot: string): Record<string, unknown> {
           signals_emitted?: number;
           exit_status?: string;
           size_bytes: number;
+          pass_summary?: Record<string, unknown>;
         } = { pass_id: passId, size_bytes: st.size };
         if (duration_ms !== undefined) entry.duration_ms = duration_ms;
         if (signals_emitted !== undefined) entry.signals_emitted = signals_emitted;
         if (exit_status !== undefined) entry.exit_status = exit_status;
+        if (pass_summary !== undefined) entry.pass_summary = pass_summary;
         passes.push(entry);
       } catch { /* skip */ }
     }
+    if (appFpDetail.length > 0) fpDetail[app] = appFpDetail;
+    if (appCtxDangling.length > 0) ctxDiag[app] = { dangling_evidence_refs: appCtxDangling };
     result[app] = { run_ref: runRef, pass_count: passes.length, passes };
   }
-  return result;
+  return { passes: result, false_positive_detail: fpDetail, ctx_diagnostics: ctxDiag };
 }
 
-function buildLlmLegsSummary(workspaceRoot: string): Record<string, unknown> {
+export function buildLlmLegsSummary(workspaceRoot: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   // #2423: LLM assessment runs live in llm-assessments/swao/<timestamp>/ (not per-app
   // dirs). The former code used llm-assessments/<app>/ which never exists, and read
@@ -419,12 +476,41 @@ function buildLlmLegsSummary(workspaceRoot: string): Record<string, unknown> {
     const appId = typeof pubModel['app_id'] === 'string' ? pubModel['app_id'] : null;
     if (!appId) continue;
 
+    // #2963: extract per-leg partial-score and call-count data for diagnostic output.
+    const finalData = (typeof pubModel['final'] === 'object' && pubModel['final'] !== null)
+      ? pubModel['final'] as Record<string, unknown>
+      : {};
+    const partialByLeg = (typeof finalData['partial'] === 'object' && finalData['partial'] !== null)
+      ? finalData['partial'] as Record<string, unknown>
+      : {};
+    const runData = (typeof pubModel['run'] === 'object' && pubModel['run'] !== null)
+      ? pubModel['run'] as Record<string, unknown>
+      : {};
+    const runLegs = (typeof runData['legs'] === 'object' && runData['legs'] !== null)
+      ? runData['legs'] as Record<string, unknown>
+      : {};
+
     const legs: Array<Record<string, unknown>> = Array.isArray(pubModel['legs'])
-      ? (pubModel['legs'] as Array<Record<string, unknown>>).map(l => ({
-          connector: typeof l['connector'] === 'string' ? l['connector'] : 'unknown',
-          model:     typeof l['model']     === 'string' ? l['model']     : 'default',
-          status:    'complete',
-        }))
+      ? (pubModel['legs'] as Array<Record<string, unknown>>).map(l => {
+          const legId = typeof l['id'] === 'string' ? l['id'] : '';
+          const missingGroups = Array.isArray(partialByLeg[legId])
+            ? (partialByLeg[legId] as unknown[]).filter((g): g is string => typeof g === 'string')
+            : [];
+          const runLeg = (typeof runLegs[legId] === 'object' && runLegs[legId] !== null)
+            ? runLegs[legId] as Record<string, unknown>
+            : {};
+          const callCount = typeof runLeg['call_count'] === 'number' ? runLeg['call_count'] : null;
+          const status = callCount === 0 ? 'no-calls' : 'complete';
+          return {
+            connector:      typeof l['connector'] === 'string' ? l['connector'] : 'unknown',
+            model:          typeof l['model']     === 'string' ? l['model']     : 'default',
+            status,
+            call_count:     callCount,
+            partial:        missingGroups.length > 0,
+            score_complete: missingGroups.length === 0,
+            missing_fields: missingGroups,
+          };
+        })
       : [];
 
     // Later runTs is lexicographically greater; overwrite to keep the most recent run.
@@ -507,32 +593,74 @@ function buildChallengeAgentInventory(workspaceRoot: string): Record<string, unk
         : [];
 
       const challengeAppDir = join(appsDir, app, 'wsp', 'challenge-app');
-      const combinedExists = existsSync(join(challengeAppDir, 'combined.yaml'));
+      const combinedPath = join(challengeAppDir, 'combined.yaml');
+      const combinedExists = existsSync(combinedPath);
       let lastRunTs: string | null = null;
       if (existsSync(challengeAppDir)) {
         let entries: string[];
         try { entries = readdirSync(challengeAppDir).filter(d => /^\d{4}/.test(d)).sort(); } catch { entries = []; }
         lastRunTs = entries[entries.length - 1] ?? null;
       }
-      result[app] = { agents_configured: agentIds, agent_count: agentIds.length, combined_yaml_exists: combinedExists, last_run_ts: lastRunTs };
+      // #3016: extract per-agent summary from combined.yaml so agents_from_combined
+      // is non-empty even when challenge.agents is absent from .swao.yml.
+      interface CombinedReport { agent_id?: unknown; agent_role?: unknown }
+      interface CombinedYaml { assessed_at?: unknown; agent_count?: unknown; reports?: CombinedReport[] }
+      let agentsFromCombined: Array<{ agent_id: string; agent_role: string }> = [];
+      if (combinedExists) {
+        try {
+          const combined = loadYaml(readFileSync(combinedPath, 'utf-8')) as CombinedYaml | null;
+          if (combined?.reports && Array.isArray(combined.reports)) {
+            agentsFromCombined = combined.reports.map((r) => ({
+              agent_id:   typeof r.agent_id === 'string' ? r.agent_id : String(r.agent_id ?? ''),
+              agent_role: typeof r.agent_role === 'string' ? r.agent_role : String(r.agent_role ?? ''),
+            }));
+          }
+        } catch { /* skip malformed combined.yaml */ }
+      }
+      result[app] = {
+        agents_configured: agentIds,
+        agent_count: agentIds.length,
+        combined_yaml_exists: combinedExists,
+        last_run_ts: lastRunTs,
+        agents_from_combined: agentsFromCombined,
+      };
     } catch { /* skip */ }
   }
   return result;
 }
 
+function readLatestHealthCheckNdjson(workspaceRoot: string): Record<string, unknown> | null {
+  const logsDir = join(workspaceRoot, 'wsp', 'logs');
+  if (!existsSync(logsDir)) return null;
+  let files: string[];
+  try { files = readdirSync(logsDir).filter(f => f.startsWith('health-check-') && f.endsWith('.ndjson')).sort(); }
+  catch { return null; }
+  for (let i = files.length - 1; i >= 0; i--) {
+    let raw: string;
+    try { raw = readFileSync(join(logsDir, files[i]!), 'utf-8'); } catch { continue; }
+    const lines = raw.split('\n').filter(Boolean);
+    const last = lines[lines.length - 1];
+    if (!last) continue;
+    try { return JSON.parse(last) as Record<string, unknown>; } catch { continue; }
+  }
+  return null;
+}
+
 function buildHealthCheckSnapshot(workspaceRoot: string): unknown {
-  // #2567: inside a pkg binary process.argv[1] is the snapshot bundle path, not a valid
-  // CLI argument prefix. Use the same SELF_ARGS=[] pattern as LicenseScreen (#2589).
-  const _isPkg = Boolean((process as { pkg?: unknown }).pkg);
-  const selfArgs: string[] = _isPkg ? [] : [process.argv[1] as string];
+  // #3014: spawnSync re-invokes the pkg binary and always fails inside a binary.
+  // Read the most recent cached entry from wsp/logs/health-check-YYYY-MM.ndjson instead.
+  const cached = readLatestHealthCheckNdjson(workspaceRoot);
+  if (cached !== null) return { ...cached, source: 'cached-ndjson' };
+  const isPkg = Boolean((process as { pkg?: unknown }).pkg);
+  if (isPkg) return { error: 'health-check-unavailable-in-binary', hint: 'run swao health-check separately to populate the cache' };
+  // Dev (non-pkg): live subprocess fallback.
+  const selfArgs: string[] = [process.argv[1] as string];
   const result = spawnSync(
     process.execPath,
     [...selfArgs, 'health-check', '--json', '--workspace', workspaceRoot],
     { env: { ...process.env, PKG_EXECPATH: '' }, encoding: 'utf-8', timeout: 30_000 },
   );
   if (result.error) return { error: 'health-check-spawn-failed', exit_code: result.status ?? -1 };
-  // health-check --json emits JSON on both exit 0 and exit 1 (failure with probe details).
-  // Parse the output first; fall back to error envelope only when stdout is absent/unparseable.
   if (result.stdout) {
     try { return JSON.parse(result.stdout as string); } catch { /* fall through */ }
   }
@@ -646,6 +774,13 @@ interface ChatSessionStats {
   models_used: string[];
   oldest_session: string | null;
   newest_session: string | null;
+  sessions: Array<{
+    session_id: string;
+    turns: number;
+    tokens_in: number;
+    tokens_out: number;
+    suspicious: boolean;
+  }>;
 }
 
 function buildChatSessionStats(workspaceRoot: string): ChatSessionStats {
@@ -658,6 +793,7 @@ function buildChatSessionStats(workspaceRoot: string): ChatSessionStats {
     models_used: [],
     oldest_session: null,
     newest_session: null,
+    sessions: [],
   };
   if (!existsSync(chatDir)) return result;
   let files: string[];
@@ -669,20 +805,113 @@ function buildChatSessionStats(workspaceRoot: string): ChatSessionStats {
   }
   const modelSet = new Set<string>();
   for (const f of files) {
+    const sessionId = f.replace('.ndjson', '');
+    const sess = { session_id: sessionId, turns: 0, tokens_in: 0, tokens_out: 0, suspicious: false };
     try {
       const raw = readFileSync(join(chatDir, f), 'utf-8');
       for (const line of raw.split('\n')) {
         if (!line.trim()) continue;
         let parsed: ChatTurnRaw;
         try { parsed = JSON.parse(line) as ChatTurnRaw; } catch { continue; }
-        if (parsed.role === 'user' || parsed.role === 'assistant') result.total_turns++;
-        if (typeof parsed.tokens_in === 'number') result.total_tokens_in += parsed.tokens_in;
-        if (typeof parsed.tokens_out === 'number') result.total_tokens_out += parsed.tokens_out;
+        if (parsed.role === 'user' || parsed.role === 'assistant') {
+          result.total_turns++;
+          sess.turns++;
+        }
+        if (typeof parsed.tokens_in === 'number') { result.total_tokens_in += parsed.tokens_in; sess.tokens_in += parsed.tokens_in; }
+        if (typeof parsed.tokens_out === 'number') { result.total_tokens_out += parsed.tokens_out; sess.tokens_out += parsed.tokens_out; }
         if (typeof parsed.model === 'string' && parsed.model) modelSet.add(parsed.model);
       }
     } catch { /* ignore */ }
+    if (sess.turns > 0) sess.suspicious = sess.tokens_out / sess.turns < 200;
+    result.sessions.push(sess);
   }
   result.models_used = [...modelSet].sort();
+  return result;
+}
+
+// ---- v2.3 artefact builders (#2965) ----
+
+function parseCompactTs(ts: string): string | null {
+  const m = ts.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/);
+  if (!m) return null;
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+}
+
+function buildLzChallengeStats(workspaceRoot: string): Record<string, Record<string, unknown>> {
+  const result: Record<string, Record<string, unknown>> = {};
+  const appsDir = join(workspaceRoot, 'apps');
+  if (!existsSync(appsDir)) return result;
+  let appNames: string[];
+  try { appNames = readdirSync(appsDir); } catch { return result; }
+  for (const app of appNames) {
+    let isDir = false;
+    try { isDir = statSync(join(appsDir, app)).isDirectory(); } catch { continue; }
+    if (!isDir) continue;
+    const challengeDir = join(appsDir, app, 'wsp', 'challenge-app');
+    if (!existsSync(challengeDir)) continue;
+    let entries: string[];
+    try { entries = readdirSync(challengeDir).filter(d => /^\d{4}/.test(d)).sort(); } catch { continue; }
+    if (entries.length === 0) continue;
+    result[app] = {
+      total_iterations: entries.length,
+      first_run: parseCompactTs(entries[0]),
+      last_run: parseCompactTs(entries[entries.length - 1]),
+    };
+  }
+  return result;
+}
+
+function buildConnectorMeta(workspaceRoot: string): Array<Record<string, unknown>> {
+  // #3015: collect from workspace-level AND per-app gateway dirs (binary only seeds
+  // wsp/inputs/llm-gateway/ per-app after health-check runs; workspace-level may be empty).
+  const candidates: { path: string; source: string }[] = [];
+
+  const wsGatewayDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
+  if (existsSync(wsGatewayDir)) {
+    try {
+      for (const f of readdirSync(wsGatewayDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml')))
+        candidates.push({ path: join(wsGatewayDir, f), source: 'workspace' });
+    } catch { /* skip */ }
+  }
+  const appsDir = join(workspaceRoot, 'apps');
+  if (existsSync(appsDir)) {
+    try {
+      for (const app of readdirSync(appsDir)) {
+        const appGatewayDir = join(appsDir, app, 'wsp', 'inputs', 'llm-gateway');
+        if (!existsSync(appGatewayDir)) continue;
+        try {
+          for (const f of readdirSync(appGatewayDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml')))
+            candidates.push({ path: join(appGatewayDir, f), source: `app:${app}` });
+        } catch { /* skip */ }
+      }
+    } catch { /* skip */ }
+  }
+
+  const seen = new Set<string>();
+  const result: Array<Record<string, unknown>> = [];
+  for (const { path: fullPath, source } of candidates) {
+    try {
+      const raw = readFileSync(fullPath, 'utf-8');
+      const sha256 = createHash('sha256').update(raw).digest('hex');
+      const connector = loadYaml(raw) as Record<string, unknown> | null;
+      if (!connector || typeof connector !== 'object') continue;
+      const auth = (typeof connector['auth'] === 'object' && connector['auth'] !== null)
+        ? connector['auth'] as Record<string, unknown>
+        : {};
+      const credentialEnv = typeof auth['env_var'] === 'string' ? auth['env_var'] : null;
+      const connectorId = typeof connector['id'] === 'string' ? connector['id'] : fullPath.replace(/\.ya?ml$/, '');
+      if (seen.has(connectorId)) continue;
+      seen.add(connectorId);
+      result.push({
+        id:               connectorId,
+        protocol:         typeof connector['protocol'] === 'string' ? connector['protocol'] : null,
+        context_window_k: typeof connector['context_window_k'] === 'number' ? connector['context_window_k'] : null,
+        credential_env:   credentialEnv,
+        source,
+        sha256,
+      });
+    } catch { /* skip malformed yaml */ }
+  }
   return result;
 }
 
@@ -696,6 +925,22 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     console.error('[swao support-bundle] not in a workspace (no `apps/` or `.swao.yml` found walking up from cwd)');
     process.exitCode = 1;
     return;
+  }
+
+  // Compute diagDir early so we can scan prior bundles before writing
+  const diagDir = opts.out ? resolvePath(opts.out) : join(workspaceRoot, 'wsp', 'support-diag');
+
+  // Gap 4: list existing .tar.gz bundles in diagDir before creating the new one
+  const priorBundles: Array<{ filename: string; size_bytes: number; created_at: string }> = [];
+  if (existsSync(diagDir)) {
+    try {
+      for (const f of readdirSync(diagDir).filter(fn => fn.endsWith('.tar.gz')).sort()) {
+        try {
+          const st = statSync(join(diagDir, f));
+          priorBundles.push({ filename: f, size_bytes: st.size, created_at: st.birthtime.toISOString() });
+        } catch { /* skip */ }
+      }
+    } catch { /* ignore */ }
   }
 
   const files = listLogFiles(workspaceRoot);
@@ -723,8 +968,12 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const traceNdjson = traceEntries.map((e) => JSON.stringify(e)).join('\n') + (traceEntries.length > 0 ? '\n' : '');
 
   // error-context.json: error entries with PII-redacted context + message_redacted (#1599)
-  const errorEntries: SafeErrorEntry[] = allEntries
-    .filter((e) => e.level === 'error')
+  // #3019: retain only last 7 days to avoid 81-entry bundles from months of logs.
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const retentionCutoff = new Date(Date.now() - SEVEN_DAYS_MS);
+  const recentErrors = allEntries.filter((e) => e.level === 'error' && new Date(e.ts) >= retentionCutoff);
+  const olderErrorCount = allEntries.filter((e) => e.level === 'error' && new Date(e.ts) < retentionCutoff).length;
+  const errorEntries: SafeErrorEntry[] = recentErrors
     .map((e) => {
       const safeCtx = e.context
         ? (redactPiiValue(e.context, counts) as Record<string, unknown>)
@@ -774,7 +1023,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const healthCheckSnapshot = buildHealthCheckSnapshot(workspaceRoot);
 
   // v2.1 artefacts
-  const passInventory = buildPassInventory(workspaceRoot);
+  const { passes: passInventory, false_positive_detail: fpDetail, ctx_diagnostics: ctxDiag } = buildPassInventory(workspaceRoot);
   const llmLegsSummary = buildLlmLegsSummary(workspaceRoot);
   const frameworksUsed = buildFrameworksUsed(workspaceRoot);
   const challengeAgents = buildChallengeAgentInventory(workspaceRoot);
@@ -784,6 +1033,10 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const chatTranscriptsNdjson = buildChatTranscripts(workspaceRoot, counts);
   const agentRunsIndex = buildAgentRunsIndex(workspaceRoot);
   const chatSessionStats = buildChatSessionStats(workspaceRoot);
+
+  // v2.3 artefacts (#2965)
+  const lzChallengeStats = buildLzChallengeStats(workspaceRoot);
+  const connectorMeta = buildConnectorMeta(workspaceRoot);
 
   // Redacted SWAO env vars (exclude secret-shaped names defensively)
   const swaoEnvVars: Record<string, unknown> = {};
@@ -798,6 +1051,14 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   }
 
   const isBinary = Object.prototype.hasOwnProperty.call(process, 'pkg');
+
+  // Augment run manifests with v2.3 derived fields (Gap 1, Gap 5, Gap 7)
+  const runManifestsAugmented = runManifests.map(entry => ({
+    ...entry,
+    ...(fpDetail[entry.app_id] ? { false_positive_detail: fpDetail[entry.app_id] } : {}),
+    ...(lzChallengeStats[entry.app_id] ? { lz_challenge: lzChallengeStats[entry.app_id] } : {}),
+    ...(ctxDiag[entry.app_id] ? { ctx_diagnostics: ctxDiag[entry.app_id] } : {}),
+  }));
 
   const bundleContents = [
     'manifest.json',
@@ -816,8 +1077,9 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     'chat-transcripts.ndjson',
     'agent-runs-index.json',
     'chat-session-stats.json',
+    'connector-meta.json',
   ];
-  if (hasErrors) bundleContents.push('error-context.json');
+  if (hasErrors || olderErrorCount > 0) bundleContents.push('error-context.json');
 
   // v2.1: include ingestion-manifest.json if present in the workspace
   const ingestionManifestPath = join(workspaceRoot, 'wsp', 'inputs', 'ingestion-manifest.json');
@@ -833,6 +1095,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     error_count: errorEntries.length,
     log_files_included: files.length,
     bundle_contents: bundleContents,
+    prior_bundles: priorBundles,
     pii_attestation: 'no-user-data-collected',
   };
 
@@ -856,7 +1119,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     { name: 'environment.json',         content: Buffer.from(JSON.stringify(environment, null, 2) + '\n', 'utf-8') },
     { name: 'workspace-config.json',    content: Buffer.from(JSON.stringify({ workspace_config: workspaceConfig }, null, 2) + '\n', 'utf-8') },
     { name: 'workspace-structure.json', content: Buffer.from(JSON.stringify(workspaceStructure, null, 2) + '\n', 'utf-8') },
-    { name: 'run-manifests.json',       content: Buffer.from(JSON.stringify({ run_manifests: runManifests }, null, 2) + '\n', 'utf-8') },
+    { name: 'run-manifests.json',       content: Buffer.from(JSON.stringify({ run_manifests: runManifestsAugmented }, null, 2) + '\n', 'utf-8') },
     { name: 'licence-state.json',       content: Buffer.from(JSON.stringify(licenceState, null, 2) + '\n', 'utf-8') },
     { name: 'lz-catalogue-meta.json',   content: Buffer.from(JSON.stringify(lzCatalogueMeta, null, 2) + '\n', 'utf-8') },
     { name: 'health-check.json',        content: Buffer.from(JSON.stringify({ health_check: healthCheckSnapshot }, null, 2) + '\n', 'utf-8') },
@@ -867,9 +1130,10 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     { name: 'chat-transcripts.ndjson',  content: Buffer.from(chatTranscriptsNdjson, 'utf-8') },
     { name: 'agent-runs-index.json',    content: Buffer.from(JSON.stringify({ runs: agentRunsIndex }, null, 2) + '\n', 'utf-8') },
     { name: 'chat-session-stats.json',  content: Buffer.from(JSON.stringify(chatSessionStats, null, 2) + '\n', 'utf-8') },
+    { name: 'connector-meta.json',      content: Buffer.from(JSON.stringify({ connectors: connectorMeta }, null, 2) + '\n', 'utf-8') },
   ];
-  if (hasErrors) {
-    const errJson = JSON.stringify({ error_events: errorEntries }, null, 2) + '\n';
+  if (hasErrors || olderErrorCount > 0) {
+    const errJson = JSON.stringify({ error_events: errorEntries, older_error_count: olderErrorCount, retention_days: 7 }, null, 2) + '\n';
     tarEntries.push({ name: 'error-context.json', content: Buffer.from(errJson, 'utf-8') });
   }
   if (hasIngestionManifest) {
@@ -882,7 +1146,6 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     } catch { /* skip if unreadable or malformed */ }
   }
 
-  const diagDir = opts.out ? resolvePath(opts.out) : join(workspaceRoot, 'wsp', 'support-diag');
   try {
     mkdirSync(diagDir, { recursive: true });
   } catch (err) {
@@ -917,6 +1180,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
         event_count: traceEntries.length,
         error_count: errorEntries.length,
         artefact_count: 17,
+        prior_bundle_count: priorBundles.length,
       },
     });
   } catch { /* best-effort */ }
@@ -925,7 +1189,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
 export function registerSupportBundle(program: Command): void {
   program
     .command('support-bundle')
-    .description('Create a PII-free diagnostic bundle v2.1 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents) for SWAO support hand-off (#1515 #1599 #1776)')
+    .description('Create a PII-free diagnostic bundle v2.3 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents + connector meta + per-session chat stats) for SWAO support hand-off (#1515 #1599 #1776 #2965)')
     .option('--workspace <path>', 'workspace root (default: resolve from cwd)')
     .option('--out <dir>', 'output directory (default: <workspace>/wsp/support-diag/)')
     .action((opts: { workspace?: string; out?: string }) => cmdSupportBundle(opts));

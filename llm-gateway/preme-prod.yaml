@@ -1,0 +1,53 @@
+# SWAO LLM-Gateway connector -- PREME GenAI Hub PROD (Design 090)
+#
+# BA internal GenAI platform, PROD environment.
+# Environment: DST/IAB  |  STS: sts.arbeitsagentur.de
+#
+# Token acquisition (same ADFS as PREPROD -- 60-minute TTL):
+#   a) Automated CI/CD:       .\SWAO-GetPremeToken.ps1 -PremeEnv prod -ClientId <id> -StoreInVault
+#   b) Domain-joined machine: .\SWAO-GetPremeToken.ps1 -PremeEnv prod -GrantType WindowsAuth -StoreInVault
+#   c) Manual (browser SSO):  https://services.con.dst.baintern.de/wtfdemo/adfs/
+#                             -> click "ADG Access Token" -> swao credential set preme-prod-api-key
+#
+# Credential store key: preme-prod-api-key
+# Env var fallback:     SWAO_PREME_TOKEN
+#
+# NOTE: PROD and PREPROD use the same STS (sts.arbeitsagentur.de) and the same
+# ADFS token. If a token was already acquired for PREPROD in this session,
+# it can be stored under both credential keys.
+schema_version: "1.0"
+connector:
+  id: preme-prod
+  name: PREME GenAI Hub (PROD)
+  description: BA internal GenAI platform -- PROD environment (DST/IAB). ADFS-gated; token expires after 60 minutes.
+  protocol: openai-chat
+  base_url: https://preme-genai-hub.preme-plus.con.dst.baintern.de
+  # PREME uses vLLM path-prefix routing: {base_url}/{model}/v1/chat/completions
+  path_prefix: ""
+  auth:
+    credential_key: preme-prod-api-key
+    env_var: SWAO_PREME_TOKEN
+    header: Authorization
+    scheme: bearer
+  models:
+    default: /Mistral-Small-24B-Instruct-2506
+    catalogue:
+      - id: /Mistral-Small-24B-Instruct-2506
+      - id: /Mistral-Small-24B-Instruct-2501
+      - id: /qwen38-27b-8fp
+  context_window_k: 128
+  defaults:
+    temperature: 0
+    max_tokens: 32768
+  sovereignty:
+    data_residency: DE (on-premises BA infrastructure)
+    zero_retention: true
+    notes: >
+      Sovereign deployment on BA internal infrastructure. Data does not leave
+      the BA network. ADFS authentication required; token TTL 60 minutes.
+      PROD models may differ from PREPROD -- verify with BA PREME platform team
+      before changing the default model.
+  meta:
+    source: bundled
+    last_reviewed: "2026-10-07"
+    contributor: Accenture SWAO team

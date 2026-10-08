@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { homedir, hostname, userInfo } from 'os';
 import { logPortfolio } from './log.js';
@@ -171,7 +171,13 @@ export class CredentialStore {
     try {
       mkdirSync(this.configDir, { recursive: true });
       const vault = encryptCredentials(JSON.stringify(data), existingSalt);
-      writeFileSync(this.credFile, JSON.stringify(vault, null, 2), { encoding: 'utf-8', mode: 0o600 });
+      // #2961: atomic write -- write to a sibling temp file then rename to final
+      // path. On POSIX, rename(2) is atomic; on Windows, renameSync uses
+      // MoveFileExW which is not crash-atomic but avoids EBUSY from concurrent
+      // writeFileSync calls racing on the same file handle.
+      const tmpFile = this.credFile + '.tmp';
+      writeFileSync(tmpFile, JSON.stringify(vault, null, 2), { encoding: 'utf-8', mode: 0o600 });
+      renameSync(tmpFile, this.credFile);
     } catch (err) {
       logPortfolio('error', 'credential.store.error', 'Credential vault write failed', {
         context: { error: (err as NodeJS.ErrnoException).code ?? (err as Error).constructor.name },

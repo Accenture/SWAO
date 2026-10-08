@@ -109,6 +109,7 @@ export interface Signal {
   derivation_chain?: string[];
   false_positive_flag?: boolean;
   false_positive_note?: string;
+  context_gaps?: string[];
   provenance?: {
     source: string;
     run_id: string;
@@ -164,6 +165,10 @@ export interface PassContext {
    *  directly instead of going through wsp/latest.txt (which is written
    *  only AFTER the run completes). Injected by assess.ts. (#1055) */
   passesDir?: string;
+  /** Pre-computed CTX prompt budget in characters, derived from the active
+   *  connector's declared context window. Injected by assess.ts (#2959).
+   *  When absent, pass-04-ctx falls back to the env-var / hard-coded ceiling. */
+  ctxPromptBudget?: number;
 }
 
 export interface PassHeader {

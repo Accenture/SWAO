@@ -258,7 +258,7 @@ controls:
     severity_default: high
     assessment_type_scope: [app]
     evidence_basis:
-      - signal: STATE_LOG_ENABLED
+      - signal_prefix: STATE_LOG_ENABLED
     maps_to:
       - NIS2_INC_01
       - ISO_27001_A.8.15
@@ -278,7 +278,7 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: ops_runbooks
-      - signal: STATE_LOG_RETENTION_DAYS
+      - signal_prefix: STATE_LOG_RETENTION_DAYS
     maps_to:
       - ISO_27001_A.8.15
     references:

@@ -98,6 +98,7 @@ import { buildPortalSite } from '@swao/module-html-portal';
 // spawns inherit this value via env propagation, so they are also capped at
 // the correct tier for the binary that is actually running.
 process.env['SWAO_BINARY_TIER'] = 'enterprise';
+process.env['NODE_ENV'] = 'production';
 
 // Register premium TUI screens for Enterprise tier (sprint-128 #2132).
 premiumScreens.GenerateTfScreen = GenerateTfScreen;

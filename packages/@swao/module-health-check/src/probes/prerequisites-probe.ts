@@ -74,13 +74,18 @@ function detectTool(cmd: string, versionArg: string, linePattern?: RegExp): stri
 }
 
 export function buildPrerequisitesProbe(): PrerequisitesProbeResult {
+  // #2964 Part C: when running as a pkg binary, Node is embedded -- it will
+  // never appear on PATH. Skip the `node` PATH check to avoid a false-positive
+  // 'not on PATH' result that confuses operators into thinking something is wrong.
+  const isBinary = Object.prototype.hasOwnProperty.call(process, 'pkg');
   // `git --version` -> "git version 2.43.0"
   const gitVersion = detectTool('git', '--version');
   // `ssh -V` -> "OpenSSH_9.0p1, OpenSSL ..." (writes to stderr)
   const sshVersion = detectTool('ssh', '-V');
   // `node --version` -> "v22.11.0"; scan all lines because pkg binaries may
   // emit extra module-path lines alongside the version string (#2896).
-  const nodeVersion = detectTool('node', '--version', /^v\d+\.\d+\.\d+/);
+  // In binary mode, Node is embedded and will not appear on PATH.
+  const nodeVersion = isBinary ? process.version : detectTool('node', '--version', /^v\d+\.\d+\.\d+/);
   // Pass 14 malware scan tools -- optional; warn when any are absent so operators
   // know what to install before running `swao assess --passes malware`.
   // gitleaks uses a positional `version` subcommand rather than `--version`.

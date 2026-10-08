@@ -148,3 +148,57 @@ describe('pass-04-ctx placeholder detection (#0468)', () => {
     expect(result.signals[0].false_positive_note).toMatch(/escapes workspace/);
   });
 });
+
+// #2962: budget-excluded files cited by LLM should produce context_gaps, not false_positive_flag.
+// Strategy: small-a.md (tier 1) fills the default 55000-char budget; large-b.csv (tier 3) is
+// excluded because the budget is exhausted by the time the greedy fill reaches it.
+// No vi.resetModules() needed -- the file sizes guarantee exclusion at the default budget.
+describe('pass-04-ctx budget-excluded evidence -> context_gaps (#2962)', () => {
+  const BUDGET_DIR = join(tmpdir(), `pass-04-budget-${process.pid}`);
+
+  beforeEach(() => {
+    mkdirSync(join(BUDGET_DIR, 'wsp', 'inputs'), { recursive: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    try { rmSync(BUDGET_DIR, { recursive: true, force: true }); } catch { /* ignore */ }
+  });
+
+  it('signal citing a budget-excluded file gets context_gaps, not false_positive_flag (#2962)', async () => {
+    const inputsDir = join(BUDGET_DIR, 'wsp', 'inputs');
+    // File A (tier 1, large -- fills the 55000-char prompt budget).
+    // 2400 repetitions of a 22-char line = ~52800 chars; 18 chunks of 3000 chars.
+    // After the header (~2300 chars), ~52700 chars remain for content.
+    // The 18 chunks of small-a.md consume almost all of it.
+    const bigMdContent = 'Context content line.\n'.repeat(2400);
+    writeFileSync(join(inputsDir, 'small-a.md'), bigMdContent, 'utf-8');
+    // File B (tier 3) -- excluded because budget is exhausted by small-a.md.
+    // Its first chunk (~3010 chars) won't fit in the remaining budget (~70 chars).
+    writeFileSync(join(inputsDir, 'large-b.csv'), 'col1,col2\n' + 'x,y\n'.repeat(750), 'utf-8');
+
+    const llmResponse = JSON.stringify({
+      signals: [{
+        id: 'CTX-01',
+        source: 'llm_inference',
+        category: 'application',
+        severity: 'informational',
+        derivation: 'Evidence from budget-excluded file cited by model.',
+        evidence: ['large-b.csv'],
+        confidence: 'high',
+      }],
+      assessment: { context_inputs_found: 1, contradictions_detected: 0 },
+      context_overrides: [],
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const llm = new FixedLlmProvider(llmResponse);
+    const ctx = { workspacePath: BUDGET_DIR, iter: 1, assessedAt: '2026-01-01T00:00:00Z', llm };
+    const result = await runCtxPass(ctx);
+
+    const sig = result.signals[0];
+    expect(sig.context_gaps).toContain('large-b.csv');
+    expect(sig.false_positive_flag).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/budget-excluded.*cited but not verified/));
+  });
+});

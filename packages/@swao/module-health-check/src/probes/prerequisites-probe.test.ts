@@ -19,7 +19,7 @@
 // on PATH; we exercise the happy-path + the shape of the returned object,
 // and assert the classifier logic separately by re-importing the helper.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { buildPrerequisitesProbe } from './prerequisites-probe.js';
 
 // Each test calls spawnSync('git', ...) etc. which is fast alone but can be
@@ -91,5 +91,32 @@ describe('buildPrerequisitesProbe (#0326)', { timeout: 15000 }, () => {
         expect(tool.version).toBeNull();
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Binary mode -- node false-positive fix (#2964 Part C)
+// ---------------------------------------------------------------------------
+
+describe('buildPrerequisitesProbe -- binary mode', () => {
+  beforeEach(() => {
+    // Simulate running inside a pkg binary: process.pkg property exists.
+    (process as Record<string, unknown>)['pkg'] = {};
+  });
+  afterEach(() => {
+    delete (process as Record<string, unknown>)['pkg'];
+  });
+
+  it('marks node as available with process.version in binary mode', () => {
+    const probe = buildPrerequisitesProbe();
+    const nodeTool = probe.tools.find((t) => t.name === 'node');
+    expect(nodeTool).toBeDefined();
+    expect(nodeTool!.available).toBe(true);
+    expect(nodeTool!.version).toBe(process.version);
+  });
+
+  it('does not report node as missing in binary mode even when not on PATH', () => {
+    const probe = buildPrerequisitesProbe();
+    expect(probe.message).not.toMatch(/node.*not on PATH/i);
   });
 });

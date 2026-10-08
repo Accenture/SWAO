@@ -21,7 +21,12 @@ import { writeFileSync, mkdirSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { createRequire } from 'module';
-import { docxXmlToText, docxZipExtract, docxToMarkdown } from './transformer.js';
+import { docxXmlToText, docxZipExtract, docxToMarkdown, pdfToText, pptxToText } from './transformer.js';
+
+// ESM-safe mock for pdf-parse (#2966 -- must be declared at module level)
+vi.mock('pdf-parse', () => ({
+  default: vi.fn(),
+}));
 
 const require = createRequire(import.meta.url);
 const AdmZip = require('adm-zip') as typeof import('adm-zip');
@@ -186,5 +191,91 @@ describe('docxToMarkdown fallback (#2869)', () => {
       (args) => typeof args[0] === 'string' && args[0].includes('mammoth-fail'),
     );
     expect(warned).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pdfToText -- pdf-parse integration (#2966)
+// ---------------------------------------------------------------------------
+
+describe('pdfToText (#2966)', () => {
+  const TEMP_PDF_DIR = join(tmpdir(), 'swao-pdf-test');
+
+  function makePdfStub(name: string): string {
+    mkdirSync(TEMP_PDF_DIR, { recursive: true });
+    const p = join(TEMP_PDF_DIR, name);
+    writeFileSync(p, Buffer.from('%PDF-1.4 minimal stub'));
+    return p;
+  }
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    if (existsSync(TEMP_PDF_DIR)) rmSync(TEMP_PDF_DIR, { recursive: true, force: true });
+  });
+
+  it('returns extracted text for a valid PDF', async () => {
+    const pdfParseMod = await import('pdf-parse');
+    vi.mocked(pdfParseMod.default).mockResolvedValue({ text: 'Architecture overview: sovereign deployment.' } as never);
+    const result = await pdfToText(makePdfStub('arch.pdf'));
+    expect(result).toBe('Architecture overview: sovereign deployment.');
+  });
+
+  it('returns empty string when pdf-parse throws (encrypted or corrupt PDF)', async () => {
+    const pdfParseMod = await import('pdf-parse');
+    vi.mocked(pdfParseMod.default).mockRejectedValue(new Error('PDF encrypted'));
+    const result = await pdfToText(makePdfStub('encrypted.pdf'));
+    expect(result).toBe('');
+  });
+
+  it('returns empty string when pdf-parse returns null text (image-only PDF)', async () => {
+    const pdfParseMod = await import('pdf-parse');
+    vi.mocked(pdfParseMod.default).mockResolvedValue({ text: null } as never);
+    const result = await pdfToText(makePdfStub('image-only.pdf'));
+    expect(result).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pptxToText -- adm-zip DrawingML extraction (#2967)
+// ---------------------------------------------------------------------------
+
+describe('pptxToText (#2967)', () => {
+  const TEMP_PPTX_DIR = join(tmpdir(), 'swao-pptx-test');
+
+  function makePptx(slides: Record<string, string>): string {
+    mkdirSync(TEMP_PPTX_DIR, { recursive: true });
+    const path = join(TEMP_PPTX_DIR, `test-${Date.now()}.pptx`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const zip = new (AdmZip as any)();
+    for (const [name, xml] of Object.entries(slides)) {
+      zip.addFile(name, Buffer.from(xml, 'utf-8'));
+    }
+    zip.writeZip(path);
+    return path;
+  }
+
+  afterEach(() => {
+    if (existsSync(TEMP_PPTX_DIR)) rmSync(TEMP_PPTX_DIR, { recursive: true, force: true });
+  });
+
+  it('extracts text from DrawingML a:t elements across slides', () => {
+    const slide1 = '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:t>Architecture Overview</a:t><a:t>Sovereign Deployment</a:t></p:sld>';
+    const slide2 = '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:t>Compliance Requirements</a:t></p:sld>';
+    const pptxPath = makePptx({
+      'ppt/slides/slide1.xml': slide1,
+      'ppt/slides/slide2.xml': slide2,
+    });
+    const result = pptxToText(pptxPath);
+    expect(result).toContain('Architecture Overview');
+    expect(result).toContain('Sovereign Deployment');
+    expect(result).toContain('Compliance Requirements');
+  });
+
+  it('returns empty string for a corrupt or non-PPTX file', () => {
+    mkdirSync(TEMP_PPTX_DIR, { recursive: true });
+    const badPath = join(TEMP_PPTX_DIR, 'corrupt.pptx');
+    writeFileSync(badPath, 'not a zip');
+    const result = pptxToText(badPath);
+    expect(result).toBe('');
   });
 });

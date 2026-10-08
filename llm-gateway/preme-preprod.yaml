@@ -1,0 +1,50 @@
+# SWAO LLM-Gateway connector -- PREME GenAI Hub PREPROD (Design 090)
+#
+# BA internal GenAI platform, PREPROD environment.
+# Environment: DST/IAB  |  STS: sts.arbeitsagentur.de
+#
+# Token acquisition (60-minute TTL -- must be refreshed before each session):
+#   a) Automated CI/CD:       .\SWAO-GetPremeToken.ps1 -PremeEnv preprod -ClientId <id> -StoreInVault
+#   b) Domain-joined machine: .\SWAO-GetPremeToken.ps1 -PremeEnv preprod -GrantType WindowsAuth -StoreInVault
+#   c) Manual (browser SSO):  https://services.con.dst.baintern.de/wtfdemo/adfs/
+#                             -> click "ADG Access Token" -> swao credential set preme-preprod-api-key
+#
+# Credential store key: preme-preprod-api-key
+# Env var fallback:     SWAO_PREME_TOKEN
+schema_version: "1.0"
+connector:
+  id: preme-preprod
+  name: PREME GenAI Hub (PREPROD)
+  description: BA internal GenAI platform -- PREPROD environment (DST/IAB). ADFS-gated; token expires after 60 minutes.
+  protocol: openai-chat
+  base_url: https://preme-genai-hub-preprod.preme-plus.con.dst.baintern.de
+  # PREME uses vLLM path-prefix routing: {base_url}/{model}/v1/chat/completions
+  path_prefix: ""
+  auth:
+    credential_key: preme-preprod-api-key
+    env_var: SWAO_PREME_TOKEN
+    header: Authorization
+    scheme: bearer
+  models:
+    default: /Llama-3.3-70B-Instruct-FP8-Dynamic
+    catalogue:
+      - id: /Llama-3.3-70B-Instruct-FP8-Dynamic
+      - id: /Mistral-Small-24B-Instruct-2506
+      - id: /gemma-4
+      - id: /qwen38-27b-8fp
+      - id: /gemma-4-31b-it
+  context_window_k: 128
+  defaults:
+    temperature: 0
+    max_tokens: 32768
+  sovereignty:
+    data_residency: DE (on-premises BA infrastructure)
+    zero_retention: true
+    notes: >
+      Sovereign deployment on BA internal infrastructure. Data does not leave
+      the BA network. ADFS authentication required; token TTL 60 minutes.
+      Do NOT use /llama-guard-3-8b (safety classifier, not a completion model).
+  meta:
+    source: bundled
+    last_reviewed: "2026-10-07"
+    contributor: Accenture SWAO team

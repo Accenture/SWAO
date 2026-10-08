@@ -22,6 +22,7 @@ export {
   SwaoYmlVcsSchema,
   SwaoYmlAssessmentSchema,
   SwaoYmlPublicationSchema,
+  SwaoYmlContextSchema,
   SwaoYmlSchema,
 } from '@swao/core';
 export type {
@@ -29,4 +30,5 @@ export type {
   SwaoYmlCrawl,
   SwaoYmlAssessment,
   SwaoYmlPublication,
+  SwaoYmlContext,
 } from '@swao/core';

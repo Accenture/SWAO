@@ -1,0 +1,43 @@
+# kilo.ai SWAO assessment workspace
+# Design 107 Phase 2: Formal sovereignty assessment of the BA kilo.ai on-premise deployment.
+#
+# Run from the workspace root (swao/docs/integrations/kilo-ai/workspace/):
+#   swao assess --app kilo-ai --passes static,context,compliance,security
+#
+# Requires SWAO v1.3.0 or later (--fail-on flag).
+
+app:
+  id: kilo-ai
+  name: kilo.ai On-Premise (BA Deployment)
+  description: >
+    Self-hosted kilo.ai AI coding assistant deployed on-premise by the partner.
+    Assessment covers EU AI Act Art. 6 risk classification, BSI IT-Grundschutz
+    compliance, dependency supply chain, and PREME DEV Qwen API call path.
+
+source:
+  path: source/
+
+assessment:
+  lenses:
+    - EU_AI_ACT
+    - BSI_GRUNDSCHUTZ_2023
+
+  passes:
+    static: {}
+    context: {}
+    compliance: {}
+    security: {}
+
+  # Exclude the dynamic pass: kilo.ai has no HTTP endpoint in the on-premise deployment.
+  exclude_passes:
+    - dynamic
+    - llm
+
+  cloud_vision: false
+
+context:
+  allocations:
+    architecture: 0.4
+    dependencies: 0.3
+    compliance: 0.2
+    other: 0.1

@@ -66,22 +66,6 @@ const deSidebar = {
       ],
     },
     {
-      text: 'Community-Frameworks',
-      items: [
-        { text: 'ISO/IEC 27001:2022', link: '/de/frameworks/iso-27001' },
-        { text: 'SOC 2', link: '/de/frameworks/soc-2' },
-        { text: 'DORA', link: '/de/frameworks/dora' },
-        { text: 'NIS2', link: '/de/frameworks/nis2' },
-        { text: 'EU CRA', link: '/de/frameworks/eu-cra' },
-        { text: 'EUCS', link: '/de/frameworks/eucs' },
-        { text: 'KRITIS-DE', link: '/de/frameworks/kritis-de' },
-        { text: 'OpenSSF Scorecard', link: '/de/frameworks/openssf-scorecard' },
-        { text: 'EU AI Act', link: '/de/frameworks/eu-ai-act' },
-        { text: 'SecNumCloud v3.2', link: '/de/frameworks/secnumcloud' },
-        { text: 'EC Cloud Sovereignty Framework', link: '/de/frameworks/ec-csf' },
-      ],
-    },
-    {
       text: 'Beispiele + Screenshots',
       items: [
         {

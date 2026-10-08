@@ -31,6 +31,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Agent, ProxyAgent } from 'undici';
 import { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
+import type { LlmTool } from './types.js';
 import { LlmConnectivityError } from './anthropic.js';
 import { ConnectivityFailureError } from './errors.js';
 import { createLlmProvider } from './factory.js';
@@ -682,5 +683,207 @@ describe('buildFetchDispatcher -- NODE_TLS_REJECT_UNAUTHORIZED env var', () => {
   it('returns an Agent when rejectUnauthorized:false passed as opt and no proxy (regression)', () => {
     const d = buildFetchDispatcher({ rejectUnauthorized: false });
     expect(d).toBeInstanceOf(Agent);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildFetchDispatcher -- NO_PROXY bypass (#2944)
+// ---------------------------------------------------------------------------
+
+describe('buildFetchDispatcher -- NO_PROXY bypass', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('bypasses proxy when NO_PROXY contains exact hostname', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('NO_PROXY', 'preme.internal.example.com,other.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    expect(d).toBeUndefined();
+  });
+
+  it('bypasses proxy when NO_PROXY contains .suffix match', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('NO_PROXY', '.internal.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    expect(d).toBeUndefined();
+  });
+
+  it('bypasses proxy when NO_PROXY contains *.suffix match', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('NO_PROXY', '*.internal.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://api.internal.example.com' });
+    expect(d).toBeUndefined();
+  });
+
+  it('routes through proxy when NO_PROXY does not match target hostname', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('NO_PROXY', '.other.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://external-api.openai.com' });
+    expect(d).toBeInstanceOf(ProxyAgent);
+  });
+
+  it('respects lowercase no_proxy env var', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('no_proxy', 'preme.internal.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    expect(d).toBeUndefined();
+  });
+
+  it('bypasses proxy + applies TLS skip when both NO_PROXY and rejectUnauthorized:false', () => {
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
+    vi.stubEnv('NO_PROXY', 'preme.internal.example.com');
+    const d = buildFetchDispatcher({ rejectUnauthorized: false, targetUrl: 'https://preme.internal.example.com' });
+    expect(d).toBeInstanceOf(Agent);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OpenLlmProvider.completeWithTools -- OpenAI function-calling loop (#2952)
+// ---------------------------------------------------------------------------
+
+describe('OpenLlmProvider.completeWithTools (#2952)', () => {
+  afterEach(() => {
+    global.fetch = ORIGINAL_FETCH;
+    vi.restoreAllMocks();
+  });
+
+  const testTools: LlmTool[] = [{
+    name: 'swao_risks',
+    description: 'Get risk findings for a workspace',
+    input_schema: { type: 'object', properties: { workspace_path: { type: 'string' } }, required: ['workspace_path'] },
+  }];
+
+  function makeProvider(): OpenLlmProvider {
+    return new OpenLlmProvider('test-token', 'Llama-3.3-70B', 'https://preme.example.com', '');
+  }
+
+  function toolCallResponse(toolCalls: Array<{ id: string; name: string; args: string }>): Partial<Response> {
+    return {
+      ok: true, status: 200,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: null,
+            tool_calls: toolCalls.map(tc => ({ id: tc.id, function: { name: tc.name, arguments: tc.args } })),
+          },
+          finish_reason: 'tool_calls',
+        }],
+      }),
+    };
+  }
+
+  function textResponse(content: string): Partial<Response> {
+    return {
+      ok: true, status: 200,
+      json: async () => ({
+        choices: [{ message: { content, tool_calls: [] }, finish_reason: 'stop' }],
+      }),
+    };
+  }
+
+  it('single tool round-trip: calls onToolCall and returns final content', async () => {
+    mockFetchSequence([
+      toolCallResponse([{ id: 'tc1', name: 'swao_risks', args: '{"workspace_path":"/wsp"}' }]),
+      textResponse('Risk: R1'),
+    ]);
+
+    const onToolCall = vi.fn().mockResolvedValue('["risk-R1"]');
+    const result = await makeProvider().completeWithTools({
+      system: 'You are a risk analyst.',
+      messages: [{ role: 'user', content: 'What risks does /wsp have?' }],
+      tools: testTools,
+      onToolCall,
+    });
+
+    expect(onToolCall).toHaveBeenCalledOnce();
+    expect(onToolCall).toHaveBeenCalledWith('swao_risks', { workspace_path: '/wsp' });
+    expect(result).toBe('Risk: R1');
+  });
+
+  it('no tool calls: returns direct content without invoking onToolCall', async () => {
+    mockFetchOnce(textResponse('Direct answer with no tools needed.'));
+
+    const onToolCall = vi.fn();
+    const result = await makeProvider().completeWithTools({
+      system: 'You are a helpful assistant.',
+      messages: [{ role: 'user', content: 'What is 2+2?' }],
+      tools: testTools,
+      onToolCall,
+    });
+
+    expect(onToolCall).not.toHaveBeenCalled();
+    expect(result).toBe('Direct answer with no tools needed.');
+  });
+
+  it('max iterations guard: returns sentinel string after maxIterations tool-call rounds', async () => {
+    const infiniteToolCall = toolCallResponse([{ id: 'tc-loop', name: 'swao_risks', args: '{}' }]);
+    const mock = vi.fn().mockResolvedValue(infiniteToolCall as Response);
+    global.fetch = mock as unknown as typeof fetch;
+
+    const onToolCall = vi.fn().mockResolvedValue('some result');
+    const result = await makeProvider().completeWithTools({
+      system: 'Loop.',
+      messages: [{ role: 'user', content: 'Go.' }],
+      tools: testTools,
+      onToolCall,
+      maxIterations: 3,
+    });
+
+    expect(result).toBe('[tool-calling loop exceeded max iterations]');
+    expect(mock).toHaveBeenCalledTimes(3);
+    expect(onToolCall).toHaveBeenCalledTimes(3);
+  });
+
+  it('sends tools array with OpenAI function format (parameters not input_schema)', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(textResponse('ok') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await makeProvider().completeWithTools({
+      system: 'sys',
+      messages: [{ role: 'user', content: 'q' }],
+      tools: testTools,
+      onToolCall: vi.fn(),
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { tools: Array<{ type: string; function: { name: string; parameters: unknown } }> };
+    expect(body.tools).toHaveLength(1);
+    expect(body.tools[0].type).toBe('function');
+    expect(body.tools[0].function.name).toBe('swao_risks');
+    expect(body.tools[0].function).toHaveProperty('parameters');
+    expect(body.tools[0].function).not.toHaveProperty('input_schema');
+  });
+
+  it('tokenRefresh: retries once on HTTP 401 with fresh token then returns content', async () => {
+    const error401: Partial<Response> = { ok: false, status: 401, text: async () => 'unauthorized' };
+    mockFetchSequence([error401, textResponse('Refreshed answer')]);
+
+    let refreshCalled = false;
+    const providerWithRefresh = new OpenLlmProvider(
+      'old-token', 'Llama-3.3-70B', 'https://preme.example.com', '', undefined, undefined, undefined,
+      { tokenRefresh: () => { refreshCalled = true; return 'new-token'; } },
+    );
+
+    const result = await providerWithRefresh.completeWithTools({
+      system: 'sys',
+      messages: [{ role: 'user', content: 'q' }],
+      tools: testTools,
+      onToolCall: vi.fn(),
+    });
+
+    expect(refreshCalled).toBe(true);
+    expect(result).toBe('Refreshed answer');
+  });
+
+  it('throws on non-401 HTTP error', async () => {
+    mockFetchOnce({ ok: false, status: 503, text: async () => 'service unavailable' });
+
+    await expect(makeProvider().completeWithTools({
+      system: 'sys',
+      messages: [{ role: 'user', content: 'q' }],
+      tools: testTools,
+      onToolCall: vi.fn(),
+    })).rejects.toThrow(/completeWithTools: HTTP 503/);
   });
 });

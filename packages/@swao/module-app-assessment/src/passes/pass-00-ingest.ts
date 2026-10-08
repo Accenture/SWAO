@@ -27,7 +27,7 @@ import {
 import { join, relative, extname, basename, dirname } from 'path';
 import { createHash } from 'crypto';
 import { classifyFile } from '../normalize/classifier.js';
-import { docxToMarkdown } from '../normalize/transformer.js';
+import { docxToMarkdown, pptxToText } from '../normalize/transformer.js';
 import { ingestPulumiStacks } from '@swao/module-iac-scan';
 
 /**
@@ -118,6 +118,9 @@ export interface IngestManifest {
 const RESERVED_SUBFOLDERS = new Set([
   'source', 'catalogs', 'terraform', 'yara-rules',
   'checklists', 'evidence', 'interviews', 'cmdb',
+  // #2949: llm-gateway/ holds connector YAML config (not ingestion data);
+  // skip the "not managed by ingestion" warning for this reserved config dir.
+  'llm-gateway',
 ]);
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp', '.ico']);
@@ -271,20 +274,10 @@ async function extractBinary(
     }
 
     if (ext === '.pptx') {
-      const mod = (await import('adm-zip')) as { default: new (path: string) => { getEntries(): Array<{ entryName: string; getData(): Buffer }> } };
-      const zip = new mod.default(sourceAbs);
-      const slides = zip.getEntries()
-        .filter((e) => /^ppt\/slides\/slide\d+\.xml$/.test(e.entryName))
-        .sort((a, b) => a.entryName.localeCompare(b.entryName));
-      const paragraphs: string[] = [];
-      for (const slide of slides) {
-        const xml = slide.getData().toString('utf-8');
-        const text = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => m[1]).join(' ').trim();
-        if (text) paragraphs.push(text);
-      }
+      const text = pptxToText(sourceAbs);
       const ts = new Date().toISOString();
       const outPath = targetAbs + '.extracted.txt';
-      writeFileSync(outPath, `<!-- extracted from: ${fileName} at ${ts} -->\n\n${paragraphs.join('\n\n')}`, 'utf-8');
+      writeFileSync(outPath, `<!-- extracted from: ${fileName} at ${ts} -->\n\n${text}`, 'utf-8');
       console.log(`[info] INGEST: ${fileName} -> ${targetRel} + extracted.txt`);
       return (targetRel + '.extracted.txt').split('\\').join('/');
     }

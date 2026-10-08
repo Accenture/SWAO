@@ -14,19 +14,34 @@
 // ================================================================
 
 import { homedir } from 'os';
-import { join } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { spawnSync } from 'child_process';
 
 export function claudeDesktopConfigPath(): string {
   const home = homedir();
-  if (process.platform === 'win32')
-    return join(process.env['APPDATA'] ?? join(home, 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json');
+  if (process.platform === 'win32') {
+    const conventional = join(process.env['APPDATA'] ?? join(home, 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json');
+    // MSIX installs use a virtualized path under %LOCALAPPDATA%\Packages\Claude_*\
+    const localAppData = process.env['LOCALAPPDATA'];
+    if (localAppData) {
+      const pkgsDir = join(localAppData, 'Packages');
+      try {
+        const claudePkg = readdirSync(pkgsDir).find(d => /^Claude_/.test(d));
+        if (claudePkg) {
+          const msixCfg = join(pkgsDir, claudePkg, 'LocalCache', 'Roaming', 'Claude', 'claude_desktop_config.json');
+          if (existsSync(dirname(msixCfg))) return msixCfg;
+        }
+      } catch { /* fall through */ }
+    }
+    return conventional;
+  }
   if (process.platform === 'darwin')
     return join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
   return join(home, '.config', 'Claude', 'claude_desktop_config.json');
 }
 
-export type McpProbeStatus = 'ok' | 'missing_entry' | 'binary_not_found' | 'not_installed';
+export type McpProbeStatus = 'ok' | 'missing_entry' | 'binary_not_found' | 'binary_unreachable' | 'not_installed';
 
 export interface McpProbeResult {
   status: McpProbeStatus;
@@ -34,8 +49,27 @@ export interface McpProbeResult {
   commandPath: string | null;
 }
 
-export function buildMcpProbe(): McpProbeResult {
-  const configPath = claudeDesktopConfigPath();
+function runVersionCheck(binaryPath: string): boolean {
+  try {
+    const result = spawnSync(binaryPath, ['--version'], {
+      timeout: 5_000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return !result.error && result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+export interface BuildMcpProbeOpts {
+  configPathOverride?: string;
+  versionRunner?: (cmd: string) => boolean;
+}
+
+export function buildMcpProbe(opts?: BuildMcpProbeOpts): McpProbeResult {
+  const configPath = opts?.configPathOverride ?? claudeDesktopConfigPath();
+
+  const checkVersion = opts?.versionRunner ?? runVersionCheck;
 
   // #0154: when this probe runs inside a subprocess spawned by the SWAO
   // MCP server, MCP is demonstrably working (the request that triggered
@@ -78,6 +112,9 @@ export function buildMcpProbe(): McpProbeResult {
   const commandPath = swaoEntry.command;
   if (!existsSync(commandPath)) {
     return { status: 'binary_not_found', configPath, commandPath };
+  }
+  if (!checkVersion(commandPath)) {
+    return { status: 'binary_unreachable', configPath, commandPath };
   }
   return { status: 'ok', configPath, commandPath };
 }

@@ -32,11 +32,11 @@
 //   3. credential store key open-llm-api-key-{SWAO_LLM_ENV | prod}
 //   4. empty string (valid for unauthenticated deployments)
 
-import type { LlmProvider, LlmUsage, LlmTrace, EmbeddingProvider, EmbeddingResult } from './types.js';
+import type { LlmProvider, LlmUsage, LlmTrace, LlmTool, EmbeddingProvider, EmbeddingResult } from './types.js';
 import { CredentialStore, redactPreLlm, recordRedaction, logPortfolio, logApp } from '@swao/core';
 import { LlmConnectivityError } from './anthropic.js';
 import { ConnectivityFailureError } from './errors.js';
-import { Agent, ProxyAgent } from 'undici';
+import { fetch as undiciFetch, Agent, ProxyAgent } from 'undici';
 
 const DEFAULT_MAX_TOKENS = 32768;
 const MAX_RETRIES = 3;
@@ -52,6 +52,32 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * #2944: honour NO_PROXY / no_proxy env var so internal endpoints (e.g. PREME
+ * on 10.x.x.x) bypass the corporate proxy while external endpoints still route
+ * through it.  Matches exact hostname, .suffix, and *.suffix patterns; does NOT
+ * match IP-range CIDR notation (not needed for current deployments).
+ */
+function resolveEffectiveProxy(targetBaseUrl: string | undefined): string | undefined {
+  const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+  if (!proxyUrl || !targetBaseUrl) return proxyUrl;
+  const noProxy = process.env['NO_PROXY'] ?? process.env['no_proxy'] ?? '';
+  if (!noProxy) return proxyUrl;
+  let targetHost: string;
+  try {
+    targetHost = new URL(targetBaseUrl.replace(/\/$/, '')).hostname.toLowerCase();
+  } catch {
+    return proxyUrl;
+  }
+  const bypassed = noProxy.split(',').some(raw => {
+    const p = raw.trim().toLowerCase();
+    if (!p) return false;
+    const suffix = p.startsWith('*.') ? p.slice(1) : p.startsWith('.') ? p : `.${p}`;
+    return targetHost === p || targetHost.endsWith(suffix);
+  });
+  return bypassed ? undefined : proxyUrl;
+}
+
+/**
  * #2894 Part B: build a scoped undici Agent or ProxyAgent for TLS bypass.
  * Exported so packages that can't directly import undici (pnpm strict isolation)
  * can obtain a correctly typed dispatcher without a direct undici dep.
@@ -59,9 +85,10 @@ function sleep(ms: number): Promise<void> {
  * Returns `undefined` when no override is needed, or a scoped Agent/ProxyAgent
  * that disables cert validation for that one connector's fetch calls only --
  * does NOT affect any other outbound request in the process.
+ * #2944: pass targetUrl to respect NO_PROXY for internal endpoints.
  */
-export function buildFetchDispatcher(opts: { rejectUnauthorized?: boolean }): unknown {
-  const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+export function buildFetchDispatcher(opts: { rejectUnauthorized?: boolean; targetUrl?: string }): unknown {
+  const proxyUrl = resolveEffectiveProxy(opts.targetUrl);
   const tlsSkip = opts.rejectUnauthorized === false || process.env['NODE_TLS_REJECT_UNAUTHORIZED'] === '0';
   if (tlsSkip) {
     if (proxyUrl) {
@@ -161,12 +188,13 @@ export class OpenLlmProvider implements LlmProvider {
     gatewayOpts?: OpenLlmGatewayOpts,
   ) {
     this.gateway = gatewayOpts ?? {};
-    const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
     const tlsRejectUnauthorized = gatewayOpts?.rejectUnauthorized;
     // #2894 Part B: build a scoped undici dispatcher that combines proxy and TLS options.
     // Also honour NODE_TLS_REJECT_UNAUTHORIZED=0 for proxy tunnels: undici's ProxyAgent
     // uses its own TLS stack and does NOT read that env var unless we pass it explicitly.
     // This matters for corporate MITM proxies whose CA is not in Node.js's default bundle.
+    // #2944: resolve proxy honouring NO_PROXY so internal endpoints bypass the corporate proxy.
+    const proxyUrl = resolveEffectiveProxy(baseUrl ?? process.env['SWAO_OPEN_LLM_URL']);
     const tlsSkip = tlsRejectUnauthorized === false || process.env['NODE_TLS_REJECT_UNAUTHORIZED'] === '0';
     if (proxyUrl && tlsSkip) {
       this.dispatcher = new ProxyAgent({ uri: proxyUrl, connect: { rejectUnauthorized: false } });
@@ -211,6 +239,9 @@ export class OpenLlmProvider implements LlmProvider {
     this.temperature = temperature ?? 0;
     this.seed = seed;
     this.costPerToken = costPerToken;
+    logPortfolio('info', 'provider.open-llm.init', 'OpenLlmProvider initialised', {
+      context: { model: this.model, hasProxy: Boolean(proxyUrl), tlsSkip },
+    });
   }
 
   getLastUsage(): LlmUsage | undefined {
@@ -246,7 +277,10 @@ export class OpenLlmProvider implements LlmProvider {
     const authKey = this.gateway.authHeader ?? 'Authorization';
     const authVal = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
     const extraHeaders: Record<string, string> = this.gateway.headers ?? {};
-    const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+    // #2944: use undici's own fetch so dispatcher (Agent/ProxyAgent) is always
+    // recognised -- globalThis.fetch in Node.js 20+ uses a different undici
+    // instance than the npm package, causing dispatcher to be silently ignored.
+    const response = await undiciFetch(
       this.completionsUrl,
       {
         method: 'POST',
@@ -278,6 +312,102 @@ export class OpenLlmProvider implements LlmProvider {
     this.lastUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd };
     this._lastTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
     return rawText;
+  }
+
+  // #2952: OpenAI-compatible tool-calling loop (Design 082 SS6.2).
+  // Converts SWAO/Anthropic input_schema to OpenAI function.parameters format,
+  // loops up to maxIterations executing tool calls via onToolCall, returns
+  // final text response. Uses undiciFetch + dispatcher so proxy/TLS applies.
+  async completeWithTools(params: {
+    system: string;
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+    tools: LlmTool[];
+    onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
+    maxIterations?: number;
+  }): Promise<string> {
+    const { system, messages, tools, onToolCall, maxIterations = 10 } = params;
+
+    const openAiTools = tools.map(t => ({
+      type: 'function' as const,
+      function: { name: t.name, description: t.description, parameters: t.input_schema },
+    }));
+
+    const chatMessages: Array<Record<string, unknown>> = [
+      { role: 'system', content: system },
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+    ];
+
+    const authHeaderName = this.gateway.authHeader ?? 'Authorization';
+    let tokenRefreshed = false;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
+      const body = JSON.stringify({
+        model: this.model,
+        messages: chatMessages,
+        tools: openAiTools,
+        tool_choice: 'auto',
+        max_completion_tokens: this.gateway.maxTokens ?? DEFAULT_MAX_TOKENS,
+      });
+
+      const resp = await undiciFetch(this.completionsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.gateway.headers ?? {}),
+          ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
+        },
+        body,
+        ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
+      });
+
+      if (!resp.ok) {
+        if (resp.status === 401 && this.gateway.tokenRefresh && !tokenRefreshed) {
+          const fresh = this.gateway.tokenRefresh();
+          if (fresh) {
+            this.apiKey = fresh;
+            tokenRefreshed = true;
+            i--;
+            continue;
+          }
+        }
+        const text = await resp.text();
+        throw new Error(`completeWithTools: HTTP ${resp.status} ${text.slice(0, 200)}`);
+      }
+
+      const json = (await resp.json()) as {
+        choices: Array<{
+          message: {
+            content: string | null;
+            tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+          };
+        }>;
+      };
+
+      const choice = json.choices[0];
+      if (!choice) return '';
+      const { message } = choice;
+
+      const assistantEntry: Record<string, unknown> = { role: 'assistant', content: message.content ?? '' };
+      if (message.tool_calls && message.tool_calls.length > 0) assistantEntry['tool_calls'] = message.tool_calls;
+      chatMessages.push(assistantEntry);
+
+      if (!message.tool_calls || message.tool_calls.length === 0) {
+        return message.content ?? '';
+      }
+
+      const toolResults = await Promise.all(
+        message.tool_calls.map(async tc => {
+          let args: Record<string, unknown> = {};
+          try { args = JSON.parse(tc.function.arguments) as Record<string, unknown>; } catch { /* noop */ }
+          const result = await onToolCall(tc.function.name, args);
+          return { tool_call_id: tc.id, role: 'tool' as const, content: result };
+        }),
+      );
+      chatMessages.push(...toolResults);
+    }
+
+    return '[tool-calling loop exceeded max iterations]';
   }
 
   async complete(prompt: string): Promise<string> {
@@ -350,7 +480,8 @@ export class OpenLlmProvider implements LlmProvider {
         // connector parse time). Defaults reproduce pre-gateway behaviour.
         const authHeaderName = this.gateway.authHeader ?? 'Authorization';
         const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
-        const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+        // #2944: undici fetch so dispatcher is always applied (see vision path above).
+        const response = await undiciFetch(
           this.completionsUrl,
           {
             method: 'POST',
@@ -552,11 +683,27 @@ export class OpenLlmProvider implements LlmProvider {
         if (err instanceof ConnectivityFailureError) throw err;
         if (isRetryable(err) && attempt < MAX_RETRIES) {
           lastError = err as Error;
+          // #2944 debug: surface full error cause to diagnose proxy / TLS / network failures
+          if (process.env['SWAO_DEBUG_GATEWAY']) {
+            const e = err as Error & { cause?: Error & { code?: string } };
+            const causeDetail = e.cause ? ` cause.code=${e.cause.code ?? '?'} cause.msg=${e.cause.message}` : '';
+            console.error(`[debug] open-llm-provider attempt ${attempt + 1}: ${e.message}${causeDetail} | url=${this.completionsUrl} | dispatcher=${this.dispatcher?.constructor?.name ?? 'none'}`);
+          }
           continue;
         }
         if (isRetryable(err)) {
+          // #2944: preserve the original cause so gateway-probe can extract the real error code
+          const e = err as Error & { cause?: Error & { code?: string } };
+          if (process.env['SWAO_DEBUG_GATEWAY']) {
+            const causeDetail = e.cause ? ` cause.code=${e.cause.code ?? '?'} cause.msg=${e.cause.message}` : '';
+            console.error(`[debug] open-llm-provider final: ${e.message}${causeDetail}`);
+          }
+          // #2944: embed cause code in message so gateway-probe classifyPingFailure
+          // can match TLS / protocol error codes (EPROTO, ERR_TLS_*, etc.)
+          const causeCode = e.cause?.code;
+          const causeMsg = causeCode ? `: ${causeCode} (${e.cause!.message})` : '';
           throw new LlmConnectivityError(
-            `open-llm-provider: network error after ${MAX_RETRIES + 1} attempts: ${(err as Error).message}`,
+            `open-llm-provider: network error after ${MAX_RETRIES + 1} attempts: ${e.message}${causeMsg}`,
           );
         }
         throw err;
@@ -591,9 +738,10 @@ export class OpenLlmEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(text: string): Promise<EmbeddingResult> {
-    const proxyUrl = process.env['HTTPS_PROXY'] ?? process.env['HTTP_PROXY'];
+    // #2944: honour NO_PROXY and use undici fetch so dispatcher is recognised.
+    const proxyUrl = resolveEffectiveProxy(this.embedUrl);
     const proxyAgent = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
-    const response = await (fetch as (url: string, init?: RequestInit & { dispatcher?: unknown }) => Promise<Response>)(
+    const response = await undiciFetch(
       this.embedUrl,
       {
         method: 'POST',

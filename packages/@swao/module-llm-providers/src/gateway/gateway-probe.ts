@@ -18,7 +18,7 @@
 // Message uses the bracketed-state prefix convention ([PASS]/[WARNING]) that
 // the health-check formatter maps onto aligned status tokens.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load as loadYaml } from 'js-yaml';
 import type { ProbeContribution } from '@swao/core';
@@ -26,6 +26,7 @@ import { CredentialStore } from '@swao/core';
 import { getConnector, listConnectors } from './connector-loader.js';
 import { createProviderFromConnector } from './resolve.js';
 import { resolveModelAlias } from './alias-resolver.js';
+import { scaffoldWorkspaceGateway } from './scaffold.js';
 
 export interface GatewayProbeContribution {
   // #2897: null = credential not loaded (skip live ping; run session setup first).
@@ -232,9 +233,12 @@ async function pingActiveConnector(
       ),
     ]);
     const ms = Date.now() - started;
+    const windowNote = loaded.file.connector.context_window_k
+      ? `, ctx_window ${loaded.file.connector.context_window_k}K`
+      : '';
     return {
       ok: true,
-      message: `[PASS] live ping OK -- connector '${active.connector}', model '${model}', ${ms} ms round trip`,
+      message: `[PASS] live ping OK -- connector '${active.connector}', model '${model}'${windowNote}, ${ms} ms round trip`,
     };
   } catch (err) {
     // #2894 Part A: Node.js fetch() wraps TLS errors as TypeError("fetch failed") with
@@ -245,15 +249,27 @@ async function pingActiveConnector(
       const causeCode = (err.cause as { code?: string }).code;
       if (causeCode) raw = `${raw}: ${causeCode} (${err.cause.message})`;
     }
+    // #2944 debug: include raw error string when SWAO_DEBUG_GATEWAY=1 to surface
+    // the actual network error code (EPROTO, ECONNREFUSED, ERR_TLS_*, etc.)
+    const classified = classifyPingFailure(raw, { credentialKey, model: model || active.model || '(connector default)' });
+    const debugSuffix = process.env['SWAO_DEBUG_GATEWAY'] ? ` [debug raw: ${raw.slice(0, 400)}]` : '';
     return {
       ok: false,
-      message: `[WARNING] connector '${active.connector}' live ping FAILED: ` +
-        classifyPingFailure(raw, { credentialKey, model: model || active.model || '(connector default)' }),
+      message: `[WARNING] connector '${active.connector}' live ping FAILED: ${classified}${debugSuffix}`,
     };
   }
 }
 
 export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promise<GatewayProbeContribution> {
+  // #2953: on pre-Design-090 workspaces, wsp/inputs/llm-gateway/ is not seeded
+  // automatically. Scaffold the directory (README + template) on health-check so
+  // subsequent `swao assess` commands can discover workspace connector files.
+  if (workspaceRoot) {
+    const gatewayDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
+    if (!existsSync(gatewayDir)) {
+      scaffoldWorkspaceGateway(workspaceRoot);
+    }
+  }
   const { connectors, warnings } = listConnectors({ workspaceRoot: workspaceRoot ?? undefined });
   const bundled = connectors.filter(c => c.origin === 'bundled').length;
   const workspace = connectors.length - bundled;

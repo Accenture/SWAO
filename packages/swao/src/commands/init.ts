@@ -28,6 +28,8 @@ import { communityFrameworksDir } from '@swao/community-frameworks';
 import { scaffoldWorkspaceGateway } from '@swao/module-llm-providers';
 import { resolveLzCataloguesDir } from '@swao/module-landing-zone';
 import { LicenseGuard } from '../license/license-guard.js';
+import { claudeDesktopConfigPath } from '@swao/module-health-check';
+import { patchClaudeDesktopConfig } from '../tui/mcp-config.js';
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -932,7 +934,38 @@ export function registerInit(program: Command): void {
     .option('--reconfigure', 'Refresh bundled community-framework mirror under wsp/inputs/catalogs/community/ without overwriting .swao.yml')
     .option('--force', 'Re-scaffold the app directory even when .swao.yml already exists')
     .option('--powerbi', 'Scaffold Power BI templates into the workspace (Enterprise tier)')
-    .action((directory: string = '.', options: { name?: string; reconfigure?: boolean; force?: boolean; powerbi?: boolean }) => {
+    .option('--mcp', 'Configure MCP server in Claude Desktop only (skip workspace scaffold) -- re-run after each upgrade (#2908)')
+    .action((directory: string = '.', options: { name?: string; reconfigure?: boolean; force?: boolean; powerbi?: boolean; mcp?: boolean }) => {
+      // #2908: --mcp runs only the MCP setup step and exits. The stable binary
+      // name is swao-enterprise-win-x64.exe in the same folder as the running binary.
+      if (options.mcp) {
+        const stableName = 'swao-enterprise-win-x64.exe';
+        const stablePath = join(dirname(process.execPath), stableName);
+        if (process.execPath !== stablePath) {
+          try {
+            copyFileSync(process.execPath, stablePath);
+            console.log(`[ok]  Binary copied to stable path: ${stablePath}`);
+          } catch (e) {
+            console.error(`[warn] Could not copy binary to ${stablePath}: ${(e as Error).message}`);
+            console.error(`       Proceeding with current binary path: ${process.execPath}`);
+          }
+        }
+        const configPath = claudeDesktopConfigPath();
+        const effectiveBinary = existsSync(stablePath) ? stablePath : process.execPath;
+        const r = patchClaudeDesktopConfig(configPath, effectiveBinary);
+        if (r === 'patched') {
+          console.log(`[ok]  MCP server registered at: ${effectiveBinary}`);
+          console.log(`      Config: ${configPath}`);
+          console.log(`[!]   Restart Claude Desktop to activate the SWAO tool registry.`);
+        } else if (r === 'already_present') {
+          console.log(`[ok]  SWAO MCP server already registered (no change).`);
+          console.log(`      Config: ${configPath}`);
+        } else {
+          console.error(`[error] Failed to write MCP config at ${configPath}. Edit manually.`);
+          process.exit(1);
+        }
+        process.exit(0);
+      }
       // #2462: gate --powerbi at Enterprise tier (Power BI templates are Enterprise-only per D-06).
       if (options.powerbi) {
         try {

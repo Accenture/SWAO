@@ -178,51 +178,49 @@ describe('CTX pass exclusion patterns (#1349)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Priority tier tests (#1351 / Design 088)
+// Category-weight ordering tests (#2958 -- replaces extension tier tests #1351)
 // ---------------------------------------------------------------------------
 
-describe('CTX pass priority tiers -- T1 prose before T4 JSON (#1351)', () => {
-  it('includes T1 (.md) content in prompt alongside T4 (.json)', async () => {
-    // CTX_PROMPT_MAX_CHARS is a module-level constant evaluated at import time,
-    // so it cannot be overridden per-test via env var. Instead we verify that
-    // the prompt ordering logic is correct: md content before json content.
+describe('CTX pass category-weight ordering (#2958)', () => {
+  it('places architecture category before terraform category in prompt', async () => {
+    // architecture=1.0 > terraform=0.7 for pass-04. Both files small enough to fit.
     const dir = makeWorkspace({
-      'README.md': 'Important architecture context: sovereign deployment.',
-      'metadata.json': '{"app":"sovereign-health","tier":"enterprise"}',
+      'architecture/overview.md': 'Important architecture context: sovereign deployment.',
+      'terraform/state.json': '{"resource":"azurerm_resource_group","instances":[]}',
     });
     try {
       const { llm, captured } = makeLlmCapture();
       await runCtxPass(makeCtx(dir, llm));
       const prompt = captured.prompts[0] ?? '';
-      // Both files small enough to fit; MD must appear before JSON (T1 < T4).
-      const mdPos = prompt.indexOf('README.md');
-      const jsonPos = prompt.indexOf('metadata.json');
-      expect(mdPos).toBeGreaterThanOrEqual(0);
-      expect(jsonPos).toBeGreaterThanOrEqual(0);
-      expect(mdPos).toBeLessThan(jsonPos);
+      const archPos = prompt.indexOf('architecture/overview.md');
+      const tfPos   = prompt.indexOf('terraform/state.json');
+      expect(archPos).toBeGreaterThanOrEqual(0);
+      expect(tfPos).toBeGreaterThanOrEqual(0);
+      expect(archPos).toBeLessThan(tfPos);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('includes T1 (.md) and T2 (.yaml) before T3 (.csv)', async () => {
+  it('places architecture and intake before structured category in prompt', async () => {
+    // architecture=1.0, intake=1.0 > structured=0.6 for pass-04.
     const dir = makeWorkspace({
-      'data.csv': 'col1,col2\n1,2',
-      'config.yaml': 'env: production',
-      'overview.md': 'System overview.',
+      'structured/cmdb-export.csv': 'col1,col2\n1,2',
+      'intake/kickoff-notes.md': 'Kickoff notes.',
+      'architecture/design.md': 'System overview.',
     });
     try {
       const { llm, captured } = makeLlmCapture();
       await runCtxPass(makeCtx(dir, llm));
       const prompt = captured.prompts[0] ?? '';
-      const mdPos = prompt.indexOf('overview.md');
-      const yamlPos = prompt.indexOf('config.yaml');
-      const csvPos = prompt.indexOf('data.csv');
-      expect(mdPos).toBeGreaterThanOrEqual(0);
-      expect(yamlPos).toBeGreaterThanOrEqual(0);
+      const archPos = prompt.indexOf('architecture/design.md');
+      const intakePos = prompt.indexOf('intake/kickoff-notes.md');
+      const csvPos  = prompt.indexOf('structured/cmdb-export.csv');
+      expect(archPos).toBeGreaterThanOrEqual(0);
+      expect(intakePos).toBeGreaterThanOrEqual(0);
       expect(csvPos).toBeGreaterThanOrEqual(0);
-      expect(mdPos).toBeLessThan(csvPos);
-      expect(yamlPos).toBeLessThan(csvPos);
+      expect(archPos).toBeLessThan(csvPos);
+      expect(intakePos).toBeLessThan(csvPos);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

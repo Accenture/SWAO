@@ -16,8 +16,20 @@
 // Unit tests for MCP context helpers (#2781 #2789).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext, listMcpTools } from './mcp-context.js';
+import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext, listAssessedApps, listMcpTools } from './mcp-context.js';
 import type { McpSession } from './mcp-context.js';
+import { existsSync, readdirSync } from 'node:fs';
+import { SWAO_MCP_TOOLS } from '@swao/module-mcp';
+
+// ESM-safe module mock for node:fs (#2951 tests need to control filesystem reads)
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(false),
+    readdirSync: vi.fn().mockReturnValue([]),
+  };
+});
 
 describe('parseSseBody (#2781)', () => {
   it('extracts single data line from SSE response', () => {
@@ -129,14 +141,18 @@ describe('buildSystemPrompt (#2781)', () => {
   });
 });
 
-describe('fetchPortfolioContext tool selection (#2789)', () => {
+describe('fetchPortfolioContext tool selection (#2789 #2951)', () => {
   const mockSession: McpSession = { sessionId: 'test', port: 3737 };
   const calledTools: string[] = [];
+  const calledArgs: Array<Record<string, unknown>> = [];
 
   function mockFetch(): void {
     vi.stubGlobal('fetch', async (_url: string, opts: RequestInit) => {
-      const body = JSON.parse(opts.body as string) as { params?: { name?: string } };
-      if (body.params?.name) calledTools.push(body.params.name);
+      const body = JSON.parse(opts.body as string) as { params?: { name?: string; arguments?: Record<string, unknown> } };
+      if (body.params?.name) {
+        calledTools.push(body.params.name);
+        calledArgs.push(body.params.arguments ?? {});
+      }
       return {
         ok: true,
         text: async () => 'data: {"jsonrpc":"2.0","result":{"content":[{"type":"text","text":"data"}]}}\n',
@@ -144,7 +160,13 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
     });
   }
 
-  beforeEach(() => { calledTools.length = 0; mockFetch(); });
+  beforeEach(() => {
+    calledTools.length = 0;
+    calledArgs.length = 0;
+    mockFetch();
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(readdirSync).mockReturnValue([]);
+  });
   afterEach(() => { vi.unstubAllGlobals(); });
 
   it('calls swao_portfolio_summary not swao_hub (#2789)', async () => {
@@ -159,24 +181,88 @@ describe('fetchPortfolioContext tool selection (#2789)', () => {
     expect(calledTools).not.toContain('swao_lz_fit');
   });
 
-  it('calls the expected 8 tools in order (#2789, #2792, #2913)', async () => {
-    await fetchPortfolioContext(mockSession, '/ws');
+  it('portfolio mode with no assessed apps shows empty-state message and calls only global tools (#2951)', async () => {
+    // existsSync returns false by default (wsp/runs/ not found)
+    const ctx = await fetchPortfolioContext(mockSession, '/ws');
     expect(calledTools).toEqual([
       'swao_workspace_inventory',
       'swao_portfolio_summary',
-      'swao_signals',
-      'swao_risks',
       'swao_portfolio_lz',
       'swao_list_directory',
       'swao_read_file',
-      'swao_read_challenge',
     ]);
+    expect(ctx).toContain('No completed assessments found');
+    expect(ctx).toContain('swao assess');
   });
 
-  it('still calls swao_signals and swao_risks', async () => {
+  it('portfolio mode with two assessed apps calls per-app tools for each app (#2951)', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readdirSync).mockReturnValue([
+      { name: 'app-a', isDirectory: () => true },
+      { name: 'app-b', isDirectory: () => true },
+    ] as unknown as ReturnType<typeof readdirSync>);
+
     await fetchPortfolioContext(mockSession, '/ws');
-    expect(calledTools).toContain('swao_signals');
-    expect(calledTools).toContain('swao_risks');
+
+    const signalsCalls = calledArgs.filter((_, i) => calledTools[i] === 'swao_signals');
+    const risksCalls   = calledArgs.filter((_, i) => calledTools[i] === 'swao_risks');
+    expect(signalsCalls).toHaveLength(2);
+    expect(risksCalls).toHaveLength(2);
+    expect(signalsCalls[0]).toMatchObject({ app_id: 'app-a' });
+    expect(signalsCalls[1]).toMatchObject({ app_id: 'app-b' });
+  });
+
+  it('explicit --app scopes to that single app only (#2951)', async () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readdirSync).mockReturnValue([
+      { name: 'app-a', isDirectory: () => true },
+      { name: 'app-b', isDirectory: () => true },
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    await fetchPortfolioContext(mockSession, '/ws', 'app-a');
+
+    const signalsCalls = calledArgs.filter((_, i) => calledTools[i] === 'swao_signals');
+    expect(signalsCalls).toHaveLength(1);
+    expect(signalsCalls[0]).toMatchObject({ app_id: 'app-a' });
+  });
+
+  it('swao_signals and swao_risks include app_id in args when app is resolved (#2951)', async () => {
+    await fetchPortfolioContext(mockSession, '/ws', 'sovereign-health');
+
+    const signalsArgs = calledArgs.find((_, i) => calledTools[i] === 'swao_signals');
+    const risksArgs   = calledArgs.find((_, i) => calledTools[i] === 'swao_risks');
+    expect(signalsArgs).toMatchObject({ workspace_path: '/ws', app_id: 'sovereign-health' });
+    expect(risksArgs).toMatchObject({ workspace_path: '/ws', app_id: 'sovereign-health' });
+  });
+});
+
+describe('listAssessedApps (#2951)', () => {
+  beforeEach(() => {
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(readdirSync).mockReturnValue([]);
+  });
+
+  it('returns directory names from wsp/runs/', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readdirSync).mockReturnValue([
+      { name: 'app-a', isDirectory: () => true },
+      { name: 'app-b', isDirectory: () => true },
+    ] as unknown as ReturnType<typeof readdirSync>);
+    expect(listAssessedApps('/workspace')).toEqual(['app-a', 'app-b']);
+  });
+
+  it('returns empty array when wsp/runs/ does not exist', () => {
+    vi.mocked(existsSync).mockReturnValue(false);
+    expect(listAssessedApps('/workspace')).toEqual([]);
+  });
+
+  it('filters out non-directory entries', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readdirSync).mockReturnValue([
+      { name: 'app-a', isDirectory: () => true },
+      { name: 'README.md', isDirectory: () => false },
+    ] as unknown as ReturnType<typeof readdirSync>);
+    expect(listAssessedApps('/workspace')).toEqual(['app-a']);
   });
 });
 
@@ -220,5 +306,32 @@ describe('listMcpTools (#2915)', () => {
     }));
     const tools = await listMcpTools(mockSession);
     expect(tools).toEqual([]);
+  });
+
+  it('processes all SWAO_MCP_TOOLS entries without filtering (#2913 regression guard)', async () => {
+    // Guards against future changes to listMcpTools() that would silently drop
+    // tools from the manifest. The SWAO MCP server returns the same tool set to
+    // all clients unconditionally (verified at server.ts:3961); listMcpTools()
+    // must not filter that set.
+    vi.stubGlobal('fetch', async () => ({
+      ok: true,
+      text: async () => 'data: ' + JSON.stringify({
+        jsonrpc: '2.0',
+        result: {
+          tools: SWAO_MCP_TOOLS.map(t => ({
+            name: t.name,
+            description: t.description,
+            inputSchema: t.inputSchema,
+          })),
+        },
+      }) + '\n',
+    }));
+
+    const tools = await listMcpTools(mockSession);
+    expect(tools).toHaveLength(SWAO_MCP_TOOLS.length);
+    const returnedNames = new Set(tools.map(t => t.name));
+    for (const { name } of SWAO_MCP_TOOLS) {
+      expect(returnedNames.has(name), `"${name}" missing from listMcpTools output`).toBe(true);
+    }
   });
 });

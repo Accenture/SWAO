@@ -15,11 +15,14 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname, resolve } from 'path';
+import { load } from 'js-yaml';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio } from '@swao/core';
 import { llmSkipResult } from './llm-skip.js';
+import { getFileCategory, selectContextChunks, PASS_WEIGHTS } from './context-file-weights.js';
+import type { ScoredChunk } from './context-file-weights.js';
 
 function readFileSync_safe(filePath: string): string | null {
   if (!existsSync(filePath)) return null;
@@ -47,39 +50,49 @@ const CTX_SKIP_TOP_DIRS = new Set(['source', 'catalogs', 'llm-gateway']);
 const CTX_EXCLUDE_PATTERNS: RegExp[] = [
   /(?:^|[/\\])(?:[^/\\]*(?:sbom|bom)[^/\\]*)\.xlsx\.[^/\\]*\.csv$/i,  // SBOM Excel sheet exports (e.g. SBOM-app.xlsx.Sheet.csv, bom.xlsx.ffae1b.csv)
   /\.cdx\.json$/i,             // CycloneDX SBOM exports
+  // #1349: lock files that bypass the extension filter because they end in .json or .yaml.
+  // yarn.lock / Cargo.lock / *.lock are dropped earlier by the extension allowlist.
+  /(?:^|[/\\])package-lock\.json$/i,
+  /(?:^|[/\\])pnpm-lock\.yaml$/i,
 ];
 
 function isExcluded(relPath: string): boolean {
   return CTX_EXCLUDE_PATTERNS.some((re) => re.test(relPath));
 }
 
-// Priority tiers for prompt budget allocation (Design 088).
-// T1 (prose) is most likely to contain architecture context; T4 (JSON) least.
-const TIER_BY_EXT: Record<string, number> = {
-  '.md': 1, '.txt': 1,
-  '.yaml': 2, '.yml': 2,
-  '.csv': 3,
-  '.json': 4,
-};
-
 const CTX_CHUNK_SIZE = 3_000;
 
-interface Chunk {
-  relativePath: string;
-  partNum: number;
-  totalParts: number;
-  content: string;
-  tier: number;
-}
+// Chunk is a ScoredChunk -- category replaces the old tier field (#2958).
+type Chunk = ScoredChunk;
 
 // #1236/#1500: Anthropic streaming timeout fires at ~60s; observed safe threshold
 // is ~25,800 chars (42s). Default 28,000 gives 25% headroom below the failing
-// 39,764-char prompt. SWAO_CTX_PROMPT_MAX_CHARS env var overrides (max 55000 for
+// 39,764-char prompt. SWAO_CTX_PROMPT_MAX_CHARS env var overrides (max 110000 for
 // advanced use; only raise on a model/endpoint whose timeout is confirmed larger).
+// #2957: raised ceiling from 55000 to 110000 for large workspace support.
 const CTX_PROMPT_MAX_CHARS = Math.min(
   parseInt(process.env['SWAO_CTX_PROMPT_MAX_CHARS'] ?? '55000', 10) || 55_000,
-  55_000,
+  110_000,
 );
+
+/** Read context.allocations and context.categories from .swao.yml (#2968). */
+function readContextConfig(workspacePath: string): {
+  allocations: Record<string, number>;
+  categories: Record<string, number>;
+} {
+  const ymlPath = join(workspacePath, '.swao.yml');
+  if (!existsSync(ymlPath)) return { allocations: {}, categories: {} };
+  try {
+    const parsed = load(readFileSync(ymlPath, 'utf-8')) as { context?: { allocations?: Record<string, number>; categories?: Record<string, number> } } | null;
+    const ctx = parsed?.context ?? {};
+    return {
+      allocations: ctx.allocations ?? {},
+      categories: ctx.categories ?? {},
+    };
+  } catch {
+    return { allocations: {}, categories: {} };
+  }
+}
 
 /** Walk wsp/inputs/, apply exclusions, split into CTX_CHUNK_SIZE chunks, return tiered chunks. */
 function collectChunks(importsDir: string): { chunks: Chunk[]; filesExcluded: string[] } {
@@ -107,16 +120,18 @@ function collectChunks(importsDir: string): { chunks: Chunk[]; filesExcluded: st
       }
       const content = readFileSync_safe(full);
       if (!content) continue;
-      const tier = TIER_BY_EXT[ext] ?? 3;
+      const category = getFileCategory(rel);
       // Split into fixed-size chunks with part labels.
       const totalParts = Math.max(1, Math.ceil(content.length / CTX_CHUNK_SIZE));
       for (let p = 0; p < totalParts; p++) {
+        const sliceContent = content.slice(p * CTX_CHUNK_SIZE, (p + 1) * CTX_CHUNK_SIZE);
         chunks.push({
           relativePath: rel,
           partNum: p + 1,
           totalParts,
-          content: content.slice(p * CTX_CHUNK_SIZE, (p + 1) * CTX_CHUNK_SIZE),
-          tier,
+          content: sliceContent,
+          charCount: sliceContent.length,
+          category,
         });
       }
     }
@@ -126,11 +141,20 @@ function collectChunks(importsDir: string): { chunks: Chunk[]; filesExcluded: st
   return { chunks, filesExcluded };
 }
 
-function buildCtxPrompt(importsDir: string, chunks: Chunk[], filesExcluded: string[]): {
+function buildCtxPrompt(
+  importsDir: string,
+  chunks: Chunk[],
+  filesExcluded: string[],
+  opts?: { budgetOverride?: number; userCategories?: Record<string, number> },
+): {
   prompt: string;
   chunksIncluded: number;
   chunksExcluded: number;
+  budgetExcludedFiles: Set<string>;
 } {
+  const effectiveBudget = opts?.budgetOverride != null
+    ? Math.min(opts.budgetOverride, 110_000)
+    : CTX_PROMPT_MAX_CHARS;
   const header = [
     'CONTEXT_INGESTION_PASS',
     `wsp/inputs/ directory: ${importsDir}`,
@@ -148,31 +172,17 @@ function buildCtxPrompt(importsDir: string, chunks: Chunk[], filesExcluded: stri
       prompt: header + '\nNo import files found. Emit a CTX signal noting reduced context coverage.',
       chunksIncluded: 0,
       chunksExcluded: 0,
+      budgetExcludedFiles: new Set(),
     };
   }
 
-  // Greedy fill: sort by tier (T1 first), then by file path for stability.
-  // Stop when remaining budget is exhausted.
-  const sorted = [...chunks].sort((a, b) =>
-    a.tier - b.tier || a.relativePath.localeCompare(b.relativePath) || a.partNum - b.partNum,
-  );
-
-  let remaining = CTX_PROMPT_MAX_CHARS - header.length;
-  const included: Chunk[] = [];
-  const excluded: Chunk[] = [];
-
-  for (const chunk of sorted) {
-    const label = chunk.totalParts > 1
-      ? `--- ${chunk.relativePath} [part ${chunk.partNum}/${chunk.totalParts}] ---`
-      : `--- ${chunk.relativePath} ---`;
-    const block = `${label}\n${chunk.content}\n\n`;
-    if (remaining >= block.length) {
-      included.push(chunk);
-      remaining -= block.length;
-    } else {
-      excluded.push(chunk);
-    }
-  }
+  // Category-weight selection (#2958): replaces tier sort with relevance-weighted
+  // ordering. Architecture/compliance/intake rank highest for pass-04; terraform
+  // and structured files rank lower to prevent large JSON state files exhausting
+  // the budget before prose docs are included.
+  // #2968: userCategories from .swao.yml context.categories applied as multipliers.
+  const budgetForChunks = effectiveBudget - header.length;
+  const { included, excluded } = selectContextChunks(chunks, budgetForChunks, '04', opts?.userCategories);
 
   const parts: string[] = [header];
   for (const chunk of included) {
@@ -192,10 +202,14 @@ function buildCtxPrompt(importsDir: string, chunks: Chunk[], filesExcluded: stri
     const excludedSummary = [...excludedByFile.entries()]
       .map(([f, n]) => `${f} (${n} chunk${n !== 1 ? 's' : ''})`)
       .join(', ');
+    const first = excluded[0];
+    const firstWeight = PASS_WEIGHTS['04']?.[first.category] ?? 1.0;
     console.warn(
       `[warn] CTX: ${excluded.length} chunk(s) from ${excludedByFile.size} file(s) excluded -- prompt budget exhausted` +
-      ` (${CTX_PROMPT_MAX_CHARS} chars max). Excluded: ${excludedSummary}.` +
-      ` Set SWAO_CTX_PROMPT_MAX_CHARS=<chars> (max 55000, default 28000) to increase the cap.`,
+      ` (${effectiveBudget} chars max).` +
+      ` First excluded: ${first.relativePath}, category=${first.category}, weight=${firstWeight} for pass 04.` +
+      ` Excluded: ${excludedSummary}.` +
+      ` Set SWAO_CTX_PROMPT_MAX_CHARS=<chars> (max 110000) or context.allocations.ctx in .swao.yml to increase the cap.`,
     );
   }
 
@@ -203,6 +217,7 @@ function buildCtxPrompt(importsDir: string, chunks: Chunk[], filesExcluded: stri
     prompt: parts.join('\n'),
     chunksIncluded: included.length,
     chunksExcluded: excluded.length,
+    budgetExcludedFiles: new Set(excluded.map((c) => c.relativePath)),
   };
 }
 
@@ -222,6 +237,10 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
   // prompt budget. SBOM exports and lock files are excluded by pattern (#1349).
   const importsDir = join(workspacePath, 'wsp', 'inputs');
   const { chunks, filesExcluded } = collectChunks(importsDir);
+  const ctxConfig = readContextConfig(workspacePath);
+  // Priority: explicit .swao.yml allocation > connector-derived budget (#2959) > env/default constant
+  const budgetOverride = ctxConfig.allocations['ctx'] ?? ctx.ctxPromptBudget;
+  const userCategories = Object.keys(ctxConfig.categories).length > 0 ? ctxConfig.categories : undefined;
 
   // C-09: Placeholder detection BEFORE the LLM call (#0468).
   // Files still containing sample/placeholder text will cause the LLM to
@@ -246,7 +265,10 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
     console.log(`[info] CTX: ${filesExcluded.length} file(s) excluded by pattern (SBOM exports / lock files): ${filesExcluded.join(', ')}`);
   }
 
-  const { prompt, chunksIncluded, chunksExcluded } = buildCtxPrompt(importsDir, chunks, filesExcluded);
+  const { prompt, chunksIncluded, chunksExcluded, budgetExcludedFiles } = buildCtxPrompt(
+    importsDir, chunks, filesExcluded,
+    { budgetOverride, userCategories },
+  );
 
   // #1697: warn before the LLM call when the configured token ceiling is smaller
   // than the expected CTX response size. The CTX pass emits ~6000-8000 output
@@ -353,11 +375,23 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
         const stripped = resolve(importsDir, evidencePath.slice(WSP_INPUTS_PREFIX.length));
         if (stripped.startsWith(resolvedImportsDir)) resolved = stripped;
       }
+      // #2962: check budget-exclusion BEFORE existsSync. Budget-excluded files DO
+      // exist on disk but were dropped from the context payload by the budget ceiling.
+      const relEvidencePath = evidencePath.startsWith(WSP_INPUTS_PREFIX)
+        ? evidencePath.slice(WSP_INPUTS_PREFIX.length)
+        : evidencePath;
+      const isBudgetExcluded = budgetExcludedFiles.has(relEvidencePath) || budgetExcludedFiles.has(evidencePath);
+
       if (!resolved.startsWith(resolvedImportsDir)) {
         // Path traversal attempt -- flag without following
         signal.false_positive_flag = true;
         signal.false_positive_note = `Evidence reference escapes workspace: ${evidenceRef}`;
         console.warn(`[warn] CTX ${signal.id}: evidence '${evidenceRef}' escapes workspace bounds`);
+      } else if (isBudgetExcluded) {
+        // File exists but was excluded from the context prompt by budget ceiling.
+        // Annotate as a context gap rather than a false positive.
+        signal.context_gaps = [...(signal.context_gaps ?? []), evidenceRef];
+        unresolvable.push(`[budget-excluded] ${evidenceRef}`);
       } else if (!existsSync(resolved)) {
         signal.false_positive_flag = true;
         signal.false_positive_note = `Evidence file not found: ${evidenceRef}`;
@@ -365,7 +399,17 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
       }
     }
     if (unresolvable.length > 0) {
-      console.warn(`[warn] CTX ${signal.id}: ${unresolvable.length} evidence reference(s) could not be resolved: ${unresolvable.map(r => `'${r}'`).join(', ')}`);
+      const budgetExcludedRefs = unresolvable.filter((r) => r.startsWith('[budget-excluded] '));
+      const missingRefs = unresolvable.filter((r) => !r.startsWith('[budget-excluded] '));
+      if (budgetExcludedRefs.length > 0) {
+        console.warn(
+          `[warn] CTX ${signal.id}: ${budgetExcludedRefs.length} evidence file(s) budget-excluded -- cited but not verified: ` +
+          budgetExcludedRefs.map((r) => `'${r.slice('[budget-excluded] '.length)}'`).join(', '),
+        );
+      }
+      if (missingRefs.length > 0) {
+        console.warn(`[warn] CTX ${signal.id}: ${missingRefs.length} evidence reference(s) could not be resolved: ${missingRefs.map((r) => `'${r}'`).join(', ')}`);
+      }
     }
   }
 

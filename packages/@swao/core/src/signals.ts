@@ -101,6 +101,11 @@ export const SignalSchema = z.object({
   false_positive_flag: z.boolean().optional(),
   false_positive_note: z.string().optional(),
 
+  // #2962: evidence refs that were stripped because the file was budget-excluded
+  // in Pass 04. Distinct from false_positive_flag (which is for path-traversal or
+  // genuinely missing files). Rendered as a footnote in the report.
+  context_gaps: z.array(z.string()).optional(),
+
   // v0.12 (#0478 C-22): per-signal provenance, injected by assess.ts loop.
   // source = "<provider>/<model>" for LLM passes or "rule_engine" for static passes.
   // prompt_hash is pass-level (in data_source); not repeated per signal.
