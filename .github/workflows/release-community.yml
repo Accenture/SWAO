@@ -100,13 +100,31 @@ jobs:
           - runner: ubuntu-latest
             platform: linux/amd64
             arch: amd64
+            binary: swao-community-linux-x64
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
             arch: arm64
+            binary: swao-community-linux-arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: echo "VERSION=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download ${{ matrix.binary }} from private release
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          mkdir -p docker-build
+          gh release download "$VERSION" \
+            --repo "${{ secrets.SWAO_PRIVATE_REPO }}" \
+            --pattern "${{ matrix.binary }}" \
+            --dir docker-build
+          chmod +x docker-build/${{ matrix.binary }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -121,8 +139,9 @@ jobs:
       - name: Build and push Community image (${{ matrix.arch }})
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./docker-build
           file: ./Dockerfile.community
+          build-args: BINARY_NAME=${{ matrix.binary }}
           push: true
           platforms: ${{ matrix.platform }}
           tags: ghcr.io/accenture/swao:${{ github.ref_name }}-${{ matrix.arch }}

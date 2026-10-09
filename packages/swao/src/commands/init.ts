@@ -505,6 +505,7 @@ apps/*/source/
 export interface CatalogsScaffoldResult {
   communityDir: string;
   lzCataloguesDir: string;
+  passCatalogsDir: string;
   copiedFiles: string[];
   warnings: string[];
 }
@@ -531,10 +532,24 @@ export { resolveCatalogsDir } from '@swao/core';
  * every app in a portfolio) so they live under the workspace-level
  * `wsp/inputs/`, not under any per-app `apps/<id>/wsp/inputs/`.
  */
+function resolveBundledPassCatalogsDir(): string | null {
+  const candidates = [
+    resolve(__dirname, '_pass-catalogs'),              // pkg binary: dist/_pass-catalogs/
+    resolve(__dirname, '../_pass-catalogs'),            // bundle.cjs in dist/commands/: up one
+    resolve(__dirname, '../../../../pass-catalogs'),    // dev source tree (from dist/commands/)
+    resolve(process.cwd(), 'swao/pass-catalogs'),       // repo root cwd (dev)
+  ];
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return null;
+}
+
 export function scaffoldCatalogs(workspaceDir: string): CatalogsScaffoldResult {
   const result: CatalogsScaffoldResult = {
     communityDir: join(workspaceDir, 'wsp', 'inputs', 'catalogs', 'community'),
     lzCataloguesDir: join(workspaceDir, 'wsp', 'inputs', 'catalogs', 'lz-catalogues'),
+    passCatalogsDir: join(workspaceDir, 'wsp', 'inputs', 'pass-catalogs'),
     copiedFiles: [],
     warnings: [],
   };
@@ -611,6 +626,22 @@ export function scaffoldCatalogs(workspaceDir: string): CatalogsScaffoldResult {
     } else {
       result.warnings.push(
         'bundled LZ catalogues not found; wsp/inputs/catalogs/lz-catalogues/ created empty -- run "swao lz catalogue update" to populate',
+      );
+    }
+  }
+
+  // #3062: auto-seed pass-support catalogues (IAM provider detection, etc.) so
+  // operators can extend provider coverage without modifying shared source.
+  // Only seeds on first init; subsequent runs leave operator customisations intact.
+  if (!existsSync(result.passCatalogsDir)) {
+    mkdirSync(result.passCatalogsDir, { recursive: true });
+    const bundledPassCatalogsDir = resolveBundledPassCatalogsDir();
+    if (bundledPassCatalogsDir) {
+      copyDirRecursive(bundledPassCatalogsDir, result.passCatalogsDir);
+      result.copiedFiles.push('pass-catalogs/');
+    } else {
+      result.warnings.push(
+        'bundled pass-catalogs not found; wsp/inputs/pass-catalogs/ created empty',
       );
     }
   }

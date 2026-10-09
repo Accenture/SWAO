@@ -55,6 +55,7 @@
       "dist/publish/i18n/**",
       "dist/_lz-catalogues/**",
       "dist/_llm-gateway/**",
+      "dist/_pass-catalogs/**",
       "dist/_premium-frameworks/**",
       "dist/_demo-frameworks/**",
       "../../docs/getting-started.md",
@@ -152,7 +153,8 @@
       "@vitest/mocker": ">=4.1.11 <5.0.0",
       "proxy-addr": ">=2.0.8",
       "source-map-js": ">=1.2.2",
-      "@modelcontextprotocol/sdk": ">=1.31.0"
+      "@modelcontextprotocol/sdk": ">=1.31.0",
+      "fast-jwt": ">=6.2.5"
     }
   }
 }
