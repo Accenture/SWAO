@@ -43,6 +43,10 @@ overrides:
   'source-map-js': '>=1.2.2'
   # #2955 sprint-144: @modelcontextprotocol/sdk DoS vulnerability (GHSA-6qxp-vccf-f47h, HIGH)
   '@modelcontextprotocol/sdk': '>=1.31.0'
+  # sprint-148: fast-jwt CRITICAL CVE-2026-34950 (RSA->HS256 algorithm confusion incomplete patch)
+  # and MODERATE GHSA-687g-22h4-j4w4 (clockTolerance:Infinity JWT validation bypass)
+  # Patched in fast-jwt >= 6.2.5; transitive via @fastify/jwt
+  'fast-jwt': '>=6.2.5'
 
 onlyBuiltDependencies:
   - esbuild

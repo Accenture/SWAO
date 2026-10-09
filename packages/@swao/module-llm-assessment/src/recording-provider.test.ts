@@ -181,11 +181,14 @@ describe('heuristics (#1422)', () => {
     expect(looksParseable('{broken: json')).toBe(false);
   });
 
-  it('looksParseable accepts YAML-structured challenge responses (#1959)', () => {
+  it('looksParseable accepts YAML-structured challenge responses (#1959, #3030)', () => {
     const yamlChallenge = 'opening_summary: The application has critical gaps.\nfindings:\n  - id: CR-PM-01\n    concern: Missing SLA.';
     expect(looksParseable(yamlChallenge)).toBe(true);
     const yamlFenced = '```yaml\nopening_summary: Summary text here.\n```';
     expect(looksParseable(yamlFenced)).toBe(true);
+    // Block YAML where findings: has no inline value (claude-sonnet response style, #3030).
+    const yamlBlock = 'findings:\n  - id: CR-AA-01\n    concern: Missing statefulness.\n    evidence_gap: No PVC detected.\n    recommended_question: How is state handled?';
+    expect(looksParseable(yamlBlock)).toBe(true);
     expect(looksParseable('Plain prose with no structure')).toBe(false);
   });
 

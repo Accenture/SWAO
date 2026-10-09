@@ -11,6 +11,33 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.1] - 2026-10-09
+
+Patch release: challenge-pass YAML parse fix, Community Docker binary-wrap, GPG release
+signatures, fast-jwt CVE fix, license request Ctrl+C fix, BlackDuck stale-scan
+documentation (sprint-148).
+
+### Fixed
+
+- LLM-assessment challenge pass: relax YAML block-sequence heuristic so claude-sonnet
+  correctly parses C1 application-agent responses; parse_valid_rate was 0 on all 5 C1
+  passes (#3030)
+- release-community.yml Docker publish: apply binary-wrap pattern to Dockerfile.community
+  so the container uses the pre-built binary instead of running pnpm install in a no-op
+  environment (#3031)
+- TUI license request: write output to file on success; previously Ctrl+C closed the app
+  instead of copying the request payload (#3048)
+
+### Security
+
+- GPG detached signatures (.asc) added to all release binary artefacts in
+  release-enterprise.yml, release-community.yml, and release-consultant.yml (#3049)
+- fast-jwt upgraded to 6.3.4 via pnpm override to fix CRITICAL CVE-2026-34950
+  (RSA to HS256 algorithm confusion via non-whitespace key prefix) and MODERATE
+  GHSA-687g-22h4-j4w4 (clockTolerance bypass); transitive via module-html-portal
+
+---
+
 ## [1.3.0] - 2026-10-08
 
 Minor release: support bundle v2.3, kilo.ai MCP integration (Phase 1), duration_ms

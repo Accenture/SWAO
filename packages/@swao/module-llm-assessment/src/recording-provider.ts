@@ -103,9 +103,11 @@ export function looksParseable(response: string): boolean {
     } catch { /* not JSON, try YAML */ }
   }
   // Accept YAML-structured responses (challenge passes produce YAML, #1959).
-  // Heuristic: first non-empty line is a top-level "key: value" pair.
+  // Heuristic: first non-empty line is a top-level YAML key (with or without
+  // an inline value). Block sequences such as `findings:\n  - id: CR-AA-01`
+  // start with `findings:` alone, which is valid YAML (#3030).
   const firstMeaningfulLine = candidate.split('\n').find(l => l.trim().length > 0) ?? '';
-  return /^[a-z_][a-z0-9_-]*\s*:\s*\S/i.test(firstMeaningfulLine);
+  return /^[a-z_][a-z0-9_-]*\s*:/i.test(firstMeaningfulLine);
 }
 
 export function detectRefusal(response: string): boolean {

@@ -23,6 +23,11 @@ vi.mock('@swao/core', () => ({
   CredentialStore: vi.fn().mockImplementation(() => ({
     loadSync: vi.fn().mockReturnValue({}),
   })),
+  logPortfolio: vi.fn(),
+  logApp: vi.fn(),
+  setWorkspaceRoot: vi.fn(),
+  resolveWorkspaceRoot: vi.fn(),
+  listSinkPaths: vi.fn(),
 }));
 
 describe('createPreMeProvider -- credential resolution (#2954)', () => {

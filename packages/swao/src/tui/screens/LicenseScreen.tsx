@@ -16,6 +16,8 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { spawn } from 'child_process';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Header } from '../components/Header.js';
 import { TextInput } from '@swao/tui-kit';
 import { SelectInput } from '@swao/tui-kit';
@@ -74,12 +76,15 @@ interface RunOutputProps {
   guidanceDetails?: ReadonlyArray<{ label: string; value: string }>;
   /** #2654: when true, output lines wrap rather than truncate so long tokens remain copyable. */
   wrapLiveOutput?: boolean;
+  /** #3048: when set, write all output to this file path on successful completion. */
+  saveToFile?: string;
 }
 
-function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails, wrapLiveOutput }: RunOutputProps) {
+function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails, wrapLiveOutput, saveToFile }: RunOutputProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [done, setDone]   = useState(false);
   const [code, setCode]   = useState<number | null>(null);
+  const [savedPath, setSavedPath] = useState<string | null>(null);
   // #2297: guard Escape/Enter from firing onDone while the GuidanceBox is open.
   const guidanceOpenRef = useRef(false);
   // #2630: ref to capture the latest lines inside the close handler (state is stale in closure).
@@ -100,6 +105,13 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
     child.on('close', (exitCode) => {
       setCode(exitCode);
       setDone(true);
+      // #3048: persist output so CTRL+C after completion does not destroy the token.
+      if (exitCode === 0 && saveToFile) {
+        try {
+          writeFileSync(saveToFile, linesRef.current.join('\n') + '\n', 'utf8');
+          setSavedPath(saveToFile);
+        } catch { /* best-effort */ }
+      }
       if (exitCode !== 0) {
         // #2636: exit 3 = "no workspace" or "no active licence" -- not an error during healthy use.
         const logLevel = exitCode === 3 ? 'warn' : 'error';
@@ -141,6 +153,9 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
       {done && code === 0 && <Text color="green">Done.</Text>}
       {done && code !== 0 && <Text color="red">Failed. Check the details above.</Text>}
       <LiveOutput lines={lines} maxLines={20} wrapMode={wrapLiveOutput ? 'wrap' : 'truncate-end'} />
+      {done && savedPath && (
+        <Text color="green">Saved to: <Text bold>{savedPath}</Text></Text>
+      )}
       {done && guidanceTitle && (
         <GuidanceBox
           title={guidanceTitle}
@@ -623,9 +638,11 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
           ]}
           onDone={() => setSub('menu')}
           wrapLiveOutput
+          saveToFile={join(process.cwd(), 'swao-license-request.txt')}
           guidanceTitle="Licence Request Sent"
-          guidanceWhat="The request token above has been generated. Send the email shown to the SWAO team to receive your signed licence key. Do NOT use the request token itself as the activation key."
+          guidanceWhat="The request token above has been generated and saved to swao-license-request.txt in your working directory. Send the email shown to the SWAO team to receive your signed licence key. Do NOT use the request token itself as the activation key."
           guidanceDetails={[
+            { label: 'Saved to',  value: join(process.cwd(), 'swao-license-request.txt') },
             { label: 'Next step', value: "When you receive the key by email, return here and select 'Activate a license'" },
             { label: 'Contact',   value: "swao-tool@accenture.com" },
           ]}

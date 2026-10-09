@@ -167,15 +167,17 @@ describe('pass-04-ctx budget-excluded evidence -> context_gaps (#2962)', () => {
 
   it('signal citing a budget-excluded file gets context_gaps, not false_positive_flag (#2962)', async () => {
     const inputsDir = join(BUDGET_DIR, 'wsp', 'inputs');
-    // File A (tier 1, large -- fills the 55000-char prompt budget).
+    // File A (docs category, weight 0.8) -- fills the prompt budget first.
     // 2400 repetitions of a 22-char line = ~52800 chars; 18 chunks of 3000 chars.
-    // After the header (~2300 chars), ~52700 chars remain for content.
-    // The 18 chunks of small-a.md consume almost all of it.
+    // After the header (~2945 chars), ~52055 chars remain for content.
     const bigMdContent = 'Context content line.\n'.repeat(2400);
     writeFileSync(join(inputsDir, 'small-a.md'), bigMdContent, 'utf-8');
-    // File B (tier 3) -- excluded because budget is exhausted by small-a.md.
-    // Its first chunk (~3010 chars) won't fit in the remaining budget (~70 chars).
-    writeFileSync(join(inputsDir, 'large-b.csv'), 'col1,col2\n' + 'x,y\n'.repeat(750), 'utf-8');
+    // File B in structured/ (weight 0.6) -- fills AFTER docs, so budget is already
+    // almost exhausted. Place in structured/ so selectContextChunks ranks it behind
+    // all docs-category chunks; its 3000-char first chunk cannot fit in the small
+    // remaining budget, so it ends up in budgetExcludedFiles.
+    mkdirSync(join(inputsDir, 'structured'), { recursive: true });
+    writeFileSync(join(inputsDir, 'structured', 'large-b.csv'), 'col1,col2\n' + 'x,y\n'.repeat(750), 'utf-8');
 
     const llmResponse = JSON.stringify({
       signals: [{
@@ -184,7 +186,7 @@ describe('pass-04-ctx budget-excluded evidence -> context_gaps (#2962)', () => {
         category: 'application',
         severity: 'informational',
         derivation: 'Evidence from budget-excluded file cited by model.',
-        evidence: ['large-b.csv'],
+        evidence: ['structured/large-b.csv'],
         confidence: 'high',
       }],
       assessment: { context_inputs_found: 1, contradictions_detected: 0 },
@@ -197,7 +199,7 @@ describe('pass-04-ctx budget-excluded evidence -> context_gaps (#2962)', () => {
     const result = await runCtxPass(ctx);
 
     const sig = result.signals[0];
-    expect(sig.context_gaps).toContain('large-b.csv');
+    expect(sig.context_gaps).toContain('structured/large-b.csv');
     expect(sig.false_positive_flag).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/budget-excluded.*cited but not verified/));
   });
