@@ -24,25 +24,26 @@
 // Closes #0325 Option A (the option B hard-fail shipped in sprint-034).
 // Aligned to the same complete() contract as AnthropicLlmProvider so
 // `createLlmProvider` can substitute one for the other.
+//
+// #3284: text and vision calls run through the shared request helper
+// (llm-request.ts): one retry policy (6 attempts), idle watchdog, concurrency
+// limiter and the provider.llm.openai.* event set. The wire format
+// (non-streaming chat/completions) is unchanged.
 
-import type { LlmProvider, LlmUsage, LlmTrace } from './types.js';
+import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion } from './types.js';
 import { openaiCostUsd } from './types.js';
-import { redactPreLlm, recordRedaction, logPortfolio } from '@swao/core';
+import { scrubForEgress } from './egress-redaction.js';
+import { requestLlmWithRetry, LlmHttpStatusError, type AttemptWatchdog, type LlmAttemptResult } from './llm-request.js';
+import { llmLimiterKey, getLlmConcurrencyLimit } from './concurrency.js';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const DEFAULT_MAX_TOKENS = 32768;
-const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 3000; // 3 s, 6 s, 12 s (matches Anthropic driver)
 
-function isRetryable(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  return err.message === 'fetch failed' || /ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(err.message);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type ChatResponse = {
+  choices?: Array<{ message?: { content?: string } }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
 
 export class OpenAiLlmProvider implements LlmProvider {
   readonly name = 'openai' as const;
@@ -50,6 +51,9 @@ export class OpenAiLlmProvider implements LlmProvider {
   private readonly apiKey: string;
   private readonly temperature: number;
   private readonly seed: number | undefined;
+  private readonly appId: string | undefined;
+  /** Concurrency limiter key (#3284): provider + endpoint origin. */
+  readonly concurrencyKey: string;
   private lastUsage: LlmUsage | undefined;
   private _lastTrace: LlmTrace | undefined;
 
@@ -67,8 +71,9 @@ export class OpenAiLlmProvider implements LlmProvider {
    *                    silent gpt-4o-mini default (mirrors #0217).
    * @param temperature Optional sampling temperature; defaults to 0 for deterministic output.
    * @param seed        Optional seed for reproducibility (supported by OpenAI).
+   * @param appId       Optional app id; events are also written to the app log (#3284).
    */
-  constructor(apiKey?: string, model?: string, temperature?: number, seed?: number) {
+  constructor(apiKey?: string, model?: string, temperature?: number, seed?: number, appId?: string) {
     const key = apiKey ?? process.env['SWAO_OPENAI_API_KEY'] ?? process.env['OPENAI_API_KEY'];
     if (!key) {
       throw new Error(
@@ -80,8 +85,16 @@ export class OpenAiLlmProvider implements LlmProvider {
     this.model = model ?? process.env['SWAO_OPENAI_MODEL'] ?? DEFAULT_MODEL;
     this.temperature = temperature ?? 0;
     this.seed = seed;
+    this.appId = appId;
+    this.concurrencyKey = llmLimiterKey(this.name, OPENAI_API_URL);
   }
 
+  /** In-flight limit of this provider's endpoint (#3284, D-14). */
+  get maxConcurrency(): number {
+    return getLlmConcurrencyLimit(this.concurrencyKey);
+  }
+
+  /** @deprecated #3301: shared state; read `usage` from the `*Detailed()` result. */
   getLastUsage(): LlmUsage | undefined {
     return this.lastUsage;
   }
@@ -90,9 +103,52 @@ export class OpenAiLlmProvider implements LlmProvider {
     return this._lastTrace;
   }
 
+  /** One non-streaming chat/completions request; usage recorded on success. */
+  private async send(wd: AttemptWatchdog, body: string, kindLabel: string): Promise<LlmAttemptResult<ChatResponse>> {
+    const response = await wd.race(fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
+      body,
+      signal: wd.signal,
+    }));
+    wd.setPhase('body');
+    wd.touch(0);
+    if (!response.ok) {
+      const text = await wd.race(response.text());
+      throw new LlmHttpStatusError(`OpenAI${kindLabel} request failed: ${response.status} ${text.slice(0, 200)}`, response.status, {
+        bodyExcerpt: text.slice(0, 200),
+      });
+    }
+    const data = (await wd.race(response.json())) as ChatResponse;
+    const inputTokens = data.usage?.prompt_tokens ?? 0;
+    const outputTokens = data.usage?.completion_tokens ?? 0;
+    const costUsd = openaiCostUsd(this.model, inputTokens, outputTokens);
+    return {
+      value: data,
+      status: response.status,
+      okContext: { tokens_in: inputTokens, tokens_out: outputTokens, cost_usd: costUsd },
+    };
+  }
+
+  /** Usage of one response (#3301); also kept as the deprecated last usage. */
+  private recordUsage(data: ChatResponse): LlmUsage {
+    const inputTokens = data.usage?.prompt_tokens ?? 0;
+    const outputTokens = data.usage?.completion_tokens ?? 0;
+    const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: openaiCostUsd(this.model, inputTokens, outputTokens) };
+    this.lastUsage = usage;
+    return usage;
+  }
+
   async completeVision(prompt: string, images: Buffer[]): Promise<string> {
+    return (await this.completeVisionDetailed(prompt, images)).text;
+  }
+
+  /** completeVision() with the call's own usage and trace (#3301). */
+  async completeVisionDetailed(prompt: string, images: Buffer[]): Promise<LlmCompletion> {
     // Vision path (#1802): OpenAI chat/completions with image_url content blocks.
     // Images are NOT redacted -- sovereignty warning emitted by assess.ts at run start.
+    // The text prompt IS redacted (#3157 / CLAUDE.md §5.7).
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
     const imageBlocks = images.map((img) => ({
       type: 'image_url' as const,
       image_url: { url: `data:image/jpeg;base64,${img.toString('base64')}` },
@@ -103,44 +159,33 @@ export class OpenAiLlmProvider implements LlmProvider {
       messages: [
         {
           role: 'user',
-          content: [...imageBlocks, { type: 'text', text: prompt }],
+          content: [...imageBlocks, { type: 'text', text: scrubbedPrompt }],
         },
       ],
       temperature: this.temperature ?? 0,
       ...(this.seed !== undefined && { seed: this.seed }),
     });
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.apiKey}` },
-      body,
+    const data = await requestLlmWithRetry<ChatResponse>({
+      ...this.specBase('vision', scrubbedPrompt.length),
+      imageCount: images.length,
+      run: (wd) => this.send(wd, body, ' vision'),
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`OpenAI vision request failed: ${response.status} ${text.slice(0, 300)}`);
-    }
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-    };
+    const usage = this.recordUsage(data);
     const rawText = data.choices?.[0]?.message?.content ?? '';
-    const inputTokens = data.usage?.prompt_tokens ?? 0;
-    const outputTokens = data.usage?.completion_tokens ?? 0;
-    this.lastUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: openaiCostUsd(this.model, inputTokens, outputTokens) };
-    this._lastTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
-    return rawText;
+    const trace: LlmTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
+    this._lastTrace = trace;
+    return { text: rawText, usage, trace };
   }
 
   async complete(prompt: string): Promise<string> {
+    return (await this.completeDetailed(prompt)).text;
+  }
+
+  /** complete() with the call's own usage and trace (#3301). */
+  async completeDetailed(prompt: string): Promise<LlmCompletion> {
     // Pre-LLM egress redaction (#0354, sprint-038). Every prompt is
     // scrubbed before the HTTP body is constructed. See design 032 §2.
-    const { text: scrubbedPrompt, counts } = redactPreLlm(prompt);
-    recordRedaction({
-      provider: this.name,
-      model: this.model,
-      input_chars: prompt.length,
-      scrubbed_chars: scrubbedPrompt.length,
-      counts,
-    });
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
 
     const body = JSON.stringify({
       model: this.model,
@@ -161,111 +206,42 @@ export class OpenAiLlmProvider implements LlmProvider {
       ...(this.seed !== undefined && { seed: this.seed }),
     });
 
-    let lastError: Error = new Error('unreachable');
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delayMs = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-        console.error(`[warn] OpenAI fetch failed (attempt ${attempt}/${MAX_RETRIES}) -- retrying in ${delayMs / 1000}s...`);
-        await sleep(delayMs);
-      }
-
-      // #0398 (sprint-040): structured log so operators can prove the
-      // OpenAI call actually went out (without inspecting wireshark or
-      // their OpenAI dashboard for delayed billing data). One line per
-      // attempt at info; failure lines at error with status + tail of
-      // the body.
-      const attemptStartedAt = Date.now();
-      logPortfolio('info', 'provider.llm.openai.attempt', `OpenAI ${this.model} call attempt ${attempt + 1}/${MAX_RETRIES + 1}`, {
-        context: {
-          provider: 'openai',
-          model: this.model,
-          endpoint: OPENAI_API_URL,
-          attempt: attempt + 1,
-          max_attempts: MAX_RETRIES + 1,
-          prompt_chars: scrubbedPrompt.length,
-          api_key_suffix: this.apiKey.slice(-4),
-        },
-      });
-
-      try {
-        const response = await fetch(OPENAI_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.apiKey}`,
-          },
-          body,
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          // 429 = rate limit; 500/502/503/504 = transient server errors
-          const isTransient = response.status === 429 || (response.status >= 500 && response.status < 600);
-          logPortfolio(isTransient ? 'warn' : 'error', 'provider.llm.openai.http-error',
-            `OpenAI HTTP ${response.status} on attempt ${attempt + 1}`, {
-            context: {
-              provider: 'openai',
-              model: this.model,
-              http_status: response.status,
-              latency_ms: Date.now() - attemptStartedAt,
-              body_excerpt: text.slice(0, 200),
-              transient: isTransient,
-            },
-          });
-          if (isTransient && attempt < MAX_RETRIES) {
-            lastError = new Error(`OpenAI request failed: ${response.status} ${text.slice(0, 200)}`);
-            continue;
-          }
-          throw new Error(`OpenAI request failed: ${response.status} ${text.slice(0, 200)}`);
-        }
-
-        const data = (await response.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
-        };
-
-        const rawText = data.choices?.[0]?.message?.content;
-        if (!rawText) {
+    const { text: rawText, usage } = await requestLlmWithRetry<{ text: string; usage: LlmUsage }>({
+      ...this.specBase('text', scrubbedPrompt.length),
+      run: async (wd) => {
+        const res = await this.send(wd, body, '');
+        const text = res.value.choices?.[0]?.message?.content;
+        if (!text) {
+          // Non-retryable: logged once as provider.llm.openai.error.
           throw new Error('OpenAI response missing choices[0].message.content');
         }
+        const usage = this.recordUsage(res.value);
+        return { ...res, value: { text, usage } };
+      },
+    });
 
-        const inputTokens = data.usage?.prompt_tokens ?? 0;
-        const outputTokens = data.usage?.completion_tokens ?? 0;
-        this.lastUsage = {
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-          cost_usd: openaiCostUsd(this.model, inputTokens, outputTokens),
-        };
+    // Strip markdown code fences (any language tag: json, yaml, etc.)
+    // (response_format: json_object should prevent this; defensive).
+    const fenced = rawText.match(/```(?:\w+)?\s*([\s\S]*?)```/);
+    const responseText = fenced ? fenced[1].trim() : rawText;
+    // #1709: capture post-redaction prompt + response for trace writing.
+    const trace: LlmTrace = { scrubbedPrompt, response: responseText };
+    this._lastTrace = trace;
+    return { text: responseText, usage, trace };
+  }
 
-        // #0398: structured success log -- one line per OpenAI HTTP 200.
-        logPortfolio('info', 'provider.llm.openai.ok', `OpenAI ${this.model} -> ${response.status} in ${Date.now() - attemptStartedAt}ms`, {
-          context: {
-            provider: 'openai',
-            model: this.model,
-            http_status: response.status,
-            latency_ms: Date.now() - attemptStartedAt,
-            tokens_in: inputTokens,
-            tokens_out: outputTokens,
-            cost_usd: this.lastUsage.cost_usd,
-          },
-        });
-
-        // Strip markdown code fences (any language tag: json, yaml, etc.)
-        // (response_format: json_object should prevent this; defensive).
-        const fenced = rawText.match(/```(?:\w+)?\s*([\s\S]*?)```/);
-        const responseText = fenced ? fenced[1].trim() : rawText;
-        // #1709: capture post-redaction prompt + response for trace writing.
-        this._lastTrace = { scrubbedPrompt, response: responseText };
-        return responseText;
-      } catch (err) {
-        if (isRetryable(err) && attempt < MAX_RETRIES) {
-          lastError = err as Error;
-          continue;
-        }
-        throw err;
-      }
-    }
-
-    throw lastError;
+  private specBase(kind: 'text' | 'vision', promptChars: number) {
+    return {
+      provider: 'openai',
+      label: 'OpenAI',
+      model: this.model,
+      kind,
+      endpoint: OPENAI_API_URL,
+      limiterKey: this.concurrencyKey,
+      streaming: false,
+      promptChars,
+      appId: this.appId,
+      attemptContext: { api_key_suffix: this.apiKey.slice(-4) },
+    } as const;
   }
 }

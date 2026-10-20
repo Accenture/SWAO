@@ -20,7 +20,7 @@
 **Framework ID:** `GDPR`
 **Version:** Regulation (EU) 2016/679 -- in force since 2018-05-25
 **Authority:** European Parliament and Council of the European Union
-**SWAO tier:** Community (pre-installed -- bundled with SWAO; no install step required)
+**SWAO tier:** Community (install required -- `swao framework install GDPR`)
 **Controls:** 53 controls across Chapters II-V + transfer safeguards
 
 ## What this framework evaluates
@@ -35,29 +35,27 @@ basis register, DPAs, RoPA, DPIAs).
 
 ## How to activate in SWAO
 
-GDPR is pre-installed. Add to your workspace `.swao.yml`:
+Install the framework with `swao framework install GDPR`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
-compliance:
-  frameworks: [GDPR]
+assessment:
+  regimes_active: [GDPR]
 ```
 
-Or run a one-off assessment:
+Then run the application assessment for that app:
 
 ```bash
-swao assess --framework GDPR
+swao assess --app <app-id>
 ```
 
 ## Control domains
 
 | Domain | Controls | Key articles |
 |---|---|---|
-| Principles | 7 | Art. 5 (principles), Art. 6 (lawfulness), Art. 9 (special categories) |
-| Data subject rights | 10 | Art. 15-22 (access, erasure, portability, objection, automated decisions) |
-| Controller and processor | 13 | Art. 24-30 (responsibility, DPA requirements, Records of Processing Activities) |
-| Security and breach | 8 | Art. 32-34 (security measures, supervisory authority notification, subject notification) |
-| Third-country transfers | 7 | Art. 44-49 (adequacy decisions, Standard Contractual Clauses, BCRs) |
-| DPA and DPIA | 8 | Art. 28, 35-36 (processor contracts, Data Protection Impact Assessments) |
+| Chapter II: Principles | 12 | Art. 5-11 (principles, lawfulness, consent, special categories) |
+| Chapter III: Data subject rights | 12 | Art. 12-23 (transparency, access, erasure, portability, objection, automated decisions) |
+| Chapter IV: Controller and processor | 23 | Art. 24-42 (accountability, processors, RoPA, security, breach notification, DPIA, DPO) |
+| Chapter V: Third-country transfers | 6 | Art. 44-49 (adequacy decisions, Standard Contractual Clauses, BCRs, derogations) |
 
 ## Evidence sources
 
@@ -74,7 +72,7 @@ Install a local copy to override specific controls for your engagement:
 swao framework install GDPR
 ```
 
-The installed copy at `catalogs/community/gdpr/controls.yaml` overrides the bundled version
+The installed copy at `wsp/inputs/catalogs/community/gdpr/controls.yaml` overrides the bundled version
 for all assessments in that workspace. Edit the YAML to add jurisdiction-specific controls,
 adjust severity weights, or extend evidence requirements. See `CONTRIBUTING.md` at the
 repository root for the full authoring guide.

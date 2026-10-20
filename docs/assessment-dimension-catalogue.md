@@ -39,7 +39,7 @@ SWAO language model.
 
 The 7R label anchors the programme business case. Replatform means the application moves
 with limited code changes and a migration window measured in weeks. Re-architect means
-significant investment is required before migration can begin -- often 6-18 months of
+significant investment is required before migration can begin, often 6-18 months of
 refactoring. The wrong label leads to either cost overruns (underestimating complexity)
 or missed value (over-engineering a simple lift-and-shift).
 
@@ -128,9 +128,9 @@ EGR pass signals cross-referenced against the sovereign service catalogue
 **Suggested consultant language**
 
 "The portability score of 0.56 tells us that 44% of the services Medplum calls have no
-direct sovereign-cloud equivalent. The good news is that two of these -- AWS Textract --
+direct sovereign-cloud equivalent. The good news is that two of these (AWS Textract)
 may be inactive in production. Once we confirm that, the score rises to 0.75 and the
-application enters the sovereign-ready range."
+application moves into the conditional range, with one service left to resolve."
 
 ---
 
@@ -146,13 +146,13 @@ three tiers by migration impact.
 
 Legacy technology is the single most common cause of stranded migration programmes.
 Tier-1 blockers (IBM MQ, TIBCO, Oracle SOA Suite) have no sovereign-cloud equivalent
-and require full replacement before migration can begin -- this is often a 12-24 month
+and require full replacement before migration can begin. This is often a 12-24 month
 engineering programme in itself. Detecting them early prevents surprise scope expansions.
 
 **How it is scored**
 
 Qualitative verdict (clear / advisory / blocked) with tier breakdown counts. No numeric
-score -- presence of even one tier-1 blocker escalates the 7R disposition toward
+score. Presence of even one tier-1 blocker escalates the 7R disposition toward
 Retain or Re-architect regardless of other scores.
 
 **Tier definitions**
@@ -178,7 +178,7 @@ file patterns (.bts, .cbl), Docker Compose images, SQL migration files.
 
 **Suggested consultant language**
 
-"Medplum is legacy-clear -- no tier-1 blockers detected. This is a positive differentiator;
+"Medplum is legacy-clear: no tier-1 blockers detected. This is a positive differentiator;
 the migration is not gated by technology debt. In contrast, we often find IBM MQ or Oracle
 SOA in healthcare workloads, which adds 12-18 months to the programme."
 
@@ -241,14 +241,14 @@ credential management, SAST integration, dependency review, and build provenance
 **Why it matters**
 
 Supply chain attacks (SolarWinds, XZ Utils, tj-actions incident) frequently originate in
-CI/CD pipelines. A sovereign cloud migration is a high-risk period -- pipelines are
+CI/CD pipelines. A sovereign cloud migration is a high-risk period: pipelines are
 modified, new credentials are provisioned, and deployment paths change. A hardened pipeline
 reduces the attack surface during the most vulnerable phase.
 
 **How it is scored**
 
 Count of findings by severity (critical, high, medium, low). Positive controls are recorded
-separately. No aggregate score -- severity distribution drives the advisory.
+separately. No aggregate score: severity distribution drives the advisory.
 
 **Evidence sources**
 
@@ -325,8 +325,10 @@ disclosure, and proprietary licences with geographic or use restrictions.
 **Why it matters**
 
 Licence compliance failures can halt a migration or require emergency code removal.
-AGPL licences in particular require source disclosure for any service the application
-calls over a network -- a common trigger in healthcare and financial services workloads.
+AGPL licences in particular apply to the services the application itself provides over a
+network: if AGPL code is modified, users who interact with that service remotely must be
+offered the corresponding source code. Calling someone else's AGPL service does not create
+this obligation. It is a common trigger in healthcare and financial services workloads.
 
 **Score ranges**
 
@@ -350,7 +352,7 @@ coverage thresholds).
 
 Migrations introduce regressions. Applications without a reliable test suite cannot validate
 that the migrated version behaves identically to the original. Low test maturity raises the
-risk of silent regressions on sovereign cloud -- especially for FHIR-compliant healthcare
+risk of silent regressions on sovereign cloud, especially for FHIR-compliant healthcare
 applications where data integrity is a patient safety concern.
 
 **Score ranges**

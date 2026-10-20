@@ -1,29 +1,84 @@
 # Sovereign Cloud Service Catalogue
 # SWAO Compliance Ruleset Library -- runtime asset
-# Version: 2026-04
-# Schema: sovereign-service-catalogue-v1.schema.json
+# Version: 2026-10
+# Schema: Zod SovereignServiceEntrySchema
+#   (swao/packages/@swao/module-app-assessment/src/catalogue/reference-catalogues.ts)
 #
-# Used by: SPEC §10.1a sovereign_service_availability sub-pass (Stage D)
+# Used by: Pass 07 (EGR), passes/pass-07-egr.ts. One EGR signal per catalogue
+#   service whose client library or API host name is found in the source; the
+#   detection keys live in SOVEREIGN_SERVICE_DETECTION in that file. When the
+#   same service is also an egress destination, the two are reported as ONE
+#   signal (#3296).
 # Purpose: Reference list of common SaaS/PaaS services with their EU sovereign
-#   availability status. Each entry drives the portability_verdict emitted by
-#   the sovereign_service_availability pass.
+#   availability status. This is a generic runtime asset: it must not contain
+#   engagement-specific content (client names or pseudonyms, incident ids,
+#   internal proxy endpoints, one application's volumes, costs or file names).
 #
-# portability_verdict values:
-#   available   -- EU-hosted sovereign instance exists; data residency confirmed
-#   partial     -- EU presence (CDN PoP, EU entity, or proxy) but full sovereign
-#                  certification or contractual routing unconfirmed
-#   unavailable -- No EU-sovereign equivalent; blocks migration to sovereign cloud
+# ---------------------------------------------------------------------------
+# Verdict rule (applied to every entry, #3296)
+# ---------------------------------------------------------------------------
+# The verdict rates the SERVICE as offered by its vendor, not a client's
+# configuration. Two questions decide it:
+#   1. Does the vendor document an EU/EEA data residency option for the
+#      customer data of this service (its own offering; it may be a separate
+#      plan, tenant type, region or host name)?
+#   2. Are the operator and its ultimate parent established in the EU/EEA?
+#
+#   available   -- 1 yes AND 2 yes, and customer data is hosted in the EU/EEA
+#                  without a hosting sub-processor whose parent is outside the
+#                  EU/EEA. No extraterritorial access law of a third country
+#                  applies to the operator.
+#   partial     -- 1 yes, 2 no (or the hosting sub-processor has a non-EU
+#                  parent), or the EU option covers only part of the
+#                  customer data.
+#   unavailable -- 1 no: the vendor documents no EU/EEA residency option for
+#                  this service's customer data.
+#
+# US-parent vendors (CLOUD Act exposure vs EU data residency): a vendor whose
+#   ultimate parent is a US company is subject to the US CLOUD Act (18 U.S.C.
+#   2713), which lets US authorities require disclosure of data in the
+#   provider's possession, custody or control regardless of where it is
+#   stored. EU data residency therefore reduces but does not remove the
+#   exposure. Rule: a US-parent vendor is NEVER `available`; with a
+#   documented EU residency option it is `partial` (sovereign_evidence
+#   eu_region_confirmed or eu_cdn_routing); without one it is `unavailable`.
+#   This applies equally to EU subsidiaries and EU "sovereign" operating
+#   companies of US groups (for example the AWS European Sovereign Cloud).
+#   Third-country operators that are not US-parented (for example
+#   Switzerland, with an EU adequacy decision) are assessed by the same two
+#   questions; their hosting sub-processor decides between available and
+#   partial. parent_jurisdiction records the parent's country.
+#   CLOUD Act text: https://www.law.cornell.edu/uscode/text/18/2713
+#
+# verdict_confidence:
+#   verified   -- every claim the verdict rests on is supported by a public
+#                 source listed under `sources` (vendor documentation, trust
+#                 or compliance page, official register), fetched on the
+#                 `reviewed` date.
+#   unverified -- at least one claim the verdict rests on could not be
+#                 confirmed from a primary public source. Pass 07 caps the
+#                 severity at medium and never treats the entry as a
+#                 migration blocker.
+#
+# blocks_migration: true exactly when portability_verdict is unavailable AND
+#   verdict_confidence is verified (enforced by the schema and by
+#   tests/audit-gates/reference-catalogue-quality.gate.mjs).
 #
 # sovereign_evidence values:
-#   eu_region_confirmed     -- documented EU-hosted region in vendor privacy docs
-#   eu_entity_available     -- EU legal entity exists; routing may need config
-#   eu_cdn_routing          -- EU CDN PoP routes traffic; data residency not guaranteed
-#   eu_proxy_available      -- third-party EU proxy available; vendor itself US-only
-#   no_eu_equivalent        -- vendor has no EU hosting; US-only
+#   eu_region_confirmed     -- documented EU-hosted region in vendor documentation
+#   eu_entity_available     -- EU legal entity exists; data residency not documented
+#   eu_cdn_routing          -- EU edge locations or partial EU localisation only
+#   eu_proxy_available      -- third-party EU proxy available; vendor itself not EU-hosted
+#   no_eu_equivalent        -- vendor documents no EU hosting for this service
 #   not_assessed            -- not yet evaluated
 #
-# blocks_migration: true  -> presence of this service in egress prevents sovereign migration
-#                           until replaced or verified. Only for unavailable verdicts.
+# Certification claims (BSI C5 and similar) are recorded only with a source
+# that names the attestation; otherwise they are omitted.
+#
+# Review: every entry carries last_reviewed and per-source reviewed dates.
+# The quality gate warns when a review is older than its age threshold.
+
+last_reviewed: '2026-10-17'
 
 services:
 
@@ -32,41 +87,69 @@ services:
   # ===========================================================================
 
   - id: anthropic-api
-    name: "Anthropic API"
+    name: "Anthropic API (first-party, api.anthropic.com)"
     category: ai_inference
-    vendor: "Anthropic PBC (US)"
-    portability_verdict: partial
-    sovereign_evidence: eu_proxy_available
+    vendor: "Anthropic PBC (US); EU services provided by Anthropic Ireland Limited"
+    parent_jurisdiction: US
+    portability_verdict: unavailable
+    sovereign_evidence: no_eu_equivalent
+    verdict_confidence: verified
     eu_details: >
-      EU-resident proxy endpoint available via third-party proxy arrangement
-      (e.g. acn-proxy://anthropic-eu). Anthropic itself is a US company with
-      no EU-sovereign-certified region as of 2026-04. zero_retention must be
-      configured and verified at the API level. Long-term sovereign alternative:
-      EU-hosted open-weight model (Mistral via OTC, Aleph Alpha).
-    blocks_migration: false
+      The first-party API data residency settings offer inference geographies
+      "us" and "global" only, and workspace geography "us" only; there is no
+      EU geography. Claude models are also offered through AWS Bedrock and
+      Google Vertex AI in EU regions; those are separate services of other
+      vendors (both US-parented, so partial under the verdict rule).
+    blocks_migration: true
     remediation: >
-      Confirm EU proxy endpoint routes to EU-resident inference infrastructure.
-      Validate zero_retention=true is enforced at the API level. Obtain DPA with
-      EU Standard Contractual Clauses. Consider Mistral or Aleph Alpha as
-      sovereign fallback for GDPR Art. 9 data processing.
-    last_reviewed: "2026-04-01"
+      Route inference through an EU-region deployment (AWS Bedrock or Google
+      Vertex AI in an EU region, checking in-region versus cross-region
+      inference for the chosen model), or an EU-hosted open-weight model on
+      sovereign infrastructure. Confirm retention settings and the DPA.
+    sources:
+      - url: https://platform.claude.com/docs/en/docs/build-with-claude/data-residency
+        title: "Claude API data residency (inference and workspace geography)"
+        reviewed: '2026-10-17'
+      - url: https://www.anthropic.com/legal/privacy
+        title: "Anthropic privacy policy (controller entities)"
+        reviewed: '2026-10-17'
+      - url: https://docs.aws.amazon.com/bedrock/latest/userguide/models-region-compatibility.html
+        title: "Amazon Bedrock model support by Region"
+        reviewed: '2026-10-17'
+      - url: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations
+        title: "Vertex AI generative AI locations"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [ai, llm, inference, gdpr_risk]
 
   - id: openai-api
     name: "OpenAI API"
     category: ai_inference
-    vendor: "OpenAI LLC (US)"
+    vendor: "OpenAI (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
-    sovereign_evidence: eu_entity_available
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      OpenAI has EU data residency options (Azure OpenAI in EU regions) and
-      an EU legal entity. Direct OpenAI API endpoint (api.openai.com) is US-hosted.
-      Azure OpenAI Service in Germany North or Sweden Central is the sovereign path.
+      OpenAI offers data residency in Europe (EEA and Switzerland) per API
+      project, with regional storage and processing via eu.api.openai.com.
+      Eligibility is confirmed by OpenAI sales and requires an approved
+      retention control. Azure OpenAI (Microsoft) offers regional deployments
+      in Sweden Central; in Germany West Central most chat models are offered
+      as EU Data Zone deployments only.
     blocks_migration: false
     remediation: >
-      Switch to Azure OpenAI Service deployed in EU sovereign region (Germany
-      North recommended for BSI C5). Confirm DPA covers Art. 9 data if applicable.
-    last_reviewed: "2026-04-01"
+      Use a project with European data residency (eu.api.openai.com) or an
+      Azure OpenAI regional or EU Data Zone deployment. Confirm the retention
+      control and DPA cover any special-category data.
+    sources:
+      - url: https://developers.openai.com/api/docs/guides/your-data
+        title: "OpenAI API: your data (data residency)"
+        reviewed: '2026-10-17'
+      - url: https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure-region-availability
+        title: "Azure OpenAI model region availability"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [ai, llm, inference, gdpr_risk]
 
   # ===========================================================================
@@ -76,79 +159,115 @@ services:
   - id: stripe
     name: "Stripe"
     category: payments
-    vendor: "Stripe Inc. (US) / Stripe Payments Europe, Limited (IE)"
-    portability_verdict: partial
+    vendor: "Stripe, Inc. (US); Stripe Payments Europe, Limited (IE)"
+    parent_jurisdiction: US
+    portability_verdict: unavailable
     sovereign_evidence: eu_entity_available
+    verdict_confidence: unverified
     eu_details: >
-      Stripe Payments Europe, Limited (Dublin, Ireland) is the EU contracting
-      entity. EU merchants are automatically contracted under EU entity. The global
-      API endpoint (api.stripe.com) routes via EU CDN PoPs for EU clients but
-      contractual data routing must be confirmed via the Stripe EU DPA addendum.
-      Payment card data is tokenised; PCI DSS scope is at Stripe.
+      Stripe Payments Europe, Limited (Ireland) is the contracting and DPA
+      entity for users outside the Americas. Stripe states that personal data
+      may be transferred to and processed in the United States and other
+      countries where it does business. No Stripe page reviewed documents an
+      EU data residency option; that absence is not confirmed by a Stripe
+      statement, so the verdict is unverified.
     blocks_migration: false
     remediation: >
-      Confirm account is under Stripe EU legal entity. Request EU DPA addendum.
-      Verify SCC coverage for EU-resident payment data. Confirm EU routing is
-      active via Stripe dashboard or account team. Network flow evidence (CDN
-      routing) is not sufficient -- contractual entity routing must be documented.
-    last_reviewed: "2026-04-01"
-    tags: [payments, pci, gdpr_risk, eu_entity_available]
+      Ask Stripe whether an EU data residency commitment is available for the
+      account. Confirm the contracting entity and SCC coverage. Keep card data
+      tokenised so that the application holds no cardholder data.
+    sources:
+      - url: https://stripe.com/legal/privacy-center
+        title: "Stripe Privacy Center (entities, international transfers)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [payments, pci, gdpr_risk]
 
   # ===========================================================================
   # OBSERVABILITY / ERROR MONITORING
   # ===========================================================================
 
   - id: sentry
-    name: "Sentry"
+    name: "Sentry (SaaS)"
     category: observability
-    vendor: "Functional Software Inc. (US) / Sentry EU"
-    portability_verdict: available
+    vendor: "Functional Software, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Sentry offers a dedicated EU-region deployment (sentry.io EU). EU ingest
-      cluster at o<project>.ingest.sentry.io EU region. Data residency confirmed
-      for projects created in the EU region. DPA covers GDPR obligations. PII
-      scrubbing must be configured to prevent health data leakage into error payloads.
+      Sentry offers an EU data storage location in Frankfurt, Germany
+      (de.sentry.io), hosted on Google Cloud Platform. Organisations in the EU
+      region send events to o<number>.ingest.de.sentry.io.
     blocks_migration: false
     remediation: >
-      Confirm DSN is EU-region ingest endpoint. Verify project is created in the
-      Sentry EU region (not US). Configure PII scrubbing rules for any field that
-      might contain GDPR Art. 9 data. Request EU DPA addendum.
-    last_reviewed: "2026-04-01"
+      Create the organisation in the EU data storage location and check that
+      DSNs use the ingest.de.sentry.io host. Configure server-side data
+      scrubbing so that special-category data does not reach error payloads.
+      Self-hosted Sentry is the alternative for strict sovereignty.
+    sources:
+      - url: https://docs.sentry.io/organization/data-storage-location/
+        title: "Sentry data storage location"
+        reviewed: '2026-10-17'
+      - url: https://docs.sentry.io/product/security/ip-ranges
+        title: "Sentry IP ranges (EU ingest host)"
+        reviewed: '2026-10-17'
+      - url: https://sentry.io/trust/privacy/
+        title: "Sentry trust: privacy (hosting provider)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [observability, error_monitoring, pii_risk]
 
   - id: datadog
     name: "Datadog"
     category: observability
-    vendor: "Datadog Inc. (US)"
-    portability_verdict: available
+    vendor: "Datadog, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Datadog EU region (EU1) hosted in Frankfurt. Data remains in EU when
-      EU1 site is selected. GDPR DPA available. BSI C5 attestation available
-      for the EU1 site.
+      The Datadog EU1 site (datadoghq.eu) is located in Germany. The Datadog
+      trust centre does not list a BSI C5 attestation (checked 2026-10-17).
     blocks_migration: false
     remediation: >
-      Configure agent to send data to datadoghq.eu (EU1 site). Confirm EU1
-      site selection in Datadog organisation settings. Obtain EU DPA.
-    last_reviewed: "2026-04-01"
+      Send data to the EU1 site (datadoghq.eu) and confirm the organisation is
+      on EU1. Obtain the DPA. Do not rely on a C5 attestation.
+    sources:
+      - url: https://docs.datadoghq.com/getting_started/site/
+        title: "Datadog sites"
+        reviewed: '2026-10-17'
+      - url: https://trust.datadoghq.com/
+        title: "Datadog trust centre (compliance list)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [observability, metrics, logs, eu_region]
 
   - id: new-relic
     name: "New Relic"
     category: observability
-    vendor: "New Relic Inc. (US)"
+    vendor: "New Relic, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      New Relic EU data centre available (eu.newrelic.com). Data residency
-      in EU when EU region is selected. Full sovereign certification not confirmed;
-      parent company is US-headquartered.
+      New Relic offers an EU region data centre (announced in Frankfurt,
+      Germany). New Relic documents that systems operations data is stored in
+      the US region for all regions, so EU residency covers telemetry but not
+      all account data.
     blocks_migration: false
     remediation: >
-      Set New Relic licence key to EU region endpoint. Confirm data residency
-      in New Relic account settings. Review DPA for SCC coverage.
-    last_reviewed: "2026-04-01"
+      Use an EU region account and EU endpoints for agents. Review which
+      account data stays in the US and the DPA.
+    sources:
+      - url: https://docs.newrelic.com/docs/using-new-relic/welcome-new-relic/get-started/introduction-eu-region-data-center/
+        title: "New Relic EU region data center"
+        reviewed: '2026-10-17'
+      - url: https://newrelic.com/press-release/20181023
+        title: "New Relic European region announcement (2018)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [observability, apm]
 
   # ===========================================================================
@@ -158,41 +277,58 @@ services:
   - id: docker-hub
     name: "Docker Hub"
     category: container_registry
-    vendor: "Docker Inc. (US)"
-    portability_verdict: available
-    sovereign_evidence: eu_cdn_routing
+    vendor: "Docker, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: unavailable
+    sovereign_evidence: no_eu_equivalent
+    verdict_confidence: unverified
     eu_details: >
-      Docker Hub CDN serves EU clients from EU PoPs. No dedicated EU-sovereign
-      registry; Docker Hub is US-hosted. For supply chain sovereignty, use a
-      self-hosted or EU-hosted registry (Harbor on OTC, GitHub Container Registry
-      with EU-resident GitHub Enterprise, or OTC SWR). EU CDN routing reduces
-      latency but does not provide data residency guarantees for image layers.
+      Docker documents an EU region only for Docker Hardened Images
+      subscriptions; other subscriptions are in the default US region. No
+      Docker page reviewed documents EU residency for Docker Hub repositories
+      in general, and the hosting location of Docker Hub is not stated
+      directly, so the verdict is unverified.
     blocks_migration: false
     remediation: >
-      Pin images by SHA256 digest (not tag) to prevent silent upstream changes.
-      Evaluate migration to self-hosted Harbor registry on OTC or to EU GitHub
-      Container Registry. For air-gapped sovereign environments, mandatory mirror
-      to private EU registry required.
-    last_reviewed: "2026-04-01"
+      Pin images by digest. Mirror required images into a registry hosted on
+      sovereign infrastructure (for example Harbor) and pull from the mirror.
+      Air-gapped environments need the mirror in any case.
+    sources:
+      - url: https://docs.docker.com/dhi/explore/eu-region/
+        title: "Docker Hardened Images EU region"
+        reviewed: '2026-10-17'
+      - url: https://www.docker.com/trust/privacy/sub-processors/
+        title: "Docker sub-processors"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [supply_chain, container_registry, image_pinning]
 
   - id: github-container-registry
     name: "GitHub Container Registry (ghcr.io)"
     category: container_registry
-    vendor: "GitHub Inc. / Microsoft Corporation"
+    vendor: "GitHub, Inc. / Microsoft Corporation (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
-    sovereign_evidence: eu_entity_available
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      GitHub (a Microsoft subsidiary) offers data residency options for GitHub
-      Enterprise Cloud with EU data residency add-on. Public ghcr.io is US-hosted.
-      Microsoft Azure (GitHub parent) has EU sovereign regions. Data residency
-      requires GitHub Enterprise + EU data residency feature.
+      GitHub stores GitHub.com data in the USA by default. GitHub Enterprise
+      Cloud with data residency (GHE.com) offers an EU region; its container
+      registry is served from containers.<subdomain>.ghe.com, not ghcr.io. Use
+      of ghcr.io itself means the US-hosted service.
     blocks_migration: false
     remediation: >
-      For sovereign deployments, use GitHub Enterprise Cloud with EU data residency,
-      or migrate to self-hosted Harbor / OTC SWR. Standard ghcr.io is insufficient
-      for strict sovereign requirements.
-    last_reviewed: "2026-04-01"
+      Move images to the container registry of a GHE.com enterprise in the EU
+      region, or to a registry on sovereign infrastructure (for example
+      Harbor).
+    sources:
+      - url: https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency
+        title: "About GitHub Enterprise Cloud with data residency"
+        reviewed: '2026-10-17'
+      - url: https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/feature-overview-for-github-enterprise-cloud-with-data-residency
+        title: "Feature overview for GitHub Enterprise Cloud with data residency"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [supply_chain, container_registry]
 
   # ===========================================================================
@@ -202,38 +338,53 @@ services:
   - id: github
     name: "GitHub"
     category: source_control
-    vendor: "GitHub Inc. / Microsoft Corporation"
+    vendor: "GitHub, Inc. / Microsoft Corporation (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
-    sovereign_evidence: eu_entity_available
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      GitHub Actions compute (runners) can be EU-hosted using self-hosted runners
-      or GitHub-hosted runners in EU regions. GitHub Enterprise Cloud EU data
-      residency add-on available. Standard GitHub.com is US-hosted with no
-      data residency guarantees for repository data.
+      GitHub stores GitHub.com data in the USA by default. GitHub Enterprise
+      Cloud with data residency (GHE.com) offers an EU region (including Azure
+      regions in EFTA countries) on a dedicated subdomain; some features differ
+      from GitHub.com.
     blocks_migration: false
     remediation: >
-      For code sovereignty, use GitHub Enterprise Cloud EU data residency or
-      migrate to GitLab.com EU (hosted in Google Cloud Frankfurt) or self-hosted
-      GitLab on OTC. For CI/CD sovereignty, use self-hosted runners in EU region.
-    last_reviewed: "2026-04-01"
-    tags: [source_control, cicd, eu_entity_available]
+      For code residency, use GHE.com in the EU region or a self-hosted Git
+      service on sovereign infrastructure. Use self-hosted runners in the EU
+      for CI/CD.
+    sources:
+      - url: https://docs.github.com/en/enterprise-cloud@latest/admin/data-residency/about-github-enterprise-cloud-with-data-residency
+        title: "About GitHub Enterprise Cloud with data residency"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [source_control, cicd]
 
   - id: gitlab-saas
     name: "GitLab SaaS (gitlab.com)"
     category: source_control
     vendor: "GitLab Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: unverified
     eu_details: >
-      GitLab.com EU deployment option routes data to Google Cloud Frankfurt. GitLab
-      itself is a US company. Self-hosted GitLab on OTC or IONOS is the fully
-      sovereign option. SaaS EU option satisfies data residency but not full
-      sovereign certification.
+      No EU data residency option for multi-tenant GitLab.com was found; the
+      earlier claim of a GitLab.com EU option in Google Cloud Frankfurt is not
+      supported. GitLab Dedicated (single-tenant, on AWS) lists EU regions
+      including Frankfurt, Ireland and Stockholm in its archived documentation.
+      The GitLab.com hosting region and the current Dedicated region list could
+      not be confirmed from a current primary page, so the verdict is
+      unverified.
     blocks_migration: false
     remediation: >
-      Use GitLab EU routing or, for strict sovereignty, deploy self-hosted GitLab
-      on OTC or IONOS sovereign infrastructure.
-    last_reviewed: "2026-04-01"
+      For residency, use GitLab Dedicated in an EU region or self-managed
+      GitLab on sovereign infrastructure. Use EU-hosted runners for CI/CD.
+    sources:
+      - url: https://archives.docs.gitlab.com/17.7/ee/subscriptions/gitlab_dedicated/data_residency_and_high_availability
+        title: "GitLab Dedicated data residency (archived 17.7 docs)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [source_control, cicd]
 
   # ===========================================================================
@@ -241,55 +392,82 @@ services:
   # ===========================================================================
 
   - id: okta
-    name: "Okta"
+    name: "Okta Workforce Identity"
     category: identity
-    vendor: "Okta Inc. (US)"
-    portability_verdict: available
+    vendor: "Okta, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Okta EU cell (cell-1.eu) hosted in Frankfurt and Amsterdam. Data stays in
-      EU for EU cell tenants. GDPR DPA available. BSI C5 attestation available.
-      EU cell must be selected at tenant creation; migration between cells requires
-      professional services engagement.
+      Okta's EU Cell is hosted on AWS in Germany and Ireland. The Okta trust
+      portal lists C5 among its compliance items without stating scope or
+      audit period.
     blocks_migration: false
     remediation: >
-      Confirm tenant is provisioned in Okta EU cell. If existing tenant is in
-      US cell, plan migration to EU cell as part of sovereign migration. Obtain
-      EU DPA.
-    last_reviewed: "2026-04-01"
+      Confirm the tenant is in the EU Cell; a tenant in a US cell needs a
+      migration planned with Okta. Request the C5 report and check its scope.
+    sources:
+      - url: https://www.okta.com/legal/trustandcompliance/subprocessors/
+        title: "Okta sub-processors (EU Cell hosting)"
+        reviewed: '2026-10-17'
+      - url: https://security.okta.com/
+        title: "Okta trust portal (compliance list)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [identity, sso, eu_region]
 
   - id: auth0
     name: "Auth0 (Okta)"
     category: identity
-    vendor: "Auth0 Inc. / Okta Inc. (US)"
-    portability_verdict: available
+    vendor: "Auth0, Inc. / Okta, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Auth0 EU deployment option (eu.auth0.com) routes data to EU-hosted infrastructure.
-      EU region selection at tenant creation required. GDPR DPA available.
+      Auth0 Public Cloud offers a European Union region (AWS); the region is
+      chosen per tenant.
     blocks_migration: false
     remediation: >
-      Select EU region at Auth0 tenant creation. Existing US tenants require migration.
-      Confirm data residency in Auth0 dashboard.
-    last_reviewed: "2026-04-01"
+      Create tenants in the EU region; existing tenants in other regions need
+      migration. Confirm data location in the tenant settings.
+    sources:
+      - url: https://www.okta.com/legal/trustandcompliance/subprocessors/
+        title: "Okta sub-processors (Auth0 Public Cloud regions)"
+        reviewed: '2026-10-17'
+      - url: https://auth0.com/blog/unified-login-flows-and-data-location-choices-in-dach/
+        title: "Auth0 data location choices (vendor blog)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [identity, sso, eu_region]
 
   - id: azure-ad
     name: "Microsoft Entra ID (Azure AD)"
     category: identity
     vendor: "Microsoft Corporation (US)"
-    portability_verdict: available
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Microsoft Entra ID with EU Data Boundary (EUDB) routes data to EU datacentres.
-      Germany North and Sweden Central are BSI C5 attested. Microsoft EU Data Boundary
-      is a contractual commitment, not a technical isolation boundary.
+      For tenants with a location in the EU or EFTA, Entra ID stores and
+      processes most customer data in the EU Data Boundary, with documented
+      exceptions (for example some MFA logs and managed identity data).
+      Microsoft documents a C5:2020 attestation for Azure, with services in
+      scope as listed in the Azure SOC 2 Type 2 report.
     blocks_migration: false
     remediation: >
-      Enable EU Data Boundary in Microsoft 365 admin. Use Germany North or West
-      Europe as primary region. Obtain Microsoft EU DPA.
-    last_reviewed: "2026-04-01"
+      Confirm the tenant location is in the EU/EFTA and review the documented
+      exceptions against the data classification. Obtain the Microsoft DPA.
+    sources:
+      - url: https://learn.microsoft.com/en-us/entra/fundamentals/data-storage-eu
+        title: "Microsoft Entra ID data storage for European customers"
+        reviewed: '2026-10-17'
+      - url: https://learn.microsoft.com/en-us/azure/compliance/offerings/offering-germany-c5
+        title: "Azure compliance offering: Germany C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [identity, sso, eu_region, microsoft]
 
   # ===========================================================================
@@ -299,37 +477,59 @@ services:
   - id: slack
     name: "Slack"
     category: collaboration
-    vendor: "Slack Technologies LLC / Salesforce Inc. (US)"
-    portability_verdict: unavailable
-    sovereign_evidence: no_eu_equivalent
+    vendor: "Slack Technologies, LLC / Salesforce, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Slack has no EU-sovereign hosting option as of 2026-04. Slack data is processed
-      in US datacentres. Slack offers EU data residency for message and file data
-      (Enterprise Grid), but the platform infrastructure remains US-hosted. Not
-      suitable for processing GDPR Art. 9 data in communications.
+      Slack data residency is available on Business+ and Enterprise plans,
+      with regions including Frankfurt (Germany), Paris (France) and Stockholm
+      (Sweden). Free and Pro plans have no data residency.
     blocks_migration: false
     remediation: >
-      Do not use Slack for communicating GDPR Art. 9 health data. Sovereign
-      alternatives: Element (Matrix protocol, self-hosted on OTC), Mattermost
-      (self-hosted), Microsoft Teams with EU data residency.
-    last_reviewed: "2026-04-01"
-    tags: [collaboration, messaging, no_eu_sovereign]
+      Use a Business+ or Enterprise plan with an EU data region and confirm
+      existing data has been migrated. Keep special-category data out of
+      messages. Self-hosted alternatives: Matrix (Element) or Mattermost.
+    sources:
+      - url: https://slack.com/help/articles/360035633934-Data-residency-for-Slack
+        title: "Data residency for Slack"
+        reviewed: '2026-10-17'
+      - url: https://slack.com/company-information
+        title: "Slack company information"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [collaboration, messaging, eu_region]
 
   - id: microsoft-teams
     name: "Microsoft Teams"
     category: collaboration
     vendor: "Microsoft Corporation (US)"
-    portability_verdict: available
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Microsoft Teams with EU Data Boundary stores Teams data in EU datacentres.
-      Germany North and West Europe regions available. Microsoft 365 EU Data
-      Boundary covers Teams, Exchange Online, SharePoint, and OneDrive.
+      Microsoft 365, including Teams, is in scope of the EU Data Boundary for
+      tenants with a sign-up location in the EU or EFTA (Multi-Geo tenants
+      excluded). Microsoft announced completion of the EU Data Boundary in
+      February 2025; limited documented transfers remain.
     blocks_migration: false
     remediation: >
-      Enable EU Data Boundary. Use Microsoft 365 E3/E5 with EU tenant. For
-      sovereign health data, confirm that Teams is not used for PHI transmission.
-    last_reviewed: "2026-04-01"
+      Confirm the tenant sign-up location and review the documented transfer
+      exceptions. Keep special-category data out of chats and channels unless
+      the DPA and classification allow it.
+    sources:
+      - url: https://learn.microsoft.com/en-us/privacy/eudb/eu-data-boundary-learn
+        title: "What is the EU Data Boundary"
+        reviewed: '2026-10-17'
+      - url: https://learn.microsoft.com/en-us/microsoft-365/enterprise/m365-dr-service-teams
+        title: "Data residency for Microsoft Teams"
+        reviewed: '2026-10-17'
+      - url: https://blogs.microsoft.com/on-the-issues/2025/02/26/microsoft-completes-landmark-eu-data-boundary-offering-enhanced-data-residency-and-transparency/
+        title: "Microsoft completes the EU Data Boundary (2025-02-26)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [collaboration, eu_region, microsoft]
 
   # ===========================================================================
@@ -339,36 +539,45 @@ services:
   - id: salesforce
     name: "Salesforce"
     category: crm
-    vendor: "Salesforce Inc. (US)"
+    vendor: "Salesforce, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Salesforce EU Hyperforce deployment (Frankfurt, London) available. Data residency
-      at the EU Hyperforce tier. Full sovereign certification not achieved; US parent
-      company with US government data access risk. Hyperforce EU is the recommended
-      path for GDPR compliance but not for strict sovereign workloads.
+      The Hyperforce EU Operating Zone stores and processes customer data
+      within the EU (and Switzerland) with EU-based support.
     blocks_migration: false
     remediation: >
-      Migrate to Salesforce EU Hyperforce. Obtain EU DPA. Evaluate whether CRM
-      data sovereignty requirements permit US-headquartered vendor with EU hosting.
-    last_reviewed: "2026-04-01"
+      Use an org in the Hyperforce EU Operating Zone. Obtain the DPA and
+      evaluate the remaining US-parent exposure for the data classification.
+    sources:
+      - url: https://salesforce.com/eu/products/platform/hyperforce/hyperforce-eu-oz
+        title: "Hyperforce EU Operating Zone"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [crm, eu_region, gdpr_risk]
 
   - id: hubspot
     name: "HubSpot"
     category: crm
-    vendor: "HubSpot Inc. (US)"
+    vendor: "HubSpot, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      HubSpot EU data residency option available (hosted in Frankfurt). Data at rest
-      in EU when EU data residency is selected. GDPR DPA available. Not certified
-      for strict sovereign use cases; US company with potential US data access risk.
+      HubSpot hosts its product on AWS and offers an EU data centre in
+      Germany.
     blocks_migration: false
     remediation: >
-      Enable EU data residency in HubSpot settings. Obtain GDPR DPA. Do not store
-      GDPR Art. 9 health data in HubSpot.
-    last_reviewed: "2026-04-01"
+      Use an account hosted in the EU data centre. Obtain the DPA. Keep
+      special-category data out of CRM records.
+    sources:
+      - url: https://knowledge.hubspot.com/account-security/hubspot-cloud-infrastructure-and-data-hosting-frequently-asked-questions
+        title: "HubSpot cloud infrastructure and data hosting FAQ"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [crm, eu_region]
 
   # ===========================================================================
@@ -378,36 +587,48 @@ services:
   - id: jira-cloud
     name: "Jira Cloud (Atlassian)"
     category: project_management
-    vendor: "Atlassian Corporation (US/AU)"
+    vendor: "Atlassian Corporation (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Atlassian offers EU data residency for Jira Cloud (hosted in Frankfurt).
-      EU data residency must be selected at product activation. Not a sovereign
-      certification; parent company is US/Australian. DPA covers GDPR obligations.
+      Atlassian data residency offers an EU location (Frankfurt and Dublin)
+      and a Germany location (Frankfurt) for Jira Cloud.
     blocks_migration: false
     remediation: >
-      Select EU data residency at Jira product activation. Obtain Atlassian EU DPA.
-      Do not attach GDPR Art. 9 data to Jira issues.
-    last_reviewed: "2026-04-01"
+      Pin the product to the EU or Germany data residency location. Obtain the
+      Atlassian DPA. Keep special-category data out of issues and attachments.
+    sources:
+      - url: https://support.atlassian.com/security-and-access-policies/docs/understand-data-residency/
+        title: "Understand data residency (Atlassian Cloud)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [project_management, eu_region]
 
   - id: servicenow
     name: "ServiceNow"
     category: itsm
-    vendor: "ServiceNow Inc. (US)"
+    vendor: "ServiceNow, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      ServiceNow EU data centre (Frankfurt) available. Data residency contractually
-      guaranteed for EU instances. BSI C5 attestation available for EU instances.
-      US company with potential US government data access risk for highly sensitive data.
+      ServiceNow operates German data centres (live since 2018) and announced
+      a BSI C5 attestation in March 2020. The current C5 status could not be
+      confirmed from the ServiceNow trust portal on the review date.
     blocks_migration: false
     remediation: >
-      Provision ServiceNow instance in EU data centre. Obtain EU DPA. Review
-      US CLOUD Act exposure for the specific data classification.
-    last_reviewed: "2026-04-01"
-    tags: [itsm, eu_region, bsi_c5]
+      Provision the instance in an EU data centre. Obtain the DPA and request
+      the current C5 report before relying on it. Review US-parent exposure
+      for the data classification.
+    sources:
+      - url: https://newsroom.servicenow.com/press-releases/details/2020/ServiceNow-Receives-C5-Attestation-03-26-2020-12-00-AM/default.aspx
+        title: "ServiceNow receives C5 attestation (2020)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [itsm, eu_region]
 
   # ===========================================================================
   # CDN / EDGE / DNS
@@ -416,82 +637,263 @@ services:
   - id: cloudflare
     name: "Cloudflare"
     category: cdn_edge
-    vendor: "Cloudflare Inc. (US)"
+    vendor: "Cloudflare, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_cdn_routing
+    verdict_confidence: verified
     eu_details: >
-      Cloudflare routes EU traffic via EU PoPs by default. Cloudflare Data
-      Localisation Suite (paid feature) allows pinning data processing to EU PoPs.
-      Cloudflare is a US company subject to US government data access. For strict
-      sovereign WAF/CDN, use OTC-native WAF or self-hosted HAProxy/nginx.
+      The Cloudflare Data Localization Suite (Regional Services, Customer
+      Metadata Boundary) lets customers choose where traffic is decrypted and
+      inspected and where metadata and logs are stored. It is a paid add-on.
     blocks_migration: false
     remediation: >
-      Enable Cloudflare Data Localisation Suite with EU PoP pinning. Obtain DPA
-      with SCC. For GDPR Art. 9 data flowing through CDN, evaluate whether
-      WAF inspection of health data payloads is permissible under your DPA.
-    last_reviewed: "2026-04-01"
+      Enable the Data Localization Suite with EU Regional Services and the EU
+      Customer Metadata Boundary. Evaluate whether inspection of
+      special-category payloads at the edge is permitted.
+    sources:
+      - url: https://developers.cloudflare.com/data-localization/
+        title: "Cloudflare Data Localization Suite"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [cdn, waf, eu_cdn_routing, gdpr_risk]
 
   - id: fastly
     name: "Fastly"
     category: cdn_edge
-    vendor: "Fastly Inc. (US)"
+    vendor: "Fastly, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_cdn_routing
+    verdict_confidence: verified
     eu_details: >
-      Fastly EU PoPs available (Frankfurt, Amsterdam, Paris, London). No full EU
-      data residency guarantee; edge compute may run in US nodes. Not suitable for
-      processing GDPR Art. 9 data at the edge without additional controls.
+      Fastly offers regional log aggregation (EU or US) for real-time log
+      streaming. No option to pin edge processing, cache or compute to the EU
+      was found; residency covers logs only.
     blocks_migration: false
     remediation: >
-      Confirm EU PoP pinning for edge compute if used. Obtain DPA. Avoid using
-      Fastly edge compute to process health data payloads.
-    last_reviewed: "2026-04-01"
+      Enable EU regional log aggregation. Do not process special-category
+      payloads in edge compute. Consider an EU-operated CDN for strict
+      residency.
+    sources:
+      - url: https://www.fastly.com/documentation/guides/integrations/streaming-logs/setting-up-regional-log-aggregation/
+        title: "Fastly regional log aggregation"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [cdn, eu_cdn_routing]
 
   # ===========================================================================
-  # FIREBASE / NATIVE-CLOUD (HIGH LOCK-IN)
+  # BACKEND AS A SERVICE
   # ===========================================================================
 
   - id: firebase
     name: "Firebase (Google)"
     category: backend_as_a_service
     vendor: "Google LLC (US)"
-    portability_verdict: unavailable
-    sovereign_evidence: no_eu_equivalent
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Firebase has no EU-sovereign equivalent. Firebase data is processed in US
-      datacentres (GCP US regions). No EU data residency option available for
-      Firebase Realtime Database or Firestore in EU-only mode. Firebase Authentication
-      processes data in the US. Using Firebase with GDPR Art. 9 data is not permissible
-      without adequate safeguards (SCC + TIA required; adequacy unclear post-Schrems II).
-    blocks_migration: true
+      Cloud Firestore offers EU locations (multi-region eur3 and regions such
+      as europe-west3, Frankfurt) and the Realtime Database offers
+      europe-west1 (Belgium). Firebase Authentication is run only from US data
+      centres, so EU residency covers database data but not authentication
+      data.
+    blocks_migration: false
     remediation: >
-      Migrate Firebase to an EU-sovereign backend: Supabase (self-hosted on OTC),
-      PocketBase, or native PostgreSQL + Actix-web/NestJS. Firebase Authentication
-      can be replaced with Keycloak (self-hosted) or Okta EU cell.
-    last_reviewed: "2026-04-01"
-    tags: [baas, no_eu_sovereign, blocks_migration, high_lock_in]
+      Place Firestore and Realtime Database instances in EU locations.
+      Replace Firebase Authentication with an EU-hosted identity provider (for
+      example self-hosted Keycloak) where authentication data must stay in the
+      EU. Proprietary APIs make Firebase a high lock-in dependency.
+    sources:
+      - url: https://firebase.google.com/docs/firestore/locations
+        title: "Cloud Firestore locations"
+        reviewed: '2026-10-17'
+      - url: https://firebase.google.com/docs/database/locations
+        title: "Realtime Database locations"
+        reviewed: '2026-10-17'
+      - url: https://firebase.google.com/support/privacy
+        title: "Privacy and security in Firebase (Authentication data location)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [baas, eu_region, high_lock_in]
+
+  # ===========================================================================
+  # AWS MANAGED SERVICES
+  # The AWS BSI C5 attestation covers the Frankfurt, Ireland, London, Paris,
+  # Milan, Stockholm, Zurich and Spain regions among others; the services in
+  # this section are listed in its services-in-scope page. The AWS European
+  # Sovereign Cloud (Brandenburg, generally available since 2026-01-14) is
+  # operated by German subsidiaries of Amazon; under the verdict rule it is
+  # still US-parented.
+  # ===========================================================================
 
   - id: aws-cognito
-    name: "AWS Cognito"
+    name: "Amazon Cognito"
     category: identity
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: unavailable
-    sovereign_evidence: no_eu_equivalent
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      AWS Cognito is a US-originated service. While AWS has EU regions (Frankfurt,
-      Ireland), AWS Cognito is not available on sovereign cloud platforms (OTC,
-      IONOS, Hetzner). AWS itself is not a certified sovereign provider for German
-      BSI C5 workloads of the highest classification. Cognito vendor lock-in is
-      extreme (proprietary user pool format, non-standard JWT claims).
-    blocks_migration: true
+      Amazon Cognito user pools are available in EU regions including
+      eu-central-1 (Frankfurt). Cognito is in scope of the AWS C5 attestation.
+      User pools use a proprietary format, which makes a later move to another
+      identity provider costly.
+    blocks_migration: false
     remediation: >
-      Migrate to Keycloak (self-hosted on OTC, IONOS, or on-prem), Authentik, or
-      Okta EU cell. Export Cognito users before migration; Cognito does not export
-      password hashes (users must reset passwords post-migration).
-    last_reviewed: "2026-04-01"
-    tags: [identity, no_eu_sovereign, blocks_migration, high_lock_in, aws]
+      Keep user pools in an EU region. For a move off AWS, plan the user
+      export and password reset or migration path early; self-hosted Keycloak
+      is a common sovereign target.
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/cognito.html
+        title: "Amazon Cognito endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [identity, eu_region, high_lock_in, aws]
+
+  - id: aws-comprehend-medical
+    name: "Amazon Comprehend Medical"
+    category: ai_inference
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
+    eu_details: >
+      Comprehend Medical is available in eu-west-1 (Ireland) and eu-west-2
+      (London); it is not offered in eu-central-1 (Frankfurt). It is in scope
+      of the AWS C5 attestation. A requirement to keep data in Germany cannot
+      be met with this service.
+    blocks_migration: false
+    remediation: >
+      Use the eu-west-1 endpoint where EU residency is sufficient and the DPA
+      covers special-category data. Where data must stay in Germany or on
+      sovereign infrastructure, replace it with a self-hosted clinical NLP
+      pipeline (for example scispaCy or MedCAT).
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/comprehend-med_region.html
+        title: "Amazon Comprehend Medical endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [aws, ai_ml, medical_nlp, gdpr_art9_risk]
+
+  - id: aws-textract
+    name: "Amazon Textract"
+    category: ai_inference
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
+    eu_details: >
+      Textract is available in EU regions including eu-central-1 (Frankfurt),
+      eu-west-1, eu-west-3 and eu-south-2, and is in scope of the AWS C5
+      attestation.
+    blocks_migration: false
+    remediation: >
+      Use an EU regional endpoint. For processing on sovereign infrastructure,
+      replace it with a self-hosted OCR pipeline (for example Tesseract or
+      PaddleOCR).
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/textract.html
+        title: "Amazon Textract endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [aws, ai_ml, ocr]
+
+  - id: aws-lambda
+    name: "AWS Lambda"
+    category: serverless_compute
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
+    eu_details: >
+      Lambda is available in eu-central-1 (Frankfurt), is in scope of the AWS
+      C5 attestation, and was a launch service of the AWS European Sovereign
+      Cloud.
+    blocks_migration: false
+    remediation: >
+      Keep functions in an EU region. For a move off AWS, map functions to the
+      target platform's function service or to container workers; runtimes,
+      triggers and cold-start behaviour differ per platform.
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/lambda-service.html
+        title: "AWS Lambda endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/blogs/aws/opening-the-aws-european-sovereign-cloud
+        title: "Opening the AWS European Sovereign Cloud (2026-01-14)"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [aws, serverless, compute]
+
+  - id: aws-ses-v2
+    name: "Amazon Simple Email Service (SES)"
+    category: email
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
+    eu_details: >
+      SES (API v1 and v2, SMTP) is available in eu-central-1 (Frankfurt) and
+      is in scope of the AWS C5 attestation.
+    blocks_migration: false
+    remediation: >
+      Use an EU regional endpoint. Applications that send through an SMTP
+      abstraction can switch to an EU-operated SMTP relay by configuration.
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/ses.html
+        title: "Amazon SES endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [aws, email, smtp]
+
+  - id: aws-secrets-manager
+    name: "AWS Secrets Manager / Systems Manager Parameter Store"
+    category: secrets_management
+    vendor: "Amazon Web Services, Inc. (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
+    sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
+    eu_details: >
+      Secrets Manager is available in eu-central-1 (Frankfurt) and is in
+      scope of the AWS C5 attestation.
+    blocks_migration: false
+    remediation: >
+      Keep secrets in an EU region. For a move off AWS, plan a secrets store
+      on the target platform (for example HashiCorp Vault or OpenBao on
+      sovereign infrastructure) and the rotation that Secrets Manager
+      currently automates.
+    sources:
+      - url: https://docs.aws.amazon.com/general/latest/gr/asm.html
+        title: "AWS Secrets Manager endpoints and quotas"
+        reviewed: '2026-10-17'
+      - url: https://aws.amazon.com/compliance/services-in-scope/C5/
+        title: "AWS services in scope: C5"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [aws, secrets, kms]
 
   # ===========================================================================
   # INCIDENT MANAGEMENT
@@ -500,189 +902,80 @@ services:
   - id: pagerduty
     name: "PagerDuty"
     category: incident_management
-    vendor: "PagerDuty Inc. (US)"
+    vendor: "PagerDuty, Inc. (US)"
+    parent_jurisdiction: US
     portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      PagerDuty EU region (hosted in Frankfurt) available. EU data residency for
-      incident data when EU region is selected. GDPR DPA available. US company
-      with US CLOUD Act exposure. Sovereign alternative: Grafana OnCall (self-hosted).
+      The PagerDuty EU service region runs in AWS EU Central (Frankfurt) and
+      AWS EU West (Ireland).
     blocks_migration: false
     remediation: >
-      Select EU region at PagerDuty provisioning. Obtain EU DPA. For incidents
-      involving GDPR Art. 9 data, ensure PagerDuty alert payloads are scrubbed
-      of health data (use identifiers, not raw health values, in alerts).
-    last_reviewed: "2026-04-01"
+      Use an account in the EU service region. Keep special-category data out
+      of alert payloads (send identifiers, not values).
+    sources:
+      - url: https://support.pagerduty.com/docs/service-regions
+        title: "PagerDuty service regions"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
     tags: [incident_management, eu_region]
 
   - id: opsgenie
     name: "Opsgenie (Atlassian)"
     category: incident_management
-    vendor: "Atlassian Corporation (US/AU)"
-    portability_verdict: available
+    vendor: "Atlassian Corporation (US)"
+    parent_jurisdiction: US
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      Opsgenie EU region available (Frankfurt). Atlassian GDPR DPA covers EU
-      data residency. Same EU data residency profile as Jira Cloud. Incident
-      data processed in EU when EU region is selected.
+      Opsgenie has an EU instance hosted on AWS in Frankfurt. Atlassian ended
+      the sale of Opsgenie on 2025-06-04; end of support is 2027-04-05, when
+      Opsgenie shuts down and unmigrated data is erased.
     blocks_migration: false
     remediation: >
-      Confirm EU region selection. Obtain Atlassian EU DPA. Keep health data
-      out of alert payloads.
-    last_reviewed: "2026-04-01"
-    tags: [incident_management, eu_region]
-
-  # ===========================================================================
-  # AWS MANAGED AI / ML SERVICES (no sovereign equivalent)
-  # ===========================================================================
-
-  - id: aws-comprehend-medical
-    name: "AWS Comprehend Medical"
-    category: ai_inference
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: unavailable
-    sovereign_evidence: no_eu_equivalent
-    eu_details: >
-      AWS Comprehend Medical is a managed NLP service for extracting medical
-      entities from clinical text (ICD-10, RxNorm, SNOMED CT). No sovereign-cloud
-      equivalent exists on OTC, IONOS, or certified German cloud platforms as of
-      2026-04. The service operates in AWS-managed infrastructure; EU regions
-      (eu-central-1) are available but AWS itself is not a BSI C5-certified
-      sovereign provider. Processing GDPR Art. 9 health data (FHIR clinical notes,
-      diagnostic reports) without an executed Art. 28 DPA with AWS EU creates a
-      direct compliance violation.
-    blocks_migration: true
-    remediation: >
-      Path A: Execute AWS EU Art. 28 DPA covering Comprehend Medical and obtain
-      legal sign-off that AWS eu-central-1 satisfies DE_only data residency
-      requirements. Path B (recommended): Disable the Comprehend Medical integration
-      (incident INC-2025-0815 pre-migration gate). Replace with an open-source
-      medical NLP pipeline self-hosted on OTC CCE: spaCy with SciSpaCy + en_core_sci_lg,
-      Stanza with en_ner_bc5cdr_biobert, or MedCAT. These models run on CPU/GPU
-      without GPU for inference on small volumes.
-    last_reviewed: "2026-04-27"
-    tags: [aws, ai_ml, medical_nlp, no_eu_sovereign, blocks_migration, gdpr_art9_risk]
-
-  - id: aws-textract
-    name: "AWS Textract"
-    category: ai_inference
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: unavailable
-    sovereign_evidence: no_eu_equivalent
-    eu_details: >
-      AWS Textract is a managed OCR and document-processing service. No managed
-      sovereign-cloud equivalent on OTC or IONOS. Available in eu-central-1 but
-      AWS is not a BSI C5-certified sovereign provider. Usage in Medplum assessment
-      is unconfirmed (dependency present; Cloudability cost not attributed).
-      If processing GDPR Art. 9 health data from clinical documents, an executed
-      Art. 28 DPA is required.
-    blocks_migration: false
-    remediation: >
-      Replace with self-hosted OCR pipeline on OTC CCE: Tesseract 5 (open-source)
-      for basic OCR, or PaddleOCR for layout-aware document extraction. For complex
-      medical forms, evaluate Azure Form Recognizer (EU region) as an interim step
-      pending confirmed usage and volume data from HealthCo.
-    last_reviewed: "2026-04-27"
-    tags: [aws, ai_ml, ocr, no_eu_sovereign, unconfirmed_usage]
-
-  # ===========================================================================
-  # AWS MANAGED COMPUTE / SERVERLESS
-  # ===========================================================================
-
-  - id: aws-lambda
-    name: "AWS Lambda"
-    category: serverless_compute
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: partial
-    sovereign_evidence: eu_entity_available
-    eu_details: >
-      AWS Lambda is available in eu-central-1 (Frankfurt) but AWS is not a
-      BSI C5-certified sovereign provider for the highest sensitivity classifications.
-      OTC FunctionGraph is the nearest sovereign-cloud equivalent but has different
-      runtime support, cold-start characteristics, and API surface. Medplum uses
-      Lambda for its bot execution subsystem (@medplum/bot-layer 5.1.9); migration
-      requires either OTC FunctionGraph (limited Node.js runtime support) or a
-      container-based worker approach on OTC CCE.
-    blocks_migration: false
-    remediation: >
-      Option A: Migrate Medplum bots to OTC FunctionGraph (if Node.js runtime version
-      is supported). Option B (recommended for complex bots): Refactor bot execution
-      to container workers deployed on OTC CCE as long-running job pods. This provides
-      full control over runtime and allows GPU workers for AI-enabled bots. Define
-      migration path per bot type (simple transform vs AI-assisted vs external API).
-    last_reviewed: "2026-04-27"
-    tags: [aws, serverless, compute, partial_sovereign_alternative]
-
-  # ===========================================================================
-  # AWS MANAGED MESSAGING / EMAIL
-  # ===========================================================================
-
-  - id: aws-ses-v2
-    name: "AWS Simple Email Service v2 (SES)"
-    category: email
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: partial
-    sovereign_evidence: eu_entity_available
-    eu_details: >
-      AWS SES v2 processes email for Medplum (84-92k emails/month; EUR 92-102/month).
-      AWS eu-central-1 (Frankfurt) routes SES traffic through EU infrastructure, but
-      AWS is not a BSI C5-certified sovereign provider. Nodemailer 8.0.5 is already in
-      Medplum's production dependencies as an SMTP relay abstraction, providing a clear
-      migration path to any EU-resident SMTP service without code changes.
-    blocks_migration: false
-    remediation: >
-      Replace AWS SES with an EU-sovereign email relay via the existing nodemailer
-      configuration. Options: Brevo (formerly Sendinblue, France-headquartered,
-      EU-hosted), Mailgun EU (Frankfurt data centre), or self-hosted Postal on OTC.
-      Migration requires only medplum.config.json SMTP endpoint update; no code change.
-    last_reviewed: "2026-04-27"
-    tags: [aws, email, smtp, partial_sovereign_alternative, nodemailer_exit]
-
-  # ===========================================================================
-  # AWS MANAGED SECRETS / KEY MANAGEMENT
-  # ===========================================================================
-
-  - id: aws-secrets-manager
-    name: "AWS Secrets Manager / Parameter Store"
-    category: secrets_management
-    vendor: "Amazon Web Services Inc. (US)"
-    portability_verdict: partial
-    sovereign_evidence: eu_entity_available
-    eu_details: >
-      AWS Secrets Manager (@aws-sdk/client-secrets-manager) retrieves operational
-      secrets (database credentials, API keys) at runtime. AWS SSM Parameter Store
-      is used for configuration. No sovereign managed-secrets equivalent on OTC is
-      feature-equivalent (no automated rotation API equivalent). OTC KMS provides
-      key encryption; a self-hosted HashiCorp Vault on OTC CCE is the recommended
-      sovereign secrets management path.
-    blocks_migration: false
-    remediation: >
-      Deploy HashiCorp Vault on OTC CCE in HA mode (Raft storage backend). Migrate
-      secrets from AWS Secrets Manager to Vault using the Vault AWS auth method for
-      initial seeding. Update medplum.config.json to read from Vault Agent Sidecar
-      or Vault Kubernetes secrets injector. Combine with OTC KMS for envelope
-      encryption of Vault unseal keys.
-    last_reviewed: "2026-04-27"
-    tags: [aws, secrets, kms, partial_sovereign_alternative, vault_recommended]
+      Plan the replacement before 2027-04-05 regardless of the sovereign
+      migration (Atlassian's successor products or another incident tool with
+      an EU region). Keep special-category data out of alert payloads.
+    sources:
+      - url: https://support.atlassian.com/opsgenie/docs/european-service-region/
+        title: "Opsgenie European service region"
+        reviewed: '2026-10-17'
+      - url: https://www.atlassian.com/software/opsgenie/migration
+        title: "Opsgenie end of sale and migration"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [incident_management, eu_region, end_of_life]
 
   # ===========================================================================
   # SECURITY SCANNING (for pipeline security context)
   # ===========================================================================
 
   - id: sonarcloud
-    name: "SonarCloud (SonarQube Cloud)"
+    name: "SonarQube Cloud (formerly SonarCloud)"
     category: sast
-    vendor: "Sonar Source SA (Switzerland)"
-    portability_verdict: available
+    vendor: "SonarSource Sarl (Switzerland)"
+    parent_jurisdiction: CH
+    portability_verdict: partial
     sovereign_evidence: eu_region_confirmed
+    verdict_confidence: verified
     eu_details: >
-      SonarCloud is operated by Sonar Source SA, a Swiss company, with EU data
-      hosting. Data processed in EU datacentres. Swiss-German data privacy standards
-      align with GDPR. SonarCloud scans code (not health data); GDPR risk is low
-      since only source code metrics are transmitted, not patient data.
+      SonarQube Cloud EU hosting is in Frankfurt (AWS eu-central-1); a US
+      region (AWS us-east-1) exists for Enterprise plans. The operator is
+      Swiss, but the hosting sub-processor is US-parented, so the verdict is
+      partial. Only source code and analysis results are transmitted.
     blocks_migration: false
     remediation: >
-      Confirm SonarCloud organisation data residency in Sonar dashboard. For strict
-      sovereign code analysis, self-hosted SonarQube on OTC CCE is the alternative.
-    last_reviewed: "2026-04-27"
-    tags: [sast, code_quality, eu_hosted]
+      Confirm the organisation is in the EU region (sonarcloud.io). For
+      strict sovereignty, run self-managed SonarQube on sovereign
+      infrastructure.
+    sources:
+      - url: https://www.sonarsource.com/trust-center/
+        title: "SonarSource trust center (hosting locations)"
+        reviewed: '2026-10-17'
+      - url: https://docs.sonarsource.com/sonarqube-cloud/getting-started/choosing-your-region
+        title: "SonarQube Cloud: choosing your region"
+        reviewed: '2026-10-17'
+    last_reviewed: '2026-10-17'
+    tags: [sast, code_quality, eu_region]

@@ -1,0 +1,258 @@
+# SWAO Community Framework -- BSI_TR_03107
+# Sprint-149 #3061: BSI TR-03107 eID and e-government trust levels.
+# 12 controls across 3 domains.
+
+regime_meta:
+  id: BSI_TR_03107
+  name: "BSI-TR-03107 -- Electronic Identities and Trust Services in E-Government"
+  version: "BSI TR-03107-1 v1.4 (2022)"
+  scope: community
+  authority: >-
+    Federal Office for Information Security (BSI)
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/bsi-tr03107"
+  catalogue_version: "1.0.0"
+  signal_prefix: BSID
+  last_reviewed: "2026-10-09"
+  applicability_hints:
+    - de_sovereign
+    - german_public_sector
+    - e_government
+    - eid_integration
+    - bundid
+    - elster
+    - trust_levels
+    - eidas_assurance
+  description: >-
+    12 controls for BSI TR-03107 electronic identity assurance levels,
+    eID integration patterns (BundID, Personalausweis, ELSTER), and
+    eIDAS trust service compliance.
+  references:
+    - "BSI TR-03107-1 v1.4 (2022) -- Vertrauensniveaus"
+    - "eIDAS Regulation (EU) 910/2014"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # BSID-TL: Trust Level Assessment and Mapping (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: BSI_TR_03107_TL_1
+    pillar: "BSID-TL -- Trust Level Assessment and Mapping"
+    category: TL
+    title: "Service protection requirement (Schutzbedarf) mapped to eIDAS trust level"
+    description: >-
+      Each digital public service must classify its data processing as normal,
+      substantiell, or hoch per BSI TR-03107-1 Table 1 and map that to the
+      eIDAS trust level (low/substantial/high). The classification must be
+      documented in the service's IT-Sicherheitskonzept and reviewed at minimum
+      annually or after a significant change to the service's scope or user base.
+      BundID offers substantiell by default; hoch requires Personalausweis eID
+      (Chip authentication) or a qualified trust service.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: compliance_docs
+    signals_hint:
+      - "IAM-* (pass-21 IAM detection: sovereign provider present)"
+
+  - id: BSI_TR_03107_TL_2
+    pillar: "BSID-TL -- Trust Level Assessment and Mapping"
+    category: TL
+    title: "Authentication method enforces the classified trust level"
+    description: >-
+      The authentication method deployed must meet or exceed the classified trust
+      level from TL-1. Level normal: username/password with brute-force protection
+      is sufficient. Level substantiell: second factor required (TOTP, FIDO2,
+      Personalausweis online-Funktion, or eIDAS notified scheme at substantial).
+      Level hoch: cryptographic hardware token mandatory (Personalausweis Chip,
+      FIDO2 hardware key, qualified certificate on hardware token, or smart card).
+      Session tokens must expire per TR-03107-1 §4.3 (hoch: max 12h session).
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    signals_hint:
+      - "IAM-* (pass-21: BundID or ELSTER-NEZO detected)"
+      - "CRYPTO-* (pass-08: weak cipher signals affecting token security)"
+
+  - id: BSI_TR_03107_TL_3
+    pillar: "BSID-TL -- Trust Level Assessment and Mapping"
+    category: TL
+    title: "Step-up authentication available for elevated-risk transactions"
+    description: >-
+      Services that contain operations of varying risk levels must implement
+      step-up authentication. An initial login at normal level must trigger
+      re-authentication at substantiell/hoch when accessing protected resources
+      (e.g., personal tax data, benefit eligibility, health records). Step-up
+      must not rely solely on knowledge factors for the higher level. The
+      step-up flow must be tested as part of the service acceptance test.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: BSI_TR_03107_TL_4
+    pillar: "BSID-TL -- Trust Level Assessment and Mapping"
+    category: TL
+    title: "Trust level assertions communicated correctly in federation tokens"
+    description: >-
+      When the service acts as an OIDC relying party or SAML SP consuming
+      assertions from an eIDAS node, BundID, or ELSTER, it must validate the
+      trust level claim (acr_values / AuthnContextClassRef) and reject tokens
+      whose asserted level is below the required level for the transaction.
+      Silent downgrade (accepting a substantiell token where hoch is required)
+      constitutes a critical authentication bypass; the system must return an
+      error and require re-authentication.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  # ---------------------------------------------------------------
+  # BSID-EID: eID Integration Patterns (5 controls)
+  # ---------------------------------------------------------------
+
+  - id: BSI_TR_03107_EID_1
+    pillar: "BSID-EID -- eID Integration Patterns"
+    category: EID
+    title: "BundID or Servicekonto Bund used as federated identity provider for OZG services"
+    description: >-
+      Services subject to the Online-Zugangsgesetz (OZG) must accept BundID
+      (or a state-level Servicekonto federated to BundID) as the identity provider.
+      Direct user-managed password stores are not an acceptable sole identity
+      mechanism for OZG services. Integration must use OIDC (OpenID Connect)
+      with BundID's published discovery endpoint. Redirect URIs must be
+      registered and validated server-side; open redirects are prohibited.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    signals_hint:
+      - "IAM-* (pass-21: BundID detected via bund.id import or BUNDID_* env vars)"
+
+  - id: BSI_TR_03107_EID_2
+    pillar: "BSID-EID -- eID Integration Patterns"
+    category: EID
+    title: "Personalausweis eID (AusweisApp2 / eID-Funktion) integrated for hoch-level services"
+    description: >-
+      Services classified hoch per TR-03107-1 must integrate the eID function
+      of the German national identity card (Personalausweis, AusweisApp2 SDK
+      or eID-Server per BSI TR-03124). The eID card verifies the card holder's
+      identity to NIST IAL3 / eIDAS high. eID-Server operators must comply with
+      BSI TR-03130. The service must not cache or persist the chip-read personal
+      data beyond the immediate session establishment.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: BSI_TR_03107_EID_3
+    pillar: "BSID-EID -- eID Integration Patterns"
+    category: EID
+    title: "ELSTER-NEZO integration follows BSI TR-03107 trust assertions for tax services"
+    description: >-
+      Services integrating the ELSTER digital certificate (ELSTER-NEZO) for tax
+      filing, employer contributions, or Grundsteuererklaerung must treat the
+      ELSTER certificate as a substantiell-level authenticator per TR-03107-1.
+      Certificate validation must use the ELSTER PKIX chain (Trustcenter ELSTER);
+      accepting self-signed ELSTER certificates or bypassing chain validation is
+      a critical defect. Services must log each ELSTER-authenticated session with
+      the certificate serial number for audit traceability.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    signals_hint:
+      - "IAM-* (pass-21: ELSTER-NEZO detected via elster-nezo import or ELSTER_* env vars)"
+
+  - id: BSI_TR_03107_EID_4
+    pillar: "BSID-EID -- eID Integration Patterns"
+    category: EID
+    title: "eIDAS node integration enables cross-border citizen authentication"
+    description: >-
+      Services that must serve EU citizens from other member states must
+      integrate with the German eIDAS node (managed by the Bundesdruckerei).
+      The integration must validate that the eIDAS assurance level (low,
+      substantial, high) meets the service's threshold. Cross-border identity
+      federation must be tested with at least one non-German eIDAS notified scheme
+      in UAT. Token exchange to BundID session must not lower the assurance level.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    signals_hint:
+      - "IAM-* (pass-21: sovereign=true, eidas=true signals positive)"
+
+  - id: BSI_TR_03107_EID_5
+    pillar: "BSID-EID -- eID Integration Patterns"
+    category: EID
+    title: "Logout and session termination compliant with TR-03107 §4.3"
+    description: >-
+      Session tokens (JWT/OIDC refresh tokens) must be invalidated on logout both
+      at the relying party and at the identity provider (RP-initiated logout per
+      OpenID Connect Session Management). TR-03107-1 §4.3 requires that tokens
+      issued at hoch level have a maximum lifetime of 12 hours; the service must
+      enforce this server-side, independent of client clock. Single-Logout (SLO)
+      must propagate to all services that received an assertion in the same
+      federated session.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  # ---------------------------------------------------------------
+  # BSID-TSP: Trust Service Providers and eIDAS (3 controls)
+  # ---------------------------------------------------------------
+
+  - id: BSI_TR_03107_TSP_1
+    pillar: "BSID-TSP -- Trust Service Providers and eIDAS"
+    category: TSP
+    title: "Qualified electronic signatures use an EU trust list (ETL) qualified TSP"
+    description: >-
+      Where the service requires legally binding electronic signatures (e.g., for
+      digital contracts, Verwaltungsakte), qualified electronic signatures (QES)
+      per eIDAS Art. 25 must be used. The signing service must be provided by a
+      Qualified Trust Service Provider (QTSP) listed on the EU Trust List (ETL /
+      LOTL). Remote signing via a QTSP is permitted per eIDAS Art. 29a; the
+      service must never hold the signing key on behalf of the user.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: compliance_docs
+    cross_references: [GDPR_Art_32]
+
+  - id: BSI_TR_03107_TSP_2
+    pillar: "BSID-TSP -- Trust Service Providers and eIDAS"
+    category: TSP
+    title: "Website authentication certificates meet BSI TR-03107-3 requirements"
+    description: >-
+      Publicly accessible e-government portals must use TLS certificates from a
+      CA listed on the EU Trust List or a BSI-recognised CA. EV certificates are
+      strongly recommended for services handling Sozialdaten or health data.
+      Certificate pinning or HSTS preloading must be evaluated and implemented
+      where feasible. Certificates must have a maximum validity of 365 days.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: BSI_TR_03107_TSP_3
+    pillar: "BSID-TSP -- Trust Service Providers and eIDAS"
+    category: TSP
+    title: "Audit trail of all high-level authentication events meets BSI TR-03107 §5"
+    description: >-
+      All authentication events at trust level hoch must be logged with: timestamp
+      (UTC, NTP-synchronised), identity provider assertion reference, trust level
+      asserted, service identifier, transaction outcome (success/failure/step-up).
+      Logs must be protected from tampering (WORM or cryptographically signed
+      log chain). Log retention: minimum 5 years for hoch-level events per
+      TR-03107-1 §5.2. Logs must be available to the BSI on request per BSIG §8b.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    cross_references: [SGBX_DE_BEF_4]

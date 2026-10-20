@@ -122,12 +122,27 @@ function redactContext(ctx: Record<string, unknown> | undefined): Record<string,
   return out;
 }
 
+/**
+ * #3340 (CodeQL js/log-injection): the console mirror prints one terminal
+ * line per entry. Messages can carry text from outside SWAO (an editor
+ * request body, a path or file content from a cloned repository): a line
+ * break would start what reads as a separate, forged entry, and an escape
+ * sequence (ESC) could rewrite the terminal. Line breaks become a space so
+ * words stay apart; every other C0 control character and DEL is removed.
+ * Tab is kept. The NDJSON sink is unaffected (JSON.stringify escapes them).
+ */
+export function toConsoleLine(text: string): string {
+  return text
+    .replace(/\r\n|\r|\n/g, ' ')
+    .replace(/[\r\n\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+}
+
 function consoleMirror(entry: LogEntry): void {
   if (entry.level === 'debug' || entry.level === 'info') return;
   // Redact URL userinfo in the terminal output too -- the operator already
   // has the token, but shoulder-surfing + screen-shared support sessions
   // are real failure modes. Use the same helper as the on-disk write.
-  const message = redactUrlUserinfo(entry.message) as string;
+  const message = toConsoleLine(redactUrlUserinfo(entry.message) as string);
   const prefix = `[${entry.level}] ${entry.code}`;
   const line = `${prefix} ${message}`;
   if (entry.level === 'error') {
@@ -137,8 +152,8 @@ function consoleMirror(entry: LogEntry): void {
   }
 }
 
-function emit(entry: LogEntry): void {
-  consoleMirror(entry);
+function emit(entry: LogEntry, mirror = true): void {
+  if (mirror) consoleMirror(entry);
   const root = resolveWorkspaceRoot();
   if (!root) return;       // running outside a workspace -- console mirror only
   const path = sinkPath(entry, root);
@@ -200,6 +215,13 @@ export interface AppLogOpts extends PortfolioLogOpts {
   app_id: string;
 }
 
+/** logApp options. `mirror: false` (#3284) skips the console mirror when the
+ *  same event was already logged to the portfolio log, so a dual-logged warn
+ *  or error prints once on the terminal while both NDJSON files get it. */
+export interface AppEventLogOpts extends PortfolioLogOpts {
+  mirror?: boolean;
+}
+
 export function logPortfolio(
   level: LogLevel,
   code: string,
@@ -223,7 +245,7 @@ export function logApp(
   level: LogLevel,
   code: string,
   message: string,
-  opts: PortfolioLogOpts = {},
+  opts: AppEventLogOpts = {},
 ): void {
   emit({
     ts: new Date().toISOString(),
@@ -235,7 +257,7 @@ export function logApp(
     context: opts.context,
     run_id: opts.run_id,
     pass: opts.pass,
-  });
+  }, opts.mirror !== false);
 }
 
 // Convenience aliases (portfolio scope) for the common case where a command

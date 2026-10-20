@@ -186,6 +186,9 @@ const ConnectorSchema = z.object({
   environments: z.record(z.string(), EnvironmentSchema).optional(),
   active_env: z.string().optional(),
   context_window_k: z.number().int().positive().optional(),
+  // #3284 (Design 110 D-14): in-flight request limit for this gateway. Used
+  // when .swao.yml sets no providers.llm.max_concurrency; default 4.
+  max_concurrency: z.number().int().min(1).max(64).optional(),
   sovereignty: SovereigntySchema.optional(),
   meta: MetaSchema.optional(),
   tls: TlsSchema.optional(),

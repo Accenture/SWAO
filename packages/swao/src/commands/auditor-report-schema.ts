@@ -167,7 +167,11 @@ function loadJsonFile(p: string): unknown {
   try { return JSON.parse(readFileSync(p, 'utf-8')); } catch { return null; }
 }
 
-function resolvePassesAndManifest(wspDir: string): { passesDir: string; runManifestPath: string } {
+function resolvePassesAndManifest(wspDir: string, runDir?: string): { passesDir: string; runManifestPath: string } {
+  // #3346: a run selected with `swao report --run` wins over latest.txt.
+  if (runDir !== undefined) {
+    return { passesDir: join(runDir, 'passes'), runManifestPath: join(runDir, 'run-manifest.json') };
+  }
   const latestFile = join(wspDir, 'latest.txt');
   if (existsSync(latestFile)) {
     try {
@@ -181,7 +185,8 @@ function resolvePassesAndManifest(wspDir: string): { passesDir: string; runManif
   return { passesDir: join(wspDir, 'passes'), runManifestPath: join(wspDir, 'run-manifest.json') };
 }
 
-function resolvePlanPath(wspDir: string): string {
+function resolvePlanPath(wspDir: string, runDir?: string): string {
+  if (runDir !== undefined) return join(runDir, 'wsp-plan.yaml');
   const latestFile = join(wspDir, 'latest.txt');
   if (existsSync(latestFile)) {
     try {
@@ -229,9 +234,9 @@ function safeDiv(num: number, den: number): number {
  * against the Zod schema before returning so producer drift is caught
  * here rather than downstream.
  */
-export function buildAuditorReport(data: ReportData, wspDir: string): AuditorReport {
-  const { passesDir, runManifestPath } = resolvePassesAndManifest(wspDir);
-  const planPath = resolvePlanPath(wspDir);
+export function buildAuditorReport(data: ReportData, wspDir: string, runDir?: string): AuditorReport {
+  const { passesDir, runManifestPath } = resolvePassesAndManifest(wspDir, runDir);
+  const planPath = resolvePlanPath(wspDir, runDir);
 
   const signals = loadRawSignals(passesDir);
   const regimes = loadRawRegimes(planPath);

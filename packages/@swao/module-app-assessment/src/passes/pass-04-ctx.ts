@@ -20,7 +20,7 @@ import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio } from '@swao/core';
-import { llmSkipResult } from './llm-skip.js';
+import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 import { getFileCategory, selectContextChunks, PASS_WEIGHTS } from './context-file-weights.js';
 import type { ScoredChunk } from './context-file-weights.js';
 
@@ -328,7 +328,12 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
     );
     // #2441: return a graceful skip rather than throwing so the rest of the assessment continues.
     // The error is already logged above; the pass file shows a single CTX-00 skip signal.
-    return llmSkipResult({ id: 4, name: 'context_ingestion', signalPrefix: 'CTX', iter, assessedAt });
+    // #3158: with its own reason; a parse failure used to be reported as
+    // no_llm_provider although a provider was configured and answered.
+    return llmInvalidResponseResult({
+      id: 4, name: 'context_ingestion', signalPrefix: 'CTX', iter, assessedAt,
+      detail: likelyTruncated ? 'response truncated at the token ceiling' : 'response is not valid JSON',
+    });
   }
 
   const signals: Signal[] = parsed.signals.map(normalizeSignal);

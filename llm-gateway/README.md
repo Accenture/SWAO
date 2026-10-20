@@ -36,10 +36,13 @@ Browse and download configurations from GitHub:
 | `open-llm.yaml` | Remote OpenAI-compatible endpoint (generic) |
 | `openai.yaml` | OpenAI (API) |
 | `openrouter.yaml` | OpenRouter (multi-provider proxy) |
-| `preme-preprod.yaml` | PREME GenAI Hub PREPROD (BA internal, ADFS-gated) |
-| `preme-prod.yaml` | PREME GenAI Hub PROD (BA internal, ADFS-gated) |
 | `vllm-generic.yaml` | vLLM (self-hosted, generic endpoint) |
 | `_template.yaml` | Template for custom gateway configurations |
+
+Connectors for an organisation's internal GenAI platform are not published
+here. Start from `_template.yaml`; for platforms that issue short-lived tokens
+(for example ADFS or OIDC), name the token in `auth.env_var` and refresh it
+before each session.
 
 ## Usage
 

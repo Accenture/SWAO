@@ -290,7 +290,7 @@ describe('scripts/build-binary.sh integrity', () => {
     expect(sh).toContain('dist-bin');
   });
 
-  it('documents that the license issuer is built from swao-premium', () => {
+  it('documents that the license issuer is built from the private premium tree', () => {
     const sh = readFileSync(BUILD_SH, 'utf-8');
     expect(sh).toContain('swao-premium');
     expect(sh.toLowerCase()).toContain('license');

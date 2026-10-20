@@ -17,6 +17,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname } from 'path';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
+import { loadPassCatalog } from './pass-catalog-loader.js';
 
 interface StrongPrimitive {
   name: string;
@@ -70,7 +71,10 @@ const STRONG_PRIMITIVES: StrongPrimitive[] = [
   },
   {
     name: 'aes_gcm',
-    pattern: /createCipheriv\s*\([^)]*aes-256-gcm|aes-128-gcm/,
+    // #3158: the old pattern `/createCipheriv\s*\([^)]*aes-256-gcm|aes-128-gcm/`
+    // bound the alternation wrongly (any "aes-128-gcm" text matched) and the hit
+    // was never emitted. Matches a GCM mode string passed to createCipheriv.
+    pattern: /createCipheriv\s*\(\s*['"`]aes-(?:128|192|256)-gcm['"`]/i,
     label: 'AES-GCM',
     note: 'authenticated encryption (NIST SP 800-38D)',
   },
@@ -163,6 +167,55 @@ function scanSourceFiles(dir: string): { strong: ScanHit[]; weak: ScanHit[] } {
   return { strong, weak };
 }
 
+interface CatalogueHit {
+  id: string;
+  name: string;
+  file: string;
+  line?: number;
+  cwe: string;
+  note?: string;
+}
+
+// Scans source files for tokens from a catalogue entry's detection.imports list.
+// Returns the first file hit, or null if no hit found.
+function scanForCatalogueEntry(
+  dir: string,
+  importTokens: string[],
+): { file: string; line?: number } | null {
+  if (!importTokens.length || !existsSync(dir)) return null;
+  const pattern = new RegExp(
+    importTokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+    'i',
+  );
+  const allowed = new Set(['.ts', '.js', '.mjs', '.cjs', '.java', '.py', '.cs', '.go', '.kt']);
+
+  let result: { file: string; line?: number } | null = null;
+  function walk(d: string): void {
+    if (result) return;
+    if (!existsSync(d)) return;
+    for (const entry of readdirSync(d)) {
+      if (result) return;
+      if (entry === 'node_modules' || entry === 'dist' || entry === 'fixtures') continue;
+      const full = join(d, entry);
+      const st = statSync(full);
+      if (st.isDirectory()) {
+        walk(full);
+      } else if (allowed.has(extname(entry))) {
+        try {
+          const content = readFileSync(full, 'utf-8');
+          if (pattern.test(content)) {
+            const relPath = full.replace(dir + '/', '').replace(dir + '\\', '');
+            const lineIdx = content.split('\n').findIndex((l) => pattern.test(l));
+            result = { file: relPath, line: lineIdx >= 0 ? lineIdx + 1 : undefined };
+          }
+        } catch { /* skip */ }
+      }
+    }
+  }
+  walk(dir);
+  return result;
+}
+
 export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
   const { sourcePath, iter, assessedAt } = ctx;
   const signals: Signal[] = [];
@@ -187,6 +240,39 @@ export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
   const composeContent = composeFile ? readFileSync(composeFile, 'utf-8') : null;
 
   const { strong: strongHits, weak: weakHits } = scanSourceFiles(sourcePath);
+
+  // #3063: supplement hardcoded primitives with catalogue-based detection (ADR-0063).
+  const catalogueWeakHits: CatalogueHit[] = [];
+  const catalogueStrongHits: CatalogueHit[] = [];
+  const catalogue = loadPassCatalog(ctx.workspacePath, 'pass-08-crypto-algorithms.yaml');
+  if (catalogue) {
+    const hardcodedWeakIds = new Set(WEAK_PRIMITIVES.map((p) => p.name));
+    const hardcodedStrongIds = new Set(STRONG_PRIMITIVES.map((p) => p.name));
+    for (const entry of catalogue.entries) {
+      if (hardcodedWeakIds.has(String(entry.id)) || hardcodedStrongIds.has(String(entry.id))) continue;
+      const posture = entry.posture as { severity?: string; note?: string } | undefined;
+      const detection = entry.detection as { imports?: string[] } | undefined;
+      const importTokens = detection?.imports ?? [];
+      if (!importTokens.length) continue;
+      const severity = posture?.severity;
+      const isWeak = severity === 'weak' || severity === 'deprecated';
+      const isStrong = severity === 'approved' || severity === 'approved_preferred';
+      if (!isWeak && !isStrong) continue;
+      const hit = scanForCatalogueEntry(sourcePath, importTokens);
+      if (hit) {
+        const catalogueHit: CatalogueHit = {
+          id: String(entry.id),
+          name: String(entry.name),
+          file: hit.file,
+          line: hit.line,
+          cwe: 'CWE-327',
+          note: posture?.note,
+        };
+        if (isWeak) catalogueWeakHits.push(catalogueHit);
+        else catalogueStrongHits.push(catalogueHit);
+      }
+    }
+  }
 
   let sigNum = 1;
 
@@ -220,6 +306,23 @@ export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
       severity: 'positive',
       derivation: `Strong MAC detected: ${macHit.label}. ${meta.note}. Two-layer key derivation pattern satisfies NIST FIPS 198-1.`,
       evidence: [`${macHit.file}${macHit.line !== undefined ? `:${macHit.line}` : ''}`],
+      confidence: 'high',
+    });
+    sigNum++;
+  }
+
+  // --- CRYPTO-0N: Authenticated encryption (AES-GCM) (#3158: detected but never emitted) ---
+  const aeadHit = strongHits.find((h) => h.primitive === 'aes_gcm');
+  if (aeadHit) {
+    const meta = STRONG_PRIMITIVES.find((p) => p.name === aeadHit.primitive)!;
+    primitives['symmetric_encryption'] = aeadHit.label;
+    signals.push({
+      id: `CRYPTO-${String(sigNum).padStart(2, '0')}`,
+      source: 'static_analysis',
+      category: 'application',
+      severity: 'positive',
+      derivation: `Authenticated symmetric encryption detected: ${aeadHit.label}, ${meta.note}.`,
+      evidence: [`${aeadHit.file}${aeadHit.line !== undefined ? `:${aeadHit.line}` : ''}`],
       confidence: 'high',
     });
     sigNum++;
@@ -283,6 +386,24 @@ export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
     sigNum++;
   }
 
+  // --- CRYPTO-0N: no primitive detected (#3158) ---
+  // The fallback used to sit after the at-rest signal, which is always
+  // emitted, so `signals.length === 0` never held and it could not fire. It
+  // now fires when the source scan found no primitive and no crypto-relevant
+  // dependency, and takes the next ID in the sequence (no fixed CRYPTO-01).
+  if (strongHits.length === 0 && weakHits.length === 0 && signals.length === 0) {
+    signals.push({
+      id: `CRYPTO-${String(sigNum).padStart(2, '0')}`,
+      source: 'static_analysis',
+      category: 'application',
+      severity: 'informational',
+      derivation: 'No cryptographic primitives detected in source scan. Manual review recommended.',
+      evidence: pkg ? ['package.json'] : [],
+      confidence: 'low',
+    });
+    sigNum++;
+  }
+
   // --- CRYPTO-0N: At-rest encryption ---
   const hasEncryptionAnnotation = prismaSchema
     ? /encrypt|@encrypted|@cipher|cipher_/i.test(prismaSchema)
@@ -323,7 +444,7 @@ export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
   signals.push(atRestSignal);
   sigNum++;
 
-  // --- CRYPTO-0N: Weak primitive detection ---
+  // --- CRYPTO-0N: Weak primitive detection (hardcoded patterns) ---
   for (const weak of weakHits) {
     const meta = WEAK_PRIMITIVES.find((p) => p.name === weak.primitive)!;
     signals.push({
@@ -338,25 +459,27 @@ export async function runCryptoPass(ctx: PassContext): Promise<PassResult> {
     sigNum++;
   }
 
-  if (signals.length === 0) {
+  // --- CRYPTO-0N: Weak primitive detection (catalogue-extended) ---
+  for (const hit of catalogueWeakHits) {
     signals.push({
-      id: 'CRYPTO-01',
+      id: `CRYPTO-${String(sigNum).padStart(2, '0')}`,
       source: 'static_analysis',
       category: 'application',
-      severity: 'informational',
-      derivation: 'No cryptographic primitives detected in source scan. Manual review recommended.',
-      evidence: ['package.json'],
-      confidence: 'low',
+      severity: 'high',
+      derivation: `Weak/deprecated cryptographic primitive detected: ${hit.name}. ${hit.cwe}: Use of a Broken or Risky Cryptographic Algorithm.${hit.note ? ` ${hit.note}` : ''} Replace before production deployment.`,
+      evidence: [`${hit.file}${hit.line !== undefined ? `:${hit.line}` : ''}`],
+      confidence: 'high',
     });
+    sigNum++;
   }
 
-  const hasWeakPrimitives = weakHits.length > 0;
+  const hasWeakPrimitives = weakHits.length > 0 || catalogueWeakHits.length > 0;
   const overallPosture = hasWeakPrimitives
     ? 'weak_primitives_detected'
-    : kdfHit !== undefined || macHit !== undefined
+    : kdfHit !== undefined || macHit !== undefined || aeadHit !== undefined
       ? 'good_with_infrastructure_gap'
       : 'unknown';
-  const nistCompliant = !hasWeakPrimitives && (kdfHit !== undefined || macHit !== undefined);
+  const nistCompliant = !hasWeakPrimitives && (kdfHit !== undefined || macHit !== undefined || aeadHit !== undefined);
 
   return {
     pass: {

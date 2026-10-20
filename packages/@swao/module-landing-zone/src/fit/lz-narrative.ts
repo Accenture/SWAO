@@ -134,7 +134,10 @@ export function generateLzNarrative(opts: {
   const sovereignty: LzSovereigntyNarrative = {
     passed: sovereigntyPassed,
     operator_jurisdiction: sovereigntyFacts?.operator_jurisdiction ?? 'unknown',
-    residency_country: sovereigntyFacts?.residency_country ?? 'unknown',
+    // #3287: the OPERATOR_SITE sentinel (azure-local) reads as the customer's site.
+    residency_country: sovereigntyFacts?.residency_country === 'OPERATOR_SITE'
+      ? 'operator site (chosen by the customer)'
+      : sovereigntyFacts?.residency_country ?? 'unknown',
     certifications: sovereigntyFacts?.certifications ?? [],
     blockers: sovereigntyBlockers,
     statement: fit.sovereignty_statement,

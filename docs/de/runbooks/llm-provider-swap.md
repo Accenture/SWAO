@@ -1,6 +1,6 @@
 # LLM-Provider wechseln
 
-SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unterstützt aber auch den Wechsel zu einer lokalen Ollama-Instanz, OpenAI oder den vollständigen Offline-Betrieb mit `--skip-llm`. Dieses Runbook erläutert die verfügbaren Optionen und die Konfigurationsmöglichkeiten.
+SWAO verwendet standardmäßig Anthropic Claude für seine LLM-Durchläufe, unterstützt aber auch den Wechsel zu einer lokalen Ollama-Instanz, OpenAI oder den vollständigen Offline-Betrieb mit `--skip-llm`. Dieses Runbook erläutert die verfügbaren Optionen und die Konfigurationsmöglichkeiten.
 
 ---
 
@@ -8,7 +8,7 @@ SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unte
 
 | Provider | Wert | Erforderliche Umgebungsvariable | Hinweise |
 |---|---|---|---|
-| Anthropic (Standard) | `anthropic` | `ANTHROPIC_API_KEY` | Claude 3.x und neür |
+| Anthropic (Standard) | `anthropic` | `ANTHROPIC_API_KEY` | Claude 3.x und neuer |
 | Ollama (lokal) | `ollama` | `OLLAMA_BASE_URL` (optional) | Standard: `http://localhost:11434` |
 | OpenAI | `openai` | `OPENAI_API_KEY` | gpt-4o und kompatible Modelle |
 
@@ -16,7 +16,7 @@ SWAO verwendet standardmässig Anthropic Claude für seine LLM-Durchläufe, unte
 
 ## 1. Konfiguration per Umgebungsvariable
 
-Die Umgebungsvariable `SWAO_LLM_PROVIDER` steürt, welchen Provider SWAO nutzt. Sie muss vor jedem `swao`-Befehl gesetzt werden:
+Die Umgebungsvariable `SWAO_LLM_PROVIDER` steuert, welchen Provider SWAO nutzt. Sie muss vor jedem `swao`-Befehl gesetzt werden:
 
 ```bash
 # Use Ollama
@@ -68,7 +68,7 @@ swao assess --app my-app --llm-provider ollama
 swao assess --app my-app --skip-llm
 ```
 
-Verwenden Sie `--skip-llm` um LLM-Aufrufe zu ueberspringen (z.B. in CI-Umgebungen ohne API-Schlussel).
+Verwenden Sie `--skip-llm` um LLM-Aufrufe zu überspringen (z.B. in CI-Umgebungen ohne API-Schlüssel).
 
 ---
 
@@ -105,13 +105,30 @@ SWAO nutzt die OpenAI Chat Completions API. Jedes Modell, auf das der API-Key Zu
 
 ---
 
-## 6. LLM-Aufrufe ueberspringen mit --skip-llm
+## 6. LLM-Aufrufe überspringen mit --skip-llm
 
-Verwenden Sie `--skip-llm` um LLM-Aufrufe zu ueberspringen (z.B. in CI-Umgebungen ohne API-Schlussel).
+Verwenden Sie `--skip-llm` um LLM-Aufrufe zu überspringen (z.B. in CI-Umgebungen ohne API-Schlüssel).
 
 ```bash
 swao assess --app my-app --skip-llm
 ```
+
+---
+
+## Timeouts, Wiederholungen und Parallelität (#3284)
+
+Alle Provider nutzen dieselbe Request-Regel: 6 Versuche pro Aufruf (Wartezeiten 3,
+6, 12, 24, 48 s), Wiederholung bei 408, 429 und 5xx, ein Idle-Timeout pro Versuch
+und ein Concurrency-Limit auf Provider-Ebene.
+
+| Einstellung | Standard | Hinweise |
+|---|---|---|
+| `SWAO_LLM_IDLE_TIMEOUT_MS` | `120000` | Idle-Timeout pro Versuch (Warten auf Header und Lücken zwischen Body-Daten). `SWAO_ANTHROPIC_IDLE_TIMEOUT_MS` bleibt als Alias erhalten. Aufrufe ohne Streaming warten mindestens 300 s auf die Header. |
+| `providers.llm.max_concurrency` (`.swao.yml`) | `4` | Gleichzeitig offene LLM-Requests pro Endpunkt, gemeinsam für alle Passes. Ein Gateway-Connector kann `max_concurrency` setzen; der Wert aus `.swao.yml` hat Vorrang. |
+
+Jeder Versuch, jede Wartezeit, jeder Timeout, jede Wiederholung, jeder HTTP-Fehler
+und jedes Ergebnis wird als `provider.llm.<provider>.*` protokolliert. Siehe
+[Referenz der Log-Ereignisse](/de/runbooks/log-events).
 
 ---
 

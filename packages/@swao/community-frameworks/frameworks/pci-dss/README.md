@@ -38,15 +38,15 @@ requirement.
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install PCI_DSS
 ```
 
 ```yaml
-compliance:
-  frameworks: [PCI_DSS]
+assessment:
+  regimes_active: [PCI_DSS]
 ```
 
 ## Control requirements
@@ -67,7 +67,7 @@ compliance:
 swao framework install PCI_DSS
 ```
 
-The installed copy at `catalogs/community/pci-dss/controls.yaml` overrides the bundled
+The installed copy at `wsp/inputs/catalogs/community/pci-dss/controls.yaml` overrides the bundled
 version. See `CONTRIBUTING.md` for the authoring guide.
 
 **Note:** This is a PoC-depth packaging (5 controls at Requirements 3.4, 4.1, 6.2, 8.3, 10).

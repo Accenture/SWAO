@@ -21,6 +21,15 @@ Two `.pbit` templates are included in your workspace under `wsp/templates/powerb
 
 Open the `.pbit` file in Power BI Desktop, set `SWAOExportPath` to your `star/` folder, and click **Load**.
 
+## Portfolio export (application and service apps)
+
+`swao service export` (Enterprise) writes the portfolio star schema (`wsp/star-schema/portfolio-*.json`, 9 tables) and the portfolio workbook (`wsp/reports/swao-portfolio-YYYYMMDD.xlsx`, 14 sheets) from `wsp/portfolio-summary.json`. Since the combined portfolio view ([Portfolio Operations](/portfolio)) both hold application and service apps:
+
+- `dim_service_app.assessment_type` is `application` or `service`; join the other portfolio tables on `app_id` to filter by type.
+- The workbook sheets Portfolio Overview, Migration Waves, Migration Candidates and Cost vs Risk end with an `Assessment Type` column; Source Data has `computed.assessment_type` (and `computed.seven_r_label` when an application app is present).
+
+A service-only workspace produces the same tables and sheets as before, apart from the new column. The `.pbit` templates above read the application export (`swao export`) and are unchanged; a Power BI model over the portfolio tables filters on `dim_service_app.assessment_type`.
+
 ## CLI
 
 ```bash

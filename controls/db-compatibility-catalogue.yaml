@@ -1,11 +1,33 @@
 # db-compatibility-catalogue.yaml
 # SWAO runtime asset -- Database Engine Compatibility Matrix
-# Used by Pass 19 (Database Migration Assessment) to classify migration effort.
+# Used by Pass 01 (INV), signal INV-07 (passes/inv-reference-scans.ts), to
+# classify database engines by version: compatibility, migration effort and
+# sovereign availability. INV-07 severity follows sovereign_availability.
 # Schema: engine, version_range, target_managed_service, compatibility, effort, notes, sovereign_availability
 #
-# compatibility values: supported | migration_required | complex | not_available
+# compatibility values: supported | partial | migration_required | complex | not_available
+#   supported           runs on sovereign managed services without change
+#   partial             runs, but only self-managed or with feature gaps
+#   migration_required  upgrade or engine change needed first (for example an
+#                       end-of-life major version)
+#   complex             no managed equivalent; replatforming or rewrite effort
+#   not_available       no sovereign option at all
 # effort values: trivial | low | moderate | high | very_high
 # sovereign_availability: available | partial | vm_only | not_available
+#
+# Versions past their upstream end of life are rated migration_required: the
+# upgrade has to happen before or during the migration. End-of-life dates:
+#   PostgreSQL: https://www.postgresql.org/support/versioning/ (reviewed 2026-10-17)
+#   MySQL: https://www.mysql.com/support/eol-notice.html (reviewed 2026-10-17)
+# Licence notes:
+#   Redis: https://redis.io/legal/licenses/ (reviewed 2026-10-17)
+#   Elasticsearch: https://www.elastic.co/pricing/faq/licensing and
+#     https://www.elastic.co/blog/elasticsearch-is-open-source-again (reviewed 2026-10-17)
+#   Valkey: https://github.com/valkey-io/valkey/blob/unstable/COPYING (reviewed 2026-10-17)
+#
+# Quality gate: tests/audit-gates/reference-catalogue-quality.gate.mjs (#3296).
+
+last_reviewed: '2026-10-17'
 
 engines:
 
@@ -22,14 +44,23 @@ engines:
     notes: "Modern PG versions supported on all major sovereign providers. STACKIT SKE + CloudNativePG is the recommended deployment pattern."
 
   - engine: postgres
-    version_range: ">=12,<15"
+    version_range: ">=14,<15"
     target_managed_service:
       - "OTC RDS PostgreSQL"
       - "STACKIT PostgreSQL"
     compatibility: supported
     effort: trivial
     sovereign_availability: available
-    notes: "All versions >=12 supported. No breaking changes in minor version upgrades within 12-15 range for standard SQL workloads."
+    notes: "PostgreSQL 14 reaches upstream end of life on 2026-11-12 (postgresql.org versioning policy). Supported today; plan the major upgrade to 15 or later as part of the migration."
+
+  - engine: postgres
+    version_range: ">=12,<14"
+    target_managed_service:
+      - "None for new instances -- upgrade to a supported major version first"
+    compatibility: migration_required
+    effort: low
+    sovereign_availability: partial
+    notes: "PostgreSQL 12 (end of life 2024-11-21) and 13 (end of life 2025-11-13) are past upstream end of life and receive no security fixes. Managed services retire end-of-life majors; upgrade to PostgreSQL 15 or later (pg_upgrade or logical replication) before or during the migration."
 
   - engine: postgres
     version_range: "<12"
@@ -54,10 +85,10 @@ engines:
     version_range: ">=5.7,<8.0"
     target_managed_service:
       - "OTC RDS MySQL 5.7"
-    compatibility: supported
+    compatibility: migration_required
     effort: low
     sovereign_availability: partial
-    notes: "MySQL 5.7 EOL as of 2023. Recommend upgrade to 8.0. OTC supports 5.7 but no new instances."
+    notes: "Since 2023-10-25 MySQL 5.7 is only in Oracle Sustaining Support, with no new fixes; Oracle advises upgrading to 8.0. Upgrade to 8.0 or later before or during the migration; managed services do not offer 5.7 for new instances."
 
   - engine: mariadb
     version_range: ">=10.6"
@@ -88,7 +119,7 @@ engines:
     notes: "Old MongoDB versions below 5.0 not supported by FerretDB. Upgrade to 5.0+ or migrate to FerretDB first."
 
   - engine: redis
-    version_range: ">=7.0"
+    version_range: ">=7.4"
     target_managed_service:
       - "STACKIT Redis"
       - "OTC DCS Valkey (wire-compatible)"
@@ -96,7 +127,18 @@ engines:
     compatibility: supported
     effort: trivial
     sovereign_availability: available
-    notes: "Redis 7.x has RSAL licence. OTC DCS uses Valkey (BSD-2-Clause); wire-protocol compatible with Redis 7. ioredis and Bull/BullMQ clients are Valkey-compatible."
+    notes: "Redis 7.4 is dual-licensed RSALv2 or SSPLv1 (source-available); Redis 8.0 and later add AGPLv3 as a third option. Offering Redis 7.4 or later as a managed service needs a commercial licence or AGPL compliance. Valkey (BSD-3-Clause fork of Redis 7.2) is wire-protocol compatible; ioredis and Bull/BullMQ clients work with Valkey."
+
+  - engine: redis
+    version_range: ">=7.0,<7.4"
+    target_managed_service:
+      - "STACKIT Redis"
+      - "OTC DCS Valkey (wire-compatible)"
+      - "Ionos Managed Redis"
+    compatibility: supported
+    effort: trivial
+    sovereign_availability: available
+    notes: "Redis 7.0 to 7.2 are BSD-3-Clause. Valkey continues this code line under BSD-3-Clause and is the drop-in managed option."
 
   - engine: redis
     version_range: ">=6.0,<7.0"
@@ -106,7 +148,7 @@ engines:
     compatibility: supported
     effort: trivial
     sovereign_availability: available
-    notes: "Redis 6 BSL-licenced but sovereign managed instances available."
+    notes: "Redis 6.x is BSD-3-Clause. Sovereign managed instances available; plan an upgrade to Valkey or a current Redis line."
 
   - engine: oracle
     version_range: ">=19"
@@ -161,4 +203,4 @@ engines:
     compatibility: partial
     effort: moderate
     sovereign_availability: partial
-    notes: "Elasticsearch 7.x+ uses SSPL/ELv2 (non-OSS). OpenSearch (Apache 2.0 fork) is sovereign-compatible and wire-compatible for most use cases. AWS OpenSearch (non-sovereign) or self-hosted OpenSearch on OTC are the main options."
+    notes: "Elasticsearch 7.11 to 8.15 is dual-licensed SSPL or Elastic License 2.0 (source-available). Elastic announced on 2024-08-29 that AGPLv3 is added as a third, open-source option, planned before the 8.16 release; the default distribution stays under Elastic License 2.0. Elastic License 2.0 forbids offering Elasticsearch as a managed service. OpenSearch (Apache-2.0 fork of 7.10) is sovereign-compatible and API-compatible for most use cases; self-hosted OpenSearch or OTC Cloud Search Service are the main options."

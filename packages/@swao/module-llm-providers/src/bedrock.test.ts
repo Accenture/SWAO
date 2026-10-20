@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 import { BedrockLlmProvider, BedrockConnectivityError } from './bedrock.js';
+import { LlmToolsUnsupportedError } from './errors.js';
 
 vi.mock('@swao/core', () => ({
   redactPreLlm: (text: string) => ({ text, counts: {} }),
@@ -187,10 +188,13 @@ describe('BedrockLlmProvider -- retry behaviour', () => {
     mockSend.mockRejectedValue(throttleErr);
     const p = new BedrockLlmProvider(MODEL, BASE_URL_EU);
     const resultPromise = p.complete('x');
+    // #3159: attach the rejection handler before running timers so the
+    // rejection is never momentarily unhandled (vitest reports that as an error).
+    const assertion = expect(resultPromise).rejects.toBeInstanceOf(BedrockConnectivityError);
     await vi.runAllTimersAsync();
-    await expect(resultPromise).rejects.toBeInstanceOf(BedrockConnectivityError);
-    // MAX_RETRIES = 3 -> attempts 0,1,2,3 = 4 total
-    expect(mockSend).toHaveBeenCalledTimes(4);
+    await assertion;
+    // #3284: shared retry policy -> LLM_MAX_ATTEMPTS = 6 total
+    expect(mockSend).toHaveBeenCalledTimes(6);
   });
 
   it('retries socket errors (ECONNRESET)', async () => {
@@ -203,5 +207,118 @@ describe('BedrockLlmProvider -- retry behaviour', () => {
     await vi.runAllTimersAsync();
     await expect(resultPromise).resolves.toBe('recovered');
     expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// completeWithTools -- Converse toolConfig / toolUse loop (#3311, #3312)
+// ---------------------------------------------------------------------------
+
+describe('BedrockLlmProvider.completeWithToolsDetailed (#3311)', () => {
+  const TOOLS = [{
+    name: 'swao_risks',
+    description: 'Risk findings',
+    input_schema: { type: 'object', properties: { app_id: { type: 'string' } } },
+  }];
+  /** Request inputs captured at call time (the provider reuses its messages array). */
+  let sent: Array<Record<string, unknown>>;
+
+  function toolUseTurn(id: string, name: string, input: Record<string, unknown>, inTok = 100, outTok = 20) {
+    return {
+      output: { message: { role: 'assistant', content: [{ text: 'checking' }, { toolUse: { toolUseId: id, name, input } }] } },
+      stopReason: 'tool_use',
+      usage: { inputTokens: inTok, outputTokens: outTok },
+    };
+  }
+  function endTurn(text: string, inTok = 150, outTok = 30) {
+    return { output: { message: { role: 'assistant', content: [{ text }] } }, stopReason: 'end_turn', usage: { inputTokens: inTok, outputTokens: outTok } };
+  }
+
+  beforeEach(() => {
+    MockedConverseCommand.mockClear();
+    mockSend.mockReset();
+    sent = [];
+  });
+
+  function script(...responses: Array<unknown>): void {
+    for (const r of responses) {
+      mockSend.mockImplementationOnce(async (input: unknown) => {
+        sent.push(structuredClone(input) as Record<string, unknown>);
+        if (r instanceof Error) throw r;
+        return r;
+      });
+    }
+  }
+
+  it('sends toolConfig + system, runs the tool and returns the final text with usage summed', async () => {
+    script(toolUseTurn('tu-1', 'swao_risks', { app_id: 'a1' }), endTurn('Two risks.'));
+    const onToolCall = vi.fn().mockResolvedValue('["R1","R2"]');
+    const p = new BedrockLlmProvider(MODEL, BASE_URL_EU, 0, 1024, { inputPerMillion: 1, outputPerMillion: 2 });
+    const res = await p.completeWithToolsDetailed({
+      system: 'sys prompt', messages: [{ role: 'user', content: 'risks?' }], tools: TOOLS, onToolCall,
+    });
+
+    expect(res.text).toBe('Two risks.');
+    expect(res.usage).toEqual({ input_tokens: 250, output_tokens: 50, cost_usd: (250 * 1 + 50 * 2) / 1_000_000 });
+    expect(onToolCall).toHaveBeenCalledWith('swao_risks', { app_id: 'a1' });
+    expect(sent).toHaveLength(2);
+    const first = sent[0] as { system: unknown; toolConfig: { tools: Array<{ toolSpec: Record<string, unknown> }> }; messages: unknown[] };
+    expect(first.system).toEqual([{ text: 'sys prompt' }]);
+    expect(first.toolConfig.tools[0]!.toolSpec).toEqual({ name: 'swao_risks', description: 'Risk findings', inputSchema: { json: TOOLS[0]!.input_schema } });
+    expect(first.messages).toEqual([{ role: 'user', content: [{ text: 'risks?' }] }]);
+    const second = sent[1] as { messages: Array<{ role: string; content: Array<Record<string, unknown>> }> };
+    expect(second.messages).toHaveLength(3);
+    expect(second.messages[1]!.role).toBe('assistant');
+    expect(second.messages[2]).toEqual({
+      role: 'user',
+      content: [{ toolResult: { toolUseId: 'tu-1', content: [{ text: '["R1","R2"]' }] } }],
+    });
+    expect(res.trace?.scrubbedPrompt).toBe('[tool-call chat, 2 iterations]');
+  });
+
+  it('a failing onToolCall is passed to the model as [Tool error: ...] with status error (#3312)', async () => {
+    script(toolUseTurn('tu-9', 'swao_risks', {}), endTurn('The tool failed.'));
+    const p = new BedrockLlmProvider(MODEL, BASE_URL_EU);
+    const res = await p.completeWithToolsDetailed({
+      system: 's', messages: [{ role: 'user', content: 'q' }], tools: TOOLS,
+      onToolCall: async () => { throw new Error('MCP timeout after 300000ms'); },
+    });
+    expect(res.text).toBe('The tool failed.');
+    const second = sent[1] as { messages: Array<{ content: Array<{ toolResult?: Record<string, unknown> }> }> };
+    expect(second.messages[2]!.content[0]!.toolResult).toEqual({
+      toolUseId: 'tu-9', content: [{ text: '[Tool error: MCP timeout after 300000ms]' }], status: 'error',
+    });
+  });
+
+  it('keeps blank history turns as a placeholder (Converse rejects empty text blocks, roles must alternate)', async () => {
+    script(endTurn('hi'));
+    const p = new BedrockLlmProvider(MODEL, BASE_URL_EU);
+    await p.completeWithTools({
+      system: 's', messages: [{ role: 'user', content: 'a' }, { role: 'assistant', content: '  ' }, { role: 'user', content: 'b' }],
+      tools: TOOLS, onToolCall: vi.fn(),
+    });
+    expect((sent[0] as { messages: unknown[] }).messages).toEqual([
+      { role: 'user', content: [{ text: 'a' }] },
+      { role: 'assistant', content: [{ text: '(no text)' }] },
+      { role: 'user', content: [{ text: 'b' }] },
+    ]);
+  });
+
+  it('ValidationException "doesn\'t support tool use" raises LlmToolsUnsupportedError, remembered for later calls', async () => {
+    const err = Object.assign(new Error("This model doesn't support tool use."), { name: 'ValidationException' });
+    script(err);
+    const p = new BedrockLlmProvider('meta.llama2-13b-chat-v1', BASE_URL_EU);
+    const params = { system: 's', messages: [{ role: 'user' as const, content: 'q' }], tools: TOOLS, onToolCall: vi.fn() };
+    await expect(p.completeWithToolsDetailed(params)).rejects.toBeInstanceOf(LlmToolsUnsupportedError);
+    await expect(p.completeWithToolsDetailed(params)).rejects.toThrow(/does not support tool calling/);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('any other ValidationException stays a BedrockConnectivityError', async () => {
+    script(Object.assign(new Error('Malformed input request'), { name: 'ValidationException' }));
+    const p = new BedrockLlmProvider(MODEL, BASE_URL_EU);
+    await expect(p.completeWithToolsDetailed({
+      system: 's', messages: [{ role: 'user', content: 'q' }], tools: TOOLS, onToolCall: vi.fn(),
+    })).rejects.toBeInstanceOf(BedrockConnectivityError);
   });
 });

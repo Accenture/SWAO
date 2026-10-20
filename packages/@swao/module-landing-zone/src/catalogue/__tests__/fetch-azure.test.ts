@@ -22,7 +22,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseLzCatalogue } from '@swao/core';
-import { fetchAzureCatalogue, AZURE_RETAIL_PRICES_URL } from '../fetch-azure.js';
+import { fetchAzureCatalogue, AZURE_RETAIL_PRICES_URL, isAzurePseudoRegion } from '../fetch-azure.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -139,6 +139,34 @@ describe('fetchAzureCatalogue -- single-page HTTP mock (#0688)', () => {
     expect(() => parseLzCatalogue(cat)).not.toThrow();
     expect(cat.regions).toHaveLength(0);
     expect(cat.meta.regions_count).toBe(0);
+  });
+});
+
+describe('fetchAzureCatalogue -- billing-zone pseudo-regions (#3155)', () => {
+  it('drops Global, Europe, Zone N, US Gov, and Azure Stack rows; keeps ARM regions', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        Items: [
+          { serviceName: 'Virtual Machines', armRegionName: 'germanywestcentral' },
+          { serviceName: 'Azure DNS', armRegionName: 'Global' },
+          { serviceName: 'Bandwidth', armRegionName: 'Zone 1' },
+          { serviceName: 'Bandwidth', armRegionName: 'Europe' },
+          { serviceName: 'Virtual Machines', armRegionName: 'US Gov Zone 1' },
+          { serviceName: 'Azure Stack Hub', armRegionName: 'Azure Stack' },
+          { serviceName: 'Storage', armRegionName: 'usgovvirginia' },
+        ],
+        NextPageLink: null,
+      }),
+    }));
+    const cat = await fetchAzureCatalogue({ lastUpdated: '2026-10-10' });
+    expect(cat.regions.map((r) => r.id)).toEqual(['germanywestcentral', 'usgovvirginia']);
+    expect(cat.meta.regions_count).toBe(2);
+  });
+
+  it('isAzurePseudoRegion recognises billing zones only', () => {
+    for (const id of ['Global', 'Europe', 'Zone 8', 'US Gov', 'Middle East And Africa', 'Azure Stack US Gov']) expect(isAzurePseudoRegion(id), id).toBe(true);
+    for (const id of ['westeurope', 'germanywestcentral', 'eastus2euap', 'attatlanta1']) expect(isAzurePseudoRegion(id), id).toBe(false);
   });
 });
 

@@ -1,6 +1,6 @@
 # 5. Publish HTML
 
-Select option 5 from the main menu (or run `swao publish`) to generate a **self-contained HTML file** from your assessment results. The file works offline, in air-gapped environments, and as an email attachment -- no server required.
+Select option 5 from the main menu (or run `swao publish`) to generate a **self-contained HTML file** from your assessment results. The file works offline, in air-gapped environments, and as an email attachment: no server required.
 
 ## What the publication contains
 
@@ -13,7 +13,7 @@ Select option 5 from the main menu (or run `swao publish`) to generate a **self-
 | Evidence gallery | Reviewer | Screenshots and artefacts from dynamic analysis |
 | Run log | Consultant | Duration, LLM cost, pass breakdown |
 
-The publication includes a full-text search index built at generation time -- no external search service.
+The publication includes a full-text search index built at generation time: no external search service.
 
 ## CLI
 

@@ -50,7 +50,7 @@ Use `--skip-llm` for fast CI runs (static passes only, approximately 30s). This 
 the LLM assessment leg, which requires a configured LLM gateway and can take 15-60 minutes.
 
 ```
-swao assess --app platform --passes static,compliance --skip-llm --fail-on severity=critical
+swao assess --app platform --passes inv,sbom,egr,crypto --skip-llm --fail-on severity=critical
 ```
 
 ---
@@ -89,7 +89,7 @@ jobs:
         run: |
           ./swao assess \
             --app ${{ env.APP_ID }} \
-            --passes static,compliance \
+            --passes inv,sbom,egr,crypto \
             --skip-llm \
             --fail-on severity=critical
         env:
@@ -122,7 +122,7 @@ swao-gate:
         --output swao
     - chmod +x swao
   script:
-    - ./swao assess --app $APP_ID --passes static,compliance --skip-llm --fail-on severity=critical
+    - ./swao assess --app $APP_ID --passes inv,sbom,egr,crypto --skip-llm --fail-on severity=critical
   artifacts:
     when: always
     paths:
@@ -134,16 +134,16 @@ swao-gate:
 
 ---
 
-## BA internal runner (PowerShell, Windows)
+## Internal runner (PowerShell, Windows)
 
 ```powershell
-# Run before kilo.ai generates new Terraform
-kilo --auto --task "update terraform for eu-central-1 migration"
+# Run this gate after your AI coding assistant generates or updates Terraform,
+# and before terraform plan/apply.
 
 # Gate: block if any critical sovereignty signal
 .\swao-enterprise-win-x64.exe assess `
     --app platform `
-    --passes static,compliance `
+    --passes inv,sbom,egr,crypto `
     --skip-llm `
     --fail-on severity=critical
 
@@ -161,6 +161,4 @@ still exit 0 for non-fatal warnings. Only the exit code is authoritative.
 
 ## Related
 
-- `swao/docs/runbooks/cicd-pipeline.md` -- general CI pipeline integration
-- `swao/docs/integrations/kilo-ai/ci-gate.md` -- BA-specific kilo.ai gate configuration
-- Memory: `feedback-swao-error-exit-zero.md` -- SWAO [error] exits zero; always check $LASTEXITCODE
+- `swao/docs/runbooks/cicd-pipeline.md`: general CI pipeline integration

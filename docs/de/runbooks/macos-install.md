@@ -1,12 +1,12 @@
 # macOS: SWAO installieren
 
-macOS Gatekeeper blockiert standardmässig unsignierte oder neu verteilte Binaries. Dieses Runbook beschreibt das Herunterladen der SWAO-Binary, das Entfernen des Quarantäne-Attributs und das Hinzufügen von SWAO zum Shell-PATH.
+macOS Gatekeeper blockiert standardmäßig unsignierte oder neu verteilte Binaries. Dieses Runbook beschreibt das Herunterladen der SWAO-Binary, das Entfernen des Quarantäne-Attributs und das Hinzufügen von SWAO zum Shell-PATH.
 
 ---
 
 ## Voraussetzungen
 
-- macOS 12 (Monterey) oder neür
+- macOS 12 (Monterey) oder neuer
 - Terminal-Zugriff (zsh oder bash)
 - `curl` oder ein Browser zum Herunterladen der Binary
 
@@ -67,24 +67,24 @@ Wird dieser Schritt übersprungen und `swao` dennoch ausgeführt, zeigt macOS an
 
 ---
 
-## 4. Daürhafte Freigabe über Systemeinstellungen
+## 4. Dauerhafte Freigabe über Systemeinstellungen
 
-Als Alternative zur Kommandozeilenmethode oder wenn `xattr` die Blockierung nicht daürhaft aufhebt:
+Als Alternative zur Kommandozeilenmethode oder wenn `xattr` die Blockierung nicht dauerhaft aufhebt:
 
 1. `swao --version` im Terminal ausführen. Der Gatekeeper-Dialog erscheint.
 2. **Systemeinstellungen** (macOS 13+) oder **Systemeinstellungen** (macOS 12) öffnen.
 3. Zu **Datenschutz und Sicherheit** navigieren.
 4. Im Abschnitt "Sicherheit" die Meldung suchen: "swao wurde blockiert, weil es nicht von einem identifizierten Entwickler stammt."
 5. Auf **Trotzdem erlauben** klicken.
-6. `swao --version` erneut ausführen. Ein abschliessender Bestäitigungsdialog erscheint; auf **Öffnen** klicken.
+6. `swao --version` erneut ausführen. Ein abschließender Bestätigungsdialog erscheint; auf **Öffnen** klicken.
 
-Diese Vertraünsentscheidung wird pro Binary-Pfad gespeichert. Das Entfernen per `xattr` ist der schnellere Weg für skriptbasierte Bereitstellungen.
+Diese Vertrauensentscheidung wird pro Binary-Pfad gespeichert. Das Entfernen per `xattr` ist der schnellere Weg für skriptbasierte Bereitstellungen.
 
 ---
 
 ## 5. PATH in ~/.zshrc eintragen
 
-Wenn `/usr/local/bin` bereits im PATH vorhanden ist -- auf den meisten macOS-Systemen der Fall -- sind keine weiteren Schritte erforderlich. Prüfung:
+Wenn `/usr/local/bin` bereits im PATH vorhanden ist (auf den meisten macOS-Systemen der Fall), sind keine weiteren Schritte erforderlich. Prüfung:
 
 ```bash
 echo $PATH | tr ':' '\n' | grep /usr/local/bin
@@ -106,7 +106,7 @@ Für bash-Nutzer `~/.zshrc` entsprechend durch `~/.bash_profile` oder `~/.bashrc
 
 ## 6. Hinweis für Versions-Upgrades
 
-Das Quarantäneattribut muss bei jedem Ersetzen der Binary durch eine neü Version neu entfernt werden, da das Herunterladen eine neü Datei mit einem frischen Quarantäneattribut anlegt. Die Upgrade-Schritte können in einer Shell-Funktion oder einem Skript zusammengefasst werden:
+Das Quarantäneattribut muss bei jedem Ersetzen der Binary durch eine neue Version neu entfernt werden, da das Herunterladen eine neue Datei mit einem frischen Quarantäneattribut anlegt. Die Upgrade-Schritte können in einer Shell-Funktion oder einem Skript zusammengefasst werden:
 
 ```bash
 #!/usr/bin/env bash

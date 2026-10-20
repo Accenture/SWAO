@@ -19,7 +19,7 @@ regime_meta:
     name: "SWAO Development Team (Accenture)"
     email: "https://github.com/Accenture/SWAO/discussions"
     url: "https://github.com/Accenture/SWAO"
-  catalogue_version: "0.1.0"
+  catalogue_version: "0.2.0"
   signal_prefix: BSI
   last_reviewed: "2026-07-07"
   applicability_hints:
@@ -111,7 +111,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/isms1-a6-security-measures.md" }
     references: ['https://www.bsi.bund.de/dok/ISMS-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.31]
+    maps_to: [ISO_27001_A.5.31]
     remediation: "Complete the IT-Grundschutz modelling for all target objects; assign owners to each measure; track open items in a remediation register with defined completion dates."
 
   - id: BSI_ISMS1_A8
@@ -161,7 +161,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/orp1-a2-task-assignment.md" }
     references: ['https://www.bsi.bund.de/dok/ORP-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.3, ISO_27001_A.8.2]
+    maps_to: [ISO_27001_A.5.3, ISO_27001_A.8.2]
     remediation: "Review access rights at least annually; enforce least-privilege assignment at provisioning; separate duties for critical operations."
 
   - id: BSI_ORP1_A4
@@ -209,7 +209,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/orp2-a2-offboarding.md" }
     references: ['https://www.bsi.bund.de/dok/ORP-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.6.5, ISO_27001_A.8.18]
+    maps_to: [ISO_27001_A.6.5, ISO_27001_A.8.18]
     remediation: "Implement an automated deprovisioning trigger on HR termination events; verify revocation within 24 hours; log the completion of each offboarding action."
 
   - id: BSI_ORP2_A4
@@ -225,7 +225,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/orp2-a4-external-staff.md" }
     references: ['https://www.bsi.bund.de/dok/ORP-2']
-    maps_to: [GDPR_Art_28, GDPR_Art_32, ISO_27001_A.6.2, ISO_27001_A.6.6]
+    maps_to: [GDPR_Art_28, ISO_27001_A.6.2, ISO_27001_A.6.6]
     remediation: "Include security obligations in external staff contracts; maintain a register of active contractors with their access scope; revoke all access at contract end."
 
   - id: BSI_ORP4_A1
@@ -241,7 +241,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/orp4-a1-iam-policy.md" }
     references: ['https://www.bsi.bund.de/dok/ORP-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.16, ISO_27001_A.8.2]
+    maps_to: [ISO_27001_A.5.16, ISO_27001_A.8.2]
     remediation: "Write and approve an IAM policy; enforce it through periodic access reviews; align privileged access procedures with the policy."
 
   - id: BSI_ORP4_A2
@@ -257,7 +257,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/ORP-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.18, ISO_27001_A.8.5]
+    maps_to: [ISO_27001_A.5.18, ISO_27001_A.8.5]
     remediation: "Implement an automated account provisioning workflow; set an inactivity threshold of 90 days or less; run quarterly access certification campaigns."
 
   - id: BSI_ORP5_A1
@@ -308,7 +308,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/CON-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.24]
+    maps_to: [GDPR_Art_5_1_f, ISO_27001_A.8.24]
     remediation: "Adopt BSI TR-02102 for algorithm selection; enforce TLS 1.2 minimum (TLS 1.3 preferred) for all in-transit paths; document encryption coverage for all stores holding personal data."
 
   - id: BSI_CON1_A2
@@ -324,7 +324,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/CON-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.24]
+    maps_to: [ISO_27001_A.8.24]
     remediation: "Use a dedicated key management service (KMS) or Hardware Security Module (HSM) for key storage; define and test key rotation schedules; prohibit software-level plaintext key storage."
 
   - id: BSI_CON1_A4
@@ -340,7 +340,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/CON-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_9, ISO_27001_A.8.24]
+    maps_to: [GDPR_Art_9, ISO_27001_A.8.24]
     remediation: "Enable volume or field-level encryption for all stores holding personal data; verify no plaintext copy exists in any backup path; test decryption as part of recovery drills."
 
   - id: BSI_CON2_A1
@@ -372,7 +372,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con3-a1-backup-requirements.md" }
     references: ['https://www.bsi.bund.de/dok/CON-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Conduct and document a business impact analysis for each application; confirm RPO and RTO with the application owner; align backup frequency and retention with the agreed objectives."
 
   - id: BSI_CON3_A2
@@ -388,7 +388,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con3-a2-backup-concept.md" }
     references: ['https://www.bsi.bund.de/dok/CON-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Write and approve a backup concept; verify it covers all in-scope systems including databases, object storage, and configuration; confirm off-site or out-of-region placement for at least one copy."
 
   - id: BSI_CON3_A3
@@ -404,7 +404,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "DATA" }
     references: ['https://www.bsi.bund.de/dok/CON-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Automate backup jobs and configure alerting on failure; perform monthly restore tests and document the outcome; encrypt backup media with keys distinct from the live data keys."
 
   - id: BSI_CON6_A1
@@ -436,7 +436,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con6-a2-secure-deployment.md" }
     references: ['https://www.bsi.bund.de/dok/CON-6']
-    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.8.19, ISO_27001_A.8.32]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.19, ISO_27001_A.8.32]
     remediation: "Implement a CI/CD pipeline with gated security tests; require explicit approval for production deployments; retain deployment audit logs for at least 90 days."
 
   - id: BSI_CON8_A1
@@ -453,7 +453,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con8-a1-dev-security-requirements.md" }
     references: ['https://www.bsi.bund.de/dok/CON-8']
-    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.8.26, ISO_27001_A.8.27]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.26, ISO_27001_A.8.27]
     remediation: "Publish secure development standards aligned to OWASP ASVS or equivalent; run mandatory security review gates at requirements, design, and pre-release phases; track deviations as risks."
 
   - id: BSI_CON8_A2
@@ -505,7 +505,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops112-a1-change-management.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    maps_to: [ISO_27001_A.8.32]
     remediation: "Implement a change management workflow covering standard, normal, and emergency change categories; require risk impact assessment for all normal and emergency changes."
 
   - id: BSI_OPS112_A2
@@ -521,7 +521,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops112-a2-change-operations.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    maps_to: [ISO_27001_A.8.32]
     remediation: "Define maintenance windows; require a tested rollback plan for all non-standard changes; conduct a post-change review within 48 hours of each significant deployment."
 
   - id: BSI_OPS112_A3
@@ -553,7 +553,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    maps_to: [ISO_27001_A.8.8]
     remediation: "Publish and approve a patch management policy with time-to-patch SLAs (critical: 48 hours, high: 30 days); assign an owner per vulnerability class; document the escalation path."
 
   - id: BSI_OPS113_A2
@@ -569,7 +569,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    maps_to: [ISO_27001_A.8.8]
     remediation: "Deploy continuous vulnerability scanning (SAST, DAST, SCA) in the CI pipeline; generate weekly posture reports; feed confirmed vulnerabilities into the remediation tracker automatically."
 
   - id: BSI_OPS113_A3
@@ -585,7 +585,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    maps_to: [ISO_27001_A.8.8]
     remediation: "Automate patch deployment for OS and runtime images in the CI/CD pipeline; track outstanding patches by severity class; escalate unpatched critical items to management within the defined SLA window."
 
   - id: BSI_OPS115_A1
@@ -602,7 +602,7 @@ controls:
       - { context_input: "evidence/ops115-a1-backup-recovery.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
     overrides: [BSI_CON3_A2]
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Align the operational backup configuration with the approved concept; automate alerting on backup failures; store at least one backup copy in a separate security zone from the primary systems."
 
   - id: BSI_OPS115_A3
@@ -618,7 +618,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops115-a3-config-backup.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Version-control all infrastructure configuration in a separate repository; include configuration restore in the recovery runbook; test configuration restore at least once per quarter."
 
   - id: BSI_OPS115_A4
@@ -634,7 +634,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops115-a4-restore-testing.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Schedule and run quarterly restore tests across all backup tiers; document the time taken and data completeness; report test outcomes to the information security officer."
 
   - id: BSI_OPS22_A1
@@ -715,7 +715,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/OPS-2-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.9]
     remediation: "Run infrastructure-as-code security scanning (tfsec, checkov, or equivalent) on all cloud resource definitions; block deployments that fail mandatory security checks; review benchmark compliance quarterly."
 
   # ==================================================================
@@ -734,7 +734,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/DER-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    maps_to: [ISO_27001_A.8.16]
     remediation: "Document the detection concept; map it to the incident response procedure; review and update when significant infrastructure changes are made."
 
   - id: BSI_DER1_A2
@@ -750,7 +750,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/DER-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_33, ISO_27001_A.8.15, ISO_27001_A.8.17]
+    maps_to: [GDPR_Art_33, ISO_27001_A.8.15, ISO_27001_A.8.17]
     remediation: "Deploy centralised log aggregation (SIEM or equivalent); enforce log retention of at least 90 days active and 12 months archived for audit-relevant events; protect log integrity with write-once storage or cryptographic sealing."
 
   - id: BSI_DER1_A3
@@ -766,7 +766,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/DER-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_33, ISO_27001_A.8.16]
+    maps_to: [GDPR_Art_33, ISO_27001_A.8.16]
     remediation: "Define and test alert rules for each event class; establish on-call routing and acknowledgement SLAs; test alerting end-to-end at least quarterly using synthetic events."
 
   - id: BSI_DER21_A1
@@ -798,7 +798,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der21-a2-incident-classification.md" }
     references: ['https://www.bsi.bund.de/dok/DER-2-1']
-    maps_to: [GDPR_Art_33, GDPR_Art_4, ISO_27001_A.5.25]
+    maps_to: [GDPR_Art_33, ISO_27001_A.5.25]
     remediation: "Define a severity matrix with clear escalation thresholds; train first responders on breach identification criteria; integrate breach detection rules into the SIEM alert set."
 
   - id: BSI_DER21_A3
@@ -845,7 +845,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der31-a2-audit-effectiveness.md" }
     references: ['https://www.bsi.bund.de/dok/DER-3-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.35, ISO_27001_A.5.36]
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36]
     remediation: "Include technical penetration testing and configuration review in the annual audit programme; present results to the CISO or equivalent; require management sign-off on the remediation plan."
 
   - id: BSI_DER4_A1
@@ -861,7 +861,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der4-a1-bcp.md" }
     references: ['https://www.bsi.bund.de/dok/DER-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.29]
+    maps_to: [ISO_27001_A.5.29]
     remediation: "Write and approve the BCP; align recovery priorities with the business impact analysis; test the plan with a tabletop exercise annually and update it based on test findings."
 
   - id: BSI_DER4_A2
@@ -877,7 +877,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der4-a2-bcp-testing.md" }
     references: ['https://www.bsi.bund.de/dok/DER-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.30]
+    maps_to: [ISO_27001_A.5.30]
     remediation: "Conduct an annual BCP test; document the outcome and identify gaps; ensure that key recovery personnel have been briefed and the contact directory is current."
 
   # ==================================================================
@@ -897,7 +897,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.5, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.5, ISO_27001_A.8.26]
     remediation: "Implement multi-factor authentication for all privileged access; enforce account lockout after a defined number of failed attempts; use standard, well-reviewed authentication libraries."
 
   - id: BSI_APP31_A2
@@ -913,7 +913,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_5_1_c, ISO_27001_A.8.2, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_5_1_c, ISO_27001_A.8.2, ISO_27001_A.8.26]
     remediation: "Implement server-side authorisation for every sensitive endpoint; audit access control coverage with automated testing; document the access control matrix for each user role."
 
   - id: BSI_APP31_A3
@@ -930,7 +930,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.26]
+    maps_to: [ISO_27001_A.8.26]
     remediation: "Replace default error pages with custom generic messages; configure the application to suppress stack traces in production mode; review error handling as part of security code review."
 
   - id: BSI_APP31_A6
@@ -946,7 +946,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.26]
     remediation: "Implement a centralised input validation layer; enforce parameterised queries throughout the data access layer; include input fuzzing in the automated security test suite."
 
   - id: BSI_APP43_A1
@@ -962,7 +962,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/APP-4-3']
-    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.5, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_5_1_f, ISO_27001_A.8.5, ISO_27001_A.8.26]
     remediation: "Assign each application its own database user with least-privilege schema grants; prohibit shared superuser credentials in application connection strings; log and alert on direct DBA access to production."
 
   - id: BSI_APP43_A2
@@ -978,7 +978,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "DATA" }
     references: ['https://www.bsi.bund.de/dok/APP-4-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.8, ISO_27001_A.8.9]
     remediation: "Apply the CIS benchmark for the relevant DBMS; disable the remote administration interface in production; run the DBMS service under a non-root, non-administrator account."
 
   - id: BSI_APP43_A3
@@ -994,7 +994,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "DATA" }
     references: ['https://www.bsi.bund.de/dok/APP-4-3']
-    maps_to: [GDPR_Art_32, GDPR_Art_5_1_d, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_5_1_d, ISO_27001_A.8.26]
     remediation: "Select transaction isolation levels intentionally and document the rationale; include concurrency and failure injection tests in the test suite; verify rollback behaviour during restore drills."
 
   - id: BSI_APP44_A1
@@ -1010,7 +1010,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/app44-a1-container-policy.md" }
     references: ['https://www.bsi.bund.de/dok/APP-4-4']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.9]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.9]
     remediation: "Apply a pod security standard (at minimum Baseline, prefer Restricted); deploy network policies to restrict pod-to-pod communication; use an external secrets manager rather than plain Kubernetes Secrets."
 
   - id: BSI_APP44_A2
@@ -1026,7 +1026,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/APP-4-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.8, ISO_27001_A.8.9]
     remediation: "Integrate container image scanning (Trivy, Grype, or equivalent) into the CI pipeline; block deployment of images with critical CVEs; enforce image signing with Cosign or equivalent."
 
   # ==================================================================
@@ -1045,7 +1045,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/sys11-a1-server-access.md" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.7.1, ISO_27001_A.8.5]
+    maps_to: [ISO_27001_A.7.1, ISO_27001_A.8.5]
     remediation: "Implement physical access control to server locations; restrict management-plane access to a dedicated management VLAN; disable or remove console access routes not required for operations."
 
   - id: BSI_SYS11_A2
@@ -1061,7 +1061,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.8, ISO_27001_A.8.9]
     remediation: "Apply the CIS Benchmark for the server operating system; automate configuration baseline checks with a compliance scanner; remediate deviations within the patch management SLAs."
 
   - id: BSI_SYS11_A3
@@ -1078,7 +1078,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.2, ISO_27001_A.8.18]
+    maps_to: [ISO_27001_A.8.2, ISO_27001_A.8.18]
     remediation: "Disable direct root SSH login; use PAM or sudo with logging enabled for privilege escalation; alert on unexpected root access events in the SIEM."
 
   - id: BSI_SYS16_A1
@@ -1096,7 +1096,7 @@ controls:
       - { context_input: "evidence/sys16-a1-container-security.md" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-6']
     overrides: [BSI_APP44_A1]
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.9]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.9]
     remediation: "Write and approve the container security concept before migrating workloads to containers; align with the APP.4.4 policy; review when the orchestration platform or base images change significantly."
 
   - id: BSI_SYS16_A2
@@ -1112,7 +1112,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-6']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.9]
     remediation: "Enforce a non-root USER directive in all Dockerfiles; use distroless or minimal base images; run image linting (hadolint or equivalent) in the CI pipeline."
 
   - id: BSI_SYS16_A5
@@ -1128,7 +1128,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-6']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.9, ISO_27001_A.8.32]
+    maps_to: [ISO_27001_A.8.9, ISO_27001_A.8.32]
     remediation: "Deploy an admission controller (OPA/Gatekeeper, Kyverno, or equivalent) enforcing image signing and scan status before production admission; log all admission decisions."
 
   # ==================================================================
@@ -1147,7 +1147,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/net11-a1-network-architecture.md" }
     references: ['https://www.bsi.bund.de/dok/NET-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.22]
     remediation: "Document the network architecture with zone definitions and permitted flows; validate the documentation against actual network configuration annually; review after every significant infrastructure change."
 
   - id: BSI_NET11_A2
@@ -1163,7 +1163,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "EGR" }
     references: ['https://www.bsi.bund.de/dok/NET-1-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.22]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.22]
     remediation: "Implement VLAN or virtual network segmentation; restrict lateral movement between segments with stateful firewall rules; verify segmentation with network scanning after changes."
 
   - id: BSI_NET11_A3
@@ -1179,7 +1179,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/net11-a3-network-management.md" }
     references: ['https://www.bsi.bund.de/dok/NET-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.20]
+    maps_to: [ISO_27001_A.8.20]
     remediation: "Disable Telnet and unencrypted management protocols; route management access through a dedicated bastion or jump host; enforce MFA for all remote network management access."
 
   - id: BSI_NET32_A1
@@ -1196,7 +1196,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/net32-a1-firewall-policy.md" }
     references: ['https://www.bsi.bund.de/dok/NET-3-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.22]
+    maps_to: [ISO_27001_A.8.22]
     remediation: "Establish and approve the firewall ruleset against a written policy; audit the ruleset for shadowed or redundant rules annually; remove rules no longer required by an active application."
 
   - id: BSI_NET32_A2
@@ -1212,7 +1212,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "EGR" }
     references: ['https://www.bsi.bund.de/dok/NET-3-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.22]
     remediation: "Review and prune firewall rulesets quarterly; ensure denied flows are logged to the central SIEM; test firewall rules with automated network scanning after each significant rule change."
 
   - id: BSI_NET33_A1
@@ -1228,7 +1228,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/NET-3-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.24, ISO_27001_A.8.20]
+    maps_to: [ISO_27001_A.8.24, ISO_27001_A.8.20]
     remediation: "Configure VPN gateways to allow only TLS 1.2+ or IKEv2 with BSI TR-02102-compliant cipher suites; enforce MFA for all remote-access VPN connections; automate deactivation of inactive VPN accounts."
 
   # ==================================================================
@@ -1270,7 +1270,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/isms1-a5-system-security-concepts.md" }
     references: ['https://www.bsi.bund.de/dok/ISMS-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.14, ISO_27001_A.5.31]
+    maps_to: [ISO_27001_A.5.14, ISO_27001_A.5.31]
     remediation: "Complete IT-Grundschutz modelling for each IT system in scope; document the resulting system security concept with implemented measures and approved deviations; review the concept when the system changes significantly."
 
   - id: BSI_ISMS1_A7
@@ -1287,7 +1287,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/isms1-a7-security-advice.md" }
     references: ['https://www.bsi.bund.de/dok/ISMS-1']
-    maps_to: [GDPR_Art_25, GDPR_Art_32, ISO_27001_A.5.31]
+    maps_to: [GDPR_Art_25, ISO_27001_A.5.31]
     remediation: "Establish a formal consultation process requiring ISO involvement at project initiation and procurement stages; document the ISO's assessment and sign-off; track outstanding security requirements as project milestones."
 
   # ------------------------------------------------------------------
@@ -1360,7 +1360,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/CON-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.24]
+    maps_to: [ISO_27001_A.8.24]
     remediation: "Migrate sensitive data encryption keys to an HSM or cloud-provider hardware-backed KMS; document which key classes are hardware-protected; prohibit software-only key storage for keys protecting confidential data."
 
   - id: BSI_CON1_A5
@@ -1394,7 +1394,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con3-a4-backup-storage.md" }
     references: ['https://www.bsi.bund.de/dok/CON-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.7.10, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.7.10, ISO_27001_A.8.13]
     remediation: "Restrict physical access to backup media to a defined authorised set; maintain an access log; require multi-factor authentication for remote access to backup repositories; document the access control configuration and review it annually."
 
   - id: BSI_CON3_A5
@@ -1410,7 +1410,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/con3-a5-backup-rotation.md" }
     references: ['https://www.bsi.bund.de/dok/CON-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Define and document the rotation schedule; confirm that at least one current off-site copy exists; verify that the off-site location meets the same physical security standard as primary backup storage; test off-site retrieval annually."
 
   # ------------------------------------------------------------------
@@ -1430,7 +1430,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops112-a4-change-evaluation.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.32]
+    maps_to: [ISO_27001_A.8.32]
     remediation: "Add a mandatory post-change evaluation step to the change management process; require the change implementer and an independent reviewer to sign off on the evaluation; capture the outcome in the change record."
 
   - id: BSI_OPS113_A4
@@ -1447,7 +1447,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8]
+    maps_to: [ISO_27001_A.8.8]
     remediation: "Deploy a vulnerability management tool or ITSM module to centralise tracking; require all confirmed vulnerabilities to be recorded within 24 hours of confirmation; automate escalation for items approaching their target remediation date."
 
   - id: BSI_OPS115_A2
@@ -1463,7 +1463,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/ops115-a2-backup-plans.md" }
     references: ['https://www.bsi.bund.de/dok/OPS-1-1-5']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.13]
+    maps_to: [ISO_27001_A.8.13]
     remediation: "Write and approve a backup failure response procedure; include it in the operations runbook; test the procedure as part of the annual BCP test; update based on test findings."
 
   - id: BSI_OPS22_A5
@@ -1499,7 +1499,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/DER-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.16, ISO_27001_A.5.27]
+    maps_to: [ISO_27001_A.8.16, ISO_27001_A.5.27]
     remediation: "Establish a weekly or continuous log review process; document analysis findings; configure automated correlation rules to identify multi-event patterns; ensure trained personnel perform or supervise log analysis."
 
   - id: BSI_DER1_A5
@@ -1515,7 +1515,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/DER-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    maps_to: [ISO_27001_A.8.16]
     remediation: "Deploy a SIEM or equivalent automated detection platform; implement and tune detection rules for the defined threat model; test alert rules against synthetic events at least quarterly; document tuning decisions."
 
   - id: BSI_DER21_A4
@@ -1548,7 +1548,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der31-a3-audit-followup.md" }
     references: ['https://www.bsi.bund.de/dok/DER-3-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.35, ISO_27001_A.5.36]
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36]
     remediation: "Include a formal follow-up verification step in the audit lifecycle; assign verification to an independent auditor; report verification results to management; escalate findings remaining open beyond the agreed remediation date."
 
   - id: BSI_DER4_A3
@@ -1565,7 +1565,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/der4-a3-bcp-third-party.md" }
     references: ['https://www.bsi.bund.de/dok/DER-4']
-    maps_to: [GDPR_Art_32, GDPR_Art_28, ISO_27001_A.5.30]
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.30]
     remediation: "Identify critical third-party dependencies in the BCP; invite key service providers to participate in the annual continuity test; document their participation and test outcomes; track and resolve gaps identified during joint exercises."
 
   # ------------------------------------------------------------------
@@ -1584,7 +1584,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "IAM" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.26]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.26]
     remediation: "Implement session management using a well-reviewed library; configure session timeout at 30 minutes of inactivity or less; verify that logout invalidates the server-side session; test session fixation and hijacking resistance in security acceptance."
 
   - id: BSI_APP31_A5
@@ -1601,7 +1601,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/APP-3-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.15, ISO_27001_A.8.16]
+    maps_to: [ISO_27001_A.8.15, ISO_27001_A.8.16]
     remediation: "Configure application-level logging for all defined security event classes; verify that logs are forwarded to the SIEM; confirm that sensitive values are excluded from logs; test logging coverage as part of security acceptance."
 
   - id: BSI_APP43_A4
@@ -1617,7 +1617,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/APP-4-3']
-    maps_to: [GDPR_Art_32, GDPR_Art_5_1_f, ISO_27001_A.8.15]
+    maps_to: [GDPR_Art_5_1_f, ISO_27001_A.8.15]
     remediation: "Deploy database activity monitoring for all databases storing personal or sensitive data; define baseline normal access patterns; configure alerts for anomalous access; forward DAM logs to the central SIEM."
 
   - id: BSI_APP43_A5
@@ -1634,7 +1634,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "CRYPTO" }
     references: ['https://www.bsi.bund.de/dok/APP-4-3']
-    maps_to: [GDPR_Art_32, GDPR_Art_9, ISO_27001_A.8.24]
+    maps_to: [GDPR_Art_9, ISO_27001_A.8.24]
     remediation: "Enable transparent data encryption (TDE) or equivalent for all databases holding personal data; store encryption keys in an HSM or cloud-managed key service separate from the database host; verify encryption coverage in each audit cycle."
 
   - id: BSI_APP44_A3
@@ -1651,7 +1651,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/APP-4-4']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    maps_to: [ISO_27001_A.8.16]
     remediation: "Deploy a container runtime security tool (Falco, Sysdig Secure, or equivalent); define baseline behavioural profiles for each container workload; configure alerts for deviations; forward runtime alerts to the SIEM."
 
   # ------------------------------------------------------------------
@@ -1671,7 +1671,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "EGR" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.22]
     remediation: "Enable and configure host-based firewall rules on all servers; document permitted connection flows; verify that host-level rules are consistent with network-level controls; review annually and when the server's function changes."
 
   - id: BSI_SYS11_A5
@@ -1688,7 +1688,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/sys11-a5-physical-environment.md" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.7.5, ISO_27001_A.7.6]
+    maps_to: [ISO_27001_A.7.5, ISO_27001_A.7.6]
     remediation: "Install environmental monitoring (temperature, humidity) with automated alerts; document UPS coverage for critical servers; test UPS failover at least annually; review environmental controls when the data centre or server room configuration changes."
 
   - id: BSI_SYS16_A3
@@ -1705,7 +1705,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "EGR" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-6']
-    maps_to: [GDPR_Art_32, GDPR_Art_25, ISO_27001_A.8.22]
+    maps_to: [GDPR_Art_25, ISO_27001_A.8.22]
     remediation: "Deploy and enforce a default-deny Kubernetes NetworkPolicy in all production namespaces; explicitly allow only required pod connections; audit network policy coverage with a policy validator; review when services are added or modified."
 
   - id: BSI_SYS16_A4
@@ -1722,7 +1722,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "SBOM" }
     references: ['https://www.bsi.bund.de/dok/SYS-1-6']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.9]
+    maps_to: [ISO_27001_A.8.9]
     remediation: "Set readOnlyRootFilesystem: true in container security contexts; define explicit writable volumes only where required; enforce this setting via admission control policy; verify compliance in the CI pipeline image configuration check."
 
   # ------------------------------------------------------------------
@@ -1742,7 +1742,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/net11-a4-network-redundancy.md" }
     references: ['https://www.bsi.bund.de/dok/NET-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.20, ISO_27001_A.8.14]
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.14]
     remediation: "Document network topology with identified single points of failure; implement redundant paths for critical links; test failover mechanisms annually; track unresolved single points of failure as risks in the risk register."
 
   - id: BSI_NET11_A5
@@ -1759,7 +1759,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "EGR" }
     references: ['https://www.bsi.bund.de/dok/NET-1-1']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.22]
+    maps_to: [ISO_27001_A.8.22]
     remediation: "Deploy stateful filtering at all internal zone boundaries; enforce default-deny between zones; monitor and log inter-zone traffic; review internal zone firewall rules as part of the annual network security audit."
 
   - id: BSI_NET32_A3
@@ -1776,7 +1776,7 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/NET-3-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.16]
+    maps_to: [ISO_27001_A.8.16]
     remediation: "Deploy network IDS/IPS at DMZ and data centre ingress boundaries; maintain up-to-date signature feeds; forward alerts to the SIEM; review IDS/IPS configuration and alert tuning quarterly."
 
   - id: BSI_NET32_A4
@@ -1792,7 +1792,7 @@ controls:
     evidence_basis:
       - { context_input: "evidence/net32-a4-firewall-pentest.md" }
     references: ['https://www.bsi.bund.de/dok/NET-3-2']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.8, ISO_27001_A.5.35]
+    maps_to: [ISO_27001_A.8.8, ISO_27001_A.5.35]
     remediation: "Schedule annual firewall penetration testing or independent ruleset review; remediate all critical and high findings within the patch management SLA; document test results and present them to the information security officer."
 
   - id: BSI_NET33_A2
@@ -1809,5 +1809,5 @@ controls:
     evidence_basis:
       - { signal_prefix: "OBS" }
     references: ['https://www.bsi.bund.de/dok/NET-3-3']
-    maps_to: [GDPR_Art_32, ISO_27001_A.8.15, ISO_27001_A.8.20]
+    maps_to: [ISO_27001_A.8.15, ISO_27001_A.8.20]
     remediation: "Enable and configure VPN gateway logging for all event types; verify log forwarding to the SIEM; confirm that logs capture all required fields (timestamp, identity, source address); set retention to meet the minimum required period."

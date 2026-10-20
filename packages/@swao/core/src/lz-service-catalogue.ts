@@ -29,13 +29,24 @@ import { z } from 'zod';
 
 // --- Sovereignty facts (data, not judgment; D-LZ-07) ---------------------
 export const LzSovereigntyFactsSchema = z.object({
-  /** ISO country where data rests/processes, or a region grouping ("EU", "global"). */
+  /**
+   * ISO country where data rests/processes, or a region grouping ("EU", "global").
+   * Two sentinels (#3287): "OPERATOR_SITE" for a region whose site the customer
+   * chooses (operator_jurisdiction "operator-site", e.g. azure-local; it
+   * belongs to no geography), and "UNKNOWN", written by the refresh for a
+   * region without a sourced overlay pin. Optional for backward compatibility;
+   * the LZ catalogue quality rule sovereignty-shape requires it.
+   */
   residency_country: z.string().optional(),
   /** Legal entity / jurisdiction that operates the region. */
   operator_jurisdiction: z.string().optional(),
   /** Extraterritorial legal exposure facts, e.g. ["us_cloud_act", "fisa_702"]. */
   extraterritorial_exposure: z.array(z.string()).default([]),
-  /** Held attestations relevant to sovereignty, e.g. ["C5", "SecNumCloud", "ENS"]. */
+  /**
+   * Held attestations relevant to sovereignty. Template vocabulary (#3287):
+   * BSI_C5, ISO_27001, SOC_2, TISAX_L3, PCI_DSS, FedRAMP_High, MAS_TRM, IRAP;
+   * other values pass the schema but the certification-vocabulary rule warns.
+   */
   certifications: z.array(z.string()).default([]),
 }).strict();
 

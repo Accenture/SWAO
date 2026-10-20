@@ -163,6 +163,37 @@ importers:
         specifier: '>=4.1.11 <5.0.0'
         version: 4.1.11(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(jsdom@25.0.1)(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1))
 
+  ../swao-premium/packages/@swao/module-service-export:
+    dependencies:
+      '@swao/core':
+        specifier: workspace:*
+        version: link:../../../../swao/packages/@swao/core
+      '@swao/module-service-assessment':
+        specifier: workspace:*
+        version: link:../../../../swao/packages/@swao/module-service-assessment
+      exceljs:
+        specifier: ^4.4.0
+        version: 4.4.0
+      js-yaml:
+        specifier: '>=5.4.1'
+        version: 5.4.2
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: '>=4.1.11 <5.0.0'
+        version: 4.1.11(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(jsdom@25.0.1)(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1))
+
   ../swao-premium/packages/@swao/module-terraform:
     dependencies:
       '@swao/core':
@@ -343,6 +374,9 @@ importers:
       '@swao/module-landing-zone':
         specifier: workspace:*
         version: link:../module-landing-zone
+      '@swao/module-service-assessment':
+        specifier: workspace:*
+        version: link:../module-service-assessment
       '@swao/tui-kit':
         specifier: workspace:*
         version: link:../tui-kit
@@ -531,6 +565,9 @@ importers:
       js-yaml:
         specifier: '>=5.4.1'
         version: 5.4.2
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.9
@@ -578,6 +615,37 @@ importers:
       '@types/react':
         specifier: ^18.3.28
         version: 18.3.31
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: '>=4.1.11 <5.0.0'
+        version: 4.1.11(@types/node@20.19.43)(@vitest/coverage-v8@4.1.9)(jsdom@25.0.1)(vite@8.0.16(@types/node@20.19.43)(esbuild@0.28.1))
+
+  packages/@swao/module-service-assessment:
+    dependencies:
+      '@swao/community-frameworks':
+        specifier: workspace:*
+        version: link:../community-frameworks
+      '@swao/core':
+        specifier: workspace:*
+        version: link:../core
+      exceljs:
+        specifier: ^4.4.0
+        version: 4.4.0
+      js-yaml:
+        specifier: '>=5.4.1'
+        version: 5.4.2
+      zod:
+        specifier: ^4.0.0
+        version: 4.4.3
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.43
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -688,6 +756,12 @@ importers:
       '@swao/module-powerbi':
         specifier: workspace:*
         version: link:../@swao/module-powerbi
+      '@swao/module-service-assessment':
+        specifier: workspace:*
+        version: link:../@swao/module-service-assessment
+      '@swao/module-service-export':
+        specifier: workspace:*
+        version: link:../../../swao-premium/packages/@swao/module-service-export
       '@swao/module-terraform':
         specifier: workspace:*
         version: link:../../../swao-premium/packages/@swao/module-terraform

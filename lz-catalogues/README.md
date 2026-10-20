@@ -43,6 +43,14 @@ Browse and download catalogues from GitHub:
 | `otc.json` | Open Telekom Cloud (T-Systems, DE / EU) |
 | `stackit.json` | STACKIT (Schwarz Group, DE / EU) |
 
+There is no index file. SWAO builds the catalogue list by scanning this
+folder for `<provider>.json` files and reading each file's own `meta` block
+(name, last_updated, source.mode, confidence, regions_count). Files starting
+with `_` (`_lz-catalogue-template.json`, `_coming-soon.json`),
+`*-service-meta.json` and the `prices/` folder are support files, not
+catalogues. Providers announced but not yet catalogued are listed in
+`_coming-soon.json`, the only place that list lives.
+
 ## Usage
 
 Place catalogue files in your workspace or reference them via the SWAO configuration.

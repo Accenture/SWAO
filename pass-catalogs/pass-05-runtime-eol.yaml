@@ -1,0 +1,308 @@
+# Pass 05 -- SBOM / CVE: curated runtime and OS end-of-life catalogue
+# Offline complement to live OSV and endoflife.date API queries.
+# Sources: vendor EOL pages, endoflife.date as of 2026-10-09.
+# Workspace overrides: wsp/inputs/pass-catalogs/pass-05-runtime-eol.yaml
+#
+# status_at_assessment is computed at runtime from eol_date vs today.
+# This file stores eol_date; the pass computes status dynamically.
+# Entry ID collision: workspace entry wins over built-in on matching id.
+# Contribute additions: https://github.com/Accenture/SWAO
+
+pass_number: 5
+pass_name: "SBOM / CVE"
+
+entries:
+
+  # ---------- Java / JVM runtimes ----------
+
+  - id: java-8
+    name: "Java SE 8 (JDK 8 / OpenJDK 8)"
+    category: jvm_runtime
+    detection:
+      config_keys:
+        - "java.version=1.8"
+        - "java.version=8"
+        - "sourceCompatibility.*1\\.8"
+        - "targetCompatibility.*1\\.8"
+        - "maven.compiler.source.*1\\.8"
+        - "javaVersion.*=.*8"
+        - "JavaVersion\\.VERSION_1_8"
+      imports:
+        - "java.version: '1.8'"
+    eol_date: "2026-12-31"
+    eol_notes: "Oracle commercial EOL 2026-12-31; Red Hat extended 2030-11-30; Amazon Corretto 2026-05-01. Community EOL 2019-01-01."
+    severity: high
+    upgrade_path: "Upgrade to Java 17 LTS (EOL 2029+) or Java 21 LTS (EOL 2031+)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: java-11
+    name: "Java SE 11 (JDK 11 / OpenJDK 11)"
+    category: jvm_runtime
+    detection:
+      config_keys:
+        - "java.version=11"
+        - "sourceCompatibility.*11"
+        - "targetCompatibility.*11"
+        - "maven.compiler.source.*11"
+        - "javaVersion.*=.*11"
+        - "JavaVersion\\.VERSION_11"
+      imports: []
+    eol_date: "2027-09-30"
+    eol_notes: "Adoptium / Eclipse Temurin LTS through 2027-09-30; Amazon Corretto 2027-09-30; Oracle commercial 2026-09-30."
+    severity: positive
+    upgrade_path: "Java 11 is still supported. Plan migration to Java 21 LTS before 2027."
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: java-17
+    name: "Java SE 17 (JDK 17 / OpenJDK 17)"
+    category: jvm_runtime
+    detection:
+      config_keys:
+        - "java.version=17"
+        - "sourceCompatibility.*17"
+        - "targetCompatibility.*17"
+        - "javaVersion.*=.*17"
+        - "JavaVersion\\.VERSION_17"
+      imports: []
+    eol_date: "2029-09-30"
+    eol_notes: "LTS. Adoptium / Temurin 2029-09-30; Amazon Corretto 2029-09-30."
+    severity: positive
+    upgrade_path: "Java 17 LTS is fully supported. Consider Java 21 LTS for longer runway."
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  # ---------- Node.js runtimes ----------
+
+  - id: nodejs-16
+    name: "Node.js 16"
+    category: nodejs_runtime
+    detection:
+      config_keys:
+        - "\"node\": \"16"
+        - "\"node\": \">=16"
+        - "node-version.*16"
+        - "engines.*node.*16"
+      imports: []
+    eol_date: "2023-09-11"
+    eol_notes: "Node.js 16 reached EOL 2023-09-11. No further security patches."
+    severity: critical
+    upgrade_path: "Upgrade to Node.js 20 LTS (EOL 2026-04-30) or Node.js 22 LTS"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: nodejs-18
+    name: "Node.js 18"
+    category: nodejs_runtime
+    detection:
+      config_keys:
+        - "\"node\": \"18"
+        - "\"node\": \">=18"
+        - "node-version.*18"
+        - "engines.*node.*18"
+      imports: []
+    eol_date: "2025-04-30"
+    eol_notes: "Node.js 18 LTS maintenance ended 2025-04-30."
+    severity: high
+    upgrade_path: "Upgrade to Node.js 20 LTS (EOL 2026-04-30) or Node.js 22 LTS"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: nodejs-20
+    name: "Node.js 20 LTS"
+    category: nodejs_runtime
+    detection:
+      config_keys:
+        - "\"node\": \"20"
+        - "node-version.*20"
+        - "engines.*node.*20"
+      imports: []
+    eol_date: "2026-04-30"
+    eol_notes: "Node.js 20 LTS maintenance ends 2026-04-30."
+    severity: positive
+    upgrade_path: "Node.js 20 LTS is currently supported. Plan migration to Node.js 22 before 2026-04."
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  # ---------- Python runtimes ----------
+
+  - id: python-38
+    name: "Python 3.8"
+    category: python_runtime
+    detection:
+      config_keys:
+        - "python_requires.*>=.*3\\.8"
+        - "python-version.*3\\.8"
+        - "Programming Language.*Python.*3\\.8"
+      imports: []
+    eol_date: "2024-10-07"
+    eol_notes: "Python 3.8 reached EOL 2024-10-07."
+    severity: critical
+    upgrade_path: "Upgrade to Python 3.11 LTS or Python 3.12"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: python-39
+    name: "Python 3.9"
+    category: python_runtime
+    detection:
+      config_keys:
+        - "python_requires.*>=.*3\\.9"
+        - "python-version.*3\\.9"
+        - "Programming Language.*Python.*3\\.9"
+      imports: []
+    eol_date: "2025-10-05"
+    eol_notes: "Python 3.9 maintenance ends 2025-10-05."
+    severity: high
+    upgrade_path: "Upgrade to Python 3.11 LTS or Python 3.12"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  # ---------- .NET and .NET Core runtimes ----------
+
+  - id: dotnet-core-31
+    name: ".NET Core 3.1"
+    category: dotnet_runtime
+    detection:
+      config_keys:
+        - "TargetFramework.*netcoreapp3\\.1"
+        - "dotnet-version.*3\\.1"
+        - "RuntimeFrameworkVersion.*3\\.1"
+      imports: []
+    eol_date: "2022-12-13"
+    eol_notes: ".NET Core 3.1 reached EOL 2022-12-13. No security patches."
+    severity: critical
+    upgrade_path: "Upgrade to .NET 8 LTS (EOL 2026-11-10) or .NET 9"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: dotnet-5
+    name: ".NET 5"
+    category: dotnet_runtime
+    detection:
+      config_keys:
+        - "TargetFramework.*net5\\.0"
+        - "dotnet-version.*5\\.0"
+      imports: []
+    eol_date: "2022-05-10"
+    eol_notes: ".NET 5 reached EOL 2022-05-10. No security patches."
+    severity: critical
+    upgrade_path: "Upgrade to .NET 8 LTS (EOL 2026-11-10) or .NET 9"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: dotnet-6
+    name: ".NET 6 LTS"
+    category: dotnet_runtime
+    detection:
+      config_keys:
+        - "TargetFramework.*net6\\.0"
+        - "dotnet-version.*6\\.0"
+      imports: []
+    eol_date: "2024-11-12"
+    eol_notes: ".NET 6 LTS reached EOL 2024-11-12."
+    severity: critical
+    upgrade_path: "Upgrade to .NET 8 LTS (EOL 2026-11-10)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  # ---------- Spring Framework ----------
+
+  - id: spring-boot-2x
+    name: "Spring Boot 2.x"
+    category: framework_runtime
+    detection:
+      config_keys:
+        - "spring-boot.version.*2\\."
+        - "org.springframework.boot.*2\\."
+        - "springBootVersion.*2\\."
+      imports:
+        - "org.springframework.boot:spring-boot-starter.*:2\\."
+    eol_date: "2023-11-24"
+    eol_notes: "Spring Boot 2.x reached commercial EOL 2023-11-24. OSS support ended 2023-08-24."
+    severity: critical
+    upgrade_path: "Upgrade to Spring Boot 3.x (requires Java 17+; Spring Framework 6)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  # ---------- Operating systems (relevant for Design 103 service mode) ----------
+
+  - id: windows-server-2008
+    name: "Windows Server 2008 / 2008 R2"
+    category: operating_system
+    detection:
+      config_keys:
+        - "Windows Server 2008"
+        - "Windows 2008"
+        - "os.*2008"
+        - "server_os.*2008"
+    eol_date: "2020-01-14"
+    eol_notes: "Microsoft ESU ended 2023-01-10 for ESU Year 3. No patches available."
+    severity: critical
+    upgrade_path: "Migrate to Windows Server 2022 or Windows Server 2025"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: windows-server-2012
+    name: "Windows Server 2012 / 2012 R2"
+    category: operating_system
+    detection:
+      config_keys:
+        - "Windows Server 2012"
+        - "Windows 2012"
+        - "os.*2012"
+        - "server_os.*2012"
+    eol_date: "2023-10-10"
+    eol_notes: "Mainstream support ended 2018; extended support ended 2023-10-10. Azure ESU available until 2026."
+    severity: critical
+    upgrade_path: "Migrate to Windows Server 2022 or Windows Server 2025"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: windows-server-2016
+    name: "Windows Server 2016"
+    category: operating_system
+    detection:
+      config_keys:
+        - "Windows Server 2016"
+        - "Windows 2016"
+        - "os.*2016"
+        - "server_os.*2016"
+    eol_date: "2027-01-12"
+    eol_notes: "Extended support ends 2027-01-12. Within 18-month warning window as of late 2025."
+    severity: high
+    upgrade_path: "Plan migration to Windows Server 2022 before 2027"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: rhel-centos-7
+    name: "RHEL 7 / CentOS 7"
+    category: operating_system
+    detection:
+      config_keys:
+        - "rhel.*7\\."
+        - "centos.*7\\."
+        - "el7"
+        - "Red Hat Enterprise Linux 7"
+        - "CentOS Linux 7"
+    eol_date: "2024-06-30"
+    eol_notes: "RHEL 7 / CentOS 7 reached EOL 2024-06-30. Red Hat extended lifecycle support available commercially."
+    severity: critical
+    upgrade_path: "Migrate to RHEL 8 or RHEL 9 (or Rocky Linux / AlmaLinux equivalents)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: ubuntu-1804-lts
+    name: "Ubuntu 18.04 LTS (Bionic Beaver)"
+    category: operating_system
+    detection:
+      config_keys:
+        - "ubuntu.*18\\.04"
+        - "bionic"
+        - "ubuntu-18.04"
+        - "os: ubuntu-18.04"
+    eol_date: "2023-04-30"
+    eol_notes: "Standard support ended 2023-04-30. Extended Security Maintenance available until 2028 with subscription."
+    severity: critical
+    upgrade_path: "Upgrade to Ubuntu 22.04 LTS (EOL 2027) or Ubuntu 24.04 LTS (EOL 2029)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001, NIS2]
+
+  - id: ubuntu-2004-lts
+    name: "Ubuntu 20.04 LTS (Focal Fossa)"
+    category: operating_system
+    detection:
+      config_keys:
+        - "ubuntu.*20\\.04"
+        - "focal"
+        - "ubuntu-20.04"
+        - "os: ubuntu-20.04"
+    eol_date: "2025-04-30"
+    eol_notes: "Standard support ends 2025-04-30. ESM available until 2030."
+    severity: high
+    upgrade_path: "Plan upgrade to Ubuntu 22.04 LTS or Ubuntu 24.04 LTS"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]

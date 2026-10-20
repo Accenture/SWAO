@@ -1,7 +1,7 @@
 # LLM Selection Framework for Sovereign Deployment -- community framework metadata
-# Design 063 Â§A.2 -- phase 5 framework files shipped #0641 (sprint-073).
+# Design 063 §A.2 -- phase 5 framework files shipped #0641 (sprint-073).
 # Sprint-075 #0695: renamed SWAO_LLM_ASSESS -> LLM_SELECTION; dir swao-llm-assess -> llm-selection.
-# Schema: design 029 Â§11 framework-meta shape (framework: root key).
+# Schema: design 029 §11 framework-meta shape (framework: root key).
 
 framework:
   id: LLM_SELECTION

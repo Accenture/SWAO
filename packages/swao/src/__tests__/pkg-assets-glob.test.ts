@@ -44,7 +44,8 @@ describe('pkg.assets glob (sprint-037 #0344)', () => {
   it('every bundled community-framework folder is a valid asset target', () => {
     const communityRoot = communityFrameworksDir;
     expect(existsSync(communityRoot)).toBe(true);
-    expect(existsSync(join(communityRoot, '_registry.yaml'))).toBe(true);
+    // #3297: no _registry.yaml; each folder's framework-meta.yaml is the index.
+    expect(existsSync(join(communityRoot, '_registry.yaml'))).toBe(false);
     for (const folder of ['gdpr', 'ai-10-pillars', 'nist-sp-800-66r2-hipaa']) {
       expect(existsSync(join(communityRoot, folder, 'framework-meta.yaml')), `${folder}: framework-meta.yaml`).toBe(true);
       expect(existsSync(join(communityRoot, folder, 'controls.yaml')), `${folder}: controls.yaml`).toBe(true);

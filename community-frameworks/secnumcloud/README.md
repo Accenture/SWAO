@@ -19,7 +19,7 @@ sovereignty in French public sector cloud procurement.
 As of July 2026, 9 providers hold SecNumCloud qualification, including OVHcloud, S3NS
 (Thales-Google), Orange Business Services, and Outscale.
 
-This SWAO community framework provides 61 controls across 19 chapters, covering the full
+This SWAO community framework provides 59 controls across 19 chapters, covering the full
 qualification scope from governance through to environmental management.
 
 **Contributor:** SWAO Development Team (Accenture)
@@ -49,7 +49,7 @@ qualification scope from governance through to environmental management.
 | 17 | Data Sovereignty and Extraterritoriality | 3 |
 | 18 | Transparency and Certification | 3 |
 | 19 | Environmental and Energy Management | 3 |
-| **Total** | | **61** |
+| **Total** | | **59** |
 
 ---
 
@@ -102,22 +102,18 @@ SecNumCloud v3.2 is stricter than the EUCS High tier in three areas:
 
 ---
 
-## How to enable in `.swao.yml`
+## How to enable in `apps/<app-id>/.swao.yml`
 
 ```yaml
-compliance:
-  frameworks:
-    - SECNUMCLOUD
+assessment:
+  regimes_active: [SECNUMCLOUD]
 ```
 
 For comprehensive EU sovereign cloud coverage, combine with EC CSF:
 
 ```yaml
-compliance:
-  frameworks:
-    - SECNUMCLOUD
-    - EC_CSF
-    - GDPR
+assessment:
+  regimes_active: [SECNUMCLOUD, EC_CSF, GDPR]
 ```
 
 ---

@@ -1,0 +1,95 @@
+# SWAO-INFRA-CAT -- Platform services: operating system classes (Design 103 §17.2)
+# os_string_patterns are case-insensitive substrings matched against platform.os
+# and set os_class; they do not set infra_category on their own (§17.3).
+id: INFRA_PLATFORM
+name: "Platform Services"
+# Load order among the built-in files (#3299): ascending; a later file wins
+# on a duplicate service id. Replaces the retired _registry.yaml.
+load_order: 10
+services:
+  - id: INFRA_PLATFORM_OS_WINDOWS_SERVER
+    name: "Windows Server"
+    short: "WinSrv"
+    sovereign_rating: proprietary
+    eol_source: endoflife.date
+    eol_product_ids: [windows-server]
+    os_string_patterns:
+      - "Windows Server"
+    sovereign_alternatives:
+      - id: debian
+        name: "Debian GNU/Linux"
+        sovereign_rating: open-source
+      - id: ubuntu-server
+        name: "Ubuntu Server (LTS)"
+        sovereign_rating: open-source
+      - id: opensuse-leap
+        name: "openSUSE Leap"
+        sovereign_rating: open-source
+
+  - id: INFRA_PLATFORM_OS_LINUX_DEBIAN
+    name: "Debian GNU/Linux"
+    short: "Debian"
+    sovereign_rating: open-source
+    eol_source: endoflife.date
+    eol_product_ids: [debian]
+    os_string_patterns:
+      - "Debian"
+
+  - id: INFRA_PLATFORM_OS_LINUX_UBUNTU
+    name: "Ubuntu Linux"
+    short: "Ubuntu"
+    sovereign_rating: open-source
+    eol_source: endoflife.date
+    eol_product_ids: [ubuntu]
+    os_string_patterns:
+      - "Ubuntu"
+
+  - id: INFRA_PLATFORM_OS_LINUX_SUSE
+    name: "SUSE Linux Enterprise Server"
+    short: "SLES"
+    sovereign_rating: open-source
+    eol_source: endoflife.date
+    eol_product_ids: [sles]
+    os_string_patterns:
+      - "SUSE Linux"
+      - "SLES"
+
+  - id: INFRA_PLATFORM_OS_LINUX_RHEL
+    name: "Red Hat Enterprise Linux family"
+    short: "RHEL"
+    sovereign_rating: open-source
+    eol_source: endoflife.date
+    eol_product_ids: [rhel, centos, oracle-linux, rocky-linux, almalinux]
+    os_string_patterns:
+      - "Red Hat Enterprise Linux"
+      - "CentOS"
+      - "Oracle Linux"
+      - "Rocky Linux"
+      - "AlmaLinux"
+
+  - id: INFRA_PLATFORM_OS_SOLARIS
+    name: "Oracle Solaris"
+    short: "Solaris"
+    sovereign_rating: proprietary
+    os_string_patterns:
+      - "Solaris"
+
+  - id: INFRA_PLATFORM_DATABASE
+    name: "Standalone Database Server"
+    short: "DB"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "Oracle"
+      - "Microsoft SQL Server"
+      - "SAP HANA"
+    product_name_patterns:
+      - "\\bSQL\\s*Server\\b"
+      - "\\bOracle\\s+Database\\b"
+      - "\\bdatabase\\b"
+    sovereign_alternatives:
+      - id: postgresql
+        name: "PostgreSQL"
+        sovereign_rating: open-source
+      - id: mariadb
+        name: "MariaDB"
+        sovereign_rating: open-source

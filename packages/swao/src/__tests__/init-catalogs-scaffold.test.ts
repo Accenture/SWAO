@@ -161,6 +161,49 @@ describe('scaffoldImports (#1064 -- creates wsp/inputs/, no stub files)', () => 
   });
 });
 
+// #3062/#3063/#3064/#3065: pass-support catalogue seeding added in sprint-149.
+// The scaffold creates wsp/inputs/pass-catalogs/ and seeds from bundled defaults.
+describe('scaffoldCatalogs -- pass-catalogs seeding (#3062)', () => {
+  it('creates wsp/inputs/pass-catalogs/ directory', () => {
+    const result = scaffoldCatalogs(tmp);
+    expect(existsSync(result.passCatalogsDir)).toBe(true);
+  });
+
+  it('passCatalogsDir resolves to wsp/inputs/pass-catalogs under workspace', () => {
+    const result = scaffoldCatalogs(tmp);
+    expect(result.passCatalogsDir).toBe(join(tmp, 'wsp', 'inputs', 'pass-catalogs'));
+  });
+
+  it('is idempotent: preserves operator-customised files on re-init', () => {
+    scaffoldCatalogs(tmp);
+    const customFile = join(tmp, 'wsp', 'inputs', 'pass-catalogs', 'custom-providers.yaml');
+    writeFileSync(customFile, '# custom\n', 'utf-8');
+    scaffoldCatalogs(tmp);
+    expect(existsSync(customFile)).toBe(true);
+    expect(readFileSync(customFile, 'utf-8')).toBe('# custom\n');
+  });
+
+  it('emits a warning rather than throwing when bundled pass-catalogs are absent', () => {
+    const result = scaffoldCatalogs(tmp);
+    // Either bundled files were found (seeded) OR a warning was emitted -- never both, never neither.
+    const seeded = result.copiedFiles.includes('pass-catalogs/');
+    const warned = result.warnings.some((w) => w.includes('pass-catalogs'));
+    expect(seeded || warned).toBe(true);
+    expect(seeded && warned).toBe(false);
+  });
+
+  it('seeds sprint-149 YAML catalogues into wsp/inputs/pass-catalogs/ in dev environment', () => {
+    // In dev/test, resolveBundledPassCatalogsDir() resolves swao/pass-catalogs/ via the
+    // __dirname-relative probe path. Confirm the three sprint-149 catalogues are seeded.
+    const result = scaffoldCatalogs(tmp);
+    expect(result.copiedFiles.includes('pass-catalogs/')).toBe(true);
+    const passCatDir = join(tmp, 'wsp', 'inputs', 'pass-catalogs');
+    expect(existsSync(join(passCatDir, 'pass-08-crypto-algorithms.yaml'))).toBe(true);
+    expect(existsSync(join(passCatDir, 'pass-03-pii-patterns.yaml'))).toBe(true);
+    expect(existsSync(join(passCatDir, 'pass-05-runtime-eol.yaml'))).toBe(true);
+  });
+});
+
 // sprint-039 #0358 Phase 3 reframed for community-only scaffold (#0367).
 // The gitignore baseline now emits `wsp/inputs/catalogs/community/.bundled/`
 // (bundled mirror) instead of `wsp/inputs/catalogs/standard/`.

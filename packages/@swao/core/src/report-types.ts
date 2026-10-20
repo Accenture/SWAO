@@ -71,9 +71,27 @@ export interface ReportData {
   challengeFindings?: ChallengeAgentFinding[];
   /** #2432: indicates why challenge data is absent, for the report header note. */
   challengeStatus?: 'included' | 'not-run' | 'not-available';
+  /** #3330: which challenge (timestamp, run) the findings come from; shown under the section heading. */
+  challengeSource?: string;
+  /** #3330: a challenge of another run exists and was left out of this report. */
+  challengeOtherRunOmitted?: boolean;
   /** #2722: full deduplicated signal list sorted by severity, for GRC view completeness.
    *  Optional for backward compat with ReportData stubs built outside generateReport. */
   allSignals?: SignalEntry[];
+  /** #3306: inline LZ catalogue fit of the application run (fit files plus
+   *  run-status.json failed_targets / resolved_targets). Absent when the run
+   *  had no LZ targets. */
+  lzCatalogueFit?: ReportLzCatalogueFit;
+}
+
+/** #3306: LZ catalogue fit summary of an application run. */
+export interface ReportLzCatalogueFit {
+  /** Fitted targets (provider:region) with their overall verdict. */
+  fitted: Array<{ target: string; verdict: string }>;
+  /** Targets the run skipped, with the reason. */
+  skipped: Array<{ target: string; reason: string }>;
+  /** Configured geographies resolved to their default region. */
+  resolved: Array<{ requested: string; resolved: string; geography: string }>;
 }
 
 // ---------------------------------------------------------------------------

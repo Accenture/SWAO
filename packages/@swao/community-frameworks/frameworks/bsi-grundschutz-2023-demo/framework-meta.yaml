@@ -4,7 +4,7 @@
 
 framework:
   id: BSI_GRUNDSCHUTZ_2023_DEMO
-  name: "BSI IT-Grundschutz 2023 Demo (12 controls) -- Live-Presentation Subset"
+  name: "BSI IT-Grundschutz 2023 Demo (11 controls) -- Live-Presentation Subset"
   version: "Edition 2023 (published January 2023) -- demo subset 2026-07-07"
   authority: "Bundesamt fuer Sicherheit in der Informationstechnik (BSI)"
   contributor:
@@ -27,7 +27,7 @@ framework:
   description: >
     Demo-sized subset of the BSI IT-Grundschutz Kompendium Edition 2023 for
     live-presentation use with the sovereign-health demo application. Contains
-    12 controls selected across 8 Schichten (ISMS, ORP, CON, OPS, DER, APP,
+    11 controls selected across 8 Schichten (ISMS, ORP, CON, OPS, DER, APP,
     SYS, NET) for maximum cross-regime coverage with GDPR_DEMO,
     AI_10_PILLARS_DEMO, and NIST_HIPAA_DEMO. See Design 066.
   references:

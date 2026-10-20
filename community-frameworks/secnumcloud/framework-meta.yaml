@@ -1,5 +1,5 @@
 # SWAO Community Framework -- SecNumCloud v3.2 (ANSSI)
-# Sprint-139 #0425: 65 controls across 19 chapters.
+# Sprint-139 #0425: 59 controls across 19 chapters.
 # Authoritative source (French): ssi.gouv.fr
 # English translation: ITIF-hosted v3.2.a English version.
 
@@ -30,7 +30,7 @@ framework:
     qualification (including OVHcloud, S3NS/Thales-Google, Orange, Outscale).
     The framework targets cloud landing zones and governance posture ([lz, aud])
     with a focus on Diffusion Restreinte (DR)-equivalent data protection and
-    EU legal jurisdiction requirements. 65 controls grouped by chapter.
+    EU legal jurisdiction requirements. 59 controls grouped by chapter.
   references:
     - "ANSSI SecNumCloud v3.2 (French authoritative): https://www.ssi.gouv.fr/entreprise/qualifications/prestataires-de-services-de-confiance/prestataires-de-service-informatique-en-nuage-secnumcloud/"
     - "SecNumCloud v3.2.a English translation (ITIF): https://www2.itif.org/2021-secnumcloud-3.2.a-english-version.pdf"

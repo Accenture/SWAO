@@ -1,92 +1,191 @@
 import { defineConfig } from 'vitepress'
 
-const deRunbooksSidebar = {
-  text: 'Runbooks',
-  items: [
-    {
-      text: 'Installation',
-      items: [
-        { text: 'Alle Plattformen (Uebersicht)', link: '/de/runbooks/install' },
-        { text: 'Windows', link: '/de/runbooks/windows-binary-allowlisting' },
-        { text: 'macOS', link: '/de/runbooks/macos-install' },
-        { text: 'Linux', link: '/de/runbooks/linux-install' },
-        { text: 'Docker', link: '/de/runbooks/docker-deployment' },
-      ],
-    },
-    {
-      text: 'Konfiguration',
-      items: [
-        { text: 'LLM-Gateway (EN)', link: '/runbooks/llm-gateway-authoring' },
-        { text: 'LZ-Kataloge anpassen (EN)', link: '/runbooks/adapting-lz-catalogues' },
-        { text: 'Lizenzverwaltung', link: '/de/runbooks/licence-management' },
-        { text: 'Workspace konfigurieren', link: '/de/runbooks/workspace-config' },
-      ],
-    },
-    {
-      text: 'Integration',
-      items: [
-        { text: 'MCP-Server', link: '/de/runbooks/mcp-integration' },
-        { text: 'CI/CD-Pipeline', link: '/de/runbooks/cicd-pipeline' },
-      ],
-    },
-    {
-      text: 'Betrieb',
-      items: [
-        { text: 'CLI-Referenz', link: '/de/runbooks/cli-reference' },
-        { text: 'Health-check-Ausgabe', link: '/de/runbooks/health-check-output' },
-        { text: 'SWAO aktualisieren', link: '/de/runbooks/updating-swao' },
-        { text: 'Fehlerbehebung', link: '/de/runbooks/troubleshooting' },
-      ],
-    },
-  ],
-}
+// ---------------------------------------------------------------------------
+// Sidebar: ONE definition, rendered for both locales (EN/DE parity, sprint-150).
+// Each entry carries the English and German label; links are written without
+// a locale prefix and get `/de` prepended for the German sidebar.
+// ---------------------------------------------------------------------------
 
-const deSidebar = {
-  '/de/': [
-    {
-      text: 'Erste Schritte',
-      items: [
-        { text: 'Schnellstart (5 Min.)', link: '/de/quick-start' },
-        { text: 'Wie es funktioniert', link: '/de/how-it-works' },
-        { text: 'Funktionen & Editionen', link: '/de/features' },
-      ],
-    },
-    {
-      text: 'SWAO verwenden',
-      items: [
-        { text: '1. Workspace-Setup', link: '/de/workspace-setup' },
-        { text: '2. Health Check', link: '/de/health-check' },
-        { text: '3. Bewertung durchführen', link: '/assessment/' },
-        { text: '4. Bericht erstellen', link: '/de/generate-report' },
-        { text: '5. HTML veröffentlichen', link: '/de/publish-html' },
-        { text: '6. BI exportieren', link: '/de/export-bi' },
-        { text: '7. Portfolio-Betrieb', link: '/de/portfolio' },
-        { text: '8. TF-Module erstellen', link: '/de/generate-tf' },
-        { text: '9. Werkzeuge', link: '/de/tools' },
-      ],
-    },
-    {
-      text: 'Beispiele + Screenshots',
-      items: [
-        {
-          text: 'Beispielgalerie',
-          link: '/de/samples/',
-          items: [
-            { text: 'CLI', link: '/de/samples/#cli' },
-            { text: 'Power BI Berichte', link: '/de/samples/#power-bi-reports' },
-            { text: 'Terminal (TUI)', link: '/de/samples/#terminal-interface-tui' },
-            { text: 'MCP-Konnektor', link: '/de/samples/#mcp-connector' },
-          ],
-        },
-      ],
-    },
-    deRunbooksSidebar,
-  ],
+type Entry = { en: string; de: string; link?: string; collapsed?: boolean; items?: Entry[] }
+
+const passes: Entry[] = [
+  { en: 'Overview', de: 'Übersicht', link: '/passes/' },
+  { en: '00 INGEST: Ingestion', de: '00 INGEST: Ingestion', link: '/passes/00-ingest' },
+  { en: '01 INV: Inventory', de: '01 INV: Inventar', link: '/passes/01-inv' },
+  { en: '02 STATE: Stateful components', de: '02 STATE: Zustandsbehaftete Komponenten', link: '/passes/02-state' },
+  { en: '03 DATA: Data classification', de: '03 DATA: Datenklassifizierung', link: '/passes/03-data' },
+  { en: '04 CTX: Context ingestion', de: '04 CTX: Kontextaufnahme', link: '/passes/04-ctx' },
+  { en: '05 SBOM: Software bill of materials', de: '05 SBOM: Software-Stückliste', link: '/passes/05-sbom' },
+  { en: '06 TF: Infrastructure as code', de: '06 TF: Infrastructure as Code', link: '/passes/06-tf' },
+  { en: '07 EGR: Egress', de: '07 EGR: Ausgehende Verbindungen', link: '/passes/07-egr' },
+  { en: '08 CRYPTO: Cryptography', de: '08 CRYPTO: Kryptografie', link: '/passes/08-crypto' },
+  { en: '09 SYNTH: Migration synthesis', de: '09 SYNTH: Migrationssynthese', link: '/passes/09-synth' },
+  { en: '10 DYNAMIC: Dynamic analysis', de: '10 DYNAMIC: Dynamische Analyse', link: '/passes/10-dynamic' },
+  { en: '11 COMP: Compliance', de: '11 COMP: Compliance', link: '/passes/11-comp' },
+  { en: '12 BLOCKS: Block assessment', de: '12 BLOCKS: Bausteinbewertung', link: '/passes/12-blocks' },
+  { en: '13 SCOPE: Scope coverage', de: '13 SCOPE: Scope-Abdeckung', link: '/passes/13-scope' },
+  { en: '14 MALWARE: Malware scan', de: '14 MALWARE: Malware-Scan', link: '/passes/14-malware' },
+  { en: '23 LZR: Landing zone readiness', de: '23 LZR: Landing-Zone-Eignung', link: '/passes/23-lzr' },
+  { en: '24 RESEARCH: Public research', de: '24 RESEARCH: Öffentliche Recherche', link: '/passes/24-research' },
+  { en: '25 BINARY: Installer analysis', de: '25 BINARY: Analyse von Installationspaketen', link: '/passes/25-binary' },
+]
+
+const frameworks: Entry[] = [
+  { en: 'Overview', de: 'Übersicht', link: '/frameworks/' },
+  { en: 'AI 10 Pillars', de: 'AI 10 Pillars', link: '/frameworks/ai-10-pillars' },
+  { en: 'BSI C5', de: 'BSI C5', link: '/frameworks/bsi-c5' },
+  { en: 'BSI IT-Grundschutz 2023', de: 'BSI IT-Grundschutz 2023', link: '/frameworks/bsi-grundschutz-2023' },
+  { en: 'COBIT 5', de: 'COBIT 5', link: '/frameworks/cobit-5' },
+  { en: 'DORA', de: 'DORA', link: '/frameworks/dora' },
+  { en: 'EC Cloud Sovereignty Framework', de: 'EC Cloud Sovereignty Framework', link: '/frameworks/ec-csf' },
+  { en: 'EU AI Act', de: 'EU AI Act', link: '/frameworks/eu-ai-act' },
+  { en: 'EU Cyber Resilience Act', de: 'EU Cyber Resilience Act', link: '/frameworks/eu-cra' },
+  { en: 'EUCS', de: 'EUCS', link: '/frameworks/eucs' },
+  { en: 'GDPR', de: 'DSGVO (GDPR)', link: '/frameworks/gdpr' },
+  { en: 'ISO/IEC 27001:2022', de: 'ISO/IEC 27001:2022', link: '/frameworks/iso-27001' },
+  { en: 'KRITIS-DE', de: 'KRITIS-DE', link: '/frameworks/kritis-de' },
+  { en: 'LLM Selection', de: 'LLM-Auswahl', link: '/frameworks/llm-selection' },
+  { en: 'NCA CCC (CSP)', de: 'NCA CCC (CSP)', link: '/frameworks/nca-ccc-2-2024-csp' },
+  { en: 'NCA CCC (CST)', de: 'NCA CCC (CST)', link: '/frameworks/nca-ccc-2-2024-cst' },
+  { en: 'NCA ECC', de: 'NCA ECC', link: '/frameworks/nca-ecc-2-2024' },
+  { en: 'NIS2', de: 'NIS2', link: '/frameworks/nis2' },
+  { en: 'NIST SP 800-66r2 (HIPAA)', de: 'NIST SP 800-66r2 (HIPAA)', link: '/frameworks/nist-sp-800-66r2-hipaa' },
+  { en: 'OpenSSF Scorecard', de: 'OpenSSF Scorecard', link: '/frameworks/openssf-scorecard' },
+  { en: 'PCI DSS', de: 'PCI DSS', link: '/frameworks/pci-dss' },
+  { en: 'SAMA CSF', de: 'SAMA CSF', link: '/frameworks/sama-csf-v1' },
+  { en: 'SecNumCloud', de: 'SecNumCloud', link: '/frameworks/secnumcloud' },
+  { en: 'SOC 2', de: 'SOC 2', link: '/frameworks/soc-2' },
+  { en: 'SWAO_APM (portfolio)', de: 'SWAO_APM (Portfolio)', link: '/frameworks/swao-apm' },
+]
+
+const sidebar: Entry[] = [
+  {
+    en: 'Getting started', de: 'Erste Schritte',
+    items: [
+      { en: 'Quick start (5 min)', de: 'Schnellstart (5 Min.)', link: '/quick-start' },
+      { en: 'How it works', de: 'Wie es funktioniert', link: '/how-it-works' },
+      { en: 'Features & Editions', de: 'Funktionen & Editionen', link: '/features' },
+      { en: 'Getting started guide', de: 'Leitfaden für den Einstieg', link: '/getting-started' },
+      { en: 'Release notes v1.4.1', de: 'Versionshinweise v1.4.1', link: '/releases/v1.4.1' },
+    ],
+  },
+  {
+    en: 'Using SWAO', de: 'SWAO verwenden',
+    items: [
+      { en: '1. Workspace Setup', de: '1. Workspace-Setup', link: '/workspace-setup' },
+      { en: '2. Health Check', de: '2. Health Check', link: '/health-check' },
+      {
+        en: '3. Run Assessment', de: '3. Bewertung durchführen', link: '/assessment/', collapsed: false,
+        // Numbered like the TUI assessment type menu.
+        items: [
+          { en: '1. Application Assessment', de: '1. Anwendungsbewertung', link: '/assessment/application' },
+          {
+            en: '2. Service Portfolio Assessment', de: '2. Service-Portfolio-Bewertung', link: '/service-assessment/', collapsed: true,
+            items: [
+              { en: 'Command reference', de: 'Befehlsreferenz', link: '/service-assessment/commands' },
+              { en: 'Column mapping', de: 'Spaltenzuordnung', link: '/service-assessment/column-mapping' },
+              { en: 'INFRA-CAT reference', de: 'INFRA-CAT-Referenz', link: '/service-assessment/infra-cat' },
+              { en: 'Configuration', de: 'Konfiguration', link: '/service-assessment/configuration' },
+              { en: 'Optional API keys', de: 'Optionale API-Schlüssel', link: '/service-assessment/api-keys' },
+              { en: 'SWAO_APM framework and TIME', de: 'Rahmenwerk SWAO_APM und TIME', link: '/service-assessment/framework' },
+              { en: 'Migration waves', de: 'Migrationswellen', link: '/service-assessment/migration-waves' },
+            ],
+          },
+          { en: '3. Landing Zone Catalog Assessment', de: '3. Landing-Zone-Katalog-Bewertung', link: '/assessment/landing-zone' },
+          { en: '4. LLM Assessment', de: '4. LLM-Bewertung', link: '/assessment/llm' },
+        ],
+      },
+      { en: '4. Generate Report', de: '4. Bericht erstellen', link: '/generate-report' },
+      { en: '5. Publish HTML', de: '5. HTML veröffentlichen', link: '/publish-html' },
+      { en: '6. Export BI', de: '6. BI exportieren', link: '/export-bi' },
+      { en: '7. Portfolio Operations', de: '7. Portfolio-Betrieb', link: '/portfolio' },
+      { en: '8. Generate TF Modules', de: '8. TF-Module erstellen', link: '/generate-tf' },
+      { en: '9. Tools', de: '9. Werkzeuge', link: '/tools' },
+    ],
+  },
+  {
+    en: 'Reference', de: 'Referenz',
+    items: [
+      { en: 'Analysis passes', de: 'Analyse-Passes', link: '/passes/', collapsed: true, items: passes },
+      { en: 'Community frameworks', de: 'Community-Rahmenwerke', link: '/frameworks/', collapsed: true, items: frameworks },
+      { en: 'Dimension catalogue', de: 'Dimensionskatalog', link: '/assessment-dimension-catalogue' },
+    ],
+  },
+  {
+    en: 'Samples + screenshots', de: 'Beispiele + Screenshots',
+    items: [
+      {
+        en: 'Sample gallery', de: 'Beispielgalerie', link: '/samples/',
+        items: [
+          { en: 'CLI', de: 'CLI', link: '/samples/#cli' },
+          { en: 'Power BI reports', de: 'Power BI Berichte', link: '/samples/#power-bi-reports' },
+          { en: 'Terminal interface (TUI)', de: 'Terminal (TUI)', link: '/samples/#terminal-interface-tui' },
+          { en: 'MCP connector', de: 'MCP-Konnektor', link: '/samples/#mcp-connector' },
+        ],
+      },
+    ],
+  },
+  {
+    en: 'Runbooks', de: 'Runbooks',
+    items: [
+      {
+        en: 'Installation', de: 'Installation',
+        items: [
+          { en: 'All platforms (overview)', de: 'Alle Plattformen (Übersicht)', link: '/runbooks/install' },
+          { en: 'Windows', de: 'Windows', link: '/runbooks/windows-binary-allowlisting' },
+          { en: 'macOS', de: 'macOS', link: '/runbooks/macos-install' },
+          { en: 'Linux', de: 'Linux', link: '/runbooks/linux-install' },
+          { en: 'Docker', de: 'Docker', link: '/runbooks/docker-deployment' },
+        ],
+      },
+      {
+        en: 'Configuration', de: 'Konfiguration',
+        items: [
+          { en: 'LLM gateway authoring', de: 'LLM-Gateway erstellen', link: '/runbooks/llm-gateway-authoring' },
+          { en: 'LLM provider swap', de: 'LLM-Anbieter wechseln', link: '/runbooks/llm-provider-swap' },
+          { en: 'Adapting LZ catalogues', de: 'LZ-Kataloge anpassen', link: '/runbooks/adapting-lz-catalogues' },
+          { en: 'Licence management', de: 'Lizenzverwaltung', link: '/runbooks/licence-management' },
+          { en: 'Workspace config', de: 'Workspace konfigurieren', link: '/runbooks/workspace-config' },
+        ],
+      },
+      {
+        en: 'Integration', de: 'Integration',
+        items: [
+          { en: 'MCP server', de: 'MCP-Server', link: '/runbooks/mcp-integration' },
+          { en: 'CI/CD pipeline', de: 'CI/CD-Pipeline', link: '/runbooks/cicd-pipeline' },
+          { en: 'CI/CD sovereignty gate', de: 'CI/CD-Souveränitäts-Gate', link: '/runbooks/ci-cd-sovereignty-gate' },
+        ],
+      },
+      {
+        en: 'Operations', de: 'Betrieb',
+        items: [
+          { en: 'CLI reference', de: 'CLI-Referenz', link: '/runbooks/cli-reference' },
+          { en: 'Health-check output', de: 'Health-Check-Ausgabe', link: '/runbooks/health-check-output' },
+          { en: 'Log event reference', de: 'Log-Ereignisse', link: '/runbooks/log-events' },
+          { en: 'Malware scanning', de: 'Malware-Scan', link: '/malware-scanning' },
+          { en: 'Code signing', de: 'Code-Signierung', link: '/runbooks/code-signing' },
+          { en: 'Updating SWAO', de: 'SWAO aktualisieren', link: '/runbooks/updating-swao' },
+          { en: 'Troubleshooting', de: 'Fehlerbehebung', link: '/runbooks/troubleshooting' },
+        ],
+      },
+    ],
+  },
+]
+
+type SidebarItem = { text: string; link?: string; collapsed?: boolean; items?: SidebarItem[] }
+
+function render(entries: Entry[], lang: 'en' | 'de'): SidebarItem[] {
+  return entries.map((e) => ({
+    text: e[lang],
+    ...(e.link ? { link: lang === 'de' ? `/de${e.link}` : e.link } : {}),
+    ...(e.collapsed !== undefined ? { collapsed: e.collapsed } : {}),
+    ...(e.items ? { items: render(e.items, lang) } : {}),
+  }))
 }
 
 export default defineConfig({
   title: 'SWAO',
-  description: 'Sovereign Workload Assessment and Onboarding -- consultant + customer documentation',
+  description: 'Sovereign Workload Assessment and Onboarding: consultant and customer documentation',
   // Curated content folder. Source-of-truth files live under
   // swao/docs/, but VitePress reads from a copied subset under
   // docs-site/manual/ to avoid building docs with bare-angle-
@@ -132,7 +231,7 @@ export default defineConfig({
           { text: 'Funktionen', link: '/de/features' },
           { text: 'Beispiele', link: '/de/samples/' },
         ],
-        sidebar: deSidebar,
+        sidebar: { '/de/': render(sidebar, 'de') },
       },
     },
   },
@@ -144,115 +243,7 @@ export default defineConfig({
       { text: 'Features', link: '/features' },
       { text: 'Samples', link: '/samples/' },
     ],
-    sidebar: {
-      '/': [
-        {
-          text: 'Getting started',
-          items: [
-            { text: 'Quick start (5 min)', link: '/quick-start' },
-            { text: 'How it works', link: '/how-it-works' },
-            { text: 'Features & Editions', link: '/features' },
-            { text: 'Getting started guide', link: '/getting-started' },
-          ],
-        },
-        {
-          text: 'Using SWAO',
-          items: [
-            { text: '1. Workspace Setup', link: '/workspace-setup' },
-            { text: '2. Health Check', link: '/health-check' },
-            {
-              text: '3. Run Assessment',
-              link: '/assessment/',
-              collapsed: true,
-              items: [
-                { text: 'Application', link: '/assessment/application' },
-                { text: 'Landing Zone', link: '/assessment/landing-zone' },
-                { text: 'LLM', link: '/assessment/llm' },
-                { text: 'Dimension catalogue', link: '/assessment-dimension-catalogue' },
-              ],
-            },
-            { text: '4. Generate Report', link: '/generate-report' },
-            { text: '5. Publish HTML', link: '/publish-html' },
-            { text: '6. Export BI', link: '/export-bi' },
-            { text: '7. Portfolio Operations', link: '/portfolio' },
-            { text: '8. Generate TF Modules', link: '/generate-tf' },
-            { text: '9. Tools', link: '/tools' },
-          ],
-        },
-        {
-          text: 'Community Frameworks',
-          items: [
-            { text: 'ISO/IEC 27001:2022', link: '/frameworks/iso-27001' },
-            { text: 'SOC 2', link: '/frameworks/soc-2' },
-            { text: 'DORA', link: '/frameworks/dora' },
-            { text: 'NIS2', link: '/frameworks/nis2' },
-            { text: 'EU CRA', link: '/frameworks/eu-cra' },
-            { text: 'EUCS', link: '/frameworks/eucs' },
-            { text: 'KRITIS-DE', link: '/frameworks/kritis-de' },
-            { text: 'OpenSSF Scorecard', link: '/frameworks/openssf-scorecard' },
-            { text: 'EU AI Act', link: '/frameworks/eu-ai-act' },
-            { text: 'SecNumCloud v3.2', link: '/frameworks/secnumcloud' },
-            { text: 'EC Cloud Sovereignty Framework', link: '/frameworks/ec-csf' },
-          ],
-        },
-        {
-          text: 'Samples + screenshots',
-          items: [
-            {
-              text: 'Sample gallery',
-              link: '/samples/',
-              items: [
-                { text: 'CLI', link: '/samples/#cli' },
-                { text: 'Power BI reports', link: '/samples/#power-bi-reports' },
-                { text: 'Terminal interface (TUI)', link: '/samples/#terminal-interface-tui' },
-                { text: 'MCP connector', link: '/samples/#mcp-connector' },
-              ],
-            },
-          ],
-        },
-        {
-          text: 'Runbooks',
-          items: [
-            {
-              text: 'Installation',
-              items: [
-                { text: 'All platforms (overview)', link: '/runbooks/install' },
-                { text: 'Windows', link: '/runbooks/windows-binary-allowlisting' },
-                { text: 'macOS', link: '/runbooks/macos-install' },
-                { text: 'Linux', link: '/runbooks/linux-install' },
-                { text: 'Docker', link: '/runbooks/docker-deployment' },
-              ],
-            },
-            {
-              text: 'Configuration',
-              items: [
-                { text: 'LLM gateway authoring', link: '/runbooks/llm-gateway-authoring' },
-                { text: 'Adapting LZ catalogues', link: '/runbooks/adapting-lz-catalogues' },
-                { text: 'Licence management', link: '/runbooks/licence-management' },
-                { text: 'Workspace config', link: '/runbooks/workspace-config' },
-              ],
-            },
-            {
-              text: 'Integration',
-              items: [
-                { text: 'MCP server', link: '/runbooks/mcp-integration' },
-                { text: 'CI/CD pipeline', link: '/runbooks/cicd-pipeline' },
-              ],
-            },
-            {
-              text: 'Operations',
-              items: [
-                { text: 'CLI reference', link: '/runbooks/cli-reference' },
-                { text: 'Health-check output', link: '/runbooks/health-check-output' },
-                { text: 'Malware scanning', link: '/malware-scanning' },
-                { text: 'Updating SWAO', link: '/runbooks/updating-swao' },
-                { text: 'Troubleshooting', link: '/runbooks/troubleshooting' },
-              ],
-            },
-          ],
-        },
-      ],
-    },
+    sidebar: { '/': render(sidebar, 'en') },
     search: { provider: 'local' },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Accenture/SWAO' },

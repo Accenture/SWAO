@@ -176,6 +176,18 @@ describe('generateLzNarrative', () => {
       expect(narrative.summary_body).toContain('DE');
     });
 
+    it('#3287: the OPERATOR_SITE residency sentinel reads as the customer site', () => {
+      const narrative = generateLzNarrative({
+        lz_id: 'azure-local/connected',
+        region_id: 'connected',
+        display: 'Azure Local / connected',
+        fit: makeReadyReport(),
+        sovereigntyFacts: { operator_jurisdiction: 'operator-site', residency_country: 'OPERATOR_SITE', certifications: [] },
+      });
+      expect(narrative.sovereignty.residency_country).toBe('operator site (chosen by the customer)');
+      expect(narrative.summary_body).not.toContain('OPERATOR_SITE');
+    });
+
     it('contains no em-dashes (U+2014) in any output', () => {
       const narrative = generateLzNarrative({
         lz_id: 'aws/eu-central-1',

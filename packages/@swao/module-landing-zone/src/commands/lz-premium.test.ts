@@ -22,6 +22,8 @@ const hasSigning = !!process.env.SWAO_LICENSE_SECRET;
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { Command } from 'commander';
 
 import {
@@ -35,6 +37,7 @@ import type { LicensePayload } from '@swao/core';
 
 import { registerLz } from './lz.js';
 import { registerLzCatalogueUpdate } from './lz-premium.js';
+import { discoverLzCatalogues } from '../catalogue/loader.js';
 
 // ---------------------------------------------------------------------------
 // Shared temp home (redirected via _paths so LicenseGuard.load() is sandboxed)
@@ -45,6 +48,9 @@ beforeEach(() => {
   mkdirSync(TEMP_HOME, { recursive: true });
   _paths.statePath = join(TEMP_HOME, '.swao-state.json');
   _paths.licensePath = join(TEMP_HOME, '.swao-license.json');
+  // Also redirect the legacy licence path, or LicenseGuard migrates the real
+  // machine licence from the home directory and Community-tier tests fail.
+  _paths.legacyLicencePath = join(TEMP_HOME, '.swao-license-legacy.json');
   if (existsSync(_paths.statePath)) rmSync(_paths.statePath);
   if (existsSync(_paths.licensePath)) rmSync(_paths.licensePath);
 });
@@ -180,7 +186,7 @@ describe('lz catalogue update -- HTTP fetch (mocked)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'aws',
       '--catalogues-dir', fakeCatDir,
       '--dry-run',
@@ -236,7 +242,7 @@ describe('lz catalogue update -- dry-run happy path', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'aws',
       '--botocore-path', fakeBotp,
       '--catalogues-dir', fakeCatDir,
@@ -252,7 +258,7 @@ describe('lz catalogue update -- dry-run happy path', () => {
     expect(logged).toContain('1 region(s)');
     expect(logged).toContain('[dry-run]');
 
-    // index.json should NOT have been written (dry-run)
+    // #3298: an index.json from an older workspace is never written
     const indexContent = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as { catalogues: unknown[] };
     expect(indexContent.catalogues).toHaveLength(0);
   });
@@ -286,7 +292,7 @@ describe('lz catalogue update -- dry-run happy path', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'aws',
       '--botocore-path', fakeBotp,
       '--catalogues-dir', fakeCatDir,
@@ -305,11 +311,11 @@ describe('lz catalogue update -- dry-run happy path', () => {
     expect(eksSvc).toBeDefined();
     expect(eksSvc?.fulfills).toContain('kubernetes');
 
-    // index.json should have been updated with the aws entry
+    // #3298: the refresh no longer maintains index.json; an older one is left untouched
     const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as {
       catalogues: Array<{ provider: string }>;
     };
-    expect(index.catalogues.some((c) => c.provider === 'aws')).toBe(true);
+    expect(index.catalogues).toEqual([]);
   });
 });
 
@@ -359,7 +365,7 @@ describe('lz catalogue update -- STACKIT PIM API (mocked)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'stackit',
       '--catalogues-dir', fakeCatDir,
     ]);
@@ -396,14 +402,13 @@ describe('lz catalogue update -- STACKIT PIM API (mocked)', () => {
     // deprecated OldService should NOT appear
     expect(eu01?.services.some((s) => s.name === 'OldService')).toBe(false);
 
-    // index.json should have been updated with stackit entry
-    const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as {
-      catalogues: Array<{ provider: string; source: string; confidence: string }>;
-    };
-    const stackitEntry = index.catalogues.find((c) => c.provider === 'stackit');
-    expect(stackitEntry).toBeDefined();
-    expect(stackitEntry?.source).toBe('pim-api-stackit');
-    expect(stackitEntry?.confidence).toBe('medium');
+    // #3298: the list fields live only in the file's meta block (no index.json entry)
+    const stackitMeta = (JSON.parse(readFileSync(join(fakeCatDir, 'stackit.json'), 'utf-8')) as {
+      meta: { source: { mode: string }; confidence: string };
+    }).meta;
+    expect(stackitMeta.source.mode).toBe('pim-api-stackit');
+    expect(stackitMeta.confidence).toBe('medium');
+    expect((JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as { catalogues: unknown[] }).catalogues).toEqual([]);
 
     vi.unstubAllGlobals();
   });
@@ -441,7 +446,7 @@ describe('lz catalogue update -- STACKIT PIM API (mocked)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'stackit',
       '--catalogues-dir', fakeCatDir,
       '--dry-run',
@@ -504,7 +509,7 @@ describe('lz catalogue update -- GCP HTTP fetch (mocked, #0870)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'gcp',
       '--catalogues-dir', fakeCatDir,
       '--dry-run',
@@ -554,7 +559,7 @@ describe('lz catalogue update -- GCP dry-run happy path (#0870)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'gcp',
       '--products-path', fakeProductsPath,
       '--catalogues-dir', fakeCatDir,
@@ -601,7 +606,7 @@ describe('lz catalogue update -- GCP dry-run happy path (#0870)', () => {
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'gcp',
       '--products-path', fakeProductsPath,
       '--catalogues-dir', fakeCatDir,
@@ -625,13 +630,15 @@ describe('lz catalogue update -- GCP dry-run happy path (#0870)', () => {
     expect(sqlSvc).toBeDefined();
     expect(sqlSvc?.fulfills).toContain('postgresql');
 
-    const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as {
-      catalogues: Array<{ provider: string; source: string; confidence: string }>;
-    };
-    const gcpEntry = index.catalogues.find((c) => c.provider === 'gcp');
-    expect(gcpEntry).toBeDefined();
-    expect(gcpEntry?.source).toBe('region-picker-github');
-    expect(gcpEntry?.confidence).toBe('medium');
+    // #3298: listed from the file's own meta block; the older index.json is untouched
+    const gcpMeta = (JSON.parse(readFileSync(join(fakeCatDir, 'gcp.json'), 'utf-8')) as {
+      meta: { source: { mode: string }; confidence: string; regions_count?: number };
+    }).meta;
+    expect(gcpMeta.source.mode).toBe('scrape');
+    expect(gcpMeta.regions_count).toBe(2);
+    expect(gcpMeta.confidence).toBe('medium');
+    const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as { catalogues: unknown[]; coming_soon: string[] };
+    expect(index).toEqual({ catalogues: [], coming_soon: ['gcp'] });
   });
 });
 
@@ -664,6 +671,7 @@ function stubConsultantGuard(): void {
   const fakeGuard = {
     state: { tier: 'consultant' as const, fingerprint: 'abc123def456abc1', firstRun: '2026-04-28', assessmentCount: 0, daysElapsed: 70 },
     requireTier: () => undefined,
+    requireFeature: () => undefined, // #3324: the command gates with requireFeature('lz-catalogue-update')
   } as unknown as LicenseGuard;
   vi.spyOn(LicenseGuard, 'load').mockReturnValue(fakeGuard);
 }
@@ -693,7 +701,7 @@ describe('lz catalogue update -- Azure Retail Prices API mock-server (#0869)', (
     program.exitOverride();
     registerLz(program);
     registerLzCatalogueUpdate(program);
-    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir]);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--skip-prices']);
 
     expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
     expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -719,12 +727,39 @@ describe('lz catalogue update -- Azure Retail Prices API mock-server (#0869)', (
     expect(aksSvc).toBeDefined();
     expect(aksSvc?.fulfills).toContain('kubernetes');
 
-    const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as {
-      catalogues: Array<{ provider: string; source: string }>;
-    };
-    expect(index.catalogues.some((c) => c.provider === 'azure')).toBe(true);
-    const azureIndex = index.catalogues.find((c) => c.provider === 'azure');
-    expect(azureIndex?.source).toBe('retail-prices-api');
+    // #3298: no index.json entry; the meta block is the only record
+    expect((azureJson as unknown as { meta: { source: { mode: string } } }).meta.source.mode).toBe('api');
+    const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as { catalogues: unknown[] };
+    expect(index.catalogues).toEqual([]);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('#3298: a fresh catalogue folder gets the refreshed file only, no index.json; the list reads its meta', async () => {
+    const fakeCatDir = join(TEMP_HOME, 'lz-catalogues-azure-fresh');
+    rmSync(fakeCatDir, { recursive: true, force: true });
+
+    stubConsultantGuard();
+    const mockFetch = vi.fn()
+      .mockImplementationOnce(async () => ({ ok: true, json: async () => AZURE_PAGE_1 }))
+      .mockImplementationOnce(async () => ({ ok: true, json: async () => AZURE_PAGE_2 }));
+    vi.stubGlobal('fetch', mockFetch);
+    vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => { throw new Error('process.exit:' + String(_code ?? '')); });
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    const program = new Command();
+    program.exitOverride();
+    registerLz(program);
+    registerLzCatalogueUpdate(program);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--skip-prices']);
+
+    expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
+    expect(existsSync(join(fakeCatDir, 'azure.json'))).toBe(true);
+    expect(existsSync(join(fakeCatDir, 'index.json'))).toBe(false);
+    const listed = discoverLzCatalogues(fakeCatDir);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({ provider: 'azure', source: 'api', confidence: 'high' });
+    expect(listed[0]!.regions_count).toBeGreaterThan(0);
 
     vi.unstubAllGlobals();
   });
@@ -746,7 +781,7 @@ describe('lz catalogue update -- Azure Retail Prices API mock-server (#0869)', (
     program.exitOverride();
     registerLz(program);
     registerLzCatalogueUpdate(program);
-    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--dry-run']);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--skip-prices', '--dry-run']);
 
     expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
     expect(existsSync(join(fakeCatDir, 'azure.json'))).toBe(false);
@@ -794,7 +829,7 @@ describe('lz catalogue update -- Azure Retail Prices API mock-server (#0869)', (
     program.exitOverride();
     registerLz(program);
     registerLzCatalogueUpdate(program);
-    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir]);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--skip-prices']);
 
     const azureJson = JSON.parse(readFileSync(join(fakeCatDir, 'azure.json'), 'utf-8')) as {
       regions: Array<{ id: string; services: Array<{ code: string; status: string; retired_at?: string }> }>;
@@ -846,7 +881,7 @@ describe('lz catalogue update -- workspace auto-discovery (no --catalogues-dir)'
     registerLzCatalogueUpdate(program);
 
     await program.parseAsync([
-      'node', 'swao', 'lz', 'catalogue', 'update',
+      'node', 'swao', 'lz', 'catalogue', 'update', '--skip-prices',
       '--provider', 'aws',
       '--endpoints-path', fakeBotp,
     ]);
@@ -855,7 +890,8 @@ describe('lz catalogue update -- workspace auto-discovery (no --catalogues-dir)'
 
     const expectedDir = join(fakeWorkspace, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
     expect(existsSync(expectedDir)).toBe(true);
-    expect(existsSync(join(expectedDir, 'index.json'))).toBe(true);
+    // #3298: the bootstrap seeds no index.json; the folder is found by its catalogue files
+    expect(existsSync(join(expectedDir, 'index.json'))).toBe(false);
     expect(existsSync(join(expectedDir, 'aws.json'))).toBe(true);
 
     const awsJson = JSON.parse(readFileSync(join(expectedDir, 'aws.json'), 'utf-8')) as {
@@ -864,5 +900,123 @@ describe('lz catalogue update -- workspace auto-discovery (no --catalogues-dir)'
     };
     expect(awsJson.meta.provider).toBe('aws');
     expect(awsJson.regions[0].id).toBe('eu-north-1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3288 (Design 110 D-23): the same run refreshes the VM price table of the
+// service cost model. A node:http mock server stands in for the Azure Retail
+// Prices API (CLAUDE.md §5.9); the azure service catalogue itself comes from
+// --azure-prices-path so no other request is made.
+// ---------------------------------------------------------------------------
+
+describe('lz catalogue update -- VM price refresh (#3288, mock server)', () => {
+  const priceItem = (armSkuName: string, productName: string, retailPrice: number) => ({
+    currencyCode: 'USD', retailPrice, armRegionName: 'germanywestcentral', armSkuName, meterName: armSkuName.replace('Standard_', '').replace('_', ' '),
+    skuName: armSkuName.replace('Standard_', '').replace('_', ' '), productName, serviceName: 'Virtual Machines', unitOfMeasure: '1 Hour',
+    type: 'Consumption', effectiveStartDate: '2019-09-01T00:00:00Z',
+  });
+
+  async function startMock(status: number): Promise<{ base: string; urls: string[]; close: () => Promise<void> }> {
+    const urls: string[] = [];
+    const server = createServer((req, res) => {
+      urls.push(`${req.method} ${req.url}`);
+      if (status !== 200) { res.writeHead(status); res.end('{}'); return; }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ Items: [
+        priceItem('Standard_D2s_v3', 'Virtual Machines DSv3 Series', 0.111),
+        priceItem('Standard_D2s_v3', 'Virtual Machines DSv3 Series Windows', 0.222),
+      ], NextPageLink: null }));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    return { base, urls, close: () => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }) };
+  }
+
+  function setup(name: string): { dir: string; pricesFile: string } {
+    const dir = join(TEMP_HOME, name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'index.json'), JSON.stringify({ catalogues: [], coming_soon: [] }), 'utf-8');
+    const pricesFile = join(TEMP_HOME, `${name}-azure-page.json`);
+    writeFileSync(pricesFile, JSON.stringify(AZURE_PAGE_2), 'utf-8');
+    stubConsultantGuard();
+    vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => { throw new Error('process.exit:' + String(_code ?? '')); });
+    return { dir, pricesFile };
+  }
+
+  async function run(args: string[]): Promise<void> {
+    const program = new Command();
+    program.exitOverride();
+    registerLz(program);
+    registerLzCatalogueUpdate(program);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', ...args]);
+  }
+
+  it('--provider azure writes prices/vm-prices.json with the fetched Azure prices and keeps the bundled AWS prices', async () => {
+    const mock = await startMock(200);
+    try {
+      const { dir, pricesFile } = setup('lz-prices-ok');
+      const logs = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await run(['--provider', 'azure', '--catalogues-dir', dir, '--azure-prices-path', pricesFile, '--azure-price-api', mock.base]);
+
+      expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
+      expect(mock.urls).toHaveLength(1);
+      expect(mock.urls[0]).toMatch(/^GET \/api\/retail\/prices\?api-version=2023-01-01-preview&\$filter=/);
+      expect(existsSync(join(dir, 'azure.json'))).toBe(true);
+      const table = JSON.parse(readFileSync(join(dir, 'prices', 'vm-prices.json'), 'utf-8')) as {
+        meta: { sources: Array<{ provider: string; url: string }> };
+        prices: Array<{ provider: string; sku: string; os: string; price_per_hour: number }>;
+      };
+      const az = table.prices.filter((p) => p.provider === 'azure');
+      expect(az).toEqual([
+        expect.objectContaining({ sku: 'D2s_v3', os: 'linux', price_per_hour: 0.111 }),
+        expect.objectContaining({ sku: 'D2s_v3', os: 'windows', price_per_hour: 0.222 }),
+      ]);
+      expect(table.meta.sources.find((s) => s.provider === 'azure')!.url.startsWith(mock.base)).toBe(true);
+      // AWS was not refreshed (provider azure): its rows come from the bundled table.
+      expect(table.prices.some((p) => p.provider === 'aws' && p.sku === 'm5.large' && p.os === 'windows')).toBe(true);
+      const out = logs.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(out).toMatch(/prices: wrote .*vm-prices\.json/);
+      // The TUI progress bar counts "written:"/"updated:" lines; price lines must not add to it.
+      expect(out.split('\n').filter((l) => /^\s*(updated|written):/.test(l) && l.includes('vm-prices'))).toEqual([]);
+    } finally {
+      await mock.close();
+    }
+  });
+
+  it('a failing price API (HTTP 500) is a warning: the catalogue is written, no price table, no exit', async () => {
+    const mock = await startMock(500);
+    try {
+      const { dir, pricesFile } = setup('lz-prices-500');
+      vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await run(['--provider', 'azure', '--catalogues-dir', dir, '--azure-prices-path', pricesFile, '--azure-price-api', mock.base]);
+
+      expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
+      expect(existsSync(join(dir, 'azure.json'))).toBe(true);
+      expect(existsSync(join(dir, 'prices', 'vm-prices.json'))).toBe(false);
+      expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(/prices: azure price fetch failed: HTTP 500.*keeping the previous azure prices/);
+    } finally {
+      await mock.close();
+    }
+  });
+
+  it('--dry-run fetches but does not write the price table; --skip-prices makes no price request', async () => {
+    const mock = await startMock(200);
+    try {
+      const { dir, pricesFile } = setup('lz-prices-dry');
+      const logs = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      await run(['--provider', 'azure', '--catalogues-dir', dir, '--azure-prices-path', pricesFile, '--azure-price-api', mock.base, '--dry-run']);
+      expect(existsSync(join(dir, 'prices', 'vm-prices.json'))).toBe(false);
+      expect(logs.mock.calls.map((c) => String(c[0])).join('\n')).toContain('prices: [dry-run] would write');
+      expect(mock.urls).toHaveLength(1);
+
+      await run(['--provider', 'azure', '--catalogues-dir', dir, '--azure-prices-path', pricesFile, '--azure-price-api', mock.base, '--skip-prices']);
+      expect(mock.urls).toHaveLength(1);
+      expect(existsSync(join(dir, 'prices', 'vm-prices.json'))).toBe(false);
+    } finally {
+      await mock.close();
+    }
   });
 });

@@ -107,17 +107,20 @@ describe('sovereign-service-catalogue.yaml (#0058)', () => {
     expect(unique.size).toBe(ids.length);
   });
 
-  it('includes aws-comprehend-medical with unavailable verdict (Medplum EGR-01 case)', () => {
+  it('includes aws-comprehend-medical (Medplum EGR-01 case); #3296: EU regions exist, US parent, so partial', () => {
     const cat = loadYaml<SovereignServiceCatalogue>(CATALOGUE_FILE);
     const entry = cat.services.find(e => e.id === 'aws-comprehend-medical');
     expect(entry).toBeDefined();
-    expect(entry?.portability_verdict).toBe('unavailable');
+    expect(entry?.portability_verdict).toBe('partial');
   });
 
-  it('includes at least one entry per portability_verdict tier', () => {
+  it('uses the partial and unavailable tiers (#3296: no reviewed service meets the available rule)', () => {
+    // `available` requires an EU/EEA operator and parent and EU/EEA hosting
+    // without a non-EU-parent hosting sub-processor (catalogue header). None
+    // of the reviewed services qualifies; the tier stays valid for entries
+    // that do.
     const cat = loadYaml<SovereignServiceCatalogue>(CATALOGUE_FILE);
     const verdicts = new Set(cat.services.map(e => e.portability_verdict));
-    expect(verdicts.has('available')).toBe(true);
     expect(verdicts.has('partial')).toBe(true);
     expect(verdicts.has('unavailable')).toBe(true);
   });

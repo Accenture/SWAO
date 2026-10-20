@@ -16,7 +16,7 @@
 // Unit tests for MCP context helpers (#2781 #2789).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext, listAssessedApps, listMcpTools } from './mcp-context.js';
+import { parseSseBody, extractToolText, buildSystemPrompt, fetchPortfolioContext, listAssessedApps, listMcpTools, callMcpTool, pickRpcResponse, MCP_TOOL_CALL_TIMEOUT_MS, initMcpSession, isMcpError, mcpExitReason } from './mcp-context.js';
 import type { McpSession } from './mcp-context.js';
 import { existsSync, readdirSync } from 'node:fs';
 import { SWAO_MCP_TOOLS } from '@swao/module-mcp';
@@ -293,10 +293,9 @@ describe('listMcpTools (#2915)', () => {
     expect(tools[1].name).toBe('swao_signals');
   });
 
-  it('returns empty array on HTTP failure', async () => {
-    vi.stubGlobal('fetch', async () => ({ ok: false, text: async () => 'error' }));
-    const tools = await listMcpTools(mockSession);
-    expect(tools).toEqual([]);
+  it('throws with the reason on HTTP failure (#3315)', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 500, text: async () => 'error' }));
+    await expect(listMcpTools(mockSession)).rejects.toThrow('tools/list HTTP 500: error');
   });
 
   it('returns empty array when tools/list result has no tools array', async () => {
@@ -333,5 +332,152 @@ describe('listMcpTools (#2915)', () => {
     for (const { name } of SWAO_MCP_TOOLS) {
       expect(returnedNames.has(name), `"${name}" missing from listMcpTools output`).toBe(true);
     }
+  });
+});
+
+describe('callMcpTool request ids, streamed responses and timeout (#3310)', () => {
+  const mockSession: McpSession = { sessionId: 'test', port: 3737 };
+
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  it('gives parallel calls in the same millisecond distinct JSON-RPC ids', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const ids: unknown[] = [];
+    vi.stubGlobal('fetch', async (_url: string, opts: RequestInit) => {
+      const body = JSON.parse(String(opts.body)) as { id: unknown; params: { name: string } };
+      ids.push(body.id);
+      return {
+        ok: true,
+        text: async () => 'data: ' + JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: body.params.name }] } }) + '\n',
+      };
+    });
+    const out = await Promise.all(['swao_a', 'swao_b', 'swao_c'].map(n => callMcpTool(mockSession, n, {})));
+    expect(out).toEqual(['swao_a', 'swao_b', 'swao_c']);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it('returns the tool result when notifications precede it on the stream', async () => {
+    let id: unknown;
+    vi.stubGlobal('fetch', async (_url: string, opts: RequestInit) => {
+      id = (JSON.parse(String(opts.body)) as { id: unknown }).id;
+      return {
+        ok: true,
+        text: async () => [
+          'data: ' + JSON.stringify({ jsonrpc: '2.0', method: 'notifications/progress', params: { progressToken: 1, progress: 1 } }),
+          'data: ' + JSON.stringify({ jsonrpc: '2.0', method: 'notifications/message', params: { level: 'warning', data: '[WARN] x' } }),
+          'data: ' + JSON.stringify({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'the result' }] } }),
+        ].join('\n\n') + '\n',
+      };
+    });
+    expect(await callMcpTool(mockSession, 'swao_x', {})).toBe('the result');
+  });
+
+  it('pickRpcResponse prefers the response with the request id and passes single messages through', () => {
+    const a = { jsonrpc: '2.0', id: 1, result: { content: [] } };
+    const b = { jsonrpc: '2.0', id: 2, result: { content: [] } };
+    expect(pickRpcResponse([a, b], 2)).toBe(b);
+    expect(pickRpcResponse([{ method: 'notifications/progress' }, a], 9)).toBe(a);
+    expect(pickRpcResponse(a, 2)).toBe(a);
+    expect(pickRpcResponse([{ method: 'notifications/progress' }], 1)).toBeNull();
+  });
+
+  it('allows a tool call the server-side 5-minute CLI limit', async () => {
+    expect(MCP_TOOL_CALL_TIMEOUT_MS).toBe(300_000);
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    vi.stubGlobal('fetch', async () => ({ ok: true, text: async () => 'data: {"jsonrpc":"2.0","id":1,"result":{"content":[]}}\n' }));
+    await callMcpTool(mockSession, 'swao_service_research_run', {});
+    expect(timeout).toHaveBeenCalledWith(300_000);
+  });
+});
+
+describe('MCP transport and parse failures surface as [MCP error: ...] (#3315)', () => {
+  const mockSession: McpSession = { sessionId: 'test', port: 3737 };
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  function refused(): Error {
+    const cause = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:3737'), { code: 'ECONNREFUSED' });
+    return new TypeError('fetch failed', { cause });
+  }
+
+  it('callMcpTool reports a refused connection instead of throwing or returning empty text', async () => {
+    vi.stubGlobal('fetch', async () => { throw refused(); });
+    const text = await callMcpTool(mockSession, 'swao_risks', {});
+    expect(text).toBe('[MCP error: swao_risks request failed: fetch failed (ECONNREFUSED)]');
+    expect(isMcpError(text)).toBe(true);
+  });
+
+  it('callMcpTool reports a timeout', async () => {
+    vi.stubGlobal('fetch', async () => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); });
+    expect(await callMcpTool(mockSession, 'swao_risks', {}, 1234)).toBe('[MCP error: swao_risks request failed: no response within 1234 ms]');
+  });
+
+  it('callMcpTool reports an HTTP error status with a body excerpt', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 404, text: async () => '{"error":"Session not found"}' }));
+    expect(await callMcpTool(mockSession, 'swao_risks', {})).toBe('[MCP error: swao_risks HTTP 404: {"error":"Session not found"}]');
+  });
+
+  it('callMcpTool reports an unparseable body', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, text: async () => 'data: {not json\n' }));
+    const text = await callMcpTool(mockSession, 'swao_risks', {});
+    expect(text).toMatch(/^\[MCP error: swao_risks response is not valid JSON-RPC: data: \{not json\]$/);
+  });
+
+  it('callMcpTool reports a stream without the response to its request', async () => {
+    vi.stubGlobal('fetch', async () => ({
+      ok: true, status: 200,
+      text: async () => 'data: ' + JSON.stringify({ jsonrpc: '2.0', method: 'notifications/progress', params: {} }) + '\n',
+    }));
+    expect(await callMcpTool(mockSession, 'swao_risks', {})).toMatch(/^\[MCP error: swao_risks response has no result for request id \d+: /);
+  });
+
+  it('callMcpTool still returns empty text for a valid result without text content', async () => {
+    vi.stubGlobal('fetch', async (_u: string, opts: RequestInit) => {
+      const id = (JSON.parse(String(opts.body)) as { id: number }).id;
+      return { ok: true, status: 200, text: async () => 'data: ' + JSON.stringify({ jsonrpc: '2.0', id, result: { content: [] } }) + '\n' };
+    });
+    expect(await callMcpTool(mockSession, 'swao_risks', {})).toBe('');
+  });
+
+  it('listMcpTools throws on a refused connection, an unparseable body and a JSON-RPC error', async () => {
+    vi.stubGlobal('fetch', async () => { throw refused(); });
+    await expect(listMcpTools(mockSession)).rejects.toThrow('tools/list request failed: fetch failed (ECONNREFUSED)');
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, text: async () => '<html>proxy</html>' }));
+    await expect(listMcpTools(mockSession)).rejects.toThrow('tools/list response is not valid JSON-RPC: <html>proxy</html>');
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, text: async () => 'data: {"jsonrpc":"2.0","error":{"code":-32600,"message":"Bad Request"}}\n' }));
+    await expect(listMcpTools(mockSession)).rejects.toThrow('tools/list: Bad Request');
+  });
+
+  it('initMcpSession names the failure instead of a bare "fetch failed"', async () => {
+    vi.stubGlobal('fetch', async () => { throw refused(); });
+    await expect(initMcpSession(3737, 100)).rejects.toThrow('MCP initialize on port 3737 failed: fetch failed (ECONNREFUSED)');
+  });
+
+  it('fetchPortfolioContext skips failed sections instead of writing errors into the prompt', async () => {
+    vi.mocked(existsSync).mockReturnValue(false);
+    vi.stubGlobal('fetch', async (_u: string, opts: RequestInit) => {
+      const body = JSON.parse(String(opts.body)) as { id: number; params: { name: string } };
+      if (body.params.name === 'swao_portfolio_summary') throw refused();
+      return { ok: true, status: 200, text: async () => 'data: ' + JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text', text: `ok ${body.params.name}` }] } }) + '\n' };
+    });
+    const errors: Array<[string, string]> = [];
+    const ctx = await fetchPortfolioContext(mockSession, '/ws', undefined, (label, error) => errors.push([label, error]));
+    expect(ctx).toContain('ok swao_workspace_inventory');
+    expect(ctx).not.toContain('Portfolio Summary');
+    expect(ctx).not.toContain('MCP error');
+    // The skipped section is reported to the caller for the chat log.
+    expect(errors).toEqual([['Portfolio Summary', '[MCP error: swao_portfolio_summary request failed: fetch failed (ECONNREFUSED)]']]);
+  });
+});
+
+describe('mcpExitReason (#3314)', () => {
+  it('reports the licence gate lines of a refused swao mcp', () => {
+    const stderr = '[LICENSE] swao mcp requires an Enterprise licence.\nYour current tier: community\n\nTo upgrade: swao license request --tier enterprise\nContact: https://github.com/Accenture/SWAO/discussions\n';
+    expect(mcpExitReason(stderr, 1, null)).toBe('swao mcp exited (exit code 1): [LICENSE] swao mcp requires an Enterprise licence. Your current tier: community');
+  });
+
+  it('falls back to the first error line, then to the exit code', () => {
+    expect(mcpExitReason('starting\nError: listen EADDRINUSE :::3737\n    at x\n', 1, null)).toBe('swao mcp exited (exit code 1): Error: listen EADDRINUSE :::3737');
+    expect(mcpExitReason('', null, 'SIGTERM')).toBe('swao mcp exited (signal SIGTERM)');
   });
 });

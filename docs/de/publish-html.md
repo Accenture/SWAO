@@ -1,6 +1,6 @@
 # 5. HTML veröffentlichen
 
-Wählen Sie Option 5 im Hauptmenü (oder führen `swao publish` aus), um eine **eigenständige HTML-Datei** aus Ihren Bewertungsergebnissen zu erstellen. Die Datei funktioniert offline, in luftgespalteten Umgebungen und als E-Mail-Anhang -- kein Server erforderlich.
+Wählen Sie Option 5 im Hauptmenü (oder führen `swao publish` aus), um eine **eigenständige HTML-Datei** aus Ihren Bewertungsergebnissen zu erstellen. Die Datei funktioniert offline, in luftgespalteten Umgebungen und als E-Mail-Anhang: kein Server erforderlich.
 
 ## Was die Veröffentlichung enthält
 
@@ -13,7 +13,7 @@ Wählen Sie Option 5 im Hauptmenü (oder führen `swao publish` aus), um eine **
 | Evidenzgalerie | Prüfer | Screenshots und Artefakte aus der dynamischen Analyse |
 | Laufprotokoll | Consultant | Dauer, LLM-Kosten, Durchlauf-Aufschlüsselung |
 
-Die Veröffentlichung enthält einen Volltextsuchindex, der zur Generierungszeit erstellt wird -- kein externer Suchdienst.
+Die Veröffentlichung enthält einen Volltextsuchindex, der zur Generierungszeit erstellt wird: kein externer Suchdienst.
 
 ## CLI
 

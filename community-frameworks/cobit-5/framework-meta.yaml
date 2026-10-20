@@ -1,0 +1,93 @@
+# SWAO community framework metadata (design 029 §2.3 + §11)
+# The folder name is descriptive only; the identity comes from `framework.id`
+# below. The control text is original SWAO wording; no ISACA publication is
+# bundled. See redistribution_note.
+
+framework:
+  id: COBIT_5
+  name: "COBIT 5: A Business Framework for the Governance and Management of Enterprise IT"
+  version: "2012 (ISBN 978-1-60420-237-3)"
+  authority: "ISACA (Information Systems Audit and Control Association)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/cobit-5"
+  applicability_hints:
+    - it_governance
+    - enterprise_it_management
+    - audit_assurance
+    - risk_management
+    - service_management
+    - regulatory_alignment
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    Community catalogue for assessing IT governance and management against
+    the 37 processes of ISACA COBIT 5, grouped into its five domains (EDM,
+    APO, BAI, DSS, MEA). Each process is one SWAO control with an original
+    SWAO description that says what the process is about and what evidence
+    an assessor would look for. The seven COBIT 5 enablers are not modelled
+    as a separate axis; see the README. Process IDs and names are the COBIT
+    5 identifiers; the reference publication is cited under references.
+  references:
+    - "ISACA, COBIT 5: A Business Framework for the Governance and Management of Enterprise IT, 2012, ISBN 978-1-60420-237-3"
+    - "ISACA, COBIT 5: Enabling Processes, 2012 (companion publication)"
+    - "https://www.isaca.org/resources/cobit"
+  catalogue_version: "0.2.0"
+  last_reviewed: "2026-10-17"
+
+  # Optional: signal_prefix overrides the default (which would be the
+  # framework.id). We pick `COBIT` (5 chars) inside the design-029 §13 item 4
+  # advisory band (3-8 chars) so emitted local-signal IDs stay compact in the
+  # PowerBI signal grid while the longer framework.id keeps audit logs
+  # self-explanatory.
+  signal_prefix: COBIT
+
+  # Related standards and frameworks with thematic overlap (SWAO judgement):
+  # ISO/IEC 38500 (governance), ISO/IEC 27000 (security), ISO/IEC 20000
+  # (service management), ISO/IEC 31000 (risk), ITIL V3, TOGAF, PRINCE2 /
+  # PMBOK, CMMI. The bundled regulatory regimes (GDPR, ISO 27001, SOC 2,
+  # DORA) are referenced via `maps_to`; the others are advisory community
+  # frameworks (per design 029 §13.2 clarification 2b).
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001       # installed: bundled regulatory regime (security)
+      - SOC_2           # installed: bundled regulatory regime (trust services)
+      - GDPR            # installed: bundled regulatory regime (data protection)
+      - DORA            # installed: bundled regulatory regime (ICT risk + third party)
+      - ISO_20000       # advisory: ITSM community framework (sprint-035+)
+      - ISO_38500       # advisory: corporate governance of IT (sprint-035+)
+      - ISO_31000       # advisory: risk management (sprint-035+)
+      - ITIL_V3         # advisory: service management community framework
+      - TOGAF           # advisory: enterprise architecture community framework
+      - PRINCE2         # advisory: project management community framework
+      - CMMI            # advisory: process maturity community framework
+      - NIST_CSF        # advisory: cybersecurity framework (sprint-035+)
+
+  # Native rating scale. COBIT 5 itself defines a Process Capability Model
+  # (PCM), aligned with ISO/IEC 15504, with six levels (0..5). The native
+  # scale is finer-grained than the SWAO outcome scale; the mapping below is
+  # the consultant-set convention used by this packaging (per design 029
+  # §13.3 item 2). The auditor view shows both the native level and the
+  # SWAO outcome.
+  rating_scale:
+    native_label: "COBIT 5 Process Capability Model (ISO/IEC 15504)"
+    mapping:
+      - { native: "Level 0: Incomplete process",        swao: GAP, severity_floor: high }
+      - { native: "Level 1: Performed process",         swao: PARTIAL }
+      - { native: "Level 2: Managed process",           swao: SATISFIED }
+      - { native: "Level 3: Established process",       swao: SATISFIED }
+      - { native: "Level 4: Predictable process",       swao: SATISFIED }
+      - { native: "Level 5: Optimising process",        swao: SATISFIED }
+      - { native: "Not Applicable",                     swao: N_A }
+
+  # Licensing / redistribution note carried into the auditor view.
+  redistribution_note: >-
+    Original SWAO wording. The control descriptions and assessor guidance
+    were re-authored by the SWAO Development Team (#3292, 2026-10-17); the
+    remediation text is SWAO practitioner advice. None of it is copied or
+    adapted from ISACA material. Process IDs (EDM01 to MEA03) and process names are the COBIT 5
+    identifiers, used as factual references. Reference publication: ISACA,
+    COBIT 5: A Business Framework for the Governance and Management of
+    Enterprise IT (2012, ISBN 978-1-60420-237-3). COBIT is a registered
+    trademark of ISACA. No ISACA publication is bundled with or
+    redistributed by this catalogue.

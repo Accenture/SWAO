@@ -1,153 +1,261 @@
 # Licence Risk Catalogue
-# Pass 16 -- Licence Compliance (LIC signals)
+# SWAO Compliance Ruleset Library -- runtime asset
+#
+# Used by: Pass 14 (MALWARE), ORT licence checks (passes/pass-14-malware.ts):
+#   MAL-10  copyleft dependencies (licence_class network_copyleft,
+#           strong_copyleft, weak_copyleft)
+#   MAL-13  use-restricting licences (licence_class source_available,
+#           restricted_use)
 # Covers SPDX identifiers commonly found in npm, PyPI, Maven, and Go module ecosystems.
+# Identifiers follow the SPDX License List: https://spdx.org/licenses/
+#
 # risk_tier: critical | high | medium | low | clear
+#   critical  network copyleft (source disclosure for software offered over a network)
+#   high      strong copyleft, or a source-available licence restricting production
+#             or managed-service use
+#   medium    weak (file or library level) copyleft
+#   low       non-commercial or no-derivatives terms
+#   clear     permissive
+# licence_class: network_copyleft | strong_copyleft | weak_copyleft |
+#   source_available | restricted_use | permissive
+#   The class decides which signal reports the licence; the tier rates the risk.
+#
+# Quality gate: tests/audit-gates/reference-catalogue-quality.gate.mjs (#3296).
 
-schema_version: '1.0'
-signal_prefix: LIC
+schema_version: '1.1'
+signal_prefix: MAL
+last_reviewed: '2026-10-17'
 
 licences:
   # --- Critical: network provision or SaaS delivery risk ---
   - spdx_id: AGPL-3.0
     risk_tier: critical
+    licence_class: network_copyleft
     notes: "GNU Affero GPL v3. Network provision clause requires source disclosure for SaaS delivery. Incompatible with proprietary SaaS products."
     sovereign_implications: "BSI C5 deliveries to regulated clients require source disclosure or licence replacement. Hard blocker for closed-source SaaS."
 
   - spdx_id: AGPL-3.0-only
     risk_tier: critical
+    licence_class: network_copyleft
     notes: "Alias for AGPL-3.0. Same network provision clause."
     sovereign_implications: "Same as AGPL-3.0."
 
   - spdx_id: AGPL-3.0-or-later
     risk_tier: critical
+    licence_class: network_copyleft
     notes: "AGPL-3.0 with future version allowance. Network provision clause applies."
     sovereign_implications: "Same as AGPL-3.0."
 
-  # --- High: copyleft contagion risk ---
+  - spdx_id: OSL-3.0
+    risk_tier: critical
+    licence_class: network_copyleft
+    notes: "Open Software Licence 3.0. Strong copyleft with an External Deployment clause (section 5): making derived works available over a network counts as distribution."
+    sovereign_implications: "Same as AGPL-3.0: source disclosure applies to SaaS delivery of derived works."
+
+  # --- High: copyleft contagion or source-available restriction ---
   - spdx_id: GPL-2.0-only
     risk_tier: high
+    licence_class: strong_copyleft
     notes: "GNU GPL v2 only (no later versions). Static linking triggers copyleft contagion. Dynamic linking is borderline; varies by court jurisdiction."
     sovereign_implications: "Software linked statically must be GPL-2.0. Sovereign delivery of proprietary product requires replacement or dynamic isolation."
 
   - spdx_id: GPL-2.0-or-later
     risk_tier: high
+    licence_class: strong_copyleft
     notes: "GNU GPL v2 or later. Static-link contagion applies."
     sovereign_implications: "Same as GPL-2.0-only."
 
   - spdx_id: GPL-3.0-only
     risk_tier: high
+    licence_class: strong_copyleft
     notes: "GNU GPL v3 only. Copyleft contagion; no network provision clause (unlike AGPL)."
     sovereign_implications: "Static-link triggers copyleft. Replace or dynamically isolate for proprietary delivery."
 
   - spdx_id: GPL-3.0-or-later
     risk_tier: high
+    licence_class: strong_copyleft
     notes: "GNU GPL v3 or later."
     sovereign_implications: "Same as GPL-3.0-only."
 
   - spdx_id: SSPL-1.0
     risk_tier: high
+    licence_class: network_copyleft
     notes: "Server Side Public Licence (MongoDB). Requires all software used to run the service to be open-sourced."
     sovereign_implications: "Requires source disclosure of entire stack when offered as a service. Effectively prevents proprietary SaaS wrapping."
+
+  - spdx_id: CeCILL-2.1
+    risk_tier: high
+    licence_class: strong_copyleft
+    notes: "CeCILL 2.1 (French, GPL-compatible strong copyleft). Distribution of derived software requires source under CeCILL or GPL."
+    sovereign_implications: "Same as GPL-3.0-only for proprietary delivery. French law governs the licence."
+
+  - spdx_id: BUSL-1.1
+    risk_tier: high
+    licence_class: source_available
+    notes: "Business Source Licence 1.1. Source-available, not open source: production use is restricted by the licensor's Additional Use Grant until the Change Date, after which the Change Licence applies."
+    sovereign_implications: "Read the Additional Use Grant and Change Date of each package. Offering the software as a competing hosted or managed service is commonly excluded; obtain a commercial licence or use an open-source fork."
+
+  - spdx_id: Elastic-2.0
+    risk_tier: high
+    licence_class: source_available
+    notes: "Elastic Licence 2.0. Source-available: forbids providing the software to third parties as a hosted or managed service and circumventing licence-key functionality."
+    sovereign_implications: "Self-hosted internal use is permitted; a sovereign managed-service offering is not. Consider an open-source alternative (for example OpenSearch) or a commercial agreement."
 
   # --- Medium: conditional copyleft ---
   - spdx_id: LGPL-2.1-only
     risk_tier: medium
+    licence_class: weak_copyleft
     notes: "GNU Lesser GPL v2.1. Dynamic linking is safe. Static linking triggers copyleft. Most Node.js/npm usage is dynamic (safe)."
     sovereign_implications: "Verify linkage mode. Document in compliance.notes if dynamic."
 
   - spdx_id: LGPL-2.1-or-later
     risk_tier: medium
+    licence_class: weak_copyleft
     notes: "GNU Lesser GPL v2.1 or later."
     sovereign_implications: "Same as LGPL-2.1-only."
 
   - spdx_id: LGPL-3.0-only
     risk_tier: medium
+    licence_class: weak_copyleft
     notes: "GNU Lesser GPL v3 only."
     sovereign_implications: "Same as LGPL-2.1-only."
 
   - spdx_id: LGPL-3.0-or-later
     risk_tier: medium
+    licence_class: weak_copyleft
     notes: "GNU Lesser GPL v3 or later."
     sovereign_implications: "Same as LGPL-2.1-only."
 
   - spdx_id: MPL-2.0
     risk_tier: medium
+    licence_class: weak_copyleft
     notes: "Mozilla Public Licence 2.0. File-level copyleft: only modified MPL files must be open-sourced. Proprietary code in other files is safe."
     sovereign_implications: "Acceptable for most sovereign deliveries if MPL files are not modified. Document in compliance notes."
 
   - spdx_id: EUPL-1.2
     risk_tier: medium
+    licence_class: strong_copyleft
     notes: "European Union Public Licence 1.2. Copyleft with reciprocity clause. Widely used in EU public sector; may require source disclosure."
     sovereign_implications: "Public sector SaaS delivery may trigger reciprocity. Review with legal before embedding."
+
+  - spdx_id: EPL-1.0
+    risk_tier: medium
+    licence_class: weak_copyleft
+    notes: "Eclipse Public Licence 1.0. Module-level copyleft: modifications to EPL code must be published; separate modules that only link to it may stay proprietary."
+    sovereign_implications: "Acceptable for most deliveries if EPL modules are used unmodified. Not GPL-compatible."
+
+  - spdx_id: EPL-2.0
+    risk_tier: medium
+    licence_class: weak_copyleft
+    notes: "Eclipse Public Licence 2.0. Module-level copyleft like EPL-1.0; an optional Secondary Licence clause allows GPL compatibility."
+    sovereign_implications: "Same as EPL-1.0. Check whether a Secondary Licence is declared."
+
+  - spdx_id: CDDL-1.0
+    risk_tier: medium
+    licence_class: weak_copyleft
+    notes: "Common Development and Distribution Licence 1.0. File-level copyleft (modified CDDL files must be published). Not GPL-compatible."
+    sovereign_implications: "Acceptable if CDDL files are not modified. Do not combine with GPL code in one binary."
+
+  - spdx_id: CDDL-1.1
+    risk_tier: medium
+    licence_class: weak_copyleft
+    notes: "CDDL 1.1. Same file-level copyleft as CDDL-1.0."
+    sovereign_implications: "Same as CDDL-1.0."
+
+  - spdx_id: CeCILL-C
+    risk_tier: medium
+    licence_class: weak_copyleft
+    notes: "CeCILL-C (French, LGPL-like). Copyleft applies to modifications of the licensed component, not to software that integrates it."
+    sovereign_implications: "Acceptable if the component is used unmodified. French law governs the licence."
 
   # --- Low: non-commercial or no-derivatives restriction ---
   - spdx_id: CC-BY-NC-4.0
     risk_tier: low
+    licence_class: restricted_use
     notes: "Creative Commons Attribution-NonCommercial 4.0. Not suitable for commercial use."
     sovereign_implications: "Commercial sovereign delivery (consulting engagement fee) likely violates non-commercial clause. Replace for billable deliveries."
 
   - spdx_id: CC-BY-NC-SA-4.0
     risk_tier: low
+    licence_class: restricted_use
     notes: "CC Attribution-NonCommercial-ShareAlike. Non-commercial + copyleft."
     sovereign_implications: "Same as CC-BY-NC-4.0 plus share-alike obligation."
 
   - spdx_id: CC-BY-ND-4.0
     risk_tier: low
+    licence_class: restricted_use
     notes: "CC Attribution-NoDerivatives 4.0. No modifications allowed."
     sovereign_implications: "Prohibits forking or customisation; incompatible with code-level adaptation."
 
   - spdx_id: CC-BY-NC-ND-4.0
     risk_tier: low
+    licence_class: restricted_use
     notes: "CC most restrictive combination. Non-commercial + no derivatives."
     sovereign_implications: "Incompatible with commercial sovereign delivery and code modification."
 
   # --- Clear: permissive licences ---
   - spdx_id: MIT
     risk_tier: clear
+    licence_class: permissive
     notes: "MIT Licence. Permissive. Attribution required in notices only."
     sovereign_implications: "No restriction on sovereign cloud deployment or SaaS delivery."
 
   - spdx_id: Apache-2.0
     risk_tier: clear
+    licence_class: permissive
     notes: "Apache Licence 2.0. Permissive with patent grant."
     sovereign_implications: "No restriction. Patent termination clause provides additional protection."
 
   - spdx_id: BSD-2-Clause
     risk_tier: clear
+    licence_class: permissive
     notes: "BSD 2-Clause (Simplified). Permissive."
     sovereign_implications: "No restriction."
 
   - spdx_id: BSD-3-Clause
     risk_tier: clear
+    licence_class: permissive
     notes: "BSD 3-Clause (Modified / New). Permissive."
     sovereign_implications: "No restriction."
 
   - spdx_id: ISC
     risk_tier: clear
+    licence_class: permissive
     notes: "ISC Licence. Permissive; functionally equivalent to MIT."
     sovereign_implications: "No restriction."
 
   - spdx_id: 0BSD
     risk_tier: clear
+    licence_class: permissive
     notes: "Zero-Clause BSD. No conditions at all."
     sovereign_implications: "No restriction."
 
   - spdx_id: CC0-1.0
     risk_tier: clear
+    licence_class: permissive
     notes: "Creative Commons Zero. Public domain dedication."
     sovereign_implications: "No restriction."
 
   - spdx_id: Unlicense
     risk_tier: clear
+    licence_class: permissive
     notes: "The Unlicense. Public domain; no restrictions."
     sovereign_implications: "No restriction."
 
   - spdx_id: BlueOak-1.0.0
     risk_tier: clear
+    licence_class: permissive
     notes: "Blue Oak Model Licence 1.0.0. Modern permissive with patent grant."
     sovereign_implications: "No restriction."
 
   - spdx_id: Artistic-2.0
     risk_tier: clear
+    licence_class: permissive
     notes: "Artistic Licence 2.0. Permissive with modification notice requirement."
     sovereign_implications: "No restriction for sovereign delivery."
+
+  - spdx_id: CeCILL-B
+    risk_tier: clear
+    licence_class: permissive
+    notes: "CeCILL-B (French, BSD-like). Permissive with a strong attribution requirement."
+    sovereign_implications: "No restriction beyond attribution."

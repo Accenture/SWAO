@@ -35,7 +35,7 @@ import { ingestPulumiStacks } from '@swao/module-iac-scan';
  *
  * Operators drop unstructured files into `<app>/ingestion/`. Before the
  * signal-emitting passes run, this pre-pass:
- * 1. Routes each file into wsp/inputs/ using content-based classification.
+ * 1. Routes each file into wsp/inputs/ by file name and extension (classifier.ts).
  * 2. Skips unchanged files (SHA-256 delta against prior manifest).
  * 3. Cleans up derived files when sources are removed from ingestion/.
  * 4. Extracts text from binary files (PDF -> .txt, DOCX -> .md, XLSX -> .csv,
@@ -109,6 +109,22 @@ export interface IngestManifest {
   rejected?: RejectedIngestEntry[];
   /** Images auto-converted to PDF wrapper -- tracked for delta detection (#1062). */
   converted?: ConvertedIngestEntry[];
+  /** Binary inputs under ingestion/binary/ recorded by reference, not copied (#3145). */
+  referenced?: ReferencedIngestEntry[];
+}
+
+// #3145: installers and other binaries dropped into ingestion/binary/ (service
+// assessment, Design 103 section 6.3) are analysed in place by Pass 25 BINARY,
+// which walks ingestion/binary/ directly. Copying them into wsp/inputs/ only
+// doubled the disk use (a 300 MB installer became 600 MB) and nested them
+// under a category folder that no pass reads. They are recorded here by
+// reference. No SHA-256 is computed: hashing would read the whole file, and
+// Pass 25 hashes the original itself.
+export interface ReferencedIngestEntry {
+  source: string;
+  status: 'referenced';
+  reason: string;
+  bytes: number;
 }
 
 /**
@@ -121,10 +137,40 @@ const RESERVED_SUBFOLDERS = new Set([
   // #2949: llm-gateway/ holds connector YAML config (not ingestion data);
   // skip the "not managed by ingestion" warning for this reserved config dir.
   'llm-gateway',
+  // #3093 sprint-150 (ADR-0064): Pass 24 research stubs and Pass 25 binary metadata are SWAO-generated.
+  'research', 'binary',
 ]);
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp', '.ico']);
 const ARCHIVE_EXTS = new Set(['.zip', '.tar', '.gz', '.tgz', '.bz2', '.7z', '.rar']);
+/** Top-level ingestion/ subfolder whose binaries are referenced, not copied (#3145). */
+const BINARY_INGEST_DIR = 'binary/';
+/** Executable, installer and package formats (plus archives) referenced in place under ingestion/binary/. */
+const BINARY_INPUT_EXTS = new Set([
+  '.exe', '.msi', '.msp', '.msix', '.appx', '.dll', '.sys', '.so', '.dylib', '.bin', '.jar', '.war', '.ear',
+  '.pkg', '.dmg', '.deb', '.rpm', '.cab', '.iso', '.img',
+  ...ARCHIVE_EXTS,
+]);
+
+/**
+ * Installer and package formats referenced in place anywhere under ingestion/
+ * (#3212): service apps no longer get an ingestion/binary/ hint folder, and
+ * Pass 25 BINARY finds these files wherever they are dropped. Archives stay a
+ * binary/-only rule, because an application assessment may ingest a source
+ * archive elsewhere.
+ */
+const INSTALLER_EXTS = new Set([
+  '.exe', '.msi', '.msp', '.msix', '.appx', '.dll', '.sys', '.so', '.dylib', '.jar', '.war', '.ear',
+  '.pkg', '.dmg', '.deb', '.rpm', '.cab',
+]);
+
+/** True for files that Pass 00 records by reference instead of copying (#3145, #3212). */
+export function isReferencedBinaryInput(relPath: string, opts: { anywhere?: boolean } = {}): boolean {
+  const normalized = relPath.split('\\').join('/');
+  const ext = extname(normalized).toLowerCase();
+  if (opts.anywhere && INSTALLER_EXTS.has(ext)) return true;
+  return normalized.toLowerCase().startsWith(BINARY_INGEST_DIR) && BINARY_INPUT_EXTS.has(ext);
+}
 const BINARY_EXTS = new Set(['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.pptx']);
 const MAX_EXTRACTION_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -232,7 +278,14 @@ async function extractBinary(
       return (targetRel + '.extracted.txt').split('\\').join('/');
     }
 
-    if (ext === '.docx' || ext === '.doc') {
+    if (ext === '.doc') {
+      // #3158: mammoth reads only the OOXML .docx format; handing it a legacy
+      // binary .doc failed with an opaque zip error. Same treatment as .xls.
+      warn(`[warn] INGEST: ${fileName} is an older .doc format -- convert to .docx for text extraction`);
+      return null;
+    }
+
+    if (ext === '.docx') {
       const value = await docxToMarkdown(sourceAbs);
       const ts = new Date().toISOString();
       const outPath = targetAbs + '.extracted.md';
@@ -322,6 +375,13 @@ export interface IngestPrePassOptions {
   assessedAt: string;
   /** Warning sink (defaults to console.warn); injectable for tests. */
   warn?: (msg: string) => void;
+  /**
+   * #3212: service apps (Pass 25 BINARY runs) reference installers wherever
+   * they are dropped under ingestion/. Application assessments keep the
+   * ingestion/binary/-only rule, so a dropped .jar or .dll is still copied
+   * into wsp/inputs/ for the passes that read it there.
+   */
+  referenceInstallersAnywhere?: boolean;
   /** #1322: optional Pulumi Cloud API ingestion. When provided and stacks.length > 0,
    *  ingestPulumiStacks is called before file-based ingestion normalisation. */
   pulumi?: {
@@ -375,9 +435,12 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
 
   const files: IngestedFile[] = [];
   const counts: Record<string, number> = {};
+  // #3212: new / changed / unchanged documents, reported so a re-run shows what was picked up
+  const delta = { added: 0, changed: 0, unchanged: 0 };
   const currentSources = new Set<string>();
   const rejectedEntries: RejectedIngestEntry[] = [];
   const convertedEntries: ConvertedIngestEntry[] = [];
+  const referencedEntries: ReferencedIngestEntry[] = [];
 
   for (const rel of relFiles) {
     const normalized = rel.split('\\').join('/');
@@ -386,6 +449,21 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
     const sourceAbs = join(ingestionDir, rel);
     const fileName = basename(rel);
     const ext = extname(rel).toLowerCase();
+
+    // #3145: binaries under ingestion/binary/ stay where they are. They are not
+    // added to currentSources, so a copy left in wsp/inputs/ by an earlier run
+    // is removed by the cleanup below. Text files (configs) under binary/ are
+    // still ingested so CTX can read them.
+    if (isReferencedBinaryInput(normalized, { anywhere: opts.referenceInstallersAnywhere === true })) {
+      currentSources.delete(normalized);
+      referencedEntries.push({
+        source: normalized,
+        status: 'referenced',
+        reason: 'binary input analysed in place by Pass 25 BINARY',
+        bytes: statSync(sourceAbs).size,
+      });
+      continue;
+    }
 
     // Archives: reject and track for delta detection (#0999).
     if (ARCHIVE_EXTS.has(ext)) {
@@ -434,8 +512,10 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
     if (prev && prev.sha256 === currentSha && existsSync(targetAbs) && companionsExist(importsDir, prev.extracted_path)) {
       files.push(prev);
       counts[subdir] = (counts[subdir] ?? 0) + 1;
+      delta.unchanged++;
       continue;
     }
+    if (prev) delta.changed++; else delta.added++;
 
     // New or changed: copy then extract.
     mkdirSync(dirname(targetAbs), { recursive: true });
@@ -475,7 +555,7 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
   }
 
   // If nothing was ingested/rejected and nothing was cleaned up, treat as no-op.
-  if (files.length === 0 && rejectedEntries.length === 0 && cleanupCount === 0) return null;
+  if (files.length === 0 && rejectedEntries.length === 0 && referencedEntries.length === 0 && cleanupCount === 0) return null;
 
   // Unmanaged file scan: warn on files in dynamic subfolders not in manifest.
   const managedTargets = new Set<string>(
@@ -495,9 +575,13 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
     counts,
     ...(rejectedEntries.length > 0 ? { rejected: rejectedEntries.sort((a, b) => a.source.localeCompare(b.source)) } : {}),
     ...(convertedEntries.length > 0 ? { converted: convertedEntries.sort((a, b) => a.source.localeCompare(b.source)) } : {}),
+    ...(referencedEntries.length > 0 ? { referenced: referencedEntries.sort((a, b) => a.source.localeCompare(b.source)) } : {}),
   };
 
   mkdirSync(ingestionDir, { recursive: true });
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  if (delta.added + delta.changed + delta.unchanged > 0) {
+    console.log(`[info] INGEST: ${delta.added} new, ${delta.changed} changed, ${delta.unchanged} unchanged document(s) in ingestion/`);
+  }
   return manifest;
 }

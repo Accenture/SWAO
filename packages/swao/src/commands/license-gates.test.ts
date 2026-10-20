@@ -283,12 +283,12 @@ describe('html-report baseline consultant gate', () => {
     expect(() => guard.requireFeature('html-report')).not.toThrow();
   });
 
-  it('publish.ts has html-report consultant gate for non-community block profiles', () => {
+  it('publish.ts gates every HTML publication on FEATURE_GATES html-report (#3338, Consultant+)', () => {
     const src = readFileSync(
       join(__dirname, '../../../@swao/module-html-report/src/commands/publish.ts'),
       'utf-8',
     );
-    expect(src).toMatch(/requireTier\(\s*'consultant'\s*,\s*\{\s*feature:\s*'html-report'/);
+    expect(src).toMatch(/requireFeature\(\s*'html-report'\s*\)/);
   });
 });
 
@@ -308,9 +308,10 @@ describe('challenge --agent enterprise gate (consistency)', () => {
 // FEATURE_GATES registry completeness and correctness
 // ---------------------------------------------------------------------------
 
-describe('FEATURE_GATES registry (golden standard: swao-feature-tier-matrix.docx)', () => {
+describe('FEATURE_GATES registry (the SWAO licence tier matrix)', () => {
   const EXPECTED: Record<string, string> = {
     'llm-assessment':       'community',
+    'service-assessment':   'community',
     'portfolio-assess':     'enterprise',
     'pdf-report':           'consultant',
     'html-report':          'consultant',
@@ -319,9 +320,18 @@ describe('FEATURE_GATES registry (golden standard: swao-feature-tier-matrix.docx
     'challenge':            'enterprise',
     'lz-catalogue-update':  'consultant',
     'bi-export':            'enterprise',
+    'service-excel':        'enterprise',
     'mcp-server':           'enterprise',
     'portfolio-report':     'enterprise',
+    'chat':                 'enterprise', // F-112 (#3318)
+    'generate-tf':          'enterprise', // F-090 Enterprise roadmap (#3321)
+    'unipipe':              'enterprise', // F-094 / D-04 Enterprise roadmap (#3324)
+    'bi-templates':         'consultant', // F-088 (#3324)
   };
+
+  it('has no keys beyond the expected set (a new key needs a licence tier matrix row first)', () => {
+    expect(Object.keys(FEATURE_GATES).sort()).toEqual(Object.keys(EXPECTED).sort());
+  });
 
   it('every expected feature key exists in FEATURE_GATES', () => {
     for (const key of Object.keys(EXPECTED) as FeatureKey[]) {

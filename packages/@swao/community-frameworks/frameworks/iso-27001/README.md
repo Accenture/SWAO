@@ -38,15 +38,15 @@ and regulated industries across all geographies.
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install ISO_27001
 ```
 
 ```yaml
-compliance:
-  frameworks: [ISO_27001]
+assessment:
+  regimes_active: [ISO_27001]
 ```
 
 ## Control themes (ISO 27001:2022 Annex A)
@@ -64,12 +64,11 @@ compliance:
 swao framework install ISO_27001
 ```
 
-The installed copy at `catalogs/community/iso-27001/controls.yaml` overrides the bundled
+The installed copy at `wsp/inputs/catalogs/community/iso-27001/controls.yaml` overrides the bundled
 version. See `CONTRIBUTING.md` for the authoring guide.
 
-**Note:** This is a PoC-depth packaging (5 controls). The full Annex A catalogue is available
-from ISO (https://www.iso.org). A full-depth SWAO packaging is tracked as a community
-contribution opportunity.
+**Note:** This packaging carries all 93 Annex A controls. The authoritative standard text is
+available from ISO (https://www.iso.org).
 
 ## Contributor
 

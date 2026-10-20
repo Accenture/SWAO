@@ -15,9 +15,11 @@
 
 // swao chat -- interactive multi-turn portfolio chat (#2779).
 //
-// Enterprise-gated: LicenseGuard.requireTier('enterprise') fires before
-// launching the TUI so Community/Consultant binaries exit 1 with a clear
-// message rather than opening the screen and failing inside.
+// Enterprise-gated (FEATURE_GATES['chat'], licence tier matrix F-112): the gate
+// fires before launching the TUI. A failed gate prints the [LICENSE] block via
+// the shared printers and exits non-zero (#3318): tier 1, budget 2, invalid
+// licence 3. It used to escape as an unhandled LicenseTierError (a pkg stack
+// trace and exit 7, or exit 0 on the Enterprise binary).
 //
 // TTY guard: the Ink TUI requires an interactive terminal; piped/CI
 // invocations exit 1 early rather than producing garbled output.
@@ -26,8 +28,27 @@
 // All session logic (MCP, LLM, history) lives in useChatSession.
 
 import type { Command } from 'commander';
-import { LicenseGuard } from '@swao/core';
+import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '@swao/core';
 import { runTuiInAltScreen } from '../tui/run-app.js';
+import { printLicenseGateError, printLicenseLimitError, printLicenseInvalidError } from '../lib/license-gate-error.js';
+
+/** Human label printed in the [LICENSE] block (#3318). */
+export const CHAT_FEATURE_LABEL = 'swao chat';
+
+/**
+ * Run the chat licence gate. Returns on success; on failure prints the
+ * [LICENSE] block and exits non-zero (never throws a licence error).
+ */
+export function gateChat(): void {
+  try {
+    LicenseGuard.load().requireFeature('chat');
+  } catch (err) {
+    if (err instanceof LicenseTierError) printLicenseGateError(CHAT_FEATURE_LABEL, err.required, err.current);
+    if (err instanceof LicenseLimitError) printLicenseLimitError(err);
+    if (err instanceof LicenseInvalidError) printLicenseInvalidError(err.message);
+    throw err;
+  }
+}
 
 export function registerChat(program: Command): void {
   program
@@ -46,7 +67,7 @@ Examples:
 Requires an Enterprise licence and a configured LLM gateway connector.
 Run \`swao setup\` to configure the LLM gateway, or \`swao license\` to upgrade.`)
     .action(async (_opts: { app?: string; workspace?: string; model?: string; autoMcp: boolean }) => {
-      LicenseGuard.load().requireTier('enterprise', { feature: 'swao chat' });
+      gateChat();
       if (!process.stdin.isTTY) {
         console.error('[error] swao chat requires an interactive terminal (TTY).');
         console.error('        Use --help to see available options.');

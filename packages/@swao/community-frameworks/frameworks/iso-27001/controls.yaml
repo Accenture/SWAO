@@ -551,7 +551,7 @@ controls:
     references:
       - "ISO/IEC 27001:2022 Annex A.5.34"
       - "ISO/IEC 27002:2022 §5.34"
-    maps_to: [GDPR_Art_5, GDPR_Art_25, GDPR_Art_32]
+    maps_to: [GDPR_Art_25]
 
   - id: ISO_27001_A.5.35
     pillar: "Organisational controls (A.5)"
@@ -1125,7 +1125,7 @@ controls:
     references:
       - "ISO/IEC 27001:2022 Annex A.8.11"
       - "ISO/IEC 27002:2022 §8.11"
-    maps_to: [GDPR_Art_25, GDPR_Art_32]
+    maps_to: [GDPR_Art_25]
 
   - id: ISO_27001_A.8.12
     pillar: "Technological controls (A.8)"

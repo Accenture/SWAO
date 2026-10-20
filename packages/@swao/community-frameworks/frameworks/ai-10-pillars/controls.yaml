@@ -7,7 +7,7 @@
 #
 # Do not hand-edit. Edit `ai-10-pillars-input.csv` and re-run the importer.
 #
-# Current-schema notes (design 029 Â§4.5):
+# Current-schema notes (design 029 §4.5):
 #   - `evidence_basis` today supports: signal_prefix | context_input | pass.
 #   - The CSV-side richer kinds (local_signal_regex, manual_questionnaire,
 #     external_scanner) are emitted as comments below their controls so the

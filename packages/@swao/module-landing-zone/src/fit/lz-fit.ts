@@ -147,6 +147,30 @@ export function detectCoverageGap(services: LzRequiredService[]): string | undef
 
 /** Evaluate a region's sovereignty facts against framework-derived requirements.
  *  Returns the failing reasons (empty = passes). */
+/**
+ * Certification aliases (#3155). Catalogue refreshes and curated seeds name the
+ * same attestation differently (aws, azure, and gcp record `C5`; stackit, otc,
+ * and oci record `BSI_C5`; frameworks require `BSI_C5`). Keys are compared
+ * upper-case with separators removed, so `ISO_27001`, `ISO-27001`, and
+ * `iso 27001` also match.
+ */
+const CERTIFICATION_ALIASES: Record<string, string> = {
+  C5: 'BSIC5',
+  BSIC5: 'BSIC5',
+};
+
+/** Comparison key for a certification id: alias-resolved, upper-case, separators removed. */
+export function certificationKey(id: string): string {
+  const k = id.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return CERTIFICATION_ALIASES[k] ?? k;
+}
+
+/** True when `held` contains `required` or one of its aliases. */
+export function holdsCertification(held: readonly string[], required: string): boolean {
+  const want = certificationKey(required);
+  return held.some((h) => certificationKey(h) === want);
+}
+
 export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequirements): string[] {
   if (!req) return [];
   const facts = region.sovereignty;
@@ -170,7 +194,7 @@ export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequireme
   if (req.require_certifications && req.require_certifications.length > 0) {
     const held = facts?.certifications ?? [];
     for (const cert of req.require_certifications) {
-      if (!held.includes(cert)) {
+      if (!holdsCertification(held, cert)) {
         fails.push(`certification ${cert} not held (has: [${held.join(', ') || 'none'}])`);
       }
     }

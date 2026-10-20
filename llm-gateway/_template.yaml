@@ -26,6 +26,8 @@ connector:
   path_prefix: ""
   auth:
     credential_key: my-platform-api-key
+    # Short-lived tokens (ADFS, OIDC): set env_var and export a fresh token per
+    # session; health-check then skips the live ping until the variable is set.
     env_var: SWAO_MY_PLATFORM_API_KEY
     # header: Authorization   (default; scheme bearer prefixes the key)
     # scheme: bearer          (use raw for x-api-key style headers)

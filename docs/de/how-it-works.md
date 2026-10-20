@@ -1,7 +1,7 @@
 # Wie SWAO funktioniert
 
-SWAO analysiert eine Cloud-Anwendung und erstellt in einem einzigen Befehl -- oder über
-die geführte Terminaloberfläche -- einen audit-konformen Bewertungsbericht. Keine externen
+SWAO analysiert eine Cloud-Anwendung und erstellt in einem einzigen Befehl (oder über
+die geführte Terminaloberfläche) einen audit-konformen Bewertungsbericht. Keine externen
 Dienste, keine Datenuploads, kein Call-home.
 
 ---
@@ -28,19 +28,24 @@ Community  v0.11.2
   0  Exit
 ```
 
-> Siehe auch: [Beispielgalerie -- TUI-Hauptmenü](/samples/#sample-10)
+> Siehe auch: [Beispielgalerie: TUI-Hauptmenü](/de/samples/#sample-10)
 
 ### Workspace-Setup-Assistent
 
-Wählen Sie **1. Workspace Setup**. Der Assistent stellt vier Fragen:
+Wählen Sie **1. Workspace Setup**. Der Assistent führt durch sieben Schritte:
 
-1. **Workspace-Name** -- Bezeichner für den Engagement-Ordner.
-2. **Anwendungsname** -- der zu bewertende Workload.
-3. **Compliance-Rahmenwerke** -- DSGVO ist vorausgewählt. Vierzehn Community-Rahmenwerke verfügbar
-   (KI 10 Säulen, BSI C5, BSI IT-Grundschutz 2023, DORA, DSGVO, ISO 27001:2022, LLM-Auswahl,
-   NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, NIST SP 800-66r2 / HIPAA,
-   PCI-DSS v4, SAMA CSF v1, SOC 2 Typ II).
-4. **LLM-Anbieter** -- Anthropic Claude, OpenAI, Ollama oder `--skip-llm` übergeben, um LLM-Passes zu überspringen.
+1. **Workspace**: Engagement-Name, Kundenkürzel, verantwortliche Person und Workspace-Verzeichnis.
+2. **LLM-Anbieter**: Anthropic Claude, OpenAI, Amazon Bedrock Gateway, ein lokales Ollama-Modell oder ein
+   deterministischer Platzhalter für den Offline-Betrieb.
+3. **Zugangsdaten**: der API-Schlüssel des gewählten Anbieters, abgelegt im SWAO-Credential-Store.
+4. **Health Check**: ein erster Lauf der Vorabprüfungen.
+5. **Claude Desktop** und 6. **Playwright**: optionale Integrationen (MCP-Server, Browser für die dynamische Analyse).
+7. **Fertig**: eine Zusammenfassung der nächsten Schritte.
+
+Neue Workspaces enthalten die vier Demo-Rahmenwerke (`GDPR_DEMO`, `AI_10_PILLARS_DEMO`,
+`NIST_SP_800_66R2_DEMO`, `BSI_GRUNDSCHUTZ_2023_DEMO`). Weitere kopieren Sie jederzeit mit
+`swao framework install <ID>` in den Workspace; `swao framework list` zeigt die IDs. Die Rahmenwerke je App
+wählen Sie beim Ausführen der Bewertung.
 
 ### Health Check (Systemprüfung)
 
@@ -54,7 +59,7 @@ Wählen Sie **1. Workspace Setup**. Der Assistent stellt vier Fragen:
 | Nachvollziehbarkeit | Audit-konforme Signalfelder aktiviert |
 | BI-Exportpaket | Integrität des letzten Exports |
 
-> Siehe auch: [Beispielgalerie -- Health Check](/samples/#sample-12)
+> Siehe auch: [Beispielgalerie: Health Check](/de/samples/#sample-12)
 
 ### Bewertung durchführen
 
@@ -63,46 +68,56 @@ Wählen Sie **3. Run Assessment**, dann den Bewertungstyp:
 | Option | Was es macht |
 |---|---|
 | Anwendungsbewertung | Analysiert Ihren Quellcode |
-| Landing-Zone-Bewertung | Prüft Ihre Cloud-Infrastruktur |
+| Service Portfolio Assessment | Bewertet Drittanbieter-, COTS- und SaaS-Anwendungen aus einer Tabellen-Erfassung, ohne Quellcode |
+| Landing-Zone-Katalog-Bewertung | Prüft den Dienstekatalog und die Region eines Cloud-Anbieters gegen Ihre Souveränitätsanforderungen |
 | LLM-Bewertung | Bewertet LLM-Anbieter nach Souveränitätskriterien |
 
 ---
 
 ## Die Bewertungs-Pipeline {#die-bewertungs-pipeline}
 
-Eine **Anwendungsbewertung** führt bis zu 14 Analysedurchläufe durch.
+Eine **Anwendungsbewertung** führt standardmäßig 13 Analyse-Passes aus. Jeder Pass ist
+eigenständig und nachvollziehbar; die Nummerierung folgt der [Pass-Übersicht](/de/passes/).
 
-| Durchlauf | Was er macht |
+| Pass | Was er macht |
 |---|---|
-| 1. Inventar | Sprachen, Frameworks, Abhängigkeiten |
-| 2. Zustandsanalyse | Datenbanken, Session-Speicher, Caches |
-| 3. Datenklassifizierung | PII-Felder, Residenzmarkierungen |
-| 4. Kontexteinlese | CMDB, Workshop-Protokolle, Architekturdokumente |
-| 5. SBOM | Software-Stückliste mit Lizenzklassifizierung |
-| 6. Twelve-Factor | Cloud-Bereitschaft nach 12-Faktor-Standard |
-| 7. Ausgangsanalyse | Ausgehende Verbindungen, Drittanbieter-Transfers |
-| 8. Kryptographie | Hashing, TLS, Geheimnisbehandlung |
-| 9. Migrationssynthese | 7R-Urteil |
-| 10. Compliance-Bewertung | Zuordnung zu aktiven Rahmenwerken |
-| 11. Landing-Zone-Bereitschaft | Fit für Cloud-Landing-Zone |
-| 12. Sicherheitspostur | Häufige Verwundbarkeitsmuster |
-| 13. Dynamische Analyse | Browser-Crawl für UI-Oberfläche |
-| 14. Evidenzgalerie | Screenshots und Artefakte |
+| 01 Inventar | Sprachen, Frameworks, Abhängigkeiten |
+| 02 Zustandsanalyse | Datenbanken, Session-Speicher, Caches |
+| 03 Datenklassifizierung | PII-Felder, Residenzmarkierungen |
+| 04 Kontexteinlese | CMDB, Workshop-Protokolle, Architekturdokumente |
+| 05 SBOM | Abhängigkeiten auf bekannte Schwachstellen, Wartung und Laufzeiten am Lebenszyklusende prüfen |
+| 06 Twelve-Factor | Cloud-Bereitschaft nach 12-Faktor-Standard |
+| 07 Ausgangsanalyse | Ausgehende Verbindungen, Drittanbieter-Transfers |
+| 08 Kryptographie | Hashing, Token-Signaturen, Verschlüsselung ruhender Daten |
+| 09 Migrationssynthese | 7R-Urteil |
+| 10 Dynamische Analyse | Browser-Crawl der laufenden Anwendung (benötigt ein Crawl-Ziel) |
+| 11 Compliance-Bewertung | Bewertet die Kontrollen der aktiven Rahmenwerke |
+| 12 Operative Blöcke | Reifegrad von acht Blöcken, von Observability bis Disaster Recovery |
+| 13 Scope | Welche bekannten blinden Flecken die Evidenz abdeckt |
+
+Pass 00 (INGEST) bereitet die gelieferten Dokumente vor dem ersten Pass auf. Pass 14
+(Malware- und Secret-Scan) und Pass 23 (Landing-Zone-Bereitschaft, `--lzr`) laufen nur auf
+Anforderung. Die Ausführungsreihenfolge weicht leicht von der Nummerierung ab: Compliance,
+Synthese und Blockbewertung laufen zuletzt, damit sie die Ergebnisse aller übrigen Passes sehen.
+
+Die Passes 01 und 02 sind deterministisch und benötigen kein LLM. Die Passes 03, 04, 09, 11
+und 12 rufen das LLM auf, um Daten zu klassifizieren und verständliche Begründungen für
+Signale, Compliance-Urteile und Blockbewertungen zu erzeugen.
 
 ---
 
 ## Die HTML-Veröffentlichung {#die-html-veroeffentlichung}
 
-SWAO erstellt eine **eigenständige HTML-Datei** -- offline nutzbar, per E-Mail versendbar.
+SWAO erstellt eine **eigenständige HTML-Datei**, offline nutzbar, per E-Mail versendbar.
 
 Enthält:
 
-- **Führungsansicht** -- 7R-Urteil, Abdeckungspunktzahl, wichtigste Risiken.
-- **Fachansicht** -- alle Signale mit Ableitung und Evidenzlinks.
-- **Compliance-Ansicht** -- rahmenwerkspezifische Kontrolltabelle.
-- **Prüferansicht** -- Prüfprotokoll mit Zeitstempel und Bewerteridentität.
-- **Evidenzgalerie** -- Screenshots und Artefakte.
-- **Laufprotokoll** -- Dauer, LLM-Kosten, Durchlauf-Aufschlüsselung.
+- **Führungsansicht**: 7R-Urteil, Abdeckungspunktzahl, wichtigste Risiken.
+- **Fachansicht**: alle Signale mit Ableitung und Evidenzlinks.
+- **Compliance-Ansicht**: rahmenwerkspezifische Kontrolltabelle.
+- **Prüferansicht**: Prüfprotokoll mit Zeitstempel und Bewerteridentität.
+- **Evidenzgalerie**: Screenshots und Artefakte.
+- **Laufprotokoll**: Dauer, LLM-Kosten, Durchlauf-Aufschlüsselung.
 
 ```bash
 swao publish --app meine-app
@@ -123,7 +138,7 @@ Beispielfragen:
 
 ### Verbindung herstellen
 
-1. `swao health-check` (oder **2. Health Check** im Hauptmenü) -- MCP-Prüfung zeigt den Serverpfad.
+1. `swao health-check` (oder **2. Health Check** im Hauptmenü): MCP-Prüfung zeigt den Serverpfad.
 2. Claude Desktop: Einstellungen > Entwickler > MCP-Server > Hinzufügen.
 3. Claude Desktop neu starten.
 
@@ -132,9 +147,32 @@ Beispielfragen:
 | `swao_assess` | Neue Bewertung auslösen |
 | `swao_report` | Zusammenfassung der letzten Bewertung |
 | `swao_signal_detail` | Signal nach ID nachschlagen |
-| `swao_compliance_status` | Compliance-Ergebnisse abfragen |
+| `swao_signals` | Signale der letzten Bewertung auflisten |
 | `swao_lz_fit` | Landing-Zone-Fit/Gap abrufen |
-| `swao_run_history` | Letzte Läufe auflisten |
+| `swao_frameworks_list` | Im Workspace verfügbare Community-Rahmenwerke auflisten |
+
+Für einen mit `swao service init` angelegten Workspace (Service Portfolio
+Assessment) stellen 11 weitere Tools die Service-Ergebnisse bereit. Die ersten
+acht lesen nur; die letzten drei führen den passenden `swao service`-Befehl aus
+und schreiben in den Workspace.
+
+| Tool | Was es macht |
+|---|---|
+| `swao_service_portfolio` | Eine Zeile je Anwendungs- oder Service-App aus `wsp/portfolio-summary.json` (kombinierte Sicht: `assessment_type`, TIME, Risiko, Evidenz, Welle, End of Life, CVE-Anzahlen), mit Filtern und Sortierung |
+| `swao_service_app` | Alles zu einer Service-App: Intake-Felder, Klassifizierung, Kostenschätzung, Integrationen, Scores, Runs, Research- und Binary-Zusammenfassung |
+| `swao_service_research` | Research-Stubs einer App (CVE, End of Life, VirusTotal und die LLM-Themen) |
+| `swao_service_waves` | Migrationswellen und Integrations-Hubs beider App-Typen, jede App mit `assessment_type` und der Markierung nicht bewertet |
+| `swao_service_vendors` | Gruppen zur Anbieterkonsolidierung mit Opportunity-Score und Stufe |
+| `swao_service_delta` | Letzter Delta-Bericht gegenüber dem vorherigen Snapshot |
+| `swao_service_scaffold` | Scaffold-Zusammenfassung: gelesene Zeilen, Apps, Cluster, nicht klassifizierte Apps, erkannte Spalten |
+| `swao_service_runs` | Service-Runs je App mit Status und letztem verwendbaren Run |
+| `swao_service_init` | Führt `swao service init` aus (schreibt in den Workspace) |
+| `swao_service_research_run` | Führt `swao service research` aus (schreibt in den Workspace) |
+| `swao_service_export` | Enterprise: führt `swao service export` aus (Portfolio-Arbeitsmappe und Sternschema) |
+
+Kontakt, Telefon und E-Mail aus dem Intake werden nur als Vorhanden-Kennzeichen
+gemeldet. Vollständige Referenz: [MCP-Integration](/de/runbooks/mcp-integration),
+Abschnitt 4.1.
 
 ---
 

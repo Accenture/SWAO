@@ -13,11 +13,11 @@
 //
 // ================================================================
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { basename, join, resolve } from 'path';
 import { load, dump } from 'js-yaml';
 import type { Command } from 'commander';
-import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '@swao/core';
+import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError, FEATURE_GATES } from '@swao/core';
 import { printLicenseGateError, printLicenseLimitError, printLicenseInvalidError } from '../lib/license-gate-error.js';
 import { formatPortfolioLzrReport } from '../lzr/portfolio-lzr.js';
 import type { PortfolioLzrSummary } from '../lzr/portfolio-lzr.js';
@@ -31,7 +31,7 @@ import type { PortfolioLzrSummary } from '../lzr/portfolio-lzr.js';
 // host-side (it is Community).
 import type { PortfolioRunDeps, PortfolioResult } from '@swao/module-portfolio';
 import { buildAuditorReport } from './auditor-report-schema.js';
-import { findWorkspace, setWorkspaceRoot, logPortfolio } from '@swao/core';
+import { findWorkspace, setWorkspaceRoot, logPortfolio, normalizeDashes, readRunStatus, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, listLzCatalogueFitFiles } from '@swao/core';
 // #0583: renderTextReportToPdf lives in @swao/module-pdf-report (Consultant
 // tier). Import the TYPE only (erased by esbuild) and inject the renderer via
 // ReportDeps so the Community bundle never contains the pdf module's code.
@@ -40,7 +40,7 @@ import { SWAO_VERSION, SWAO_CONTACTS_INLINE, SWAO_LANDING_URL } from '../brandin
 import {
   generateLzReport, formatLzText, formatLzYaml,
   buildLzReportDataStub, buildLzReportDataStubForAgent,
-  getLzAgentIds, buildLzTargetRows,
+  getLzAgentIds, buildLzTargetRows, LzRunNotFoundError, RunNotFoundError, resolveRunDirById,
 } from './report-lz.js';
 // #0580: persona taxonomy relocated to @swao/module-challenge. report.ts is a
 // host file, so this host -> module import is permitted (the reverse, module ->
@@ -69,17 +69,9 @@ function truncate(s: string, max = 100): string {
   return first.length > max ? first.slice(0, max - 3) + '...' : first;
 }
 
-/** Normalise dashes in LLM-emitted and WSP-stored text.
- * Project guardrail: no em-dash, en-dash, or double-dash in report output.
- * U+2014 em-dash -> comma; U+2013 en-dash -> single hyphen;
- * ASCII " -- " (double-dash separator) -> ", ".
- */
-export function normalizeDashes(text: string): string {
-  return text
-    .replace(/\u2014/g, ',')
-    .replace(/\u2013/g, '-')
-    .replace(/ -- /g, ', ');
-}
+// normalizeDashes lives in @swao/core (#3291, Design 110 D-28); re-exported
+// here so existing `from './report.js'` callers keep compiling.
+export { normalizeDashes };
 
 /**
  * Wrap text word-by-word so lines stay within maxWidth.
@@ -162,9 +154,25 @@ export function resolveRunDirs(workspaceAppDir: string): {
   };
 }
 
-export function generateReport(workspaceAppDir: string, appId: string): ReportData {
-  const { wspDir, passesDir, runManifestPath } = resolveRunDirs(workspaceAppDir);
-  const runDir = resolveRunDir(wspDir);
+/**
+ * #3346: resolve `--run <id>` for an application report to `wsp/runs/<id>`;
+ * throws RunNotFoundError for a malformed id, a missing run or a run of
+ * another assessment type (see resolveRunDirById).
+ */
+export function resolveAppRunDirById(wspDir: string, runId: string): string {
+  return resolveRunDirById(wspDir, runId, 'application');
+}
+
+/**
+ * #3346: `runId` (from `--run`) selects the run for the data and the challenge
+ * pairing; without it the latest application run pointer decides.
+ */
+export function generateReport(workspaceAppDir: string, appId: string, runId?: string): ReportData {
+  const latest = resolveRunDirs(workspaceAppDir);
+  const wspDir = latest.wspDir;
+  const runDir = runId !== undefined ? resolveAppRunDirById(wspDir, runId) : resolveRunDir(wspDir);
+  const passesDir = runId !== undefined ? join(runDir, 'passes') : latest.passesDir;
+  const runManifestPath = runId !== undefined ? join(runDir, 'run-manifest.json') : latest.runManifestPath;
 
   // Load spine for meta -- read from the latest run dir, not the flat wsp/ slot
   const spine = loadYaml(join(runDir, 'wsp.yaml')) as Record<string, unknown> | null;
@@ -310,20 +318,13 @@ export function generateReport(workspaceAppDir: string, appId: string): ReportDa
   // #1056: ChallengeScreen now writes to wsp/challenge-app/<ts>/ subdirectories.
   // Resolve the latest subdirectory (most recent ts prefix); fall back to flat
   // wsp/challenge-app/ for backward compat with runs before this fix.
+  // #3330: only the challenge of the reported run is used (recorded run id,
+  // else the timestamp pairing rule in @swao/core challenge-run.ts).
   const challengeFindings: ChallengeAgentFinding[] = [];
   const challengeBase = join(wspDir, 'challenge-app');
-  let challengeDir = challengeBase;
-  if (existsSync(challengeBase)) {
-    const subDirs = readdirSync(challengeBase)
-      .filter(f => {
-        try { return statSync(join(challengeBase, f)).isDirectory(); } catch { return false; }
-      })
-      .sort();
-    if (subDirs.length > 0) {
-      challengeDir = join(challengeBase, subDirs[subDirs.length - 1]);
-    }
-  }
-  if (existsSync(challengeDir)) {
+  const challengeSel = selectChallengeForRun(wspDir, 'app', runDir);
+  const challengeDir = challengeSel.dir;
+  if (challengeDir && existsSync(challengeDir)) {
     const challengeFiles = readdirSync(challengeDir)
       .filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && f !== 'combined.yaml')
       .sort();
@@ -420,7 +421,56 @@ export function generateReport(workspaceAppDir: string, appId: string): ReportDa
     challengeStatus: challengeFindings.length > 0
       ? 'included'
       : (existsSync(challengeBase) ? 'not-run' : 'not-available'),
+    ...(challengeFindings.length > 0 && challengeSourceLabel(challengeSel)
+      ? { challengeSource: challengeSourceLabel(challengeSel) } : {}),
+    ...(challengeSel.otherRunOmitted && challengeFindings.length === 0 ? { challengeOtherRunOmitted: true } : {}),
+    ...(() => {
+      const lzCatalogueFit = loadInlineLzCatalogueFit(runDir);
+      return lzCatalogueFit ? { lzCatalogueFit } : {};
+    })(),
   };
+}
+
+/**
+ * #3306: the inline LZ catalogue fit of an application run: every
+ * lz-catalogue-fit*.yaml at the run-dir root (verdicts), plus the skipped and
+ * resolved targets recorded in run-status.json. Undefined when the run had
+ * no LZ targets.
+ */
+export function loadInlineLzCatalogueFit(runDir: string): NonNullable<ReportData['lzCatalogueFit']> | undefined {
+  const fitted: Array<{ target: string; verdict: string }> = [];
+  try {
+    const files = listLzCatalogueFitFiles(runDir);
+    for (const f of files) {
+      const fit = loadYaml(join(runDir, f)) as RawLzCatFit | null;
+      if (!fit) continue;
+      fitted.push({ target: `${fit.provider || '-'}:${fit.region || '-'}`, verdict: fit.overall || 'UNKNOWN' });
+    }
+  } catch { /* no run dir: nothing to show */ }
+  const status = readRunStatus(runDir);
+  const skipped = (status?.failed_targets ?? []).map(f => ({ target: `${f.provider}:${f.region}`, reason: f.reason }));
+  const resolved = (status?.resolved_targets ?? []).map(r => ({ requested: r.requested, resolved: r.resolved, geography: r.geography }));
+  if (fitted.length === 0 && skipped.length === 0 && resolved.length === 0) return undefined;
+  return { fitted, skipped, resolved };
+}
+
+/** #3306: text lines of the inline LZ catalogue fit section (empty when absent). */
+export function formatLzCatalogueFitSection(fit: ReportData['lzCatalogueFit']): string[] {
+  if (!fit) return [];
+  const lines: string[] = ['', 'Landing Zone Catalogue Fit', '--------------------------'];
+  const width = Math.max(0, ...fit.fitted.map(f => f.target.length)) + 2;
+  for (const f of fit.fitted) lines.push(`  ${f.target.padEnd(width)}${f.verdict}`);
+  if (fit.fitted.length === 0) lines.push('  No target was fitted.');
+  for (const r of fit.resolved) {
+    lines.push(`  Resolved: ${r.requested} names the geography ${r.geography}; the default region ${r.resolved} was used.`);
+  }
+  for (const s of fit.skipped) {
+    lines.push(...wrapLines(`Skipped: ${s.target}: ${s.reason}`, '  ', '    '));
+  }
+  if (fit.skipped.length > 0) {
+    lines.push('  Skipped targets mark the run as partial. Run `swao lz catalogue list` for valid regions.');
+  }
+  return lines;
 }
 
 // ---------------------------------------------------------------------------
@@ -506,6 +556,51 @@ function pad(s: string, width: number): string {
   return s + ' '.repeat(Math.max(0, width - s.length));
 }
 
+/**
+ * #3345: true when the active licence (capped by the binary tier) includes
+ * the Stakeholder Challenge (FEATURE_GATES['challenge'], Enterprise). Any
+ * licence error counts as not licensed.
+ */
+export function isChallengeLicensed(): boolean {
+  try {
+    LicenseGuard.load().requireFeature('challenge');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * #3346: tier-neutral header note for a licence without the Stakeholder
+ * Challenge. It names the tier the feature requires (FEATURE_GATES['challenge'],
+ * licence tier matrix F-091), not the user's edition, so Community and Consultant
+ * read the same text.
+ */
+const CHALLENGE_TIER = FEATURE_GATES['challenge'];
+export const CHALLENGE_NOT_LICENSED_NOTE =
+  `Stakeholder Challenge requires ${CHALLENGE_TIER.charAt(0).toUpperCase()}${CHALLENGE_TIER.slice(1)}`;
+
+/**
+ * #3345 / #3346: align the challenge status with the licence.
+ * - Licensed, no challenge folder ('not-available'): the feature is available
+ *   but has not been run, so 'not-run' (the header points to swao challenge).
+ * - Not licensed, challenge folder without a challenge of this run ('not-run',
+ *   e.g. left over from an earlier Enterprise licence): 'not-available', so no
+ *   Enterprise-only hint is shown below Enterprise.
+ * An included challenge is left untouched on every tier.
+ */
+export function applyChallengeLicence(data: ReportData, challengeLicensed: boolean): ReportData {
+  if (challengeLicensed && data.challengeStatus === 'not-available') {
+    return { ...data, challengeStatus: 'not-run' };
+  }
+  if (!challengeLicensed && data.challengeStatus === 'not-run') {
+    const rest = { ...data };
+    delete rest.challengeOtherRunOmitted;
+    return { ...rest, challengeStatus: 'not-available' };
+  }
+  return data;
+}
+
 export function formatText(data: ReportData): string {
   const title = `SWAO Assessment Report: ${data.appId}`;
   const header = formatEngagementHeader(data);
@@ -521,10 +616,13 @@ export function formatText(data: ReportData): string {
     ...(data.duration ? [`Duration:      ${data.duration}`] : []),
     // #2432: challenge status note so the reader knows whether challenge data was included.
     ...(data.challengeStatus === 'not-available'
-      ? ['Challenge:     not included (Community Edition, Enterprise feature)']
+      ? [`Challenge:     not included (${CHALLENGE_NOT_LICENSED_NOTE})`]
       : data.challengeStatus === 'not-run'
-        ? ['Challenge:     not included (no challenge run found for this app)']
-        : []),
+        ? [data.challengeOtherRunOmitted
+            ? `Challenge:     not included (${CHALLENGE_OTHER_RUN_NOTE})`
+            : 'Challenge:     not included (no challenge run found for this app)',
+          ...(data.challengeOtherRunOmitted ? [] : ['               Run the Stakeholder Challenge (swao challenge) for this app to include its findings.'])]
+        : data.challengeSource ? [`Challenge:     included (${data.challengeSource})`] : []),
     '',
     'Signal Summary',
     '--------------',
@@ -566,6 +664,9 @@ export function formatText(data: ReportData): string {
     }
   }
 
+  // #3306: inline LZ catalogue fit (fitted, resolved and skipped targets).
+  lines.push(...formatLzCatalogueFitSection(data.lzCatalogueFit));
+
   if (data.nextSteps.length > 0) {
     lines.push('');
     lines.push('Next Steps');
@@ -578,9 +679,9 @@ export function formatText(data: ReportData): string {
   }
 
   // #2916: stakeholder challenge findings section (conditional -- omit when no challenge run)
-  if (archChallenge) lines.push(...formatChallengeSection(archChallenge));
+  if (archChallenge) lines.push(...formatChallengeSection(archChallenge, data.challengeSource));
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
 // #2273: LLM Assessment text report (Community+). Mirrors LZ text report style.
@@ -659,7 +760,7 @@ export function formatLlmText(d: LlmTextReportInput): string {
     lines.push('');
   }
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
 export function formatYamlReport(data: ReportData): string {
@@ -684,7 +785,7 @@ export function formatYamlReport(data: ReportData): string {
 
 const SEVEN_R_PLAIN: Record<string, string> = {
   Rehost:    'Move the application to the cloud with minimal changes (lift and shift).',
-  Replatform: 'Move to the cloud with targeted infrastructure improvements -- no code rewrite.',
+  Replatform: 'Move to the cloud with targeted infrastructure improvements, no code rewrite.',
   Refactor:  'Restructure or re-architect the application to take advantage of cloud-native capabilities.',
   Repurchase: 'Replace with a SaaS alternative; decommission the current codebase.',
   Retire:    'Decommission; the application is no longer needed.',
@@ -762,11 +863,26 @@ interface RawPlan {
   };
 }
 
+/**
+ * #3343: output file prefix (`<runTs>-`) of an LZ report: the `--run` id when
+ * given, else the latest LZ run pointer; '' when neither is available.
+ */
+export function lzReportFilePrefix(wspDir: string, runId?: string): string {
+  if (runId !== undefined) return runId.trim().replace(/^runs[\\/]/, '') + '-';
+  const lzLatestFile = join(wspDir, 'latest-landing-zone-catalog.txt');
+  if (!existsSync(lzLatestFile)) return '';
+  try {
+    return readFileSync(lzLatestFile, 'utf-8').trim().replace(/^runs\//, '') + '-';
+  } catch { return ''; }
+}
+
 /** Resolve the latest run dir from wspDir.
  *  #2722: mirrors loader.ts priority -- latest-application.txt first, then
  *  latest.txt, then falls back to the flat wsp/ slot when neither pointer
  *  exists or neither points to a valid run directory. */
-function resolveRunDir(wspDir: string): string {
+function resolveRunDir(wspDir: string, runDir?: string): string {
+  // #3346: a run selected with --run wins over the latest pointers.
+  if (runDir !== undefined) return runDir;
   for (const ptr of ['latest-application.txt', 'latest.txt']) {
     const latestFile = join(wspDir, ptr);
     if (existsSync(latestFile)) {
@@ -780,29 +896,39 @@ function resolveRunDir(wspDir: string): string {
   return wspDir;
 }
 
-function loadSpine(wspDir: string): RawSpine {
-  return (loadYaml(join(resolveRunDir(wspDir), 'wsp.yaml')) ?? {}) as RawSpine;
+function loadSpine(wspDir: string, runDir?: string): RawSpine {
+  return (loadYaml(join(resolveRunDir(wspDir, runDir), 'wsp.yaml')) ?? {}) as RawSpine;
 }
 
-function loadPlan(wspDir: string): RawPlan {
-  return (loadYaml(join(resolveRunDir(wspDir), 'wsp-plan.yaml')) ?? {}) as RawPlan;
+function loadPlan(wspDir: string, runDir?: string): RawPlan {
+  return (loadYaml(join(resolveRunDir(wspDir, runDir), 'wsp-plan.yaml')) ?? {}) as RawPlan;
 }
 
-interface RawLzCatFit {
+export interface RawLzCatFit {
   provider?: string;
   region?: string;
   overall?: string;
 }
 
-function loadLzCatalogueFit(wspDir: string): RawLzCatFit | null {
-  const runDir = resolveRunDir(wspDir);
-  const p = join(runDir, 'lz-catalogue-fit.yaml');
-  if (!existsSync(p)) return null;
-  return (load(readFileSync(p, 'utf-8')) ?? {}) as RawLzCatFit;
+/**
+ * Every LZ catalogue fit of the reported run: lz-catalogue-fit.yaml (single
+ * target) or lz-catalogue-fit-<p>-<r>.yaml (multi target), via the shared
+ * listLzCatalogueFitFiles (#3342). Reading only the single-target name showed
+ * no target landing zone for a multi-target run. Empty when there is none.
+ */
+export function loadLzCatalogueFits(wspDir: string, selectedRunDir?: string): RawLzCatFit[] {
+  const runDir = resolveRunDir(wspDir, selectedRunDir);
+  const fits: RawLzCatFit[] = [];
+  for (const f of listLzCatalogueFitFiles(runDir)) {
+    try {
+      fits.push((load(readFileSync(join(runDir, f), 'utf-8')) ?? {}) as RawLzCatFit);
+    } catch { /* skip malformed file */ }
+  }
+  return fits;
 }
 
-export function formatViewExec(data: ReportData, wspDir: string): string {
-  const spine = loadSpine(wspDir);
+export function formatViewExec(data: ReportData, wspDir: string, runDir?: string): string {
+  const spine = loadSpine(wspDir, runDir);
   const plain = SEVEN_R_PLAIN[data.sevenRLabel] ?? `${data.sevenRLabel} disposition.`;
   const confidence = spine.overall?.confidence ?? spine.assessment_scores?.seven_r?.confidence ?? '-';
   const portability = spine.overall?.portability_score !== undefined
@@ -853,14 +979,14 @@ export function formatViewExec(data: ReportData, wspDir: string): string {
   }
 
   // #2916: stakeholder challenge findings section
-  if (execChallenge) lines.push(...formatChallengeSection(execChallenge));
+  if (execChallenge) lines.push(...formatChallengeSection(execChallenge, data.challengeSource));
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
-export function formatViewCompliance(data: ReportData, wspDir: string): string {
-  const spine = loadSpine(wspDir);
-  const plan = loadPlan(wspDir);
+export function formatViewCompliance(data: ReportData, wspDir: string, runDir?: string): string {
+  const spine = loadSpine(wspDir, runDir);
+  const plan = loadPlan(wspDir, runDir);
   const regulatory = spine.client_scenario?.regulatory?.join(', ') ?? '-';
 
   // #2722 Bug #3: use allSignals so medium/low DATA and CTX signals (not in
@@ -934,14 +1060,14 @@ export function formatViewCompliance(data: ReportData, wspDir: string): string {
   }
 
   // #2916: stakeholder challenge findings section
-  if (compChallenge) lines.push(...formatChallengeSection(compChallenge));
+  if (compChallenge) lines.push(...formatChallengeSection(compChallenge, data.challengeSource));
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
-export function formatViewFinops(data: ReportData, wspDir: string): string {
-  const spine = loadSpine(wspDir);
-  const lzCat = loadLzCatalogueFit(wspDir);
+export function formatViewFinops(data: ReportData, wspDir: string, runDir?: string): string {
+  const spine = loadSpine(wspDir, runDir);
+  const lzCats = loadLzCatalogueFits(wspDir, runDir);
   const portability = spine.overall?.portability_score !== undefined
     ? `${Math.round(spine.overall.portability_score * 100)}%`
     : '-';
@@ -970,12 +1096,13 @@ export function formatViewFinops(data: ReportData, wspDir: string): string {
   if (finopsChallenge) lines.push(...formatChallengeIntro(finopsChallenge));
   lines.push('');
 
-  if (lzCat) {
-    const targetLz = `${lzCat.provider || '-'} / ${lzCat.region || '-'}`;
+  if (lzCats.length > 0) {
     lines.push('Recommended Target Infrastructure');
     lines.push('----------------------------------');
-    lines.push(`  Target landing zone: ${targetLz}`);
-    if (lzCat.overall) lines.push(`  Verdict:           ${lzCat.overall}`);
+    for (const lzCat of lzCats) {
+      lines.push(`  Target landing zone: ${lzCat.provider || '-'} / ${lzCat.region || '-'}`);
+      if (lzCat.overall) lines.push(`  Verdict:           ${lzCat.overall}`);
+    }
     if (lz?.note) lines.push(`  Note:              ${lz.note}`);
     lines.push('');
   }
@@ -1008,15 +1135,15 @@ export function formatViewFinops(data: ReportData, wspDir: string): string {
   lines.push('');
 
   // #2916: stakeholder challenge findings section
-  if (finopsChallenge) lines.push(...formatChallengeSection(finopsChallenge));
+  if (finopsChallenge) lines.push(...formatChallengeSection(finopsChallenge, data.challengeSource));
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
-export function formatViewMigrationManager(data: ReportData, wspDir: string): string {
-  const spine = loadSpine(wspDir);
-  const lzCat = loadLzCatalogueFit(wspDir);
-  const plan = loadPlan(wspDir);
+export function formatViewMigrationManager(data: ReportData, wspDir: string, runDir?: string): string {
+  const spine = loadSpine(wspDir, runDir);
+  const lzCats = loadLzCatalogueFits(wspDir, runDir);
+  const plan = loadPlan(wspDir, runDir);
   const scenario = spine.client_scenario;
 
   const header = formatEngagementHeader(data);
@@ -1030,7 +1157,7 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
     `7R Verdict:                        ${data.sevenRLabel}`,
     `Coverage:                          ${data.coverageScore}`,
     `Current infrastructure (detected): ${data.landingZone || '-'}`,
-    ...(lzCat ? [`Target landing zone:               ${lzCat.provider || '-'} / ${lzCat.region || '-'}`] : []),
+    ...lzCats.map(c => `Target landing zone:               ${c.provider || '-'} / ${c.region || '-'}${c.overall ? ` (${c.overall})` : ''}`),
     ...(scenario?.migration_trigger ? [`Migration trigger:                 ${scenario.migration_trigger}`] : []),
     ...(scenario?.target_go_live ? [`Target go-live:                    ${scenario.target_go_live}`] : []),
     ...(scenario?.rto_hours !== undefined ? [`RTO:                               ${scenario.rto_hours}h`] : []),
@@ -1119,13 +1246,13 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string): st
   }
 
   // #2916: stakeholder challenge findings section
-  if (pmChallenge) lines.push(...formatChallengeSection(pmChallenge));
+  if (pmChallenge) lines.push(...formatChallengeSection(pmChallenge, data.challengeSource));
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
-function formatViewLzr(_data: ReportData, wspDir: string): string {
-  const lzrFile = join(resolveRunDir(wspDir), 'passes', '23-lzr.yaml');
+function formatViewLzr(_data: ReportData, wspDir: string, runDir?: string): string {
+  const lzrFile = join(resolveRunDir(wspDir, runDir), 'passes', '23-lzr.yaml');
   if (!existsSync(lzrFile)) {
     return [
       '== Landing Zone Readiness ==',
@@ -1174,7 +1301,7 @@ function formatViewLzr(_data: ReportData, wspDir: string): string {
     }
   }
   lines.push('');
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -1221,11 +1348,12 @@ interface AuditorControl {
   override?: OverrideBlock;
 }
 
-function loadAuditorSignals(wspDir: string): AuditorSignal[] {
+function loadAuditorSignals(wspDir: string, runDir?: string): AuditorSignal[] {
   const out: AuditorSignal[] = [];
-  let passesDir = join(wspDir, 'passes');
+  // #3346: a run selected with --run wins over latest.txt.
+  let passesDir = runDir !== undefined ? join(runDir, 'passes') : join(wspDir, 'passes');
   const latestFile = join(wspDir, 'latest.txt');
-  if (existsSync(latestFile)) {
+  if (runDir === undefined && existsSync(latestFile)) {
     try {
       const latestPath = readFileSync(latestFile, 'utf-8').trim();
       const runPasses = join(wspDir, latestPath, 'passes');
@@ -1259,11 +1387,11 @@ function loadAuditorSignals(wspDir: string): AuditorSignal[] {
   return out;
 }
 
-function loadAuditorControls(wspDir: string): AuditorControl[] {
+function loadAuditorControls(wspDir: string, runDir?: string): AuditorControl[] {
   const out: AuditorControl[] = [];
-  let planPath = join(wspDir, 'wsp-plan.yaml');
+  let planPath = runDir !== undefined ? join(runDir, 'wsp-plan.yaml') : join(wspDir, 'wsp-plan.yaml');
   const latestFile = join(wspDir, 'latest.txt');
-  if (existsSync(latestFile)) {
+  if (runDir === undefined && existsSync(latestFile)) {
     try {
       const latestPath = readFileSync(latestFile, 'utf-8').trim();
       const runPlan = join(wspDir, latestPath, 'wsp-plan.yaml');
@@ -1309,9 +1437,9 @@ function pct(num: number, den: number): string {
   return `${Math.round((num / den) * 100)}%`;
 }
 
-export function formatViewAuditor(data: ReportData, wspDir: string): string {
-  const signals = loadAuditorSignals(wspDir);
-  const controls = loadAuditorControls(wspDir);
+export function formatViewAuditor(data: ReportData, wspDir: string, runDir?: string): string {
+  const signals = loadAuditorSignals(wspDir, runDir);
+  const controls = loadAuditorControls(wspDir, runDir);
 
   const total = signals.length;
   const sigOutcome = signals.filter((s) => !!s.outcome).length;
@@ -1460,7 +1588,7 @@ export function formatViewAuditor(data: ReportData, wspDir: string): string {
   // #0263 Phase 2 -- Scope of this assessment section.
   // Auditors need to see what was NOT assessed, not just what was.
   // Reads the scope_coverage block from wsp-plan.yaml (emitted by Pass 13).
-  const scopeCoverage = loadScopeCoverage(wspDir);
+  const scopeCoverage = loadScopeCoverage(wspDir, runDir);
   if (scopeCoverage) {
     lines.push('Scope of this assessment');
     lines.push('-'.repeat(60));
@@ -1506,7 +1634,7 @@ export function formatViewAuditor(data: ReportData, wspDir: string): string {
     lines.push('');
   }
 
-  return lines.join('\n');
+  return normalizeDashes(lines.join('\n'));
 }
 
 // #0263 Phase 2 -- read scope_coverage block from wsp-plan.yaml.
@@ -1529,10 +1657,10 @@ interface ScopeCoverageBlock {
   }>;
 }
 
-function loadScopeCoverage(wspDir: string): ScopeCoverageBlock | null {
-  let planPath = join(wspDir, 'wsp-plan.yaml');
+function loadScopeCoverage(wspDir: string, runDir?: string): ScopeCoverageBlock | null {
+  let planPath = runDir !== undefined ? join(runDir, 'wsp-plan.yaml') : join(wspDir, 'wsp-plan.yaml');
   const latestFile = join(wspDir, 'latest.txt');
-  if (existsSync(latestFile)) {
+  if (runDir === undefined && existsSync(latestFile)) {
     try {
       const latestPath = readFileSync(latestFile, 'utf-8').trim();
       const runPlan = join(wspDir, latestPath, 'wsp-plan.yaml');
@@ -1594,12 +1722,14 @@ function formatChallengeIntro(challenge: ChallengeAgentFinding): string[] {
  * Format the full "Stakeholder Challenge Findings" section.
  * Appended at the end of each persona view when challenge data is present.
  */
-function formatChallengeSection(challenge: ChallengeAgentFinding): string[] {
+function formatChallengeSection(challenge: ChallengeAgentFinding, source?: string): string[] {
   const lines: string[] = [
     '',
     'Stakeholder Challenge Findings',
     '------------------------------',
     `Agent:    ${challenge.agentRole}`,
+    // #3330: name the challenge and the run it belongs to.
+    ...(source ? [`Source:   ${source}`] : []),
     '',
   ];
   for (const f of challenge.findings) {
@@ -1622,7 +1752,7 @@ function formatChallengeSection(challenge: ChallengeAgentFinding): string[] {
 // the renderer dispatch itself operates on canonical keys.
 const VIEW_RENDERERS: Record<
   string,
-  (data: ReportData, wspDir: string) => string
+  (data: ReportData, wspDir: string, runDir?: string) => string
 > = {
   'application-architect': (data) => formatText(data),
   'business-owner': formatViewExec,
@@ -1681,7 +1811,7 @@ function viewFilenameToken(canonicalView: string): string {
  */
 export interface ReportDeps {
   runForApp: PortfolioRunDeps['runForApp'];
-  /** Community: render the WSP run as a Mode A HTML publication (#0877). */
+  /** Consultant+ (FEATURE_GATES['html-report'], #3320): render the WSP run as a Mode A HTML publication (#0877). */
   renderHtml?: (wspRunDir: string) => Promise<string>;
   /** Consultant: render an already-formatted text report to a PDF file. */
   renderPdf?: (args: RenderPdfArgs) => Promise<void>;
@@ -1704,7 +1834,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
     .description('Generate a WSP assessment summary report from completed pass output. Use --portfolio to report across all apps (Enterprise).')
     .option('--app <appId>', 'Application ID to report on (required unless --portfolio)')
     .option('--workspace <path>', 'Portfolio workspace directory (default: cwd)')
-    .option('--format <fmt>', 'Output format: text, yaml, json, pdf, or html (default: text; pdf requires Consultant; html is Community). yaml/json on --view auditor emit a Zod-validated AuditorReport payload.', 'text')
+    .option('--format <fmt>', 'Output format: text, yaml, json, pdf, or html (default: text; pdf and html require Consultant or Enterprise). yaml/json on --view auditor emit a Zod-validated AuditorReport payload.', 'text')
     .option(
       '--view <name>',
       'Report view (#0286 canonical persona IDs): ' +
@@ -1718,7 +1848,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
       'application-architect',
     )
     .option('--output <file>', 'Write output to file instead of stdout')
-    .option('--run <runId>', 'Load a specific run by run-directory timestamp (e.g. 2026-07-04T14-23-55); bypasses latest.txt. Useful with multi-type workspaces (#0785).')
+    .option('--run <runId>', 'Report a specific run by run-directory timestamp (e.g. 2026-07-04T14-23-55) instead of the latest one; application and landing-zone-catalog reports. An unknown run id exits 1 (#0785, #3343, #3346).')
     .option('--portfolio', 'Report on all apps in the workspace (Enterprise feature)', false)
     .option('--all-views', 'Generate all stakeholder views into wsp/reports-app/ folder. Combine with --format pdf to produce one PDF per view; default is text.', false)
     .option('--type <assessmentType>', 'Assessment type: application (default), landing-zone-catalog, or llm', 'application')
@@ -1846,6 +1976,28 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         // fall through -- the main rendering path handles format=pdf below.
       }
 
+      // --- HTML consultant gate (#3320) ---
+      // Licence tier matrix F-082:
+      // the single-page HTML publication is Consultant+, the same artefact
+      // `publish --app` gates with FEATURE_GATES['html-report']. Community keeps
+      // text / yaml / json.
+      if (opts.format === 'html') {
+        try {
+          LicenseGuard.load().requireFeature('html-report');
+        } catch (err) {
+          if (err instanceof LicenseTierError) {
+            printLicenseGateError('swao report --format html (HTML Report)', err.required, err.current);
+          }
+          if (err instanceof LicenseLimitError) {
+            printLicenseLimitError(err);
+          }
+          if (err instanceof LicenseInvalidError) {
+            printLicenseInvalidError((err as Error).message);
+          }
+          throw err;
+        }
+      }
+
       if (!opts.app) {
         console.error('[error] --app <appId> is required (or use --portfolio for all apps)');
         process.exit(1);
@@ -1877,16 +2029,19 @@ export function registerReport(program: Command, deps: ReportDeps): void {
       // --- LZ report branch (#1120) ---
       if (opts.type === 'landing-zone-catalog') {
         const wspDir = join(workspaceAppDir, 'wsp');
-        const lzData = generateLzReport(workspaceAppDir, opts.app!);
-
-        const lzLatestFile = join(wspDir, 'latest-landing-zone-catalog.txt');
-        let lzRunTsPrefix = '';
-        if (existsSync(lzLatestFile)) {
-          try {
-            const latestPath = readFileSync(lzLatestFile, 'utf-8').trim();
-            lzRunTsPrefix = latestPath.replace(/^runs\//, '') + '-';
-          } catch { /* no prefix */ }
+        // #3343: --run selects the LZ run (data, challenge pairing, file name);
+        // an unknown or non-LZ run id exits 1 instead of reporting the latest run.
+        let lzData: ReturnType<typeof generateLzReport>;
+        try {
+          lzData = generateLzReport(workspaceAppDir, opts.app!, opts.run);
+        } catch (err) {
+          if (err instanceof LzRunNotFoundError) {
+            console.error(`[error] ${err.message}\n  List the LZ runs under: ${join(wspDir, 'runs')}`);
+            process.exit(1);
+          }
+          throw err;
         }
+        const lzRunTsPrefix = lzReportFilePrefix(wspDir, opts.run);
 
         const lzBranding = buildLicenseeBranding();
         let lzOutput: string;
@@ -1914,6 +2069,9 @@ export function registerReport(program: Command, deps: ReportDeps): void {
               ...(t.blockerCategory ? { blocker_category: t.blockerCategory } : {}),
               items: t.items,
             })),
+            // #3330: name the challenge's run, or note that another run's challenge was left out.
+            ...(lzData.challengeSource ? { challenge_source: lzData.challengeSource } : {}),
+            ...(lzData.challengeOtherRunOmitted ? { challenge_note: CHALLENGE_OTHER_RUN_NOTE } : {}),
             challenge_findings: lzData.challengeFindings,
           };
           const wrapped = lzBranding.data ? { _generated_for: lzBranding.data, ...base } : base;
@@ -1952,6 +2110,9 @@ export function registerReport(program: Command, deps: ReportDeps): void {
               ...(t.blockerCategory ? { blocker_category: t.blockerCategory } : {}),
               items: t.items,
             })),
+            // #3330: name the challenge's run, or note that another run's challenge was left out.
+            ...(lzData.challengeSource ? { challenge_source: lzData.challengeSource } : {}),
+            ...(lzData.challengeOtherRunOmitted ? { challenge_note: CHALLENGE_OTHER_RUN_NOTE } : {}),
             challenge_findings: lzData.challengeFindings,
           };
           const lzJsonWrapped = lzBranding.data ? { _generated_for: lzBranding.data, ...lzJsonBase } : lzJsonBase;
@@ -2182,20 +2343,41 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         );
       }
 
-      const data = generateReport(workspaceAppDir, opts.app);
       const { wspDir } = resolveRunDirs(workspaceAppDir);
+      // #3346: --run selects the application run (data, challenge pairing,
+      // views, file name); an unknown or non-application run id exits 1
+      // instead of reporting the latest run.
+      let selectedRunDir: string | undefined;
+      if (opts.run !== undefined) {
+        try {
+          selectedRunDir = resolveAppRunDirById(wspDir, opts.run);
+        } catch (err) {
+          if (err instanceof RunNotFoundError) {
+            console.error(`[error] ${err.message}\n  List the application runs under: ${join(wspDir, 'runs')}`);
+            process.exit(1);
+          }
+          throw err;
+        }
+      }
 
-      // Extract run timestamp from latest.txt for filename prefix (e.g. "2026-04-30T08-13-00-")
+      // #3345 / #3346: the challenge note depends on the licence.
+      const data = applyChallengeLicence(generateReport(workspaceAppDir, opts.app, opts.run), isChallengeLicensed());
+
+      // Extract run timestamp from latest.txt for filename prefix (e.g. "2026-04-30T08-13-00-");
+      // #3346: the --run id when given.
       const latestFile = join(wspDir, 'latest.txt');
       let runTsPrefix = '';
-      if (existsSync(latestFile)) {
+      if (selectedRunDir !== undefined) {
+        runTsPrefix = basename(selectedRunDir) + '-';
+      } else if (existsSync(latestFile)) {
         try {
           const latestPath = readFileSync(latestFile, 'utf-8').trim(); // "runs/2026-04-30T08-13-00"
           runTsPrefix = latestPath.replace(/^runs\//, '') + '-';
         } catch { /* no prefix */ }
       }
 
-      // #0877: HTML format -- delegate entirely to renderModeA (Community tier).
+      // #0877: HTML format -- delegate entirely to renderModeA (Consultant+ since
+      // #3320; the html-report gate above runs first).
       // renderModeA writes wsp/publications/<runTs>-<appId>.html and returns the
       // output path. This bypasses the text-rendering + output-path resolution
       // below (which is designed for text/yaml/json/pdf), so we return early.
@@ -2203,7 +2385,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         if (!deps.renderHtml) {
           throw new Error('[bug] report --format html: HTML renderer not injected.');
         }
-        const wspRunDir = resolveRunDir(wspDir);
+        const wspRunDir = resolveRunDir(wspDir, selectedRunDir);
         const outputPath = await deps.renderHtml(wspRunDir);
         console.log(`[ok]  HTML publication written to ${outputPath}`);
         return;
@@ -2227,7 +2409,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
           // #2061: per-file render timing for diagnosing slow PDF/text renders.
           const viewStartMs = Date.now();
           const vRenderer = VIEW_RENDERERS[v] ?? VIEW_RENDERERS['application-architect'];
-          const vText     = vRenderer(data, wspDir);
+          const vText     = vRenderer(data, wspDir, selectedRunDir);
           const fileName  = viewFilenameToken(v);
           if (opts.format === 'pdf') {
             const vPath = join(reportsDir, `${runTsPrefix}${fileName}.pdf`);
@@ -2299,12 +2481,12 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         mkdirSync(reportsDir, { recursive: true });
         const viewName = viewFilenameToken(canonicalView);
         const textRenderer = VIEW_RENDERERS[canonicalView] ?? VIEW_RENDERERS['application-architect']!;
-        const textRendered = textRenderer(data, wspDir);
+        const textRendered = textRenderer(data, wspDir, selectedRunDir);
         const textContent = branding.text.length > 0 ? branding.text.join('\n') + '\n' + textRendered : textRendered;
         const textPath = join(reportsDir, `${runTsPrefix}${viewName}.txt`);
         writeFileSync(textPath, textContent, 'utf-8');
         console.log(`[ok]  Report (text) written to ${textPath}`);
-        const auditData = buildAuditorReport(data, wspDir);
+        const auditData = buildAuditorReport(data, wspDir, selectedRunDir);
         const yamlBody = dump(auditData, { lineWidth: 120 });
         const yamlContent = branding.yaml ? branding.yaml + yamlBody : yamlBody;
         const yamlPath = join(reportsDir, `${runTsPrefix}auditor.yaml`);
@@ -2325,7 +2507,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         // == "what you'd see in --format text, styled and paginated".
         outExt = 'pdf';
         const renderer = VIEW_RENDERERS[canonicalView] ?? VIEW_RENDERERS['application-architect'];
-        const rendered = renderer(data, wspDir);
+        const rendered = renderer(data, wspDir, selectedRunDir);
         output = branding.text.length > 0
           ? branding.text.join('\n') + '\n' + rendered
           : rendered;
@@ -2334,7 +2516,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         // For other views, fall back to the basic summary shape so --format json
         // remains usable for quick CI gates without forcing --view auditor.
         const base = canonicalView === 'auditor'
-          ? buildAuditorReport(data, wspDir)
+          ? buildAuditorReport(data, wspDir, selectedRunDir)
           : (data as unknown as Record<string, unknown>);
         // Spread {} when no branding so the underlying shape is unchanged.
         const wrapped = branding.data
@@ -2345,7 +2527,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
       } else if (opts.format === 'yaml') {
         let body: string;
         if (canonicalView === 'auditor') {
-          body = dump(buildAuditorReport(data, wspDir), { lineWidth: 120 });
+          body = dump(buildAuditorReport(data, wspDir, selectedRunDir), { lineWidth: 120 });
         } else {
           body = formatYamlReport(data);
         }
@@ -2354,7 +2536,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
         outExt = 'yaml';
       } else {
         const renderer = VIEW_RENDERERS[canonicalView] ?? VIEW_RENDERERS['application-architect'];
-        const rendered = renderer(data, wspDir);
+        const rendered = renderer(data, wspDir, selectedRunDir);
         output = branding.text.length > 0
           ? branding.text.join('\n') + '\n' + rendered
           : rendered;
@@ -2362,7 +2544,7 @@ export function registerReport(program: Command, deps: ReportDeps): void {
 
       // Resolve output path: explicit flag > auto-save to wsp/reports-app/ with run timestamp > stdout
       let outPath = opts.output ? resolve(opts.output) : null;
-      if (!outPath && existsSync(latestFile)) {
+      if (!outPath && (selectedRunDir !== undefined || existsSync(latestFile))) {
         const reportsDir = join(wspDir, 'reports-app');
         mkdirSync(reportsDir, { recursive: true });
         // #0286 / #1119 -- viewFilenameToken maps to reportViewAlias

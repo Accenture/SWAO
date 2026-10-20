@@ -324,6 +324,41 @@ describe('FEATURE_GATES registry', () => {
   it('llm-assessment is ungated (community)', () => {
     expect(FEATURE_GATES['llm-assessment']).toBe('community');
   });
+
+  it('service-assessment is ungated (community) per Design 103 §19.6', () => {
+    expect(FEATURE_GATES['service-assessment']).toBe('community');
+  });
+});
+
+describe('service-assessment feature gate (#3074)', () => {
+  it('passes for a community guard (no licence file)', () => {
+    const guard = LicenseGuard.load();
+    expect(guard.state.tier).toBe('community');
+    expect(() => guard.requireFeature('service-assessment')).not.toThrow();
+  });
+
+  it.each(['consultant', 'enterprise'] as const)('passes for a %s guard', (tier) => {
+    writeLicenceFile(buildLicenseKey(makePayload({ tier })));
+    const guard = LicenseGuard.load();
+    expect(guard.state.tier).toBe(tier);
+    expect(() => guard.requireFeature('service-assessment')).not.toThrow();
+  });
+
+  it('does not unlock output tiers: a community guard still fails pdf-report and bi-export', () => {
+    const guard = LicenseGuard.load();
+    expect(() => guard.requireFeature('service-assessment')).not.toThrow();
+    expect(() => guard.requireFeature('pdf-report')).toThrow(LicenseTierError);
+    expect(() => guard.requireFeature('bi-export')).toThrow(LicenseTierError);
+  });
+
+  it('service-excel (portfolio workbook, Design 103 §8.3) is Enterprise only (#3117)', () => {
+    expect(FEATURE_GATES['service-excel']).toBe('enterprise');
+    expect(() => LicenseGuard.load().requireFeature('service-excel')).toThrow(LicenseTierError);
+    writeLicenceFile(buildLicenseKey(makePayload({ tier: 'consultant' })));
+    expect(() => LicenseGuard.load().requireFeature('service-excel')).toThrow(LicenseTierError);
+    writeLicenceFile(buildLicenseKey(makePayload({ tier: 'enterprise' })));
+    expect(() => LicenseGuard.load().requireFeature('service-excel')).not.toThrow();
+  });
 });
 
 describe('LicenseGuard.requireFeature()', () => {

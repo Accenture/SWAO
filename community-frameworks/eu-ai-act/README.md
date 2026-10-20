@@ -92,22 +92,18 @@ Enable this framework if your workload involves any of:
 
 ---
 
-## How to enable in `.swao.yml`
+## How to enable in `apps/<app-id>/.swao.yml`
 
 ```yaml
-compliance:
-  frameworks:
-    - EU_AI_ACT
+assessment:
+  regimes_active: [EU_AI_ACT]
 ```
 
 For GPAI providers also include `AI_10_PILLARS` for comprehensive AI governance coverage:
 
 ```yaml
-compliance:
-  frameworks:
-    - EU_AI_ACT
-    - AI_10_PILLARS
-    - GDPR
+assessment:
+  regimes_active: [EU_AI_ACT, AI_10_PILLARS, GDPR]
 ```
 
 ---

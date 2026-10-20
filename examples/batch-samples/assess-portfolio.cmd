@@ -10,7 +10,7 @@ REM ===========================================================
 
 REM --- Configuration ----------------------------------------
 REM Absolute path to the SWAO binary on this machine.
-set SWAO_BIN=C:\Projects\accenture\swao\dist-bin\swao-enterprise-win.exe
+set SWAO_BIN=C:\swao\bin\swao-enterprise-win.exe
 
 REM Absolute path to the operator workspace (where .swao.yml lives).
 set WORKSPACE=C:\swao-e2e

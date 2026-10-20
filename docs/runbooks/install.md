@@ -15,7 +15,7 @@ SWAO is available as a self-contained binary and a Docker image. Pick the option
 
 ---
 
-## Option A -- Binary download (recommended)
+## Option A: Binary download (recommended)
 
 Download the latest Community binary from the GitHub Releases page:
 
@@ -70,7 +70,7 @@ xattr -d com.apple.quarantine /usr/local/bin/swao
 
 ---
 
-## Option B -- Docker
+## Option B: Docker
 
 ```bash
 # Pull the latest Community image
@@ -92,7 +92,7 @@ LLM provider setup, air-gapped usage, and licence file mounting.
 
 ---
 
-## Option C -- Build from source
+## Option C: Build from source
 
 Community Edition source publication is in progress as part of the SWAO open-source initiative.
 Subscribe to [SWAO Releases](https://github.com/Accenture/SWAO/releases) to be notified

@@ -162,13 +162,13 @@ describe('GCP region-picker normaliser (#0870)', () => {
     expect(() => parseLzCatalogue(cat)).not.toThrow();
   });
 
-  it('uses built-in overlay when no overlay supplied (europe-west3 gets C5)', () => {
+  it('uses built-in overlay when no overlay supplied (europe-west3 gets BSI_C5, #3155 canonical id)', () => {
     const minMatrix: GcpProductsMatrix = {
       'Cloud Storage': { 'europe-west3': true },
     };
     const cat = normalizeGcpProducts(minMatrix, { lastUpdated: '2026-07-07' });
     const fra = cat.regions.find((r) => r.id === 'europe-west3')!;
-    expect(fra.sovereignty?.certifications).toContain('C5');
+    expect(fra.sovereignty?.certifications).toContain('BSI_C5');
     expect(fra.sovereignty?.operator_jurisdiction).toBe('US-entity');
     expect(fra.sovereignty?.extraterritorial_exposure).toContain('us_cloud_act');
     expect(fra.country).toBe('DE');

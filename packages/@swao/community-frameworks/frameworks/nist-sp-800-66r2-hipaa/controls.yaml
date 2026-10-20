@@ -55,7 +55,7 @@ controls:
       - { context_input: "evidence/adm-01-risk-analysis.md" }
     references: ["NIST.SP.800-66r2.pdf"]
     overrides: []
-    maps_to: [ISO_27001_Clause_6.1, ISO_27001_A.5.7, SOC_2_CC3.2]
+    maps_to: [ISO_27001_A.5.7, SOC_2_CC3.2]
     remediation: "Run a documented risk assessment against every system that creates, receives, maintains or transmits ePHI; record threats, likelihood, impact, and treatment."
 
     tags:
@@ -76,7 +76,7 @@ controls:
       - { context_input: "evidence/adm-02-risk-management.md" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_Clause_6.1.3, ISO_27001_Clause_8.3, SOC_2_CC3.4]
+    maps_to: [SOC_2_CC3.4]
     remediation: "Maintain a risk treatment plan linking each identified risk to a control or accepted residual; review at least annually."
 
     tags:
@@ -393,7 +393,7 @@ controls:
       - { signal_prefix: DR }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, SOC_2_A1.3, DORA_Art_11]
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, SOC_2_A1.3]
     remediation: "Document RTO and RPO targets per system; build the runbooks; perform DR exercises at least annually."
 
     tags:
@@ -413,7 +413,7 @@ controls:
       - { context_input: "evidence/adm-19-emergency-mode.md" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.29, DORA_Art_11]
+    maps_to: [ISO_27001_A.5.29]
     remediation: "Define what emergency mode means per system (degraded access, alternate paths); document the security controls that remain operational during the mode."
 
     tags:
@@ -472,7 +472,7 @@ controls:
       - { manual_questionnaire: "evidence/adm-22-evaluation-questionnaire.yaml" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_Clause_9.2, SOC_2_CC4.1, SOC_2_CC4.2]
+    maps_to: [SOC_2_CC4.1, SOC_2_CC4.2]
     remediation: "Run an annual HIPAA Security Rule evaluation (internal or third-party); track findings to closure; record evaluation evidence in the audit register."
 
     tags:
@@ -492,7 +492,7 @@ controls:
       - { context_input: "evidence/adm-23-ba-contracts.md" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, SOC_2_CC9.2, DORA_Art_28]
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, SOC_2_CC9.2]
     remediation: "Maintain a business-associate register; require executed BAA before any ePHI is shared; review on contract renewal and on material change."
 
   # ------------------------------------------------------------------------
@@ -772,7 +772,7 @@ controls:
       - { signal_prefix: CRYPTO }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7, GDPR_Art_32]
+    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7]
     remediation: "Encrypt all ePHI at rest with FIPS 140-validated cryptography; use KMS-managed keys with documented rotation."
 
     tags:
@@ -830,7 +830,7 @@ controls:
       - { signal_prefix: IAM }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.17, ISO_27001_A.8.5, SOC_2_CC6.1, GDPR_Art_32]
+    maps_to: [ISO_27001_A.5.17, ISO_27001_A.8.5, SOC_2_CC6.1]
     remediation: "Require MFA for all ePHI access (workforce and B2B integrations); use a managed IDP; review authenticator strength against the IAL/AAL profile."
 
     tags:
@@ -867,7 +867,7 @@ controls:
       - { signal_prefix: CRYPTO }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7, GDPR_Art_32]
+    maps_to: [ISO_27001_A.8.24, SOC_2_CC6.7]
     remediation: "Encrypt every ePHI-transmission path (workforce browsers, partner integrations, internal service-to-service); deny cleartext fallback."
 
   # ------------------------------------------------------------------------
@@ -892,7 +892,7 @@ controls:
       - { context_input: "evidence/org-01-ba-contracts.md" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, SOC_2_CC9.2, DORA_Art_28]
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, SOC_2_CC9.2]
     remediation: "Use a standard BAA template legal has reviewed; require it before any ePHI is shared; track BAA execution per business associate."
 
     tags:

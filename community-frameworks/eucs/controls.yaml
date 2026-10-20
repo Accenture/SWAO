@@ -939,7 +939,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.29
-      - BSI_C5_BCM-01
+      - BSI_C5_AVL-01
     references:
       - "EUCS BCP section -- business continuity"
 
@@ -958,7 +958,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.30
-      - BSI_C5_BCM-02
+      - BSI_C5_AVL-03
     references:
       - "EUCS BCP section -- disaster recovery"
 

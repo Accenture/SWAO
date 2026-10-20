@@ -1,5 +1,8 @@
 {
   "packageManager": "pnpm@11.1.3",
+  "scripts": {
+    "test": "pnpm -r --workspace-concurrency=1 --no-bail test"
+  },
   "devDependencies": {
     "@playwright/test": "^1.55.1"
   }

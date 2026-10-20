@@ -53,7 +53,7 @@ which swao
 swao --version
 ```
 
-`/usr/local/bin` ist auf den meisten Linux-Distributionen standardmässig im `$PATH` enthalten. Fehlt es, siehe Abschnitt 4.
+`/usr/local/bin` ist auf den meisten Linux-Distributionen standardmäßig im `$PATH` enthalten. Fehlt es, siehe Abschnitt 4.
 
 ---
 
@@ -67,7 +67,7 @@ chmod +x /tmp/swao
 mv /tmp/swao ~/.local/bin/swao
 ```
 
-Anschliessend sicherstellen, dass `~/.local/bin` im PATH enthalten ist (siehe Abschnitt 4).
+Anschließend sicherstellen, dass `~/.local/bin` im PATH enthalten ist (siehe Abschnitt 4).
 
 ---
 
@@ -95,7 +95,7 @@ source ~/.zshrc
 
 ## 5. Optionale systemd-Service-Unit
 
-Für Server-Deployments, auf denen SWAO als daürhaft laufender MCP-Server oder geplanter Assessment-Runner betrieben wird, kann eine systemd-Unit angelegt werden:
+Für Server-Deployments, auf denen SWAO als dauerhaft laufender MCP-Server oder geplanter Assessment-Runner betrieben wird, kann eine systemd-Unit angelegt werden:
 
 ```ini
 # /etc/systemd/system/swao-mcp.service
@@ -157,13 +157,13 @@ swao --version
 swao health-check
 ```
 
-Alle `swao health-check`-Prüfpunkte sollten grün sein. Ein gelbes Ergebnis beim Playwright-Prüfpunkt ist auf Servern ohne installierten Browser erwartet; es betrifft ausschliesslich den Befehl `swao publish`.
+Alle `swao health-check`-Prüfpunkte sollten grün sein. Ein gelbes Ergebnis beim Playwright-Prüfpunkt ist auf Servern ohne installierten Browser erwartet; es betrifft ausschließlich den Befehl `swao publish`.
 
 ---
 
 ## 7. Aktualisierung
 
-Die neü Binary nach `/tmp/swao` herunterladen, die Prüfsumme verifizieren und dann die alte Binary ersetzen:
+Die neue Binary nach `/tmp/swao` herunterladen, die Prüfsumme verifizieren und dann die alte Binary ersetzen:
 
 ```bash
 # Stop the service if running

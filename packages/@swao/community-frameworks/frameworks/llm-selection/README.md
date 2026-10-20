@@ -58,12 +58,12 @@ swao framework install LLM_SELECTION
 Or add to your workspace `.swao.yml` after installation:
 
 ```yaml
-compliance:
-  frameworks: [LLM_SELECTION]
+assessment:
+  regimes_active: [LLM_SELECTION]
 ```
 
 For Mode B LLM benchmark use, configure the provider list and mode selector
-in `.swao.yml` under `llm_assessment.providers` (see Design 063 Â§11.3 for
+in `.swao.yml` under `llm_assessment.providers` (see Design 063 §11.3 for
 the full configuration shape).
 
 ## Control domains
@@ -103,7 +103,7 @@ Controls are evaluated from:
   `wsp/ingest/people/`. If the folder is empty, all PEO controls score as `not-assessed`
   and are excluded from the SRS denominator.
 - DSR-02 (zero-retention): automatically verified per run by the SWAO provider client
-  (SPEC.md Â§10.10 check).
+  (SPEC.md §10.10 check).
 
 ## Customising this framework
 
@@ -113,7 +113,7 @@ Install a local copy to override specific controls for your engagement:
 swao framework install LLM_SELECTION
 ```
 
-The installed copy at `catalogs/community/llm-selection/controls.yaml` overrides the
+The installed copy at `wsp/inputs/catalogs/community/llm-selection/controls.yaml` overrides the
 bundled version for all assessments in that workspace. Edit the YAML to adjust severity
 weights, threshold defaults, or add jurisdiction-specific controls. See `CONTRIBUTING.md`
 at the repository root for the full authoring guide.

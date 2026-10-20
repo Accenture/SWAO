@@ -1,0 +1,62 @@
+# SWAO community framework metadata -- SGBX_DE
+# Sprint-149 #3061 Phase 2: German Social Code (SGB X Sozialdatenschutz) controls
+# for government digital services handling Sozialdaten.
+
+framework:
+  id: SGBX_DE
+  name: "SGBX-DE -- German Social Code Data Protection (Sozialdatenschutz)"
+  version: "2024"
+  authority: >-
+    Federal Ministry of Labour and Social Affairs (BMAS) and Federal Data
+    Protection Commissioner (BfDI); SGB X in the version of the Social Code
+    Reform Act (SGB-Reformgesetz) 2023.
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/sgbx-de"
+  applicability_hints:
+    - de_social_services
+    - sozialgesetzbuch
+    - german_public_sector
+    - health_insurance
+    - pension_insurance
+    - employment_agency
+    - sozialdaten
+    - german_regulated
+    - de_sovereign
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    Community packaging of data protection obligations under the German Social
+    Code (Sozialgesetzbuch), primarily SGB X Sections 67-85 (Sozialdatenschutz)
+    and cross-references to SGB IV (Gemeinsame Vorschriften), SGB V (Gesetzliche
+    Krankenversicherung). 15 controls across 4 domains: Data Protection
+    Principles (SGBX-DAT, 4), Purpose Limitation and Legal Basis (SGBX-ZWK, 4),
+    Data Subject Rights and Disclosure (SGBX-BEF, 4), and Technical and
+    Organisational Measures (SGBX-TOM, 3). Sozialdaten is a special category
+    under GDPR Art. 9 equivalent; SGBX_DE and GDPR apply cumulatively.
+    Cross-mapped to GDPR, BSI_TR_03107 (eGov IAM), BSI_C5.
+  references:
+    - "SGB X §§67-85 -- Sozialdatenschutz (Social Code Data Protection)"
+    - "SGB IV §147 -- Rentenversicherungsnummer"
+    - "SGB V §290, §291 -- Krankenversicherungsnummer (KVNR)"
+    - "BDSG (Bundesdatenschutzgesetz) -- supplements GDPR in Germany"
+    - "https://www.gesetze-im-internet.de/sgb_10/"
+    - "BfDI Orientation Document on Sozialdaten (2023)"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-10-09"
+  signal_prefix: SGBX
+
+  cross_mapping_hints:
+    target_frameworks:
+      - GDPR               # Sozialdaten is a special-category within GDPR Art. 9
+      - BSI_TR_03107       # eGov IAM trust levels apply when BundID or ELSTER is in use
+      - BSI_C5             # cloud hosting of Sozialdaten requires C5 attestation
+      - BSI_GRUNDSCHUTZ_2023  # ISMS baseline for systems handling Sozialdaten
+      - NIS2               # operators of health/social IT may be essential entities
+
+  redistribution_note: >-
+    Controls derived from publicly available German statute texts (bundesrecht.juris.de)
+    and BfDI orientation documents. This framework does not constitute legal advice.
+    Organisations processing Sozialdaten must seek specialist legal counsel.
+
+  replaces: []

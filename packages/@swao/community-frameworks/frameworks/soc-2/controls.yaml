@@ -863,7 +863,7 @@ controls:
       - context_input: solution_arch
     references:
       - "AICPA TSC P3.1"
-    maps_to: [GDPR_Art_5, GDPR_Art_25]
+    maps_to: [GDPR_Art_25]
 
   - id: SOC_2_P3.2
     pillar: "P -- Privacy"
@@ -896,7 +896,7 @@ controls:
       - context_input: solution_arch
     references:
       - "AICPA TSC P4.1"
-    maps_to: [GDPR_Art_5, GDPR_Art_6]
+    maps_to: [GDPR_Art_6]
 
   - id: SOC_2_P4.2
     pillar: "P -- Privacy"
@@ -913,7 +913,7 @@ controls:
       - context_input: ops_runbooks
     references:
       - "AICPA TSC P4.2"
-    maps_to: [GDPR_Art_5, ISO_27001_A.5.33]
+    maps_to: [ISO_27001_A.5.33]
 
   - id: SOC_2_P4.3
     pillar: "P -- Privacy"
@@ -1024,7 +1024,7 @@ controls:
       - context_input: solution_arch
     references:
       - "AICPA TSC P6.4"
-    maps_to: [GDPR_Art_5]
+    maps_to: []
 
   - id: SOC_2_P6.5
     pillar: "P -- Privacy"
@@ -1073,7 +1073,7 @@ controls:
       - signal_prefix: EGR
     references:
       - "AICPA TSC P6.7"
-    maps_to: [GDPR_Art_32, ISO_27001_A.5.14]
+    maps_to: [ISO_27001_A.5.14]
 
   - id: SOC_2_P7.1
     pillar: "P -- Privacy"
@@ -1090,7 +1090,7 @@ controls:
       - context_input: solution_arch
     references:
       - "AICPA TSC P7.1"
-    maps_to: [GDPR_Art_5]
+    maps_to: []
 
   - id: SOC_2_P8.1
     pillar: "P -- Privacy"
@@ -1107,4 +1107,4 @@ controls:
       - context_input: ops_runbooks
     references:
       - "AICPA TSC P8.1"
-    maps_to: [GDPR_Art_77]
+    maps_to: []

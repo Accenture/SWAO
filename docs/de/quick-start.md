@@ -1,16 +1,16 @@
-# SWAO -- Schnellstart
+# SWAO: Schnellstart
 
 **Lesezeit:** 5 Minuten. **Von der Installation zur ersten Bewertung:** ca. 15 Minuten.
 
 SWAO ist eine souveräne Workload-Bewertungsplattform. Aus einer Cloud-Anwendung erstellt es:
 einen audit-konformen Bewertungsbericht, ein PowerBI-Dashboard, eine HTML-Veröffentlichung
-und ein 7R-Migrationsurteil -- mit vollständiger Nachvollziehbarkeit für jedes Signal.
+und ein 7R-Migrationsurteil, mit vollständiger Nachvollziehbarkeit für jedes Signal.
 
 ---
 
 ## Voraussetzungen
 
-- Windows / macOS / Linux (kein Runtime erforderlich -- vorkompiliertes Binary)
+- Windows / macOS / Linux (kein Runtime erforderlich, vorkompiliertes Binary)
 - Einen zu bewertenden Workload (eigenes Repository oder mitgelieferter Beispiel-Workspace)
 - Optional: **Anthropic-API-Schlüssel** für echte LLM-Analyse. Ohne ihn: `--skip-llm`.
 - Optional: **Power BI Desktop** (nur Windows).
@@ -43,7 +43,7 @@ swao --version
 
 ---
 
-## Erste Bewertung -- über die geführte Oberfläche
+## Erste Bewertung: über die geführte Oberfläche
 
 Starten Sie SWAO ohne Argumente:
 
@@ -69,22 +69,26 @@ Community  v0.11.2
   0  Exit
 ```
 
-> Siehe auch: [Beispielgalerie -- TUI-Hauptmenü](/samples/#sample-10)
+> Siehe auch: [Beispielgalerie: TUI-Hauptmenü](/de/samples/#sample-10)
 
 ### Schritt 1: Workspace-Setup-Assistent
 
-Wählen Sie **1. Workspace Setup**. Der Assistent stellt vier Fragen:
+Wählen Sie **1. Workspace Setup**. Der Assistent führt durch diese Schritte:
 
-1. **Workspace-Name** (z.B. `mein-engagement`)
-2. **Anwendungsname** (z.B. `meine-app`)
-3. **Compliance-Rahmenwerke** -- DSGVO ist vorausgewählt; weitere per `swao framework install`
-4. **LLM-Anbieter** -- Anthropic, OpenAI, Ollama oder Offline-Stub
+1. **Workspace**: Engagement-Name, Kundenkürzel, verantwortliche Person und Workspace-Verzeichnis (z.B. `mein-engagement`)
+2. **LLM-Anbieter**: Anthropic, OpenAI, Amazon Bedrock Gateway, Ollama oder Offline-Stub
+3. **Zugangsdaten**: der API-Schlüssel des gewählten Anbieters
+4. **Health Check**, danach die optionalen Integrationen **Claude Desktop** und **Playwright**
+
+Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere kopieren Sie jederzeit mit
+`swao framework install <ID>` in den Workspace (`swao framework list` zeigt die IDs); die Rahmenwerke je App
+wählen Sie beim Ausführen der Bewertung.
 
 ### Schritt 2: Health Check
 
-Wählen Sie **2. Health Check**. Alle sieben Prüfungen grün: Sie sind bereit.
+Wählen Sie **2. Health Check**. Die Vorabprüfungen (25 im aktuellen Release) laufen; sind alle grün, sind Sie bereit.
 
-> Siehe auch: [Beispielgalerie -- Health Check](/samples/#sample-12)
+> Siehe auch: [Beispielgalerie: Health Check](/de/samples/#sample-12)
 
 ### Schritt 3: Bewertung
 
@@ -122,8 +126,9 @@ In Power BI Desktop öffnen, `SWAOExportPath` auf den `star/`-Ordner setzen, **L
 
 ```bash
 swao init --name meine-app
-swao credential set anthropic-api-key
+swao credential set anthropic-api-key <ihr-api-schluessel>
 swao framework install GDPR
+swao regime-select --app meine-app --regimes GDPR
 swao health-check
 swao assess --app meine-app
 swao export --app meine-app --formats csv,ndjson,xlsx
@@ -138,4 +143,4 @@ swao --help
 swao <befehl> --help
 ```
 
-SWAO ist **ausschließlich dateibasiert** -- keine Telemetrie, kein Call-home.
+SWAO ist **ausschließlich dateibasiert**: keine Telemetrie, kein Call-home.

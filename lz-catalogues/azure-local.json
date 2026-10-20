@@ -17,6 +17,7 @@
       "id": "connected",
       "display": "Customer site (Arc-connected)",
       "sovereignty": {
+        "residency_country": "OPERATOR_SITE",
         "operator_jurisdiction": "operator-site",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -279,6 +280,7 @@
       "id": "disconnected",
       "display": "Customer site (disconnected operations)",
       "sovereignty": {
+        "residency_country": "OPERATOR_SITE",
         "operator_jurisdiction": "operator-site",
         "extraterritorial_exposure": [],
         "certifications": []

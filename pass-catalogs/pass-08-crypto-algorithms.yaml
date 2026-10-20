@@ -1,0 +1,333 @@
+# Pass 08 -- Crypto Posture: operator-extensible algorithm catalogue
+# Approved and deprecated cipher, hash, KDF, and padding scheme entries.
+# Sources: BSI TR-02102-1 (Kryptographische Verfahren, v2024), NIST SP 800-131A Rev.2.
+# Workspace overrides: wsp/inputs/pass-catalogs/pass-08-crypto-algorithms.yaml
+#
+# Entry ID collision: workspace entry wins over built-in on matching id.
+# Contribute additions: https://github.com/Accenture/SWAO
+
+pass_number: 8
+pass_name: "Crypto Posture"
+
+entries:
+
+  # ---------- Approved symmetric encryption ----------
+
+  - id: aes-256-gcm
+    name: "AES-256-GCM"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "AES/GCM"
+        - "AES_256_GCM"
+        - "aes-256-gcm"
+        - "javax.crypto.spec.GCMParameterSpec"
+      config_keys:
+        - "aes-256-gcm"
+        - "cipher: AES_256_GCM"
+        - "algorithm: AES/GCM"
+    posture:
+      severity: approved_preferred
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: aes-128-gcm
+    name: "AES-128-GCM"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "AES/GCM/NoPadding"
+        - "aes-128-gcm"
+        - "AES_128_GCM"
+      config_keys:
+        - "aes-128-gcm"
+        - "cipher: AES_128_GCM"
+    posture:
+      severity: approved
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: chacha20-poly1305
+    name: "ChaCha20-Poly1305"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "ChaCha20"
+        - "chacha20-poly1305"
+        - "CHACHA20_POLY1305"
+        - "javax.crypto.Cipher.CHACHA20"
+      config_keys:
+        - "chacha20-poly1305"
+        - "chacha20_poly1305"
+    posture:
+      severity: approved_preferred
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Approved asymmetric encryption ----------
+
+  - id: rsa-oaep-sha256
+    name: "RSA-OAEP with SHA-256"
+    category: asymmetric_encryption
+    detection:
+      imports:
+        - "RSA/ECB/OAEPWithSHA-256"
+        - "OAEPwithSHA-256andMGF1Padding"
+        - "RSA_OAEP_SHA256"
+        - "crypto.constants.RSA_PKCS1_OAEP_PADDING"
+      config_keys:
+        - "rsa-oaep"
+        - "oaep-sha256"
+        - "padding: OAEP"
+    posture:
+      severity: approved
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Approved digital signatures ----------
+
+  - id: ecdsa-p256
+    name: "ECDSA with P-256 (secp256r1)"
+    category: digital_signature
+    detection:
+      imports:
+        - "EC"
+        - "secp256r1"
+        - "P-256"
+        - "prime256v1"
+        - "SHA256withECDSA"
+      config_keys:
+        - "ec-p256"
+        - "ecdsa-p256"
+        - "curve: P-256"
+    posture:
+      severity: approved_preferred
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: ecdsa-p384
+    name: "ECDSA with P-384 (secp384r1)"
+    category: digital_signature
+    detection:
+      imports:
+        - "secp384r1"
+        - "P-384"
+        - "SHA384withECDSA"
+      config_keys:
+        - "ec-p384"
+        - "curve: P-384"
+    posture:
+      severity: approved_preferred
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Approved key derivation functions ----------
+
+  - id: argon2id
+    name: "Argon2id"
+    category: kdf
+    detection:
+      imports:
+        - "argon2"
+        - "argon2id"
+        - "org.bouncycastle.crypto.generators.Argon2BytesGenerator"
+      config_keys:
+        - "argon2id"
+        - "password-encoder: argon2"
+        - "kdf: argon2"
+    posture:
+      severity: approved_preferred
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: bcrypt
+    name: "bcrypt"
+    category: kdf
+    detection:
+      imports:
+        - "bcrypt"
+        - "BCrypt"
+        - "org.springframework.security.crypto.bcrypt"
+        - "spring.BCryptPasswordEncoder"
+      config_keys:
+        - "bcrypt"
+        - "password-encoder: bcrypt"
+    posture:
+      severity: approved
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: hkdf-sha256
+    name: "HKDF with SHA-256"
+    category: kdf
+    detection:
+      imports:
+        - "HKDF"
+        - "HKDFBytesGenerator"
+        - "hkdf-sha256"
+        - "javax.crypto.spec.HKDFParameterSpec"
+      config_keys:
+        - "hkdf"
+        - "kdf: hkdf"
+    posture:
+      severity: approved
+      bsi_tr02102_status: approved
+      nist_status: approved
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Deprecated hash functions ----------
+
+  - id: md5
+    name: "MD5"
+    category: hash_function
+    detection:
+      imports:
+        - "MD5"
+        - "MessageDigest.getInstance(\"MD5\")"
+        - "crypto.createHash('md5')"
+        - "System.Security.Cryptography.MD5"
+        - "hashlib.md5"
+      config_keys:
+        - "algorithm: MD5"
+        - "hash: md5"
+    posture:
+      severity: weak
+      bsi_tr02102_status: prohibited
+      nist_status: withdrawn
+      note: "MD5 is collision-broken; prohibited for all cryptographic uses. Non-cryptographic use (checksums) requires explicit justification."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: sha1
+    name: "SHA-1"
+    category: hash_function
+    detection:
+      imports:
+        - "SHA-1"
+        - "SHA1"
+        - "MessageDigest.getInstance(\"SHA-1\")"
+        - "crypto.createHash('sha1')"
+        - "System.Security.Cryptography.SHA1"
+        - "hashlib.sha1"
+      config_keys:
+        - "algorithm: SHA1"
+        - "hash: sha1"
+        - "sha1WithRSAEncryption"
+    posture:
+      severity: deprecated
+      bsi_tr02102_status: deprecated
+      nist_status: deprecated
+      note: "SHA-1 deprecated for all new use. BSI TR-02102 permits SHA-1 only for HMAC through 2025 with conditions; new designs must use SHA-256 or better."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Deprecated symmetric ciphers ----------
+
+  - id: des
+    name: "DES (Data Encryption Standard)"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "DES/ECB"
+        - "DES/CBC"
+        - "javax.crypto.SecretKeyFactory.DES"
+        - "Cipher.getInstance(\"DES"
+        - "DESKeySpec"
+      config_keys:
+        - "algorithm: DES"
+        - "cipher: DES"
+    posture:
+      severity: weak
+      bsi_tr02102_status: prohibited
+      nist_status: withdrawn
+      note: "DES has 56-bit key; brute-forceable. Prohibited since NIST 2005 withdrawal. No compliant use case remains."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: 3des
+    name: "Triple DES (3DES / TDEA)"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "DESede"
+        - "3DES"
+        - "TripleDES"
+        - "TDEA"
+        - "javax.crypto.spec.DESedeKeySpec"
+        - "System.Security.Cryptography.TripleDES"
+      config_keys:
+        - "algorithm: 3DES"
+        - "cipher: TripleDES"
+        - "DESede"
+    posture:
+      severity: deprecated
+      bsi_tr02102_status: deprecated
+      nist_status: deprecated
+      note: "3DES deprecated by NIST 2023 (SP 800-131A Rev.2); BSI TR-02102 permits only for legacy interoperability through 2024. No new use."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: rc4
+    name: "RC4 (Rivest Cipher 4)"
+    category: symmetric_encryption
+    detection:
+      imports:
+        - "RC4"
+        - "ARCFOUR"
+        - "javax.crypto.Cipher.RC4"
+        - "crypto.createCipheriv('rc4'"
+      config_keys:
+        - "algorithm: RC4"
+        - "cipher: ARCFOUR"
+        - "ssl.cipher.suites.*RC4"
+    posture:
+      severity: weak
+      bsi_tr02102_status: prohibited
+      nist_status: withdrawn
+      note: "RC4 is prohibited; statistical biases allow plaintext recovery. TLS 1.3 formally removed it."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  # ---------- Deprecated padding schemes ----------
+
+  - id: rsa-pkcs1v1-5
+    name: "RSA PKCS#1 v1.5 padding (for encryption)"
+    category: asymmetric_encryption
+    detection:
+      imports:
+        - "RSA/ECB/PKCS1Padding"
+        - "RSA_PKCS1_PADDING"
+        - "Cipher.getInstance(\"RSA\")"
+        - "crypto.constants.RSA_PKCS1_PADDING"
+        - "PKCS1v15"
+      config_keys:
+        - "padding: PKCS1v1.5"
+        - "rsa-pkcs1"
+    posture:
+      severity: deprecated
+      bsi_tr02102_status: deprecated
+      nist_status: deprecated
+      note: "BSI TR-02102 deprecated RSA-PKCS1v1.5 for encryption earlier than NIST (Bleichenbacher padding oracle). Use RSA-OAEP instead. PKCS1v1.5 for SIGNATURES only is conditionally permitted through 2025."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]
+
+  - id: ecb-mode
+    name: "ECB block cipher mode (Electronic Codebook)"
+    category: block_cipher_mode
+    detection:
+      imports:
+        - "AES/ECB"
+        - "DES/ECB"
+        - "ECB/NoPadding"
+        - "CipherMode.ECB"
+      config_keys:
+        - "mode: ECB"
+        - "cipher-mode: ECB"
+    posture:
+      severity: weak
+      bsi_tr02102_status: prohibited
+      nist_status: deprecated
+      note: "ECB mode provides no semantic security; identical plaintext blocks produce identical ciphertext. Prohibited for all new use."
+    cross_reference_frameworks: [BSI_C5, ISO_27001, BSI_TR_02102]

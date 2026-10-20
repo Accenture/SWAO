@@ -27,7 +27,7 @@ import type { LicenseStateView } from '@swao/tui-kit';
 import { Header } from '../components/Header.js';
 import { LicenseGuard } from '../../license/license-guard.js';
 import { findWorkspace } from '@swao/core';
-import { resolveLzCataloguesDir, loadLzCatalogueIndex } from '@swao/module-landing-zone';
+import { resolveBundledLzCataloguesDir, discoverLzCatalogues } from '@swao/module-landing-zone';
 
 type Phase = 'input-provider' | 'warn-overwrite' | 'running' | 'done';
 
@@ -36,7 +36,8 @@ function detectModifiedCatalogues(workspacePath: string | null): string[] {
   if (!workspacePath) return [];
   const catalogDir = join(workspacePath, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
   if (!existsSync(catalogDir)) return [];
-  const bundledDir = resolveLzCataloguesDir();
+  // The shipped catalogues only: the cwd-relative resolver could pick the workspace folder itself.
+  const bundledDir = resolveBundledLzCataloguesDir();
   if (!bundledDir) return [];
   const modified: string[] = [];
   for (const f of readdirSync(catalogDir)) {
@@ -55,8 +56,9 @@ interface ProviderOption {
   value: string;
 }
 
-// Provider list is built dynamically from the bundled lz-catalogues/index.json.
-// Adding a catalogue to index.json is sufficient -- no code change required here.
+// #3298 (Design 110 E-24): the provider list is built from the bundled
+// catalogue files' own meta blocks (no index.json). Adding a catalogue file is
+// sufficient -- no code change required here.
 // Curated providers (source === "curated") are included for discoverability;
 // selecting one prints a skip message from the CLI backend.
 // Progress bar total for "all" reflects automated (non-curated) providers only (6).
@@ -64,16 +66,14 @@ function buildProviderOptions(): ProviderOption[] {
   const opts: ProviderOption[] = [
     { label: 'all           -- all configured providers', value: 'all' },
   ];
-  const dir = resolveLzCataloguesDir();
+  const dir = resolveBundledLzCataloguesDir();
   if (!dir) return opts;
   try {
-    const { catalogues } = loadLzCatalogueIndex(dir);
-    for (const c of catalogues) {
+    for (const c of discoverLzCatalogues(dir)) {
       const pad = c.provider.padEnd(14);
-      const desc = c.short_description ?? c.name;
-      opts.push({ label: `${pad}-- ${desc}`, value: c.provider });
+      opts.push({ label: `${pad}-- ${c.short_description}`, value: c.provider });
     }
-  } catch { /* bundled index unreadable; fall back to all-only list */ }
+  } catch { /* bundled catalogues unreadable; fall back to all-only list */ }
   return opts;
 }
 
@@ -245,7 +245,9 @@ export function LzCatalogueUpdateScreen({ onBack, onOpenLicense }: LzCatalogueUp
         what={
           'Refresh the landing zone service catalogues for AWS, Azure, GCP, and STACKIT. ' +
           'The bundled catalogues ship with each SWAO release; run this before an engagement ' +
-          'to pick up services launched since the last release.'
+          'to pick up services launched since the last release. With all, Azure or AWS selected, ' +
+          'the same run refreshes the VM prices (Linux and Windows) of the service cost model ' +
+          'from the Azure and AWS price APIs.'
         }
         details={[
           {
@@ -256,7 +258,8 @@ export function LzCatalogueUpdateScreen({ onBack, onOpenLicense }: LzCatalogueUp
           {
             label: 'Deliverables',
             value:
-              'Updated JSON catalogue files in <workspace>/wsp/inputs/catalogs/lz-catalogues/. ' +
+              'Updated JSON catalogue files in <workspace>/wsp/inputs/catalogs/lz-catalogues/, ' +
+              'and prices/vm-prices.json there, which the service cost estimate prefers over the bundled prices. ' +
               'Run `swao lz catalogue list` to view the current state.',
           },
         ]}

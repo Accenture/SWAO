@@ -68,10 +68,10 @@ interface MenuInfo {
 const ITEMS: MenuItem[] = [
   { key: '1', label: 'Workspace Setup',     detail: 'init + LLM + credentials wizard',         target: 'setup'       },
   { key: '2', label: 'Health Check',        detail: 'swao health-check',                       target: 'doctor'      },
-  { key: '3', label: 'Run Assessment',      detail: 'Application / Audit / Landing Zone + more', target: 'assess'      },
+  { key: '3', label: 'Run Assessment',      detail: 'Application / Service Portfolio / Landing Zone Catalog / LLM', target: 'assess'      },
   { key: '4', label: 'Generate Report',     detail: 'swao report (text / PDF)',                target: 'report'      },
   { key: '5', label: 'Publish HTML',        detail: 'swao publish -- publications/ folder (HTML)', target: 'publish',     tierRequired: 'consultant' as const },
-  { key: '6', label: 'Export BI',           detail: 'star schema / PowerBI / Tableau',         target: 'export-bi'   },
+  { key: '6', label: 'Export BI',           detail: 'PowerBI (Application Assessment only)',   target: 'export-bi'   },
   { key: '7', label: 'Portfolio Operations', detail: 'multi-app aggregate',                    target: 'portfolio',   tierRequired: 'enterprise' as const },
   { key: '8', label: 'Generate TF Modules', detail: 'swao generate-tf',                        target: 'generate-tf', tierRequired: 'enterprise' as const, comingSoon: true as const },
   { key: '9', label: 'Tools',               detail: 'lenses / license / credentials / help',   target: 'tools'       },

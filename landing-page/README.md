@@ -47,5 +47,5 @@ replace `index.html` at the hosting provider. The canonical URL is pinned in
 - No em-dashes (U+2014) or en-dashes (U+2013) -- use `--` or `,`
 - No client names (Sovereign Health is the sole exception as the demo subject)
 - No emojis
-- Tier assignments must match `docs/strategy/012-feature-licence-tier-matrix.md`
+- Tier assignments must match the SWAO licence tier matrix
 - Assessment pass count and framework list must match `swao/SPEC.md`

@@ -17,16 +17,17 @@
 // Design 065 §5.6 -- the thin CLI wrapper around the botocore refresh logic.
 // Wired into the tier entry by consultant.ts / enterprise.ts.
 //
-// Source of truth for AWS SERVICE_FULFILLS + SOVEREIGNTY_OVERLAY is
-// scripts/refresh-lz-catalogue-aws.mjs (dev refresh). Keep in sync on updates.
+// Sovereignty pins: single source in catalogue/sovereignty-pins.ts (#3282,
+// #3302); the dev refresh scripts import them. Source of truth for AWS
+// SERVICE_FULFILLS is scripts/refresh-lz-catalogue-aws.mjs (dev refresh). Keep in sync on updates.
 // Source of truth for STACKIT is fetch-stackit.ts + scripts/refresh-lz-catalogue-stackit.mjs.
-// Source of truth for GCP SERVICE_FULFILLS + SOVEREIGNTY_OVERLAY is
-// fetch-gcp.ts + scripts/refresh-lz-catalogue-gcp.mjs. Keep in sync on updates.
-// Source of truth for AZURE_SERVICE_FULFILLS + AZURE_SOVEREIGNTY_OVERLAY is
+// Source of truth for GCP SERVICE_FULFILLS is fetch-gcp.ts +
+// scripts/refresh-lz-catalogue-gcp.mjs. Keep in sync on updates.
+// Source of truth for AZURE_SERVICE_FULFILLS is
 // scripts/refresh-lz-catalogue-azure.mjs (dev refresh). Keep in sync on updates.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { Command } from 'commander';
 import {
   LicenseGuard,
@@ -36,7 +37,7 @@ import {
   findWorkspace,
   logPortfolio,
 } from '@swao/core';
-import { resolveLzCataloguesDir, loadLzCatalogueIndex } from '../catalogue/loader.js';
+import { resolveBundledLzCataloguesDir, discoverLzCatalogues } from '../catalogue/loader.js';
 import {
   normalizeStackitSkus,
   type StackitSku,
@@ -44,10 +45,80 @@ import {
 } from '../catalogue/fetch-stackit.js';
 import { normalizeGcpProducts } from '../catalogue/fetch-gcp.js';
 import {
+  AWS_SOVEREIGNTY_PINS as SOVEREIGNTY_OVERLAY,
+  AZURE_SOVEREIGNTY_PINS as AZURE_SOVEREIGNTY_OVERLAY,
+  type LzSovereigntyPin as SovereigntyEntry,
+} from '../catalogue/sovereignty-pins.js';
+import {
   fetchAzureCatalogue,
   AZURE_RETAIL_PRICES_URL,
   type AzureRegionOverlay,
 } from '../catalogue/fetch-azure.js';
+import { VM_PRICE_TABLE_FILE, safeParseVmPriceTable, type VmPriceProvider, type VmPriceTable } from '@swao/core';
+import {
+  buildVmPriceTable,
+  fetchAwsVmPrices,
+  fetchAzureVmPrices,
+  type VmPriceFetchResult,
+} from '../catalogue/fetch-vm-prices.js';
+
+/**
+ * #3288 (Design 110 D-23): refresh the VM price table for the service cost
+ * model in the same run as the service catalogues. Azure prices run with
+ * provider azure or all, AWS prices with aws or all. A failed price fetch is
+ * a warning: the catalogues stay written and the previous prices of that
+ * provider are kept. Output lines start with "prices:" so the TUI progress
+ * bar (which counts "updated:" and "written:" lines) is unaffected.
+ */
+async function refreshVmPrices(opts: {
+  dir: string;
+  providers: VmPriceProvider[];
+  today: string;
+  dryRun: boolean;
+  azureBaseUrl?: string;
+  awsBaseUrl?: string;
+}): Promise<{ written: boolean; providers: VmPriceProvider[]; failed: VmPriceProvider[] }> {
+  const outPath = join(opts.dir, VM_PRICE_TABLE_FILE);
+  const readTable = (p: string): VmPriceTable | null => {
+    if (!existsSync(p)) return null;
+    try {
+      const r = safeParseVmPriceTable(JSON.parse(readFileSync(p, 'utf-8')));
+      return r.ok ? r.table : null;
+    } catch { return null; }
+  };
+  const bundled = resolveBundledLzCataloguesDir();
+  const previous = readTable(outPath) ?? (bundled ? readTable(join(bundled, VM_PRICE_TABLE_FILE)) : null);
+
+  const fresh: VmPriceFetchResult[] = [];
+  const failed: VmPriceProvider[] = [];
+  for (const provider of opts.providers) {
+    try {
+      const result = provider === 'azure'
+        ? await fetchAzureVmPrices({ today: opts.today, ...(opts.azureBaseUrl ? { baseUrl: opts.azureBaseUrl } : {}) })
+        : await fetchAwsVmPrices({ today: opts.today, ...(opts.awsBaseUrl ? { baseUrl: opts.awsBaseUrl } : {}) });
+      console.log(`prices: ${provider} ${result.source.region}, ${result.rows.length} price(s) from the ${result.source.api}`);
+      if (result.missing.length > 0) {
+        console.warn(`[warn] prices: ${provider} returned no price for ${result.missing.join(', ')}; the cost model marks these estimates`);
+      }
+      if (result.rows.length === 0) { failed.push(provider); continue; }
+      fresh.push(result);
+    } catch (err) {
+      failed.push(provider);
+      console.warn(`[warn] prices: ${(err as Error).message}; keeping the previous ${provider} prices`);
+    }
+  }
+  if (fresh.length === 0) return { written: false, providers: [], failed };
+
+  const table = buildVmPriceTable(fresh, { today: opts.today, previous });
+  if (opts.dryRun) {
+    console.log(`prices: [dry-run] would write ${outPath}`);
+    return { written: false, providers: fresh.map((f) => f.source.provider), failed };
+  }
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(table, null, 2) + '\n', 'utf-8');
+  console.log(`prices: wrote ${outPath}`);
+  return { written: true, providers: fresh.map((f) => f.source.provider), failed };
+}
 
 // ---------------------------------------------------------------------------
 // Catalogue merge helper -- preserves retired services across refreshes.
@@ -344,50 +415,10 @@ const SERVICE_FULFILLS: Record<string, string[]> = {
 
 // ---------------------------------------------------------------------------
 // Region -> sovereignty facts overlay (D-LZ-07).
-// Mirror of scripts/refresh-lz-catalogue-aws.mjs SOVEREIGNTY_OVERLAY.
+// The pinned table lives in catalogue/sovereignty-pins.ts (#3282; the dev
+// refresh scripts import it, #3302) so the
+// catalogue quality checks and the audit gate compare against the same pins.
 // ---------------------------------------------------------------------------
-interface SovereigntyEntry {
-  residency_country: string;
-  operator_jurisdiction: string;
-  extraterritorial_exposure: string[];
-  certifications: string[];
-}
-
-const SOVEREIGNTY_OVERLAY: Record<string, SovereigntyEntry> = {
-  'eu-central-1':   { residency_country: 'DE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'eu-central-2':   { residency_country: 'CH', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'eu-north-1':     { residency_country: 'SE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'eu-south-1':     { residency_country: 'IT', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'eu-south-2':     { residency_country: 'ES', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'eu-west-1':      { residency_country: 'IE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'eu-west-2':      { residency_country: 'GB', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'eu-west-3':      { residency_country: 'FR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'us-east-1':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'us-east-2':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'us-west-1':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'us-west-2':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'ca-central-1':   { residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'ca-west-1':      { residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'sa-east-1':      { residency_country: 'BR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-east-1':      { residency_country: 'HK', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-northeast-1': { residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'ap-northeast-2': { residency_country: 'KR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-northeast-3': { residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-south-1':     { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-south-2':     { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-southeast-1': { residency_country: 'SG', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'MAS_TRM'] },
-  'ap-southeast-2': { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'IRAP'] },
-  'ap-southeast-3': { residency_country: 'ID', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'ap-southeast-4': { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'me-central-1':   { residency_country: 'AE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'me-south-1':     { residency_country: 'BH', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'af-south-1':     { residency_country: 'ZA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'il-central-1':   { residency_country: 'IL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'mx-central-1':   { residency_country: 'MX', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'eusc-de-east-1': { residency_country: 'DE', operator_jurisdiction: 'EU-entity', extraterritorial_exposure: [], certifications: ['C5', 'ISO_27001'] },
-  'eu-isoe-west-1': { residency_country: 'EU', operator_jurisdiction: 'EU-entity', extraterritorial_exposure: [], certifications: ['C5'] },
-};
-
 const DEFAULT_SOVEREIGNTY: SovereigntyEntry = {
   residency_country: 'UNKNOWN',
   operator_jurisdiction: 'US-entity',
@@ -480,75 +511,9 @@ const AZURE_SERVICE_FULFILLS: Record<string, string[]> = {
 
 // ---------------------------------------------------------------------------
 // Azure: armRegionName -> sovereignty facts overlay (D-LZ-07).
-// Mirror of scripts/refresh-lz-catalogue-azure.mjs SOVEREIGNTY_OVERLAY.
+// The pinned table lives in catalogue/sovereignty-pins.ts (#3282; the dev
+// refresh scripts import it, #3302).
 // ---------------------------------------------------------------------------
-const AZURE_SOVEREIGNTY_OVERLAY: Record<string, SovereigntyEntry> = {
-  // Europe
-  'germanywestcentral':  { residency_country: 'DE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2'] },
-  'westeurope':          { residency_country: 'NL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'northeurope':         { residency_country: 'IE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'swedencentral':       { residency_country: 'SE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'switzerlandnorth':    { residency_country: 'CH', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'switzerlandwest':     { residency_country: 'CH', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'francecentral':       { residency_country: 'FR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'francesouth':         { residency_country: 'FR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'uksouth':             { residency_country: 'GB', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'ukwest':              { residency_country: 'GB', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'italynorth':          { residency_country: 'IT', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'norwayeast':          { residency_country: 'NO', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'norwaywest':          { residency_country: 'NO', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'polandcentral':       { residency_country: 'PL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'spaincentral':        { residency_country: 'ES', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'austriaeast':         { residency_country: 'AT', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'belgiumcentral':      { residency_country: 'BE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'greececentral':       { residency_country: 'GR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'finlandcentral':      { residency_country: 'FI', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'denmarkeast':         { residency_country: 'DK', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Americas
-  'eastus':              { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'eastus2':             { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'westus':              { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'westus2':             { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'westus3':             { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'centralus':           { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'northcentralus':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southcentralus':      { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'westcentralus':       { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'canadacentral':       { residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'canadaeast':          { residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'brazilsouth':         { residency_country: 'BR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'brazilsoutheast':     { residency_country: 'BR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'mexicocentral':       { residency_country: 'MX', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'chilecentral':        { residency_country: 'CL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Asia Pacific
-  'eastasia':            { residency_country: 'HK', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southeastasia':       { residency_country: 'SG', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'MAS_TRM'] },
-  'japaneast':           { residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'japanwest':           { residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'koreacentral':        { residency_country: 'KR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'koreasouth':          { residency_country: 'KR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'australiaeast':       { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'IRAP'] },
-  'australiasoutheast':  { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'australiacentral':    { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'australiacentral2':   { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'centralindia':        { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southindia':          { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'westindia':           { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'jioindiacentral':     { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'jioindiawest':        { residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'newzealandnorth':     { residency_country: 'NZ', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'indonesiacentral':    { residency_country: 'ID', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'malaysiawest':        { residency_country: 'MY', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'taiwannorth':         { residency_country: 'TW', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Middle East and Africa
-  'uaenorth':            { residency_country: 'AE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'uaecentral':          { residency_country: 'AE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southafricanorth':    { residency_country: 'ZA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southafricawest':     { residency_country: 'ZA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'israelcentral':       { residency_country: 'IL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'qatarcentral':        { residency_country: 'QA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-};
-
 const DEFAULT_AZURE_SOVEREIGNTY: SovereigntyEntry = {
   residency_country: 'UNKNOWN',
   operator_jurisdiction: 'US-entity',
@@ -587,7 +552,7 @@ const PARTITION_CONFIG: Record<string, PartitionConfig> = {
     name: 'AWS ISOE Europe service catalogue (classified)',
     outputFile: 'aws-iso-e.json',
     source: { mode: 'botocore-endpoints', tool: 'swao lz catalogue update' },
-    confidence: 'high',
+    confidence: 'low',  // #1382: sovereignty facts unsubstantiated
   },
   // STACKIT uses a different fetch path (PIM API, not botocore endpoints).
   // The key 'stackit' is used as both the partition identifier and the
@@ -616,9 +581,9 @@ const PARTITION_CONFIG: Record<string, PartitionConfig> = {
     confidence: 'high',
   },
 };
-// Curated providers are NOT listed here -- they are discovered dynamically from
-// index.json (source === "curated"). Adding a new curated catalogue to index.json
-// is sufficient; no code change in this file is required.
+// Curated providers are NOT listed here -- they are discovered from the bundled
+// catalogue files whose meta.source.mode is "curated" (#3298). Adding a curated
+// catalogue file is sufficient; no code change in this file is required.
 
 // ---------------------------------------------------------------------------
 // Catalogue builder (mirrors refresh-lz-catalogue-aws.mjs buildCatalogue)
@@ -761,6 +726,7 @@ export function registerLzCatalogueUpdate(program: Command): void {
       'STACKIT: fetches from the STACKIT PIM API (pim.api.stackit.cloud/v1/skus). ' +
       'GCP: fetches from the GoogleCloudPlatform/region-picker products.json. ' +
       'Azure: fetches the Azure Retail Prices API (prices.azure.com; fully anonymous). ' +
+      'The same run refreshes the VM prices of the service cost model (Azure Retail Prices API and AWS Price List API, Linux and Windows) for provider azure, aws or all. ' +
       'The bundled SWAO catalogue is used by default for assessments; run this command before an engagement to get the latest service list.',
     )
     .option('--provider <name>', 'CSP provider: aws, aws-esc, aws-iso-e, stackit, gcp, azure, or "all"', 'all')
@@ -770,6 +736,9 @@ export function registerLzCatalogueUpdate(program: Command): void {
     .option('--azure-prices-path <path>', 'Local JSON file override for Azure Retail Prices data (air-gapped / CI)')
     .option('--catalogues-dir <path>', 'Override the lz-catalogues output directory')
     .option('--dry-run', 'Print catalogue stats without writing files')
+    .option('--skip-prices', 'Do not refresh the VM price table of the service cost model (#3288)')
+    .option('--azure-price-api <url>', 'Base URL of the Azure Retail Prices API (mirror or proxy; default https://prices.azure.com)')
+    .option('--aws-price-list <url>', 'Base URL of the AWS Price List bulk API (mirror or proxy; default https://pricing.us-east-1.amazonaws.com)')
     .action(async (opts: {
       provider: string;
       endpointsPath?: string;
@@ -778,6 +747,9 @@ export function registerLzCatalogueUpdate(program: Command): void {
       azurePricesPath?: string;
       cataloguesDir?: string;
       dryRun?: boolean;
+      skipPrices?: boolean;
+      azurePriceApi?: string;
+      awsPriceList?: string;
     }) => {
       // --- tier gate (mirrors generate-tf pattern) -------------------------
       let guard;
@@ -785,13 +757,14 @@ export function registerLzCatalogueUpdate(program: Command): void {
         guard = LicenseGuard.load();
       } catch (e) {
         if (e instanceof LicenseInvalidError) {
-          console.error(e.message);
+          console.error(`[LICENSE] Invalid licence: ${e.message}`);
           process.exit(3);
         }
         throw e;
       }
       try {
-        guard.requireTier('consultant', { feature: 'lz catalogue update' });
+        // FEATURE_GATES['lz-catalogue-update'] (licence tier matrix F-111, Consultant+).
+        guard.requireFeature('lz-catalogue-update');
       } catch (e) {
         if (e instanceof LicenseTierError || e instanceof LicenseLimitError) {
           console.error(UPGRADE_MESSAGE);
@@ -812,20 +785,17 @@ export function registerLzCatalogueUpdate(program: Command): void {
       // --- resolve target partitions ----------------------------------------
       const providerFilter = opts.provider === 'all' ? null : opts.provider;
 
-      // Load catalogue index to discover curated providers dynamically.
-      // Any provider with source === "curated" in index.json has no automated
+      // Discover curated providers from the bundled catalogue files (#3298):
+      // any catalogue whose meta.source.mode is "curated" has no automated
       // adapter and receives a skip message. No code change here is required
-      // when new curated catalogues are added to index.json.
+      // when a curated catalogue file is added.
       let indexCuratedProviders: string[] = [];
       {
-        const bundledDir = resolveLzCataloguesDir();
+        const bundledDir = resolveBundledLzCataloguesDir();
         if (bundledDir) {
-          try {
-            const { catalogues } = loadLzCatalogueIndex(bundledDir);
-            indexCuratedProviders = catalogues
-              .filter((c) => c.source === 'curated')
-              .map((c) => c.provider);
-          } catch { /* index unreadable; skip curated discovery */ }
+          indexCuratedProviders = discoverLzCatalogues(bundledDir)
+            .filter((c) => c.source === 'curated')
+            .map((c) => c.provider);
         }
       }
 
@@ -961,12 +931,8 @@ export function registerLzCatalogueUpdate(program: Command): void {
       // Bootstrap the workspace catalogue directory on first refresh.
       if (!existsSync(dir)) {
         if (!opts.dryRun) {
+          // #3298: no index.json is seeded; the catalogue list is built from the files.
           mkdirSync(dir, { recursive: true });
-          const bundledDir = resolveLzCataloguesDir();
-          const seedIndex = bundledDir && existsSync(join(bundledDir, 'index.json'))
-            ? readFileSync(join(bundledDir, 'index.json'), 'utf-8')
-            : JSON.stringify({ catalogues: [], coming_soon: [] }, null, 2) + '\n';
-          writeFileSync(join(dir, 'index.json'), seedIndex, 'utf-8');
           console.log(`[lz catalogue update] Created workspace catalogue directory: ${dir}`);
         } else {
           console.log(`[dry-run] Would create workspace catalogue directory: ${dir}`);
@@ -976,9 +942,12 @@ export function registerLzCatalogueUpdate(program: Command): void {
       if (endpointsSource) console.log(`[lz catalogue update] source:  ${endpointsSource}`);
       console.log(`[lz catalogue update] output:  ${dir}\n`);
 
+      // Providers written by this run (summary and log event). #3298: there is
+      // no index.json to maintain; each file's meta block is the only record.
       const updatedEntries: Array<{
         provider: string; file: string; name: string;
         last_updated: string; source: string; confidence: string;
+        regions_count: number;
       }> = [];
       const allDiffs: Record<string, CatalogueDiff> = {};
 
@@ -1023,8 +992,9 @@ export function registerLzCatalogueUpdate(program: Command): void {
             file:     config.outputFile,
             name:     config.name,
             last_updated: today,
-            source:   'botocore-endpoints',
+            source:   config.source.mode,
             confidence: config.confidence,
+            regions_count: regionCount,
           });
         }
       }
@@ -1058,8 +1028,9 @@ export function registerLzCatalogueUpdate(program: Command): void {
           file:     config.outputFile,
           name:     config.name,
           last_updated: today,
-          source:   'pim-api-stackit',
+          source:   config.source.mode,
           confidence: config.confidence,
+          regions_count: regionCount,
         });
       }
 
@@ -1097,8 +1068,9 @@ export function registerLzCatalogueUpdate(program: Command): void {
           file:     gcpConfig.outputFile,
           name:     gcpConfig.name,
           last_updated: today,
-          source:   'region-picker-github',
+          source:   gcpConfig.source.mode,
           confidence: gcpConfig.confidence,
+          regions_count: regionCount,
         });
       }
 
@@ -1149,35 +1121,27 @@ export function registerLzCatalogueUpdate(program: Command): void {
           file:     azureConfig.outputFile,
           name:     azureConfig.name,
           last_updated: today,
-          source:   'retail-prices-api',
+          source:   azureConfig.source.mode,
           confidence: azureConfig.confidence,
+          regions_count: regionCount,
         });
       }
 
-      // --- update index.json -----------------------------------------------
-      const indexPath = join(dir, 'index.json');
-      if (existsSync(indexPath)) {
-        const existingIndex = JSON.parse(readFileSync(indexPath, 'utf-8')) as {
-          catalogues: Array<{ provider: string }>;
-          generated_at?: string;
-          seed_generated_at?: string;
-        };
-        // Preserve original seed date on first refresh (#0914).
-        if (!existingIndex.seed_generated_at && existingIndex.generated_at) {
-          existingIndex.seed_generated_at = existingIndex.generated_at;
-        }
-        existingIndex.generated_at = today;
-        for (const entry of updatedEntries) {
-          const idx = existingIndex.catalogues.findIndex((c) => c.provider === entry.provider);
-          if (idx >= 0) existingIndex.catalogues[idx] = entry;
-          else existingIndex.catalogues.push(entry);
-        }
-        if (opts.dryRun) {
-          console.log(`\n[dry-run] would update: ${indexPath}`);
-        } else {
-          writeFileSync(indexPath, JSON.stringify(existingIndex, null, 2) + '\n', 'utf-8');
-          console.log(`\nupdated: ${indexPath}`);
-        }
+      // --- #3288 (Design 110 D-23): VM prices for the service cost model ----
+      const priceProviders: VmPriceProvider[] = opts.skipPrices
+        ? []
+        : (['azure', 'aws'] as const).filter((p) => !providerFilter || providerFilter === p);
+      let pricesResult: Awaited<ReturnType<typeof refreshVmPrices>> | undefined;
+      if (priceProviders.length > 0) {
+        console.log('');
+        pricesResult = await refreshVmPrices({
+          dir,
+          providers: priceProviders,
+          today,
+          dryRun: opts.dryRun ?? false,
+          ...(opts.azurePriceApi ? { azureBaseUrl: opts.azurePriceApi } : {}),
+          ...(opts.awsPriceList ? { awsBaseUrl: opts.awsPriceList } : {}),
+        });
       }
 
       if (!opts.dryRun) console.log('\nDone. Run `swao lz catalogue list` to verify.');
@@ -1197,6 +1161,8 @@ export function registerLzCatalogueUpdate(program: Command): void {
             context: {
               provider: opts.provider,
               providers_updated: updatedEntries.map(e => e.provider),
+              prices_updated: pricesResult?.providers ?? [],
+              prices_failed: pricesResult?.failed ?? [],
               duration_ms: Date.now() - _catalogueUpdateStartedAt,
               dry_run: opts.dryRun ?? false,
               diff: Object.keys(allDiffs).length > 0 ? allDiffs : undefined,

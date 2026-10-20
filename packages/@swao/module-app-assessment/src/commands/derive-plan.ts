@@ -40,7 +40,7 @@ import { resolveCatalogsDir, loadRegimeCatalogue, WspRiskImportOverlaySchema, WS
 // All entries carry a stable id derived from the source signal so the
 // output is reproducible across runs.
 
-interface RawSignal {
+export interface RawSignal {
   id?: string;
   severity?: string;
   outcome?: string;
@@ -51,6 +51,7 @@ interface RawSignal {
   pass?: string;
   recommendation?: string;
   rationale?: string;
+  implies?: string[];
 }
 
 const SECURITY_CATEGORIES = new Set(['security', 'crypto', 'cryptography', 'data', 'data_protection', 'authentication', 'authorisation', 'authorization']);
@@ -540,11 +541,41 @@ export function buildEvidenceCatalogue(
   return { catalogue: out, index };
 }
 
-function buildFindingsAndRisks(signals: RawSignal[]): { findings: unknown[]; risks: unknown[] } {
+const DERIVE_SEVERITY_RANK: Record<string, number> = { critical: 5, high: 4, medium: 3, low: 2, informational: 1, positive: 0 };
+
+/** The `sovereign_service:<id>` key a Pass 07 signal carries in `implies` (#3296), or null. */
+function sovereignServiceKey(s: RawSignal): string | null {
+  return (Array.isArray(s.implies) ? s.implies : []).find((t) => typeof t === 'string' && t.startsWith('sovereign_service:')) ?? null;
+}
+
+/**
+ * #3296: Pass 07 reports an egress destination and a sovereign service
+ * catalogue verdict for the same service as one signal. Runs written before
+ * that change (or a future pass) can still carry two signals for one service;
+ * keep only the most severe one so the plan holds one finding and one risk per
+ * service. Signals without the key are kept unchanged.
+ */
+export function dedupeSovereignServiceSignals<T extends RawSignal>(signals: T[]): T[] {
+  const keep = new Map<string, T>();
+  for (const s of signals) {
+    const key = sovereignServiceKey(s);
+    if (!key) continue;
+    const cur = keep.get(key);
+    const rank = (x: T): number => DERIVE_SEVERITY_RANK[(x.severity ?? '').toLowerCase()] ?? -1;
+    if (!cur || rank(s) > rank(cur)) keep.set(key, s);
+  }
+  return signals.filter((s) => {
+    const key = sovereignServiceKey(s);
+    return !key || keep.get(key) === s;
+  });
+}
+
+function buildFindingsAndRisks(allSignals: RawSignal[]): { findings: unknown[]; risks: unknown[] } {
   const findings: unknown[] = [];
   const risks: unknown[] = [];
   let findingIdx = 0;
   let riskIdx = 0;
+  const signals = dedupeSovereignServiceSignals(allSignals);
 
   for (const s of signals) {
     const sev = (s.severity ?? '').toLowerCase();

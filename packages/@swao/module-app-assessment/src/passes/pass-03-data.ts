@@ -16,11 +16,12 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join, extname, relative } from 'path';
 import { load } from 'js-yaml';
+import { loadPassCatalog } from './pass-catalog-loader.js';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal } from '@swao/core';
-import { llmSkipResult } from './llm-skip.js';
+import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 
 // ---- #1144 Saudi CCC tier helpers ----
 
@@ -232,13 +233,104 @@ function buildDataPrompt(
   return parts.join('\n');
 }
 
+// #3064: Deterministic PII field-name scanner backed by pass-03-pii-patterns.yaml.
+// Runs before the LLM pass. Provides coverage when LLM is not configured and
+// supplements LLM findings with exact-match pattern evidence.
+function runDeterministicPiiScan(
+  sourcePath: string,
+  workspacePath: string,
+): Array<{ id: string; name: string; file: string; line?: number; data_category: string; severity: string }> {
+  const catalogue = loadPassCatalog(workspacePath, 'pass-03-pii-patterns.yaml');
+  if (!catalogue) return [];
+
+  const hits: Array<{ id: string; name: string; file: string; line?: number; data_category: string; severity: string }> = [];
+  const seenIds = new Set<string>();
+
+  const scanExtensions = new Set(['.ts', '.js', '.java', '.py', '.cs', '.go', '.kt', '.rs',
+    '.prisma', '.graphql', '.sql', '.yaml', '.yml', '.json', '.env', '.example']);
+
+  function walkFiles(dir: string, depth = 0): string[] {
+    if (depth > 6) return [];
+    const paths: string[] = [];
+    let entries: string[];
+    try { entries = readdirSync(dir); } catch { return []; }
+    for (const e of entries) {
+      if (e === 'node_modules' || e === 'dist' || e.startsWith('.')) continue;
+      const full = join(dir, e);
+      try {
+        const st = statSync(full);
+        if (st.isDirectory()) paths.push(...walkFiles(full, depth + 1));
+        else if (scanExtensions.has(extname(e).toLowerCase())) paths.push(full);
+      } catch { /* skip */ }
+    }
+    return paths;
+  }
+
+  const allFiles = walkFiles(sourcePath);
+
+  for (const entry of catalogue.entries) {
+    if (seenIds.has(String(entry.id))) continue;
+    const pattern = entry.pattern as string | undefined;
+    if (!pattern) continue;
+    let regex: RegExp;
+    try { regex = new RegExp(pattern, 'i'); } catch { continue; }
+
+    for (const file of allFiles) {
+      try {
+        const content = readFileSync(file, 'utf-8');
+        if (regex.test(content)) {
+          const rel = relative(sourcePath, file).replace(/\\/g, '/');
+          const lineIdx = content.split('\n').findIndex((l) => regex.test(l));
+          hits.push({
+            id: String(entry.id),
+            name: String(entry.name),
+            file: rel,
+            line: lineIdx >= 0 ? lineIdx + 1 : undefined,
+            data_category: String(entry.data_category ?? 'pii'),
+            severity: String(entry.severity ?? 'medium'),
+          });
+          seenIds.add(String(entry.id));
+          break; // one signal per PII pattern id, first file wins
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  return hits;
+}
+
 export async function runDataPass(ctx: PassContext): Promise<PassResult> {
   const { sourcePath, workspacePath, iter, assessedAt, llm } = ctx;
 
+  // #3064: always run deterministic PII scan; provides coverage without LLM
+  const deterministicHits = runDeterministicPiiScan(sourcePath, workspacePath);
+
   if (!llm) {
-    // LLM-optional alignment (#0550): no provider configured -> emit a
-    // graceful skip signal and let the assessment complete, rather than
-    // aborting the whole run.
+    // LLM-optional alignment (#0550): no provider configured.
+    // With deterministic catalogue available, emit DATA signals instead of a bare skip.
+    // IDs must match SIGNAL_ID_REGEX (PREFIX-NN): the LLM pass does not run on this
+    // path, so DATA-01..DATA-99 cannot collide (an earlier DATA-D01 form failed the
+    // pass schema and aborted assess --skip-llm, found at the v1.4.0 smoke).
+    if (deterministicHits.length > 0) {
+      const signals: Signal[] = deterministicHits.slice(0, 99).map((hit, i) => ({
+        id: `DATA-${String(i + 1).padStart(2, '0')}`,
+        source: 'static_analysis' as const,
+        category: 'application' as const,
+        severity: hit.severity === 'critical' ? 'high' : hit.severity === 'high' ? 'high' : 'medium',
+        derivation: `Regulated PII field pattern detected: ${hit.name}. Category: ${hit.data_category}. Deterministic pattern match -- verify via LLM classification for full context.`,
+        evidence: [`${hit.file}${hit.line !== undefined ? `:${hit.line}` : ''}`],
+        confidence: 'medium' as const,
+      }));
+      return {
+        pass: { id: 3, name: 'data_classification', signal_prefix: 'DATA', status: 'complete', iter, assessed_at: assessedAt },
+        signals,
+        assessment: {
+          note: 'Deterministic PII scan only (LLM not configured). Configure an LLM provider for full data classification.',
+          data_classes: deterministicHits.map((h) => h.data_category),
+          deterministic_hits: deterministicHits.length,
+        },
+      };
+    }
     return llmSkipResult({ id: 3, name: 'data_classification', signalPrefix: 'DATA', iter, assessedAt });
   }
 
@@ -269,11 +361,13 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
   }
   if (!parsed) {
     console.warn(`[warn] DATA pass: LLM response truncated or non-JSON -- signals skipped.\n${raw.slice(0, 200)}`);
-    return {
-      pass: { id: 3, name: 'data_classification', signal_prefix: 'DATA', status: 'stub', iter, assessed_at: assessedAt },
-      signals: [],
+    // #3158: follow the llmSkipResult convention (not_applicable + DATA-00)
+    // instead of a 0-signal `stub`, which read as stub data downstream.
+    return llmInvalidResponseResult({
+      id: 3, name: 'data_classification', signalPrefix: 'DATA', iter, assessedAt,
+      detail: 'response truncated or not valid JSON',
       assessment: { note: 'DATA pass skipped: LLM returned a truncated response. Re-run the assessment to retry.' },
-    };
+    });
   }
 
   const signals: Signal[] = parsed.signals.map(normalizeSignal);

@@ -11,6 +11,345 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.1] - 2026-10-20
+
+First public release of the 1.4 line; v1.4.0 was an internal build and was not published.
+Contains everything listed under 1.4.0 below.
+
+### Fixed
+
+- Pass support catalogues are found inside the bundled release binaries; Pass 03,
+  05, 08 and 21 no longer fall back to "catalogue not found" (#3358)
+
+---
+
+## [1.4.0] - 2026-10-19
+
+Minor release: Service Portfolio Assessment, a new assessment type that assesses
+third-party, SaaS, and COTS application portfolios from an Excel inventory with no
+source code required (sprint-150), plus the sprint-151 hardening round:
+licence tiers aligned across the three editions, a Community binary without Consultant
+or Enterprise content, one request layer with retries, timeouts, and a concurrency limit
+for every LLM provider, one run-status lifecycle for every run type, landing-zone targets
+in `.swao.yml`, and validated, workspace-confined MCP tools.
+
+### Added
+
+- Pass support catalogues with a two-tier model: product defaults in
+  `pass-catalogs/` (PII patterns for Pass 03, runtime end-of-life data for
+  Pass 05, crypto algorithms for Pass 08, IAM providers for Pass 21), merged
+  with workspace overrides in `wsp/inputs/pass-catalogs/`; on an id collision
+  the workspace entry wins (#3062-#3066)
+- Pass 21 IAM detection (opt-in): recognises German public eID and identity
+  providers such as BundID and ELSTER from imports, configuration keys and
+  environment variables (#3062)
+- Pass 08 detects weak or deprecated algorithms from the catalogue in Java,
+  Python, .NET, Go and Kotlin sources as well as JavaScript and TypeScript (#3063)
+- Pass 03 deterministic PII pre-pass for German social-law and health-data
+  identifiers when no LLM is configured (`DATA` signals) (#3064)
+- Pass 05 runtime end-of-life detection from build files (Gradle, Maven,
+  pyproject, `.nvmrc`, Dockerfile) (#3065)
+- Community frameworks SGBX_DE (social data protection, SGB X sections 67-85)
+  and BSI_TR_03107 (eID trust levels and qualified signatures) (#3061)
+- Portfolio hub publication: cross-link grid to every app publication (#3059)
+- `service` assessment type registered in the assessment type router, with a
+  Community tier feature gate (`service-assessment`) (#3071, #3074)
+- TUI Select Assessment Type lists Service Portfolio Assessment as entry [2]
+  (#3073); selecting it opens the intake screen (#3075)
+- `swao service init --from intake.xlsx [--mapping column-map.yaml]`: scaffolds one
+  `apps/<id>/.swao.yml` per intake row with `assessment.type: service` (#3075, #3077)
+- Custom intake column mapping with Zod validation (#3076)
+- Combined ID/name cell parsing and operational flags (restricted, decommissioned,
+  unused, inactive) (#3082)
+- PII guardrail: contact, phone, and email columns are stored as presence booleans
+  only; personal-name vendor values are redacted (#3081)
+- SWAO-INFRA-CAT Tier 1 catalogue under `controls/infra-catalogue/` with
+  prefix, vendor, and product-name classification plus workspace Tier 2 overrides
+  and site mapping (#3079)
+- Cluster detection consolidates identical rows into one assessment (#3080)
+- SCAFFOLD signal catalogue written to `wsp/signals/scaffold-signals.json` (#3083)
+- Health check probe 17/17: intake column-mapping validation (#3084)
+- `swao service research [--app <id>] [--refresh] [--dry-run]` (Pass 24 RESEARCH): hydrates
+  per-app research stubs from NVD, endoflife.date, CISA KEV, BSI WID / CERT-Bund, OSV.dev,
+  and VirusTotal (own `VT_API_KEY`), with rate limits, cache periods, and per-topic
+  confidence plus `confidence.json`; only vendor, product, version, and OS data are sent
+  (#3086-#3092)
+- `swao assess` runs service apps (`assessment.type: service`) through the service pass
+  profile: INV, STATE, TF, and EGR are skipped (no source code), DATA, SBOM, CRYPTO,
+  DYNAMIC, and MALWARE run only when their inputs exist, with service-mode DATA and CRYPTO
+  runners for intake data fields, data-flow documents, and config files; runs record
+  `assessment_type: service`, `latest-service.txt`, and `scope-coverage.json` (#3093-#3098)
+- SWAO_APM community framework (approved, closes #2811): 11 domains, 72 controls,
+  `domain_weights` and TIME rules in `framework-meta.yaml`; deterministic per-app health and
+  risk scores, a TIME recommendation (Tolerate / Invest / Migrate / Migrate-Critical /
+  Eliminate), and `wsp/portfolio-summary.json` rebuilt after each service assessment or
+  research run (#3099-#3101, #3103)
+- Health check probe 18/18: SWAO_APM domain_weights integrity (#3102)
+- Pass 25 BINARY: offline static analysis of supplied installers (PE headers,
+  architecture, .NET and Visual C++ runtime vintage, Authenticode signer and timestamp,
+  MSI Property table) with BINARY.* signals (UNSIGNED, EXPIRED_CERT, LEGACY_RUNTIME,
+  LEGACY_ARCH, COMPILATION_DATE_ANOMALY); feeds VirusTotal, service CRYPTO, and SWAO_APM;
+  no new dependencies (#3104-#3107)
+- Lift-and-shift cloud cost estimate per service app (cheapest fitting Azure / AWS
+  general-purpose size from an embedded, dated price table); reported in EUR by default,
+  other currencies via `service_portfolio.cost.currency` and `exchange_rates` in the
+  workspace `.swao.yml`; unit-suffixed memory and disk values in the intake are
+  normalised (#3108-#3110)
+- Portfolio analytics in `wsp/portfolio-summary.json`: integration graph with fan-in and
+  blast-radius tiers (`wsp/inputs/integration-graph.json`), a 5-wave migration plan
+  (`wsp/reports/migration-waves-YYYYMMDD.md` / `.csv`), and vendor consolidation groups
+  with opportunity scores; `swao service research` records a delta report against the
+  previous snapshot (`wsp/reports/portfolio-delta-YYYYMMDD.md`, 4 snapshots kept)
+  (#3111-#3115)
+- `swao service export` (Enterprise, `service-excel` + `bi-export`): 14-sheet portfolio
+  workbook `wsp/reports/swao-portfolio-YYYYMMDD.xlsx` and 9 star-schema tables
+  `wsp/star-schema/portfolio-*.json` with Zod row schemas; the PowerBI templates stay
+  Application Assessment only (#3116-#3119)
+- HTML publication for service apps: section guards per assessment type, service blocks,
+  Integration Hubs, Migration Roadmap, and Vendor Landscape blocks; engagement hub cards
+  show TIME, CVE, and end-of-life status (#3120-#3126)
+- Health check probes 19-25 for service workspaces (service workspace, research cache,
+  vendor catalogue, cluster detection, PII scrub audit, delta snapshots, SWAO_APM
+  controls); 25 probes in total (#3127-#3134)
+- Support bundle for service workspaces: service artefacts plus a second PII redaction
+  pass documented in `redaction-log.txt`; phone-number redaction in core (#3135, #3136)
+- TUI: run the service assessment from the Service Portfolio screen and show the skipped
+  pass count (#3144)
+- Documentation (EN + DE, VitePress): Service Portfolio Assessment (8 pages), the four
+  assessment types, all analysis passes (overview plus one page per pass), the community
+  frameworks (overview plus one page per framework), v1.4.0 release notes; sidebar
+  numbered like the TUI (#3137-#3140, #3147, #3151, #3156)
+- Service intake location `wsp/inputs/service-intake/`: without `--from`, `swao service
+  init` uses the single `.xlsx` there (Excel lock files ignored) and a `*column-map*.yaml`
+  next to it as the column map; no workbook or several workbooks stop the command with an
+  error that names what was found, never a prompt (#3211)
+- `swao service init` prints the recognised intake columns (field and column letter) and
+  warns when the OS, app name, or vendor column is missing (#3168)
+- `swao service rank [--top <n>] [--json]`: service apps in assessment priority order
+  (SWAO_APM risk, then integration fan-in, then ID; decommissioned, unused, and inactive
+  apps left out) for top-N runs and CI loops over `swao assess --app <id> --type service`
+  (#3165)
+- `wsp/portfolio-summary.json` records per app `assessed`, `evidence` (`sufficient` or
+  `insufficient`), and `evidence_missing`, plus `assessed_count` and
+  `insufficient_evidence_count`; engagement hub cards show "Not assessed" and "Evidence:
+  insufficient" badges (#3196, #3197)
+- LLM egress redaction logs a `provider.llm.egress.redacted` event with provider, model,
+  and counts only, never text or values (#3173)
+- `swao service init` normalises German and mixed-language intake terms (criticality, TIME,
+  classification, department and function names) to English values and keeps the
+  client's wording next to them; `service_portfolio.glossary` in the workspace `.swao.yml`
+  overrides the built-in glossary (#3210)
+- MCP tools for Service Portfolio Assessment: eight read tools (`swao_service_portfolio`,
+  app, research, waves, vendors, delta, scaffold, runs) and three write tools (init,
+  research run, and the Enterprise export) (#3213, #3303)
+- LLM-augmented service research in every tier for vendor profile, certifications, data
+  residency, and breach history: answers are validated, model-cited sources are marked
+  unverified, topic confidence is capped at medium, and structured findings raise the
+  RES-10 to RES-14 and `VENDOR.BREACH_HISTORY` signals; `swao service research
+  --skip-llm` turns it off (#3289, #3304, #3308)
+- Combined portfolio view: `wsp/portfolio-summary.json` lists application apps next to
+  service apps with `assessment_type`; application apps are scored from their latest
+  usable run with a TIME label from the 7R recommendation, and waves, integration graph,
+  and vendor consolidation cover both types (#3280)
+- Service cost estimate prices from the Azure Retail Prices API and the AWS Price List
+  API with Linux and Windows prices (`lz-catalogues/prices/vm-prices.json`), refreshed by
+  `swao lz catalogue update` (`--skip-prices` skips it) (#3242, #3288)
+- Landing-zone targets in `.swao.yml`: `assessment.landing_zone.targets` in the workspace
+  or app file (`<provider>:<region>` or `<provider>:<geography>`, one geography model for
+  every catalogue) drives the LZ Catalog run, the inline fit of an Application Assessment,
+  and the TUI; the Setup Wizard has an LZ target step (#3281, #3306)
+- `run-status.json` in every application, service, and LZ catalogue run folder: `started`,
+  then `complete`, `partial` (skipped LZ targets or failed passes), `failed`, or `aborted`
+  (also on Ctrl+C, termination, and unexpected exit), with the targets of the run; readers
+  skip unusable runs (#3245, #3283, #3306)
+- `swao report --run <id>` for application and landing-zone-catalog reports; an unknown,
+  malformed, or wrong-type run id exits 1 without writing a report (#3343, #3346)
+- `providers.llm.max_concurrency` (default 4, 1 to 64) limits LLM requests in flight per
+  endpoint; the app `.swao.yml` wins over the workspace file and the connector. Pass 11
+  sends its batch prompts concurrently within that limit (#3222, #3284)
+- Health check probe 15 validates the bundled and workspace LZ catalogues (metadata,
+  structure, age, geography coverage) and the configured targets (#3282)
+- Tool calling for the Ollama and Bedrock providers in SWAO Chat (#3311)
+- The five reference catalogues under `controls/` (vendor SDK, database compatibility,
+  legacy indicators, licence risk, sovereign service) are read by the passes; a missing
+  or invalid catalogue is recorded as skipped (#3160)
+- COBIT 5 community framework re-authored in original wording and shipped again (#3292)
+- `swao assess` logs every post-pass step with its duration
+  (`assess.post_run.<step>.start` / `.complete`) and rebuilds the portfolio summary after
+  each complete or partial run (#3224, #3309)
+
+### Changed
+
+- TUI main menu and Help screen describe the four active assessment types:
+  Application / Service Portfolio / Landing Zone Catalog / LLM (#3073)
+- Passes run in one canonical order: COMP sees DYNAMIC, SCOPE, MALWARE, and the current
+  LZR result; LZR runs before SYNTH; BLOCKS runs last with this run's SYNTH context. The
+  LZR advisory verdict can now shift the 7R recommendation (#3152)
+- `--skip-llm` guarantees that no LLM call is made; an unusable LLM answer degrades the
+  pass (`invalid_llm_response`, SYNTH-00) instead of aborting the run (#3158)
+- Pass 11 COMP uses the workspace `assessment.regimes_active` list when an app has none;
+  the app list always wins (#3148)
+- `swao framework install` copies into `wsp/inputs/catalogs/community/`, the folder
+  Pass 11 reads (#3149)
+- Publications without a configured `publication.classification_band` show the product
+  name in the classification band instead of an internal company label
+- Service Portfolio TUI: the intake path is pre-filled from `wsp/inputs/service-intake/`,
+  the column-map question says that Enter detects the columns from the header row, and one
+  scope question (top 20 by risk, every app, or scaffold and research only) is followed by
+  init, research, assessment, and the Enterprise export without further prompts, with
+  shared progress bars, elapsed time, ETA, capped live output, and Esc to cancel (finished
+  apps are kept) (#3164, #3165, #3166, #3169)
+- Service apps get one empty `apps/<id>/ingestion/` drop folder instead of hint
+  subfolders. Pass 00 reports new, changed, and unchanged documents and, in every
+  assessment type, references installers anywhere under `ingestion/` instead of copying
+  them; Pass 25 BINARY analyses them in place. Documents enable service DATA; installers
+  and SBOMs enable CRYPTO, SBOM, and MALWARE; existing hint folders keep working (#3212)
+- Research topics with nothing to look up (CVE without vendor, product name, and OSV
+  package; end of life without OS) are recorded as `skipped` with `skipped_reason:
+  no_input` and `missing_inputs` instead of low confidence; the research summary prints
+  the composite confidence and one line per topic (#3168)
+- SWAO_APM: a TIME label without end-of-life and CVE evidence, and not decided by the
+  operational status, carries the reason prefix "insufficient evidence" and is left out of
+  the portfolio risk mean; `bsi_advisories` scores only a completed feed match, and an
+  empty integration list counts only when the intake had an integration column (#3196,
+  #3197)
+- Licence tiers aligned for every entry point (CLI, TUI, MCP): SWAO Chat, the MCP server,
+  and MCP registration (`swao mcp install`, `swao init --mcp`, Setup Wizard step) are
+  Enterprise; `swao generate-tf` is Enterprise; `swao publish --portfolio` is Enterprise
+  (coming soon). A missing licence prints a `[LICENSE]` message and exits non-zero
+  instead of a stack trace or a hang (#3314, #3318, #3321, #3322, #3341)
+- HTML publications are Consultant+ for every assessment type (`swao publish --app`,
+  `--lz`, `--llm`, `--combined`, `--block-profile`, and `swao report --format html`);
+  running assessments of every type stays Community (#3320, #3338)
+- Power BI `.pbit` templates are Consultant+: the Community binary does not package them
+  and Community `swao init` does not write them; `swao export` still writes the star
+  schema in every tier; `swao service export` stays Enterprise; Community `swao lz
+  catalogue update` prints a Consultant licence message (#3323, #3324, #3338)
+- Community binary packages no Consultant or Enterprise content (Power BI templates,
+  premium frameworks, PDF renderer data) and no internal text; the Enterprise service
+  export is not part of the Community and Consultant builds; licence messages and help
+  texts match the runtime gates (#3325, #3339, #3352, #3353)
+- MCP registration copies only SWAO binaries, uses the platform's stable binary name of
+  the running tier, and never overwrites a binary of another tier; probe 3 recognises
+  node-registered entries (#3217, #3286, #3295, #3341)
+- Every LLM provider (Anthropic, OpenAI, Ollama, open-LLM gateway, Bedrock) uses one
+  request layer: 6 attempts with 3 to 48 s back-off on 408, 429, and 5xx, a per-attempt
+  idle timeout (`SWAO_LLM_IDLE_TIMEOUT_MS`, default 120 s), a 600 s cap per attempt, and a
+  `waiting` event every 60 s; SWAO Chat uses at most 3 attempts; usage and cost are
+  returned per call (#3221, #3225, #3284, #3301)
+- Replaced event codes (see `docs/runbooks/log-events.md`): `provider.bedrock.retry` is now
+  `provider.llm.bedrock.retry`; `provider.llm.anthropic.tool-call-attempt` is now
+  `provider.llm.anthropic.attempt` with `kind: tools`; the app-scope
+  `provider.llm.gateway.ok`, `provider.llm.gateway.http-error`, and
+  `provider.llm.gateway.empty-response` are now `provider.llm.open-llm-provider.ok`,
+  `.http-error`, and `.empty-response`. Every provider writes
+  `provider.llm.<provider>.attempt|waiting|timeout|http-error|retry|ok|error|connectivity-failure`
+  to the portfolio log and, in an app context, to the app log (#3284)
+- An LZ catalogue run continues past a failing target (for example an unknown region),
+  logs it, and closes as `partial`; skipped targets are shown in the LZ report, the HTML
+  publication, and the engagement hub. `assessment.lz_cat_targets` is deprecated and
+  still read (#3223, #3281)
+- The community framework list, the SWAO-INFRA-CAT built-in list, and the LZ catalogue
+  list are built from each artefact's own metadata; `_registry.yaml` and
+  `lz-catalogues/index.json` are retired (#3297, #3298, #3299)
+- `swao init` writes the workspace `.swao.yml` when it is missing and never overwrites it;
+  `swao init --reconfigure` without `--name` reconfigures the workspace only and creates
+  no app (#3344, #3347)
+- Health check: a missing credential vault is a WARN; the SWAO MCP probe reports a slow
+  binary separately from an unreachable one (#3333, #3344)
+- MCP: all 55 tools validate their input with one schema each and advertise the
+  `inputSchema` generated from it; `serverInfo` reports the build version (#3307, #3332)
+- Service portfolio headline figures (risk score, TIME distribution) cover assessed apps
+  only; `swao service rank` and the wave views mark not-assessed apps; the DORA ICT
+  register lists apps with a third-party vendor only (#3241, #3290, #3309)
+- Sourced reference data: sovereign-service verdicts with vendor sources and review dates,
+  LZ residency pins from provider documentation, LZ catalogue certification vocabulary
+  (#3287, #3296, #3302)
+- Support bundle records challenge iteration statistics for application and LZ
+  challenges (#3339)
+- `pnpm test` runs the workspace packages one at a time and process-spawning tests in a
+  sequential project, with a 20 s default test timeout (#3317)
+
+### Fixed
+
+- Licence check caches the machine hardware id per process, so test runs no
+  longer spawn the hardware lookup once per test (#3070)
+- EC_CSF and SECNUMCLOUD catalogues load again (evidence `signal:` key accepted); every
+  bundled catalogue is loaded in a test (#3150)
+- Pass 23 LZR derives the provider from the selected landing zone, reports warning-level
+  results, and parses JSON plans; synthetic fixtures replace the deleted examples (#3142,
+  #3153)
+- Pass 00 references installers instead of copying them into the intake folder (#3145)
+- Pass 10 DYNAMIC signal IDs are unique; Pass 05 OSV severity, Pass 06 nested Terraform
+  roots, Pass 08 AES-GCM signal and no-primitive fallback, Pass 09 current-run LZR
+  verdict (#3152, #3158)
+- Pass 24 RESEARCH and Pass 25 BINARY signal and parsing gaps (#3154)
+- Landing-zone fit uses workspace catalogue copies; C5 certification naming aligned; `lz
+  catalogue list` shows workspace-only providers (#3155)
+- `swao service init` keeps the full identity text as the app ID when the cell has no
+  `(`, so distinct rows no longer collide on a duplicate ID (#3162)
+- Test infrastructure: hidden core tests run again, a synthetic demo run replaces the
+  deleted example run, provider tests no longer reach the network (#3143, #3146, #3159)
+- Intake header detection without a column map: exact aliases first, then prefixes at a
+  word boundary (long OS or programme headers are recognised, "Migrationsprojekt" is not
+  "migration"); phone, e-mail, contact, and "Hersteller Support" headers are always
+  presence-only PII columns and never the vendor name; "Active Memory" maps to
+  `active_memory_mb`; without a separate name column the identity column is read as the
+  combined `ID (Name) notes` form (#3167, #3168)
+- Identity cells: the app ID is the code before `(`, cut at the first operational flag
+  phrase and at a spaced dash; the name is the bracket text; note text never reaches the
+  ID or the name; single "nicht starten" or "nicht löschen" phrases and flags inside the
+  brackets are recognised; umlauts are transliterated and dash runs collapsed.
+  `swao service init` lists existing service apps that the intake no longer produces and
+  leaves them untouched (#3167)
+- The setup wizard, `swao init --mcp`, `swao mcp install`, and health-check probe 3 update
+  every Claude Desktop config that already has a SWAO entry, not only one (#3163)
+- Health check: one failure definition drives the NDJSON event, the exit codes, and the
+  setup wizard summary (#3170); the service probes log `probe.start` before each
+  `probe.complete` and time each probe on its own (#3171); the IaC toolchain probe prints
+  the Terraform version correctly (#3172)
+- `swao assess` without a provider key warns and skips the LLM passes instead of hanging
+  (#3340)
+- The LZ Sovereignty Challenge reads single-target fit results; a run without fit
+  results is reported as not applicable without an LLM call (#3342)
+- Reports, publications, MCP `swao_read_challenge`, the support bundle, and the Publish
+  screen embed only the challenge of the reported run (#3330, #3336)
+- The Enterprise and Consultant text reports no longer claim Community Edition when no
+  challenge was run; the note names the required tier (#3345, #3346)
+- `swao assess --portfolio` and `swao report --portfolio` run every app in the binary,
+  and the binary no longer spawns itself with `node -e` (#3319, #3335)
+- `swao export --no-bom` and `--no-templates` take effect (#3324, #3337)
+- SWAO Chat shows MCP errors instead of empty results; a failing tool call is returned
+  to the model instead of ending the turn (#3312, #3315)
+- `health-check --json` runs each probe once (#3215)
+- Reports, publications, and the engagement hub normalise dashes at every text sink and
+  show a localised `n/a` placeholder for missing data (#3240, #3244, #3291, #3305)
+- Service runs apply Kubernetes and service-mesh blind spots only with container
+  evidence (#3246)
+
+### Security
+
+- Pre-LLM redaction runs in every LLM driver, including Ollama and the gateway path,
+  through one `scrubForEgress` helper; the audit gate checks all five network drivers
+  (#3157)
+- JSON embedded in publication `<script>` tags escapes `<`
+- MCP file tools read only inside the workspace root; a caller-supplied
+  `workspace_path` must be a SWAO workspace root; `app_id` is validated on every tool;
+  one credential exclusion list applies to source paths; service init inputs are
+  checked (#3313, #3316)
+- MCP `swao_portal_query` runs in-process, accepts loopback hosts only, and follows no
+  redirects (#3335, #3339)
+- The support bundle replaces the home directory, user name, and host name in every
+  file it writes (#3331)
+- Console log lines strip line breaks and control characters (log injection) (#3340)
+
+### Known issues
+
+- An unexpected internal error in a short-lived Enterprise command writes a crash log
+  but can leave the process running; stop it with Ctrl+C (#3354)
+
+---
+
 ## [1.3.1] - 2026-10-09
 
 Patch release: challenge-pass YAML parse fix, Community Docker binary-wrap, GPG release
@@ -50,7 +389,7 @@ NODE_ENV production flag (sprint-147).
   challenge-agent registry, 7-day error-context retention; `swao support-bundle`
   command (#3014, #3015, #3016, #3019)
 - kilo.ai MCP integration Phase 1: `.kilorc` descriptor, install guide, MCP
-  streamable-HTTP endpoint at `/mcp`; BA workspace scaffold for kilo.ai Phase 2
+  streamable-HTTP endpoint at `/mcp`; client workspace scaffold for kilo.ai Phase 2
   assessment (#2969, #3020, #3021)
 - `swao export --format kilo-context`: emit WSP as kilo.ai context YAML for
   in-IDE sovereignty queries (#3021)
@@ -75,7 +414,7 @@ NODE_ENV production flag (sprint-147).
 
 ## [1.2.4] - 2026-10-05
 
-Patch release: security patches (Dependabot, CodeQL), PREME PoC connector fixes
+Patch release: security patches (Dependabot, CodeQL), client PoC connector fixes
 (sprint-144).
 
 ### Fixed
@@ -104,8 +443,8 @@ Patch release: security patches (Dependabot, CodeQL), PREME PoC connector fixes
 
 ### Changed
 
-- `SWAO-Session-Setup.ps1` v1.11: BOM-free connector YAML write; PREME-neutral naming (#2935)
-- `SWAO-Assess.ps1` v1.7: PREME-neutral naming throughout (#2935)
+- `SWAO-Session-Setup.ps1` v1.11: BOM-free connector YAML write; client-neutral naming (#2935)
+- `SWAO-Assess.ps1` v1.7: client-neutral naming throughout (#2935)
 
 ---
 
@@ -157,7 +496,7 @@ Patch release: SWAO Chat UX, MCP stability, smoke and test infrastructure, obser
 
 ## [1.2.2] - 2026-10-03
 
-Patch release: 31 field bug fixes from the BA PREME PoC run + smoke script improvements
+Patch release: 31 field bug fixes from the client PoC run + smoke script improvements
 (sprint-142).
 
 ### Fixed
@@ -324,7 +663,7 @@ Minor release: SWAO Chat, Enterprise-gated multi-turn portfolio chat.
 
 - Tools menu key 6 reassigned from Help to Chat; Help moved to key 7.
 - Design 011 status updated to Delivered; version references corrected to v1.1.0.
-- Design 100 status updated to Delivered (BA PoC seed shipped; native implementation
+- Design 100 status updated to Delivered (client PoC seed shipped; native implementation
   delivered in this release).
 
 ### Security
@@ -355,7 +694,7 @@ Minor release: SWAO Chat, Enterprise-gated multi-turn portfolio chat.
 
 ## [1.0.2] - 2026-09-17
 
-Patch release: SC-001 BA PREME PoC client-site bug fixes.
+Patch release: SC-001 client PoC on-site bug fixes.
 
 ### Fixed
 
@@ -371,7 +710,7 @@ Patch release: SC-001 BA PREME PoC client-site bug fixes.
 - Connector schema rejected `meta.source: workspace` preventing workspace-seeded
   connector definitions from loading (#2747).
 - Setup wizard hid the Open LLM Provider option when gateway connectors were present,
-  blocking PREME GenAI Hub configuration via wizard (#2742).
+  blocking client GenAI gateway configuration via wizard (#2742).
 - Assessment limit defaults in all licence tiers removed; all tiers are now unlimited
   per the v1.0 tier model (#2741).
 - YAML indentation mismatch in primary block rewrite corrupted `.swao.yml` after wizard

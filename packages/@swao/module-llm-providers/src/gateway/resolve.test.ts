@@ -14,6 +14,25 @@
 // ================================================================
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// #3159: the drivers send through undici's own `fetch` (#2944), not
+// globalThis.fetch, so stubbing global fetch alone let these tests reach the
+// real network. Route undici `fetch` to whatever global fetch the test has
+// stubbed, and refuse outright when no stub is installed so no test can touch
+// the network.
+const { originalGlobalFetch } = vi.hoisted(() => ({ originalGlobalFetch: globalThis.fetch }));
+vi.mock('undici', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('undici')>();
+  return {
+    ...actual,
+    fetch: (...args: Parameters<typeof globalThis.fetch>) => {
+      if (globalThis.fetch === originalGlobalFetch) {
+        throw new Error('network access blocked in tests: stub global fetch first (#3159)');
+      }
+      return globalThis.fetch(...args);
+    },
+  };
+});
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';

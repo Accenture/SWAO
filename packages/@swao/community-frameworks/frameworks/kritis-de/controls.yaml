@@ -524,7 +524,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.29
       - ISO_27001_A.5.30
-      - BSI_C5_BCM-01
+      - BSI_C5_AVL-01
     references:
       - "BSIG §8a -- state of the art"
       - "KRITIS-DachG §13 -- Resilience planning"
@@ -561,7 +561,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.8.13
-      - BSI_C5_BCM-02
+      - BSI_C5_AVL-04
     references:
       - "BSI Orientierungshilfe §8a BSIG -- Backup"
 

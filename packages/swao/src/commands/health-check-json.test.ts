@@ -122,10 +122,13 @@ describe('buildHealthCheckLogContext (#1094)', () => {
       wspMetadataProbe: { status: 'absent', engagement_name: '', warnings: [], message: 'no .swao.yml' },
       lzCatalogueCoverageProbe: { status: 'ok', message: 'No LZ catalogues directory found -- bundled catalogues may not be installed', detail: '', gaps_count: 0 },
       credentialVaultProbe: { status: 'ok', vaultExists: true, decryptable: true, keyCount: 2, categories: ['llm'], message: 'Vault OK: 2 key(s)' },
+      intakeMappingProbe: { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] },
+      apmWeightsProbe: { status: 'skip', message: 'not a service workspace', source: null, errors: [], warnings: [] },
+      serviceProbes: [],
     };
     const ctx = buildHealthCheckLogContext(mockCtx, []);
     expect(ctx['fail_count']).toBe(0);
-    expect(ctx['probe_count']).toBe(16);
+    expect(ctx['probe_count']).toBe(25);  // #3127-#3133: probes [19]-[25]
     const probes = ctx['probes'] as Record<string, Record<string, unknown>>;
     expect(probes['license']['status']).toBe('ok');
     expect(probes['playwright']['status']).toBe('ok');
@@ -163,6 +166,9 @@ describe('buildHealthCheckLogContext (#1094)', () => {
       wspMetadataProbe: { status: 'absent', engagement_name: '', warnings: [], message: 'no .swao.yml' },
       lzCatalogueCoverageProbe: { status: 'ok', message: 'No LZ catalogues directory found -- bundled catalogues may not be installed', detail: '', gaps_count: 0 },
       credentialVaultProbe: { status: 'ok', vaultExists: true, decryptable: true, keyCount: 0, categories: [], message: 'Vault OK: 0 key(s)' },
+      intakeMappingProbe: { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] },
+      apmWeightsProbe: { status: 'skip', message: 'not a service workspace', source: null, errors: [], warnings: [] },
+      serviceProbes: [],
     };
     const failedProbes = ['license', 'playwright', 'community-frameworks'];
     const ctx = buildHealthCheckLogContext(mockCtx, failedProbes);
@@ -188,15 +194,19 @@ describe('swao doctor CLI smoke (#0024)', () => {
       encoding: 'utf-8',
       cwd: join(__dirname, '..', '..'),
       env: { ...process.env, SWAO_LICENSE_TIER_OVERRIDE: 'community' },
-      timeout: 110_000,
+      // The full run launches Chromium for the Playwright probe: about 37 s on
+      // an idle machine (Playwright alone about 20 s), over 110 s under the
+      // release dry run's load (#3355). Generous limit; a kill is reported below.
+      timeout: 300_000,
     });
+    expect(result.signal, `health-check was killed (${String(result.signal)}) before it finished`).toBeNull();
     const stdout = result.stdout ?? '';
     const jsonStart = stdout.indexOf('{');
     expect(jsonStart).toBeGreaterThanOrEqual(0);
     const json = JSON.parse(stdout.slice(jsonStart));
     expect(json).toHaveProperty('license');
     expect(json).toHaveProperty('bi_export');
-  }, 120_000);
+  }, 310_000);
 
   // #1095: assert the NDJSON log file is written with start + complete events
   // including per-probe detail. The log is a side-effect of the spawn above;
@@ -220,7 +230,7 @@ describe('swao doctor CLI smoke (#0024)', () => {
     const ctx = completeEvent!['context'] as Record<string, unknown>;
     expect(typeof ctx['fail_count']).toBe('number');
     expect(typeof ctx['probe_count']).toBe('number');
-    expect(ctx['probe_count']).toBe(16);
+    expect(ctx['probe_count']).toBe(25);  // #3127-#3133: probes [19]-[25]
 
     // #1094: verify per-probe detail is present (the key addition)
     const probes = ctx['probes'] as Record<string, unknown>;

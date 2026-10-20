@@ -110,7 +110,7 @@ key: swao-${{ env.SWAO_VERSION }}
 ```
 :::
 
-Die Grösse der Binary beträgt je nach Build-Target ungefähr 50--80 MB. Das Caching vermeidet einen vollständigen Download bei jedem Lauf.
+Die Größe der Binary beträgt je nach Build-Target ungefähr 50-80 MB. Das Caching vermeidet einen vollständigen Download bei jedem Lauf.
 
 ---
 

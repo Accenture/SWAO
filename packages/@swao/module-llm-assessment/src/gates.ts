@@ -20,10 +20,8 @@
 // parses and reports a finished pass suite. The latest completed run also
 // supplies the per-pass token history the cost preview needs (092 s5.4).
 //
-// The tier gate (Consultant/Enterprise) is enforced in llm-type.ts via
-// LicenseGuard.requireTier -- the same mechanism as the HTML editor gate
-// (#1229) -- and additionally by the module's manifest tier, which keeps
-// this module out of the Community binary entirely.
+// There is no tier gate: the LLM Assessment is available on all tiers
+// (FEATURE_GATES['llm-assessment'] = 'community'; #3161, 2026-10-17).
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

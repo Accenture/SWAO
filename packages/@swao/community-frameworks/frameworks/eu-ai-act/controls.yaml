@@ -57,9 +57,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
       - context_input: ai_system_description
-    maps_to:
-      - GDPR_Art_5
-      - AI_10_PILLARS_P08
+    maps_to: []
     references:
       - "EU AI Act Article 5"
 
@@ -119,8 +117,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
       - context_input: ai_system_description
-    maps_to:
-      - AI_10_PILLARS_P02
+    maps_to: []
     references:
       - "EU AI Act Articles 51-52"
 
@@ -165,7 +162,7 @@ controls:
       - context_input: risk_register
       - context_input: ops_runbooks
     maps_to:
-      - NIS2_RSK_01
+      - NIS2_RSK_1
       - ISO_27001_A.8.2
     references:
       - "EU AI Act Article 9"
@@ -185,9 +182,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
       - context_input: data_inventory
-    maps_to:
-      - GDPR_Art_5
-      - AI_10_PILLARS_P05
+    maps_to: []
     references:
       - "EU AI Act Article 10 paragraph 2"
 
@@ -204,8 +199,7 @@ controls:
     assessment_type_scope: [app, aud]
     evidence_basis:
       - context_input: solution_arch
-    maps_to:
-      - AI_10_PILLARS_P05
+    maps_to: []
     references:
       - "EU AI Act Article 10 paragraph 3"
 
@@ -260,7 +254,7 @@ controls:
     evidence_basis:
       - signal_prefix: STATE_LOG_ENABLED
     maps_to:
-      - NIS2_INC_01
+      - NIS2_INC_1
       - ISO_27001_A.8.15
     references:
       - "EU AI Act Article 12"
@@ -315,8 +309,7 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: solution_arch
-    maps_to:
-      - AI_10_PILLARS_P07
+    maps_to: []
     references:
       - "EU AI Act Article 14 paragraph 4"
 
@@ -333,8 +326,7 @@ controls:
     assessment_type_scope: [aud]
     evidence_basis:
       - context_input: compliance_documentation
-    maps_to:
-      - AI_10_PILLARS_P07
+    maps_to: []
     references:
       - "EU AI Act Article 14 paragraph 5"
 
@@ -368,9 +360,7 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: solution_arch
-    maps_to:
-      - EU_CRA_SBD_05
-      - AI_10_PILLARS_P09
+    maps_to: []
     references:
       - "EU AI Act Article 15 paragraph 3"
 
@@ -390,8 +380,8 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - EU_CRA_SBD_01
-      - NIS2_NSC_01
+      - EU_CRA_SBD_1
+      - NIS2_NSC_1
     references:
       - "EU AI Act Article 15 paragraph 5"
 
@@ -445,7 +435,7 @@ controls:
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
-      - NIS2_INC_04
+      - NIS2_INC_4
     references:
       - "EU AI Act Article 73"
 
@@ -501,8 +491,7 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: solution_arch
-    maps_to:
-      - AI_10_PILLARS_P06
+    maps_to: []
     references:
       - "EU AI Act Article 50 paragraph 1"
 
@@ -596,8 +585,7 @@ controls:
     assessment_type_scope: [aud]
     evidence_basis:
       - context_input: compliance_documentation
-    maps_to:
-      - AI_10_PILLARS_P02
+    maps_to: []
     references:
       - "EU AI Act Article 53 paragraph 1(a)"
 
@@ -669,8 +657,7 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: solution_arch
-    maps_to:
-      - AI_10_PILLARS_P09
+    maps_to: []
     references:
       - "EU AI Act Article 55 paragraph 1(b)"
 
@@ -688,8 +675,8 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - EU_CRA_SBD_01
-      - NIS2_NSC_01
+      - EU_CRA_SBD_1
+      - NIS2_NSC_1
     references:
       - "EU AI Act Article 55 paragraph 1(c)"
 
@@ -707,7 +694,7 @@ controls:
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
-      - NIS2_INC_04
+      - NIS2_INC_4
     references:
       - "EU AI Act Article 55 paragraph 1(d)"
 

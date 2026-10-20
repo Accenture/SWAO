@@ -51,16 +51,19 @@ Use the arrow keys or type the number to navigate.
 
 If this is your first time, start here. The wizard asks:
 
-1. **Workspace name** - a short identifier for the engagement folder.
-2. **Application name** - the workload you are assessing.
-3. **Community frameworks** - GDPR is pre-selected. Eleven community frameworks are
-   available (GDPR, AI 10 Pillars, BSI C5, BSI IT-Grundschutz 2023, HIPAA / NIST SP 800-66r2,
-   LLM Selection, NCA CCC 2024 CSP, NCA CCC 2024 CST, NCA ECC 2024, PCI-DSS v4, SAMA CSF v1).
-   Add more at any time via `swao framework install`.
-4. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
+1. **Workspace** - engagement name, client code, owner, and the workspace directory.
+2. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
    stub for offline use.
+3. **Credentials** - the API key for the chosen provider, stored in the SWAO credential store.
+4. **Health check** - a first run of the pre-flight checks.
+5. **Claude Desktop** and 6. **Playwright** - optional integrations (MCP server, browser for dynamic analysis).
+7. **Ready** - a summary of the next steps.
 
-The wizard creates a ready-to-use workspace folder on disk.
+The wizard creates a ready-to-use workspace folder on disk. New workspaces contain the four
+demo frameworks (`GDPR_DEMO`, `AI_10_PILLARS_DEMO`, `NIST_SP_800_66R2_DEMO`,
+`BSI_GRUNDSCHUTZ_2023_DEMO`). Copy more into the workspace at any time with `swao framework install <ID>`;
+`swao framework list` shows the IDs. You choose the frameworks for each app when you run
+the assessment.
 
 ### Health Check
 
@@ -86,7 +89,8 @@ Select **3. Run Assessment** from the main menu. SWAO asks which assessment type
 | Option | What it does |
 |---|---|
 | Application Assessment | Analyses your application source code |
-| Landing Zone Assessment | Checks your cloud infrastructure configuration |
+| Service Portfolio Assessment | Assesses third-party, COTS, and SaaS applications from a spreadsheet intake, without source code |
+| Landing Zone Catalog Assessment | Checks a cloud provider's service catalogue and region against your sovereignty requirements |
 | LLM Assessment | Benchmarks LLM providers against sovereignty criteria |
 
 Select an assessment type, confirm, and SWAO runs automatically. A live progress bar
@@ -96,29 +100,33 @@ shows each pass as it completes.
 
 ## The assessment pipeline
 
-An **Application Assessment** runs up to 14 analysis passes. Each pass is independent
-and auditable.
+An **Application Assessment** runs 13 analysis passes by default. Each pass is independent
+and auditable; the numbering follows the [passes overview](/passes/).
 
 | Pass | What it does (business view) |
 |---|---|
-| 1. Inventory | Maps the languages, frameworks, and dependencies in your codebase |
-| 2. State analysis | Identifies stateful components: databases, session storage, caches |
-| 3. Data classification | Finds personal data fields, PII columns, residency markers |
-| 4. Context ingestion | Reads your CMDB, workshop transcripts, and architecture docs |
-| 5. SBOM | Produces a Software Bill of Materials with licence classification |
-| 6. Twelve-factor | Checks cloud-readiness against the 12-factor application standard |
-| 7. Egress analysis | Maps outbound calls and third-party data transfers |
-| 8. Cryptography | Reviews hashing, TLS configuration, and secrets handling |
-| 9. Migration synthesis | Synthesises a 7R verdict (Retire, Retain, Rehost, Replatform, Refactor, Re-architect, Repurchase) |
-| 10. Compliance evaluation | Maps findings to the active compliance frameworks |
-| 11. Landing zone readiness | Checks fit against your cloud landing zone requirements |
-| 12. Security posture | Identifies common vulnerability patterns in the source code |
-| 13. Dynamic analysis | Browser crawl for UI surface mapping |
-| 14. Evidence gallery | Collects screenshots and artefacts for the audit record |
+| 01 Inventory | Maps the languages, frameworks, and dependencies in your codebase |
+| 02 State analysis | Identifies stateful components: databases, session storage, caches |
+| 03 Data classification | Finds personal data fields, PII columns, residency markers |
+| 04 Context ingestion | Reads your CMDB, workshop transcripts, and architecture docs |
+| 05 SBOM | Checks dependencies for known vulnerabilities, maintenance, and end-of-life runtimes |
+| 06 Twelve-factor | Checks cloud-readiness against the 12-factor application standard |
+| 07 Egress analysis | Maps outbound calls and third-party data transfers |
+| 08 Cryptography | Reviews hashing, token signing, and encryption at rest |
+| 09 Migration synthesis | Synthesises a 7R verdict (Retire, Retain, Rehost, Replatform, Refactor, Re-architect, Repurchase) |
+| 10 Dynamic analysis | Browser crawl of the running application (needs a crawl target) |
+| 11 Compliance evaluation | Rates the controls of the active compliance frameworks |
+| 12 Operational blocks | Rates the maturity of eight blocks, from observability to disaster recovery |
+| 13 Scope | Checks which known blind spots the evidence covers |
 
-The first three passes (inventory, state, data classification) are deterministic --
-no LLM required. Passes 4, 9, and 10 call the LLM to produce human-readable rationale
-on every signal and compliance verdict.
+Pass 00 (INGEST) prepares the supplied documents before the first pass. Pass 14 (malware
+and secret scanning) and Pass 23 (landing zone readiness, `--lzr`) run only on request. The run
+order differs slightly from the numbering: compliance, synthesis, and the block ratings run last
+so that they see the results of all other passes.
+
+Passes 01 and 02 are deterministic, no LLM required. Passes 03, 04, 09, 11, and 12 call the
+LLM to classify data and to produce human-readable rationale on signals, compliance
+verdicts, and block ratings.
 
 ---
 
@@ -174,7 +182,9 @@ Example questions you can ask Claude after connecting:
 > See also: [Sample Gallery - MCP connector setup](/samples/#sample-15) and [MCP challenge in Claude](/samples/#sample-16)
 
 SWAO starts the MCP server automatically when Claude connects. All assessment data
-stays on your machine - MCP only exposes a query interface, not the raw files.
+stays on your machine. MCP exposes query tools, not the raw files; a few tools also
+run SWAO actions in the workspace (`swao_assess` and the service tools `swao_service_init`,
+`swao_service_research_run` and `swao_service_export`).
 
 Available tools via MCP:
 
@@ -183,9 +193,31 @@ Available tools via MCP:
 | `swao_assess` | Trigger a new assessment from within Claude |
 | `swao_report` | Get a structured summary of the latest assessment |
 | `swao_signal_detail` | Look up a specific signal by ID |
-| `swao_compliance_status` | Query compliance control outcomes by framework |
+| `swao_signals` | List the signals of the latest assessment |
 | `swao_lz_fit` | Get the landing zone fit/gap summary |
-| `swao_run_history` | List recent assessment runs with cost and duration |
+| `swao_frameworks_list` | List the community frameworks available in the workspace |
+
+For a workspace scaffolded with `swao service init` (Service Portfolio
+Assessment), 11 further tools expose the service results. The first eight only
+read; the last three run the matching `swao service` command and write to the
+workspace.
+
+| Tool | What it does |
+|---|---|
+| `swao_service_portfolio` | One row per application or service app from `wsp/portfolio-summary.json` (combined view: `assessment_type`, TIME, risk, evidence, wave, end of life, CVE counts), with filters and sorting |
+| `swao_service_app` | Everything about one service app: intake fields, classification, cost estimate, integrations, scores, runs, research and binary summary |
+| `swao_service_research` | Research stubs of one app (CVE, end of life, VirusTotal and the LLM topics) |
+| `swao_service_waves` | Migration waves and integration hubs of both app types, each app with `assessment_type` and the not-assessed mark |
+| `swao_service_vendors` | Vendor consolidation groups with opportunity score and tier |
+| `swao_service_delta` | Latest delta report against the previous snapshot |
+| `swao_service_scaffold` | Scaffold summary: rows read, apps, clusters, unclassified apps, recognised columns |
+| `swao_service_runs` | Service runs per app with their status and the latest usable run |
+| `swao_service_init` | Runs `swao service init` (writes to the workspace) |
+| `swao_service_research_run` | Runs `swao service research` (writes to the workspace) |
+| `swao_service_export` | Enterprise: runs `swao service export` (portfolio workbook and star schema) |
+
+Intake contact, phone and e-mail are reported as presence flags only. Full
+reference: [MCP Integration](/runbooks/mcp-integration), section 4.1.
 
 ---
 

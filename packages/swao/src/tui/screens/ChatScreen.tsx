@@ -38,7 +38,7 @@ import { Box, Text, useInput, useStdout } from 'ink';
 import { isAllowed } from '@swao/tui-kit';
 import type { LicenseStateView } from '@swao/tui-kit';
 import { Header } from '../components/Header.js';
-import { LicenseGuard } from '../../license/license-guard.js';
+import { LicenseGuard, FEATURE_GATES } from '../../license/license-guard.js';
 import { useChatSession } from '../chat/useChatSession.js';
 import { SWAO_LANDING_URL } from '../../branding.js';
 import type { ChatTurn } from '@swao/core';
@@ -99,8 +99,8 @@ export function ChatScreen({ onBack, workspace, appId, model }: ChatScreenProps)
     catch { return { tier: 'community', assessmentCount: 0, firstRun: '' }; }
   }, []);
 
-  // Enterprise gate
-  if (!isAllowed(licenseState, 'enterprise')) {
+  // Enterprise gate (FEATURE_GATES['chat'], licence tier matrix F-112)
+  if (!isAllowed(licenseState, FEATURE_GATES['chat'])) {
     return <EnterpriseGateView onBack={onBack} />;
   }
 

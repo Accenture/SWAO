@@ -38,7 +38,7 @@ describe('runIngestPrePass -- unmanaged-file warnings (#2949)', () => {
   it('does not warn about wsp/inputs/llm-gateway/ -- it is a reserved config dir (#2949)', async () => {
     mkdirSync(join(dir, 'wsp', 'inputs', 'llm-gateway'), { recursive: true });
     writeFileSync(
-      join(dir, 'wsp', 'inputs', 'llm-gateway', 'preme-preprod.yaml'),
+      join(dir, 'wsp', 'inputs', 'llm-gateway', 'corp-genai-preprod.yaml'),
       'schema_version: "1.0"\n',
       'utf-8',
     );

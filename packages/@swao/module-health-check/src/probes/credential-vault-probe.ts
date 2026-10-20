@@ -54,14 +54,19 @@ export function buildCredentialVaultProbe(configDir?: string): CredentialVaultPr
   const vaultFile = join(dir, CREDENTIALS_FILE);
   const vaultExists = existsSync(vaultFile);
 
+  // #3344: no vault means no credentials stored yet, which is the normal state
+  // of a fresh workspace (assessments with --skip-llm need none). WARN, not
+  // FAIL, consistent with an existing vault without an LLM key (also WARN).
+  // A configured LLM without its key is reported by the LLM gateway probe.
+  // A vault that exists but cannot be decrypted stays FAIL.
   if (!vaultExists) {
     return {
-      status: 'fail',
+      status: 'warn',
       vaultExists: false,
       decryptable: false,
       keyCount: 0,
       categories: [],
-      message: 'Credential vault not found. Run `swao credential set` or the Setup Wizard to store credentials.',
+      message: 'Credential vault not found (no credentials stored yet). Needed for LLM, VCS or crawler credentials: run `swao credential set` or the Setup Wizard.',
     };
   }
 

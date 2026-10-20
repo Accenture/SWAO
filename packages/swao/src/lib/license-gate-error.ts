@@ -24,6 +24,27 @@ import { logPortfolio } from '@swao/core';
 const CONTACT_URL = 'https://github.com/Accenture/SWAO/discussions';
 
 /**
+ * #3341: the tier-gate message as text (no exit), for callers that must show
+ * it without terminating the process (the Setup Wizard MCP step).
+ * printLicenseGateError prints exactly this text.
+ */
+export function formatLicenseGateError(
+  feature: string,
+  required: LicenseTier,
+  current: LicenseTier,
+): string {
+  const article = required === 'enterprise' ? 'an' : 'a';
+  const label = required.charAt(0).toUpperCase() + required.slice(1);
+  return (
+    `[LICENSE] ${feature} requires ${article} ${label} licence.\n` +
+    `Your current tier: ${current}\n` +
+    `\n` +
+    `To upgrade: swao license request --tier ${required}\n` +
+    `Contact: ${CONTACT_URL}`
+  );
+}
+
+/**
  * Print a tier-gate error to stderr and exit 1.
  *
  * Output format:
@@ -40,13 +61,7 @@ export function printLicenseGateError(
 ): never {
   const article = required === 'enterprise' ? 'an' : 'a';
   const label = required.charAt(0).toUpperCase() + required.slice(1);
-  console.error(
-    `[LICENSE] ${feature} requires ${article} ${label} licence.\n` +
-    `Your current tier: ${current}\n` +
-    `\n` +
-    `To upgrade: swao license request --tier ${required}\n` +
-    `Contact: ${CONTACT_URL}`,
-  );
+  console.error(formatLicenseGateError(feature, required, current));
   try { logPortfolio('error', 'licence.gate.error', `${feature} requires ${article} ${label} licence`, { context: { feature, required, current, code: 1 } }); } catch { /* best-effort */ }
   process.exit(1);
 }

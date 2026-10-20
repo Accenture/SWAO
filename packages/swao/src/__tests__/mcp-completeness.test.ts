@@ -88,6 +88,18 @@ const EXPECTED_TOOLS = new Set([
   // sprint-136 -- workspace file access tools for MCP context.
   'swao_list_directory',
   'swao_read_file',
+  // #3213 (sprint-151) -- Service Portfolio Assessment tools.
+  'swao_service_portfolio',
+  'swao_service_app',
+  'swao_service_research',
+  'swao_service_waves',
+  'swao_service_vendors',
+  'swao_service_delta',
+  'swao_service_scaffold',
+  'swao_service_runs',
+  'swao_service_init',
+  'swao_service_research_run',
+  'swao_service_export',
 ]);
 
 describe('MCP completeness gate (#0261)', () => {
@@ -113,11 +125,14 @@ describe('MCP swao_signals (#0254 regression)', () => {
 
   beforeAll(() => {
     tmp = mkdtempSync(join(tmpdir(), 'swao-mcp-completeness-'));
+    writeFileSync(join(tmp, '.swao.yml'), 'version: 1\n', 'utf-8'); // #3316 workspace marker
     appDir = join(tmp, 'apps', 'audited');
     const runDir = join(appDir, 'wsp', 'runs', '2026-05-14T09-00-00');
     mkdirSync(join(runDir, 'passes'), { recursive: true });
 
     writeFileSync(join(appDir, 'wsp', 'latest.txt'), 'runs/2026-05-14T09-00-00', 'utf-8');
+    // #3283: a run without run-status.json is usable only when run-manifest.json exists.
+    writeFileSync(join(runDir, 'run-manifest.json'), '{"run_id":"r1","pass_stats":[]}', 'utf-8');
     writeFileSync(
       join(runDir, 'passes', '09-synth.yaml'),
       `pass:

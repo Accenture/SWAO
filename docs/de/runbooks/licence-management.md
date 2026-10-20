@@ -1,6 +1,6 @@
 # Lizenzverwaltung
 
-SWAO wird in drei Stufen ausgeliefert -- Community, Consultant und Enterprise -- die jeweils zusätzliche Funktionen freischalten. Dieses Runbook beschreibt die Lizenzanforderung, Aktivierung, den Offline-Betrieb, die Statusabfrage sowie den Umfang der einzelnen Stufen.
+SWAO wird in drei Stufen ausgeliefert (Community, Consultant und Enterprise), die jeweils zusätzliche Funktionen freischalten. Dieses Runbook beschreibt die Lizenzanforderung, Aktivierung, den Offline-Betrieb, die Statusabfrage sowie den Umfang der einzelnen Stufen.
 
 ---
 
@@ -8,21 +8,32 @@ SWAO wird in drei Stufen ausgeliefert -- Community, Consultant und Enterprise --
 
 | Funktion | Community | Consultant | Enterprise |
 |---|---|---|---|
-| Kernassessment (Static-, Compliance-, Context-Pass) | Ja | Ja | Ja |
-| LLM-Pass (dynamische Analyse) | Ja | Ja | Ja |
-| PDF-Berichtgenerierung | Nein | Ja | Ja |
-| Berichtsgalerie + Veröffentlichung | Nein | Ja | Ja |
-| Power BI-Exportpaket | Nein | Ja | Ja |
-| Benutzerdefinierte Compliance-Frameworks | Nein | Ja | Ja |
-| Portfolio-Assessments mit mehreren Apps | Nein | Ja | Ja |
-| Enterprise-SSO + Auditprotokoll | Nein | Nein | Ja |
-| Priority-Support-SLA | Nein | Nein | Ja |
+| Anwendungs-, Landing-Zone-, LLM- und Service-Portfolio-Bewertung (alle Passes, alle LLM-Adapter) | Ja | Ja | Ja |
+| Service-Recherche inkl. LLM-Recherche (`swao service research`) | Ja | Ja | Ja |
+| Community- und eigene Compliance-Frameworks (YAML) | Ja | Ja | Ja |
+| Text-, YAML- und JSON-Berichte (`swao report`) | Ja | Ja | Ja |
+| Sternschema-BI-Export: CSV, NDJSON, XLSX (`swao export`) | Ja | Ja | Ja |
+| Auditprotokoll (`swao log`) | Ja | Ja | Ja |
+| HTML-Veröffentlichung (`swao publish --app`, `swao report --format html`) | Nein | Ja | Ja |
+| PDF-Bericht (`swao report --format pdf`) | Nein | Ja | Ja |
+| Power-BI-Dashboard-Vorlagen (.pbit, von `swao export` und `swao init --powerbi` abgelegt) | Nein | Ja | Ja |
+| LZ-Katalog-Aktualisierung (`swao lz catalogue update`) | Nein | Ja | Ja |
+| E-Mail-Support-SLA | Nein | Ja | Ja |
+| Portfolio-Bewertung, -Bericht und -BI-Export (`--portfolio`) | Nein | Nein | Ja |
+| Service-Portfolio-Export (`swao service export`) | Nein | Nein | Ja |
+| Adversarielle Challenge-Review (`swao challenge`) | Nein | Nein | Ja |
+| HTML-Editor (interaktiver Evidenz-Editor, `swao publish --edit`) | Nein | Nein | Ja |
+| MCP-Server (`swao mcp`) | Nein | Nein | Ja |
+| SWAO Chat (`swao chat`) | Nein | Nein | Ja |
+| Terraform-Modul-Stubs (`swao generate-tf`) und meshcloud-UniPipe-Integration (`swao unipipe`) | Nein | Nein | Roadmap |
+
+Ein Befehl, der eine höhere Stufe erfordert, gibt einen `[LICENSE]`-Block mit der erforderlichen Lizenz aus und endet mit einem Exit-Code ungleich null. `swao export` schreibt in der Community-Edition das Sternschema und gibt anstelle der Power-BI-Vorlagen einen `[LICENSE]`-Hinweis aus.
 
 Die Community-Edition läuft ohne Lizenzschlüssel. Alle Funktionen sind lokal verfügbar, ohne Registrierung.
 
 ---
 
-## 1. Aktüllen Lizenzstatus prüfen
+## 1. Aktuellen Lizenzstatus prüfen
 
 ```bash
 swao license status
@@ -43,7 +54,7 @@ Der Befehl `swao health-check` gibt den Lizenzstatus ebenfalls als einen seiner 
 
 ## 2. Upgrade von Community auf Consultant
 
-### Schritt 1 -- Lizenztoken anfordern
+### Schritt 1: Lizenztoken anfordern
 
 ```bash
 swao license request
@@ -51,17 +62,17 @@ swao license request
 
 Dieser Befehl gibt einen Token auf stdout aus, der den Rechner-Fingerabdruck verschlüsselt. Den vollständigen Token kopieren.
 
-### Schritt 2 -- Token an das SWAO-Team senden
+### Schritt 2: Token an das SWAO-Team senden
 
 Den Token an die auf der SWAO-Releases-Seite oder in der Beschaffungsvereinbarung angegebene Adresse senden. Das Team stellt einen an den Token gebundenen Aktivierungsschlüssel aus.
 
-### Schritt 3 -- Schlüssel aktivieren
+### Schritt 3: Schlüssel aktivieren
 
 ```bash
 swao license activate <activation-key>
 ```
 
-Bei Erfolg zeigt `swao license status` die neü Stufe und das Ablaufdatum an.
+Bei Erfolg zeigt `swao license status` die neue Stufe und das Ablaufdatum an.
 
 ---
 
@@ -81,13 +92,13 @@ swao license import --key <activation-key> --output /tmp/swao-licence-token.json
 swao license import /tmp/swao-licence-token.json
 ```
 
-Das Lizenztoken ist ein signiertes JSON-Payload. Es enthält keine personenbezogenen Daten ausser dem Rechner-Fingerabdruck, der beim `request`-Aufruf eingebettet wird.
+Das Lizenztoken ist ein signiertes JSON-Payload. Es enthält keine personenbezogenen Daten außer dem Rechner-Fingerabdruck, der beim `request`-Aufruf eingebettet wird.
 
 ---
 
-## 4. Erneürung
+## 4. Erneuerung
 
-Lizenzen haben ein Ablaufdatum. Wenn eine Lizenz innerhalb von 30 Tagen abläuft, gibt `swao health-check` eine gelbe Warnung beim Lizenz-Prüfpunkt aus. Nach dem Ablauf wird der Prüfpunkt rot, und Consultant-/Enterprise-Funktionen werden bis zur Erneürung gesperrt.
+Lizenzen haben ein Ablaufdatum. Wenn eine Lizenz innerhalb von 30 Tagen abläuft, gibt `swao health-check` eine gelbe Warnung beim Lizenz-Prüfpunkt aus. Nach dem Ablauf wird der Prüfpunkt rot, und Consultant-/Enterprise-Funktionen werden bis zur Erneuerung gesperrt.
 
 ```bash
 # Check days remaining
@@ -99,7 +110,7 @@ swao license request
 swao license activate <new-key>
 ```
 
-Die Community-Edition läuft unbegrenzt und erfordert keine Erneürung.
+Die Community-Edition läuft unbegrenzt und erfordert keine Erneuerung.
 
 ---
 
@@ -126,4 +137,4 @@ swao license activate <key>
 
 ## 6. Enterprise-Lizenzen
 
-Enterprise-Lizenzen werden organisationsweit über einen Lizenzserver bereitgestellt. Für den Enterprise-Onboarding-Leitfaden das SWAO-Team kontaktieren. Die oben beschriebenen `swao license`-Unterbefehle gelten gleichermassen; der Unterschied besteht darin, dass der Aktivierungsschlüssel pro Organisation statt pro Nutzer ausgestellt wird.
+Enterprise-Lizenzen werden organisationsweit über einen Lizenzserver bereitgestellt. Für den Enterprise-Onboarding-Leitfaden das SWAO-Team kontaktieren. Die oben beschriebenen `swao license`-Unterbefehle gelten gleichermaßen; der Unterschied besteht darin, dass der Aktivierungsschlüssel pro Organisation statt pro Nutzer ausgestellt wird.

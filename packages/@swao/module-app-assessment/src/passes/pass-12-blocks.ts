@@ -37,7 +37,8 @@ const BlockEvaluationSchema = z.object({
   overall_outcome: z.enum(['SATISFIED', 'PARTIAL', 'GAP', 'UNKNOWN', 'N_A']),
   overall_rationale: z.string(),
   score: z.number().min(0).max(1),
-  threshold: z.number().min(0).max(1),
+  // #3152: optional; the stored threshold always comes from BLOCK_SPECS.
+  threshold: z.number().min(0).max(1).optional(),
   status: z.enum(['low', 'medium', 'high', 'critical']),
   key_signals: z.array(z.string()).optional().default([]),
 });
@@ -293,7 +294,9 @@ export async function runBlocksPass(ctx: PassContext): Promise<PassResult> {
       overall_outcome: evaluation.overall_outcome,
       overall_rationale: evaluation.overall_rationale,
       score: evaluation.score,
-      threshold: evaluation.threshold,
+      // #3152: the threshold is SWAO's block specification, not whatever the
+      // LLM echoed back; the prompt shows it for scoring guidance only.
+      threshold: spec.threshold,
       status: evaluation.status,
       key_signals: cleanKeySignals,
       sovereign_migration_risk: evaluation.status,
@@ -311,7 +314,9 @@ export async function runBlocksPass(ctx: PassContext): Promise<PassResult> {
     pass: {
       id: 12,
       name: 'block_assessments',
-      signal_prefix: 'COMP',
+      // #3152: own namespace. The pass used to declare Pass 11's COMP prefix
+      // while emitting no signals; the result lives in assessment.blocks.
+      signal_prefix: 'BLOCKS',
       status: 'complete',
       iter,
       assessed_at: assessedAt,

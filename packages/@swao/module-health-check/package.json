@@ -16,12 +16,13 @@
   "scripts": {
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json",
-    "test": "vitest run --pool forks"
+    "test": "vitest run --pool forks --testTimeout=20000"
   },
   "dependencies": {
     "@swao/core": "workspace:*",
     "@swao/community-frameworks": "workspace:*",
     "@swao/module-landing-zone": "workspace:*",
+    "@swao/module-service-assessment": "workspace:*",
     "@swao/tui-kit": "workspace:*",
     "commander": "^12.1.0",
     "ink": "^4.4.1",

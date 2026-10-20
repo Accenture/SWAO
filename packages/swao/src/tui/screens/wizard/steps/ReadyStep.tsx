@@ -61,6 +61,9 @@ export function ReadyStep({ state, onBack }: { state: SetupState; onBack: () => 
           }</Text></Text>
         )}
         <Text>  Credentials:  <Text color="cyanBright">{CRED_PATH}</Text></Text>
+        {state.lzTargets && state.lzTargets.length > 0 && (
+          <Text>  LZ targets:   <Text color="cyanBright">{state.lzTargets.join(', ')}</Text></Text>
+        )}
         {state.visionMaxScreens !== undefined && (
           <Text>  Vision:       <Text color="cyanBright">{state.visionMaxScreens} screen{state.visionMaxScreens === 1 ? '' : 's'} per assessment (vision_max_screens)</Text></Text>
         )}

@@ -88,7 +88,7 @@ significant overlap.
 
 To extend or override controls for a specific workspace, copy the folder
 `swao/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023/` into
-`<workspace>/catalogs/community/bsi-grundschutz-2023/` and edit the local copy.
+`<workspace>/wsp/inputs/catalogs/community/bsi-grundschutz-2023/` and edit the local copy.
 SWAO loads the workspace copy in preference to the bundled version. See
 `CONTRIBUTING.md` for the authoring guide.
 

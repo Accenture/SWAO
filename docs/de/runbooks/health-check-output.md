@@ -37,19 +37,19 @@ Summary: 5 green, 1 yellow, 0 red
 | LLM connectivity | Provider erreichbar und antwortet innerhalb des Timeouts | Antwortlatenz >5 s | Keine Antwort, Authentifizierungsfehler oder Key nicht gesetzt |
 | Playwright | Chromium gefunden und startet korrekt | Browser nicht gefunden (Dynamic Pass deaktiviert) | Browser gefunden, aber Start schlägt fehl |
 | Licence | Gültige Lizenz, >30 Tage bis zum Ablauf | Gültige Lizenz, <=30 Tage bis zum Ablauf | Lizenz abgelaufen oder Schlüsseldatei fehlt/beschädigt |
-| Schema version | Workspace-Schema stimmt mit Binary-Erwartung überein | Geringfügige Schema-Version-Diskrepanz (additive Felder) | Grosse Schema-Diskrepanz (Breaking Change) |
+| Schema version | Workspace-Schema stimmt mit Binary-Erwartung überein | Geringfügige Schema-Version-Diskrepanz (additive Felder) | Große Schema-Diskrepanz (Breaking Change) |
 | Workspace layout | `.swao.yml` gefunden und parseabr; mindestens eine App definiert | `source_path`-Verzeichnisse von Apps fehlen | `.swao.yml` fehlt oder schlägt Schema-Validierung fehl |
-| Output directory | Konfigurierter Ausgabepfad vorhanden und beschreibbar | -- | Ausgabepfad nicht vorhanden oder schreibgeschützt |
+| Output directory | Konfigurierter Ausgabepfad vorhanden und beschreibbar | k. A. | Ausgabepfad nicht vorhanden oder schreibgeschützt |
 
 ---
 
 ## LLM-Konnektivitäts-Prüfpunkt
 
-**Grün** -- der konfigurierte Provider gibt eine erfolgreiche Antwort auf einen einfachen Test-Prompt zurück.
+**Grün**: der konfigurierte Provider gibt eine erfolgreiche Antwort auf einen einfachen Test-Prompt zurück.
 
-**Gelb** -- die Anfrage war erfolgreich, daürte aber länger als fünf Sekunden. Das Assessment läuft, kann aber bei einzelnen Passes eine Zeitüberschreitung erleiden, wenn der Provider ausgelastet ist.
+**Gelb**: die Anfrage war erfolgreich, dauerte aber länger als fünf Sekunden. Das Assessment läuft, kann aber bei einzelnen Passes eine Zeitüberschreitung erleiden, wenn der Provider ausgelastet ist.
 
-**Rot** -- die Anfrage ist fehlgeschlagen. Häufige Ursachen:
+**Rot**: die Anfrage ist fehlgeschlagen. Häufige Ursachen:
 
 - `ANTHROPIC_API_KEY` ist nicht gesetzt oder falsch.
 - Die Variable `SWAO_LLM_PROVIDER` verweist auf einen nicht laufenden Provider (z. B. Ollama gestoppt).
@@ -71,11 +71,11 @@ curl -s https://api.anthropic.com/v1/models \
 
 ## Playwright-Prüfpunkt
 
-**Grün** -- Chromium ist installiert und startet fehlerfrei.
+**Grün**: Chromium ist installiert und startet fehlerfrei.
 
-**Gelb** -- Chromium wurde nicht gefunden. Der `dynamic`-Pass wird automatisch deaktiviert; alle anderen Passes laufen normal. Dies ist für Server-Umgebungen und CI-Pipelines akzeptabel, die kein browser-gestütztes Probing benötigen.
+**Gelb**: Chromium wurde nicht gefunden. Der `dynamic`-Pass wird automatisch deaktiviert; alle anderen Passes laufen normal. Dies ist für Server-Umgebungen und CI-Pipelines akzeptabel, die kein browser-gestütztes Probing benötigen.
 
-**Rot** -- Chromium wurde gefunden, schlägt aber beim Starten fehl (z. B. fehlende Shared Libraries unter Linux).
+**Rot**: Chromium wurde gefunden, schlägt aber beim Starten fehl (z. B. fehlende Shared Libraries unter Linux).
 
 Behebung bei Gelb:
 
@@ -100,11 +100,11 @@ sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
 
 ## Lizenz-Prüfpunkt
 
-**Grün** -- eine gültige Lizenz ist vorhanden und läuft in mehr als 30 Tagen ab.
+**Grün**: eine gültige Lizenz ist vorhanden und läuft in mehr als 30 Tagen ab.
 
-**Gelb** -- die Lizenz läuft innerhalb von 30 Tagen ab. Das Assessment läuft normal; vor dem Ablauf erneürn, um Unterbrechungen zu vermeiden.
+**Gelb**: die Lizenz läuft innerhalb von 30 Tagen ab. Das Assessment läuft normal; vor dem Ablauf erneuern, um Unterbrechungen zu vermeiden.
 
-**Rot** -- die Lizenz ist abgelaufen oder die Lizenzdatei fehlt. Consultant-/Enterprise-Funktionen sind gesperrt. Community-Funktionen bleiben verfügbar.
+**Rot**: die Lizenz ist abgelaufen oder die Lizenzdatei fehlt. Consultant-/Enterprise-Funktionen sind gesperrt. Community-Funktionen bleiben verfügbar.
 
 Behebung:
 
@@ -122,11 +122,11 @@ swao license activate <new-key>
 
 ## Schema-Version-Prüfpunkt
 
-**Grün** -- das Feld `schema_version` in `.swao.yml` stimmt mit der Version überein, die die installierte Binary erwartet.
+**Grün**: das Feld `schema_version` in `.swao.yml` stimmt mit der Version überein, die die installierte Binary erwartet.
 
-**Gelb** -- eine geringfügige Versions-Diskrepanz (z. B. Workspace ist `1.2`, Binary erwartet `1.3`). Das Assessment läuft, neü Felder können jedoch auf null/null defaulten.
+**Gelb**: eine geringfügige Versions-Diskrepanz (z. B. Workspace ist `1.2`, Binary erwartet `1.3`). Das Assessment läuft, neue Felder können jedoch auf null/null defaulten.
 
-**Rot** -- eine grosse Versions-Diskrepanz. Die Binary kann die Workspace-Konfiguration nicht sicher parsen. Entweder die Binary aktualisieren oder `swao migrate-config` ausführen, um das Workspace-Schema zu aktualisieren.
+**Rot**: eine große Versions-Diskrepanz. Die Binary kann die Workspace-Konfiguration nicht sicher parsen. Entweder die Binary aktualisieren oder `swao migrate-config` ausführen, um das Workspace-Schema zu aktualisieren.
 
 ```bash
 # Migrate workspace config to current schema
@@ -140,11 +140,11 @@ swao doctor
 
 ## Workspace-Layout-Prüfpunkt
 
-**Grün** -- `.swao.yml` ist vorhanden, parst fehlerfrei und definiert mindestens eine App.
+**Grün**: `.swao.yml` ist vorhanden, parst fehlerfrei und definiert mindestens eine App.
 
-**Gelb** -- ein oder mehrere in `.swao.yml` referenzierte `source_path`-Verzeichnisse existieren nicht auf dem Datenträger. Static- und SAST-Passes werden für diese Apps übersprungen.
+**Gelb**: ein oder mehrere in `.swao.yml` referenzierte `source_path`-Verzeichnisse existieren nicht auf dem Datenträger. Static- und SAST-Passes werden für diese Apps übersprungen.
 
-**Rot** -- `.swao.yml` fehlt, ist nicht parsebar (YAML-Syntaxfehler) oder schlägt die Schema-Validierung fehl.
+**Rot**: `.swao.yml` fehlt, ist nicht parsebar (YAML-Syntaxfehler) oder schlägt die Schema-Validierung fehl.
 
 ```bash
 # Validate YAML syntax
@@ -162,7 +162,7 @@ cat .swao.yml | python3 -c "import sys,yaml; yaml.safe_load(sys.stdin)"
 |---|---|---|
 | `LLM connectivity: red` | LLM | `ANTHROPIC_API_KEY` setzen; Netzwerk prüfen |
 | `Playwright: yellow` | Playwright | `npx playwright install chromium` ausführen |
-| `Licence: red` | Lizenz | Per `swao license activate` erneürn |
+| `Licence: red` | Lizenz | Per `swao license activate` erneuern |
 | `Schema version: red` | Schema | `swao migrate-config` ausführen |
 | `Workspace layout: red` | Workspace | `.swao.yml`-Syntax korrigieren oder Datei erstellen |
 | `Output directory: red` | Ausgabe | Ausgabeverzeichnis erstellen oder Berechtigungen korrigieren |

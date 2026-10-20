@@ -36,7 +36,7 @@ function run(args: string): string {
 
 describe('CLI polish -- version banner (#0127)', () => {
   let versionOut = '';
-  beforeAll(() => { versionOut = run('--version'); }, 45_000);
+  beforeAll(() => { versionOut = run('--version'); }, 60_000); // D-32 (#3294): process spawn, load-sensitive
 
   it('--version output starts with "SWAO"', () => {
     expect(versionOut.trim()).toMatch(/^SWAO/);
@@ -57,7 +57,7 @@ describe('CLI polish -- version banner (#0127)', () => {
 
 describe('CLI polish -- help banner (#0127)', () => {
   let helpOut = '';
-  beforeAll(() => { helpOut = run('--help'); }, 45_000);
+  beforeAll(() => { helpOut = run('--help'); }, 60_000); // D-32 (#3294): process spawn, load-sensitive
 
   it('--help prints a one-line SWAO banner before usage text', () => {
     expect(helpOut).toContain('S W A O');

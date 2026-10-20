@@ -4,7 +4,7 @@
 # Schema: landing-zone-checks-catalogue-v1
 #
 # Used by: Pass 23 (LZR Terraform/local ingestion)
-# Design: swao-premium/docs/design/015-landing-zone-readiness-assessment.md
+# Design: landing zone readiness assessment design document (in the private premium tree)
 #
 # check.category values:
 #   service     -- managed service presence and provisioning state

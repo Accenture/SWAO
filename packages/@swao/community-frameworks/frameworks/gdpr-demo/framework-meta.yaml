@@ -4,7 +4,7 @@
 
 framework:
   id: GDPR_DEMO
-  name: "GDPR Demo (12 controls) -- Live-Presentation Subset"
+  name: "GDPR Demo (11 controls) -- Live-Presentation Subset"
   version: "Regulation (EU) 2016/679 -- demo subset 2026-07-02"
   authority: "European Parliament and Council of the European Union"
   contributor:
@@ -23,7 +23,7 @@ framework:
   assessment_type_scope: [app]
   description: >
     Demo-sized subset of the GDPR community framework for live-presentation
-    use with the sovereign-health demo application. Contains 12 controls
+    use with the sovereign-health demo application. Contains 11 controls
     selected for maximum cross-regime coverage with AI_10_PILLARS_DEMO,
     NIST_HIPAA_DEMO, and BSI_GRUNDSCHUTZ_2023_DEMO. See Design 066 for
     selection criteria and demo workflow.

@@ -16,7 +16,7 @@
 // Integration tests for the `swao framework` command surface (#0324 sprint-036).
 //
 // Tests the Community Frameworks command surface end-to-end against
-// synthesised fixture workspaces. Verifies the registry-read path, the
+// synthesised fixture workspaces. Verifies the meta-discovery path (#3297), the
 // install-copies-files path, the info-print path, and the uninstall-
 // removes-files path. Captures stdout via console.log spy.
 
@@ -24,7 +24,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cmdList, cmdInstall, cmdInfo, cmdUninstall } from './framework.js';
+import { cmdList, cmdInstall, cmdInfo, cmdUninstall, communityDir, copyFrameworkIntoWorkspace, listBundledFrameworks } from './framework.js';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import { loadRegimeCatalogue } from '@swao/core';
 
@@ -64,13 +64,16 @@ describe('swao framework command surface (#0324)', () => {
     process.exitCode = 0;  // reset between tests
   });
 
-  it('cmdList prints bundled frameworks from _registry.yaml when invoked', () => {
+  it('cmdList prints bundled frameworks discovered from framework-meta.yaml (#3297)', () => {
     cmdList();
     const output = logSpy.mock.calls.map((args) => String(args[0])).join('\n');
     // Sprint-037 #0340 + contributor sweep: all bundled frameworks attribute
     // packaging to the SWAO Development Team; upstream authors stay in `authority:`.
     expect(output).toContain('AI_10_PILLARS');
     expect(output).toMatch(/contributor:\s+"?SWAO Development Team/);
+    // #3297: COBIT 5 has no registry entry to depend on any more.
+    expect(output).toMatch(/^ {2}COBIT_5$/m);
+    expect(output).toContain('folder:         cobit-5');
   });
 
   it('cmdInfo prints framework metadata for a known framework id', () => {
@@ -133,14 +136,11 @@ describe('swao framework command surface (#0324)', () => {
     expect(meta).toMatch(/contributor:/);
   });
 
-  it('_registry.yaml has the framework entry matching the framework-meta.yaml id', () => {
-    const REGISTRY = join(communityFrameworksDir, '_registry.yaml');
-    const registry = readFileSync(REGISTRY, 'utf-8');
-    expect(registry).toContain('AI_10_PILLARS');
-    expect(registry).toContain('ai-10-pillars');  // folder
-    // Sprint-037 contributor sweep: the SWAO Development Team is the
-    // packager for every bundled framework; upstream author stays in `authority:`.
-    expect(registry).toMatch(/contributor:\s+"?(?:SWAO Development Team|Accenture SWAO team)/);
+  it('the bundled list carries the AI_10_PILLARS meta id, folder and contributor (#3297)', () => {
+    const f = listBundledFrameworks(communityFrameworksDir).find((x) => x.id === 'AI_10_PILLARS');
+    expect(f?.folder).toBe('ai-10-pillars');
+    const c = f?.meta.contributor;
+    expect(typeof c === 'string' ? c : c?.name).toMatch(/SWAO Development Team/);
   });
 });
 
@@ -183,10 +183,9 @@ describe('LLM_SELECTION community framework fixture (#0641 #0695)', () => {
     expect(dsr01Block).toContain('severity_default: critical');
   });
 
-  it('_registry.yaml includes LLM_SELECTION entry', () => {
-    const registry = readFileSync(join(communityFrameworksDir, '_registry.yaml'), 'utf-8');
-    expect(registry).toContain('LLM_SELECTION');
-    expect(registry).toContain('llm-selection');
+  it('discovery lists LLM_SELECTION from its framework-meta.yaml (#3297)', () => {
+    const f = listBundledFrameworks(communityFrameworksDir).find((x) => x.id === 'LLM_SELECTION');
+    expect(f?.folder).toBe('llm-selection');
   });
 
   it('framework-meta.yaml declares an Accenture contributor block', () => {
@@ -194,5 +193,83 @@ describe('LLM_SELECTION community framework fixture (#0641 #0695)', () => {
     expect(meta).toMatch(/contributor:/);
     expect(meta).toMatch(/SWAO Development Team/);
     expect(meta).toMatch(/github\.com\/Accenture\/SWAO/);
+  });
+});
+
+describe('framework install target (#3149)', () => {
+  it('installs into the folder that discovery and Pass 11 read', () => {
+    expect(communityDir(join('ws'))).toBe(join('ws', 'wsp', 'inputs', 'catalogs', 'community'));
+  });
+});
+
+// #3297: list + copy helper driven by framework-meta.yaml, not _registry.yaml.
+describe('framework list and copy helper from framework-meta.yaml (#3297)', () => {
+  let root: string;
+  let ws: string;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  function shipped(folder: string, meta: string): void {
+    mkdirSync(join(root, folder, 'evidence'), { recursive: true });
+    writeFileSync(join(root, folder, 'framework-meta.yaml'), meta, 'utf-8');
+    writeFileSync(join(root, folder, 'controls.yaml'), 'regime_meta:\n  id: X\n', 'utf-8');
+    writeFileSync(join(root, folder, 'evidence', 'q.md'), '# q\n', 'utf-8');
+  }
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'swao-fw-shipped-'));
+    ws = mkdtempSync(join(tmpdir(), 'swao-fw-ws-'));
+    shipped('alpha', 'framework:\n  id: ALPHA_FW\n  name: "Alpha framework"\n  version: "1"\n  contributor: "Team A"\n');
+    shipped('broken', 'framework:\n  id: BROKEN_FW\n  scoring_mode: weighted\n');
+    shipped('hidden', 'framework:\n  id: HIDDEN_FW\n  listed: false\n');
+    mkdirSync(join(root, 'no-meta'), { recursive: true });
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+    rmSync(root, { recursive: true, force: true });
+    rmSync(ws, { recursive: true, force: true });
+    process.exitCode = 0;
+  });
+
+  it('cmdList shows valid metas only and warns about the invalid one', () => {
+    cmdList(root);
+    const out = logSpy.mock.calls.map((a) => String(a[0])).join('\n');
+    expect(out).toMatch(/^ {2}ALPHA_FW$/m);
+    expect(out).toContain('contributor:    Team A');
+    expect(out).not.toContain('BROKEN_FW');
+    expect(out).not.toContain('HIDDEN_FW');
+    const err = errorSpy.mock.calls.map((a) => String(a[0])).join('\n');
+    expect(err).toMatch(/skipped broken: framework-meta.yaml failed validation/);
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
+  it('copyFrameworkIntoWorkspace copies the whole folder by id or folder name', () => {
+    const r = copyFrameworkIntoWorkspace('alpha_fw', ws, root);
+    expect(r.ok).toBe(true);
+    const target = join(communityDir(ws), 'alpha');
+    expect(r.ok && r.target).toBe(target);
+    expect(readFileSync(join(target, 'framework-meta.yaml'), 'utf-8')).toContain('ALPHA_FW');
+    expect(existsSync(join(target, 'controls.yaml'))).toBe(true);
+    expect(existsSync(join(target, 'evidence', 'q.md'))).toBe(true);
+    // A second copy never overwrites.
+    const again = copyFrameworkIntoWorkspace('alpha', ws, root);
+    expect(again).toMatchObject({ ok: false, reason: 'exists' });
+  });
+
+  it('copyFrameworkIntoWorkspace refuses invalid, unlisted and unknown folders', () => {
+    expect(copyFrameworkIntoWorkspace('BROKEN_FW', ws, root)).toEqual({ ok: false, reason: 'unknown' });
+    expect(copyFrameworkIntoWorkspace('HIDDEN_FW', ws, root)).toEqual({ ok: false, reason: 'unknown' });
+    expect(copyFrameworkIntoWorkspace('no-meta', ws, root)).toEqual({ ok: false, reason: 'unknown' });
+    expect(existsSync(communityDir(ws))).toBe(false);
+  });
+
+  it('copies the shipped COBIT_5 folder (no registry entry needed)', () => {
+    const r = copyFrameworkIntoWorkspace('COBIT_5', ws, communityFrameworksDir);
+    expect(r.ok).toBe(true);
+    expect(existsSync(join(communityDir(ws), 'cobit-5', 'controls.yaml'))).toBe(true);
   });
 });

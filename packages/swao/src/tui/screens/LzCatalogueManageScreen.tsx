@@ -22,7 +22,7 @@ import { spawn } from 'node:child_process';
 import { GuidanceBox, LiveOutput, SelectInput } from '@swao/tui-kit';
 import { Header } from '../components/Header.js';
 import { findWorkspace } from '@swao/core';
-import { resolveLzCataloguesDir, loadLzCatalogueIndex } from '@swao/module-landing-zone';
+import { listLzCatalogues, isLzCatalogueEntryError } from '@swao/module-landing-zone';
 
 type Action = 'list' | 'copy' | 'new';
 type Phase = 'select-action' | 'input-provider' | 'running' | 'done';
@@ -51,21 +51,19 @@ const ACTIONS: ActionOption[] = [
   },
 ];
 
-// Provider list is built dynamically from the bundled lz-catalogues/index.json.
-// Adding a catalogue to index.json is sufficient -- no code change required here.
+// #3298 (Design 110 E-24): the provider list is built from the catalogue files'
+// own meta blocks (bundled plus workspace copies, the same discovery as
+// `swao lz catalogue list`). Adding a catalogue file is sufficient -- no code
+// change required here.
 function buildManageProviderOptions(): Array<{ label: string; value: string }> {
   const opts: Array<{ label: string; value: string }> = [];
-  const dir = resolveLzCataloguesDir();
-  if (dir) {
-    try {
-      const { catalogues } = loadLzCatalogueIndex(dir);
-      for (const c of catalogues) {
-        const pad = c.provider.padEnd(12);
-        const desc = c.short_description ?? c.name;
-        opts.push({ label: `${pad}-- ${desc}`, value: c.provider });
-      }
-    } catch { /* bundled index unreadable; fall back to empty list */ }
-  }
+  try {
+    for (const c of listLzCatalogues(findWorkspace(process.cwd()) ?? undefined)) {
+      const pad = c.provider.padEnd(12);
+      const desc = isLzCatalogueEntryError(c) ? '(unreadable catalogue)' : c.short_description;
+      opts.push({ label: `${pad}-- ${desc}`, value: c.provider });
+    }
+  } catch { /* catalogues unreadable; fall back to the custom entry only */ }
   opts.push({ label: 'other       -- type a custom provider id', value: '__custom__' });
   return opts;
 }

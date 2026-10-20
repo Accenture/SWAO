@@ -78,7 +78,9 @@ vi.mock('node:fs', async (importOriginal) => {
 });
 
 vi.mock('@swao/module-landing-zone', () => ({
-  resolveLzCataloguesDir: vi.fn(() => null),
+  // #3298: the screen reads the shipped catalogues only, listed from their meta blocks.
+  resolveBundledLzCataloguesDir: vi.fn(() => null),
+  discoverLzCatalogues: vi.fn(() => []),
 }));
 
 // ---------------------------------------------------------------------------
@@ -184,7 +186,7 @@ describe('LzCatalogueUpdateScreen -- TU-08b: overwrite warning (#1523)', () => {
     vi.mocked(ncp.spawn).mockReturnValue(fakeChild as unknown as ReturnType<typeof ncp.spawn>);
     // Default: no modified files (bundledDir absent)
     vi.mocked(nfs.existsSync).mockReturnValue(false);
-    vi.mocked(lzMod.resolveLzCataloguesDir).mockReturnValue(null);
+    vi.mocked(lzMod.resolveBundledLzCataloguesDir).mockReturnValue(null);
   });
 
   it('skips warning when no modified files (bundled dir absent)', async () => {
@@ -204,7 +206,7 @@ describe('LzCatalogueUpdateScreen -- TU-08b: overwrite warning (#1523)', () => {
     vi.mocked(mockFW).mockReturnValue('/fake/ws');
     vi.mocked(nfs.existsSync).mockReturnValue(true);
     vi.mocked(nfs.readdirSync).mockReturnValue(['gcp-europe-west3.json'] as unknown as ReturnType<typeof nfs.readdirSync>);
-    vi.mocked(lzMod.resolveLzCataloguesDir).mockReturnValue('/bundled');
+    vi.mocked(lzMod.resolveBundledLzCataloguesDir).mockReturnValue('/bundled');
     // Workspace file and bundled file return different buffers -> modified
     vi.mocked(nfs.readFileSync)
       .mockReturnValueOnce(Buffer.from('workspace-content'))
@@ -225,7 +227,7 @@ describe('LzCatalogueUpdateScreen -- TU-08b: overwrite warning (#1523)', () => {
     vi.mocked(mockFW).mockReturnValue('/fake/ws');
     vi.mocked(nfs.existsSync).mockReturnValue(true);
     vi.mocked(nfs.readdirSync).mockReturnValue(['gcp-europe-west3.json'] as unknown as ReturnType<typeof nfs.readdirSync>);
-    vi.mocked(lzMod.resolveLzCataloguesDir).mockReturnValue('/bundled');
+    vi.mocked(lzMod.resolveBundledLzCataloguesDir).mockReturnValue('/bundled');
     vi.mocked(nfs.readFileSync)
       .mockReturnValueOnce(Buffer.from('ws'))
       .mockReturnValueOnce(Buffer.from('bundled'));
@@ -245,7 +247,7 @@ describe('LzCatalogueUpdateScreen -- TU-08b: overwrite warning (#1523)', () => {
     vi.mocked(mockFW).mockReturnValue('/fake/ws');
     vi.mocked(nfs.existsSync).mockReturnValue(true);
     vi.mocked(nfs.readdirSync).mockReturnValue(['gcp-europe-west3.json'] as unknown as ReturnType<typeof nfs.readdirSync>);
-    vi.mocked(lzMod.resolveLzCataloguesDir).mockReturnValue('/bundled');
+    vi.mocked(lzMod.resolveBundledLzCataloguesDir).mockReturnValue('/bundled');
     vi.mocked(nfs.readFileSync)
       .mockReturnValueOnce(Buffer.from('ws'))
       .mockReturnValueOnce(Buffer.from('bundled'));

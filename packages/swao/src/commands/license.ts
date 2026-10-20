@@ -168,7 +168,7 @@ export function buildRemovalLines(token: string, tier: string): string[] {
     '  Thank you.',
     '',
     'The removal token is cryptographically attributed and can be verified',
-    'by the operator using the swao-premium verify-removal script.',
+    'by the licence issuer.',
   ];
 }
 
@@ -255,8 +255,7 @@ export interface LicenseStatusJson {
 // production entry point, so buildKey / signingPrivateSeed are excluded from
 // all compiled bundles.  The audit gate
 // tests/audit-gates/license-generation-isolation.gate.mjs verifies this.
-// Issuance: use `node swao-premium/scripts/issue-license.mjs` on the
-// air-gapped admin machine (signs via swao-premium/lib/license-admin.mjs).
+// Licence keys are issued with the private issuing tooling, not by this CLI.
 
 export function licenseStateToJson(state: LicenseState): LicenseStatusJson {
   const limit = state.assessmentLimit;
@@ -432,10 +431,7 @@ export function registerLicense(program: Command): void {
         } else {
           console.error(`[LICENSE] ${msg}`);
           console.error('');
-          console.error('Hint: on PowerShell, load the rotated secret with:');
-          console.error('  Get-Content C:\\Projects\\accenture\\swao-premium\\secrets\\.env | ForEach-Object {');
-          console.error('    if ($_ -match "^SWAO_LICENSE_SECRET=(.+)$") { $env:SWAO_LICENSE_SECRET = $matches[1] }');
-          console.error('  }');
+          console.error('Contact your SWAO administrator to check the licence configuration of this environment.');
         }
         process.exit(3);
       }
@@ -593,8 +589,7 @@ export function registerLicense(program: Command): void {
   // no production entry point calls it. The audit gate
   // `tests/audit-gates/license-generation-isolation.gate.mjs` verifies the
   // compiled bundle does not reference the signing env var.
-  // Issuance: use `node swao-premium/scripts/issue-license.mjs` on the
-  // air-gapped admin machine (signs via swao-premium/lib/license-admin.mjs).
+  // Licence keys are issued with the private issuing tooling, not by this CLI.
 
   // swao license remove -- conditionally registered for consultant/enterprise binaries.
   registerLicenseRemoveCommand(licenseCmd);

@@ -16,10 +16,10 @@
 // `swao framework` CLI -- Community Frameworks management (#0324, sprint-036).
 //
 // Subcommands shipped in this commit (MVP per scope-cut at Phase F boundary):
-//   swao framework list           -- enumerate bundled + installed frameworks
-//   swao framework install <id>   -- copy bundled framework into workspace
+//   swao framework list           -- enumerate shipped frameworks (+ workspace copies)
+//   swao framework install <id>   -- copy a shipped framework into the workspace
 //   swao framework info <id>      -- print framework metadata
-//   swao framework uninstall <id> -- remove installed framework from workspace
+//   swao framework uninstall <id> -- remove a framework copy from the workspace
 //
 // Out of scope for this MVP (carry-overs to sprint-037+):
 //   - Migration of the seven flagship regimes (GDPR / HIPAA / PCI_DSS /
@@ -36,49 +36,36 @@
 // Each carry-over lands in sprint-037+ as its own work item.
 
 import type { Command } from 'commander';
-import { existsSync, mkdirSync, readFileSync, readdirSync, copyFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, copyFileSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { load } from 'js-yaml';
+import { discoverFrameworks, findFramework, frameworkContributorName, type DiscoveredFramework } from '@swao/core';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 
 // The bundled community frameworks live in the @swao/community-frameworks leaf
 // content package (#0572); their on-disk path is resolved there (configurable
 // via SWAO_COMMUNITY_FRAMEWORKS_DIR), shipped to the binary via the
 // `../@swao/community-frameworks/frameworks/**` pkg.assets glob.
-const __dirname = dirname(fileURLToPath(import.meta.url));
+//
+// #3297 (Design 110 E-24 option A): the list is built from each shipped
+// folder's own framework-meta.yaml (discoverFrameworks in @swao/core); there is
+// no _registry.yaml. A folder with a missing or invalid meta is skipped with a
+// warning. `install` is a copy of a shipped folder into the workspace; the
+// compliance selector reads whatever sits in wsp/inputs/catalogs/community/.
 
-interface RegistryEntry {
-  id: string;
-  folder: string;
-  contributor: string;
-  version: string;
-  applicability_hints: string[];
-  description: string;
-}
-
-interface Registry {
-  version: number;
-  frameworks: RegistryEntry[];
-}
-
-interface FrameworkMeta {
-  framework: {
-    id: string;
-    name?: string;
-    version?: string;
-    contributor?: string | { name?: string; email?: string };
-    description?: string;
-    applicability_hints?: string[];
-  };
+/**
+ * Workspace community catalogue folder: the one discovery, the TUI framework
+ * selection, and Pass 11 read (#3149; previously `<ws>/catalogs/community`).
+ */
+export function communityDir(ws: string): string {
+  return join(ws, 'wsp', 'inputs', 'catalogs', 'community');
 }
 
 /**
- * Resolve the bundled community frameworks root (contains _registry.yaml + one
- * folder per framework). The path is owned + resolved by
- * @swao/community-frameworks (#0572), which handles the dev / pkg-binary layout
- * difference and the SWAO_COMMUNITY_FRAMEWORKS_DIR override. Returns null only
- * if the asset really isn't shipped (e.g. a tampered binary).
+ * Resolve the bundled community frameworks root (one folder per framework).
+ * The path is owned + resolved by @swao/community-frameworks (#0572), which
+ * handles the dev / pkg-binary layout difference and the
+ * SWAO_COMMUNITY_FRAMEWORKS_DIR override. Returns null only if the asset really
+ * isn't shipped (e.g. a tampered binary).
  */
 function resolveBundledRoot(): string | null {
   try {
@@ -89,14 +76,9 @@ function resolveBundledRoot(): string | null {
   return null;
 }
 
-function readRegistry(bundledRoot: string): Registry | null {
-  const registryPath = join(bundledRoot, '_registry.yaml');
-  if (!existsSync(registryPath)) return null;
-  try {
-    return load(readFileSync(registryPath, 'utf-8')) as Registry;
-  } catch {
-    return null;
-  }
+/** Shipped frameworks, discovered from their framework-meta.yaml (#3297). */
+export function listBundledFrameworks(bundledRoot: string): DiscoveredFramework[] {
+  return discoverFrameworks(bundledRoot, { warn: (m) => console.error(m) });
 }
 
 /** Walk up from cwd looking for the workspace marker (.swao.yml). */
@@ -124,52 +106,66 @@ function copyDir(src: string, dst: string): void {
   }
 }
 
-export function cmdList(): void {
-  const bundledRoot = resolveBundledRoot();
+export type CopyFrameworkResult =
+  | { ok: true; framework: DiscoveredFramework; target: string }
+  | { ok: false; reason: 'unknown' }
+  | { ok: false; reason: 'exists'; framework: DiscoveredFramework; target: string };
+
+/**
+ * Copy a shipped framework folder into
+ * `<workspace>/wsp/inputs/catalogs/community/<folder>/` (the
+ * `swao framework install` helper). Never overwrites an existing copy.
+ */
+export function copyFrameworkIntoWorkspace(idOrFolder: string, workspace: string, bundledRoot: string): CopyFrameworkResult {
+  const framework = findFramework(listBundledFrameworks(bundledRoot), idOrFolder);
+  if (!framework) return { ok: false, reason: 'unknown' };
+  const target = join(communityDir(workspace), framework.folder);
+  if (existsSync(target)) return { ok: false, reason: 'exists', framework, target };
+  copyDir(framework.dir, target);
+  return { ok: true, framework, target };
+}
+
+export function cmdList(bundledRootOverride?: string): void {
+  const bundledRoot = bundledRootOverride ?? resolveBundledRoot();
   if (!bundledRoot) {
     console.log('[swao framework list] bundled community-frameworks/ folder not found in this binary build.');
     console.log('[swao framework list] Reinstall the binary or run from a source checkout.');
     return;
   }
-  const registry = readRegistry(bundledRoot);
-  if (!registry) {
-    console.error('[swao framework list] _registry.yaml is unreadable or missing under ' + bundledRoot);
-    process.exitCode = 1;
-    return;
-  }
+  const frameworks = listBundledFrameworks(bundledRoot);
 
-  // Optionally also list installed frameworks in the current workspace
+  // Also mark which shipped frameworks the current workspace already holds.
   const ws = resolveWorkspace();
-  const installedDir = ws ? join(ws, 'catalogs', 'community') : null;
-  const installedIds = new Set<string>();
-  if (installedDir && existsSync(installedDir)) {
-    for (const entry of readdirSync(installedDir, { withFileTypes: true })) {
-      if (entry.isDirectory()) installedIds.add(entry.name);
+  const workspaceDir = ws ? communityDir(ws) : null;
+  const inWorkspace = new Set<string>();
+  if (workspaceDir && existsSync(workspaceDir)) {
+    for (const entry of readdirSync(workspaceDir, { withFileTypes: true })) {
+      if (entry.isDirectory()) inWorkspace.add(entry.name);
     }
   }
 
   console.log('Bundled community frameworks:');
   console.log('');
-  for (const f of registry.frameworks) {
-    const installed = installedIds.has(f.folder) ? ' [installed]' : '';
-    console.log(`  ${f.id}${installed}`);
+  for (const f of frameworks) {
+    const copied = inWorkspace.has(f.folder) ? ' [in workspace]' : '';
+    console.log(`  ${f.id}${copied}`);
+    console.log(`    name:           ${f.meta.name ?? '(no name field)'}`);
     console.log(`    folder:         ${f.folder}`);
-    console.log(`    contributor:    ${f.contributor}`);
-    console.log(`    version:        ${f.version}`);
-    console.log(`    applicability:  ${(f.applicability_hints ?? []).join(', ') || '(unspecified)'}`);
-    console.log(`    description:    ${f.description}`);
+    console.log(`    contributor:    ${frameworkContributorName(f.meta) ?? '(no contributor)'}`);
+    console.log(`    version:        ${f.meta.version ?? '(unspecified)'}`);
+    console.log(`    applicability:  ${f.meta.applicability_hints.join(', ') || '(unspecified)'}`);
     console.log('');
   }
 
-  if (installedIds.size > 0 && ws) {
-    const installedNotBundled = [...installedIds].filter(
-      (id) => !registry.frameworks.some((f) => f.folder === id),
+  if (inWorkspace.size > 0 && ws) {
+    const workspaceOnly = [...inWorkspace].filter(
+      (folder) => !frameworks.some((f) => f.folder === folder),
     );
-    if (installedNotBundled.length > 0) {
-      console.log('Installed frameworks NOT in the bundled registry (engagement-local):');
+    if (workspaceOnly.length > 0) {
+      console.log('Frameworks in this workspace that SWAO does not ship (engagement-local):');
       console.log('');
-      for (const id of installedNotBundled.sort()) {
-        console.log(`  ${id}   (at: ${join(installedDir!, id)})`);
+      for (const folder of workspaceOnly.sort()) {
+        console.log(`  ${folder}   (at: ${join(workspaceDir!, folder)})`);
       }
     }
   }
@@ -182,14 +178,7 @@ export function cmdInstall(id: string): void {
     process.exitCode = 1;
     return;
   }
-  const registry = readRegistry(bundledRoot);
-  if (!registry) {
-    console.error('[swao framework install] _registry.yaml unreadable');
-    process.exitCode = 1;
-    return;
-  }
-  const entry = registry.frameworks.find((f) => f.id === id || f.folder === id);
-  if (!entry) {
+  if (!findFramework(listBundledFrameworks(bundledRoot), id)) {
     console.error(`[swao framework install] no bundled framework with id or folder '${id}'`);
     console.error('Use `swao framework list` to enumerate available frameworks.');
     process.exitCode = 1;
@@ -197,24 +186,26 @@ export function cmdInstall(id: string): void {
   }
   const ws = resolveWorkspace();
   if (!ws) {
-    console.error('[swao framework install] not in a workspace (no `apps/` or `.swao.yml` walking up from cwd)');
+    console.error('[swao framework install] not in a workspace (no `.swao.yml` walking up from cwd)');
     process.exitCode = 1;
     return;
   }
 
-  const src = join(bundledRoot, entry.folder);
-  const dst = join(ws, 'catalogs', 'community', entry.folder);
-  if (existsSync(dst)) {
-    console.error(`[swao framework install] '${entry.id}' already installed at ${dst}`);
-    console.error('Use `swao framework uninstall ' + entry.id + '` first if you want to reinstall.');
+  const result = copyFrameworkIntoWorkspace(id, ws, bundledRoot);
+  if (!result.ok) {
+    if (result.reason === 'exists') {
+      console.error(`[swao framework install] '${result.framework.id}' is already in the workspace at ${result.target}`);
+      console.error('Use `swao framework uninstall ' + result.framework.id + '` first if you want a fresh copy.');
+    } else {
+      console.error(`[swao framework install] no bundled framework with id or folder '${id}'`);
+    }
     process.exitCode = 1;
     return;
   }
-
-  copyDir(src, dst);
-  console.log(`[swao framework install] ${entry.id} installed at ${dst}`);
-  console.log(`[swao framework install]   contributor:    ${entry.contributor}`);
-  console.log(`[swao framework install]   version:        ${entry.version}`);
+  const f = result.framework;
+  console.log(`[swao framework install] ${f.id} copied into the workspace at ${result.target}`);
+  console.log(`[swao framework install]   contributor:    ${frameworkContributorName(f.meta) ?? '(no contributor)'}`);
+  console.log(`[swao framework install]   version:        ${f.meta.version ?? '(unspecified)'}`);
 }
 
 export function cmdInfo(id: string): void {
@@ -224,36 +215,22 @@ export function cmdInfo(id: string): void {
     process.exitCode = 1;
     return;
   }
-  const registry = readRegistry(bundledRoot);
-  if (!registry) {
-    console.error('[swao framework info] _registry.yaml unreadable');
-    process.exitCode = 1;
-    return;
-  }
-  const entry = registry.frameworks.find((f) => f.id === id || f.folder === id);
+  const entry = findFramework(listBundledFrameworks(bundledRoot), id);
   if (!entry) {
     console.error(`[swao framework info] no framework with id or folder '${id}'`);
     process.exitCode = 1;
     return;
   }
-  const metaPath = join(bundledRoot, entry.folder, 'framework-meta.yaml');
-  if (!existsSync(metaPath)) {
-    console.error(`[swao framework info] framework-meta.yaml missing at ${metaPath}`);
-    process.exitCode = 1;
-    return;
-  }
-  const meta = load(readFileSync(metaPath, 'utf-8')) as FrameworkMeta;
-  console.log(`${meta.framework.id}  --  ${meta.framework.name ?? '(no name field)'}`);
+  const meta = entry.meta;
+  console.log(`${meta.id}  --  ${meta.name ?? '(no name field)'}`);
   console.log('');
-  const contrib = meta.framework.contributor;
-  const contribDisplay = typeof contrib === 'string' ? contrib : (contrib?.name ?? '(no contributor)');
-  console.log(`  contributor:     ${contribDisplay}`);
-  console.log(`  version:         ${meta.framework.version ?? '(unspecified)'}`);
-  console.log(`  applicability:   ${(meta.framework.applicability_hints ?? []).join(', ') || '(unspecified)'}`);
+  console.log(`  contributor:     ${frameworkContributorName(meta) ?? '(no contributor)'}`);
+  console.log(`  version:         ${meta.version ?? '(unspecified)'}`);
+  console.log(`  applicability:   ${meta.applicability_hints.join(', ') || '(unspecified)'}`);
   console.log('');
-  if (meta.framework.description) {
+  if (meta.description) {
     console.log('  description:');
-    for (const line of meta.framework.description.split('\n')) {
+    for (const line of meta.description.split('\n')) {
       console.log(`    ${line}`);
     }
   }
@@ -266,17 +243,16 @@ export function cmdUninstall(id: string): void {
     process.exitCode = 1;
     return;
   }
-  // Resolve via bundled registry first; if not bundled, allow direct folder name.
+  // Resolve a shipped id to its folder first; otherwise treat the argument as a folder name.
   const bundledRoot = resolveBundledRoot();
   let folder = id;
   if (bundledRoot) {
-    const registry = readRegistry(bundledRoot);
-    const entry = registry?.frameworks.find((f) => f.id === id || f.folder === id);
+    const entry = findFramework(listBundledFrameworks(bundledRoot), id);
     if (entry) folder = entry.folder;
   }
-  const target = join(ws, 'catalogs', 'community', folder);
+  const target = join(communityDir(ws), folder);
   if (!existsSync(target)) {
-    console.error(`[swao framework uninstall] '${id}' not installed (no ${target})`);
+    console.error(`[swao framework uninstall] '${id}' is not in the workspace (no ${target})`);
     process.exitCode = 1;
     return;
   }
@@ -285,16 +261,16 @@ export function cmdUninstall(id: string): void {
 }
 
 export function registerFramework(program: Command): void {
-  const cmd = program.command('framework').description('Manage Community Frameworks (#0324 sprint-036; bundled + per-workspace install).');
+  const cmd = program.command('framework').description('Community Frameworks: list the shipped ones and copy them into the workspace (#0324, #3297).');
 
   cmd
     .command('list')
-    .description('enumerate bundled + installed community frameworks')
+    .description('list the shipped community frameworks and mark those already in the workspace')
     .action(() => cmdList());
 
   cmd
     .command('install <id>')
-    .description('copy a bundled framework into the current workspace\'s catalogs/community/<id>/')
+    .description('copy a shipped framework into the workspace (wsp/inputs/catalogs/community/<folder>/)')
     .action((id: string) => cmdInstall(id));
 
   cmd
@@ -304,6 +280,6 @@ export function registerFramework(program: Command): void {
 
   cmd
     .command('uninstall <id>')
-    .description('remove an installed framework from the current workspace')
+    .description('remove a framework copy from the workspace')
     .action((id: string) => cmdUninstall(id));
 }

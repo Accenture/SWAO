@@ -21,7 +21,7 @@
 **Version:** 2026-Q2
 **Authority:** Community framework -- contributed by Alok Sharan
 **SWAO tier:** Community (install required -- `swao framework install AI_10_PILLARS`)
-**Controls:** 55 sub-controls across 10 pillars
+**Controls:** 11 controls across 10 pillars
 
 ## What this framework evaluates
 
@@ -39,17 +39,17 @@ regulated data.
 
 ## How to activate in SWAO
 
-AI_10_PILLARS is pre-installed. Add to your workspace `.swao.yml`:
+Install the framework with `swao framework install AI_10_PILLARS`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
-compliance:
-  frameworks: [AI_10_PILLARS]
+assessment:
+  regimes_active: [AI_10_PILLARS]
 ```
 
-Or run a one-off assessment:
+Then run the application assessment for that app:
 
 ```bash
-swao assess --framework AI_10_PILLARS
+swao assess --app <app-id>
 ```
 
 ## Control pillars
@@ -58,13 +58,13 @@ swao assess --framework AI_10_PILLARS
 |---|---|---|
 | 1 -- Input Security | INP | Prompt injection, content filtering, input validation |
 | 2 -- Identity and Access | IAM | Authentication, authorisation, multi-tenant isolation |
-| 3 -- Data Protection | DATA | Encryption, data classification, retention, PII handling |
+| 3 -- Data Protection | DAT | Encryption, data classification, retention, PII handling |
 | 4 -- Model Security | MOD | Model signing, access control, training data governance |
 | 5 -- Prompt Security | PRM | System prompt hardening, indirect injection, jailbreak resistance |
 | 6 -- Retrieval Security | RAG | Vector store access, document ACLs, context scoping |
-| 7 -- Tool and API Security | TLS | Tool sandboxing, API rate limits, capability scoping |
+| 7 -- Tool and API Security | TAS | Tool sandboxing, API rate limits, capability scoping |
 | 8 -- Output Guardrails | OUT | Hallucination detection, output filtering, PII redaction |
-| 9 -- Monitoring and Detection | MON | Observability, anomaly detection, audit logging |
+| 9 -- Monitoring and Detection | OBS | Observability, anomaly detection, audit logging |
 | 10 -- Governance | GOV | AI inventory, risk assessment, regulatory mapping, human oversight |
 
 ## Evidence sources
@@ -81,7 +81,7 @@ Install a local copy to override specific controls:
 swao framework install AI_10_PILLARS
 ```
 
-The installed copy at `catalogs/community/ai-10-pillars/controls.yaml` overrides the
+The installed copy at `wsp/inputs/catalogs/community/ai-10-pillars/controls.yaml` overrides the
 bundled version for all assessments in that workspace. See `CONTRIBUTING.md` for the full
 authoring guide.
 

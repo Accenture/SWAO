@@ -1,0 +1,145 @@
+# Pass 21 -- IAM Assessment: built-in provider catalogue
+# Extends controls/sovereign-service-catalogue.yaml with deterministic
+# per-provider detection signals and eIDAS trust level mapping.
+# Workspace overrides: wsp/inputs/pass-catalogs/pass-21-iam-providers.yaml
+#
+# See _template.yaml for the full entry schema.
+# Contribute new entries: https://github.com/Accenture/SWAO
+
+pass_number: 21
+pass_name: "IAM Assessment"
+
+entries:
+
+  # ---------- German eGov identity providers ----------
+
+  - id: bundid
+    name: "BundID -- Federal Identity Service"
+    detection:
+      imports: ["bund.id", "id.bund.de", "bundesidentifikationsnummer"]
+      env_vars: ["BUNDID_.*", "BUND_ID_.*"]
+      config_keys: ["bundid", "bund_id", "bund-id"]
+    posture:
+      data_residency: [DE]
+      sovereignty: de_sovereign
+      schrems_ii_risk: none
+      eidas_trust_level: substantiell
+      operator: "ITZBund (Informationstechnikzentrum Bund)"
+    cross_reference_frameworks: [BSI_TR_03107, GDPR, SGBX_DE]
+
+  - id: elster-nezo
+    name: "ELSTER-NEZO -- Tax Authority eID and Certificate Service"
+    detection:
+      imports: ["elster", "eric", "erica", "elster-nezo", "ERiC"]
+      env_vars: ["ELSTER_.*", "ERIC_.*", "ELSTERNEZO_.*"]
+      config_keys: ["elster", "eric_lib", "elster_nezo", "elster-nezo"]
+    posture:
+      data_residency: [DE]
+      sovereignty: de_sovereign
+      schrems_ii_risk: none
+      eidas_trust_level: substantiell
+      operator: "Bayerisches Landesamt fuer Steuern / Bundeszentralamt fuer Steuern"
+    cross_reference_frameworks: [BSI_TR_03107, GDPR]
+
+  # ---------- Self-hosted / sovereign IdPs ----------
+
+  - id: keycloak
+    name: "Keycloak -- Open-Source Identity and Access Management"
+    detection:
+      imports: ["keycloak", "keycloak-js", "keycloak-connect", "@keycloak",
+                "org.keycloak", "de.keycloak"]
+      env_vars: ["KEYCLOAK_.*", "KC_.*"]
+      config_keys: ["keycloak", "keycloak-url", "auth-server-url"]
+    posture:
+      data_residency: []          # operator-determined; no inherent residency
+      sovereignty: eu_sovereign   # when self-hosted on EU infrastructure
+      schrems_ii_risk: none       # self-hosted; no third-party data transfer
+      eidas_trust_level: none     # protocol-level only; trust level set by upstream IdP
+      operator: "self-hosted (Red Hat / community)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: adfs
+    name: "Active Directory Federation Services (ADFS)"
+    detection:
+      imports: ["adfs", "microsoft.identityserver", "System.IdentityModel"]
+      env_vars: ["ADFS_.*", "AD_FS_.*"]
+      config_keys: ["adfs", "adfs-url", "federation-metadata", "wsFederation"]
+    posture:
+      data_residency: []          # operator-determined; on-prem deployment
+      sovereignty: eu_sovereign   # when on-prem; no cloud data transfer
+      schrems_ii_risk: none       # on-premises; no Microsoft cloud involvement
+      eidas_trust_level: none
+      operator: "Microsoft (on-premises deployment)"
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: authentik
+    name: "Authentik -- Open-Source Identity Provider"
+    detection:
+      imports: ["authentik", "goauthentik", "authentik-client"]
+      env_vars: ["AUTHENTIK_.*"]
+      config_keys: ["authentik", "authentik-url", "authentik_host"]
+    posture:
+      data_residency: []
+      sovereignty: eu_sovereign   # when self-hosted
+      schrems_ii_risk: none
+      eidas_trust_level: none
+      operator: "self-hosted (Authentik Security Inc.)"
+    cross_reference_frameworks: [BSI_C5]
+
+  - id: zitadel
+    name: "ZITADEL -- Cloud-Native Identity Infrastructure"
+    detection:
+      imports: ["zitadel", "@zitadel/node", "zitadel-go"]
+      env_vars: ["ZITADEL_.*"]
+      config_keys: ["zitadel", "zitadel-domain"]
+    posture:
+      data_residency: [CH, EU]
+      sovereignty: eu_sovereign
+      schrems_ii_risk: none
+      eidas_trust_level: none
+      operator: "ZITADEL (Swiss-hosted SaaS or self-hosted)"
+    cross_reference_frameworks: [GDPR, BSI_C5]
+
+  - id: shibboleth
+    name: "Shibboleth -- Academic and Research Identity Federation"
+    detection:
+      imports: ["shibboleth", "net.shibboleth", "edu.internet2.middleware.shibboleth"]
+      env_vars: ["SHIB_.*", "SHIBBOLETH_.*"]
+      config_keys: ["shibboleth", "shib-sp", "dfn-aai"]
+    posture:
+      data_residency: [DE, EU]
+      sovereignty: eu_sovereign
+      schrems_ii_risk: none
+      eidas_trust_level: none
+      operator: "DFN-AAI / institution-operated"
+    cross_reference_frameworks: [GDPR, BSI_C5]
+
+  # ---------- Enterprise / hyperscaler IdPs ----------
+
+  - id: ping-identity
+    name: "Ping Identity / PingFederate"
+    detection:
+      imports: ["pingidentity", "com.pingidentity", "pingfederate"]
+      env_vars: ["PING_.*", "PINGFEDERATE_.*", "PINGONE_.*"]
+      config_keys: ["pingfederate", "pingone", "ping-base-url"]
+    posture:
+      data_residency: [US, EU]
+      sovereignty: hyperscaler
+      schrems_ii_risk: medium
+      eidas_trust_level: none
+      operator: "Ping Identity (Thales Group)"
+    cross_reference_frameworks: [GDPR, ISO_27001]
+
+  - id: forgerock
+    name: "ForgeRock / OpenAM -- Enterprise IAM"
+    detection:
+      imports: ["forgerock", "openam", "org.forgerock", "com.forgerock"]
+      env_vars: ["FORGEROCK_.*", "OPENAM_.*", "AM_.*"]
+      config_keys: ["forgerock", "openam", "am-base-url"]
+    posture:
+      data_residency: [US, EU]
+      sovereignty: hyperscaler
+      schrems_ii_risk: medium
+      eidas_trust_level: none
+      operator: "ForgeRock / Ping Identity"
+    cross_reference_frameworks: [GDPR, ISO_27001]

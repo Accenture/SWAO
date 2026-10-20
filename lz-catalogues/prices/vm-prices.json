@@ -1,0 +1,575 @@
+{
+  "meta": {
+    "schema_version": "1.0",
+    "name": "VM price table for the service cost model",
+    "generated_at": "2026-10-17",
+    "hours_per_month": 730,
+    "price_type": "on-demand pay-as-you-go list price per hour; Windows with the licence included",
+    "sources": [
+      {
+        "provider": "azure",
+        "api": "Azure Retail Prices API",
+        "url": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter=serviceName%20eq%20'Virtual%20Machines'%20and%20armRegionName%20eq%20'germanywestcentral'%20and%20priceType%20eq%20'Consumption'%20and%20(armSkuName%20eq%20'Standard_B1s'%20or%20armSkuName%20eq%20'Standard_B1ms'%20or%20armSkuName%20eq%20'Standard_B2s'%20or%20armSkuName%20eq%20'Standard_B2ms'%20or%20armSkuName%20eq%20'Standard_B4ms'%20or%20armSkuName%20eq%20'Standard_D2s_v3'%20or%20armSkuName%20eq%20'Standard_D4s_v3'%20or%20armSkuName%20eq%20'Standard_D8s_v3'%20or%20armSkuName%20eq%20'Standard_D16s_v3'%20or%20armSkuName%20eq%20'Standard_D32s_v3'%20or%20armSkuName%20eq%20'Standard_D64s_v3'%20or%20armSkuName%20eq%20'Standard_E4s_v3'%20or%20armSkuName%20eq%20'Standard_E8s_v3'%20or%20armSkuName%20eq%20'Standard_E16s_v3'%20or%20armSkuName%20eq%20'Standard_E32s_v3'%20or%20armSkuName%20eq%20'Standard_E64s_v3')",
+        "region": "germanywestcentral",
+        "currency": "USD",
+        "retrieved": "2026-10-17",
+        "published": null
+      },
+      {
+        "provider": "aws",
+        "api": "AWS Price List bulk API (AmazonEC2 offer file)",
+        "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-central-1/index.csv",
+        "region": "eu-central-1",
+        "currency": "USD",
+        "retrieved": "2026-10-17",
+        "published": "2026-10-15"
+      }
+    ]
+  },
+  "prices": [
+    {
+      "provider": "azure",
+      "sku": "B1s",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.012
+    },
+    {
+      "provider": "azure",
+      "sku": "B1s",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.016
+    },
+    {
+      "provider": "azure",
+      "sku": "B1ms",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.024
+    },
+    {
+      "provider": "azure",
+      "sku": "B1ms",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.0277
+    },
+    {
+      "provider": "azure",
+      "sku": "B2s",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.048
+    },
+    {
+      "provider": "azure",
+      "sku": "B2s",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.056
+    },
+    {
+      "provider": "azure",
+      "sku": "B2ms",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.096
+    },
+    {
+      "provider": "azure",
+      "sku": "B2ms",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.104
+    },
+    {
+      "provider": "azure",
+      "sku": "B4ms",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.192
+    },
+    {
+      "provider": "azure",
+      "sku": "B4ms",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.208
+    },
+    {
+      "provider": "azure",
+      "sku": "D2s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.115
+    },
+    {
+      "provider": "azure",
+      "sku": "D2s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.207
+    },
+    {
+      "provider": "azure",
+      "sku": "D4s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.23
+    },
+    {
+      "provider": "azure",
+      "sku": "D4s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.414
+    },
+    {
+      "provider": "azure",
+      "sku": "D8s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.46
+    },
+    {
+      "provider": "azure",
+      "sku": "D8s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.828
+    },
+    {
+      "provider": "azure",
+      "sku": "D16s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.92
+    },
+    {
+      "provider": "azure",
+      "sku": "D16s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 1.656
+    },
+    {
+      "provider": "azure",
+      "sku": "D32s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 1.84
+    },
+    {
+      "provider": "azure",
+      "sku": "D32s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 3.312
+    },
+    {
+      "provider": "azure",
+      "sku": "D64s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 3.68
+    },
+    {
+      "provider": "azure",
+      "sku": "D64s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 6.624
+    },
+    {
+      "provider": "azure",
+      "sku": "E4s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.304
+    },
+    {
+      "provider": "azure",
+      "sku": "E4s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.488
+    },
+    {
+      "provider": "azure",
+      "sku": "E8s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.608
+    },
+    {
+      "provider": "azure",
+      "sku": "E8s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 0.976
+    },
+    {
+      "provider": "azure",
+      "sku": "E16s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 1.216
+    },
+    {
+      "provider": "azure",
+      "sku": "E16s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 1.952
+    },
+    {
+      "provider": "azure",
+      "sku": "E32s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 2.432
+    },
+    {
+      "provider": "azure",
+      "sku": "E32s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 3.904
+    },
+    {
+      "provider": "azure",
+      "sku": "E64s_v3",
+      "os": "linux",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 4.378
+    },
+    {
+      "provider": "azure",
+      "sku": "E64s_v3",
+      "os": "windows",
+      "region": "germanywestcentral",
+      "currency": "USD",
+      "price_per_hour": 7.027
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.micro",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.012
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.micro",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.0212
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.small",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.024
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.small",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.0424
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.medium",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.048
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.medium",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.0664
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.large",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.096
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.large",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.1236
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.192
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.2656
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.2xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.384
+    },
+    {
+      "provider": "aws",
+      "sku": "t3.2xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.5312
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.large",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.115
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.large",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.207
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.23
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.414
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.2xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.46
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.2xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.828
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.4xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.92
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.4xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 1.656
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.8xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 1.84
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.8xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 3.312
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.16xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 3.68
+    },
+    {
+      "provider": "aws",
+      "sku": "m5.16xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 6.624
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.large",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.152
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.large",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.244
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.304
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.488
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.2xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.608
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.2xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 0.976
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.4xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 1.216
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.4xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 1.952
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.8xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 2.432
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.8xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 3.904
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.16xlarge",
+      "os": "linux",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 4.864
+    },
+    {
+      "provider": "aws",
+      "sku": "r5.16xlarge",
+      "os": "windows",
+      "region": "eu-central-1",
+      "currency": "USD",
+      "price_per_hour": 7.808
+    }
+  ]
+}

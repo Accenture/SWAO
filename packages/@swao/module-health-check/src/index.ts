@@ -43,7 +43,7 @@ import { buildPrerequisitesProbe } from './probes/prerequisites-probe.js';
 
 // Commands + payload builder (the host's CLI bootstrap calls these; registerHealthCheck
 // + buildHealthCheckPayload take the injected host probe builders).
-export { registerHealthCheck, buildHealthCheckPayload, buildHealthCheckLogContext } from './commands/health-check.js';
+export { registerHealthCheck, buildHealthCheckPayload, buildHealthCheckLogContext, computeFailedProbes, formatHealthCheckSummaryLine } from './commands/health-check.js';
 export type {
   HealthCheckHostDeps,
   HealthCheckPayload,
@@ -59,6 +59,8 @@ export {
   checkPlaceholderInputs,
   checkLzrCoveragePerApp,
   checkRunAccumulation,
+  checkRunStatusMarkers,
+  RUN_STATUS_LATEST_N,
 } from './commands/health-check.js';
 export { registerHealthCheckPii, runHealthCheckPii } from './commands/health-check-pii.js';
 export { registerHealthCheckTags } from './commands/health-check-tags.js';
@@ -67,7 +69,7 @@ export { registerHealthCheckTags } from './commands/health-check-tags.js';
 // (compliance catalogues probe is exercised by sprint-037 GDPR suites; the BI
 // export probe test stays host-side because it drives the host star writers).
 export { buildMcpProbe, claudeDesktopConfigPath } from './probes/claude-desktop.js';
-export type { McpProbeResult, McpProbeStatus } from './probes/claude-desktop.js';
+export type { McpProbeResult, McpProbeStatus, McpStaleEntry } from './probes/claude-desktop.js';
 export { buildCommunityFrameworksProbe } from './probes/compliance-catalogues-probe.js';
 export type {
   CommunityFrameworksProbeResult,
@@ -105,8 +107,8 @@ export type {
 // import today (App.tsx) and injects the SWAO version (branding is host-only).
 export { HealthCheckScreen } from './tui/HealthCheckScreen.js';
 export { HealthCheckProbeList } from './tui/components/HealthCheckProbeList.js';
-export { parseHealthCheckOutput, probeAction } from './tui/components/health-check-parse.js';
-export type { HealthCheckProbe } from './tui/components/health-check-parse.js';
+export { parseHealthCheckOutput, probeAction, summariseHealthCheckOutput } from './tui/components/health-check-parse.js';
+export type { HealthCheckProbe, HealthCheckOutputSummary } from './tui/components/health-check-parse.js';
 
 export const tuiScreens: TuiScreenContribution[] = [
   { name: 'HealthCheckScreen', tier: 'community', component: HealthCheckScreen },

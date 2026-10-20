@@ -156,7 +156,7 @@ describe('LicenseGuard -- valid Consultant key', () => {
   it('consultant tier throws LicenseTierError for enterprise', () => {
     writeLicense({ v: 1, tier: 'consultant', licensee: 'Test', exp: '2027-12-31', assessment_limit: null, fp: getFp8(), iat: '2026-04-28' });
     expect(() => LicenseGuard.load().requireTier('enterprise')).toThrow(LicenseTierError);
-  });
+  }, 60_000); // D-32 (#3294): first-import, load-sensitive under parallel suites
 });
 
 describe('LicenseGuard -- valid Enterprise key', () => {

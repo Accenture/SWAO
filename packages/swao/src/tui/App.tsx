@@ -21,7 +21,7 @@ import { join } from 'path';
 // host injects the SWAO version + the `swao init` scaffolding functions
 // (branding + workspace-setup are host-only) into the module screens.
 import { AssessmentTypeScreen, AppAssessmentScreen, LzAssessmentScreen, type LzCatalogueHint } from '@swao/module-app-assessment';
-import { resolveLzCataloguesDir, resolveBundledLzCataloguesDir, loadLzCatalogueIndex, resolveProviderCatalogue, discoverGateCapableFrameworks } from '@swao/module-landing-zone';
+import { resolveProviderCatalogue, discoverGateCapableFrameworks, listLzCatalogueProviders } from '@swao/module-landing-zone';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import { resolveCatalogsDir } from '@swao/core';
 // DoctorScreen relocated to @swao/module-doctor (#0573); the host injects the
@@ -54,6 +54,7 @@ import { SupportBundleScreen } from './screens/SupportBundleScreen.js';
 // DoctorScreen / AssessScreen wiring.
 import { PublishScreen, ServeScreen } from '@swao/module-html-report';
 import { LlmAssessmentScreen } from './screens/LlmAssessmentScreen.js';
+import { ServiceInitScreen } from './screens/ServiceInitScreen.js';
 import { UpgradePromptScreen } from './screens/UpgradePromptScreen.js';
 import { ChatScreen } from './screens/ChatScreen.js';
 import type { LicenseTier } from '@swao/tui-kit';
@@ -62,32 +63,18 @@ import type { LicenseTier } from '@swao/tui-kit';
 // available options as a SelectInput instead of a free-text field.
 // Workspace catalogues (sovereign clouds, private providers, new regions)
 // take precedence over the bundled set. New providers added to a binary update
-// are merged in from the bundled index even when the workspace index.json
-// predates the update (#1669).
+// appear even when the workspace folder predates the update (#1669).
+// #3298 (Design 110 E-24): the provider list is the shared discovery over the
+// bundled and workspace catalogue files, and each name comes from the meta
+// block of the file the layered resolver loads; there is no index.json.
 function buildLzCatalogueHint(): LzCatalogueHint | null {
   try {
-    const wsDir = resolveLzCataloguesDir(undefined, process.cwd());
-    const bundledDir = resolveBundledLzCataloguesDir();
-    if (!wsDir && !bundledDir) return null;
-
-    // Load workspace index; merge in bundled entries whose provider key is absent (#1669).
-    const wsIndex = wsDir ? loadLzCatalogueIndex(wsDir) : { catalogues: [], coming_soon: [] };
-    const bundledIndex = bundledDir ? loadLzCatalogueIndex(bundledDir) : { catalogues: [], coming_soon: [] };
-    const wsProviders = new Set(wsIndex.catalogues.map(c => c.provider));
-    const allEntries = [
-      ...wsIndex.catalogues,
-      ...bundledIndex.catalogues.filter(c => !wsProviders.has(c.provider)),
-    ];
-
-    // Resolve each provider via the layered resolution so workspace files
-    // override bundled ones even for providers whose entry came from the
-    // bundled index.
-    const entries = allEntries.flatMap((c) => {
+    const entries = listLzCatalogueProviders(process.cwd()).flatMap((provider) => {
       try {
-        const { catalogue } = resolveProviderCatalogue(c.provider, process.cwd());
+        const { catalogue } = resolveProviderCatalogue(provider, process.cwd());
         return [{
-          provider: c.provider,
-          name: c.name,
+          provider,
+          name: catalogue.meta.name,
           regions: (catalogue.regions as Array<{ id: string; display?: string; country?: string; area?: string }>).map(r => ({
             id: r.id,
             display: r.display ?? r.id,
@@ -102,7 +89,7 @@ function buildLzCatalogueHint(): LzCatalogueHint | null {
 }
 const LZ_CATALOGUE_HINT = buildLzCatalogueHint();
 
-type Screen = 'type-select' | 'main' | 'llm-assess' | 'upgrade-prompt' | MenuTarget;
+type Screen = 'type-select' | 'main' | 'llm-assess' | 'service-init' | 'upgrade-prompt' | MenuTarget;
 
 // Natural next step after completing each screen
 const NEXT_AFTER: Partial<Record<MenuTarget, MenuTarget>> = {
@@ -186,6 +173,8 @@ export function App({ initialScreen = 'main' }: AppProps) {
               setScreen('assess');
             } else if (type === 'llm') {
               setScreen('llm-assess');
+            } else if (type === 'service') {
+              setScreen('service-init');
             }
           }}
         />
@@ -221,6 +210,7 @@ export function App({ initialScreen = 'main' }: AppProps) {
       {screen === 'support-bundle' && <SupportBundleScreen onBack={() => setToolsScreen('tools')} />}
       {/* #1427 -- LLM Assessment: app picker, leg review, run progress, ranked result. */}
       {screen === 'llm-assess' && <LlmAssessmentScreen onBack={() => setScreen('type-select')} />}
+      {screen === 'service-init' && <ServiceInitScreen onBack={() => setScreen('type-select')} />}
       {/* #2150 -- Upgrade prompt: shown when a Community user activates a tier-gated menu item. */}
       {screen === 'upgrade-prompt' && <UpgradePromptScreen feature={upgradeCtx.feature} requiredTier={upgradeCtx.tier} description={upgradeCtx.description} onBack={() => setScreen('main')} onOpenLicenseScreen={() => setToolsScreen('license')} />}
       {/* #2778 -- Chat with Portfolio: Enterprise-gated; reached via Tools submenu. */}

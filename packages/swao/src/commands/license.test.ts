@@ -248,7 +248,7 @@ describe('LicenseGuard.activate', () => {
     } catch (e) {
       expect((e as LicenseInvalidError).code).toBe('fingerprint_mismatch');
     }
-  });
+  }, 60_000); // D-32 (#3294): first-import, load-sensitive under parallel suites
 });
 
 // ---------------------------------------------------------------------------
@@ -298,7 +298,7 @@ describe('issueLicense -- Consultant tier defaults', () => {
     expect(result.payload.iat).toBe(isoToday());
   });
 
-  // #0612: the operator registry tool (swao-premium/scripts/issue-license.mjs)
+  // #0612: the operator registry tool (the private licence tooling)
   // parses exactly `{ key, payload }` from `swao license issue --json`. Pin that
   // contract so a future refactor cannot silently break the registry pipeline.
   it('returns exactly { key, payload } with the registry-consumed payload fields', () => {
@@ -441,7 +441,7 @@ describe('issueLicense -- validation failures', () => {
 });
 
 // ---------------------------------------------------------------------------
-// E2E: request token -> issue -> activate round-trip (docs/strategy/015)
+// E2E: request token -> issue -> activate round-trip (licence workflow)
 // Exercises the full three-step operator workflow in a single test:
 //   1. user generates a request token (swao license request)
 //   2. admin issues a key (swao license issue --json / issue-license.mjs)

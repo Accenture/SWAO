@@ -16,8 +16,13 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
-import { findRegion, type WspResult, type LzScanResult } from '@swao/core';
-import { resolveLzCataloguesDir, loadLzCatalogue } from '../catalogue/loader.js';
+import { findRegion, type WspResult, type LzScanResult, type LzServiceCatalogue } from '@swao/core';
+import {
+  resolveProviderCatalogue,
+  LzCatalogueSchemaError,
+  LzCatalogueDuplicateIdError,
+  type LzCatalogueProvenance,
+} from '../catalogue/loader.js';
 import { normalizeAwsSnapshot } from '../scan/scan-aws.js';
 import { normalizeAzureSnapshot } from '../scan/scan-azure.js';
 import {
@@ -52,7 +57,7 @@ export interface AssembleLzInput {
 }
 
 export type AssembleLzResult =
-  | { ok: true; wsp: WspResult; notice?: string }
+  | { ok: true; wsp: WspResult; notice?: string; catalogueOrigin?: LzCatalogueProvenance; catalogueFile?: string }
   | { ok: false; error: string };
 
 /**
@@ -245,13 +250,21 @@ function loadScan(workspacePath: string, provider: string, assessedAt: string): 
 export function assembleLandingZoneWsp(input: AssembleLzInput): AssembleLzResult {
   const assessedAt = input.assessedAt ?? new Date().toISOString().slice(0, 10);
 
-  const dir = resolveLzCataloguesDir(input.cataloguesDir, input.workspacePath);
-  if (!dir) return { ok: false, error: 'No lz-catalogues directory found (looked for index.json).' };
-
-  if (!existsSync(join(dir, `${input.provider}.json`))) {
+  // #3155: resolve per provider through the same layered resolver the run
+  // manifest uses, so a workspace copy written by `swao lz catalogue copy/new`
+  // (`<cataloguesDir>/<provider>/index.json`) is the catalogue the fit reads.
+  let catalogue: LzServiceCatalogue;
+  let catalogueOrigin: LzCatalogueProvenance;
+  let catalogueFile: string;
+  try {
+    const resolved = resolveProviderCatalogue(input.provider, input.workspacePath, input.cataloguesDir);
+    catalogue = resolved.catalogue;
+    catalogueOrigin = resolved.provenance;
+    catalogueFile = resolved.filePath;
+  } catch (e) {
+    if (e instanceof LzCatalogueSchemaError || e instanceof LzCatalogueDuplicateIdError) return { ok: false, error: e.message };
     return { ok: false, error: `No catalogue for provider "${input.provider}". Run \`swao lz catalogue list\`.` };
   }
-  const catalogue = loadLzCatalogue(dir, input.provider);
   const region = findRegion(catalogue, input.regionId);
   if (!region) {
     return {
@@ -293,7 +306,7 @@ export function assembleLandingZoneWsp(input: AssembleLzInput): AssembleLzResult
     assessedAt,
     catalogueMode,
   });
-  return { ok: true, wsp, notice: scanNotice };
+  return { ok: true, wsp, notice: scanNotice, catalogueOrigin, catalogueFile };
 }
 
 /** Canonical alias (ADR-0051): `assembleLzCatalogWsp` is the new name.

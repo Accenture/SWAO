@@ -24,4 +24,4 @@ swao generate-tf --app meine-app
 
 Die Terraform-Generierung folgt dem Landing-Zone-Katalog: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, Azure (West Europe), AWS (eu-central-1) und Google Cloud EU-Regionen. Benutzerdefinierte Anbietereinträge im Katalog erzeugen generische Stubs.
 
-Siehe auch: [Landing-Zone-Bewertung](/assessment/landing-zone) | [Funktionen & Editionen](/de/features)
+Siehe auch: [Landing-Zone-Bewertung](/de/assessment/landing-zone) | [Funktionen & Editionen](/de/features)

@@ -111,11 +111,30 @@ export type { IngestManifest, IngestedFile, IngestCategory, IngestPrePassOptions
 export {
   AssessOrchestrator,
   assessOrchestrator,
+  CANONICAL_PASS_ORDER,
+  DEFAULT_PASS_KEYS,
+  SKIP_LLM_REMOVED_PASSES,
+  PASS_ALIASES,
+  INDIVIDUAL_PASS_KEYS,
+  OPT_IN_PASS_KEYS,
+  resolvePassAlias,
+  sortPassesCanonical,
+  normaliseRequestedPasses,
+  applySkipLlm,
+  expandPassProfile,
+  filterByPassProfile,
 } from './orchestrator.js';
 export type {
   AppAssessmentPassKey,
   AppAssessmentPassDescriptor,
+  PassProfileLens,
+  PassProfileExpansion,
 } from './orchestrator.js';
+// #3158: --skip-llm marker rewrite and the unusable-LLM-answer degradation.
+export { markSkippedByFlag, NO_LLM_REASON, INVALID_LLM_RESPONSE_REASON } from './passes/llm-skip.js';
+// #3153: Pass 23 provider derivation from the selected landing zone.
+export { deriveLzrProviderId } from './passes/pass-23-lzr.js';
+export type { LzrProviderDerivation } from './passes/pass-23-lzr.js';
 
 // Pass 10 (DYNAMIC) and Pass 23 (LZR) take orchestrator-supplied inputs beyond
 // PassContext (a Playwright crawl result; a provider/landing-zone selection).
@@ -149,7 +168,7 @@ export const passContributions: PassContribution[] = [
   { id: 'synth', name: 'synthesis', signal_prefix: 'SYNTH', run: runSynthPass },
   { id: 'dynamic', name: 'dynamic_analysis', signal_prefix: 'DYN', run: dynamicContributionRun },
   // 'comp' (Pass 11 / COMP) moved to @swao/module-framework (#0570).
-  { id: 'blocks', name: 'block_assessments', signal_prefix: 'COMP', run: runBlocksPass },
+  { id: 'blocks', name: 'block_assessments', signal_prefix: 'BLOCKS', run: runBlocksPass },
   { id: 'scope', name: 'scope_coverage', signal_prefix: 'SCOPE', run: runScopePass },
   { id: 'lzr', name: 'lzr', signal_prefix: 'LZR', run: lzrContributionRun },
   // Pass 14 (MALWARE) is opt-in: excluded from passKeys() default profile but

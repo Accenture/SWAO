@@ -26,6 +26,7 @@ import {
   extractPulumiServices,
 } from '@swao/module-iac-scan';
 import type { IaCResourceGraph } from '@swao/module-iac-scan';
+import { runInvReferenceScans } from './inv-reference-scans.js';
 
 function readJson(filePath: string): Record<string, unknown> | null {
   if (!existsSync(filePath)) return null;
@@ -445,6 +446,23 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
         });
       }
     }
+  }
+
+  // --- INV-07 / INV-08 / INV-09: reference catalogue scans (#3160) ---
+  // db-compatibility-catalogue.yaml (INV-07), legacy-indicators-catalogue.yaml
+  // (INV-08) and vendor-sdk-catalogue.yaml (INV-09) are matched against the
+  // manifests, container images and file names of the source tree. A scan
+  // failure never fails the pass; it is recorded in the assessment block.
+  try {
+    const ref = runInvReferenceScans({
+      sourcePath,
+      priorSignals: signals,
+      databaseEngine: typeof assessment.database_engine === 'string' ? assessment.database_engine : undefined,
+    });
+    signals.push(...ref.signals);
+    Object.assign(assessment, ref.assessment);
+  } catch (err) {
+    assessment.reference_catalogue_checks = { error: (err as Error).message.split('\n')[0] };
   }
 
   return {

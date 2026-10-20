@@ -374,7 +374,7 @@ export function LlmStep({
           what="The base URL of your OpenAI-compatible LLM endpoint. Do not include the model prefix or /v1/chat/completions."
           details={[
             { label: 'Format',  value: 'https://host (no trailing slash)' },
-            { label: 'Example', value: 'https://preme-genai-hub.example.com' },
+            { label: 'Example', value: 'https://genai-hub.example.com' },
           ]}
           affordances={['Enter -- confirm  |  Esc -- back']}
           onOpenChange={setWizardGuidanceOpen}

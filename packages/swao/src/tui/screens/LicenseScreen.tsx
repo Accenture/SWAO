@@ -29,7 +29,7 @@ import { logPortfolio } from '@swao/core';
 import type { LicenseState } from '../../license/license-guard.js';
 
 // #0612: licence issuance is OPERATOR-ONLY and lives in the air-gapped
-// swao-premium tooling (scripts/issue-license.mjs + license-tui.mjs), which
+// private licence tooling, which
 // wraps the hidden `swao license issue --json` signing primitive. The shipped
 // product therefore exposes only the three things an end user needs:
 // see their fingerprint (status panel), request a licence, and activate one.
@@ -482,7 +482,7 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
       {sub === 'menu' && (
         <GuidanceBox
           title="License"
-          what="Community tier runs static passes. Consultant + Enterprise unlock LLM passes and BI export."
+          what="All tiers run the App, Landing Zone, Service and LLM Assessments. Consultant adds PDF reports, the App Assessment HTML report and LZ catalogue updates. Enterprise adds portfolio runs, the HTML Editor and Portal, challenge, BI export, chat and the MCP server."
           details={[
             { label: 'Request',       value: 'Generates a signed request token; send it to the SWAO team to receive a key' },
             { label: 'Questions',     value: 'https://github.com/Accenture/SWAO/discussions' },

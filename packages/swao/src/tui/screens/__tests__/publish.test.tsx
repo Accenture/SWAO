@@ -23,6 +23,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
 import * as fs from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 // ---------------------------------------------------------------------------
 // Mocks -- before imports (vi.mock is hoisted by Vitest)
@@ -169,5 +171,37 @@ describe('PublishScreen -- TU-05: challenge warning infrastructure (#2658)', () 
     // the dimColor removal from the Enter/O affordance texts.
     const { lastFrame } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
     expect((lastFrame() ?? '').length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3338 (owner decision 2026-10-18, licence tier matrix F-082; supersedes the #3286
+// Community exception): the Single-Page HTML Report is Consultant+ for every
+// assessment type (application, --lz, --llm). The mode carries
+// tierGate 'consultant' and matches FEATURE_GATES['html-report'] in publish.ts.
+// ---------------------------------------------------------------------------
+describe('PublishScreen -- single-page HTML is Consultant+ for every assessment type (#3338)', () => {
+  const htmlReportSrc = join(dirname(fileURLToPath(import.meta.url)), '../../../../../@swao/module-html-report/src');
+
+  it('labels and gates the html mode Consultant+ without a Community exception', () => {
+    const screen = fs.readFileSync(join(htmlReportSrc, 'tui/PublishScreen.tsx'), 'utf-8');
+    const htmlEntry = screen.slice(screen.indexOf("mode: 'html'"), screen.indexOf("mode: 'editor'"));
+    expect(htmlEntry).toContain("tier: 'Consultant+ (Application, Landing Zone and LLM Assessment reports)'");
+    expect(htmlEntry).toContain("tierGate: 'consultant'");
+    expect(htmlEntry).not.toMatch(/tier: '[^']*Community/);
+  });
+
+  it('the CLI gate is FEATURE_GATES html-report for every profile (no Community profiles)', () => {
+    const publish = fs.readFileSync(join(htmlReportSrc, 'commands/publish.ts'), 'utf-8');
+    expect(publish).toContain("requireFeature('html-report')");
+    expect(publish).not.toContain('COMMUNITY_PROFILES');
+  });
+
+  it('Community: selecting Single-Page HTML Report shows the Consultant licence block, not the app prompt', async () => {
+    const { lastFrame, stdin } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
+    await pressKey(stdin, '1');
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('requires a Consultant or Enterprise licence');
+    expect(frame).toContain('[Consultant+]');
   });
 });

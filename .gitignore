@@ -67,3 +67,6 @@ Thumbs.db
 .vscode/settings.json
 *.swp
 *.orig
+
+# #3338: generated per-tier pkg config (build-community.mjs deletes it after pkg)
+packages/swao/pkg-*.config.json

@@ -4,7 +4,7 @@
 # Schema: cloud-provider-catalogue-v1
 #
 # Used by: SPEC §10.5 (Landing Zone Mapper); SYNTH pass (Pass 9) landing zone matching sub-pass
-# Design: swao-premium/docs/design/012-cloud-provider-catalogue.md
+# Design: cloud provider catalogue design document (in the private premium tree)
 #
 # provider.type values:
 #   hyperscaler_eu_region   -- major hyperscaler operating an EU-located region

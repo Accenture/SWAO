@@ -26,6 +26,7 @@ import {
   logApp,
   enhancement,
   listSinkPaths,
+  toConsoleLine,
   type LogEntry,
 } from './log.js';
 
@@ -145,6 +146,45 @@ describe('console mirror', () => {
     expect(errSpy).toHaveBeenCalledTimes(1);    // error
     errSpy.mockRestore();
     warnSpy.mockRestore();
+  });
+
+  it('#3284: logApp with mirror:false writes the app sink but prints nothing', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mkdirSync(join(tmpRoot, 'apps', 'quiet-app'), { recursive: true });
+    logApp('quiet-app', 'warn', 'provider.llm.openai.retry', 'dual-logged', { mirror: false });
+    logApp('quiet-app', 'error', 'provider.llm.openai.connectivity-failure', 'dual-logged', { mirror: false });
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errSpy).not.toHaveBeenCalled();
+    const appSink = listSinkPaths(tmpRoot).apps.find((a) => a.appId === 'quiet-app')?.path;
+    expect(readNdjson(appSink!).map((e) => e.code)).toEqual([
+      'provider.llm.openai.retry',
+      'provider.llm.openai.connectivity-failure',
+    ]);
+    errSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+});
+
+describe('console mirror is one line per entry (#3340, CodeQL js/log-injection)', () => {
+  it('toConsoleLine turns line breaks into spaces and drops other control characters', () => {
+    expect(toConsoleLine('first\nsecond\r\nthird\rfourth')).toBe('first second third fourth');
+    expect(toConsoleLine('red \u001b[31mtext\u001b[0m bell\u0007 nul\u0000 del\u007f')).toBe('red [31mtext[0m bell nul del');
+    expect(toConsoleLine('tab\tkept')).toBe('tab\tkept');
+    expect(toConsoleLine('plain message')).toBe('plain message');
+  });
+
+  it('a forged second entry in a message is printed on the same line', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logPortfolio('warn', 'editor.template.missing', 'Template not found: x.tmpl\n[error] forged.code fake entry');
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const printed = String(warnSpy.mock.calls[0]![0]);
+    expect(printed).not.toMatch(/[\r\n]/);
+    expect(printed).toBe('[warn] editor.template.missing Template not found: x.tmpl [error] forged.code fake entry');
+    warnSpy.mockRestore();
+    // The NDJSON sink keeps the original message (JSON-escaped on disk).
+    const entries = readNdjson(listSinkPaths(tmpRoot).portfolio!);
+    expect(entries.at(-1)!.message).toBe('Template not found: x.tmpl\n[error] forged.code fake entry');
   });
 });
 

@@ -36,7 +36,8 @@ export type AssessmentType =
   | 'landing-zone-catalog'
   | 'landing-zone-customer'
   | 'hybrid'
-  | 'llm';
+  | 'llm'
+  | 'service';
 
 // ---------------------------------------------------------------------------
 // LLM provider interface (minimal; full implementation in @swao/swao)
@@ -47,6 +48,10 @@ export interface LlmProvider {
   /** Vision-capable completion (#1802). Optional -- check before calling. */
   completeVision?: (prompt: string, images: Buffer[]) => Promise<string>;
   readonly model?: string;
+  /** In-flight request limit of the provider's endpoint (#3284, D-14), from
+   *  `providers.llm.max_concurrency` (default 4). Optional; callers that fan
+   *  out (Pass 11) fall back to their own default when absent. */
+  readonly maxConcurrency?: number;
 }
 
 // ---------------------------------------------------------------------------

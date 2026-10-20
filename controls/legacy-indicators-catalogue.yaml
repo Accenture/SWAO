@@ -1,133 +1,214 @@
 # Legacy Indicators Catalogue
 # SWAO Compliance Ruleset Library -- runtime asset
-# Version: 2026-04
-# Schema: legacy-indicators-catalogue-v1.schema.json
+# Version: 2026-10
+# Schema: Zod LegacyIndicatorsCatalogueSchema
+#   (swao/packages/@swao/module-app-assessment/src/catalogue/reference-catalogues.ts)
 #
-# Used by: SPEC §10.1a legacy_indicators sub-pass (Stage D)
-# Purpose: Three-tier taxonomy of legacy technology patterns. Applied during
-#   the INV-supplement pass to detect dependencies or patterns that affect
-#   migration complexity or block sovereign cloud migration entirely.
+# Used by: Pass 01 (INV), signal INV-08 (passes/inv-reference-scans.ts).
+# Purpose: three-tier taxonomy of legacy technology patterns that affect
+#   migration complexity. Generic runtime asset: it must not contain
+#   engagement-specific content (client names or pseudonyms, one application's
+#   configuration, costs or volumes) and must not recommend one particular
+#   provider.
 #
 # Tier definitions:
-#   tier_1_blocker     -- No sovereign-cloud equivalent; blocks migration without
-#                         full replacement. Immediately escalates 7R to Retain or
-#                         triggers Re-architect review.
-#   tier_2_complicator -- Sovereign alternative exists but requires significant
-#                         migration effort (schema migration, protocol bridge,
-#                         refactoring). Adds 30-90 days to migration timeline.
-#   tier_3_manageable  -- Legacy pattern that adds migration cost but does not
-#                         change the 7R disposition. Captured as LOW signals;
-#                         noted in runbook.
+#   tier_1_blocker     -- proprietary middleware, integration platform or
+#                         runtime of a single vendor (proprietary protocol,
+#                         language or platform). No EU-parent provider offers
+#                         it as a managed service; leaving it means replacing
+#                         the integration code, and staying means licensed
+#                         self-hosting. Escalates the 7R review (Retain or
+#                         Re-architect).
+#   tier_2_complicator -- a sovereign alternative exists but migration needs
+#                         significant effort (schema migration, protocol
+#                         bridge, refactoring).
+#   tier_3_manageable  -- adds migration cost but does not change the 7R
+#                         disposition. Reported as LOW signals.
 #
-# Detection method per indicator:
-#   dependency_manifest -- scan Cargo.toml, package.json, pom.xml, requirements.txt
-#   file_pattern        -- scan for file extensions or filenames (e.g. .bts, .cbl)
-#   code_pattern        -- regex scan of source files
-#   docker_image        -- scan docker-compose.*.yml for proprietary middleware images
-#   sql_pattern         -- scan migration SQL files for specific DDL patterns
+# migration_effort_weeks is a SWAO planning heuristic for one typical
+#   application, not a sourced figure; it is used for relative sizing only.
+#
+# Detection methods per indicator. Pass 01 evaluates dependency_manifest,
+#   docker_image and file_pattern; code_pattern, sql_pattern and
+#   jar_patterns document the indicator for reviewers and are not evaluated.
+#   File patterns that collide with common non-legacy files (*.p, *.i, *.cls,
+#   *.df, *.process, *.wsdl, *.so, *.dll) are listed in
+#   AMBIGUOUS_FILE_PATTERNS and skipped; a rule with a `note` that qualifies
+#   it ("may also be used for ...") only yields low confidence.
+#   dependency_manifest -- package names in npm, pip, cargo, maven (groupId)
+#                          and nuget manifests
+#   file_pattern        -- file names in the source tree
+#   docker_image        -- image references in compose files and Dockerfiles
+#   code_pattern        -- reviewer reference only
+#   sql_pattern         -- reviewer reference only
+#
+# Sources: every indicator lists public sources (package registry pages for
+#   the detection patterns, vendor documentation for product facts) with the
+#   date each was checked, and a last_reviewed date (#3302). Patterns that
+#   could not be found in a public registry or vendor document were removed.
+#
+# Quality gate: tests/audit-gates/reference-catalogue-quality.gate.mjs
+#   (#3296, #3302): every indicator needs at least one source; review dates
+#   must not be in the future and warn after 180 days.
+
+last_reviewed: '2026-10-18'
 
 tiers:
 
   # ===========================================================================
   # TIER 1: BLOCKERS
-  # No sovereign-cloud equivalent without full technology replacement.
   # ===========================================================================
 
   tier_1_blockers:
 
     - id: LI-T1-001
-      name: "IBM MQ (WebSphere MQ)"
+      name: "IBM MQ"
       description: >
-        IBM proprietary message queuing middleware. No sovereign-cloud equivalent
-        in EU public cloud providers (OTC, IONOS). Requires replacement with
-        AMQP-standard messaging (RabbitMQ, Apache Kafka).
+        IBM proprietary message queuing middleware (MQI protocol). It can be
+        operated under an IBM licence on any infrastructure, including
+        containers, but no EU-parent provider offers it as a managed service
+        that SWAO could cite. Leaving it means moving clients to a
+        standard-protocol broker (AMQP, JMS) or Apache Kafka.
       detection:
         dependency_manifest:
           - { ecosystem: npm, pattern: "ibmmq", match: exact }
           - { ecosystem: pip, pattern: "pymqi", match: exact }
-          - { ecosystem: cargo, pattern: "ibm_mq", match: prefix }
+          - { ecosystem: cargo, pattern: "mqi", match: exact }
+          - { ecosystem: cargo, pattern: "libmqm-sys", match: exact }
           - { ecosystem: maven, pattern: "com.ibm.mq", match: prefix }
-          - { ecosystem: nuget, pattern: "IBM.MQ", match: exact }
+          - { ecosystem: nuget, pattern: "IBMMQDotnetClient", match: exact }
+          - { ecosystem: nuget, pattern: "IBMXMSDotnetClient", match: exact }
         docker_image:
           - { pattern: "ibmcom/mq", match: prefix }
           - { pattern: "icr.io/ibm-messaging/mq", match: prefix }
         code_pattern:
-          - { pattern: "wmq\\.", lang: [java, python] }
           - { pattern: "MQEnvironment", lang: [java] }
-      sovereign_alternative: "RabbitMQ (self-hosted OTC) or Apache Kafka"
+          - { pattern: "com\\.ibm\\.mq\\.", lang: [java] }
+      sovereign_alternative: "RabbitMQ or Apache ActiveMQ Artemis (AMQP, JMS) or Apache Kafka, self-hosted or managed by an EU-parent provider"
       migration_effort_weeks: 12
+      sources:
+        - url: https://www.npmjs.com/package/ibmmq
+          title: "ibmmq on npm (IBM MQ Node.js interface)"
+          reviewed: '2026-10-18'
+        - url: https://pypi.org/project/pymqi/
+          title: "pymqi on PyPI"
+          reviewed: '2026-10-18'
+        - url: https://crates.io/crates/mqi
+          title: "mqi on crates.io (IBM MQ Interface for Rust; native bindings in libmqm-sys)"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/com/ibm/mq/
+          title: "Maven Central: com.ibm.mq group"
+          reviewed: '2026-10-18'
+        - url: https://www.nuget.org/packages/IBMMQDotnetClient
+          title: "IBMMQDotnetClient on NuGet (owner IBM_MQ)"
+          reviewed: '2026-10-18'
+        - url: https://www.ibm.com/docs/en/SSFKSJ_9.4.0/container/developers-container-image.html
+          title: "IBM MQ container image icr.io/ibm-messaging/mq (licence acceptance required)"
+          reviewed: '2026-10-18'
+        - url: https://hub.docker.com/r/ibmcom/mq
+          title: "ibmcom/mq on Docker Hub (deprecated; later versions on the IBM Container Registry)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [ibm, messaging, queue]
 
     - id: LI-T1-002
       name: "TIBCO EMS / BusinessWorks / Rendezvous"
       description: >
-        TIBCO proprietary middleware suite. EMS (Enterprise Message Service),
-        BusinessWorks (process orchestration), and Rendezvous (multicast messaging)
-        have no direct sovereign-cloud equivalents. Protocol is proprietary.
+        TIBCO proprietary middleware: EMS (Enterprise Message Service),
+        BusinessWorks (integration processes) and Rendezvous (messaging). The
+        products are installed and operated by the customer under a TIBCO
+        licence; no EU-parent provider offers them as a managed service that
+        SWAO could cite.
       detection:
         dependency_manifest:
           - { ecosystem: maven, pattern: "com.tibco", match: prefix }
-          - { ecosystem: pip, pattern: "tibco-messaging", match: prefix }
         file_pattern:
-          - { pattern: "*.bwproject", description: "TIBCO BusinessWorks project files" }
-          - { pattern: "*.process", description: "TIBCO BusinessWorks process files" }
-        docker_image:
-          - { pattern: "tibco/", match: prefix }
+          - { pattern: "tibjms.jar", description: "TIBCO EMS Java client library" }
+          - { pattern: "*.process", description: "TIBCO BusinessWorks process files (ambiguous, not evaluated)" }
         code_pattern:
           - { pattern: "com\\.tibco\\.", lang: [java] }
-          - { pattern: "tibrvmsg", lang: [c, cpp] }
-      sovereign_alternative: "Apache Camel + RabbitMQ or Kafka; Camunda for process orchestration"
+      sovereign_alternative: "Apache Camel with Apache ActiveMQ Artemis or Apache Kafka; an open-source process engine for orchestration"
       migration_effort_weeks: 16
+      sources:
+        - url: https://repo1.maven.org/maven2/com/tibco/
+          title: "Maven Central: com.tibco namespace"
+          reviewed: '2026-10-18'
+        - url: https://docs.tibco.com/pub/ems/10.2.1/doc/pdf/TIB_ems_10.2.1_installation.pdf
+          title: "TIBCO EMS 10.2.1 installation guide (customer installation, including Linux)"
+          reviewed: '2026-10-18'
+        - url: https://docs.infor.com/inforos/2026.x/en-us/useradminlib_cloud/iontechconceag_cloud_osm/lsm1436532391176.html
+          title: "Integration guide listing the EMS client jar tibjms.jar"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [tibco, messaging, bpm, legacy]
 
     - id: LI-T1-003
-      name: "Oracle SOA Suite / Oracle BPEL"
+      name: "Oracle SOA Suite composites / BPEL processes"
       description: >
-        Oracle proprietary SOA middleware. BPEL processes, Oracle Mediator,
-        and Oracle Service Bus are not portable to sovereign cloud without
-        full rewrite. Oracle SOA Suite requires Oracle-licensed infrastructure.
+        Oracle SOA Suite composite applications: every SOA project has one
+        composite.xml that assembles its services, components (BPEL processes,
+        Mediator) and references. They run on Oracle SOA Suite under an Oracle
+        licence and are not portable to another platform without a rewrite.
+        BPEL itself is an OASIS standard, so a .bpel file alone can also come
+        from another engine; review the hit.
       detection:
         file_pattern:
           - { pattern: "*.bpel", description: "BPEL process definition files" }
-          - { pattern: "*.composite.xml", description: "Oracle Composite application descriptors" }
-          - { pattern: "*.wsdl", description: "Shared WSDL -- not a blocker alone, context-dependent" }
-        dependency_manifest:
-          - { ecosystem: maven, pattern: "oracle.soa", match: prefix }
-          - { ecosystem: maven, pattern: "oracle.bpel", match: prefix }
+          - { pattern: "composite.xml", description: "Oracle SOA Suite (SCA) composite descriptor" }
         code_pattern:
           - { pattern: "oracle\\.soa\\.", lang: [java, xml] }
-          - { pattern: "BPELWorklistService", lang: [java, xml] }
-      sovereign_alternative: "Apache Camel + Camunda BPM (self-hosted) or jBPM"
+      sovereign_alternative: "Apache Camel with an open-source BPMN process engine (for example jBPM), self-hosted"
       migration_effort_weeks: 20
+      sources:
+        - url: https://docs.oracle.com/middleware/11119/soasuite/SOASE/fod_intro2.htm
+          title: "Developing SOA Composite Applications with Oracle SOA Suite (composite.xml, BPEL components)"
+          reviewed: '2026-10-18'
+        - url: https://docs.oasis-open.org/wsbpel/2.0/OS/wsbpel-v2.0-OS.html
+          title: "OASIS Web Services Business Process Execution Language 2.0"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [oracle, soa, bpel, legacy]
 
     - id: LI-T1-004
       name: "Microsoft BizTalk Server"
       description: >
-        Microsoft BizTalk is an on-premises ESB/EAI platform. No cloud-native
-        equivalent; Azure Logic Apps is the Microsoft migration target but is
-        not a sovereign cloud option. BizTalk-specific orchestrations (.bts files),
-        maps, and pipeline components require complete rewrite.
+        Microsoft BizTalk Server is an on-premises integration platform for
+        Windows Server. Orchestrations (.odx), maps (.btm) and pipelines (.btp)
+        run only on BizTalk and need a rewrite on another integration
+        platform. .odx is not used for detection: the extension is also the
+        registered extension of ASAM ODX (ISO 22901) automotive diagnostic
+        data. Microsoft's cloud successor, Azure Logic Apps, is a service
+        of a US-parent provider (see the verdict rule in
+        sovereign-service-catalogue.yaml).
       detection:
         file_pattern:
-          - { pattern: "*.bts", description: "BizTalk orchestration files" }
           - { pattern: "*.btm", description: "BizTalk map files" }
           - { pattern: "*.btp", description: "BizTalk pipeline files" }
           - { pattern: "*.btproj", description: "BizTalk project files" }
-        dependency_manifest:
-          - { ecosystem: nuget, pattern: "Microsoft.BizTalk", match: prefix }
         code_pattern:
           - { pattern: "Microsoft\\.BizTalk\\.", lang: [csharp] }
-      sovereign_alternative: "Apache Camel or MuleSoft (self-hosted); NServiceBus on OTC"
+      sovereign_alternative: "Apache Camel or another open-source integration framework, self-hosted"
       migration_effort_weeks: 24
+      sources:
+        - url: https://learn.microsoft.com/en-us/biztalk/core/adding-project-items
+          title: "BizTalk Server: adding project items (orchestrations, maps, pipelines)"
+          reviewed: '2026-10-18'
+        - url: https://learn.microsoft.com/en-us/biztalk/core/glossary5
+          title: "BizTalk Server glossary (.odx orchestration, .btm map, .btp pipeline, .btproj project)"
+          reviewed: '2026-10-18'
+        - url: https://www.iana.org/assignments/media-types/application/ODX
+          title: "IANA media type application/ODX (ASAM ODX, file extension odx)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [biztalk, microsoft, esb, legacy]
 
     - id: LI-T1-005
       name: "COM / DCOM (Windows Component Object Model)"
       description: >
-        COM/DCOM components indicate deep Windows platform coupling. COM interop
-        from .NET or native COM activation patterns cannot run in Linux containers
-        or sovereign cloud environments without Windows VMs.
+        COM components expose functionality on Windows platforms; modern .NET
+        supports COM interop on Windows only. Code that activates or exposes
+        COM objects cannot run in Linux containers and needs Windows hosts or a
+        rewrite.
       detection:
         code_pattern:
           - { pattern: "CoCreateInstance", lang: [cpp, csharp] }
@@ -140,62 +221,88 @@ tiers:
           - { ecosystem: cargo, pattern: "windows", match: exact, note: "May not indicate COM; inspect usage" }
           - { ecosystem: cargo, pattern: "windows-sys", match: exact, note: "May not indicate COM; inspect usage" }
       sovereign_alternative: >
-        Rewrite COM components as gRPC services or REST APIs. If COM is for Office
-        automation, replace with LibreOffice (self-hosted), Apache POI (Java), or
-        python-docx. Windows-only containers on OTC are possible but not sovereign-optimal.
+        Rewrite COM components as gRPC or REST services. For Office automation
+        use document libraries (for example Apache POI, python-docx) or a
+        self-hosted office suite. Windows hosts remain an option where the
+        provider offers them.
       migration_effort_weeks: 16
+      sources:
+        - url: https://learn.microsoft.com/en-us/dotnet/standard/native-interop/cominterop
+          title: "COM Interop in .NET (COM on Windows platforms; modern .NET support on Windows only)"
+          reviewed: '2026-10-18'
+        - url: https://crates.io/crates/windows
+          title: "windows crate on crates.io (Rust for Windows)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [com, dcom, windows, legacy]
 
     - id: LI-T1-006
-      name: "SAP RFC / BAPI / JCo"
+      name: "SAP RFC / BAPI via JCo or the NW RFC SDK"
       description: >
-        SAP Remote Function Calls via JCo (Java Connector) or RFC libraries
-        indicate tight SAP ERP coupling. SAP JCo requires SAP licensing and
-        runs proprietary ABAP RFC protocol. Cannot run on standard sovereign
-        cloud compute without SAP BTP or SAP S/4HANA Cloud.
+        Remote Function Calls into SAP ERP through the SAP Java Connector
+        (sapjco3.jar plus a native library) or the SAP NetWeaver RFC SDK
+        (Python binding pyrfc). Both are downloaded from the SAP Support Portal
+        and tie the application to the SAP RFC protocol. pyrfc was archived by
+        SAP on 2026-05-28 and is no longer maintained.
       detection:
         dependency_manifest:
-          - { ecosystem: maven, pattern: "com.sap.conn.jco", match: prefix }
           - { ecosystem: pip, pattern: "pyrfc", match: exact }
-          - { ecosystem: pip, pattern: "pysap", match: exact }
         file_pattern:
-          - { pattern: "*.dll", glob: "**/sapjco*", description: "SAP JCo native library" }
-          - { pattern: "sapjco3.jar" }
+          - { pattern: "sapjco3.jar", description: "SAP Java Connector library" }
+          - { pattern: "libsapjco3.so", description: "SAP Java Connector native library (Linux)" }
+          - { pattern: "sapjco3.dll", description: "SAP Java Connector native library (Windows)" }
         code_pattern:
           - { pattern: "JCoDestination", lang: [java] }
           - { pattern: "CALL FUNCTION", lang: [abap] }
       sovereign_alternative: >
-        REST/SOAP API layer in front of SAP (SAP Integration Suite EU tenant or
-        self-hosted SAP GW on OTC). ABAP rewrite to SAP BTP Kyma (Kubernetes)
-        for greenfield; REST adaptor for brownfield.
+        Put a REST or OData API layer in front of SAP and call that instead of
+        RFC; the SAP system itself is assessed separately.
       migration_effort_weeks: 20
+      sources:
+        - url: https://support.sap.com/en/product/connectors/jco.html
+          title: "SAP Java Connector (JCo), SAP Support Portal"
+          reviewed: '2026-10-18'
+        - url: https://pypi.org/project/pyrfc/
+          title: "pyrfc on PyPI (Python bindings for SAP NetWeaver RFC SDK)"
+          reviewed: '2026-10-18'
+        - url: https://github.com/SAP/PyRFC
+          title: "SAP/PyRFC repository (archived 2026-05-28, no longer maintained)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [sap, rfc, abap, legacy]
 
     - id: LI-T1-007
-      name: "Progress OpenEdge (ABL / 4GL)"
+      name: "Progress OpenEdge (ABL)"
       description: >
-        Progress OpenEdge ABL (Advanced Business Language / 4GL) applications
-        require the OpenEdge runtime, which has no containerised sovereign-cloud
-        image. OpenEdge databases use a proprietary format incompatible with
-        PostgreSQL without full schema migration.
+        Progress OpenEdge ABL applications need the OpenEdge runtime and
+        database under a Progress licence. Progress documents Docker container
+        images for the OpenEdge database for development use only. The ABL
+        file extensions collide with other languages, so the file patterns
+        below are not evaluated; the indicator documents the technology for
+        reviewers.
       detection:
         file_pattern:
-          - { pattern: "*.p", description: "OpenEdge ABL procedure files" }
-          - { pattern: "*.cls", description: "OpenEdge ABL class files (ambiguous with Java .class)" }
-          - { pattern: "*.df", description: "OpenEdge data definition files" }
-          - { pattern: "*.i", description: "OpenEdge include files" }
+          - { pattern: "*.p", description: "OpenEdge ABL procedure files (ambiguous, not evaluated)" }
+          - { pattern: "*.cls", description: "OpenEdge ABL class files (ambiguous, not evaluated)" }
+          - { pattern: "*.df", description: "OpenEdge data definition files (ambiguous, not evaluated)" }
+          - { pattern: "*.i", description: "OpenEdge include files (ambiguous, not evaluated)" }
         code_pattern:
           - { pattern: "DEFINE VARIABLE .* AS .* NO-UNDO", lang: [abl] }
           - { pattern: "FIND FIRST", lang: [abl] }
       sovereign_alternative: >
-        Full rewrite required. Migrate ABL to Java/Kotlin, Python, or Go.
-        OpenEdge DB -> PostgreSQL schema migration via Progress Data Migration tools.
+        Rewrite the ABL code in a mainstream language and migrate the OpenEdge
+        database to PostgreSQL, or keep the licensed OpenEdge runtime on
+        self-managed infrastructure.
       migration_effort_weeks: 32
+      sources:
+        - url: https://docs.progress.com/bundle/openedge-database-docker-container/page/Work-with-OpenEdge-database-Docker-container-images-Main-steps.html
+          title: "Work with OpenEdge database Docker container images (Progress documentation)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [progress, openedge, 4gl, legacy]
 
   # ===========================================================================
   # TIER 2: COMPLICATORS
-  # Sovereign alternative exists; significant migration effort required.
   # ===========================================================================
 
   tier_2_complicators:
@@ -203,11 +310,10 @@ tiers:
     - id: LI-T2-001
       name: "Oracle Database client"
       description: >
-        Oracle Database drivers indicate dependency on Oracle-licensed RDBMS.
-        Oracle is available on OCI (Oracle Cloud Infrastructure) which has
-        EU datacentres but is not a sovereign provider. Managed Oracle on
-        OTC/IONOS does not exist; self-hosted Oracle requires licensed VMs.
-        Migration to PostgreSQL is the standard path.
+        Oracle Database drivers indicate a dependency on the Oracle-licensed
+        database. Oracle Database can be self-hosted under an Oracle licence
+        (Oracle publishes container images and image build scripts); the usual
+        sovereign path is a migration to PostgreSQL.
       detection:
         dependency_manifest:
           - { ecosystem: cargo, pattern: "oracle", match: exact }
@@ -220,18 +326,42 @@ tiers:
         docker_image:
           - { pattern: "container-registry.oracle.com/database", match: prefix }
           - { pattern: "oracle/database", match: prefix }
-      sovereign_alternative: "PostgreSQL (managed OTC, IONOS) via ora2pg migration"
+      sovereign_alternative: "PostgreSQL (self-hosted or managed by an EU-parent provider), schema and data migration with ora2pg"
       migration_effort_weeks: 8
+      sources:
+        - url: https://github.com/oracle/python-oracledb
+          title: "python-oracledb (successor of cx_Oracle)"
+          reviewed: '2026-10-18'
+        - url: https://github.com/oracle/node-oracledb
+          title: "node-oracledb"
+          reviewed: '2026-10-18'
+        - url: https://crates.io/crates/sibyl
+          title: "sibyl on crates.io"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/com/oracle/database/jdbc/
+          title: "Maven Central: com.oracle.database.jdbc group"
+          reviewed: '2026-10-18'
+        - url: https://www.nuget.org/packages/Oracle.ManagedDataAccess
+          title: "Oracle.ManagedDataAccess (ODP.NET) on NuGet"
+          reviewed: '2026-10-18'
+        - url: https://container-registry.oracle.com/
+          title: "Oracle Container Registry (Database images)"
+          reviewed: '2026-10-18'
+        - url: https://github.com/oracle/docker-images/tree/main/OracleDatabase/SingleInstance
+          title: "Oracle Database image build scripts (images tagged oracle/database:<version>-<edition>)"
+          reviewed: '2026-10-18'
+        - url: https://ora2pg.darold.net/
+          title: "Ora2Pg: Oracle to PostgreSQL migration tool"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [oracle, database]
 
     - id: LI-T2-002
       name: "Microsoft SQL Server client"
       description: >
-        SQL Server clients indicate MSSQL dependency. SQL Server is not available
-        on sovereign cloud providers (OTC, IONOS) as a managed service. Self-hosted
-        SQL Server on Linux containers is possible (Microsoft offers Linux images)
-        but adds licensing cost and management burden. PostgreSQL or MariaDB are
-        the sovereign migration targets.
+        SQL Server drivers indicate an MSSQL dependency. SQL Server runs on
+        Linux and in containers under a Microsoft licence on any
+        infrastructure; the usual sovereign path is a migration to PostgreSQL.
       detection:
         dependency_manifest:
           - { ecosystem: cargo, pattern: "tiberius", match: exact }
@@ -242,18 +372,38 @@ tiers:
           - { ecosystem: maven, pattern: "com.microsoft.sqlserver", match: prefix }
         docker_image:
           - { pattern: "mcr.microsoft.com/mssql", match: prefix }
-      sovereign_alternative: "PostgreSQL via pgloader; MariaDB if MySQL-compatible schema"
+      sovereign_alternative: "PostgreSQL via pgloader (SQL Server source supported); T-SQL needs conversion"
       migration_effort_weeks: 6
+      sources:
+        - url: https://crates.io/crates/tiberius
+          title: "tiberius on crates.io"
+          reviewed: '2026-10-18'
+        - url: https://pypi.org/project/pyodbc/
+          title: "pyodbc on PyPI (generic ODBC module)"
+          reviewed: '2026-10-18'
+        - url: https://pypi.org/project/pymssql/
+          title: "pymssql on PyPI"
+          reviewed: '2026-10-18'
+        - url: https://github.com/microsoft/mssql-jdbc
+          title: "Microsoft JDBC Driver for SQL Server"
+          reviewed: '2026-10-18'
+        - url: https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker
+          title: "SQL Server Linux container images (mcr.microsoft.com/mssql/server)"
+          reviewed: '2026-10-18'
+        - url: https://pgloader.readthedocs.io/en/latest/ref/mssql.html
+          title: "pgloader: migrating a SQL Server database to PostgreSQL"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [sqlserver, microsoft, database]
 
     - id: LI-T2-003
       name: "IBM Db2 client"
       description: >
-        IBM Db2 is not available as a managed service on sovereign EU cloud providers.
-        Self-hosted Db2 is possible on Linux containers (IBM provides community edition)
-        but requires IBM licensing for production. PostgreSQL is the standard migration
-        target; Db2 SQL extensions (GROUP BY ROLLUP, OLAP functions) are largely
-        available in PostgreSQL 14+.
+        Db2 drivers indicate a dependency on IBM Db2. Db2 can be self-hosted
+        under an IBM licence (IBM publishes a Db2 Community Edition container
+        image). PostgreSQL is the usual migration target; ROLLUP, CUBE and
+        GROUPING SETS are available in PostgreSQL, Db2-specific SQL and stored
+        procedures need conversion.
       detection:
         dependency_manifest:
           - { ecosystem: pip, pattern: "ibm_db", match: exact }
@@ -263,93 +413,143 @@ tiers:
         docker_image:
           - { pattern: "icr.io/db2_community/db2", match: prefix }
           - { pattern: "ibmcom/db2", match: prefix }
-      sovereign_alternative: "PostgreSQL via custom ETL or IBM Data Movement Tool"
+      sovereign_alternative: "PostgreSQL via schema conversion and data migration"
       migration_effort_weeks: 8
+      sources:
+        - url: https://pypi.org/project/ibm-db/
+          title: "ibm-db on PyPI (Python driver for Db2)"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/com/ibm/db2/
+          title: "Maven Central: com.ibm.db2 group (jcc)"
+          reviewed: '2026-10-18'
+        - url: https://crates.io/crates/ibm_db
+          title: "ibm_db on crates.io (Db2 connectivity using the CLI driver)"
+          reviewed: '2026-10-18'
+        - url: https://www.ibm.com/docs/en/db2/11.5.x?topic=system-linux
+          title: "Db2 Community Edition container image icr.io/db2_community/db2"
+          reviewed: '2026-10-18'
+        - url: https://hub.docker.com/r/ibmcom/db2
+          title: "ibmcom/db2 on Docker Hub"
+          reviewed: '2026-10-18'
+        - url: https://www.postgresql.org/docs/current/queries-table-expressions.html
+          title: "PostgreSQL: GROUPING SETS, CUBE and ROLLUP"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [ibm, database, legacy]
 
     - id: LI-T2-004
-      name: "COBOL callable APIs / JNI COBOL bridge"
+      name: "COBOL sources"
       description: >
-        COBOL callable via JNI (Java Native Interface), GnuCOBOL FFI from Rust,
-        or direct COBOL binary invocation. COBOL execution requires specific runtime
-        (GnuCOBOL, IBM Enterprise COBOL, Micro Focus COBOL). Containerisation
-        of COBOL is feasible (GnuCOBOL Linux image) but represents significant
-        technical debt and runtime complexity.
+        COBOL source and copybook files. COBOL needs a COBOL compiler and
+        runtime (for example the open-source GnuCOBOL on Linux, or a
+        commercial compiler); containerising it is feasible but keeps the
+        technical debt.
       detection:
         file_pattern:
           - { pattern: "*.cbl", description: "COBOL source files" }
           - { pattern: "*.cob", description: "COBOL source files" }
           - { pattern: "*.cpy", description: "COBOL copybook files" }
         code_pattern:
-          - { pattern: "cobol.callable", lang: [java, python] }
-          - { pattern: "GnuCobol", lang: [rust, c] }
           - { pattern: "IDENTIFICATION DIVISION", lang: [cobol] }
-        dependency_manifest:
-          - { ecosystem: cargo, pattern: "cobol", match: prefix }
       sovereign_alternative: >
-        Rewrite COBOL in Java or Python (COBOL -> Java transpilers available:
-        OpenCobolIDE, Micro Focus). GnuCOBOL containers are feasible short-term.
+        Short term: compile and run with GnuCOBOL in a Linux container. Long
+        term: rewrite in a mainstream language.
       migration_effort_weeks: 20
+      sources:
+        - url: https://gnucobol.sourceforge.io/
+          title: "GnuCOBOL (free COBOL compiler)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [cobol, mainframe, legacy]
 
     - id: LI-T2-005
-      name: "JMS (Java Messaging Service) / proprietary MQ-Light"
+      name: "JMS on a proprietary broker client (Oracle AQ JMS)"
       description: >
-        JMS is a standard API but is implemented by proprietary brokers (ActiveMQ,
-        IBM MQ, WebLogic JMS, Oracle AQ). Dependency on JMS alone is not a complicator
-        if an open-source broker (ActiveMQ Artemis) is the backing implementation.
-        Flag if JMS is used with proprietary broker drivers (IBM MQ JMS, Oracle AQ JMS).
+        JMS is a standard API. A dependency on the JMS API alone (javax.jms,
+        jakarta.jms) or on an open-source broker (ActiveMQ Artemis, Qpid JMS) is
+        not a complicator and is not flagged. Flagged: the JMS provider client of
+        a proprietary broker that has no managed sovereign equivalent. Oracle
+        Advanced Queuing JMS (Maven com.oracle.database.messaging:aqapi, verified
+        on Maven Central 2026-10-17) ties messaging to an Oracle database. IBM MQ
+        JMS (Maven group com.ibm.mq) and TIBCO EMS (com.tibco) are tier 1 blockers
+        (LI-T1-001, LI-T1-002) and are not repeated here.
       detection:
         dependency_manifest:
-          - { ecosystem: maven, pattern: "javax.jms", match: prefix }
-          - { ecosystem: maven, pattern: "jakarta.jms", match: prefix }
-          - { ecosystem: maven, pattern: "com.ibm.mq.jms", match: prefix, note: "BLOCKER-level if IBM MQ JMS" }
-          - { ecosystem: maven, pattern: "oracle.jms", match: prefix }
-          - { ecosystem: npm, pattern: "stompit", match: exact, note: "STOMP over WebSocket; usually OK" }
+          - { ecosystem: maven, pattern: "com.oracle.database.messaging", match: prefix }
         code_pattern:
-          - { pattern: "QueueManager", lang: [java] }
-          - { pattern: "MQQueueConnectionFactory", lang: [java] }
-      sovereign_alternative: "ActiveMQ Artemis (JMS-compatible, self-hosted OTC) or Kafka"
+          - { pattern: "oracle\\.jms\\.", lang: [java] }
+          - { pattern: "weblogic\\.jms\\.", lang: [java] }
+      sovereign_alternative: "Apache ActiveMQ Artemis (JMS-compatible) or Apache Kafka, self-hosted or managed by an EU-parent provider"
       migration_effort_weeks: 4
+      sources:
+        - url: https://repo1.maven.org/maven2/com/oracle/database/messaging/aqapi/
+          title: "Maven Central: com.oracle.database.messaging:aqapi"
+          reviewed: '2026-10-18'
+        - url: https://docs.oracle.com/en/database/oracle/oracle-database/19/adque/aq-introduction.html
+          title: "Oracle Database Advanced Queuing introduction"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [jms, messaging, legacy]
 
     - id: LI-T2-006
-      name: "Sybase / SAP ASE client"
+      name: "SAP ASE (Sybase) client"
       description: >
-        SAP Adaptive Server Enterprise (formerly Sybase ASE) is not available as
-        a managed service on sovereign EU cloud. Self-hosted ASE on Linux containers
-        is possible but requires SAP licensing. Migration to PostgreSQL is feasible
-        for most schema patterns; Sybase T-SQL has some PostgreSQL incompatibilities.
+        SAP Adaptive Server Enterprise (formerly Sybase ASE) is a licensed
+        database that the customer operates itself. Migration to PostgreSQL is
+        feasible for most schemas; ASE Transact-SQL needs conversion.
       detection:
         dependency_manifest:
-          - { ecosystem: maven, pattern: "com.sybase", match: prefix }
           - { ecosystem: pip, pattern: "pyodbc", match: exact, note: "Inspect DSN for Sybase/ASE" }
           - { ecosystem: nuget, pattern: "Sybase.AdoNet4.AseClient", match: exact }
+          - { ecosystem: nuget, pattern: "AdoNetCore.AseClient", match: exact }
         code_pattern:
           - { pattern: "AseConnection", lang: [csharp] }
           - { pattern: "com\\.sybase\\.jdbc", lang: [java] }
-      sovereign_alternative: "PostgreSQL (SAP ASE -> PG migration tooling available)"
+      sovereign_alternative: "PostgreSQL via schema conversion and data migration"
       migration_effort_weeks: 6
+      sources:
+        - url: https://help.sap.com/docs/SAP_ASE
+          title: "SAP Adaptive Server Enterprise documentation"
+          reviewed: '2026-10-18'
+        - url: https://www.nuget.org/packages/Sybase.AdoNet4.AseClient
+          title: "Sybase.AdoNet4.AseClient on NuGet (third-party upload of the ASE ADO.NET provider, unlisted)"
+          reviewed: '2026-10-18'
+        - url: https://github.com/DataAction/AdoNetCore.AseClient
+          title: "AdoNetCore.AseClient (open-source ADO.NET provider for SAP ASE)"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [sybase, sap, database, legacy]
 
     - id: LI-T2-007
-      name: "Informix client"
+      name: "IBM Informix client"
       description: >
-        IBM Informix is not available as a managed service on sovereign EU cloud.
-        Informix has unique SQL extensions (SET operations, SERIAL columns as
-        sequences, row-level locking) that require careful mapping to PostgreSQL.
+        IBM Informix is a licensed database that the customer operates itself;
+        Informix-specific SQL needs mapping to PostgreSQL.
       detection:
         dependency_manifest:
           - { ecosystem: pip, pattern: "ifxpy", match: exact }
           - { ecosystem: maven, pattern: "com.ibm.informix", match: prefix }
           - { ecosystem: nuget, pattern: "IBM.Data.Informix", match: prefix }
-      sovereign_alternative: "PostgreSQL via custom schema migration; ifx2pg tooling"
+      sovereign_alternative: "PostgreSQL via schema conversion and data migration"
       migration_effort_weeks: 8
+      sources:
+        - url: https://pypi.org/project/IfxPy/
+          title: "IfxPy on PyPI (Informix native Python driver)"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/com/ibm/informix/
+          title: "Maven Central: com.ibm.informix group (jdbc)"
+          reviewed: '2026-10-18'
+        - url: https://www.nuget.org/packages/IBM.Data.Informix
+          title: "IBM.Data.Informix on NuGet (community upload of the Informix data provider)"
+          reviewed: '2026-10-18'
+        - url: https://www.ibm.com/products/informix
+          title: "IBM Informix product page"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [ibm, informix, database, legacy]
 
   # ===========================================================================
   # TIER 3: MANAGEABLE
-  # Migration cost added but 7R disposition unchanged.
   # ===========================================================================
 
   tier_3_manageable:
@@ -357,10 +557,10 @@ tiers:
     - id: LI-T3-001
       name: "Dense stored procedures"
       description: >
-        High density of CREATE FUNCTION / CREATE PROCEDURE in SQL migration files
-        indicates business logic embedded in the database. Manageable for PostgreSQL
-        (PL/pgSQL is supported) but increases migration regression testing burden.
-        Threshold: > 20 stored procedures in migration files.
+        Many CREATE FUNCTION / CREATE PROCEDURE statements in SQL migration
+        files indicate business logic in the database. PostgreSQL supports
+        procedural code (PL/pgSQL), but the migration regression testing burden
+        grows. Threshold: more than 20 definitions.
       detection:
         sql_pattern:
           - { pattern: "CREATE\\s+(OR\\s+REPLACE\\s+)?FUNCTION", lang: [sql, plpgsql] }
@@ -368,15 +568,20 @@ tiers:
         threshold: 20
         count_unit: "distinct stored procedure / function definitions"
       migration_effort_weeks: 2
+      sources:
+        - url: https://www.postgresql.org/docs/current/plpgsql.html
+          title: "PostgreSQL: PL/pgSQL procedural language"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [database, stored_procedures, plsql]
 
     - id: LI-T3-002
       name: "Dynamic class loading / plugin loading at runtime"
       description: >
-        Runtime class loading (Java: Class.forName(), Python: importlib.import_module(),
-        Rust: libloading crate) indicates extensibility patterns that may complicate
-        containerisation if plugins are loaded from filesystem paths. Manageable if
-        plugins are bundled in the container image.
+        Runtime loading of classes, modules or shared libraries (Java
+        Class.forName, Python importlib, dlopen, the Rust libloading crate)
+        can complicate containerisation when plugins are loaded from file
+        system paths. Manageable when the plugins are bundled in the image.
       detection:
         code_pattern:
           - { pattern: "Class\\.forName\\(", lang: [java] }
@@ -387,15 +592,23 @@ tiers:
           - { ecosystem: cargo, pattern: "libloading", match: exact }
           - { ecosystem: cargo, pattern: "dlopen", match: prefix }
       migration_effort_weeks: 1
+      sources:
+        - url: https://crates.io/crates/libloading
+          title: "libloading on crates.io"
+          reviewed: '2026-10-18'
+        - url: https://crates.io/crates/dlopen
+          title: "dlopen on crates.io"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [plugins, dynamic_loading]
 
     - id: LI-T3-003
       name: "XSLT / XSL transformation engines"
       description: >
-        Heavy XSLT usage indicates XML-centric data transformation patterns.
-        XSLT itself is not a legacy indicator alone; Saxon-EE (commercial XSLT 3.0
-        processor) introduces licensing concerns for sovereign cloud. Open-source
-        Saxon-HE or libxslt are sovereign-compatible.
+        Heavy XSLT use indicates XML-centric data transformation. XSLT is not
+        a legacy indicator on its own. Saxon-HE is open source and free of
+        charge; Saxon-PE and Saxon-EE are sold by Saxonica, so check which
+        edition is in use and whether its licence covers the target hosting.
       detection:
         dependency_manifest:
           - { ecosystem: maven, pattern: "net.sf.saxon", match: prefix }
@@ -407,16 +620,28 @@ tiers:
         code_pattern:
           - { pattern: "Transformer\\.transform\\(", lang: [java] }
       migration_effort_weeks: 1
+      sources:
+        - url: https://www.saxonica.com/products/products.xml
+          title: "Saxonica products (Saxon-HE open source, Saxon-PE and Saxon-EE for sale, SaxonJS)"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/net/sf/saxon/
+          title: "Maven Central: net.sf.saxon group (Saxon-HE)"
+          reviewed: '2026-10-18'
+        - url: https://lxml.de/xpathxslt.html
+          title: "lxml: XPath and XSLT"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [xml, xslt, data_transformation]
 
     - id: LI-T3-004
-      name: "Legacy authentication protocols (NTLM, Kerberos without abstraction)"
+      name: "Legacy authentication protocols (NTLM, direct Kerberos)"
       description: >
-        Direct use of NTLM or Kerberos without an abstraction layer (e.g. SSPI,
-        MIT Kerberos) indicates Windows domain or Active Directory dependencies.
-        Manageable if domain controllers can be migrated to Azure AD or self-hosted
-        Samba DC. Direct NTLM in application code requires replacement with
-        standard OAuth 2.0 / OIDC.
+        Direct use of NTLM or Kerberos in application code indicates a
+        Windows domain or Active Directory dependency. Microsoft has
+        deprecated all versions of NTLM and recommends Negotiate (Kerberos
+        first); NTLMv1 is removed from Windows 11 24H2 and Windows Server
+        2025. Application code should move to OAuth 2.0 / OpenID Connect
+        against a directory service the target environment provides.
       detection:
         code_pattern:
           - { pattern: "NtlmCredentials", lang: [csharp, java, python] }
@@ -424,33 +649,52 @@ tiers:
           - { pattern: "Kerberos\\.acquireServiceTicket", lang: [java] }
           - { pattern: "krb5cc_", lang: [c, cpp, python] }
         dependency_manifest:
-          - { ecosystem: nuget, pattern: "Microsoft.Net.Http.Ntlm", match: prefix }
           - { ecosystem: pip, pattern: "requests-ntlm", match: exact }
       migration_effort_weeks: 3
+      sources:
+        - url: https://learn.microsoft.com/en-us/windows/whats-new/deprecated-features
+          title: "Deprecated features in the Windows client: NTLM (all versions) deprecated, June 2024"
+          reviewed: '2026-10-18'
+        - url: https://pypi.org/project/requests-ntlm/
+          title: "requests-ntlm on PyPI"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [auth, windows, active_directory, legacy]
 
     - id: LI-T3-005
-      name: "Proprietary logging framework (log4j 1.x)"
+      name: "End-of-life logging framework (Log4j 1.x)"
       description: >
-        Log4j 1.x reached end of life in 2015 and has multiple known CVEs
-        (including CVE-2019-17571). Not a sovereign blocker, but indicates
-        unpatched dependency debt that increases risk during migration.
-        Log4j 1.x is not the same as Log4j 2.x (CVE-2021-44228 vector).
+        Log4j 1.x reached end of life on 2015-08-05 and has known
+        vulnerabilities, including CVE-2019-17571 (deserialisation in
+        SocketServer). Not a sovereignty blocker, but unpatched dependency debt
+        that adds risk during migration. Log4j 1.x (Maven log4j:log4j) is not
+        Log4j 2.x (org.apache.logging.log4j).
       detection:
         dependency_manifest:
           - { ecosystem: maven, pattern: "log4j", match: exact, group: "log4j", note: "log4j:log4j = v1.x; org.apache.logging.log4j = v2.x" }
         jar_patterns:
           - { pattern: "log4j-1.*\\.jar" }
       migration_effort_weeks: 1
+      sources:
+        - url: https://logging.apache.org/log4j/1.x/
+          title: "Apache Log4j 1.x: end of life announced on August 5, 2015"
+          reviewed: '2026-10-18'
+        - url: https://nvd.nist.gov/vuln/detail/CVE-2019-17571
+          title: "NVD: CVE-2019-17571"
+          reviewed: '2026-10-18'
+        - url: https://repo1.maven.org/maven2/log4j/log4j/
+          title: "Maven Central: log4j:log4j"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [logging, cve, eol]
 
     - id: LI-T3-006
       name: "Native shared libraries (JNI / FFI / C extension)"
       description: >
-        JNI (Java Native Interface), Python ctypes/cffi C extensions, or Rust FFI
-        bindings to native shared libraries complicate containerisation (library
-        must be present in the container image) and may have OS-specific builds.
-        Not a blocker if the native library is open-source and builds on Linux.
+        JNI, Python ctypes/cffi or Rust FFI bindings to native shared
+        libraries complicate containerisation (the library must be present in
+        the image, built for the target OS and architecture). Not a blocker if
+        the native library is open source and builds on Linux.
       detection:
         code_pattern:
           - { pattern: "System\\.loadLibrary", lang: [java] }
@@ -458,7 +702,15 @@ tiers:
           - { pattern: "ctypes\\.CDLL|ctypes\\.WinDLL", lang: [python] }
           - { pattern: "cffi\\.FFI", lang: [python] }
         file_pattern:
-          - { pattern: "*.so", description: "Linux shared objects (inspect origin; may be build artefacts)" }
-          - { pattern: "*.dll", description: "Windows DLLs (flag if committed to repository)" }
+          - { pattern: "*.so", description: "Linux shared objects (ambiguous, not evaluated)" }
+          - { pattern: "*.dll", description: "Windows DLLs (ambiguous, not evaluated)" }
       migration_effort_weeks: 2
+      sources:
+        - url: https://docs.oracle.com/javase/8/docs/technotes/guides/jni/
+          title: "Java Native Interface"
+          reviewed: '2026-10-18'
+        - url: https://docs.python.org/3/library/ctypes.html
+          title: "Python ctypes"
+          reviewed: '2026-10-18'
+      last_reviewed: '2026-10-18'
       tags: [native, ffi, jni, containerisation]

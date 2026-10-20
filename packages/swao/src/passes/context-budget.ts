@@ -27,7 +27,7 @@ const LEGACY_DEFAULT_CHARS = 110_000; // fallback when no context_window_k is kn
 // Reference context windows for well-known models. Used when the connector yaml
 // does not declare context_window_k explicitly.
 export const KNOWN_CONTEXT_WINDOWS_K: Record<string, number> = {
-  // PREME PREPROD models
+  // Enterprise GenAI gateway models (pre-production catalogue)
   '/Llama-3.3-70B-Instruct-FP8-Dynamic': 128,
   '/Mistral-Small-24B-Instruct-2506': 128,
   '/gemma-4': 128,
@@ -35,7 +35,7 @@ export const KNOWN_CONTEXT_WINDOWS_K: Record<string, number> = {
   '/qwen38-27b-8fp': 32,
   '/llama-guard-3-8b': 8,
 
-  // PREME PROD models
+  // Enterprise GenAI gateway models (production catalogue)
   '/qwen25-vl-7b-instruct': 32,
 
   // Anthropic

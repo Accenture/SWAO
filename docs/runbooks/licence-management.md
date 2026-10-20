@@ -8,16 +8,26 @@ SWAO ships in three tiers - Community, Consultant, and Enterprise - each unlocki
 
 | Feature | Community | Consultant | Enterprise |
 |---|---|---|---|
-| Core assessment (static, compliance, context passes) | ✓ | ✓ | ✓ |
-| LLM pass (dynamic analysis) | ✓ | ✓ | ✓ |
-| PDF report generation | - | ✓ | ✓ |
-| Report gallery + publish | - | ✓ | ✓ |
-| HTML Editor (interactive evidence editor, swao publish --edit) | - | - | ✓ |
-| Power BI export bundle | - | - | ✓ |
-| Custom community frameworks | - | ✓ | ✓ |
-| Multi-app portfolio assessments | - | - | Roadmap |
-| Enterprise SSO + audit log | - | - | ✓ |
-| Priority support SLA | - | ✓ | ✓ |
+| Application, Landing Zone, LLM and Service Portfolio Assessment (all passes, all LLM adapters) | ✓ | ✓ | ✓ |
+| Service research, including LLM research (`swao service research`) | ✓ | ✓ | ✓ |
+| Community and custom compliance frameworks (YAML) | ✓ | ✓ | ✓ |
+| Text, YAML and JSON reports (`swao report`) | ✓ | ✓ | ✓ |
+| Star schema BI export: CSV, NDJSON, XLSX (`swao export`) | ✓ | ✓ | ✓ |
+| Audit log (`swao log`) | ✓ | ✓ | ✓ |
+| HTML publication (`swao publish --app`, `swao report --format html`) | - | ✓ | ✓ |
+| PDF report (`swao report --format pdf`) | - | ✓ | ✓ |
+| Power BI dashboard templates (.pbit, written by `swao export` and `swao init --powerbi`) | - | ✓ | ✓ |
+| LZ catalogue update (`swao lz catalogue update`) | - | ✓ | ✓ |
+| Email support SLA | - | ✓ | ✓ |
+| Portfolio assessment, report and BI export (`--portfolio`) | - | - | ✓ |
+| Service portfolio export (`swao service export`) | - | - | ✓ |
+| Adversarial challenge review (`swao challenge`) | - | - | ✓ |
+| HTML Editor (interactive evidence editor, `swao publish --edit`) | - | - | ✓ |
+| MCP server (`swao mcp`) | - | - | ✓ |
+| SWAO Chat (`swao chat`) | - | - | ✓ |
+| Terraform module stubs (`swao generate-tf`) and meshcloud UniPipe integration (`swao unipipe`) | - | - | Roadmap |
+
+A command that needs a higher tier prints a `[LICENSE]` block naming the required licence and exits with a non-zero code. `swao export` on Community writes the star schema and prints a `[LICENSE]` notice in place of the Power BI templates.
 
 Community edition runs without any licence key. All capabilities are available locally with no registration required.
 
@@ -190,9 +200,10 @@ deployment - contact the team to discuss the number of seats included.
 **Is there a trial period?**
 
 Community edition is free and unrestricted. It covers the full assessment engine, LLM
-integration, and HTML publication. Consultant and Enterprise features (PDF reports,
-PowerBI templates, portfolio dashboards) are available for evaluation on request --
-include "trial" in your licence request email subject.
+integration, text reports and the star schema BI export. Consultant and Enterprise
+features (HTML publication, PDF reports, Power BI templates, portfolio assessment, SWAO
+Chat) are available for evaluation on request: include "trial" in your licence request
+email subject.
 
 **What happens when a licence expires?**
 

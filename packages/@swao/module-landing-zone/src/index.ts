@@ -53,8 +53,18 @@ export const landingZoneAssessmentType: AssessmentTypeContribution = {
 // Layer A catalogue fetchers (#0565): operator-fed normalisers (no SDK/creds).
 export { normalizeAwsSsmCatalogue } from './catalogue/fetch-aws.js';
 export type { SsmParameter, AwsRegionOverlay } from './catalogue/fetch-aws.js';
-export { normalizeAzureProducts } from './catalogue/fetch-azure.js';
+export { normalizeAzureProducts, isAzurePseudoRegion } from './catalogue/fetch-azure.js';
 export type { AzureAvailabilityRow, AzureRegionOverlay } from './catalogue/fetch-azure.js';
+// #3288 (Design 110 D-23): VM price fetchers for the service cost model.
+export {
+  fetchAzureVmPrices,
+  fetchAwsVmPrices,
+  buildVmPriceTable,
+  VmPriceFetchError,
+  AZURE_RETAIL_PRICES_API,
+  AWS_PRICE_LIST_BULK_API,
+} from './catalogue/fetch-vm-prices.js';
+export type { VmPriceFetchOptions, VmPriceFetchResult } from './catalogue/fetch-vm-prices.js';
 
 // Layer B customer LZ scan normalisers (#0566): operator-fed snapshot/IaC/export
 // -> normalised LzScanResult (no creds; Mode C live reuses these via a transport).
@@ -64,7 +74,7 @@ export { normalizeAzureSnapshot } from './scan/scan-azure.js';
 export type { AzureScanOptions } from './scan/scan-azure.js';
 
 // Layer C fit/gap engine (#0567): the headline LZ deliverable.
-export { computeLzFit, sovereigntyFailures } from './fit/lz-fit.js';
+export { computeLzFit, sovereigntyFailures, certificationKey, holdsCertification } from './fit/lz-fit.js';
 export { orchestrateLandingZone, deriveSovereigntyRequirements } from './fit/orchestrate-lz.js';
 export type { OrchestrateLzInput, FrameworkSovereigntyDecl } from './fit/orchestrate-lz.js';
 export { assembleLandingZoneWsp, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, discoverGateCapableFrameworks } from './fit/run-lz.js';
@@ -92,13 +102,69 @@ export type {
 export {
   resolveLzCataloguesDir,
   resolveBundledLzCataloguesDir,
-  loadLzCatalogueIndex,
+  listLzCatalogueProviders,
+  // #3298 (Design 110 E-24): the list is built from each catalogue's own meta block.
+  isLzCataloguesDir,
+  scanLzCatalogueFiles,
+  readLzCatalogueEntry,
+  discoverLzCatalogues,
+  listLzCatalogues,
+  isLzCatalogueEntryError,
+  lzCatalogueShortName,
+  loadLzComingSoon,
+  LZ_COMING_SOON_FILE,
   loadLzCatalogue,
   resolveProviderCatalogue,
   LzCatalogueSchemaError,
   LzCatalogueDuplicateIdError,
+  checkLzCatalogueQuality,
 } from './catalogue/loader.js';
-export type { LzCatalogueIndexEntry, LzCatalogueProvenance } from './catalogue/loader.js';
+export type {
+  LzCatalogueFileRef,
+  LzCatalogueEntry,
+  LzCatalogueEntryError,
+  LzCatalogueListing,
+  LzCatalogueProvenance,
+} from './catalogue/loader.js';
+// #3282: LZ catalogue quality rules (shared by the health-check probe and the audit gate).
+export {
+  checkLzCatalogueDir,
+  checkLzConfiguredTargets,
+  readLzConfiguredTargets,
+  lzRegionHint,
+  formatLzQualityFindings,
+  isLzProviderCatalogueFile,
+  parseLzDate,
+  LZ_CATALOGUE_QUALITY_RULES,
+  LZ_CATALOGUE_MAX_AGE_DAYS,
+  LZ_CATALOGUE_CONFIDENCE_VOCABULARY,
+  LZ_SOVEREIGNTY_FACT_FIELDS,
+} from './catalogue/quality.js';
+export type {
+  LzCatalogueQualityFinding,
+  LzCatalogueQualityReport,
+  LzCatalogueQualityOptions,
+  LzCatalogueValidator,
+  LzConfiguredTarget,
+  LzTargetGeographyResolver,
+  LzQualityRule,
+  LzQualityRuleId,
+  LzQualitySeverity,
+} from './catalogue/quality.js';
+// #3281: geography map for configured LZ targets (azure:Europe -> documented default region).
+export {
+  LZ_GEOGRAPHIES,
+  LZ_GEOGRAPHY_COUNTRIES,
+  LZ_GEOGRAPHY_PREFERRED_COUNTRY,
+  lzGeographyKey,
+  lzRegionResidency,
+  lzRegionGeographies,
+  lzGeographyDefaultRegion,
+  resolveLzGeography,
+} from './catalogue/geographies.js';
+export type { LzGeography, LzGeographyRegion, LzGeographyResolution } from './catalogue/geographies.js';
+export { LZ_SOVEREIGNTY_PINS, AWS_SOVEREIGNTY_PINS, AZURE_SOVEREIGNTY_PINS, GCP_SOVEREIGNTY_PINS } from './catalogue/sovereignty-pins.js';
+export type { LzSovereigntyPin, GcpSovereigntyPin } from './catalogue/sovereignty-pins.js';
 export { registerLz } from './commands/lz.js';
 // Premium CLI: catalogue update (consultant+; Design 065 §5.6).
 export { registerLzCatalogueUpdate } from './commands/lz-premium.js';

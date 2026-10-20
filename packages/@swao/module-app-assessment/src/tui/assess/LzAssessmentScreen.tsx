@@ -22,7 +22,7 @@ import { spawn } from 'child_process';
 import { appendFileSync, existsSync, readdirSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
-import { CredentialStore, LicenseGuard, findWorkspace, logApp } from '@swao/core';
+import { CredentialStore, LicenseGuard, findWorkspace, logApp, resolveLzTargets, lzTargetLabel, setLzTargetsInSwaoYml } from '@swao/core';
 import { openWithDefaultApp } from '@swao/core';
 import { HeaderView, isAllowed, type LicenseStateView, type LicenseTier } from '@swao/tui-kit';
 import { TextInput } from '@swao/tui-kit';
@@ -64,19 +64,37 @@ function readStoredCredentials(): Record<string, string> {
   catch { return {}; }
 }
 
-// #2755: persist selected LZ targets to the app .swao.yml so the CLI
-// `swao assess --type landing-zone-catalog` can find them without --lz-cat-targets.
-function persistLzCatTargets(workspace: string | null, appId: string, targets: string[]): void {
+// #2755 / #3281: persist selected LZ targets to the app .swao.yml under
+// assessment.landing_zone.targets (the key the CLI reads; the deprecated
+// assessment.lz_cat_targets is removed) so `swao assess --type
+// landing-zone-catalog` finds them without --lz-cat-targets.
+export function persistLzCatTargets(workspace: string | null, appId: string, targets: string[]): void {
   if (!workspace || !appId || targets.length === 0) return;
   try {
     const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
     if (!existsSync(ymlPath)) return;
-    const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-    const assessment = (yml['assessment'] ?? {}) as Record<string, unknown>;
-    assessment['lz_cat_targets'] = targets.join(',');
-    yml['assessment'] = assessment;
+    const yml = (loadYaml(readFileSync(ymlPath, 'utf-8')) ?? {}) as Record<string, unknown>;
+    setLzTargetsInSwaoYml(yml, targets);
     writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
   } catch { /* best-effort -- never block the UI */ }
+}
+
+// #3281: the targets the CLI would use (app .swao.yml, then workspace .swao.yml;
+// same resolver), as provider:region labels for pre-selection in the pickers.
+export function readConfiguredLzTargets(workspace: string | null, appId: string): string[] {
+  if (!workspace || !appId) return [];
+  const assessmentOf = (path: string): Record<string, unknown> | undefined => {
+    try {
+      if (!existsSync(path)) return undefined;
+      const yml = loadYaml(readFileSync(path, 'utf-8')) as Record<string, unknown> | null;
+      const a = yml?.['assessment'];
+      return a && typeof a === 'object' && !Array.isArray(a) ? (a as Record<string, unknown>) : undefined;
+    } catch { return undefined; }
+  };
+  return resolveLzTargets({
+    appAssessment: assessmentOf(join(workspace, 'apps', appId, '.swao.yml')),
+    workspaceAssessment: assessmentOf(join(workspace, '.swao.yml')),
+  }).targets.map(lzTargetLabel);
 }
 
 function writeCredential(name: string, value: string): void {
@@ -766,6 +784,9 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
             <MultiSelect
               label="Cloud provider(s)"
               options={providerOptions}
+              // #3281: pre-select the providers of the configured targets.
+              initialSelected={[...new Set(readConfiguredLzTargets(workspace, app).map(t => t.split(':')[0]!))]
+                .filter(p => providerOptions.some(o => o.value === p))}
               onConfirm={(selected) => {
                 if (selected.length === 0) return;
                 setAppLzCatProviders(selected);
@@ -899,6 +920,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
                 key={`lz-region-${appLzCatProviders.join('-')}-${appLzRegionFilter}`}
                 label="Target region(s) -- Space to toggle, Enter to confirm"
                 options={filteredTargetOptions}
+                // #3281: pre-select the configured targets (assessment.landing_zone.targets).
+                initialSelected={readConfiguredLzTargets(workspace, app).filter(t => filteredTargetOptions.some(o => o.value === t))}
                 visibleCount={12}
                 onConfirm={(selected) => {
                   if (selected.length === 0) return;

@@ -3,7 +3,7 @@
 // is fetch-based); wiring to useLlmPing is deferred to the PreflightLlmPhase (#2369).
 
 import { useState, useEffect, useRef } from 'react';
-import { createProviderFromConnector, classifyPingFailure } from '@swao/module-llm-providers';
+import { createProviderFromConnector, classifyPingFailure, withLlmAttemptLimit } from '@swao/module-llm-providers';
 import type { PendingLeg } from '../types.js';
 
 export interface HealthCheckState {
@@ -17,6 +17,10 @@ export interface HealthCheckState {
 
 const PING_PROMPT    = 'SWAO connectivity check. Reply with the single word: OK';
 const PING_TIMEOUT_MS = 20_000;
+// #3284: assessment calls make 6 attempts (93 s of back-off). The ping keeps
+// 3 attempts (3 + 6 s back-off) so the real failure cause is reported inside
+// PING_TIMEOUT_MS instead of the timeout.
+const PING_MAX_ATTEMPTS = 3;
 
 export function useLlmHealthCheck(stage: string, nextLegRef: React.RefObject<PendingLeg | null>): HealthCheckState {
   const [healthStatus,    setHealthStatus]    = useState<'running' | 'ok' | 'fail' | null>(null);
@@ -46,7 +50,7 @@ export function useLlmHealthCheck(stage: string, nextLegRef: React.RefObject<Pen
       try {
         const resolved = createProviderFromConnector(pending.connector, { model: pending.model });
         await Promise.race([
-          resolved.provider.complete(PING_PROMPT),
+          withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT)),
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error(`ping timed out after ${PING_TIMEOUT_MS}ms`)),

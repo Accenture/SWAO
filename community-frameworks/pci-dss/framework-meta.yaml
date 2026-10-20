@@ -11,12 +11,13 @@ framework:
   version: "4.0"
   authority: "PCI Security Standards Council"
   contributor:
-    name: "Accenture SWAO team (community packaging)"
+    name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/pci-dss"
   applicability_hints:
     - payments
     - cardholder_data
     - ecommerce
+  scoring_mode: binary
   assessment_type_scope: [app, aud]
   description: >-
     PCI DSS v4.0 (effective 2024-03-31, full enforcement 2025-03-31) is the global standard for protecting cardholder data. Applies to all entities that store, process, or transmit cardholder data or sensitive authentication data.

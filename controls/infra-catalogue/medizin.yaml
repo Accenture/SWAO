@@ -1,0 +1,109 @@
+# SWAO-INFRA-CAT -- Healthcare / clinical systems (Design 103 §17.2)
+# Entries with data_health_implied: true make the scaffold infer
+# data.health_data and data.gdpr_art9 (Design 103 §4.2 sample).
+# Generic role tokens only; site-specific prefixes belong in Tier 2.
+id: INFRA_MEDIZIN
+name: "Healthcare / Clinical Systems"
+# Load order among the built-in files (#3299): ascending; a later file wins
+# on a duplicate service id. Replaces the retired _registry.yaml.
+load_order: 50
+services:
+  - id: INFRA_MEDIZIN_KIS
+    name: "Clinical Information System (KIS / EPR)"
+    short: "KIS"
+    sovereign_rating: proprietary
+    data_health_implied: true
+    regulatory: [MDR, GDPR_ART9, KHZG]
+    id_prefix_hints: [kis]
+    vendor_patterns:
+      - "Dedalus"
+      - "CGM"
+      - "Nexus"
+      - "Meierhofer"
+    product_name_patterns:
+      - "\\bORBIS\\b"
+      - "\\bKIS\\b"
+      - "\\bi\\.s\\.h\\.med\\b"
+    sovereign_alternatives:
+      - id: gnu-health
+        name: "GNU Health"
+        sovereign_rating: open-source
+      - id: openehr
+        name: "openEHR-based systems"
+        sovereign_rating: open-standard
+
+  - id: INFRA_MEDIZIN_PACS
+    name: "Picture Archiving and Communication System (PACS)"
+    short: "PACS"
+    sovereign_rating: proprietary
+    data_health_implied: true
+    regulatory: [MDR, GDPR_ART9]
+    id_prefix_hints: [pacs]
+    cluster_hint: false
+    vendor_patterns:
+      - "FUJIFILM"
+      - "Agfa HealthCare"
+      - "GE HealthCare"
+      - "Siemens Healthineers"
+      - "Sectra"
+    product_name_patterns:
+      - "Synapse.*PACS"
+      - "\\bPACS\\b"
+      - "\\bDICOM\\b"
+      - "\\bCarestream\\b"
+    sovereign_alternatives:
+      - id: orthanc
+        name: "Orthanc (open-source DICOM server)"
+        sovereign_rating: open-source
+
+  - id: INFRA_MEDIZIN_LIS
+    name: "Laboratory Information System (LIS)"
+    short: "LIS"
+    sovereign_rating: proprietary
+    data_health_implied: true
+    regulatory: [MDR, GDPR_ART9]
+    id_prefix_hints: [lab]
+    product_name_patterns:
+      - "\\bLIS\\b"
+      - "\\bLabor\\w*\\b"
+    sovereign_alternatives:
+      - id: senaite
+        name: "SENAITE LIMS"
+        sovereign_rating: open-source
+
+  - id: INFRA_MEDIZIN_PDMS
+    name: "Patient Data Management System (PDMS / ICU)"
+    short: "PDMS"
+    sovereign_rating: proprietary
+    data_health_implied: true
+    regulatory: [MDR, GDPR_ART9]
+    id_prefix_hints: [pdms, icu]
+    vendor_patterns:
+      - "Philips Healthcare"
+      - "Draeger"
+    product_name_patterns:
+      - "\\bICCA\\b"
+      - "\\bPDMS\\b"
+
+  - id: INFRA_MEDIZIN_DOSE
+    name: "Radiation Dose Management"
+    short: "Dose"
+    sovereign_rating: proprietary
+    data_health_implied: true
+    regulatory: [MDR, GDPR_ART9]
+    product_name_patterns:
+      - "\\bRadimetrics\\b"
+      - "\\bDose\\s*Watch\\b"
+
+  - id: INFRA_MEDIZIN_TELEMATIK
+    name: "Telematics Infrastructure (TI)"
+    short: "TI"
+    sovereign_rating: open-standard
+    data_health_implied: true
+    regulatory: [GDPR_ART9, TI]
+    vendor_patterns:
+      - "gematik"
+      - "secunet"
+    product_name_patterns:
+      - "\\bKonnektor\\b"
+      - "\\bTelematik\\w*\\b"

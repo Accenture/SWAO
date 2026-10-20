@@ -33,10 +33,10 @@ const TIER_INFO: Record<GatedTier, { label: string; includes: string[] }> = {
     label: 'Consultant',
     includes: [
       'All Community features',
+      'HTML publication (swao publish --app, report --format html)',
       'PDF report generation',
-      'Terraform module stubs (generate-tf)',
+      'Power BI dashboard templates (.pbit)',
       'LZ catalogue update',
-      'BI export (star schema / PowerBI / Tableau)',
     ],
   },
   enterprise: {
@@ -44,9 +44,11 @@ const TIER_INFO: Record<GatedTier, { label: string; includes: string[] }> = {
     includes: [
       'All Consultant features',
       'Portfolio Operations (multi-app aggregation)',
+      'Service portfolio export',
       'Stakeholder Challenge agents',
-      'SWAO Live Portal (Mode B server)',
+      'HTML Editor (swao publish --edit)',
       'MCP server integration (Claude Desktop / Claude Code)',
+      'SWAO Chat',
     ],
   },
 };

@@ -6,11 +6,29 @@ The Tools menu (option 9 in the main menu) groups utility commands that manage y
 
 | Tool | CLI command | Description |
 |---|---|---|
-| Licence | `swao licence show` / `swao licence activate` | Display current edition and activate a licence key |
+| Lenses | `swao lenses list` / `swao lenses set <ids>` | Switch between preconfigured analysis lenses (pass selection profiles) |
+| Licence | `swao license status` / `swao license activate <key>` | Display current edition and activate a licence key |
 | Credentials | `swao credential set` / `swao credential list` | Store and manage API keys and vault references |
-| Framework | [Download from GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) | Community frameworks - download and place in `catalogs/community/<slug>/` |
-| Catalogue update | `swao catalogue update` | Pull the latest LZ provider catalogue and framework updates |
+| Framework | `swao framework list` / `swao framework install <id>` | Copy additional bundled community frameworks into the workspace (`wsp/inputs/catalogs/community/<folder>/`); or [download from GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) and copy the folder there |
+| Catalogue update | `swao lz catalogue update` | Refresh the LZ provider service catalogues from the providers' public sources, and the VM prices of the service cost model from the Azure and AWS price APIs (Consultant and above) |
 | SWAO Chat | `swao chat` | Multi-turn LLM conversation about portfolio assessment results (Enterprise) |
 | Help | `swao --help` / `swao <command> --help` | Full CLI reference |
+
+## Lenses
+
+Lenses are preconfigured pass selection profiles; some also activate matching frameworks. Three lenses ship with SWAO (`swao lenses list`):
+
+| Lens | Passes | Frameworks activated automatically |
+|---|---|---|
+| `cloud-migration` (default) | INV, STATE, DATA, CTX, SBOM, TF, EGR, CRYPTO, SYNTH, LZR, COMP, SCOPE | none |
+| `security-focus` | SBOM, CRYPTO, EGR, MAL | KRITIS, NIS2 |
+| `data-governance` | DATA, CTX | GDPR |
+
+Set a lens before an assessment:
+
+```bash
+swao lenses set security-focus
+swao assess --app my-app
+```
 
 See also: [Workspace Setup](/workspace-setup) | [CLI reference](/runbooks/cli-reference)

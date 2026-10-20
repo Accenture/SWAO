@@ -59,12 +59,16 @@ export type LicenseTier = 'community' | 'consultant' | 'enterprise';
 const TIER_ORDER: Record<LicenseTier, number> = { community: 0, consultant: 1, enterprise: 2 };
 
 /**
- * Authoritative feature-to-tier registry (golden standard: docs/strategy/swao-feature-tier-matrix.docx).
+ * Authoritative feature-to-tier registry. Source of truth:
+ * the SWAO licence tier matrix (owner decision 2026-10-18); every key
+ * is cited there as FEATURE_GATES['<key>'] and tests/audit-gates/licence-matrix-parity.gate.mjs
+ * fails when the two drift (#3325).
  * Use requireFeature(key) at call sites instead of inline requireTier strings to keep the tier
  * assignment in one place and make audits diff-readable.
  */
 export const FEATURE_GATES = {
   'llm-assessment':       'community',  // DOCX: all tiers; ungated
+  'service-assessment':   'community',  // Design 103 §19.6; output tiers gated separately
   'portfolio-assess':     'enterprise',
   'pdf-report':           'consultant',
   'html-report':          'consultant',
@@ -72,9 +76,14 @@ export const FEATURE_GATES = {
   'html-portal':          'enterprise',
   'challenge':            'enterprise',
   'lz-catalogue-update':  'consultant',
-  'bi-export':            'enterprise',
+  'bi-export':            'enterprise', // service portfolio BI export (swao service export); not F-087 star schema, which is ungated
+  'service-excel':        'enterprise', // Design 103 §8.3 portfolio workbook (#3117)
   'mcp-server':           'enterprise',
   'portfolio-report':     'enterprise',
+  'chat':                 'enterprise', // F-112 SWAO Chat (#3318, #3324)
+  'generate-tf':          'enterprise', // F-090 Terraform scaffold, Enterprise roadmap (#3321)
+  'unipipe':              'enterprise', // meshcloud integration, Enterprise roadmap (licence tier matrix D-04, #3324)
+  'bi-templates':         'consultant', // F-088 Power BI .pbit templates (#3324)
 } as const satisfies Record<string, LicenseTier>;
 
 export type FeatureKey = keyof typeof FEATURE_GATES;
@@ -209,7 +218,15 @@ interface StateFile {
 // Uses only spawnSync (not async) because computeFingerprint is called
 // from readStateFile which is synchronous. wmic/ioreg are direct commands
 // and do not spawn grandchildren, so spawnSync timeout is a reliable deadline.
+// #3067: cached per-process -- the hardware ID is invariant within a process lifetime;
+// caching prevents repeated wmic/ioreg spawns during test runs (one per process, not one per test).
+let _cachedHardwareId: string | undefined;
 function readHardwareId(): string {
+  if (_cachedHardwareId === undefined) _cachedHardwareId = _computeHardwareId();
+  return _cachedHardwareId;
+}
+
+function _computeHardwareId(): string {
   const p = platform();
   try {
     if (p === 'win32') {
@@ -361,7 +378,7 @@ function signingPrivateSeed(): Buffer {
     throw new Error(
       'SWAO_LICENSE_SECRET is not set. ' +
       'Issuing licences requires the Ed25519 private seed (base64url, 43 chars) ' +
-      'from the Accenture password manager (see swao-premium/secrets/README.md). ' +
+      'held by the licence issuer (see the private licence tooling documentation). ' +
       'End users do not need this env var -- verification uses the public key baked into the binary.',
     );
   }
@@ -369,7 +386,7 @@ function signingPrivateSeed(): Buffer {
   if (seed.length !== 32) {
     throw new Error(
       `SWAO_LICENSE_SECRET must decode to 32 bytes (Ed25519 seed). Got ${seed.length} bytes. ` +
-      'Verify the value in swao-premium/secrets/.env matches the password manager entry.',
+      'Verify the configured issuer seed.',
     );
   }
   return seed;
@@ -605,7 +622,7 @@ export class LicenseGuard {
 // is excluded when no production entry point imports it.
 // This function is used by tests only (license-issue.ts and per-module test
 // helpers call it to generate ephemeral keys against the test keypair).
-// The operator-side equivalent lives in swao-premium/lib/license-admin.mjs.
+// The operator-side equivalent lives in the private licence tooling.
 export function buildLicenseKey(payload: LicensePayload): string {
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const message    = Buffer.from(payloadB64, 'utf-8');

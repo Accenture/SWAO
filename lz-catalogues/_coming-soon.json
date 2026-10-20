@@ -1,0 +1,7 @@
+{
+  "description": "Providers announced as coming soon (#3298, Design 110 E-24). This is the only place the list lives: every catalogued provider is discovered from its own <provider>.json meta block, so no provider is listed here and in a catalogue at the same time. 'swao lz catalogue list' prints these ids as coming soon and the support bundle records them; an id that gains a catalogue file is dropped automatically. Remove the id here when its catalogue ships.",
+  "coming_soon": [
+    "ionos",
+    "ovhcloud"
+  ]
+}

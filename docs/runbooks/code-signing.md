@@ -1,7 +1,5 @@
 # Code Signing Runbook
 
-**Classification:** Accenture Internal -- Confidential
-
 ---
 
 ## Overview
@@ -9,10 +7,11 @@
 SWAO Windows binaries (`swao-*-win-x64.exe`) are self-contained executables built with
 `@yao-pkg/pkg`. Unsigned executables trigger SmartScreen warnings on Windows and may
 produce one or more detections from ML-based antivirus engines (notably Trapmine). This
-runbook documents the Authenticode signing process required before v1.0.0-GA.
+runbook documents the Authenticode signing process for the Windows binaries.
 
-**Current status (v1.0.0-rc.1):** unsigned; one Trapmine ML heuristic detection on
-VirusTotal is documented and accepted for the RC phase (see issue #2182).
+**Current status:** the Windows binaries are not yet Authenticode-signed. Release
+integrity is protected by GPG signatures (section 5); VirusTotal results are recorded
+per release.
 
 ---
 
@@ -78,18 +77,18 @@ binary is uploaded as a release asset:
       /td SHA256 `
       /f $pfxPath `
       /p $env:CODESIGN_PFX_PASSWORD `
-      dist-bin\swao-enterprise-win.exe `
-      dist-bin\swao-consultant-win.exe `
+      dist-bin\swao-enterprise-win-x64.exe `
+      dist-bin\swao-consultant-win-x64.exe `
       dist-bin\swao-community-win-x64.exe
 
     # Verify
     & 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe' verify `
-      /pa dist-bin\swao-enterprise-win.exe
+      /pa dist-bin\swao-enterprise-win-x64.exe
 ```
 
 GitHub Actions secrets required:
-- `CODESIGN_PFX_B64` -- base64-encoded PKCS#12 certificate file
-- `CODESIGN_PFX_PASSWORD` -- PFX password
+- `CODESIGN_PFX_B64`: base64-encoded PKCS#12 certificate file
+- `CODESIGN_PFX_PASSWORD`: PFX password
 
 To base64-encode the PFX for the secret:
 ```powershell
@@ -126,7 +125,8 @@ Authenticode signs the Windows binary itself. GPG signing is a separate, complem
 step that lets users verify the integrity of release artefacts (all binaries, not just Windows)
 by signing the SHA256SUMS file.
 
-**Status (v1.0.0-rc.1):** GPG public key published; checksums not yet GPG-signed.
+**Current status:** the GPG public key is published, and releases ship GPG signatures
+(`.asc`) for the checksum files and the binaries.
 
 ### 5.1 Key details
 
@@ -134,7 +134,7 @@ by signing the SHA256SUMS file.
 |---|---|
 | Key type | Ed25519 + Cv25519 |
 | UID | SWAO Security (SWAO Project Security Key) |
-| Email | swao-tool@accenture.com |
+| Email | see the UID in `swao/swao-security.asc` |
 | Fingerprint | 7F50A63D2884751B902ED453F876CFFED7D95A7A |
 | Expires | 2028-09-04 |
 | Public key file | `swao/swao-security.asc` (committed to the public repo) |
@@ -172,10 +172,10 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 ---
 
-## 7. References
+## 6. References
 
 - Issue #2181 (this runbook is the deliverable)
 - Issue #2182 (VirusTotal baseline rebuild after signing)
-- `docs/runbooks/windows-binary-allowlisting.md` -- interim approach
-- ADR-0057 -- pre-build obfuscation for Premium tiers (separate from signing)
-- `swao/swao-security.asc` -- published GPG public key
+- `docs/runbooks/windows-binary-allowlisting.md`: interim approach
+- ADR-0057: pre-build obfuscation for Premium tiers (separate from signing)
+- `swao/swao-security.asc`: published GPG public key

@@ -66,6 +66,31 @@ function findFileRecursive(
   return null;
 }
 
+const TF_SKIP_DIRS = new Set(['node_modules', 'vendor', 'dist', 'build', 'target']);
+
+/**
+ * #3158: top-most directories under `root` (depth <= maxDepth) that contain
+ * `.tf` files. A folder below an already-found root is not listed again,
+ * because the IaC scanners recurse. Hidden folders (.terraform, .git) and
+ * dependency folders are skipped. Capped at `cap` roots.
+ */
+export function findTerraformRoots(root: string, maxDepth = 6, cap = 10): string[] {
+  const roots: string[] = [];
+  const walk = (dir: string, depth: number): void => {
+    if (roots.length >= cap) return;
+    let entries;
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    if (entries.some((e) => e.isFile() && e.name.endsWith('.tf'))) { roots.push(dir); return; }
+    if (depth >= maxDepth) return;
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name.startsWith('.') || TF_SKIP_DIRS.has(e.name)) continue;
+      walk(join(dir, e.name), depth + 1);
+    }
+  };
+  walk(root, 0);
+  return roots;
+}
+
 // #1501: read INV-01 assessment.language from a prior run pass file.
 function readInvLanguage(passesDir: string | undefined): string | null {
   if (!passesDir) return null;
@@ -261,14 +286,26 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
   // runs checkov/kics when .tf source files exist in sourcePath.
   // findings emitted as informational signals; not yet scored (sprint-111 scope).
   try {
-    const hasTfSource = existsSync(sourcePath) &&
-      readdirSync(sourcePath).some((e) => e.endsWith('.tf'));
-    if (hasTfSource) {
+    // #3158: Terraform usually lives in a subfolder (infra/, terraform/,
+    // deploy/...), not the source root, so the root-only check never ran the
+    // scanner for most repositories. Find the top-most folders holding .tf
+    // files and scan each (checkov and kics recurse below a folder).
+    const tfRoots = existsSync(sourcePath) ? findTerraformRoots(sourcePath) : [];
+    if (tfRoots.length > 0) {
       const iacProvider = new TerraformOpenTofuProvider();
       logPortfolio('info', 'pass.iac.scanner.start', 'IaC static scan starting', {
-        context: { source_path: sourcePath, pass: 'tf' },
+        context: { source_path: sourcePath, terraform_roots: tfRoots.length, pass: 'tf' },
       });
-      const iacFindings = await iacProvider.scanSource({ sourceFiles: [join(sourcePath, 'main.tf')] });
+      const iacFindings: Awaited<ReturnType<TerraformOpenTofuProvider['scanSource']>> = [];
+      const seenFindings = new Set<string>();
+      for (const root of tfRoots) {
+        for (const f of await iacProvider.scanSource({ sourceFiles: [join(root, 'main.tf')] })) {
+          const key = `${f.ruleId}|${f.resource}`;
+          if (seenFindings.has(key)) continue;
+          seenFindings.add(key);
+          iacFindings.push(f);
+        }
+      }
       logPortfolio('info', 'pass.iac.scanner.complete', `IaC static scan complete: ${iacFindings.length} finding(s)`, {
         context: { findings_count: iacFindings.length, pass: 'tf' },
       });

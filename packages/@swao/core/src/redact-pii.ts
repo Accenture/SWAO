@@ -175,3 +175,37 @@ export function redactPiiValue(value: unknown, counts: RedactionCounts): unknown
   }
   return value;
 }
+
+// ---------------------------------------------------------------------------
+// Phone numbers (Design 103 G-06, §19.5; #3131, #3136). Kept out of
+// redactPiiString so log-export and application support bundles are unchanged.
+// ---------------------------------------------------------------------------
+
+const PHONE_CANDIDATE_RE = /\+?\(?\d[\d\s\-()/]{6,18}\d/g;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}/;
+
+function isPhoneCandidate(s: string): boolean {
+  if ((s.match(/\d/g) ?? []).length < 8 || ISO_DATE_RE.test(s)) return false;
+  return s.startsWith('+') || s.startsWith('0') || /[\s()]/.test(s);
+}
+
+/**
+ * Phone heuristic: at least 8 digits, and a leading +, a leading 0, or an
+ * internal space or bracket, so ISO dates, version strings, and IP addresses
+ * do not match.
+ */
+export function looksLikePhone(text: string): boolean {
+  for (const m of text.matchAll(PHONE_CANDIDATE_RE)) if (isPhoneCandidate(m[0])) return true;
+  return false;
+}
+
+/** Replace phone numbers (looksLikePhone) with `[REDACTED-PHONE]`; returns the text and the replacement count. */
+export function redactPhoneNumbers(text: string): { text: string; count: number } {
+  let count = 0;
+  const out = text.replace(PHONE_CANDIDATE_RE, (m) => {
+    if (!isPhoneCandidate(m)) return m;
+    count += 1;
+    return '[REDACTED-PHONE]';
+  });
+  return { text: out, count };
+}

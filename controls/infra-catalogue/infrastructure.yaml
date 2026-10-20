@@ -1,0 +1,94 @@
+# SWAO-INFRA-CAT -- Core infrastructure services (Design 103 §17.2)
+id: INFRA_INFRASTRUCTURE
+name: "Core Infrastructure"
+# Load order among the built-in files (#3299): ascending; a later file wins
+# on a duplicate service id. Replaces the retired _registry.yaml.
+load_order: 20
+services:
+  - id: INFRA_INFRASTRUCTURE_DIRECTORY
+    name: "Directory Service / Domain Controller"
+    short: "DC"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bdomain\\s*controller\\b"
+      - "\\bActive\\s+Directory\\b"
+      - "\\bDomaincontroller\\b"
+    sovereign_alternatives:
+      - id: samba-ad
+        name: "Samba Active Directory"
+        sovereign_rating: open-source
+      - id: freeipa
+        name: "FreeIPA"
+        sovereign_rating: open-source
+
+  - id: INFRA_INFRASTRUCTURE_DHCP_DNS
+    name: "DHCP / DNS"
+    short: "DHCP"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bDHCP\\b"
+      - "\\bDNS\\b"
+    sovereign_alternatives:
+      - id: kea
+        name: "ISC Kea"
+        sovereign_rating: open-source
+
+  - id: INFRA_INFRASTRUCTURE_FILE
+    name: "File Server / NAS"
+    short: "File"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "NetApp"
+      - "Dell EMC"
+    product_name_patterns:
+      - "\\bfile\\s*server\\b"
+      - "\\bFileserver\\b"
+      - "\\bHome\\s*Drives?\\b"
+    sovereign_alternatives:
+      - id: nextcloud
+        name: "Nextcloud"
+        sovereign_rating: open-source
+      - id: samba
+        name: "Samba"
+        sovereign_rating: open-source
+
+  - id: INFRA_INFRASTRUCTURE_BACKUP
+    name: "Backup and Recovery"
+    short: "Backup"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "Veeam"
+      - "Veritas"
+      - "Commvault"
+    product_name_patterns:
+      - "\\bVeeam\\b"
+      - "\\bNetBackup\\b"
+      - "\\bbackup\\b"
+    sovereign_alternatives:
+      - id: bareos
+        name: "Bareos"
+        sovereign_rating: open-source
+
+  - id: INFRA_INFRASTRUCTURE_MAIL
+    name: "Mail Server"
+    short: "Mail"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bExchange\\b"
+      - "\\bmail\\s*server\\b"
+    sovereign_alternatives:
+      - id: open-xchange
+        name: "Open-Xchange"
+        sovereign_rating: open-source
+
+  - id: INFRA_INFRASTRUCTURE_PKI
+    name: "Certificate Authority / PKI"
+    short: "PKI"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bcertificate\\s+authority\\b"
+      - "\\bPKI\\b"
+    sovereign_alternatives:
+      - id: ejbca
+        name: "EJBCA Community"
+        sovereign_rating: open-source

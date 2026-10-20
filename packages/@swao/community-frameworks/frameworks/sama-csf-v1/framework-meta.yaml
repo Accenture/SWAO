@@ -1,4 +1,4 @@
-# SWAO community framework metadata (design 029 Â§2.3 + Â§11)
+# SWAO community framework metadata (design 029 §2.3 + §11)
 #
 # SAMA Cyber Security Framework v1.0 (2017) -- mandatory for all SAMA-supervised
 # entities in the Saudi Arabian financial sector. This catalogue models 30
@@ -43,7 +43,7 @@ framework:
   last_reviewed: "2026-07-18"
 
   # Signal prefix -- emitted local signals use this as their namespace.
-  # 8-char prefix fits within the design 029 Â§13 advisory band (3-8 chars).
+  # 8-char prefix fits within the design 029 §13 advisory band (3-8 chars).
   signal_prefix: SAMA_CSF
 
   # Cross-mapping hints for the LLM-augmented heatmap matcher.

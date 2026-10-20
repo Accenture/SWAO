@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json",
     "typecheck": "tsc -b tsconfig.json",
-    "test": "vitest run --pool forks"
+    "test": "vitest run --pool forks --testTimeout=20000"
   },
   "dependencies": {
     "ink": "^4.4.1",

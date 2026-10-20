@@ -24,9 +24,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, it, expect } from 'vitest';
-import { load as yamlLoad } from 'js-yaml';
+import { load as yamlLoad, dump } from 'js-yaml';
 
-import { buildEvidenceCatalogue, normaliseSourcePath, loadAppRegimes, loadIngestionEvidenceRecords, propagateIngestionEvidence, derivePlanForRun } from './derive-plan.js';
+import { buildEvidenceCatalogue, normaliseSourcePath, loadAppRegimes, loadIngestionEvidenceRecords, propagateIngestionEvidence, derivePlanForRun, dedupeSovereignServiceSignals } from './derive-plan.js';
 
 describe('normaliseSourcePath (#0267)', () => {
   it('passes through refs already prefixed with wsp/', () => {
@@ -653,5 +653,52 @@ describe('Phase 2 gate: capture-to-derive loop via derivePlanForRun (#1182)', ()
     ].join('\n'), 'utf-8');
     const recs = loadIngestionEvidenceRecords(appDir);
     expect(recs[0].statement).not.toMatch(/sk-|ghp_|Bearer/);
+  });
+});
+
+describe('#3296: one finding per sovereign service (EGR egress + catalogue verdict)', () => {
+  const egress = {
+    id: 'EGR-01', severity: 'critical', category: 'application',
+    derivation: 'AWS Comprehend Medical (US-based NLP service). Health data egress; residency risk blocker.',
+    implies: ['sovereign_service:aws-comprehend-medical'],
+  };
+  const verdict = {
+    id: 'EGR-02', severity: 'high', category: 'application',
+    derivation: 'Amazon Comprehend Medical: sovereign service verdict for data processing; residency risk blocker.',
+    implies: ['sovereign_service:aws-comprehend-medical'],
+  };
+  const other = {
+    id: 'EGR-03', severity: 'high', category: 'application',
+    derivation: 'Slack: sovereign service verdict for data in messages; residency risk.',
+    implies: ['sovereign_service:slack'],
+  };
+
+  it('keeps the most severe signal per service and leaves other signals alone', () => {
+    const plain = { id: 'CRYPTO-01', severity: 'high', derivation: 'Weak crypto data risk.' };
+    expect(dedupeSovereignServiceSignals([verdict, egress, other, plain]).map((s) => s.id)).toEqual(['EGR-01', 'EGR-03', 'CRYPTO-01']);
+  });
+
+  it('derivePlanForRun writes one security finding and one risk for the duplicated service', () => {
+    const wsRoot = mkdtempSync(join(tmpdir(), 'swao-3296-derive-'));
+    try {
+      const appDir = join(wsRoot, 'apps', 'dup-app');
+      const runDir = join(appDir, 'wsp', 'runs', '2026-10-17-100000');
+      mkdirSync(join(runDir, 'passes'), { recursive: true });
+      writeFileSync(join(wsRoot, '.swao.yml'), 'workspace_name: dup\n', 'utf-8');
+      writeFileSync(join(appDir, '.swao.yml'), 'app_name: Dup\napp_id: dup-app\n', 'utf-8');
+      writeFileSync(join(runDir, 'passes', '07-egr.yaml'), dump({ signals: [egress, verdict, other] }), 'utf-8');
+
+      derivePlanForRun(wsRoot, appDir, runDir, 'dup-app', 'RUN-3296', '2026-10-17T10:00:00.000Z');
+
+      const plan = yamlLoad(readFileSync(join(runDir, 'wsp-plan.yaml'), 'utf-8')) as {
+        security_findings?: Array<{ signal_ref: string; blocks_migration: boolean }>;
+        risk_register?: Array<{ trigger: string }>;
+      };
+      expect(plan.security_findings?.map((f) => f.signal_ref)).toEqual(['EGR-01', 'EGR-03']);
+      expect(plan.security_findings?.filter((f) => f.blocks_migration)).toHaveLength(1);
+      expect(plan.risk_register?.map((r) => r.trigger.split(' ')[1])).toEqual(['EGR-01', 'EGR-03']);
+    } finally {
+      rmSync(wsRoot, { recursive: true, force: true });
+    }
   });
 });

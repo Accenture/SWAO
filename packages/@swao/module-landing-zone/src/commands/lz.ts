@@ -19,8 +19,11 @@ import type { Command } from 'commander';
 import { findWorkspace } from '@swao/core';
 import {
   resolveLzCataloguesDir,
-  loadLzCatalogueIndex,
-  loadLzCatalogue,
+  resolveBundledLzCataloguesDir,
+  discoverLzCatalogues,
+  listLzCatalogues,
+  isLzCatalogueEntryError,
+  loadLzComingSoon,
   resolveProviderCatalogue,
 } from '../catalogue/loader.js';
 
@@ -47,28 +50,35 @@ export function registerLz(program: Command): void {
     .option('--origin', 'Add ORIGIN column showing provenance (workspace/bundled) for each provider')
     .action((opts: { cataloguesDir?: string; origin?: boolean }) => {
       const workspaceRoot = findWorkspace(process.cwd()) ?? undefined;
+      // #3298 (Design 110 E-24): one row per provider any layer holds, built
+      // from the meta block of the file the fit loads (no index.json).
+      const rows = listLzCatalogues(workspaceRoot, opts.cataloguesDir);
       const dir = resolveLzCataloguesDir(opts.cataloguesDir, workspaceRoot);
-      if (!dir) {
-        console.error('[error] No lz-catalogues directory found (looked for index.json).');
+      if (rows.length === 0 || !dir) {
+        console.error('[error] No LZ catalogues found (looked for <provider>.json catalogue files).');
         process.exit(1);
       }
-      const { catalogues, coming_soon } = loadLzCatalogueIndex(dir);
       console.log(`Landing-zone catalogues (${dir}):`);
-      for (const c of catalogues) {
+      for (const c of rows) {
         let originPart = '';
         if (opts.origin) {
-          let provenance = 'bundled';
+          let provenance: string = c.provenance;
           try {
-            const resolved = resolveProviderCatalogue(c.provider, workspaceRoot, opts.cataloguesDir);
-            provenance = resolved.provenance;
+            provenance = resolveProviderCatalogue(c.provider, workspaceRoot, opts.cataloguesDir).provenance;
           } catch {
-            provenance = 'workspace (invalid)';
+            provenance = `${c.provenance} (invalid)`;
           }
           originPart = `  ORIGIN ${provenance}`;
         }
-        console.log(`  ${c.provider.padEnd(10)} ${c.name}  [updated ${c.last_updated}, source ${c.source}, confidence ${c.confidence}]${originPart}`);
+        if (isLzCatalogueEntryError(c)) {
+          console.log(`  ${c.provider.padEnd(10)} (unreadable catalogue ${c.file}: ${c.error})${originPart}`);
+          continue;
+        }
+        const copy = c.provenance === 'workspace' ? ', workspace copy' : '';
+        console.log(`  ${c.provider.padEnd(10)} ${c.name}  [updated ${c.last_updated}, source ${c.source}, confidence ${c.confidence}, ${c.regions_count} region(s)${copy}]${originPart}`);
       }
-      if (coming_soon.length > 0) console.log(`  coming soon: ${coming_soon.join(', ')}`);
+      const comingSoon = loadLzComingSoon().filter((p) => !rows.some((r) => r.provider === p));
+      if (comingSoon.length > 0) console.log(`  coming soon: ${comingSoon.join(', ')}`);
     });
 
   catalogue
@@ -78,18 +88,19 @@ export function registerLz(program: Command): void {
     .option('--workspace <path>', 'Workspace directory (default: auto-detect or cwd)')
     .action((provider: string, opts: { force?: boolean; workspace?: string }) => {
       const workspaceRoot = opts.workspace ?? findWorkspace(process.cwd()) ?? process.cwd();
-      const bundledDir = resolveLzCataloguesDir(undefined, undefined);
+      // #3155: the bundled catalogues only; #3298: the list comes from the files' meta.
+      const bundledDir = resolveBundledLzCataloguesDir();
       if (!bundledDir) {
         console.error('[error] Bundled lz-catalogues directory not found.');
         process.exit(1);
       }
-      const { catalogues } = loadLzCatalogueIndex(bundledDir);
+      const catalogues = discoverLzCatalogues(bundledDir);
       const entry = catalogues.find((c) => c.provider === provider);
       if (!entry) {
         console.error(`[error] Unknown provider "${provider}". Available: ${catalogues.map((c) => c.provider).join(', ')}.`);
         process.exit(1);
       }
-      const srcFile = join(bundledDir, entry.file);
+      const srcFile = entry.path;
       if (!existsSync(srcFile)) {
         console.error(`[error] Bundled catalogue file not found: ${srcFile}`);
         process.exit(1);
@@ -152,19 +163,23 @@ export function registerLz(program: Command): void {
     .command('show <provider>')
     .description('Show a provider catalogue: regions, sovereignty facts, services.')
     .option('--catalogues-dir <path>', 'Override the lz-catalogues directory')
-    .action((provider: string, opts: { cataloguesDir?: string }) => {
-      const workspaceRoot = findWorkspace(process.cwd()) ?? undefined;
-      const dir = resolveLzCataloguesDir(opts.cataloguesDir, workspaceRoot);
-      if (!dir) {
-        console.error('[error] No lz-catalogues directory found.');
+    .option('--workspace <path>', 'Workspace directory (default: auto-detect)')
+    .action((provider: string, opts: { cataloguesDir?: string; workspace?: string }) => {
+      const workspaceRoot = opts.workspace ?? findWorkspace(process.cwd()) ?? undefined;
+      // #3155: same per-provider layered resolution as the fit and the run manifest,
+      // so a workspace copy from `lz catalogue copy/new` is what `show` prints.
+      let cat: ReturnType<typeof resolveProviderCatalogue>['catalogue'];
+      let origin: string;
+      try {
+        const resolved = resolveProviderCatalogue(provider, workspaceRoot, opts.cataloguesDir);
+        cat = resolved.catalogue;
+        origin = `${resolved.provenance}: ${resolved.filePath}`;
+      } catch (e) {
+        console.error(`[error] ${e instanceof Error ? e.message : String(e)}`);
         process.exit(1);
       }
-      if (!existsSync(join(dir, `${provider}.json`))) {
-        console.error(`[error] No catalogue for provider "${provider}" in ${dir}.`);
-        process.exit(1);
-      }
-      const cat = loadLzCatalogue(dir, provider);
       console.log(`${cat.meta.name}  (provider: ${cat.meta.provider}, updated ${cat.meta.last_updated}, confidence ${cat.meta.confidence})`);
+      console.log(`  origin ${origin}`);
       for (const region of cat.regions) {
         const sov = region.sovereignty;
         const sovStr = sov

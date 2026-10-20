@@ -1,0 +1,47 @@
+# SWAO-INFRA-CAT -- Security services (Design 103 §17.2)
+id: INFRA_SECURITY
+name: "Security Services"
+# Load order among the built-in files (#3299): ascending; a later file wins
+# on a duplicate service id. Replaces the retired _registry.yaml.
+load_order: 40
+services:
+  - id: INFRA_SECURITY_ENDPOINT
+    name: "Endpoint Protection / EDR"
+    short: "EDR"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "Sophos"
+      - "Trend Micro"
+      - "CrowdStrike"
+      - "ESET"
+    product_name_patterns:
+      - "\\bantivirus\\b"
+      - "\\bEndpoint\\s+Protection\\b"
+      - "\\bSophos\\b"
+
+  - id: INFRA_SECURITY_NAC
+    name: "Network Access Control"
+    short: "NAC"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bmacmon\\b"
+      - "\\bNAC\\b"
+      - "\\bNetwork\\s+Access\\s+Control\\b"
+    sovereign_alternatives:
+      - id: packetfence
+        name: "PacketFence"
+        sovereign_rating: open-source
+
+  - id: INFRA_SECURITY_SIEM
+    name: "SIEM / Log Management"
+    short: "SIEM"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "Splunk"
+    product_name_patterns:
+      - "\\bSIEM\\b"
+      - "\\bSplunk\\b"
+    sovereign_alternatives:
+      - id: wazuh
+        name: "Wazuh"
+        sovereign_rating: open-source

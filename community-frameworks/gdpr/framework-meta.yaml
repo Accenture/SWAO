@@ -3,7 +3,7 @@
 # GDPR (Regulation (EU) 2016/679) packaged as the FIRST community framework
 # in the unified Community-Frameworks model (design 029 §11). This catalogue
 # REPLACES the legacy bundled stub at `swao/controls/standard/gdpr-controls.yaml`
-# (which carries only 5 controls; this catalogue carries 55).
+# (which carries only 5 controls; this catalogue carries 53).
 #
 # Per Helmut's decision (2026-05-22): all flagship regimes ship as community
 # frameworks; SWAO ships no embedded regulatory catalogues. GDPR is the pilot.

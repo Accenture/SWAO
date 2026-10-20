@@ -45,6 +45,8 @@ export interface SetupState {
   llmSecondaryModel?: string;
   // #2815: vision screen count (set when Playwright step completes with Playwright installed)
   visionMaxScreens?: number;
+  // #3306: LZ catalogue targets written by the LZ targets step ([] = skipped)
+  lzTargets?: string[];
 }
 
 // #0760: module-level flag tracks whether any GuidanceBox in the wizard is

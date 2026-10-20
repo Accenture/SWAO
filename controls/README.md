@@ -34,6 +34,7 @@ controls/
 -- cloud-provider-catalogue.yaml          Cloud provider metadata
 -- db-compatibility-catalogue.yaml        Database compatibility rules
 -- glossary.yaml                          Shared terminology
+-- infra-catalogue/                      SWAO-INFRA-CAT Tier 1 service classes (Design 103 §17)
 -- integration-patterns-catalogue.yaml    Integration pattern library
 -- landing-zone-checks-catalogue.yaml     Landing-zone gate checks
 -- legacy-indicators-catalogue.yaml       Legacy technology signals

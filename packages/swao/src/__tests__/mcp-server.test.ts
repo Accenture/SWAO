@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { existsSync, readFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -78,6 +78,14 @@ describe('MCP server module structure (#0131)', () => {
 // ---------------------------------------------------------------------------
 
 describe('MCP tool definitions (#0131)', { timeout: 30_000 }, () => {
+  // #3349: the first import of @swao/module-mcp is cold (about 5 s alone, 34 s
+  // under a loaded release dry run). Warm it once here so the import is not
+  // charged to the first test's 30 s budget; the tests' own imports then hit
+  // the module cache.
+  beforeAll(async () => {
+    await import('@swao/module-mcp');
+  }, 180_000);
+
   it('exposes the expected MCP tool surface', async () => {
     const { SWAO_MCP_TOOLS } = await import('@swao/module-mcp');
     const names = SWAO_MCP_TOOLS.map(t => t.name);

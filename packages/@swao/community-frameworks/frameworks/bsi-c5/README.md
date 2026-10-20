@@ -21,7 +21,7 @@
 **Version:** BSI C5:2020
 **Authority:** Bundesamt fuer Sicherheit in der Informationstechnik (BSI), Germany
 **SWAO tier:** Community (install required -- `swao framework install BSI_C5`)
-**Controls:** 62 Basic Criteria controls across all 17 C5:2020 domains
+**Controls:** 62 Basic Criteria controls across 16 C5:2020 domains
 
 ## What this framework evaluates
 
@@ -34,15 +34,15 @@ targeting German federal agencies and is strongly recommended for KRITIS-regulat
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install BSI_C5
 ```
 
 ```yaml
-compliance:
-  frameworks: [BSI_C5]
+assessment:
+  regimes_active: [BSI_C5]
 ```
 
 ## Control domains
@@ -74,7 +74,7 @@ compliance:
 swao framework install BSI_C5
 ```
 
-The installed copy at `catalogs/community/bsi-c5/controls.yaml` overrides the bundled
+The installed copy at `wsp/inputs/catalogs/community/bsi-c5/controls.yaml` overrides the bundled
 version. See `CONTRIBUTING.md` for the authoring guide.
 
 ## Contributor

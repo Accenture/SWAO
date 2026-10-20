@@ -35,3 +35,22 @@ export class ConnectivityFailureError extends Error {
     this.hint = hint;
   }
 }
+
+/** Thrown by a tool-calling chat (completeWithTools / completeWithToolsDetailed)
+ *  when the model does not support tool calling (#3311). Detection is from the
+ *  API error, not a capability probe:
+ *    - ollama:  HTTP 400 whose body says the model "does not support tools";
+ *    - bedrock: ValidationException saying the model does not support tool use.
+ *  The provider remembers the result, so later calls throw at once without a
+ *  round-trip. SWAO Chat catches it and answers without MCP tools. */
+export class LlmToolsUnsupportedError extends Error {
+  readonly provider: string;
+  readonly model: string;
+
+  constructor(provider: string, model: string) {
+    super(`Model ${model} (${provider}) does not support tool calling`);
+    this.name = 'LlmToolsUnsupportedError';
+    this.provider = provider;
+    this.model = model;
+  }
+}

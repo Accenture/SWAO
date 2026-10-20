@@ -1,43 +1,77 @@
 # Vendor SDK Catalogue
 # SWAO Compliance Ruleset Library -- runtime asset
-# Version: 2026-04
-# Schema: vendor-sdk-catalogue-v1.schema.json
+# Version: 2026-10
+# Schema: Zod VendorSdkCatalogueSchema
+#   (swao/packages/@swao/module-app-assessment/src/catalogue/reference-catalogues.ts)
 #
-# Used by: SPEC §10.1a vendor_lock_in sub-pass (Stage D)
-# Purpose: Detection rules for vendor-proprietary SDK imports. Used to identify
-#   cloud-provider-specific and high-lock-in vendor dependencies that affect the
-#   portability_score and 7R disposition.
+# Used by: Pass 01 (INV), signal INV-09 (passes/inv-reference-scans.ts).
+#   Detection rules for vendor-proprietary SDK dependencies that affect the
+#   portability score and the 7R disposition. INV-09 severity follows
+#   sovereign_impact: blocks_migration high, partial medium, manageable low,
+#   none informational.
+# Purpose: generic runtime asset. It must not contain engagement-specific
+#   content (client names or pseudonyms, one application's configuration,
+#   costs or volumes) and must not recommend one particular provider.
 #
-# Detection scope:
-#   - Cargo.toml / Cargo.lock (Rust)
-#   - package.json / package-lock.json / yarn.lock / pnpm-lock.yaml (Node.js)
-#   - requirements.txt / pyproject.toml / Pipfile (Python)
-#   - pom.xml / build.gradle / build.gradle.kts (Java/Kotlin)
-#   - go.mod / go.sum (Go)
-#   - *.csproj / packages.config (C#/.NET)
+# Detection scope (dependency manifests and lock files):
+#   npm_packages      package.json, package-lock.json, yarn.lock, pnpm-lock.yaml
+#   cargo_crates      Cargo.toml, Cargo.lock
+#   pip_packages      requirements*.txt, pyproject.toml, Pipfile
+#   maven_group_ids   pom.xml, build.gradle(.kts); matched against the groupId
+#   nuget_packages    *.csproj, packages.config
+#   jar_patterns      file names in the source tree
+# A trailing `*` in a pattern means prefix matching.
 #
 # lock_in_level values:
-#   extreme   -- proprietary API + data format; migration requires full rewrite
-#   high      -- proprietary SDK; standard alternative exists but migration is significant
+#   extreme   -- proprietary API and data format; migration requires a rewrite
+#   high      -- proprietary SDK; a standard alternative exists but migration is significant
 #   medium    -- abstraction layer available; SDK swap feasible
 #   low       -- thin wrapper; easily replaced
 #
-# sovereign_impact values:
-#   blocks_migration  -- no sovereign-cloud equivalent; must be replaced
-#   partial           -- sovereign alternative exists but requires migration effort
-#   manageable        -- sovereign equivalent available; swap is straightforward
-#   none              -- no sovereign impact (e.g. third-party SaaS SDK, not cloud infra)
+# sovereign_impact values and the rule applied to every entry (#3302):
+#   blocks_migration  -- the SDK calls APIs that only one US-parented cloud
+#                        provider implements. Its EU-operated or "sovereign"
+#                        offerings remain US-parented, so they do not count as
+#                        a sovereign equivalent (the US-parent rule of
+#                        sovereign-service-catalogue.yaml; CLOUD Act,
+#                        https://www.law.cornell.edu/uscode/text/18/2713).
+#                        Moving to an EU-parent provider means replacing every
+#                        call. Applied to the AWS, Google Cloud, Firebase and
+#                        Azure SDKs alike.
+#   partial           -- a vendor-licensed product (message broker, database)
+#                        that the customer can install and operate on any
+#                        infrastructure, including an EU-parent provider, but
+#                        that no EU-parent provider offers as a managed service
+#                        that SWAO could cite; migration means licensed
+#                        self-hosting or replacement.
+#   manageable        -- a sovereign equivalent with a compatible API exists;
+#                        the swap is straightforward.
+#   none              -- third-party SaaS SDK. The SDK is not cloud
+#                        infrastructure; the sovereignty verdict of the service
+#                        itself is held by sovereign-service-catalogue.yaml
+#                        (referenced by id, never copied here).
+#
+# Sources: every entry lists public sources (package registry pages for the
+#   detection patterns, vendor documentation for product facts) with the date
+#   each was checked, and a last_reviewed date. sovereign_alternative texts
+#   are generic migration options, not claims about one provider's offering.
+#
+# Quality gate: tests/audit-gates/reference-catalogue-quality.gate.mjs
+#   (#3296, #3302): every entry needs at least one source; review dates must
+#   not be in the future and warn after 180 days.
+
+last_reviewed: '2026-10-18'
 
 sdks:
 
   # ===========================================================================
-  # HYPERSCALER SDKs (Cloud-provider-proprietary; highest sovereign impact)
+  # HYPERSCALER SDKs (cloud-provider-proprietary APIs; US-parented providers)
   # ===========================================================================
 
   # --- AWS ---
 
   - id: aws-sdk-js-v3
-    name: "AWS SDK for JavaScript v3"
+    name: "AWS SDK for JavaScript (v3 and v2)"
     vendor: aws
     lock_in_level: extreme
     sovereign_impact: blocks_migration
@@ -47,14 +81,25 @@ sdks:
           match: prefix
         - pattern: "aws-sdk"
           match: exact
-      description: "AWS JavaScript SDK v2 and v3; covers all AWS service clients"
+      description: "AWS SDK for JavaScript v3 (@aws-sdk/client-* packages) and v2 (aws-sdk, end of support announced by AWS)"
     services_implied:
       - S3, DynamoDB, Lambda, SQS, SNS, Cognito, CloudWatch, KMS, Secrets Manager
     sovereign_alternative: >
-      Replace with provider-agnostic APIs: S3 -> OTC OBS (S3-compatible),
-      DynamoDB -> PostgreSQL or CouchDB, Lambda -> OTC FunctionGraph or self-hosted,
-      SQS -> RabbitMQ or Kafka self-hosted, Cognito -> Keycloak.
-    last_reviewed: "2026-04-01"
+      Replace provider-specific calls with portable interfaces: S3 with any
+      S3-compatible object store, DynamoDB with PostgreSQL or another
+      self-managed database, Lambda with a container or open-source function
+      runtime, SQS/SNS with RabbitMQ or Apache Kafka, Cognito with Keycloak.
+    sources:
+      - url: https://github.com/aws/aws-sdk-js-v3
+        title: "AWS SDK for JavaScript v3 (modular @aws-sdk/client-* packages)"
+        reviewed: '2026-10-18'
+      - url: https://www.npmjs.com/package/aws-sdk
+        title: "aws-sdk (v2) on npm"
+        reviewed: '2026-10-18'
+      - url: https://aws.amazon.com/blogs/developer/announcing-end-of-support-for-aws-sdk-for-javascript-v2/
+        title: "AWS announcement: end of support for the AWS SDK for JavaScript v2"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [aws, hyperscaler, cloud_native]
 
   - id: aws-sdk-rust
@@ -70,17 +115,25 @@ sdks:
           match: exact
         - pattern: "aws-types"
           match: exact
-      description: "AWS Rust SDK; covers all AWS service clients"
+      description: "AWS SDK for Rust; one aws-sdk-<service> crate per service plus aws-config and aws-types"
     services_implied:
       - S3, DynamoDB, Lambda, SQS, SNS, CloudWatch, KMS
     sovereign_alternative: >
-      Use S3-compatible clients (rust-s3 crate with OTC OBS endpoint) for object
-      storage. Replace proprietary services with open-source equivalents.
-    last_reviewed: "2026-04-01"
+      Use an S3-compatible client crate against an S3-compatible object store
+      for object storage; replace other provider services with open-source
+      equivalents.
+    sources:
+      - url: https://github.com/awslabs/aws-sdk-rust
+        title: "AWS SDK for Rust (aws-sdk-* crates, aws-config, aws-types)"
+        reviewed: '2026-10-18'
+      - url: https://crates.io/crates/aws-config
+        title: "aws-config on crates.io"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [aws, hyperscaler, rust]
 
   - id: aws-sdk-python
-    name: "boto3 / botocore (AWS SDK Python)"
+    name: "boto3 / botocore (AWS SDK for Python)"
     vendor: aws
     lock_in_level: extreme
     sovereign_impact: blocks_migration
@@ -92,12 +145,24 @@ sdks:
           match: exact
         - pattern: "awscli"
           match: exact
-      description: "boto3 is the primary AWS Python SDK; botocore is its foundation"
+      description: "boto3 is the AWS SDK for Python; botocore is its foundation and also underlies awscli"
     services_implied:
       - S3, DynamoDB, Lambda, EC2, CloudFormation, IAM
     sovereign_alternative: >
-      Use S3-compatible libraries (s3fs, minio-py) with OTC OBS or IONOS S3 endpoint.
-    last_reviewed: "2026-04-01"
+      Use an S3-compatible library (for example s3fs or the MinIO Python client)
+      against an S3-compatible object store; replace other provider services
+      with open-source equivalents.
+    sources:
+      - url: https://pypi.org/project/boto3/
+        title: "boto3 on PyPI"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/botocore/
+        title: "botocore on PyPI"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/awscli/
+        title: "awscli on PyPI"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [aws, hyperscaler, python]
 
   - id: aws-sdk-java
@@ -111,14 +176,24 @@ sdks:
           match: prefix
         - pattern: "software.amazon.awssdk"
           match: prefix
-      description: "AWS SDK v1 (com.amazonaws) and v2 (software.amazon.awssdk)"
-    last_reviewed: "2026-04-01"
+      description: "AWS SDK for Java v1 (groupId com.amazonaws, end of support announced by AWS) and v2 (software.amazon.awssdk)"
+    sources:
+      - url: https://github.com/aws/aws-sdk-java-v2
+        title: "AWS SDK for Java 2.x (groupId software.amazon.awssdk)"
+        reviewed: '2026-10-18'
+      - url: https://repo1.maven.org/maven2/com/amazonaws/
+        title: "Maven Central: com.amazonaws group (AWS SDK for Java 1.x)"
+        reviewed: '2026-10-18'
+      - url: https://aws.amazon.com/blogs/developer/announcing-end-of-support-for-aws-sdk-for-java-v1-x-on-december-31-2025/
+        title: "AWS announcement: end of support for the AWS SDK for Java 1.x"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [aws, hyperscaler, java]
 
   # --- Google Cloud ---
 
   - id: gcp-sdk-js
-    name: "Google Cloud SDK for JavaScript"
+    name: "Google Cloud client libraries for Node.js"
     vendor: gcp
     lock_in_level: extreme
     sovereign_impact: blocks_migration
@@ -128,19 +203,25 @@ sdks:
           match: prefix
         - pattern: "google-cloud"
           match: exact
-        - pattern: "@googleapis/admin"
-          match: exact
-      description: "GCP JavaScript SDK; includes Firestore, BigQuery, GCS, PubSub"
+      description: "Google Cloud Node.js client libraries (@google-cloud/*) and the deprecated umbrella package google-cloud"
     services_implied:
-      - Firestore, BigQuery, GCS, PubSub, CloudFunctions, Cloud Run
+      - Firestore, BigQuery, Cloud Storage, Pub/Sub, Cloud Functions, Cloud Run
     sovereign_alternative: >
-      Firestore -> PostgreSQL or CouchDB. BigQuery -> ClickHouse self-hosted.
-      GCS -> OTC OBS (S3-compatible). PubSub -> Kafka or RabbitMQ self-hosted.
-    last_reviewed: "2026-04-01"
+      Firestore with PostgreSQL or another self-managed database, BigQuery with
+      a self-managed analytical database such as ClickHouse, Cloud Storage with
+      an S3-compatible object store, Pub/Sub with Apache Kafka or RabbitMQ.
+    sources:
+      - url: https://github.com/googleapis/google-cloud-node
+        title: "Google Cloud client libraries for Node.js (@google-cloud/*)"
+        reviewed: '2026-10-18'
+      - url: https://www.npmjs.com/package/google-cloud
+        title: "google-cloud on npm (deprecated in favour of @google-cloud/* packages)"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [gcp, hyperscaler, cloud_native]
 
   - id: gcp-sdk-python
-    name: "Google Cloud SDK for Python"
+    name: "Google Cloud client libraries for Python"
     vendor: gcp
     lock_in_level: extreme
     sovereign_impact: blocks_migration
@@ -148,12 +229,15 @@ sdks:
       pip_packages:
         - pattern: "google-cloud-*"
           match: prefix
-        - pattern: "google-auth"
-          match: exact
-        - pattern: "google-api-python-client"
-          match: exact
-      description: "GCP Python SDK; includes Firestore, BigQuery, GCS"
-    last_reviewed: "2026-04-01"
+      description: "Google Cloud Python client libraries (google-cloud-<service>), for example Firestore, BigQuery, Cloud Storage"
+    sources:
+      - url: https://github.com/googleapis/google-cloud-python
+        title: "Google Cloud client libraries for Python (google-cloud-* packages)"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/google-cloud-storage/
+        title: "google-cloud-storage on PyPI"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [gcp, hyperscaler, python]
 
   - id: firebase-js
@@ -169,13 +253,22 @@ sdks:
           match: prefix
         - pattern: "firebase-admin"
           match: exact
-      description: "Firebase JS SDK and Admin SDK; covers Firestore, Auth, Storage, Functions"
+      description: "Firebase JavaScript SDK and Admin SDK (Firestore, Authentication, Cloud Storage, Cloud Functions)"
     services_implied:
-      - Firestore, Firebase Auth, Cloud Storage, Cloud Functions
+      - Firestore, Firebase Authentication, Cloud Storage, Cloud Functions
     sovereign_alternative: >
-      Replace with: Supabase (self-hosted on OTC), Pocketbase, or Directus.
-      Firebase Auth -> Keycloak or Authentik. Firestore -> PostgreSQL + PostgREST.
-    last_reviewed: "2026-04-01"
+      A self-hosted backend platform (for example Supabase or PocketBase) on an
+      EU-parent provider; Firebase Authentication with Keycloak or Authentik;
+      Firestore with PostgreSQL. The service verdict is held by
+      sovereign-service-catalogue.yaml (id firebase).
+    sources:
+      - url: https://github.com/firebase/firebase-js-sdk
+        title: "Firebase JavaScript SDK (firebase, @firebase/* packages)"
+        reviewed: '2026-10-18'
+      - url: https://www.npmjs.com/package/firebase-admin
+        title: "firebase-admin on npm"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [gcp, firebase, hyperscaler, extreme_lock_in]
 
   # --- Azure ---
@@ -183,29 +276,42 @@ sdks:
   - id: azure-sdk-js
     name: "Azure SDK for JavaScript"
     vendor: azure
-    lock_in_level: high
-    sovereign_impact: partial
+    lock_in_level: extreme
+    sovereign_impact: blocks_migration
     detection:
       npm_packages:
         - pattern: "@azure/*"
           match: prefix
         - pattern: "azure"
           match: exact
-      description: "Azure JS SDK; covers Blob Storage, Cosmos DB, Service Bus, Key Vault"
+      description: "Azure SDK for JavaScript (@azure/*) and the deprecated legacy package azure"
     services_implied:
-      - Blob Storage, Cosmos DB, Service Bus, Key Vault, AD B2C
+      - Blob Storage, Cosmos DB, Service Bus, Key Vault, Entra ID
     sovereign_alternative: >
-      Azure Germany North (Deutsche Telekom) or Azure Stack Hub are sovereign options.
-      For non-Azure sovereign: Blob Storage -> OTC OBS, Cosmos DB -> MongoDB (self-hosted),
-      Key Vault -> HashiCorp Vault self-hosted, Service Bus -> Kafka.
-    last_reviewed: "2026-04-01"
+      Blob Storage with an S3-compatible object store, Cosmos DB with a
+      self-managed MongoDB-compatible or PostgreSQL database, Key Vault with a
+      self-hosted secrets manager, Service
+      Bus with Apache Kafka or RabbitMQ. The former Microsoft Cloud Germany
+      with a German data trustee closed on 2021-10-29 and is no sovereign
+      option.
+    sources:
+      - url: https://github.com/Azure/azure-sdk-for-js
+        title: "Azure SDK for JavaScript (@azure/* packages)"
+        reviewed: '2026-10-18'
+      - url: https://www.npmjs.com/package/azure
+        title: "azure on npm (deprecated, superseded by the Azure SDK for JS)"
+        reviewed: '2026-10-18'
+      - url: https://learn.microsoft.com/en-us/previous-versions/azure/germany/germany-welcome
+        title: "Azure Germany overview: Microsoft Cloud Germany closed on October 29th, 2021"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [azure, hyperscaler]
 
   - id: azure-sdk-python
     name: "Azure SDK for Python"
     vendor: azure
-    lock_in_level: high
-    sovereign_impact: partial
+    lock_in_level: extreme
+    sovereign_impact: blocks_migration
     detection:
       pip_packages:
         - pattern: "azure-*"
@@ -214,15 +320,22 @@ sdks:
           match: exact
         - pattern: "msrestazure"
           match: exact
-      description: "Azure Python SDK; includes azure-storage-blob, azure-identity, azure-keyvault-*"
-    last_reviewed: "2026-04-01"
+      description: "Azure SDK for Python (azure-storage-blob, azure-identity, azure-keyvault-*, ...) and the legacy runtimes msrest and msrestazure"
+    sources:
+      - url: https://github.com/Azure/azure-sdk-for-python
+        title: "Azure SDK for Python (azure-* packages)"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/msrestazure/
+        title: "msrestazure on PyPI"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [azure, hyperscaler, python]
 
   - id: azure-sdk-dotnet
     name: "Azure SDK for .NET"
     vendor: azure
-    lock_in_level: high
-    sovereign_impact: partial
+    lock_in_level: extreme
+    sovereign_impact: blocks_migration
     detection:
       nuget_packages:
         - pattern: "Azure.*"
@@ -231,19 +344,26 @@ sdks:
           match: prefix
         - pattern: "WindowsAzure.*"
           match: prefix
-      description: "Azure .NET SDK; legacy WindowsAzure.* and modern Azure.* namespaces"
-    last_reviewed: "2026-04-01"
+      description: "Azure SDK for .NET; current Azure.* packages and legacy Microsoft.Azure.* and WindowsAzure.* packages"
+    sources:
+      - url: https://github.com/Azure/azure-sdk-for-net
+        title: "Azure SDK for .NET (Azure.* and legacy Microsoft.Azure.* packages)"
+        reviewed: '2026-10-18'
+      - url: https://www.nuget.org/packages/WindowsAzure.Storage
+        title: "WindowsAzure.Storage on NuGet (legacy package)"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [azure, hyperscaler, dotnet]
 
   # ===========================================================================
-  # PROPRIETARY ENTERPRISE VENDOR SDKs (Legacy; high sovereign impact)
+  # PROPRIETARY ENTERPRISE VENDOR SDKs (licensed products; self-hostable)
   # ===========================================================================
 
   - id: ibm-mq-client
-    name: "IBM MQ Client"
+    name: "IBM MQ client"
     vendor: ibm
     lock_in_level: extreme
-    sovereign_impact: blocks_migration
+    sovereign_impact: partial
     detection:
       npm_packages:
         - pattern: "ibmmq"
@@ -252,49 +372,79 @@ sdks:
         - pattern: "pymqi"
           match: exact
       cargo_crates:
-        - pattern: "ibm_mq"
-          match: prefix
+        - pattern: "mqi"
+          match: exact
+        - pattern: "libmqm-sys"
+          match: exact
       maven_group_ids:
         - pattern: "com.ibm.mq"
           match: prefix
       nuget_packages:
-        - pattern: "IBM.MQ"
+        - pattern: "IBMMQDotnetClient"
           match: exact
-      description: "IBM MQ (WebSphere MQ) messaging client libraries"
+        - pattern: "IBMXMSDotnetClient"
+          match: exact
+      description: "IBM MQ client libraries: Node.js ibmmq, Python pymqi, Rust mqi/libmqm-sys, Java com.ibm.mq, .NET IBMMQDotnetClient and IBMXMSDotnetClient"
     sovereign_alternative: >
-      Replace with AMQP-standard messaging: RabbitMQ (self-hosted on OTC, IONOS)
-      or Apache Kafka. Protocol migration required (IBM MQ is proprietary;
-      no drop-in replacement).
-    last_reviewed: "2026-04-01"
+      IBM MQ can be operated under an IBM licence on any infrastructure (IBM
+      publishes container images). To leave the product, migrate to an
+      AMQP- or JMS-standard broker (RabbitMQ, Apache ActiveMQ Artemis) or
+      Apache Kafka; the MQI protocol is proprietary, so client code changes.
+    sources:
+      - url: https://www.npmjs.com/package/ibmmq
+        title: "ibmmq on npm (IBM MQ Node.js interface)"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/pymqi/
+        title: "pymqi on PyPI"
+        reviewed: '2026-10-18'
+      - url: https://crates.io/crates/mqi
+        title: "mqi on crates.io (IBM MQ Interface for Rust)"
+        reviewed: '2026-10-18'
+      - url: https://repo1.maven.org/maven2/com/ibm/mq/
+        title: "Maven Central: com.ibm.mq group (com.ibm.mq.allclient, com.ibm.mq.jakarta.client)"
+        reviewed: '2026-10-18'
+      - url: https://www.nuget.org/packages/IBMMQDotnetClient
+        title: "IBMMQDotnetClient on NuGet (owner IBM_MQ)"
+        reviewed: '2026-10-18'
+      - url: https://www.ibm.com/docs/en/SSFKSJ_9.4.0/container/developers-container-image.html
+        title: "IBM MQ container image on the IBM Container Registry (licence acceptance required)"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [ibm, messaging, legacy, extreme_lock_in]
 
   - id: tibco-ems-client
-    name: "TIBCO EMS / BusinessWorks Client"
+    name: "TIBCO EMS client"
     vendor: tibco
     lock_in_level: extreme
-    sovereign_impact: blocks_migration
+    sovereign_impact: partial
     detection:
       jar_patterns:
         - pattern: "tibjms.jar"
-        - pattern: "tibems.jar"
+        - pattern: "tibjmsadmin.jar"
       maven_group_ids:
         - pattern: "com.tibco"
           match: prefix
-        - pattern: "tibco"
-          match: prefix
-      python_packages:
-        - pattern: "tibco-messaging"
-          match: prefix
-      description: "TIBCO EMS (Enterprise Message Service) and BusinessWorks JMS client"
+      description: "TIBCO EMS Java client (tibjms.jar, tibjmsadmin.jar from the EMS installation) and TIBCO artefacts published under the com.tibco Maven namespace"
     sovereign_alternative: >
-      Replace with ActiveMQ Artemis (JMS-compatible, open-source) or Apache Kafka.
-      TIBCO EMS to JMS migration is feasible for standard use cases; TIBCO-specific
-      features (transactions, selectors) require careful mapping.
-    last_reviewed: "2026-04-01"
+      TIBCO EMS is installed and operated by the customer under a TIBCO licence
+      (Linux installation is documented). To leave the product, migrate to
+      Apache ActiveMQ Artemis (JMS-compatible, open source) or Apache Kafka;
+      EMS-specific features need explicit mapping.
+    sources:
+      - url: https://docs.tibco.com/pub/ems/10.2.1/doc/pdf/TIB_ems_10.2.1_installation.pdf
+        title: "TIBCO EMS 10.2.1 installation guide (installing on Linux)"
+        reviewed: '2026-10-18'
+      - url: https://docs.infor.com/inforos/2026.x/en-us/useradminlib_cloud/iontechconceag_cloud_osm/lsm1436532391176.html
+        title: "Integration guide listing the EMS client jars tibjms.jar and tibjmsadmin.jar in the EMS lib folder"
+        reviewed: '2026-10-18'
+      - url: https://repo1.maven.org/maven2/com/tibco/
+        title: "Maven Central: com.tibco namespace"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [tibco, messaging, legacy, extreme_lock_in]
 
   - id: oracle-db-client
-    name: "Oracle Database Client"
+    name: "Oracle Database client"
     vendor: oracle
     lock_in_level: high
     sovereign_impact: partial
@@ -315,21 +465,39 @@ sdks:
       maven_group_ids:
         - pattern: "com.oracle.database.jdbc"
           match: prefix
-        - pattern: "oracle.jdbc"
-          match: prefix
       nuget_packages:
         - pattern: "Oracle.ManagedDataAccess"
           match: prefix
-      description: "Oracle database drivers; thin JDBC/ODBC clients"
+      description: "Oracle Database drivers: Rust oracle/sibyl, Python cx_Oracle/oracledb, Node.js oracledb, JDBC (com.oracle.database.jdbc), ODP.NET"
     sovereign_alternative: >
-      Migrate to PostgreSQL (supported by OTC, IONOS, managed services).
-      Schema migration via ora2pg or AWS Schema Conversion Tool (ironically).
-      Stored procedure migration is the primary complexity.
-    last_reviewed: "2026-04-01"
+      Oracle Database can be self-hosted under an Oracle licence on any
+      infrastructure. To leave the engine, migrate to PostgreSQL; schema and
+      data migration with ora2pg; stored procedures (PL/SQL to PL/pgSQL) are
+      the main effort.
+    sources:
+      - url: https://crates.io/crates/sibyl
+        title: "sibyl on crates.io (OCI-based Oracle interface)"
+        reviewed: '2026-10-18'
+      - url: https://github.com/oracle/python-oracledb
+        title: "python-oracledb (successor of cx_Oracle)"
+        reviewed: '2026-10-18'
+      - url: https://github.com/oracle/node-oracledb
+        title: "node-oracledb"
+        reviewed: '2026-10-18'
+      - url: https://repo1.maven.org/maven2/com/oracle/database/jdbc/
+        title: "Maven Central: com.oracle.database.jdbc group (ojdbc)"
+        reviewed: '2026-10-18'
+      - url: https://www.nuget.org/packages/Oracle.ManagedDataAccess
+        title: "Oracle.ManagedDataAccess (ODP.NET) on NuGet"
+        reviewed: '2026-10-18'
+      - url: https://ora2pg.darold.net/
+        title: "Ora2Pg: Oracle to PostgreSQL migration tool"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [oracle, database, legacy]
 
   - id: sql-server-client
-    name: "Microsoft SQL Server Client"
+    name: "Microsoft SQL Server client"
     vendor: microsoft
     lock_in_level: medium
     sovereign_impact: partial
@@ -338,8 +506,6 @@ sdks:
         - pattern: "tiberius"
           match: exact
       pip_packages:
-        - pattern: "pyodbc"
-          match: exact
         - pattern: "pymssql"
           match: exact
       npm_packages:
@@ -350,16 +516,36 @@ sdks:
       maven_group_ids:
         - pattern: "com.microsoft.sqlserver"
           match: prefix
-      description: "SQL Server JDBC, ODBC, and native drivers"
+      description: "SQL Server drivers: Rust tiberius, Python pymssql, Node.js mssql/tedious, JDBC mssql-jdbc. pyodbc is not listed: it is a generic ODBC driver manager (legacy-indicators LI-T2-002 records it with a note)."
     sovereign_alternative: >
-      Migrate to PostgreSQL. SQL Server -> PostgreSQL migration tooling available
-      (pgloader, AWS SCT, Babelfish for Aurora). T-SQL -> PL/pgSQL conversion
-      required for stored procedures.
-    last_reviewed: "2026-04-01"
+      SQL Server runs on Linux and in containers under a Microsoft licence on
+      any infrastructure. To leave the engine, migrate to PostgreSQL (pgloader
+      supports SQL Server as a source); T-SQL stored procedures need
+      conversion.
+    sources:
+      - url: https://crates.io/crates/tiberius
+        title: "tiberius on crates.io"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/pymssql/
+        title: "pymssql on PyPI"
+        reviewed: '2026-10-18'
+      - url: https://www.npmjs.com/package/tedious
+        title: "tedious on npm"
+        reviewed: '2026-10-18'
+      - url: https://github.com/microsoft/mssql-jdbc
+        title: "Microsoft JDBC Driver for SQL Server (com.microsoft.sqlserver)"
+        reviewed: '2026-10-18'
+      - url: https://learn.microsoft.com/en-us/sql/linux/quickstart-install-connect-docker
+        title: "SQL Server Linux container images"
+        reviewed: '2026-10-18'
+      - url: https://pgloader.readthedocs.io/en/latest/ref/mssql.html
+        title: "pgloader: migrating a SQL Server database to PostgreSQL"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [sqlserver, microsoft, database]
 
   - id: ibm-db2-client
-    name: "IBM Db2 Client"
+    name: "IBM Db2 client"
     vendor: ibm
     lock_in_level: high
     sovereign_impact: partial
@@ -372,19 +558,31 @@ sdks:
       maven_group_ids:
         - pattern: "com.ibm.db2"
           match: prefix
-      description: "IBM Db2 JDBC and ODBC drivers"
+      description: "IBM Db2 drivers: Python ibm_db, JDBC (com.ibm.db2:jcc)"
     sovereign_alternative: >
-      Migrate to PostgreSQL. Db2 -> PostgreSQL migration via pgloader or custom ETL.
-      Db2-specific SQL extensions and stored procedures require rewrite.
-    last_reviewed: "2026-04-01"
+      Db2 can be self-hosted under an IBM licence (IBM publishes a Db2
+      Community Edition container image). To leave the engine, migrate to
+      PostgreSQL; Db2-specific SQL and stored procedures need conversion.
+    sources:
+      - url: https://pypi.org/project/ibm-db/
+        title: "ibm-db on PyPI (Python driver for Db2, IBM)"
+        reviewed: '2026-10-18'
+      - url: https://repo1.maven.org/maven2/com/ibm/db2/
+        title: "Maven Central: com.ibm.db2 group (jcc)"
+        reviewed: '2026-10-18'
+      - url: https://www.ibm.com/docs/en/db2/11.5.x?topic=system-linux
+        title: "Db2 Community Edition container image icr.io/db2_community/db2"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [ibm, database, legacy]
 
   # ===========================================================================
-  # THIRD-PARTY SaaS SDKs (Lower lock-in; sovereign impact = none or manageable)
+  # THIRD-PARTY SaaS SDKs (sovereign_impact none; service verdicts are held by
+  # sovereign-service-catalogue.yaml)
   # ===========================================================================
 
   - id: stripe-cargo
-    name: "Stripe Rust crate"
+    name: "Stripe Rust crates"
     vendor: stripe
     lock_in_level: medium
     sovereign_impact: none
@@ -394,13 +592,21 @@ sdks:
           match: exact
         - pattern: "async-stripe"
           match: exact
-      description: "Stripe payment processing Rust client"
+      description: "Community Stripe API clients for Rust"
     sovereign_notes: >
-      Stripe SDK binds the application to Stripe's payment processing service, not
-      to a specific cloud provider. Sovereign impact is assessed via
-      sovereign-service-catalogue.yaml#stripe (portability_verdict: partial).
-      SDK itself is replaceable; business dependency on Stripe is the real constraint.
-    last_reviewed: "2026-04-01"
+      The SDK binds the application to the Stripe payment service, not to a
+      cloud provider. The service verdict is held by
+      sovereign-service-catalogue.yaml (id stripe). The SDK itself is
+      replaceable; the business dependency on the payment provider is the
+      real constraint.
+    sources:
+      - url: https://crates.io/crates/async-stripe
+        title: "async-stripe on crates.io"
+        reviewed: '2026-10-18'
+      - url: https://crates.io/crates/stripe
+        title: "stripe on crates.io"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [payments, saas, medium_lock_in]
 
   - id: stripe-npm
@@ -412,8 +618,14 @@ sdks:
       npm_packages:
         - pattern: "stripe"
           match: exact
-      description: "Stripe payment processing Node.js/TypeScript client"
-    last_reviewed: "2026-04-01"
+      description: "Stripe Node.js/TypeScript server-side library"
+    sovereign_notes: >
+      Service verdict: sovereign-service-catalogue.yaml (id stripe).
+    sources:
+      - url: https://docs.stripe.com/sdks
+        title: "Stripe SDKs (server-side libraries, including stripe-node)"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [payments, saas, medium_lock_in]
 
   - id: sentry-cargo
@@ -431,15 +643,22 @@ sdks:
           match: exact
       description: "Sentry error monitoring Rust SDK and integrations"
     sovereign_notes: >
-      Sentry SDK is low lock-in (standard error/tracing interface). Replaceable
-      with GlitchTip (self-hosted, Sentry-compatible API) or OpenTelemetry + Jaeger.
-      Sovereign impact assessed via sovereign-service-catalogue.yaml#sentry
-      (portability_verdict: available -- EU region confirmed).
-    last_reviewed: "2026-04-01"
+      Low lock-in: the Sentry SDKs can report to GlitchTip, an open-source,
+      self-hostable service that is compatible with Sentry client SDKs, or the
+      application can switch to OpenTelemetry. Service verdict:
+      sovereign-service-catalogue.yaml (id sentry).
+    sources:
+      - url: https://docs.sentry.io/platforms/rust/
+        title: "Sentry for Rust (sentry crate and integrations)"
+        reviewed: '2026-10-18'
+      - url: https://glitchtip.com/
+        title: "GlitchTip: open source, compatible with Sentry client SDKs, self-hosted version"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [observability, saas, low_lock_in]
 
   - id: sentry-npm
-    name: "Sentry JavaScript / Next.js SDK"
+    name: "Sentry JavaScript SDKs"
     vendor: sentry
     lock_in_level: low
     sovereign_impact: none
@@ -447,10 +666,18 @@ sdks:
       npm_packages:
         - pattern: "@sentry/*"
           match: prefix
-        - pattern: "sentry"
-          match: exact
-      description: "Sentry JS SDK and framework integrations (@sentry/nextjs, @sentry/react, etc.)"
-    last_reviewed: "2026-04-01"
+      description: "Sentry JavaScript SDKs and framework integrations (@sentry/node, @sentry/nextjs, @sentry/react, ...). The unscoped npm package sentry is a Sentry CLI tool, not an SDK, and is not matched."
+    sovereign_notes: >
+      See sentry-cargo. Service verdict: sovereign-service-catalogue.yaml
+      (id sentry).
+    sources:
+      - url: https://github.com/getsentry/sentry-javascript
+        title: "Sentry JavaScript SDKs (@sentry/* packages)"
+        reviewed: '2026-10-18'
+      - url: https://glitchtip.com/
+        title: "GlitchTip: compatible with Sentry client SDKs"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [observability, saas, low_lock_in]
 
   - id: twilio-node
@@ -464,16 +691,20 @@ sdks:
           match: exact
         - pattern: "@twilio/*"
           match: prefix
-      description: "Twilio SMS, voice, and WhatsApp messaging SDK"
+      description: "Twilio SMS, voice and messaging SDK for Node.js"
     sovereign_notes: >
-      Twilio has an EU entity and EU data residency. Sovereign impact assessed
-      via sovereign-service-catalogue.yaml#twilio. SDK is replaceable with
-      Vonage/Nexmo, MessageBird, or OTC Message Notification Service.
-    last_reviewed: "2026-04-01"
+      The SDK is replaceable with the API client of another communications
+      provider. Service verdicts are held by sovereign-service-catalogue.yaml
+      when the service is catalogued there.
+    sources:
+      - url: https://www.twilio.com/docs/libraries/reference/twilio-node
+        title: "Twilio Node.js helper library"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [messaging, saas]
 
   - id: sendgrid-npm
-    name: "SendGrid / Twilio Email API SDK"
+    name: "Twilio SendGrid email API SDK"
     vendor: twilio_sendgrid
     lock_in_level: low
     sovereign_impact: none
@@ -486,9 +717,17 @@ sdks:
       pip_packages:
         - pattern: "sendgrid"
           match: exact
-      description: "SendGrid transactional email API SDK"
+      description: "Twilio SendGrid transactional email API SDK"
     sovereign_notes: >
-      Replaceable with Mailgun EU, Brevo (formerly Sendinblue, EU-hosted),
-      or self-hosted Postal. Low lock-in: standard SMTP interface available.
-    last_reviewed: "2026-04-01"
+      Low lock-in: SendGrid also accepts mail through standard SMTP relay, so
+      the application can move to the SMTP relay of an EU-parent email
+      provider or a self-hosted mail transfer agent.
+    sources:
+      - url: https://www.twilio.com/docs/sendgrid/for-developers/sending-email/integrating-with-the-smtp-api
+        title: "Twilio SendGrid: integrating with the SMTP API"
+        reviewed: '2026-10-18'
+      - url: https://pypi.org/project/sendgrid/
+        title: "sendgrid on PyPI"
+        reviewed: '2026-10-18'
+    last_reviewed: '2026-10-18'
     tags: [email, saas, low_lock_in]

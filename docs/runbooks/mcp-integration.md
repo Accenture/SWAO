@@ -31,7 +31,7 @@ last_updated: 2026-04-29
 SWAO exposes its assessment capabilities over the Model Context Protocol (MCP)
 STDIO transport. Once registered, any MCP-compatible client (Claude Desktop,
 Cursor, VS Code with an MCP extension, etc.) can invoke `swao_assess`,
-`swao_report`, `swao_doctor`, and `swao_challenge` as native tools, and use
+`swao_report`, `swao_health_check`, and `swao_challenge` as native tools, and use
 the `swao` entry point to show the workflow overview screen.
 
 This runbook covers two installation modes (binary and source), per-platform
@@ -47,7 +47,7 @@ binary files.
 
 | Mode | What you have | Node.js required |
 |---|---|---|
-| **Binary** | `swao-enterprise-win.exe` / `swao-macos` / `swao-linux` from `dist-bin/` | No |
+| **Binary** | `swao-enterprise-win-x64.exe` / `swao-macos` / `swao-linux` from `dist-bin/` | No |
 | **Source** | SWAO repository cloned, `dist/` built | Yes (20.x) |
 
 Both modes start the server with the same `mcp` subcommand. The only
@@ -64,7 +64,7 @@ release archive.
 
 | File | Platform | Purpose |
 |---|---|---|
-| `swao-enterprise-win.exe` | Windows | Self-contained CLI and MCP server |
+| `swao-enterprise-win-x64.exe` | Windows | Self-contained CLI and MCP server |
 | `swao-macos` | macOS | Self-contained CLI and MCP server |
 | `swao-linux` | Linux | Self-contained CLI and MCP server |
 
@@ -72,14 +72,14 @@ release archive.
 
 1. Create a permanent folder for the binary, for example `C:\tools\swao\`.
    Avoid `Downloads` or any folder that may be cleared.
-2. Copy `swao-enterprise-win.exe` into that folder.
+2. Copy `swao-enterprise-win-x64.exe` into that folder.
 3. Optionally add `C:\tools\swao\` to your `PATH` so you can run `swao` from
    any terminal. This is not required for MCP.
 
 Verify the binary works before registering it with any client:
 
 ```
-C:\tools\swao\swao-enterprise-win.exe mcp --help
+C:\tools\swao\swao-enterprise-win-x64.exe mcp --help
 ```
 
 Expected first line:
@@ -157,13 +157,53 @@ The server exposes five tools:
 | `swao` | Welcome screen: workflow overview, tool list, quick-start guide. Use this as the entry point. |
 | `swao_assess` | Run a sovereignty assessment for one application (source scan, SBOM, egress, TF, crypto, LZR). |
 | `swao_report` | Generate a report from an existing assessment. Supports role views: exec, compliance, finops, migration-manager, lzr. |
-| `swao_doctor` | Health check: LLM connectivity, credential store, workspace layout, Playwright availability, licence status. |
+| `swao_health_check` | Health check: LLM connectivity, credential store, workspace layout, Playwright availability, licence status. |
 | `swao_challenge` | Run a stakeholder challenge session against a WSP. Five agent perspectives available. |
 
 The `swao_assess` and `swao_report` tools require two key parameters:
 
 - `app_id`: the application folder name under `portfolio/apps/`
 - `workspace_path`: absolute path to the portfolio root that contains `.swao.yml`
+
+### 4.1 Service Portfolio Assessment tools
+
+For a workspace scaffolded with `swao service init` (Design 103), the server
+exposes the service results directly. Read tools follow
+`FEATURE_GATES['service-assessment']` (Community, so no gate beyond the MCP
+server's own licence; `swao_service_export` additionally requires Enterprise),
+return JSON, accept `workspace_path`,
+and cap long lists (`limit` / `offset`). Contact, phone and e-mail from the
+intake are reported as presence booleans only; intake note text and analyst
+text in research stubs are never returned. Failed, aborted and in-progress runs
+(`run-status.json`) are listed but never read.
+
+| Tool | Purpose |
+|---|---|
+| `swao_service_portfolio` | One row per application or service app from `wsp/portfolio-summary.json` (combined portfolio view): `assessment_type`, 7R verdict of application apps, TIME quadrant and reason, risk, health, evidence, assessed, wave, blast radius, end-of-life signal and date, CVE counts, KEV, site, cost. Filters: `assessment_type`, `time_quadrant`, `wave`, `site`, `infra_category`, `operational_status`, `evidence`, `assessed`, `eol_signal`, `eol_within_months`, `min_risk`, `kev_match`; `sort_by` risk, eol_date, fan_in or wave. |
+| `swao_service_app` | Everything about one service app: intake fields, classification, cluster, cost estimate, integrations, TIME and domain scores, per-control SWAO_APM scores (`apm-score.json`), latest usable run and run history, scope coverage with skipped passes, research and binary summary. For an application app of the combined portfolio view: its portfolio row and integrations. |
+| `swao_service_research` | Research stubs of one app, optionally one `topic`: CVE ids (capped), KEV, BSI, OSV, end of life, VirusTotal, and the LLM topics (vendor-profile, certifications, data-residency, breach-history) with status, skipped reason, confidence capped at medium, and sources marked as cited by the model and not verified by SWAO. |
+| `swao_service_waves` | Migration waves (label, horizon, apps, effort days) and integration hubs (fan-in, blast radius) of both app types; every wave member and hub carries `assessment_type`, `evidence` and `not_assessed`. |
+| `swao_service_vendors` | Vendor consolidation groups with opportunity score and tier. |
+| `swao_service_delta` | Latest delta report against the previous snapshot: new, removed and changed apps, TIME and risk changes. |
+| `swao_service_scaffold` | Scaffold summary: rows read, apps, clusters, SCAFFOLD signal counts, unclassified apps, recognised columns, PII column letters. |
+| `swao_service_runs` | Service runs per app with their `run-status.json` status and the latest usable run. |
+| `swao_service_init` | Runs `swao service init` (`from`, `mapping`, `refresh`). Writes to the workspace. |
+| `swao_service_research_run` | Runs `swao service research` for all apps, one app (`app_id`) or a list (`apps`); `refresh`, `dry_run`. Writes to the workspace. Each CLI call stops after 5 minutes; an incomplete run is flagged `[incomplete]`. |
+| `swao_service_export` | Enterprise: runs `swao service export` (portfolio workbook and star schema). |
+
+`swao_assess` accepts `assessment_type: service`; `swao_publish` publishes a
+service app with the service blocks; `swao_signals` and `swao_signal_detail`
+include the RESEARCH, BINARY and SCAFFOLD signals of a service app;
+`swao_portfolio_summary` and `swao_portfolio_stats` add a service section that
+points to `swao_service_portfolio`.
+
+Example questions:
+
+- "Which apps reach end of life within 12 months?" (calls
+  `swao_service_portfolio` with `eol_within_months: 12`, `sort_by: eol_date`)
+- "Show the wave 1 apps" (calls `swao_service_waves` with `wave: 1`)
+- "What does SWAO know about <app>?" (calls `swao_service_app`, then
+  `swao_service_research` for detail)
 
 ---
 
@@ -180,13 +220,13 @@ Config file path:
 %LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json
 ```
 
-**Binary variant** (replace path with wherever you placed `swao-enterprise-win.exe`):
+**Binary variant** (replace path with wherever you placed `swao-enterprise-win-x64.exe`):
 
 ```json
 {
   "mcpServers": {
     "SWAO": {
-      "command": "C:\\tools\\swao\\swao-enterprise-win.exe",
+      "command": "C:\\tools\\swao\\swao-enterprise-win-x64.exe",
       "args": ["mcp"]
     }
   }
@@ -194,7 +234,7 @@ Config file path:
 ```
 
 **Source variant** (replace `<repo-root>` with the absolute path to the cloned
-repository, e.g. `C:\Projects\accenture\swao`):
+repository, e.g. `C:\src\swao`):
 
 ```json
 {
@@ -235,6 +275,24 @@ Config file path:
 
 The JSON block is identical to Section 5.1. The only difference is the file
 location.
+
+**Both installations on one machine.** A machine that has had both a Store
+(MSIX) and a direct .exe installation has both config files. Claude Desktop
+reads the Store path when it exists. The Setup Wizard (MCP Client step),
+`swao init --mcp` and `swao mcp install` update the config Claude Desktop
+reads plus every other config that already holds a SWAO entry, and list each
+file with its result. A config without a SWAO entry is not created or
+changed. All three register the same entry: for a SWAO release binary, a
+stable copy in the binary's folder named for the running binary's own tier
+(`swao-<tier>-<os>-<arch>[.exe]`, so `swao-enterprise-win-x64.exe` for the
+Enterprise Windows binary; a binary of one tier never overwrites another
+tier's binary) with `args` `["mcp"]`; for a source run, the
+absolute path to `node` with the script path and `mcp` as `args` (the
+source variant above), and no copy is made. Registration is Enterprise
+only: the Community and Consultant binaries, or a lower licence, get the
+`[LICENSE]` message (exit 1) and nothing is copied or written. `swao health-check` (probe 3, SWAO-MCP) warns when any SWAO entry,
+in either file, points at a binary that no longer exists or is not the
+running SWAO binary.
 
 ### 5.3 Claude Desktop, macOS
 
@@ -324,7 +382,7 @@ command and args format is identical to the examples above.
 
 Any client that supports STDIO transport can run SWAO. The invariant is:
 
-- **Binary mode:** `command` is the absolute path to `swao-enterprise-win.exe` / `swao-macos` / `swao-linux`; `args` is `["mcp"]`
+- **Binary mode:** `command` is the absolute path to `swao-enterprise-win-x64.exe` / `swao-macos` / `swao-linux`; `args` is `["mcp"]`
 - **Source mode:** `command` is the absolute path to `node`; `args` is `["<absolute-path>/dist/index.js", "mcp"]`
 - **Transport:** stdio (not SSE or HTTP)
 
@@ -346,7 +404,7 @@ If the welcome screen appears, the server is connected and all tools are
 available. To verify assessment tools specifically, ask:
 
 ```
-Run swao_doctor
+Run swao_health_check
 ```
 
 Expected: a health report listing LLM, credential, workspace, and licence
@@ -380,7 +438,7 @@ followed by a `tools/list` exchange that lists all five tools.
 
 ### 7.2 "command not found" or spawn error
 
-**Binary mode:** confirm the path to `swao-enterprise-win.exe` / `swao-macos` is correct
+**Binary mode:** confirm the path to `swao-enterprise-win-x64.exe` / `swao-macos` is correct
 and the file exists. Run it directly in a terminal first (Section 2).
 
 **Source mode:** use the full absolute path to `node`. Bare `node` in the
@@ -409,7 +467,7 @@ Fix any TypeScript errors before retrying.
 
 The SWAO CLI spawns subprocesses for each tool call. If `swao_assess` or
 `swao_report` time out, the most common cause is a missing or unreachable LLM
-provider. Run `swao_doctor` first to check connectivity, then set credentials
+provider. Run `swao_health_check` first to check connectivity, then set credentials
 via `swao credential set` in a terminal.
 
 ### 7.6 JSON parse error in config file

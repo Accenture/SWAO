@@ -73,6 +73,8 @@ const TIER_MARKERS: Array<{ marker: string; module: string }> = [
   { marker: 'buildSpawnRunForApp', module: '@swao/module-portfolio (Enterprise)' },
   // Enterprise: @swao/module-portfolio orchestrator runtime message.
   { marker: 'No apps discovered under apps', module: '@swao/module-portfolio (Enterprise)' },
+  // Enterprise: @swao/module-service-export DORA ICT Register note (#3353, F-133).
+  { marker: 'Partial EBA ITS register template', module: '@swao/module-service-export (Enterprise)' },
 ];
 
 // Community-only positive control: the product banner is registered by the

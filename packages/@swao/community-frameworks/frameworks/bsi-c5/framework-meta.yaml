@@ -1,7 +1,7 @@
-# SWAO community framework metadata (design 029 Â§2.3 + Â§11)
+# SWAO community framework metadata (design 029 §2.3 + §11)
 # Sprint-039 #0358 Phase 1: migrated from standard-scope PoC stub.
 # Sprint-083 #0875: full catalogue deepening -- 5 controls to 62 controls
-# covering all 17 C5:2020 Basic Criteria domains.
+# covering 16 C5:2020 Basic Criteria domains.
 
 framework:
   id: BSI_C5
@@ -27,7 +27,7 @@ framework:
     defines Basic Criteria and Additional Criteria across 17 control
     domains. Mandatory baseline for German public-sector cloud usage and
     strongly recommended for KRITIS-regulated sectors. This catalogue covers
-    62 Basic Criteria controls across all 17 C5:2020 domains: OIS, PRY, HRS,
+    62 Basic Criteria controls across 16 C5:2020 domains: OIS, PRY, HRS,
     IDM, CRY, COS, OPS, AVL, DEV, INM, SIM, COM, PSS, BCP, DAT, and PI.
   references:
     - "https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Informationen-und-Empfehlungen/Empfehlungen-nach-Angriffszielen/Cloud-Computing/Kriterienkatalog-C5/kriterienkatalog-c5_node.html"

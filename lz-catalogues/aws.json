@@ -3994,9 +3994,9 @@
     {
       "id": "ap-east-2",
       "display": "Asia Pacific (Taipei)",
-      "country": "UNKNOWN",
+      "country": "TW",
       "sovereignty": {
-        "residency_country": "UNKNOWN",
+        "residency_country": "TW",
         "operator_jurisdiction": "US-entity",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -26191,9 +26191,9 @@
     {
       "id": "ap-southeast-5",
       "display": "Asia Pacific (Malaysia)",
-      "country": "UNKNOWN",
+      "country": "MY",
       "sovereignty": {
-        "residency_country": "UNKNOWN",
+        "residency_country": "MY",
         "operator_jurisdiction": "US-entity",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -27879,9 +27879,9 @@
     {
       "id": "ap-southeast-6",
       "display": "Asia Pacific (New Zealand)",
-      "country": "UNKNOWN",
+      "country": "NZ",
       "sovereignty": {
-        "residency_country": "UNKNOWN",
+        "residency_country": "NZ",
         "operator_jurisdiction": "US-entity",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -29254,9 +29254,9 @@
     {
       "id": "ap-southeast-7",
       "display": "Asia Pacific (Thailand)",
-      "country": "UNKNOWN",
+      "country": "TH",
       "sovereignty": {
-        "residency_country": "UNKNOWN",
+        "residency_country": "TH",
         "operator_jurisdiction": "US-entity",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -34846,7 +34846,7 @@
           "fisa_702"
         ],
         "certifications": [
-          "C5",
+          "BSI_C5",
           "ISO_27001",
           "SOC_2",
           "PCI_DSS"
@@ -39461,7 +39461,7 @@
           "fisa_702"
         ],
         "certifications": [
-          "C5",
+          "BSI_C5",
           "ISO_27001",
           "SOC_2",
           "PCI_DSS"

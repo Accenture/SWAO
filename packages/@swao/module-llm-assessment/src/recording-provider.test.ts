@@ -26,6 +26,7 @@ import {
   detectAlteredMarkers,
   countForeignPaths,
   type UsageSnapshot,
+  type CallUsage,
 } from './recording-provider.js';
 import { CallRecordSchema } from './call-record.js';
 import { RunLog, FindingsStore, CORE_FINDING_TYPES } from './run-store.js';
@@ -171,6 +172,29 @@ describe('createRecordingProvider (#1422)', () => {
     expect(r.reliability.dnf).toBe(true);
     expect(r.reliability.error).toContain('32768');
   });
+
+  it('#3284: forwards the wrapped provider maxConcurrency (live), so Pass 11 sizes its fan-out in leg mode', () => {
+    const inner = { maxConcurrency: 3, async complete(): Promise<string> { return '{}'; } };
+    const provider = createRecordingProvider(inner, {
+      leg: { id: 'leg-c', connector: 'anthropic', model: 'claude-sonnet-4-6' },
+      usageSnapshot: () => ({ input_tokens: 0, output_tokens: 0, cost_usd: 0, call_count: 0 }),
+      costSource: 'billed',
+      currentContext: () => ({ passId: '11-comp', callSite: 'comp' }),
+      isKnownPath: () => false,
+      onRecord: () => undefined,
+    });
+    expect(provider.maxConcurrency).toBe(3);
+    inner.maxConcurrency = 5;
+    expect(provider.maxConcurrency).toBe(5);
+    expect(createRecordingProvider({ complete: async () => '' }, {
+      leg: { id: 'leg-d', connector: 'x', model: 'y' },
+      usageSnapshot: () => ({ input_tokens: 0, output_tokens: 0, cost_usd: 0, call_count: 0 }),
+      costSource: 'local',
+      currentContext: () => ({ passId: 'p', callSite: 'c' }),
+      isKnownPath: () => false,
+      onRecord: () => undefined,
+    }).maxConcurrency).toBeUndefined();
+  });
 });
 
 describe('heuristics (#1422)', () => {
@@ -246,5 +270,59 @@ describe('RunLog + FindingsStore (#1422, 092 s5.7)', () => {
       expect(CORE_FINDING_TYPES[t], `${t} missing`).toBeTruthy();
       expect(CORE_FINDING_TYPES[t]!.length).toBeGreaterThan(30);
     }
+  });
+});
+
+describe('per-call usage under concurrency (#3301)', () => {
+  it('records each concurrent call with its own tokens and cost, not the cumulative delta', async () => {
+    // The tracking wrapper's cumulative snapshot sees both calls; the
+    // pre-#3301 before/after delta attributed the other call's usage too.
+    let usage: UsageSnapshot = { input_tokens: 0, output_tokens: 0, cost_usd: 0, call_count: 0 };
+    const gates = new Map<string, (u: CallUsage) => void>();
+    const inner = {
+      async complete(prompt: string): Promise<string> {
+        return (await inner.completeDetailed(prompt)).text;
+      },
+      async completeDetailed(prompt: string): Promise<{ text: string; usage: CallUsage }> {
+        const u = await new Promise<CallUsage>((resolve) => { gates.set(prompt, resolve); });
+        usage = {
+          input_tokens: usage.input_tokens + u.input_tokens,
+          output_tokens: usage.output_tokens + u.output_tokens,
+          cost_usd: usage.cost_usd + u.cost_usd,
+          call_count: usage.call_count + 1,
+        };
+        return { text: '{"ok":true}', usage: u };
+      },
+    };
+    const provider = createRecordingProvider(inner, {
+      leg: { id: 'leg', connector: 'c', model: 'm' },
+      usageSnapshot: () => usage,
+      costSource: 'billed',
+      currentContext: () => ({ passId: '11-compliance', callSite: 'control-batch' }),
+      onRecord: () => {},
+    });
+
+    const pA = provider.complete('prompt A');
+    const pB = provider.completeDetailed('prompt B');
+    await Promise.resolve();
+    gates.get('prompt B')!({ input_tokens: 2000, output_tokens: 200, cost_usd: 0.2 });
+    gates.get('prompt A')!({ input_tokens: 100, output_tokens: 10, cost_usd: 0.01 });
+    const [, b] = await Promise.all([pA, pB]);
+
+    expect(b.usage).toEqual({ input_tokens: 2000, output_tokens: 200, cost_usd: 0.2 });
+    const [recA, recB] = provider.records();
+    // records are pushed on completion; identify them by call_index
+    const byIndex = [recA!, recB!].sort((x, y) => x.call_index - y.call_index);
+    expect(byIndex[0]!.tokens).toMatchObject({ prompt: 100, completion: 10 });
+    expect(byIndex[0]!.cost_usd.computed).toBe(0.01);
+    expect(byIndex[1]!.tokens).toMatchObject({ prompt: 2000, completion: 200 });
+    expect(byIndex[1]!.cost_usd.computed).toBe(0.2);
+  });
+
+  it('falls back to the snapshot delta when the inner has no completeDetailed', async () => {
+    const h = makeHarness();
+    const r = await h.provider.completeDetailed('x');
+    expect(r.usage).toBeUndefined();
+    expect(h.provider.records()[0]!.tokens.prompt).toBe(700);
   });
 });

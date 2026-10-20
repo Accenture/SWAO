@@ -92,8 +92,8 @@ describe('Dockerfile (#0123)', () => {
     expect(content).toMatch(/run build/);
   });
 
-  it('builder stage runs pnpm install (sprint-128 #2128: Community strips swao-premium glob)', () => {
-    // Community Dockerfile strips the swao-premium workspace glob via sed before
+  it('builder stage runs pnpm install (sprint-128 #2128: Community strips the private premium tree glob)', () => {
+    // Community Dockerfile strips the private premium tree workspace glob via sed before
     // pnpm install, so --frozen-lockfile is intentionally omitted (the modified
     // workspace.yaml would fail the lockfile hash check). Premium Dockerfiles
     // (Dockerfile.enterprise / Dockerfile.consultant) retain --frozen-lockfile.

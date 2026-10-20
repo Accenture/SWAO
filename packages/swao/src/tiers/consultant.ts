@@ -40,6 +40,7 @@ import { GenerateTfScreen } from '@swao/module-terraform';
 import { premiumScreens } from '../tui/premium-screens.js';
 import { registerLzCatalogueUpdate } from '@swao/module-landing-zone';
 import { registerUnipipe } from '../commands/unipipe.js';
+import { registerLicenceStub } from '../lib/tier-stub.js';
 import {
   buildProgram,
   communityBuildPortal,
@@ -47,6 +48,7 @@ import {
   communityRunPortfolio,
   communityFormatPortfolioResult,
   communityRunForApp,
+  communityServiceDeps,
 } from '../bootstrap.js';
 
 // #1560: cap effective tier to Consultant for the Consultant binary.
@@ -62,6 +64,7 @@ const cliSpawnDescriptor: McpHostDeps = (process as { pkg?: unknown }).pkg
 const program = buildProgram({
   cliSpawnDescriptor,
   buildPortal: communityBuildPortal,
+  serviceDeps: communityServiceDeps,
   assessDeps: {
     runForApp: communityRunForApp,
     runPortfolio: communityRunPortfolio,
@@ -77,27 +80,28 @@ const program = buildProgram({
   },
 });
 
-// Consultant command: generate-tf (Terraform HCL generator). registerGenerateTf
-// imports only @swao/core, so it is wired directly (mirrors index.ts).
+// generate-tf (Terraform HCL generator): Enterprise roadmap (F-090,
+// FEATURE_GATES['generate-tf']); on this binary the command prints the
+// Enterprise [LICENSE] block. registerGenerateTf imports only @swao/core, so it
+// is wired directly (mirrors index.ts).
 registerGenerateTf(program);
 
 // Consultant command: lz catalogue update (Design 065 §5.6).
 registerLzCatalogueUpdate(program);
 
-// Consultant+ command: unipipe (meshcloud UniPipe integration stub, #1652).
+// unipipe (meshcloud UniPipe integration stub, #1652): Enterprise roadmap
+// (licence tier matrix D-04, FEATURE_GATES['unipipe']); prints the [LICENSE] block here.
 registerUnipipe(program);
 
 // #2089: Register challenge as an Enterprise tier-gate stub so the Consultant binary
 // exits 2 with a clear message rather than Commander's default "unknown command" error.
-program
-  .command('challenge')
-  .description('AI-generated stakeholder challenge questions (Enterprise)')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .action(() => {
-    console.error('[LICENSE] swao challenge requires an Enterprise license.\nRun `swao license request` to obtain a license.\nContact: https://github.com/Accenture/SWAO/discussions');
-    process.exit(2);
-  });
+// Tier and wording come from FEATURE_GATES['challenge'] (lib/tier-stub.ts).
+registerLicenceStub(program, {
+  name: 'challenge',
+  description: 'AI-generated stakeholder challenge questions',
+  label: 'swao challenge',
+  key: 'challenge',
+});
 
 // #2090: Hide Enterprise-only publish options from Consultant --help (#2090).
 const publishCmd = program.commands.find((c) => c.name() === 'publish');

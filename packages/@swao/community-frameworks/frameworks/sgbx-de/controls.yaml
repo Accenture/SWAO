@@ -1,0 +1,287 @@
+# SWAO Community Framework -- SGBX_DE
+# Sprint-149 #3061 Phase 2: German Social Code Sozialdatenschutz
+# 15 controls across 4 domains based on SGB X §§67-85 and related provisions.
+
+regime_meta:
+  id: SGBX_DE
+  name: "SGBX-DE -- German Social Code Data Protection (Sozialdatenschutz)"
+  version: "2024"
+  scope: community
+  authority: >-
+    Federal Ministry of Labour and Social Affairs (BMAS); BfDI
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/sgbx-de"
+  catalogue_version: "1.0.0"
+  signal_prefix: SGBX
+  last_reviewed: "2026-10-09"
+  applicability_hints:
+    - de_social_services
+    - sozialgesetzbuch
+    - german_public_sector
+    - sozialdaten
+    - de_sovereign
+  description: >-
+    Data protection controls for systems processing Sozialdaten under German
+    Social Code (SGB X §§67-85). 15 controls across 4 domains.
+  references:
+    - "SGB X §§67-85 -- Sozialdatenschutz"
+    - "SGB IV §147 -- Rentenversicherungsnummer"
+    - "SGB V §290, §291 -- Krankenversicherungsnummer"
+    - "BDSG -- national supplement to GDPR"
+
+controls:
+
+  # ---------------------------------------------------------------
+  # SGBX-DAT: Data Protection Principles (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: SGBX_DE_DAT_1
+    pillar: "SGBX-DAT -- Data Protection Principles"
+    category: DAT
+    title: "Sozialdaten identified and classified in data inventory"
+    description: >-
+      The system must maintain an inventory (Verzeichnis von Verarbeitungstaetigkeiten
+      under GDPR Art. 30 / SGB X §67f) that explicitly labels Sozialdaten fields:
+      Rentenversicherungsnummer, Sozialversicherungsnummer, KVNR, Steuernummer,
+      Bedarfsgemeinschaftsnummer, and health data. Each field entry must state its
+      legal basis under SGB X §67a (erheben) or §67b (verarbeiten).
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: data_model
+    signals_hint:
+      - "DATA-* (deterministic PII scan finds Sozialdaten field names)"
+    cross_references: [GDPR_Art_30, BSI_C5_DAT_01]
+
+  - id: SGBX_DE_DAT_2
+    pillar: "SGBX-DAT -- Data Protection Principles"
+    category: DAT
+    title: "Legal basis documented for each Sozialdaten processing operation"
+    description: >-
+      Each processing operation involving Sozialdaten must reference a specific
+      legal authorisation under SGB X §67a (collection), §67b (processing), or
+      §69 (transmission). General legitimate interest (GDPR Art. 6(1)(f)) does
+      not apply to Sozialdaten -- only statutory permissions suffice (SGB X §35).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: compliance_docs
+      - context_input: legal_basis_register
+    cross_references: [GDPR_Art_6, GDPR_Art_9]
+
+  - id: SGBX_DE_DAT_3
+    pillar: "SGBX-DAT -- Data Protection Principles"
+    category: DAT
+    title: "Data minimisation enforced for Sozialdaten fields"
+    description: >-
+      Applications must collect only the minimum Sozialdaten fields required for
+      the specific statutory purpose (SGB X §67a(2)). Rentenversicherungsnummer,
+      KVNR, and Steuernummer must not be collected unless the processing operation
+      explicitly requires them. Validate via data-flow tracing that surplus fields
+      are absent.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: data_model
+    signals_hint:
+      - "DATA-* (catalogue fields present in data model without documented legal basis)"
+
+  - id: SGBX_DE_DAT_4
+    pillar: "SGBX-DAT -- Data Protection Principles"
+    category: DAT
+    title: "Retention periods defined for all Sozialdaten categories"
+    description: >-
+      Retention and deletion schedules must be defined and enforced for every
+      Sozialdaten category. SGB IV §147 mandates 10-year retention for
+      Rentenversicherungsdaten; SGB V §291 sets retention for KVNR records.
+      The system must implement automated deletion or pseudonymisation at end
+      of retention period.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: compliance_docs
+      - context_input: ops_runbooks
+
+  # ---------------------------------------------------------------
+  # SGBX-ZWK: Purpose Limitation and Legal Basis (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: SGBX_DE_ZWK_1
+    pillar: "SGBX-ZWK -- Purpose Limitation and Legal Basis"
+    category: ZWK
+    title: "Zweckbindungsgebot (purpose limitation) enforced at API level"
+    description: >-
+      SGB X §67b requires that Sozialdaten are processed only for the purpose
+      for which they were collected. API endpoints handling Sozialdaten must
+      enforce purpose-context checks: data collected for benefit eligibility
+      must not be accessible to marketing or analytics endpoints. Implement as
+      attribute-based access control (ABAC) or purpose-tag annotation on data
+      stores.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: SGBX_DE_ZWK_2
+    pillar: "SGBX-ZWK -- Purpose Limitation and Legal Basis"
+    category: ZWK
+    title: "Sozialdaten transmission to third parties restricted to SGB X §69"
+    description: >-
+      Transmission (Uebermittlung) of Sozialdaten to third parties is permitted
+      only under the exhaustive list in SGB X §69 (e.g., other social insurance
+      carriers, courts, law enforcement under specific conditions). Unrestricted
+      sharing via generic APIs is prohibited. Audit log of every third-party
+      transmission is required.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+      - context_input: api_inventory
+
+  - id: SGBX_DE_ZWK_3
+    pillar: "SGBX-ZWK -- Purpose Limitation and Legal Basis"
+    category: ZWK
+    title: "No Sozialdaten processing for automated profiling without explicit statutory basis"
+    description: >-
+      Automated decision-making involving Sozialdaten (GDPR Art. 22 / SGB X §35)
+      requires an explicit statutory basis. Systems using ML models trained on
+      Sozialdaten must document the statutory permission and notify the data
+      subject. Fully automated adverse decisions (e.g., benefit denial) require
+      human review on request.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: SGBX_DE_ZWK_4
+    pillar: "SGBX-ZWK -- Purpose Limitation and Legal Basis"
+    category: ZWK
+    title: "Data-at-rest encryption prevents cross-purpose access to Sozialdaten stores"
+    description: >-
+      Sozialdaten stores must use encryption at rest with key management that
+      prevents cross-purpose access. Encryption keys must be purpose-scoped:
+      benefit-eligibility and health-insurance data must not share the same
+      encryption key. Key escrow with the social insurance carrier (Traeger) is
+      permitted; third-country escrow is not.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  # ---------------------------------------------------------------
+  # SGBX-BEF: Data Subject Rights and Disclosure (4 controls)
+  # ---------------------------------------------------------------
+
+  - id: SGBX_DE_BEF_1
+    pillar: "SGBX-BEF -- Data Subject Rights and Disclosure"
+    category: BEF
+    title: "Right of access (Auskunftsrecht) implemented for Sozialdaten"
+    description: >-
+      SGB X §83 grants data subjects (Betroffene) the right to obtain information
+      about their stored Sozialdaten within one month. The system must implement
+      a data-subject access request (DSAR) workflow that identifies all Sozialdaten
+      records for a given subject identifier (Rentenversicherungsnummer or KVNR)
+      across all processing systems.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    evidence_basis:
+      - context_input: compliance_docs
+
+  - id: SGBX_DE_BEF_2
+    pillar: "SGBX-BEF -- Data Subject Rights and Disclosure"
+    category: BEF
+    title: "Right to rectification of incorrect Sozialdaten (SGB X §84)"
+    description: >-
+      SGB X §84 requires correction of factually incorrect Sozialdaten within
+      the statutory period. The system must provide an administrative interface
+      for rectification that propagates changes to downstream systems. An audit
+      trail of every rectification must be kept.
+    severity_default: medium
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: SGBX_DE_BEF_3
+    pillar: "SGBX-BEF -- Data Subject Rights and Disclosure"
+    category: BEF
+    title: "Notification to supervisory authority (BfDI) for Sozialdaten breaches"
+    description: >-
+      Data breaches involving Sozialdaten must be reported to the Federal Data
+      Protection Commissioner (BfDI) within 72 hours (GDPR Art. 33 / SGB X §83(2)).
+      The incident response runbook must include a specific step for BfDI
+      notification and distinguish Sozialdaten breaches from general personal
+      data breaches (higher severity classification).
+    severity_default: high
+    assessment_type_scope: [aud]
+    evidence_basis:
+      - context_input: ops_runbooks
+
+  - id: SGBX_DE_BEF_4
+    pillar: "SGBX-BEF -- Data Subject Rights and Disclosure"
+    category: BEF
+    title: "Logging of all Sozialdaten access events (Protokollierungspflicht)"
+    description: >-
+      Access to Sozialdaten must be logged with: operator identity, timestamp,
+      purpose code, and data fields accessed (SGB X §67f(3) and BSI IT-Grundschutz
+      OPS.1.1.5). Logs must be protected from tampering (append-only or WORM
+      storage) and retained for the statutory audit period.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  # ---------------------------------------------------------------
+  # SGBX-TOM: Technical and Organisational Measures (3 controls)
+  # ---------------------------------------------------------------
+
+  - id: SGBX_DE_TOM_1
+    pillar: "SGBX-TOM -- Technical and Organisational Measures"
+    category: TOM
+    title: "Data hosting restricted to Germany (Verarbeitungsstandort)"
+    description: >-
+      Sozialdaten must be processed and stored exclusively on servers physically
+      located in Germany. Third-country transfers are prohibited without explicit
+      statutory authorisation (SGB X §77, cross-referencing GDPR Chapter V).
+      Cloud providers must contractually guarantee German data-centre exclusivity
+      with audit rights. BSI C5 Type 2 attestation is strongly recommended.
+    severity_default: high
+    assessment_type_scope: [lz, aud]
+    evidence_basis:
+      - context_input: solution_arch
+    cross_references: [GDPR_Art_44, BSI_C5_SOV_01]
+
+  - id: SGBX_DE_TOM_2
+    pillar: "SGBX-TOM -- Technical and Organisational Measures"
+    category: TOM
+    title: "Role-based access control with need-to-know for Sozialdaten"
+    description: >-
+      Access to Sozialdaten must be restricted to authorised personnel with a
+      documented need-to-know (SGB X §35 Abs. 1: Sozialgeheimnis). Implement
+      role-based access control (RBAC) with separation of duty between system
+      administrators and Sozialdaten processors. Privilege reviews must be
+      conducted at minimum quarterly.
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+
+  - id: SGBX_DE_TOM_3
+    pillar: "SGBX-TOM -- Technical and Organisational Measures"
+    category: TOM
+    title: "BSI-compliant encryption for Sozialdaten in transit and at rest"
+    description: >-
+      Sozialdaten must be encrypted in transit (TLS 1.2+ with BSI TR-02102-2
+      cipher suites) and at rest (AES-256-GCM or ChaCha20-Poly1305, BSI TR-02102-1).
+      Key management must align with BSI TR-02102-4 (PKCS#11 or KMS). Weak
+      primitives (RC4, DES, 3DES, MD5 for hash) are prohibited. Encryption
+      evidence required from the CRYPTO pass (CRYPTO-* signals).
+    severity_default: high
+    assessment_type_scope: [app]
+    evidence_basis:
+      - context_input: solution_arch
+    signals_hint:
+      - "CRYPTO-* (pass-08 crypto posture signals)"
+    cross_references: [BSI_C5_CRY_01, GDPR_Art_32]

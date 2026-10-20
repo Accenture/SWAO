@@ -84,21 +84,24 @@ Use the arrow keys or type the number to navigate.
 
 ### Step 1: Workspace Setup
 
-Select **1. Workspace Setup**. The wizard asks four questions:
+Select **1. Workspace Setup**. The wizard walks through these steps:
 
-1. **Workspace name** - a short identifier for the engagement folder (e.g. `my-engagement`).
-2. **Application name** - the workload you are assessing (e.g. `my-app`).
-3. **Community frameworks** - choose from the available community frameworks. GDPR is
-   pre-selected. More can be added at any time via `swao framework install`.
-4. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
+1. **Workspace** - engagement name, client code, owner, and workspace directory (e.g. `my-engagement`).
+2. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
    offline testing.
+3. **Credentials** - the API key for the chosen provider.
+4. **Health check**, then the optional **Claude Desktop** and **Playwright** integrations.
+
+New workspaces contain four demo frameworks. Copy more into the workspace at any time with
+`swao framework install <ID>` (`swao framework list` shows the IDs); you choose the frameworks
+for each app when you run the assessment.
 
 The wizard creates the workspace folder and configuration on disk. No further setup needed.
 
 ### Step 2: Health Check
 
-Select **2. Health Check** from the main menu. Seven probes run and each reports `ok`
-or a specific action to take:
+Select **2. Health Check** from the main menu. The pre-flight probes (25 in the current release)
+run and each reports `ok` or a specific action to take. Among them:
 
 | Probe | What it checks |
 |---|---|
@@ -208,10 +211,11 @@ The same steps can be run directly from the terminal:
 swao init --name my-app
 
 # 2. Set LLM key
-swao credential set anthropic-api-key
+swao credential set anthropic-api-key <your-api-key>
 
-# 3. Select compliance frameworks
+# 3. Copy a compliance framework into the workspace and select it
 swao framework install GDPR
+swao regime-select --app my-app --regimes GDPR
 
 # 4. Pre-flight check
 swao health-check
@@ -228,7 +232,7 @@ swao export --app my-app --formats csv,ndjson,xlsx
 | You want to | Read |
 |---|---|
 | Re-run with a new export in PowerBI | [Export BI runbook](/export-bi) |
-| Add a community framework | `swao framework install <id>` or add a YAML file in `catalogs/community/` |
+| Add a community framework | `swao framework install <id>` or copy a framework folder into `wsp/inputs/catalogs/community/<folder>/` |
 | Run a portfolio assessment | `swao export --portfolio` (Consultant/Enterprise tier) |
 | Connect Claude AI via MCP | [How it works - MCP](/how-it-works) |
 | Share findings with a client | Open `wsp/publications/latest/index.html` |

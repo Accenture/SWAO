@@ -17,15 +17,17 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { findLzrInputFiles, parseTfState, runLzrPass, extractSourceServices } from './pass-23-lzr.js';
+import { findLzrInputFiles, parseTfState, runLzrPass, extractSourceServices, parseTfPlan, deriveLzrProviderId } from './pass-23-lzr.js';
 
 const TMP_WS = join(tmpdir(), `swao-lzr-test-${process.pid}`);
 const IMPORTS_DIR = join(TMP_WS, 'wsp', 'inputs', 'terraform');
 
-const GHOSTFOLIO_TFSTATE_PATH = join(
-  __dirname,
-  '../../../../../examples/portfolio-workspace/portfolio/apps/ghostfolio/wsp/inputs/terraform/lz-ghostfolio-prod.tfstate',
-);
+// #3142: sanitised synthetic fixtures inside the package. The originals lived
+// under examples/portfolio-workspace/ and were removed in sprint-125.
+const FIXTURES_DIR = join(__dirname, '__fixtures__', 'lzr');
+const GHOSTFOLIO_APP_DIR = join(FIXTURES_DIR, 'ghostfolio');
+const SOVEREIGN_HEALTH_APP_DIR = join(FIXTURES_DIR, 'sovereign-health');
+const GHOSTFOLIO_TFSTATE_PATH = join(GHOSTFOLIO_APP_DIR, 'wsp', 'inputs', 'terraform', 'lz-ghostfolio-prod.tfstate');
 
 const FULL_TFSTATE = {
   version: 4,
@@ -106,10 +108,7 @@ describe('findLzrInputFiles (#0105, #0232 path)', () => {
 // parseTfState
 // ---------------------------------------------------------------------------
 
-const SOVEREIGN_HEALTH_TFSTATE_PATH = join(
-  __dirname,
-  '../../../../../examples/portfolio-workspace/portfolio/apps/sovereign-health/wsp/inputs/terraform/terraform-prod.tfstate',
-);
+const SOVEREIGN_HEALTH_TFSTATE_PATH = join(SOVEREIGN_HEALTH_APP_DIR, 'wsp', 'inputs', 'terraform', 'terraform-prod.tfstate');
 
 describe('parseTfState (#0105)', () => {
   it('parses a valid tfstate JSON file', () => {
@@ -267,10 +266,7 @@ describe('runLzrPass (#0105)', () => {
   it('runs cleanly against the ghostfolio WoZ fixture', async () => {
     const ghostfolioCtx = {
       ...baseCtx,
-      workspacePath: join(
-        __dirname,
-        '../../../../../examples/portfolio-workspace/portfolio/apps/ghostfolio',
-      ),
+      workspacePath: GHOSTFOLIO_APP_DIR,
     };
     const result = await runLzrPass(ghostfolioCtx, {
       providerId: 'stackit_de_sovereign',
@@ -284,10 +280,7 @@ describe('runLzrPass (#0105)', () => {
   it('ghostfolio WoZ fixture: overall_verdict is ready', async () => {
     const ghostfolioCtx = {
       ...baseCtx,
-      workspacePath: join(
-        __dirname,
-        '../../../../../examples/portfolio-workspace/portfolio/apps/ghostfolio',
-      ),
+      workspacePath: GHOSTFOLIO_APP_DIR,
     };
     const result = await runLzrPass(ghostfolioCtx, {
       providerId: 'stackit_de_sovereign',
@@ -299,10 +292,7 @@ describe('runLzrPass (#0105)', () => {
   it('TFv5 source-only: sovereign-health show-format fixture enters source-only mode', async () => {
     const sovereignHealthCtx = {
       ...baseCtx,
-      workspacePath: join(
-        __dirname,
-        '../../../../../examples/portfolio-workspace/portfolio/apps/sovereign-health',
-      ),
+      workspacePath: SOVEREIGN_HEALTH_APP_DIR,
     };
     const result = await runLzrPass(sovereignHealthCtx, {
       providerId: 'stackit_de_sovereign',
@@ -480,5 +470,158 @@ describe('extractSourceServices', () => {
     ]);
     const result = extractSourceServices(byType);
     expect(result.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3153: provider derivation, generic checks, warnings, .tfplan parsing
+// ---------------------------------------------------------------------------
+
+function lzrWorkspace(name: string, files: Record<string, string | Buffer>): string {
+  const ws = join(TMP_WS, name);
+  const dir = join(ws, 'wsp', 'inputs', 'terraform');
+  mkdirSync(dir, { recursive: true });
+  for (const [f, content] of Object.entries(files)) writeFileSync(join(dir, f), content);
+  return ws;
+}
+
+describe('deriveLzrProviderId (#3153)', () => {
+  it('reads the vendor token from the landing-zone ID', () => {
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-aws-eu-central-1' })).toEqual({ providerId: 'aws_eu_central_1', source: 'landing_zone_id' });
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-azure-eu-west' }).providerId).toBe('azure_west_europe');
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-stackit-de-01' }).providerId).toBe('stackit_de_sovereign');
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-aws-esc-de-east-1' }).providerId).toBe('aws_eu_sovereign');
+  });
+
+  it('accepts an exact catalogue provider ID', () => {
+    expect(deriveLzrProviderId({ landingZoneId: 'otc_de_sovereign' })).toEqual({ providerId: 'otc_de_sovereign', source: 'landing_zone_id' });
+  });
+
+  it('falls back to configuration, then Terraform resource prefixes, then the default', () => {
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-prod', configuredProvider: 'gcp' })).toEqual({ providerId: 'gcp_eu_regions', source: 'configuration' });
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-prod', resourceTypes: ['aws_db_instance', 'docker_container'] }))
+      .toEqual({ providerId: 'aws_eu_central_1', source: 'terraform_resources' });
+    expect(deriveLzrProviderId({ landingZoneId: 'lz-prod', resourceTypes: ['docker_container'] }))
+      .toEqual({ providerId: 'stackit_de_sovereign', source: 'default' });
+  });
+});
+
+describe('runLzrPass provider derivation and generic checks (#3153)', () => {
+  it('derives the provider from the landing zone when providerId is omitted', async () => {
+    const ws = lzrWorkspace('aws-derive', {
+      'aws.tfstate': JSON.stringify({ version: 4, resources: [
+        { mode: 'managed', type: 'aws_security_group_rule', name: 'egress', instances: [{ attributes: { type: 'egress' } }] },
+      ] }),
+    });
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { landingZoneId: 'lz-aws-eu-central-1' });
+    expect(result.lzrResult.provider_id).toBe('aws_eu_central_1');
+    expect(result.assessment['provider_id_source']).toBe('landing_zone_id');
+    // LZC-GEN-01 is applicable for AWS resource types and passes.
+    const gen01 = result.lzrResult.network_checks.find((c) => c.check_id === 'LZC-GEN-01');
+    expect(gen01?.status).toBe('pass');
+    expect(result.signals.some((s) => s.severity === 'positive' && s.derivation.includes('aws_security_group_rule'))).toBe(true);
+  });
+
+  it('LZC-GEN-01 is a blocker for an AWS landing zone without egress rules', async () => {
+    const ws = lzrWorkspace('aws-no-egress', {
+      'aws.tfstate': JSON.stringify({ version: 4, resources: [
+        { mode: 'managed', type: 'aws_instance', name: 'web', instances: [{ attributes: {} }] },
+      ] }),
+    });
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { landingZoneId: 'lz-aws-eu-central-1' });
+    expect(result.lzrResult.blockers.map((b) => b.check_id)).toContain('LZC-GEN-01');
+    expect(result.lzrResult.overall_verdict).toBe('blocked');
+  });
+
+  it('LZC-GEN-03 fails for a publicly accessible database and passes for a private one', async () => {
+    const pub = lzrWorkspace('aws-public-db', {
+      'db.tfstate': JSON.stringify({ version: 4, resources: [
+        { mode: 'managed', type: 'aws_db_instance', name: 'main', instances: [{ attributes: { publicly_accessible: true } }] },
+      ] }),
+    });
+    const pubResult = await runLzrPass({ ...baseCtx, workspacePath: pub }, { landingZoneId: 'lz-aws-eu-central-1' });
+    const blocker = pubResult.lzrResult.blockers.find((b) => b.check_id === 'LZC-GEN-03');
+    expect(blocker?.evidence[0]).toContain('publicly_accessible');
+
+    const priv = lzrWorkspace('aws-private-db', {
+      'db.tfstate': JSON.stringify({ version: 4, resources: [
+        { mode: 'managed', type: 'aws_db_instance', name: 'main', instances: [{ attributes: { publicly_accessible: false } }] },
+      ] }),
+    });
+    const privResult = await runLzrPass({ ...baseCtx, workspacePath: priv }, { landingZoneId: 'lz-aws-eu-central-1' });
+    expect(privResult.lzrResult.network_checks.find((c) => c.check_id === 'LZC-GEN-03')?.status).toBe('pass');
+  });
+
+  it('reports generic checks that Terraform state cannot decide instead of dropping them', async () => {
+    const result = await runLzrPass(
+      { ...baseCtx, workspacePath: GHOSTFOLIO_APP_DIR },
+      { providerId: 'stackit_de_sovereign', landingZoneId: 'lz-ghostfolio-prod' },
+    );
+    const notEvaluated = (result.assessment['checks_not_evaluated'] as Array<{ check_id: string }>).map((c) => c.check_id);
+    expect(notEvaluated).toEqual(expect.arrayContaining(['LZC-GEN-01', 'LZC-GEN-02', 'LZC-GEN-04', 'LZC-GEN-05']));
+    expect(result.lzrResult.policy_checks.find((c) => c.check_id === 'LZC-GEN-02')?.status).toBe('skipped');
+    expect(result.lzrResult.network_checks.find((c) => c.check_id === 'LZC-GEN-01')?.status).toBe('skipped');
+    // The private postgresflex ACL makes GEN-03 decidable.
+    expect(result.lzrResult.network_checks.find((c) => c.check_id === 'LZC-GEN-03')?.status).toBe('pass');
+  });
+
+  it('reports unmet warning-level checks and returns an advisory verdict', async () => {
+    const ws = lzrWorkspace('stackit-no-redis', {
+      'state.tfstate': JSON.stringify({
+        ...FULL_TFSTATE,
+        resources: FULL_TFSTATE.resources.filter((r) => r.type !== 'stackit_redis_instance'),
+      }),
+    });
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { providerId: 'stackit_de_sovereign', landingZoneId: 'lz-x' });
+    expect(result.lzrResult.blockers).toHaveLength(0);
+    expect(result.lzrResult.warnings.map((w) => w.check_id)).toContain('LZC-STACKIT-03');
+    expect(result.lzrResult.overall_verdict).toBe('advisory');
+    expect(result.signals.some((s) => s.severity === 'medium')).toBe(true);
+    for (const sig of result.signals) expect(sig.id).toMatch(/^LZR-\d{2}$/);
+  });
+
+  it('source mode: a redis container produces a warning for the target landing zone', async () => {
+    const ws = lzrWorkspace('source-redis', {
+      'src.tfstate': JSON.stringify({ version: 4, resources: [
+        { mode: 'managed', type: 'docker_container', name: 'cache', instances: [{ attributes: { image: 'redis:7' } }] },
+      ] }),
+    });
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { providerId: 'stackit_de_sovereign', landingZoneId: 'lz-x' });
+    expect(result.assessment['ingestion_strategy']).toBe('source_environment_analysis');
+    expect(result.lzrResult.warnings.map((w) => w.check_id)).toContain('LZC-STACKIT-03');
+    expect(result.lzrResult.overall_verdict).toBe('advisory');
+  });
+});
+
+describe('.tfplan parsing (#3153)', () => {
+  it('parses planned_values from a JSON plan, including child modules', async () => {
+    const plan = {
+      format_version: '1.2',
+      planned_values: {
+        root_module: {
+          resources: [{ mode: 'managed', type: 'stackit_ske_cluster', name: 'prod', values: { name: 'c' } }],
+          child_modules: [{
+            resources: [
+              { mode: 'managed', type: 'stackit_postgresflex_instance', name: 'db', values: {} },
+              { mode: 'data', type: 'stackit_image', name: 'img', values: {} },
+            ],
+          }],
+        },
+      },
+    };
+    const ws = lzrWorkspace('plan-json', { 'main.tfplan': JSON.stringify(plan) });
+    const parsed = parseTfPlan(join(ws, 'wsp', 'inputs', 'terraform', 'main.tfplan'));
+    expect(parsed.resources?.map((r) => r.type)).toEqual(['stackit_ske_cluster', 'stackit_postgresflex_instance']);
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { landingZoneId: 'lz-stackit-de-01' });
+    expect(result.assessment['resource_types_found']).toBe(2);
+    expect(result.lzrResult.service_checks.some((c) => c.provisioned_in_lz === true)).toBe(true);
+  });
+
+  it('reports a binary plan as unparsed instead of throwing', async () => {
+    const ws = lzrWorkspace('plan-binary', { 'main.tfplan': Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]) });
+    const result = await runLzrPass({ ...baseCtx, workspacePath: ws }, { landingZoneId: 'lz-stackit-de-01' });
+    const unparsed = result.assessment['input_files_unparsed'] as Array<{ file: string; reason: string }>;
+    expect(unparsed[0]?.file).toBe('main.tfplan');
+    expect(unparsed[0]?.reason).toContain('terraform show -json');
   });
 });

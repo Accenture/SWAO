@@ -13,47 +13,57 @@
 //
 // ================================================================
 
-import type { LlmProvider, LlmUsage, LlmTrace, LlmTool } from './types.js';
+import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion, LlmToolChatParams } from './types.js';
 import { anthropicCostUsd } from './types.js';
-import { redactPreLlm, recordRedaction, logPortfolio, logApp } from '@swao/core';
+import { logPortfolio } from '@swao/core';
+import { scrubForEgress } from './egress-redaction.js';
+import {
+  requestLlmWithRetry,
+  classifyLlmHttpStatus,
+  resolveLlmIdleTimeoutMs,
+  LlmHttpStatusError,
+  type AttemptWatchdog,
+  type LlmAttemptResult,
+} from './llm-request.js';
+import { llmLimiterKey, getLlmConcurrencyLimit } from './concurrency.js';
+
+// #3284: LlmConnectivityError moved to the shared request helper; re-exported
+// here because index.ts and existing callers import it from this module.
+export { LlmConnectivityError } from './llm-request.js';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 const DEFAULT_MAX_TOKENS = 32768;
-const MAX_RETRIES = 5;
-const RETRY_BASE_MS = 3000; // 3 s, 6 s, 12 s, 24 s, 48 s
-// #1767: streaming mode -- timeout covers the full stream duration (large-prompt
-// passes like pass-12-blocks can take 250+ s on streaming). Corporate proxies
-// cut idle connections at ~60 s but streaming keeps data flowing so 60 s is
-// not the constraint; the 600 s cap guards against complete stalls.
-const FETCH_TIMEOUT_MS = 600000;
 
-/** Thrown when the Anthropic provider exhausts all retry attempts due to network
- *  or transient API connectivity issues. Distinct from programming errors so the
- *  pass runner can catch it and degrade gracefully instead of exiting (#0716). */
-export class LlmConnectivityError extends Error {
-  constructor(cause: string) {
-    super(`LLM connectivity failure: all retries exhausted. Last error: ${cause}`);
-    this.name = 'LlmConnectivityError';
-  }
+/** Classify an HTTP status into a short, content-free reason for event logs (#3221).
+ *  Kept for existing callers; the shared helper uses classifyLlmHttpStatus. */
+export function classifyAnthropicHttpStatus(status: number): string {
+  return classifyLlmHttpStatus(status);
 }
 
-function isRetryable(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  // "fetch failed" = TCP-level failure; "ECONNRESET" / "ETIMEDOUT" = transient.
-  // AbortError / TimeoutError arise from AbortSignal.timeout() (#1086).
-  // "terminated" = undici/Node.js closes the response body mid-stream (#2016).
-  if (err.name === 'AbortError' || err.name === 'TimeoutError') return true;
-  return err.message === 'fetch failed'
-    || /ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(err.message)
-    || err.message === 'terminated'
-    || err.message.startsWith('Anthropic response suspiciously short')
+/** Anthropic-specific retryable responses (on top of the shared network policy). */
+function isAnthropicRetryable(err: Error): boolean {
+  return err.message.startsWith('Anthropic response suspiciously short')
     || err.message === 'Anthropic response missing text content block'
     || err.message.startsWith('Anthropic response has zero output tokens');
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+const TEMPERATURE_DEPRECATED_RE = /temperature.*deprecated|deprecated.*temperature/i;
+
+/** Which public entry point issued the streaming request. */
+type StreamKind = 'text' | 'vision';
+
+/** Text and usage of one streamed response (#3301). */
+interface StreamResult {
+  text: string;
+  usage: LlmUsage;
+}
+
+interface StreamRequest {
+  kind: StreamKind;
+  buildBody: (withTemperature: boolean) => string;
+  promptChars: number;
+  imageCount?: number;
 }
 
 export class AnthropicLlmProvider implements LlmProvider {
@@ -64,6 +74,9 @@ export class AnthropicLlmProvider implements LlmProvider {
   private readonly maxTokens: number;
   private readonly messagesUrl: string;
   private readonly appId: string | undefined;
+  private readonly idleTimeoutMs: number;
+  /** Concurrency limiter key (#3284): provider + endpoint origin. */
+  readonly concurrencyKey: string;
   private lastUsage: LlmUsage | undefined;
   private _lastTrace: LlmTrace | undefined;
 
@@ -97,8 +110,16 @@ export class AnthropicLlmProvider implements LlmProvider {
     // different host (aggregators expose /v1/messages too). Default unchanged.
     this.messagesUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/v1/messages` : ANTHROPIC_API_URL;
     this.appId = appId;
+    this.idleTimeoutMs = resolveLlmIdleTimeoutMs();
+    this.concurrencyKey = llmLimiterKey(this.name, this.messagesUrl);
   }
 
+  /** In-flight limit of this provider's endpoint (#3284, D-14). */
+  get maxConcurrency(): number {
+    return getLlmConcurrencyLimit(this.concurrencyKey);
+  }
+
+  /** @deprecated #3301: shared state; read `usage` from the `*Detailed()` result. */
   getLastUsage(): LlmUsage | undefined {
     return this.lastUsage;
   }
@@ -107,9 +128,24 @@ export class AnthropicLlmProvider implements LlmProvider {
     return this._lastTrace;
   }
 
+  private headers(): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+      'x-api-key': this.apiKey,
+      'anthropic-version': '2023-06-01',
+    };
+  }
+
   async completeVision(prompt: string, images: Buffer[]): Promise<string> {
+    return (await this.completeVisionDetailed(prompt, images)).text;
+  }
+
+  /** completeVision() with the call's own usage and trace (#3301). */
+  async completeVisionDetailed(prompt: string, images: Buffer[]): Promise<LlmCompletion> {
     // Vision path (#1802): images are NOT redacted (screenshots cannot be text-scrubbed).
     // Sovereignty warning is emitted by assess.ts at run start when vision_analysis: true.
+    // The text prompt IS redacted (#3157 / CLAUDE.md §5.7).
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
     const imageBlocks = images.map((img) => ({
       type: 'image' as const,
       source: {
@@ -118,58 +154,43 @@ export class AnthropicLlmProvider implements LlmProvider {
         data: img.toString('base64'),
       },
     }));
+    // #3221 / #3284: vision goes through the shared request helper, so it emits
+    // the full event set and shares the retry policy. #3225: it streams (SSE)
+    // so the idle watchdog sees ping events.
     const body = JSON.stringify({
       model: this.model,
       max_tokens: this.maxTokens,
-      stream: false,
+      stream: true,
       messages: [
         {
           role: 'user',
           content: [
             ...imageBlocks,
-            { type: 'text', text: prompt },
+            { type: 'text', text: scrubbedPrompt },
           ],
         },
       ],
     });
-    const response = await fetch(this.messagesUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    const { text: rawText, usage } = await this.streamWithRetry({
+      kind: 'vision',
+      buildBody: () => body,
+      promptChars: scrubbedPrompt.length,
+      imageCount: images.length,
     });
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Anthropic vision request failed: ${response.status} ${text.slice(0, 300)}`);
-    }
-    const data = (await response.json()) as {
-      content?: Array<{ type: string; text?: string }>;
-      usage?: { input_tokens?: number; output_tokens?: number };
-    };
-    const textBlock = data.content?.find((b) => b.type === 'text');
-    const rawText = textBlock?.text ?? '';
-    const inputTokens = data.usage?.input_tokens ?? 0;
-    const outputTokens = data.usage?.output_tokens ?? 0;
-    this.lastUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: anthropicCostUsd(this.model, inputTokens, outputTokens) };
-    this._lastTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
-    return rawText;
+    const trace: LlmTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
+    this._lastTrace = trace;
+    return { text: rawText, usage, trace };
   }
 
   async complete(prompt: string): Promise<string> {
+    return (await this.completeDetailed(prompt)).text;
+  }
+
+  /** complete() with the call's own usage and trace (#3301). */
+  async completeDetailed(prompt: string): Promise<LlmCompletion> {
     // Pre-LLM egress redaction (#0354, sprint-038). Every prompt is
     // scrubbed before the HTTP body is constructed. See design 032 §2.
-    const { text: scrubbedPrompt, counts } = redactPreLlm(prompt);
-    recordRedaction({
-      provider: this.name,
-      model: this.model,
-      input_chars: prompt.length,
-      scrubbed_chars: scrubbedPrompt.length,
-      counts,
-    });
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
 
     // #0482: build the request body with or without the temperature field.
     // Claude 4.x models (claude-opus-4-7 and later) have deprecated
@@ -193,235 +214,174 @@ export class AnthropicLlmProvider implements LlmProvider {
       ],
     });
 
+    const { text, usage } = await this.streamWithRetry({
+      kind: 'text',
+      buildBody,
+      promptChars: scrubbedPrompt.length,
+    });
+
+    // Strip markdown code fences (any language tag: json, yaml, etc.)
+    const fenced = text.match(/```(?:\w+)?\s*([\s\S]*?)```/);
+    const responseText = fenced ? fenced[1].trim() : text;
+    // #1709: capture post-redaction prompt + response for trace writing.
+    const trace: LlmTrace = { scrubbedPrompt, response: responseText };
+    this._lastTrace = trace;
+    return { text: responseText, usage, trace };
+  }
+
+  /**
+   * Streaming Messages API call shared by complete() and completeVision(),
+   * run through the shared request helper (#3221 / #3225 / #3284).
+   */
+  private async streamWithRetry(req: StreamRequest): Promise<StreamResult> {
+    const { kind, buildBody, promptChars } = req;
+    const kindLabel = kind === 'vision' ? ' vision' : '';
     // temperature=0 is the API default; omit it to avoid HTTP 400 on models
     // that have deprecated the field (claude-opus-4-7+). Only include it when
     // the operator explicitly configured a non-zero value.
     let body = buildBody(this.temperature !== 0);
     let temperatureDropped = this.temperature === 0; // already omitted on first try
-    let lastError: Error = new Error('unreachable');
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delayMs = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-        // #1088: include the actual error in the retry log so network-level
-        // failures (NordVPN tunnel drop, ECONNRESET, AbortError) are visible
-        // in assess.log without requiring --debug mode.
-        const causeStr = (lastError.cause instanceof Error)
-          ? ` (cause: ${lastError.cause.message})`
-          : (lastError.cause ? ` (cause: ${String(lastError.cause)})` : '');
-        const retryMsg = `Anthropic fetch failed (attempt ${attempt}/${MAX_RETRIES}, ${lastError.message}${causeStr}) -- retrying in ${delayMs / 1000}s...`;
-        logPortfolio('warn', 'provider.llm.anthropic.retry', retryMsg, {
-          context: { provider: 'anthropic', model: this.model, attempt, max_retries: MAX_RETRIES, delay_ms: delayMs },
-        });
-        await sleep(delayMs);
-      }
 
-      // #0398 (sprint-040): structured log so operators can prove the
-      // Anthropic call actually went out -- mirrors openai.ts.
-      const attemptStartedAt = Date.now();
-      logPortfolio('info', 'provider.llm.anthropic.attempt', `Anthropic ${this.model} call attempt ${attempt + 1}/${MAX_RETRIES + 1}`, {
-        context: {
-          provider: 'anthropic',
-          model: this.model,
-          endpoint: this.messagesUrl,
-          attempt: attempt + 1,
-          max_attempts: MAX_RETRIES + 1,
-          prompt_chars: scrubbedPrompt.length,
-          api_key_suffix: this.apiKey.slice(-4),
-        },
-      });
-
-      try {
-        const response = await fetch(this.messagesUrl, {
+    return requestLlmWithRetry<StreamResult>({
+      provider: 'anthropic',
+      label: 'Anthropic',
+      model: this.model,
+      kind,
+      endpoint: this.messagesUrl,
+      limiterKey: this.concurrencyKey,
+      streaming: true,
+      promptChars,
+      imageCount: req.imageCount,
+      appId: this.appId,
+      idleTimeoutMs: this.idleTimeoutMs,
+      attemptContext: { api_key_suffix: this.apiKey.slice(-4) },
+      isRetryableError: isAnthropicRetryable,
+      run: async (wd) => {
+        const response = await wd.race(fetch(this.messagesUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01',
-          },
+          headers: this.headers(),
           body,
-          // #1086: cap each attempt at 45 s so retries fire quickly on
-          // connectivity failures instead of waiting for OS TCP timeout (~90 s).
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        });
+          signal: wd.signal,
+        }));
+        wd.setPhase('body');
+        wd.touch(0);
 
         if (!response.ok) {
-          const text = await response.text();
-          // 429 / 529 = rate limit / overloaded -- retryable
-          const isTransient = response.status === 429 || response.status === 529;
-          // #0482: 400 + "temperature...deprecated" -- model does not accept the
-          // temperature field. Rebuild body without it and retry (once only).
-          const isTemperatureDeprecated = response.status === 400
-            && !temperatureDropped
-            && /temperature.*deprecated|deprecated.*temperature/i.test(text);
-          if (!isTransient) {
-            const httpErrLatency = Date.now() - attemptStartedAt;
-            logPortfolio('error', 'provider.llm.anthropic.http-error',
-              `Anthropic HTTP ${response.status} on attempt ${attempt + 1}`, {
-              context: {
-                provider: 'anthropic',
-                model: this.model,
-                http_status: response.status,
-                latency_ms: httpErrLatency,
-                body_excerpt: text.slice(0, 500),
-                transient: false,
-                temperature_deprecated: isTemperatureDeprecated,
-              },
-            });
-            // #2002: dual-log HTTP errors to app-events when in an app context.
-            if (this.appId) {
-              logApp(this.appId, 'warn', 'provider.llm.anthropic.http-error',
-                `Anthropic HTTP ${response.status} on attempt ${attempt + 1}`,
-                { context: { model: this.model, http_status: response.status, latency_ms: httpErrLatency, transient: false } },
-              );
-            }
-          }
-          if (isTemperatureDeprecated) {
+          const text = await wd.race(response.text());
+          // #0482: 400 + "temperature...deprecated" -- rebuild the body without
+          // the field and re-send once without consuming an attempt.
+          if (response.status === 400 && !temperatureDropped && TEMPERATURE_DEPRECATED_RE.test(text)) {
             body = buildBody(false);
             temperatureDropped = true;
             logPortfolio('info', 'provider.llm.anthropic.temperature-retry',
               `Model ${this.model} rejected temperature field -- retrying without it`, {
-              context: { provider: 'anthropic', model: this.model },
+                context: { provider: 'anthropic', model: this.model },
+              });
+            throw new LlmHttpStatusError(`Anthropic${kindLabel} request failed: ${response.status} ${text.slice(0, 500)}`, response.status, {
+              bodyExcerpt: text, retryNow: true, context: { temperature_deprecated: true },
             });
-            attempt--; // don't consume a retry slot for this API-compat fix
-            continue;
           }
-          if (isTransient) {
-            lastError = new Error(`Anthropic request failed: ${response.status} ${text.slice(0, 500)}`);
-            if (attempt < MAX_RETRIES) continue;
-            // Transient but all retries exhausted -- fall through to LlmConnectivityError
-          } else {
-            throw new Error(`Anthropic request failed: ${response.status} ${text.slice(0, 500)}`);
-          }
+          throw new LlmHttpStatusError(
+            `Anthropic${kindLabel} request failed: ${response.status} ${text.slice(0, 500)}`,
+            response.status,
+            { bodyExcerpt: text },
+          );
         }
+        return this.readSse(response, wd, kind, promptChars);
+      },
+    });
+  }
 
-        // #1767: parse the SSE stream.
-        // Anthropic SSE events: message_start (input_tokens), content_block_delta
-        // (text accumulation), message_delta (output_tokens + stop_reason).
-        if (!response.body) {
-          throw new Error('Anthropic streaming response has no body');
+  /** Parse the SSE stream (#1767) and apply the text-path sanity checks. */
+  private async readSse(
+    response: Response,
+    wd: AttemptWatchdog,
+    kind: StreamKind,
+    promptChars: number,
+  ): Promise<LlmAttemptResult<StreamResult>> {
+    // Anthropic SSE events: message_start (input_tokens), content_block_delta
+    // (text accumulation), message_delta (output_tokens + stop_reason).
+    if (!response.body) {
+      throw new Error('Anthropic streaming response has no body');
+    }
+    const reader = response.body.getReader();
+    let streamFinished = false;
+    try {
+      const dec = new TextDecoder();
+      let sseBuf = '';
+      let rawText = '';
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let stopReason: string | undefined;
+      let streamDone = false;
+      while (!streamDone) {
+        const { done, value } = await wd.race(reader.read());
+        if (done) { streamFinished = true; break; }
+        // #3225: every raw chunk (including SSE ping events) resets the idle timer.
+        wd.touch(value?.byteLength ?? 0);
+        sseBuf += dec.decode(value, { stream: true });
+        const lines = sseBuf.split('\n');
+        sseBuf = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') { streamDone = true; break; }
+          try {
+            const ev = JSON.parse(payload) as {
+              type: string;
+              message?: { usage?: { input_tokens?: number } };
+              delta?: { type?: string; text?: string; stop_reason?: string };
+              usage?: { output_tokens?: number };
+            };
+            if (ev.type === 'message_start') {
+              inputTokens = ev.message?.usage?.input_tokens ?? 0;
+            } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+              rawText += ev.delta.text ?? '';
+            } else if (ev.type === 'message_delta') {
+              outputTokens = ev.usage?.output_tokens ?? 0;
+              stopReason = ev.delta?.stop_reason ?? undefined;
+            }
+          } catch { /* ignore malformed SSE lines */ }
         }
-        const reader = response.body.getReader();
-        const dec = new TextDecoder();
-        let sseBuf = '';
-        let rawText = '';
-        let inputTokens = 0;
-        let outputTokens = 0;
-        let stopReason: string | undefined;
-        let streamDone = false;
-        while (!streamDone) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          sseBuf += dec.decode(value, { stream: true });
-          const lines = sseBuf.split('\n');
-          sseBuf = lines.pop() ?? '';
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const payload = line.slice(6).trim();
-            if (payload === '[DONE]') { streamDone = true; break; }
-            try {
-              const ev = JSON.parse(payload) as {
-                type: string;
-                message?: { usage?: { input_tokens?: number } };
-                delta?: { type?: string; text?: string; stop_reason?: string };
-                usage?: { output_tokens?: number };
-              };
-              if (ev.type === 'message_start') {
-                inputTokens = ev.message?.usage?.input_tokens ?? 0;
-              } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
-                rawText += ev.delta.text ?? '';
-              } else if (ev.type === 'message_delta') {
-                outputTokens = ev.usage?.output_tokens ?? 0;
-                stopReason = ev.delta?.stop_reason ?? undefined;
-              }
-            } catch { /* ignore malformed SSE lines */ }
-          }
-        }
+      }
 
+      // Text-path sanity checks. Vision keeps its previous contract: an
+      // empty or terse answer is returned as-is rather than retried.
+      if (kind === 'text') {
         if (!rawText) {
           throw new Error('Anthropic response missing text content block');
         }
-
         // Anthropic occasionally returns HTTP 200 with only a few tokens when
         // overloaded -- the response is too short to be valid JSON. Treat as
         // retryable so the retry loop handles it (sprint-096 lesson #1100-P2).
-        if (outputTokens > 0 && outputTokens < 20 && scrubbedPrompt.length >= 500) {
+        if (outputTokens > 0 && outputTokens < 20 && promptChars >= 500) {
           throw new Error(
             `Anthropic response suspiciously short (${outputTokens} tokens, stop_reason=${stopReason ?? 'unknown'}) -- likely transient overload`,
           );
         }
-        // #2019: message_delta event sometimes carries output_tokens=0 (malformed SSE
-        // from Anthropic under high load). Zero tokens with non-empty text means cost
-        // and token counts will be wrong. Treat as retryable -- the next attempt will
-        // produce a properly-instrumented response.
-        if (outputTokens === 0) {
-          throw new Error(
-            `Anthropic response has zero output tokens despite text content (stop_reason=${stopReason ?? 'unknown'}) -- malformed SSE`,
-          );
-        }
+      }
+      // #2019: message_delta sometimes carries output_tokens=0 (malformed SSE under
+      // high load). Zero tokens with non-empty text means cost and token counts
+      // would be wrong. Treat as retryable.
+      if (rawText && outputTokens === 0) {
+        throw new Error(
+          `Anthropic response has zero output tokens despite text content (stop_reason=${stopReason ?? 'unknown'}) -- malformed SSE`,
+        );
+      }
 
-        // Capture token usage and compute cost from the model price table.
-        this.lastUsage = {
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-          cost_usd: anthropicCostUsd(this.model, inputTokens, outputTokens),
-        };
-
-        // #0398: structured success log -- one line per Anthropic HTTP 200.
-        const okLatencyMs = Date.now() - attemptStartedAt;
-        logPortfolio('info', 'provider.llm.anthropic.ok', `Anthropic ${this.model} -> ${response.status} in ${okLatencyMs}ms`, {
-          context: {
-            provider: 'anthropic',
-            model: this.model,
-            http_status: response.status,
-            latency_ms: okLatencyMs,
-            tokens_in: inputTokens,
-            tokens_out: outputTokens,
-            cost_usd: this.lastUsage.cost_usd,
-          },
-        });
-        // #2002: dual-log success to app-events when in an app context so the
-        // UAT monitor and any app-events consumer can see Anthropic provider calls.
-        if (this.appId) {
-          logApp(this.appId, 'info', 'provider.llm.anthropic.ok',
-            `Anthropic ${this.model} -> ${response.status} in ${okLatencyMs}ms`,
-            {
-              context: {
-                model: this.model,
-                latency_ms: okLatencyMs,
-                tokens_in: inputTokens,
-                tokens_out: outputTokens,
-                cost_usd: this.lastUsage.cost_usd,
-              },
-            },
-          );
-        }
-
-        // Response is full JSON (no prefill anymore -- see #0216).
-        const text = rawText;
-
-        // Strip markdown code fences (any language tag: json, yaml, etc.)
-        const fenced = text.match(/```(?:\w+)?\s*([\s\S]*?)```/);
-        const responseText = fenced ? fenced[1].trim() : text;
-        // #1709: capture post-redaction prompt + response for trace writing.
-        this._lastTrace = { scrubbedPrompt, response: responseText };
-        return responseText;
-      } catch (err) {
-        if (!isRetryable(err)) {
-          throw err;
-        }
-        lastError = err as Error;
-        if (attempt < MAX_RETRIES) {
-          continue;
-        }
-        // Retryable but all attempts exhausted -- fall through to LlmConnectivityError
+      const costUsd = anthropicCostUsd(this.model, inputTokens, outputTokens);
+      const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd };
+      this.lastUsage = usage;
+      return {
+        value: { text: rawText, usage },
+        status: response.status,
+        okContext: { tokens_in: inputTokens, tokens_out: outputTokens, cost_usd: costUsd },
+      };
+    } finally {
+      if (!streamFinished) {
+        reader.cancel().catch(() => { /* stream already errored or closed */ });
       }
     }
-
-    const exhaustedMsg = `All ${MAX_RETRIES} Anthropic retry attempts exhausted for model ${this.model}.`;
-    logPortfolio('error', 'provider.llm.anthropic.connectivity-failure', exhaustedMsg, {
-      context: { provider: 'anthropic', model: this.model, last_error: lastError.message },
-    });
-    throw new LlmConnectivityError(lastError.message);
   }
 
   /**
@@ -431,18 +391,22 @@ export class AnthropicLlmProvider implements LlmProvider {
    * the Anthropic API, detects stop_reason='tool_use', executes each named
    * tool via the onToolCall callback (which calls the MCP server), injects
    * tool_result blocks, and loops until stop_reason='end_turn' or maxIterations.
+   * #3284: every iteration's request runs through the shared request helper
+   * (retries, idle watchdog, limiter, events with kind 'tools').
    *
-   * Egress redaction: user message text and tool result content are both
-   * scrubbed through redactPreLlm before reaching the API (#0354 / CLAUDE.md §5.7).
+   * Egress redaction: the system prompt (built from workspace context), every
+   * history message and every tool result are scrubbed through redactPreLlm
+   * before reaching the API (#0354 / #3157 / CLAUDE.md §5.7).
    */
-  async completeWithTools(params: {
-    system: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-    tools: LlmTool[];
-    onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
-    maxIterations?: number;
-  }): Promise<string> {
-    const { system, messages: initialMessages, tools, onToolCall, maxIterations = 10 } = params;
+  async completeWithTools(params: LlmToolChatParams): Promise<string> {
+    return (await this.completeWithToolsDetailed(params)).text;
+  }
+
+  /** completeWithTools() with the usage summed over every iteration (#3301). */
+  async completeWithToolsDetailed(params: LlmToolChatParams): Promise<LlmCompletion> {
+    const { system: rawSystem, messages: initialMessages, tools, onToolCall, maxIterations = 10 } = params;
+    // #3157: the system prompt carries workspace context, so it is egress too.
+    const system = scrubForEgress(rawSystem, this.name, this.model);
 
     // Internal API message shape (Anthropic Messages API)
     type ApiContentBlock = {
@@ -458,90 +422,95 @@ export class AnthropicLlmProvider implements LlmProvider {
       role: 'user' | 'assistant';
       content: string | ApiContentBlock[];
     };
+    type ApiResponse = {
+      content: ApiContentBlock[];
+      stop_reason: string;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
 
-    // Redact user message content before any LLM call (#0354 / CLAUDE.md §5.7)
-    const llmMessages: ApiMessage[] = initialMessages.map(m => {
-      if (m.role === 'user') {
-        const { text: scrubbed, counts } = redactPreLlm(m.content);
-        recordRedaction({ provider: this.name, model: this.model, input_chars: m.content.length, scrubbed_chars: scrubbed.length, counts });
-        return { role: 'user' as const, content: scrubbed };
-      }
-      return { role: m.role as 'user' | 'assistant', content: m.content };
-    });
+    // Redact every history message before any LLM call (#0354 / #3157 / CLAUDE.md §5.7).
+    // Assistant turns are redacted too: the chat history is caller-supplied text.
+    const llmMessages: ApiMessage[] = initialMessages.map(m => ({
+      role: m.role,
+      content: scrubForEgress(m.content, this.name, this.model),
+    }));
 
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    let usage: LlmUsage | undefined;
     let lastTextResponse = '';
+    // #0482: omit temperature for models that deprecated it (claude-opus-4-7+)
+    let sendTemperature = this.temperature !== 0;
 
     for (let iteration = 0; iteration < maxIterations; iteration++) {
-      // #0482: omit temperature for models that deprecated it (claude-opus-4-7+)
-      const bodyObj: Record<string, unknown> = {
+      const requestChars = system.length + JSON.stringify(llmMessages).length;
+      const data = await requestLlmWithRetry<ApiResponse>({
+        provider: 'anthropic',
+        label: 'Anthropic',
         model: this.model,
-        max_tokens: this.maxTokens,
-        stream: false,
-        system,
-        tools: tools.map(t => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
-        messages: llmMessages,
-      };
-      if (this.temperature !== 0) bodyObj['temperature'] = this.temperature;
-
-      logPortfolio('info', 'provider.llm.anthropic.tool-call-attempt',
-        `Anthropic ${this.model} tool-call iteration ${iteration + 1}/${maxIterations}`, {
-          context: { provider: 'anthropic', model: this.model, iteration: iteration + 1, tool_count: tools.length },
-        });
-
-      const response = await fetch(this.messagesUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': this.apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(bodyObj),
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        // #0482: retry without temperature if model deprecated it
-        if (response.status === 400 && this.temperature !== 0 && /temperature.*deprecated|deprecated.*temperature/i.test(errText)) {
-          delete bodyObj['temperature'];
-          const retry = await fetch(this.messagesUrl, {
+        kind: 'tools',
+        endpoint: this.messagesUrl,
+        limiterKey: this.concurrencyKey,
+        streaming: false,
+        promptChars: requestChars,
+        appId: this.appId,
+        idleTimeoutMs: this.idleTimeoutMs,
+        attemptContext: { iteration: iteration + 1, max_iterations: maxIterations, tool_count: tools.length },
+        run: async (wd) => {
+          const bodyObj: Record<string, unknown> = {
+            model: this.model,
+            max_tokens: this.maxTokens,
+            stream: false,
+            system,
+            tools: tools.map(t => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
+            messages: llmMessages,
+          };
+          if (sendTemperature) bodyObj['temperature'] = this.temperature;
+          const response = await wd.race(fetch(this.messagesUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey, 'anthropic-version': '2023-06-01' },
+            headers: this.headers(),
             body: JSON.stringify(bodyObj),
-            signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-          });
-          if (!retry.ok) {
-            const rt = await retry.text();
-            throw new Error(`Anthropic tool-call failed: ${retry.status} ${rt.slice(0, 300)}`);
+            signal: wd.signal,
+          }));
+          wd.setPhase('body');
+          wd.touch(0);
+          if (!response.ok) {
+            const errText = await wd.race(response.text());
+            if (response.status === 400 && sendTemperature && TEMPERATURE_DEPRECATED_RE.test(errText)) {
+              sendTemperature = false;
+              throw new LlmHttpStatusError(`Anthropic tool-call failed: ${response.status} ${errText.slice(0, 300)}`, response.status, {
+                bodyExcerpt: errText, retryNow: true, context: { temperature_deprecated: true },
+              });
+            }
+            throw new LlmHttpStatusError(`Anthropic tool-call failed: ${response.status} ${errText.slice(0, 300)}`, response.status, {
+              bodyExcerpt: errText,
+            });
           }
-          // Treat the retry response as terminal (one-shot; tool loop continues next iteration)
-          const retryData = await retry.json() as { content: ApiContentBlock[]; stop_reason: string; usage?: { input_tokens?: number; output_tokens?: number } };
-          totalInputTokens += retryData.usage?.input_tokens ?? 0;
-          totalOutputTokens += retryData.usage?.output_tokens ?? 0;
-          this.lastUsage = { input_tokens: totalInputTokens, output_tokens: totalOutputTokens, cost_usd: anthropicCostUsd(this.model, totalInputTokens, totalOutputTokens) };
-          const retryText = (retryData.content ?? []).filter(b => b.type === 'text').map(b => b.text ?? '').join('');
-          this._lastTrace = { scrubbedPrompt: '[tool-call chat, temperature retry]', response: retryText };
-          return retryText;
-        }
-        throw new Error(`Anthropic tool-call failed: ${response.status} ${errText.slice(0, 300)}`);
-      }
-
-      const data = await response.json() as {
-        content: ApiContentBlock[];
-        stop_reason: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
-      };
+          const json = await wd.race(response.json()) as ApiResponse;
+          const inTok = json.usage?.input_tokens ?? 0;
+          const outTok = json.usage?.output_tokens ?? 0;
+          return {
+            value: json,
+            status: response.status,
+            okContext: {
+              tokens_in: inTok,
+              tokens_out: outTok,
+              cost_usd: anthropicCostUsd(this.model, inTok, outTok),
+              stop_reason: json.stop_reason,
+            },
+          };
+        },
+      });
 
       // Accumulate token usage
       totalInputTokens += data.usage?.input_tokens ?? 0;
       totalOutputTokens += data.usage?.output_tokens ?? 0;
-      this.lastUsage = {
+      usage = {
         input_tokens: totalInputTokens,
         output_tokens: totalOutputTokens,
         cost_usd: anthropicCostUsd(this.model, totalInputTokens, totalOutputTokens),
       };
+      this.lastUsage = usage;
 
       // Collect text blocks from this response
       const textContent = (data.content ?? [])
@@ -551,14 +520,16 @@ export class AnthropicLlmProvider implements LlmProvider {
       if (textContent) lastTextResponse = textContent;
 
       if (data.stop_reason !== 'tool_use') {
-        this._lastTrace = { scrubbedPrompt: `[tool-call chat, ${iteration + 1} iterations]`, response: lastTextResponse };
-        return lastTextResponse;
+        const trace: LlmTrace = { scrubbedPrompt: `[tool-call chat, ${iteration + 1} iterations]`, response: lastTextResponse };
+        this._lastTrace = trace;
+        return { text: lastTextResponse, usage, trace };
       }
 
       // Add assistant message (including tool_use blocks) to conversation
       llmMessages.push({ role: 'assistant', content: data.content });
 
-      // Execute each tool_use block and collect results
+      // Execute each tool_use block and collect results. No limiter slot is
+      // held here: the helper releases it as soon as the response is read.
       const toolUseBlocks = (data.content ?? []).filter(b => b.type === 'tool_use');
       const toolResultBlocks: ApiContentBlock[] = [];
 
@@ -571,8 +542,7 @@ export class AnthropicLlmProvider implements LlmProvider {
           rawResult = `[Tool error: ${String(e instanceof Error ? e.message : e)}]`;
         }
         // Redact tool result before feeding back to LLM (#0354 / CLAUDE.md §5.7)
-        const { text: scrubbedResult, counts } = redactPreLlm(rawResult);
-        recordRedaction({ provider: this.name, model: this.model, input_chars: rawResult.length, scrubbed_chars: scrubbedResult.length, counts });
+        const scrubbedResult = scrubForEgress(rawResult, this.name, this.model);
 
         logPortfolio('info', 'provider.llm.anthropic.tool-result',
           `MCP tool '${block.name}' returned ${rawResult.length} chars (${scrubbedResult.length} after redaction)`, {
@@ -591,8 +561,9 @@ export class AnthropicLlmProvider implements LlmProvider {
     }
 
     // Max iterations reached -- return whatever text we have
-    this._lastTrace = { scrubbedPrompt: `[tool-call chat, max ${maxIterations} iterations]`, response: lastTextResponse };
-    return lastTextResponse;
+    const trace: LlmTrace = { scrubbedPrompt: `[tool-call chat, max ${maxIterations} iterations]`, response: lastTextResponse };
+    this._lastTrace = trace;
+    return { text: lastTextResponse, usage, trace };
   }
 
 }

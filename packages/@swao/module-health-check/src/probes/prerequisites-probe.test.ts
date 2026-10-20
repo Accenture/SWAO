@@ -23,8 +23,8 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { buildPrerequisitesProbe } from './prerequisites-probe.js';
 
 // Each test calls spawnSync('git', ...) etc. which is fast alone but can be
-// slow under full-suite parallel load. Raise timeout to 15s for the whole suite.
-describe('buildPrerequisitesProbe (#0326)', { timeout: 15000 }, () => {
+// slow under full-suite parallel load. Raise timeout to 60s for the whole suite (D-32 #3294).
+describe('buildPrerequisitesProbe (#0326)', { timeout: 60_000 }, () => {
   it('returns a result object with the expected shape', () => {
     const probe = buildPrerequisitesProbe();
     expect(probe).toHaveProperty('status');
@@ -98,7 +98,7 @@ describe('buildPrerequisitesProbe (#0326)', { timeout: 15000 }, () => {
 // Binary mode -- node false-positive fix (#2964 Part C)
 // ---------------------------------------------------------------------------
 
-describe('buildPrerequisitesProbe -- binary mode', () => {
+describe('buildPrerequisitesProbe -- binary mode', { timeout: 60_000 }, () => { // D-32 (#3294): spawns tool probes
   beforeEach(() => {
     // Simulate running inside a pkg binary: process.pkg property exists.
     (process as Record<string, unknown>)['pkg'] = {};

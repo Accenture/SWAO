@@ -9,7 +9,7 @@
       "tool": "swao lz catalogue update",
       "operator": "SWAO operator"
     },
-    "confidence": "high",
+    "confidence": "low",
     "regions_count": 1
   },
   "regions": [
@@ -19,11 +19,12 @@
       "country": "EU",
       "sovereignty": {
         "residency_country": "EU",
-        "operator_jurisdiction": "EU-entity",
-        "extraterritorial_exposure": [],
-        "certifications": [
-          "C5"
-        ]
+        "operator_jurisdiction": "US-entity",
+        "extraterritorial_exposure": [
+          "us_cloud_act",
+          "fisa_702"
+        ],
+        "certifications": []
       },
       "services": [
         {

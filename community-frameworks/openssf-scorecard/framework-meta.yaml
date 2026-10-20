@@ -18,7 +18,7 @@ framework:
     - community_software
     - swao_self_assessment
     - inner_source
-  scoring_mode: weighted
+  scoring_mode: score
   assessment_type_scope: [app, aud]
   description: >-
     OpenSSF Security Scorecard -- automated security scoring tool for open-source

@@ -23,6 +23,7 @@ import {
   BlindSpotsCatalogueSchema,
   type BlindSpotsCatalogue,
   type BlindSpotEntry,
+  type BlindSpotEvidenceKind,
 } from '../schema/blind-spots-catalogue.js';
 import type { BlindSpotEntryResult, ScopeCoverage } from '@swao/core';
 
@@ -158,6 +159,194 @@ export function evaluateBlindSpot(
     return { entry, coverage: 'closed', inputProvided: null };
   }
   return { entry, coverage: 'open', inputProvided: null };
+}
+
+// ---------------------------------------------------------------------------
+// Applicability (#3246, #3290)
+// ---------------------------------------------------------------------------
+
+/** Kubernetes, OpenShift, service-mesh, or container-orchestration wording. */
+export const CONTAINER_PLATFORM_PATTERN =
+  /\b(kubernetes|k8s|openshift|helm|istio|linkerd|service[- ]mesh|rancher|aks|eks|gke|kubelet|container orchestration|docker swarm|networkpolic(?:y|ies))\b/i;
+
+export interface BlindSpotNotApplicable {
+  id: string;
+  name: string;
+  reason: string;
+}
+
+function readAppYml(workspaceAppDir: string): Record<string, unknown> | null {
+  const p = join(workspaceAppDir, '.swao.yml');
+  if (!existsSync(p)) return null;
+  try {
+    const doc = load(readFileSync(p, 'utf-8'));
+    return doc && typeof doc === 'object' ? (doc as Record<string, unknown>) : null;
+  } catch { return null; }
+}
+
+/** Signals already on disk for this run (passes before Pass 13), excluding any earlier SCOPE output. */
+function readRunSignals(passesDir: string | undefined): Signal[] {
+  if (!passesDir || !existsSync(passesDir)) return [];
+  const out: Signal[] = [];
+  for (const f of readdirSync(passesDir).sort()) {
+    if (!/\.ya?ml$/.test(f) || f.startsWith('13-')) continue;
+    try {
+      const doc = load(readFileSync(join(passesDir, f), 'utf-8')) as { signals?: Signal[] } | null;
+      if (Array.isArray(doc?.signals)) out.push(...doc!.signals);
+    } catch { /* unreadable pass file: no evidence from it */ }
+  }
+  return out;
+}
+
+/** A negation just before the match ("No Kubernetes manifests", "without a service mesh"). */
+const NEGATED_BEFORE = /\b(?:no|not|without|kein|keine|keinen|ohne)\b[^.;:\n]{0,30}$/i;
+
+/** True when `text` matches `pattern` other than in a negated phrase. */
+function mentionsOutsideNegation(text: string, pattern: RegExp): boolean {
+  const re = new RegExp(pattern.source, 'gi');
+  for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+    if (!NEGATED_BEFORE.test(text.slice(Math.max(0, m.index - 40), m.index))) return true;
+  }
+  return false;
+}
+
+/** True when `text` mentions a container platform other than in a negated phrase. */
+export function mentionsContainerPlatform(text: string): boolean {
+  return mentionsOutsideNegation(text, CONTAINER_PLATFORM_PATTERN);
+}
+
+/**
+ * #3290 (Design 110 D-25): web or API exposure wording. A URL, HTTP(S), a web
+ * UI, portal or browser access, a REST / SOAP / GraphQL API or API endpoint,
+ * a web or application server (IIS, nginx, Apache HTTP, Tomcat, JBoss,
+ * WebSphere, WebLogic), a reverse proxy, load balancer, API gateway or WAF,
+ * and web single sign-on (SAML, OAuth, OpenID Connect). English and common
+ * German wording. Bare words such as "rest", "endpoint" or "server" do not
+ * match: "endpoint protection" and "Windows Server" are not web exposure.
+ */
+export const WEB_FACING_PATTERN =
+  /(?:https?:\/\/|\b(?:https?|web[- ]?(?:server|ui|apps?|applications?|anwendung|portal|frontend|front[- ]end|interface|oberfl(?:\u00e4|ae)che|client|services?|shop|site|zugriff|access)|web[- ]based|webbasiert|browser|portal|intranet|extranet|rest(?:ful)?[- ]?apis?|restful|apis?|soap|graphql|api[- ]endpoints?|http endpoints?|iis|nginx|httpd|apache[- ]http|tomcat|jboss|wildfly|websphere|weblogic|haproxy|reverse[- ]proxy|api[- ]gateway|load[- ]balancer|waf|saml|oauth2?|openid|oidc)\b)/i;
+
+/** True when `text` mentions web or API exposure other than in a negated phrase. */
+export function mentionsWebFacing(text: string): boolean {
+  return mentionsOutsideNegation(text, WEB_FACING_PATTERN);
+}
+
+/** Network zones that face the internet or sit at the perimeter. */
+const WEB_ZONE_PATTERN = /\b(?:dmz|internet|public|extern|external|perimeter)\b/i;
+
+/**
+ * Does the workload show container-platform evidence? Any of: a deterministic
+ * signal of this run, or the app record (name, OS, category, vendor), mentions
+ * Kubernetes, OpenShift, a service mesh or similar outside a negated phrase.
+ * LLM-inferred signals (`source: llm_inference`, for example CTX) are not
+ * evidence here: their wording ("shows an EKS cluster ... fabricated") is too
+ * loose to decide applicability. Exported for tests.
+ */
+export function hasContainerPlatformEvidence(appYml: Record<string, unknown> | null, signals: readonly Signal[]): boolean {
+  for (const s of signals) {
+    if (s.source === 'llm_inference') continue;
+    if (mentionsContainerPlatform(`${s.derivation ?? ''} ${(s.implies ?? []).join(' ')}`)) return true;
+  }
+  if (appYml) {
+    const vendor = appYml['vendor'] as Record<string, unknown> | undefined;
+    const platform = appYml['platform'] as Record<string, unknown> | undefined;
+    const text = [appYml['app_name'], appYml['infra_category'], appYml['os_class'], vendor?.['name'], platform?.['os']]
+      .filter((v): v is string => typeof v === 'string').join(' ');
+    if (mentionsContainerPlatform(text)) return true;
+  }
+  return false;
+}
+
+/**
+ * #3290 (Design 110 D-25): does the service workload show web-facing
+ * evidence? Any of:
+ *
+ * - a deterministic signal of this run mentions web or API exposure
+ *   (`WEB_FACING_PATTERN`, outside a negated phrase; LLM-inferred signals are
+ *   not evidence, as for container platforms);
+ * - the app record: `vendor_type: saas` (delivered over the web), a network
+ *   zone such as DMZ, internet or external, or web or API wording in the app
+ *   name, business function, authentication method (SAML, OAuth, OpenID
+ *   Connect) or the free-text integration notes.
+ *
+ * `vendor.url` is not evidence: the intake column is the vendor's website,
+ * not an endpoint of this workload. Exported for tests.
+ */
+export function hasWebFacingEvidence(appYml: Record<string, unknown> | null, signals: readonly Signal[]): boolean {
+  for (const s of signals) {
+    if (s.source === 'llm_inference') continue;
+    if (mentionsWebFacing(`${s.derivation ?? ''} ${(s.implies ?? []).join(' ')}`)) return true;
+  }
+  if (appYml) {
+    if (appYml['vendor_type'] === 'saas') return true;
+    const network = appYml['network'] as Record<string, unknown> | undefined;
+    if (typeof network?.['zone'] === 'string' && WEB_ZONE_PATTERN.test(network['zone'])) return true;
+    const business = appYml['business'] as Record<string, unknown> | undefined;
+    const platform = appYml['platform'] as Record<string, unknown> | undefined;
+    const text = [appYml['app_name'], business?.['function'], platform?.['auth_method'], appYml['integrations_notes']]
+      .filter((v): v is string => typeof v === 'string').join(' ; ');
+    if (mentionsWebFacing(text)) return true;
+  }
+  return false;
+}
+
+/** Per evidence kind: the check and the not-applicable reason (#3246, #3290). */
+const EVIDENCE_CHECKS: Record<BlindSpotEvidenceKind, {
+  has: (appYml: Record<string, unknown> | null, signals: readonly Signal[]) => boolean;
+  reason: string;
+}> = {
+  container_platform: {
+    has: hasContainerPlatformEvidence,
+    reason: 'Service workload with no container-platform evidence (no deterministic Kubernetes, OpenShift or service-mesh signal, app record entry or input); this blind spot does not apply to a server or VM.',
+  },
+  web_facing: {
+    has: hasWebFacingEvidence,
+    reason: 'Service workload with no web-facing evidence (no deterministic HTTP endpoint, URL, web server, API or API gateway signal; no SaaS delivery, internet-facing network zone, or web or API wording in the app record; no edge-control input); a WAF or API gateway gap does not apply to a batch or back-end server.',
+  },
+};
+
+/**
+ * Split the catalogue into the blind spots that apply to this workload and
+ * those that do not. Only service workloads (`assessment.type: service`) are
+ * scoped: an application assessment keeps the full catalogue. A blind spot
+ * applies to a service workload only when the workload shows every evidence
+ * kind in its `requires_evidence`. A blind spot whose own input paths were
+ * supplied always applies (the analyst provided the evidence).
+ */
+export function applicableBlindSpots(
+  catalogue: BlindSpotsCatalogue,
+  workspaceAppDir: string,
+  passesDir: string | undefined,
+): { applicable: BlindSpotEntry[]; notApplicable: BlindSpotNotApplicable[] } {
+  const appYml = readAppYml(workspaceAppDir);
+  const isService = (appYml?.['assessment'] as { type?: unknown } | undefined)?.type === 'service';
+  if (!isService) return { applicable: [...catalogue.blind_spots], notApplicable: [] };
+  let signals: Signal[] | undefined;
+  const evidence = new Map<BlindSpotEvidenceKind, boolean>();
+  const shows = (kind: BlindSpotEvidenceKind): boolean => {
+    let v = evidence.get(kind);
+    if (v === undefined) {
+      signals ??= readRunSignals(passesDir);
+      v = EVIDENCE_CHECKS[kind].has(appYml, signals);
+      evidence.set(kind, v);
+    }
+    return v;
+  };
+  const applicable: BlindSpotEntry[] = [];
+  const notApplicable: BlindSpotNotApplicable[] = [];
+  for (const entry of catalogue.blind_spots) {
+    const required = entry.requires_evidence ?? [];
+    if (required.length > 0 && firstSatisfiedPath(workspaceAppDir, entry.input_paths) === null) {
+      const missing = required.find((kind) => !shows(kind));
+      if (missing !== undefined) {
+        notApplicable.push({ id: entry.id, name: entry.name, reason: EVIDENCE_CHECKS[missing].reason });
+        continue;
+      }
+    }
+    applicable.push(entry);
+  }
+  return { applicable, notApplicable };
 }
 
 // ---------------------------------------------------------------------------
@@ -308,13 +497,20 @@ export async function runScopePass(ctx: PassContext): Promise<PassResult> {
     };
   }
 
-  const evaluations = catalogue.blind_spots.map((entry) => evaluateBlindSpot(workspacePath, entry));
+  // #3246: blind spots that cannot apply to this workload are left out of the
+  // coverage totals and emit no SCOPE signal, so later passes (COMP, SYNTH)
+  // never reason from them. They are listed in scope_not_applicable.
+  const { applicable, notApplicable } = applicableBlindSpots(catalogue, workspacePath, ctx.passesDir);
+  const evaluations = applicable.map((entry) => evaluateBlindSpot(workspacePath, entry));
   const scopeCoverage = buildScopeCoverage(catalogue, evaluations, assessedAt);
   const signals = evaluations.map((ev, i) => buildScopeSignal(ev, i, assessedAt));
 
   return {
     pass: { id: PASS_ID, name: PASS_NAME, signal_prefix: SIGNAL_PREFIX, status: 'complete', iter, assessed_at: assessedAt },
     signals,
-    assessment: { scope_coverage: scopeCoverage },
+    assessment: {
+      scope_coverage: scopeCoverage,
+      ...(notApplicable.length > 0 ? { scope_not_applicable: notApplicable } : {}),
+    },
   };
 }

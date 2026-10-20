@@ -16,7 +16,7 @@
 
 **Tier:** Consultant
 
-Implements the LLM Sovereignty Assessment: orchestrates multi-leg AI analysis using Playwright live-crawl or static input, runs vision and reasoning passes, and produces a per-model sovereignty verdict. One of the three core assessment types in SWAO v1.0. Requires a Consultant or Enterprise licence and an active LLM connector.
+Implements the LLM Sovereignty Assessment: orchestrates multi-leg AI analysis using Playwright live-crawl or static input, runs vision and reasoning passes, and produces a per-model sovereignty verdict. One of the three core assessment types in SWAO v1.0. Available on all tiers (Community, Consultant, Enterprise); requires an active LLM connector.
 
 ## Install
 

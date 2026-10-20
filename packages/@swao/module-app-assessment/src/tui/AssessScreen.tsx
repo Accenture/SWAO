@@ -110,7 +110,7 @@ import { LzCatalogPicker, applyLzCuratedLabels } from '@swao/tui-kit';
 import { LlmModelPicker, formatLlmCurrentLabel } from '@swao/tui-kit';
 import { PasswordInput } from '@swao/tui-kit';
 import { filterList, FILTER_THRESHOLD, SHOW_ALL } from './list-filter.js';
-import { findWorkspace } from '@swao/core';
+import { findWorkspace, discoverFrameworks, frameworkContributorName } from '@swao/core';
 import { logApp } from '@swao/core';
 import { openWithDefaultApp, copyToClipboard } from '@swao/core';
 import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
@@ -419,65 +419,39 @@ function assessmentTypeToScopeToken(at: string | undefined): string | undefined 
  * includes the token; frameworks with no scope field are always shown (#0696).
  * Module-level + exported so the empty-state detection is unit-testable.
  */
-export function discoverCommunityRegimes(workspace: string | null | undefined, scopeToken?: string, bundledDir?: string): RegimeOption[] {
+export function discoverCommunityRegimes(workspace: string | null | undefined, scopeToken?: string, _bundledDir?: string): RegimeOption[] {
   if (!workspace) return [];
   const communityDir = join(workspace, 'wsp', 'inputs', 'catalogs', 'community');
+  // #3297: the same discovery as `swao framework list` and `swao init`
+  // (discoverFrameworks in @swao/core, validated framework-meta.yaml). Only the
+  // workspace is read (#1659); `listed: false` does not hide a workspace copy.
+  // Warnings are dropped here because console output would break the Ink
+  // render; `swao framework list` prints them. A workspace copy whose meta
+  // fails FrameworkMetaSchema no longer appears in the picker (#3297).
   const out: RegimeOption[] = [];
-  const workspaceIds = new Set<string>(); // track IDs from workspace (for bundled dedup + Demo guard)
-
-  // Helper: parse a framework folder from a given base directory.
-  function readFrameworkEntry(baseDir: string, folderName: string): RegimeOption | null {
-    const metaPath = join(baseDir, folderName, 'framework-meta.yaml');
-    if (!existsSync(metaPath)) return null;
-    try {
-      const yml = loadYaml(readFileSync(metaPath, 'utf-8')) as {
-        framework?: {
-          id?: string;
-          name?: string;
-          authority?: string;
-          description?: string;
-          contributor?: { name?: string };
-          assessment_type_scope?: string[];
-        };
-      } | null;
-      const fw = yml?.framework;
-      const id = fw?.id;
-      if (!id) return null;
-      const ats = Array.isArray(fw?.assessment_type_scope) ? fw.assessment_type_scope : undefined;
-      if (scopeToken && ats && !ats.includes(scopeToken)) return null;
-      let controlsCount: number | undefined;
-      const controlsPath = join(baseDir, folderName, 'controls.yaml');
-      if (existsSync(controlsPath)) {
-        try {
-          const cyml = loadYaml(readFileSync(controlsPath, 'utf-8')) as { controls?: unknown[] } | null;
-          controlsCount = Array.isArray(cyml?.controls) ? cyml.controls.length : undefined;
-        } catch { /* fall through; count stays undefined */ }
-      }
-      return {
-        id,
-        name: fw.name ?? id,
-        slug: folderName,
-        authority: fw.authority,
-        description: fw.description?.replace(/\s+/g, ' ').trim(),
-        controlsCount,
-        contributorName: fw.contributor?.name,
-        assessmentTypeScope: ats,
-      };
-    } catch { return null; }
-  }
-
-  // 1. Workspace entries (highest priority; defines which IDs are "user-owned").
-  if (existsSync(communityDir)) {
-    for (const entry of readdirSync(communityDir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name.startsWith('.')) continue; // skip .bundled, etc.
-      const ro = readFrameworkEntry(communityDir, entry.name);
-      if (!ro) continue;
-      workspaceIds.add(ro.id);
-      out.push(ro);
+  for (const f of discoverFrameworks(communityDir, { includeUnlisted: true, warn: () => {} })) {
+    const ats = f.meta.assessment_type_scope.length > 0 ? f.meta.assessment_type_scope : undefined;
+    if (scopeToken && ats && !ats.includes(scopeToken)) continue;
+    let controlsCount: number | undefined;
+    const controlsPath = join(f.dir, 'controls.yaml');
+    if (existsSync(controlsPath)) {
+      try {
+        const cyml = loadYaml(readFileSync(controlsPath, 'utf-8')) as { controls?: unknown[] } | null;
+        controlsCount = Array.isArray(cyml?.controls) ? cyml.controls.length : undefined;
+      } catch { /* fall through; count stays undefined */ }
     }
+    out.push({
+      id: f.id,
+      name: f.meta.name ?? f.id,
+      slug: f.folder,
+      authority: f.meta.authority,
+      description: f.meta.description?.replace(/\s+/g, ' ').trim(),
+      controlsCount,
+      contributorName: frameworkContributorName(f.meta),
+      assessmentTypeScope: ats,
+    });
   }
-
-  return out.sort((a, b) => a.id.localeCompare(b.id));
+  return out;
 }
 
 // #0689: pure helper -- strip stored regime IDs that are no longer installed.

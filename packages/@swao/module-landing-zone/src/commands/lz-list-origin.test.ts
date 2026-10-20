@@ -113,4 +113,35 @@ describe('swao lz catalogue list --origin (#1436)', () => {
     const originLines = logLines.filter((l) => l.includes('ORIGIN'));
     expect(originLines).toHaveLength(0);
   });
+
+  it('#3298: lists every bundled catalogue from its meta block and the coming-soon providers from _coming-soon.json', async () => {
+    tmp = mkdtempSync(join(tmpdir(), 'swao-lz-list-'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tmp);
+    vi.spyOn(console, 'log').mockImplementation((msg: unknown) => { logLines.push(String(msg)); });
+    await buildProgram().parseAsync(['node', 'swao', 'lz', 'catalogue', 'list']);
+    for (const p of ['aws', 'aws-esc', 'aws-iso-e', 'azure', 'azure-local', 'delos', 'gcp', 'oci', 'otc', 'stackit']) {
+      expect(logLines.some((l) => new RegExp(`^\\s+${p}\\s`).test(l)), p).toBe(true);
+    }
+    expect(logLines.find((l) => /^\s+gcp\s/.test(l))).toMatch(/GCP service catalogue {2}\[updated \d{4}-\d{2}-\d{2}, source scrape, confidence medium, \d+ region\(s\)\]/);
+    expect(logLines).toContain('  coming soon: ionos, ovhcloud');
+  });
+
+  it('#3298: an older workspace whose catalogue folder carries an index.json keeps working; the index is not read', async () => {
+    tmp = mkdtempSync(join(tmpdir(), 'swao-lz-list-'));
+    vi.mocked(findWorkspace).mockReturnValue(tmp);
+    const dir = join(tmp, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'index.json'), JSON.stringify({
+      catalogues: [{ provider: 'ghost', file: 'ghost.json', name: 'Ghost', last_updated: '2020-01-01', source: 'curated', confidence: 'low' }],
+      coming_soon: ['ghost-soon'],
+    }));
+    writeFileSync(join(dir, 'acme.json'), validCatalogue('acme'));
+    vi.spyOn(process, 'cwd').mockReturnValue(tmp);
+    vi.spyOn(console, 'log').mockImplementation((msg: unknown) => { logLines.push(String(msg)); });
+    await buildProgram().parseAsync(['node', 'swao', 'lz', 'catalogue', 'list', '--origin']);
+    expect(logLines[0]).toBe(`Landing-zone catalogues (${dir}):`);
+    expect(logLines.find((l) => /^\s+acme\s/.test(l))).toMatch(/acme test .*workspace copy.*ORIGIN workspace/);
+    expect(logLines.find((l) => /^\s+azure\s/.test(l))).toMatch(/ORIGIN bundled/);
+    expect(logLines.join('\n')).not.toMatch(/ghost/);
+  });
 });

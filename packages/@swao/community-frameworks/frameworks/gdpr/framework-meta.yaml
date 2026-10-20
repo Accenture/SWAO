@@ -1,9 +1,9 @@
-# SWAO community framework metadata (design 029 Â§2.3 + Â§11)
+# SWAO community framework metadata (design 029 §2.3 + §11)
 #
 # GDPR (Regulation (EU) 2016/679) packaged as the FIRST community framework
-# in the unified Community-Frameworks model (design 029 Â§11). This catalogue
+# in the unified Community-Frameworks model (design 029 §11). This catalogue
 # REPLACES the legacy bundled stub at `swao/controls/standard/gdpr-controls.yaml`
-# (which carries only 5 controls; this catalogue carries 55).
+# (which carries only 5 controls; this catalogue carries 53).
 #
 # Per Helmut's decision (2026-05-22): all flagship regimes ship as community
 # frameworks; SWAO ships no embedded regulatory catalogues. GDPR is the pilot.
@@ -37,7 +37,7 @@ framework:
     DATA, EGR), to consultant-furnished context documents, and to manual
     questionnaires. Articles in the workload-applicable scope are
     encoded as control rows; articles addressing supervisory authorities,
-    the EDPB, and final / delegated provisions are excluded (see README Â§4).
+    the EDPB, and final / delegated provisions are excluded (see README §4).
   references:
     - "https://gdpr-info.eu/"
     - "https://eur-lex.europa.eu/eli/reg/2016/679/oj"
@@ -52,7 +52,7 @@ framework:
 
   # Cross-mapping hints feeding the (sprint-035) LLM-augmented matcher.
   # Updated each time a new community framework lands in catalogs/community/
-  # or docs/custom-frameworks/ -- see README Â§6 for the maintenance process
+  # or docs/custom-frameworks/ -- see README §6 for the maintenance process
   # the user requested at the 2026-05-22 packaging workshop.
   cross_mapping_hints:
     target_frameworks:
@@ -72,13 +72,13 @@ framework:
       - ISO_42001         # AI management system; processing-of-personal-data overlay
       - EDPB_GUIDELINES   # EDPB interpretive guidance per article
 
-  # Rating-scale extension proposal in design 029 Â§13.3. GDPR uses ADR-0025
+  # Rating-scale extension proposal in design 029 §13.3. GDPR uses ADR-0025
   # outcomes directly. The severity floor for each control is derived from
   # Article 83 (administrative fines) -- the regulation's own grading:
   #   Art 83(5) "Tier 1" fineable (up to EUR 20M / 4% turnover) -> critical
   #   Art 83(4) "Tier 2" fineable (up to EUR 10M / 2% turnover) -> high
   #   procedural / non-fineable                                  -> medium
-  # See README Â§3 for the article-by-article tier classification.
+  # See README §3 for the article-by-article tier classification.
 
   # Carries the licence / redistribution posture into the auditor view.
   redistribution_note: >

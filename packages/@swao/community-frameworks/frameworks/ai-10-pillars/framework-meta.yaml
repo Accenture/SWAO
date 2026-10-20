@@ -1,7 +1,7 @@
 # SWAO community framework metadata -- 10 Pillars of Secure AI Systems
 # Generated alongside `ai-10-pillars-input.csv` (consultant interface).
 # Compiled into the runtime catalogue via `swao import community`.
-# Schema: docs/design/029-client-compliance-community-framework-intake.md Â§2.3
+# Schema: docs/design/029-client-compliance-community-framework-intake.md §2.3
 
 framework:
   id: AI_10_PILLARS

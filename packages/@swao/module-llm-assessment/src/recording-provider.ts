@@ -19,7 +19,11 @@
 // Decoupled from @swao/module-llm-providers by design (sibling modules
 // must not import each other): the host composes
 // recording(usageTracking(gateway)) and injects a cumulative usage
-// snapshot callback; the recorder derives per-call deltas from it.
+// snapshot callback. #3301: tokens and cost are read from the call's own
+// result when the inner provider has completeDetailed() /
+// completeVisionDetailed() (the tracking wrapper does), so concurrent calls
+// (Pass 11) are attributed correctly; the snapshot delta remains the
+// fallback and the source of reasoning tokens and the retry count.
 //
 // Quality flags at record time are HEURISTIC (parse-shape, refusal
 // phrases, redaction-marker alteration, foreign paths); the orchestrator
@@ -40,6 +44,30 @@ export interface UsageSnapshot {
   reasoning_tokens?: number;
   cost_usd: number;
   call_count: number;
+}
+
+/** Usage of one call as carried by its result (#3301). Structural copy of
+ *  LlmUsage in @swao/module-llm-providers (sibling modules do not import
+ *  each other). */
+export interface CallUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+}
+
+/** Result of one call with its own usage (#3301). */
+export interface RecordedCompletion {
+  text: string;
+  usage: CallUsage | undefined;
+}
+
+/** The provider shape the recorder wraps. */
+export interface RecordableProvider {
+  complete(prompt: string): Promise<string>;
+  completeVision?(prompt: string, images: Buffer[]): Promise<string>;
+  /** Preferred (#3301): the result carries this call's usage. */
+  completeDetailed?(prompt: string): Promise<RecordedCompletion>;
+  completeVisionDetailed?(prompt: string, images: Buffer[]): Promise<RecordedCompletion>;
 }
 
 export interface CallContext {
@@ -131,9 +159,16 @@ export function countForeignPaths(response: string, isKnownPath?: (p: string) =>
 
 export interface RecordingProvider {
   complete(prompt: string): Promise<string>;
+  /** complete() returning the call's own usage (#3301). */
+  completeDetailed(prompt: string): Promise<RecordedCompletion>;
   /** Wraps the provider's vision path when present; writes a CallRecord with
    *  call_type 'vision' so vision calls appear in per-leg NDJSON. */
   completeVision?(prompt: string, images: Buffer[]): Promise<string>;
+  /** completeVision() returning the call's own usage (#3301). */
+  completeVisionDetailed?(prompt: string, images: Buffer[]): Promise<RecordedCompletion>;
+  /** #3284: the wrapped provider's in-flight limit, forwarded so Pass 11
+   *  sizes its fan-out the same in leg mode. */
+  readonly maxConcurrency?: number;
   /** Records written so far (also delivered via onRecord). */
   records(): readonly CallRecord[];
   /** Orchestrator amendment: pass-schema validation outcome for the last
@@ -142,7 +177,7 @@ export interface RecordingProvider {
 }
 
 export function createRecordingProvider(
-  inner: { complete(prompt: string): Promise<string>; completeVision?(prompt: string, images: Buffer[]): Promise<string> },
+  inner: RecordableProvider,
   deps: RecorderDeps,
 ): RecordingProvider {
   const now = deps.now ?? (() => Date.now());
@@ -156,6 +191,12 @@ export function createRecordingProvider(
     return i;
   }
 
+  /** One text call with this call's own usage when the inner provides it (#3301). */
+  async function innerText(prompt: string): Promise<RecordedCompletion> {
+    if (inner.completeDetailed) return inner.completeDetailed(prompt);
+    return { text: await inner.complete(prompt), usage: undefined };
+  }
+
   const result: RecordingProvider = {
     records: () => records,
 
@@ -165,6 +206,10 @@ export function createRecordingProvider(
     },
 
     async complete(prompt: string): Promise<string> {
+      return (await result.completeDetailed(prompt)).text;
+    },
+
+    async completeDetailed(prompt: string): Promise<RecordedCompletion> {
       const { passId, callSite } = deps.currentContext();
       const callIndex = nextIndex(passId);
       const before = deps.usageSnapshot();
@@ -187,15 +232,21 @@ export function createRecordingProvider(
       };
 
       try {
-        const response = await inner.complete(prompt);
+        const { text: response, usage: callUsage } = await innerText(prompt);
         const after = deps.usageSnapshot();
         const totalMs = now() - t0;
-        const promptTok = Math.max(0, after.input_tokens - before.input_tokens);
-        const completionTok = Math.max(0, after.output_tokens - before.output_tokens);
+        // #3301: this call's own usage; the cumulative delta can include
+        // other calls still in flight (Pass 11 concurrency).
+        const promptTok = callUsage
+          ? Math.max(0, callUsage.input_tokens)
+          : Math.max(0, after.input_tokens - before.input_tokens);
+        const completionTok = callUsage
+          ? Math.max(0, callUsage.output_tokens)
+          : Math.max(0, after.output_tokens - before.output_tokens);
         const reasoningTok = after.reasoning_tokens !== undefined && before.reasoning_tokens !== undefined
           ? Math.max(0, after.reasoning_tokens - before.reasoning_tokens)
           : undefined;
-        const costDelta = after.cost_usd - before.cost_usd;
+        const costDelta = callUsage ? callUsage.cost_usd : after.cost_usd - before.cost_usd;
         const retries = Math.max(0, after.call_count - before.call_count - 1);
 
         // #1696: detect output-token ceiling hit. Prefer deps.maxTokens (the
@@ -250,7 +301,7 @@ export function createRecordingProvider(
         };
         records.push(record);
         deps.onRecord(record);
-        return response;
+        return { text: response, usage: callUsage };
       } catch (err) {
         const after = deps.usageSnapshot();
         const record: CallRecord = {
@@ -274,10 +325,22 @@ export function createRecordingProvider(
     },
   };
 
+  // #3284: forward the provider's in-flight limit (read live, the limiter
+  // value can change when the host configures it).
+  Object.defineProperty(result, 'maxConcurrency', {
+    get: () => (inner as { maxConcurrency?: number }).maxConcurrency,
+    enumerable: true,
+  });
+
   // Wire vision recording when the provider supports it.
   if (inner.completeVision) {
-    const innerVision = inner.completeVision.bind(inner);
-    result.completeVision = async (prompt: string, images: Buffer[]): Promise<string> => {
+    const innerVision = async (prompt: string, images: Buffer[]): Promise<RecordedCompletion> => {
+      if (inner.completeVisionDetailed) return inner.completeVisionDetailed(prompt, images);
+      return { text: await inner.completeVision!(prompt, images), usage: undefined };
+    };
+    result.completeVision = async (prompt: string, images: Buffer[]): Promise<string> =>
+      (await result.completeVisionDetailed!(prompt, images)).text;
+    result.completeVisionDetailed = async (prompt: string, images: Buffer[]): Promise<RecordedCompletion> => {
       const { passId, callSite } = deps.currentContext();
       const callIndex = nextIndex(passId);
       const before = deps.usageSnapshot();
@@ -304,21 +367,26 @@ export function createRecordingProvider(
       };
 
       try {
-        const response = await innerVision(prompt, images);
+        const { text: response, usage: callUsage } = await innerVision(prompt, images);
         const after = deps.usageSnapshot();
         const totalMs = now() - t0;
-        const promptTok = Math.max(0, after.input_tokens - before.input_tokens);
+        // #3301: this call's own usage; the cumulative delta is the fallback.
+        const promptTok = callUsage
+          ? Math.max(0, callUsage.input_tokens)
+          : Math.max(0, after.input_tokens - before.input_tokens);
         // #2011: vision providers often report 0 output_tokens; fall back to a
         // character-based estimate (same pattern as promptTok || tokensEst above).
         const completionEst = Math.ceil(response.length / 4);
-        const rawCompletionTok = Math.max(0, after.output_tokens - before.output_tokens);
+        const rawCompletionTok = callUsage
+          ? Math.max(0, callUsage.output_tokens)
+          : Math.max(0, after.output_tokens - before.output_tokens);
         const completionTok = rawCompletionTok || completionEst;
         // #2798: flag when the char-based fallback was used (provider reported 0 output_tokens).
         const completionEstimated = rawCompletionTok === 0;
         const reasoningTok = after.reasoning_tokens !== undefined && before.reasoning_tokens !== undefined
           ? Math.max(0, after.reasoning_tokens - before.reasoning_tokens)
           : undefined;
-        const costDelta = after.cost_usd - before.cost_usd;
+        const costDelta = callUsage ? callUsage.cost_usd : after.cost_usd - before.cost_usd;
         const retries = Math.max(0, after.call_count - before.call_count - 1);
         // #2015: use deps.maxTokens (provider actual) before env var fallback; default 32768.
         const CEILING = deps.maxTokens ?? parseInt(process.env['SWAO_TOKEN_CEILING'] ?? '32768', 10);
@@ -363,7 +431,7 @@ export function createRecordingProvider(
         };
         records.push(record);
         deps.onRecord(record);
-        return response;
+        return { text: response, usage: callUsage };
       } catch (err) {
         const after = deps.usageSnapshot();
         const record: CallRecord = {

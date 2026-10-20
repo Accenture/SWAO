@@ -42,6 +42,7 @@ export const KNOWN_ASSESSMENT_TYPES: readonly AssessmentType[] = [
   'landing-zone-customer',
   'hybrid',
   'llm',
+  'service',
 ];
 
 /** The default assessment type when `.swao.yml` and `--type` are both silent. */
@@ -70,6 +71,7 @@ const DEFAULT_COMING_SOON: Readonly<Partial<Record<AssessmentType, string>>> = {
   'landing-zone-customer': 'Assessment type "landing-zone-customer" (customer landing zone) is coming soon.',
   hybrid: 'Assessment type "hybrid" (combined source + human evidence) is coming soon.',
   llm: 'Assessment type "llm" (LLM Assessment for SWAO, Design 092) requires @swao/module-llm-assessment; this build has no registered engine for it.',
+  service: 'Assessment type "service" (Service Portfolio Assessment, Design 103) has no registered engine in this build yet.',
 };
 
 export class UnknownAssessmentTypeError extends Error {

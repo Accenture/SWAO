@@ -17,13 +17,13 @@
 // SWAO Community-tier entry (#0583, Sprint 064, ADR-0049 layer 2).
 //
 // This entry imports NONE of the higher-tier modules: @swao/module-pdf-report
-// (Consultant), @swao/module-terraform (Consultant), @swao/module-html-portal
+// (Consultant), @swao/module-terraform (Enterprise), @swao/module-html-portal
 // (Consultant), @swao/module-portfolio (Enterprise) and @swao/module-challenge
 // (Enterprise) are deliberately absent. esbuild therefore omits their CODE from
 // the Community bundle entirely (verified by
 // src/__tests__/tier-bundle-exclusion.test.ts). The tier slots are gated stubs
-// from bootstrap.ts; the `generate-tf` and `challenge` whole commands are not
-// registered here at all.
+// from bootstrap.ts; `generate-tf`, `challenge`, `unipipe` and `lz catalogue
+// update` are registered only as [LICENSE] stubs (community-stubs.ts).
 //
 // runForApp is the per-app spawn runner used ONLY by the --portfolio branch,
 // which is Enterprise-gated. buildSpawnRunForApp lives in @swao/module-portfolio
@@ -48,7 +48,9 @@ import {
   communityFormatPortfolioResult,
   communityBuildPortal,
   communityRunForApp,
+  communityServiceDeps,
 } from '../bootstrap.js';
+import { registerCommunityTierStubs } from './community-stubs.js';
 
 // #1560: cap effective tier so an Enterprise licence active in dev does not
 // bypass Community feature gates when testing the Community binary.
@@ -61,6 +63,7 @@ const cliSpawnDescriptor: McpHostDeps = (process as { pkg?: unknown }).pkg
 const program = buildProgram({
   cliSpawnDescriptor,
   buildPortal: communityBuildPortal,
+  serviceDeps: communityServiceDeps,
   assessDeps: {
     runForApp: communityRunForApp,
     runPortfolio: communityRunPortfolio,
@@ -80,49 +83,10 @@ const program = buildProgram({
 const _noLlmIdx = process.argv.indexOf('--no-llm');
 if (_noLlmIdx !== -1) process.argv.splice(_noLlmIdx, 1, '--skip-llm');
 
-// #1652: Register unipipe as a Consultant tier-gate stub for the Community binary.
-// #1851/#1853: .allowUnknownOption(true) lets --help and any other flags reach the
-// action instead of being rejected by Commander as unknown options (#1851 showed
-// .helpOption(false) caused Commander to print its own generic error before the
-// action could fire the [LICENSE] message).
-program
-  .command('unipipe')
-  .description('meshcloud UniPipe integration (Consultant+)')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .action(() => {
-    console.error('[LICENSE] swao unipipe requires a Consultant or Enterprise license.\nRun `swao license request` to obtain a license.\nContact: https://github.com/Accenture/SWAO/discussions');
-    process.exit(2);
-  });
-
-// #1787: Register generate-tf / tf-gen as a Consultant tier-gate stub so
-// Commander routes the command name to an explicit rejection message rather
-// than falling back to the main help. Does NOT import @swao/module-terraform
-// (that module is absent from the Community bundle per the esbuild tier split).
-// #1850/#1852: .helpOption(false) removes built-in --help; .allowUnknownOption(true)
-// prevents Commander rejecting --help as unknown so the action fires instead.
-program
-  .command('generate-tf')
-  .alias('tf-gen')
-  .description('Generate Terraform modules for sovereign landing zone (Consultant+)')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .action(() => {
-    console.error('[LICENSE] swao generate-tf requires a Consultant or Enterprise license.\nRun `swao license request` to obtain a license.\nContact: https://github.com/Accenture/SWAO/discussions');
-    process.exit(2);
-  });
-
-// #2089: Register challenge as an Enterprise tier-gate stub so the Community binary
-// exits 2 with a clear message rather than Commander's default "unknown command" error.
-program
-  .command('challenge')
-  .description('AI-generated stakeholder challenge questions (Enterprise)')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .action(() => {
-    console.error('[LICENSE] swao challenge requires an Enterprise license.\nRun `swao license request` to obtain a license.\nContact: https://github.com/Accenture/SWAO/discussions');
-    process.exit(2);
-  });
+// #1652 / #1787 / #2089 / #3321 / #3323: gate stubs for unipipe, generate-tf,
+// challenge and lz catalogue update. Each prints the [LICENSE] block for its
+// FEATURE_GATES tier and exits 2 (see community-stubs.ts).
+registerCommunityTierStubs(program);
 
 // #2090: Hide Enterprise-only publish options from Community --help.
 // --site, --site-app, --edit all requireTier('enterprise') in publish.ts action;

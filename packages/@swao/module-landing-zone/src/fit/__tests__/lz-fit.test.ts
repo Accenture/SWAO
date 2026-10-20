@@ -18,7 +18,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { LzRegion, LzScanResult } from '@swao/core';
-import { computeLzFit, sovereigntyFailures, detectCoverageGap, type SovereigntyRequirements } from '../lz-fit.js';
+import { computeLzFit, sovereigntyFailures, detectCoverageGap, certificationKey, holdsCertification, type SovereigntyRequirements } from '../lz-fit.js';
 
 // Frankfurt region: offers eks + rds-postgres + s3 + vpc + kms; carries us_cloud_act exposure.
 // Catalogue region: services declare the abstract capability they fulfil.
@@ -252,7 +252,10 @@ describe('require_certifications -- BSI_C5 key normalisation (#1242)', () => {
     expect(report.sovereignty_statement).toContain('satisfies');
   });
 
-  it('non-canonical C5 key fails require_certifications BSI_C5 (documents why catalog normalisation is required)', () => {
+  // #3155: catalogue refreshes record `C5` (aws, azure, gcp) while curated seeds
+  // and frameworks use `BSI_C5`; the gate now treats them as one attestation
+  // instead of blocking every `C5` region (this test previously asserted the block).
+  it('C5 alias satisfies require_certifications BSI_C5 (#3155)', () => {
     const sov: SovereigntyRequirements = {
       forbid_exposure: [],
       require_certifications: ['BSI_C5'],
@@ -263,9 +266,29 @@ describe('require_certifications -- BSI_C5 key normalisation (#1242)', () => {
       sovereignty: { ...REGION.sovereignty!, extraterritorial_exposure: [], operator_jurisdiction: 'EU-entity', certifications: ['C5', 'ISO_27001'] },
     };
     const report = computeLzFit({ requiredServices: [], region, scan: EMPTY_SCAN, sovereigntyRequirements: sov, catalogueMode: true });
+    expect(report.overall).toBe('NEEDS_VERIFICATION');
+    expect(report.sovereignty_statement).toContain('satisfies');
+  });
+
+  it('a region without any C5 attestation still fails require_certifications BSI_C5', () => {
+    const sov: SovereigntyRequirements = { forbid_exposure: [], require_certifications: ['BSI_C5'], derived_from: ['BSI_C5'] };
+    const region: LzRegion = {
+      ...REGION,
+      sovereignty: { ...REGION.sovereignty!, extraterritorial_exposure: [], operator_jurisdiction: 'EU-entity', certifications: ['ISO_27001'] },
+    };
+    const report = computeLzFit({ requiredServices: [], region, scan: EMPTY_SCAN, sovereigntyRequirements: sov, catalogueMode: true });
     expect(report.overall).toBe('SOVEREIGNTY_BLOCKED');
-    expect(report.sovereignty_statement).toContain('FAILS');
     expect(report.sovereignty_statement).toContain('BSI_C5');
+  });
+
+  it('certificationKey resolves aliases and separator variants', () => {
+    expect(certificationKey('C5')).toBe(certificationKey('BSI_C5'));
+    expect(certificationKey('bsi-c5')).toBe(certificationKey('BSI_C5'));
+    expect(certificationKey('ISO 27001')).toBe(certificationKey('ISO_27001'));
+    expect(certificationKey('SOC_2')).not.toBe(certificationKey('ISO_27001'));
+    expect(holdsCertification(['C5'], 'BSI_C5')).toBe(true);
+    expect(holdsCertification(['BSI_C5'], 'C5')).toBe(true);
+    expect(holdsCertification(['ISO_27001'], 'BSI_C5')).toBe(false);
   });
 });
 

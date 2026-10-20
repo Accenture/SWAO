@@ -25,7 +25,8 @@
 //   workspace-config.json    -- sanitised .swao.yml with secrets redacted
 //   workspace-structure.json -- wsp/apps directory tree (metadata only, no file content)
 //   run-manifests.json       -- latest run-manifest.json per app + false_positive_detail +
-//                               lz_challenge + ctx_diagnostics (#2965)
+//                               lz_challenge (challenge-lz/) + app_challenge
+//                               (challenge-app/, #3339) + ctx_diagnostics (#2965)
 //   licence-state.json       -- binary_tier + license_tier + effective_tier + counts + expiry (#2422)
 //   lz-catalogue-meta.json   -- catalogue version + provider list
 //   health-check.json        -- fresh health-check snapshot (--json mode)
@@ -42,22 +43,25 @@
 //
 // Explicitly excluded from every file: prompt content, document text, API keys,
 // engagement name, email addresses, absolute filesystem paths, username, hostname,
-// base_url (partner-identifying endpoint).
+// base_url (partner-identifying endpoint). #3331: a final pass (redactUserIdentity)
+// replaces the home directory / any user-profile path with <home> and the OS
+// user / host name with <user> / <host> anywhere in every file's text.
 
 import type { Command } from 'commander';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
-import { homedir } from 'node:os';
-import { join, resolve as resolvePath } from 'node:path';
+import { homedir, hostname as osHostname, userInfo } from 'node:os';
+import { basename, join, relative, resolve as resolvePath, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { load as loadYaml } from 'js-yaml';
 import type { LogEntry } from '@swao/core';
-import { LicenseGuard, logPortfolio, resolveWorkspaceRoot, _paths as licencePaths } from '@swao/core';
-import { resolveLzCataloguesDir, loadLzCatalogueIndex } from '@swao/module-landing-zone';
+import { LicenseGuard, logPortfolio, resolveWorkspaceRoot, _paths as licencePaths, readChallengedRun } from '@swao/core';
+import { listLzCatalogueProviders, loadLzComingSoon, resolveProviderCatalogue } from '@swao/module-landing-zone';
 import { SWAO_VERSION } from '../branding.js';
 import { buildTar } from '../util/tar-write.js';
 import { emptyCounts, redactPiiValue } from '../util/redact-pii.js';
+import { collectServiceArtefacts } from './support-bundle-service.js';
 
 export const BUNDLE_VERSION = '2.3';
 
@@ -259,22 +263,38 @@ function buildLicenceState(machineFingerprint: string): Record<string, unknown> 
   }
 }
 
-function buildLzCatalogueMeta(workspaceRoot: string): Record<string, unknown> {
+/**
+ * lz-catalogue-meta.json: one entry per provider the fit can resolve, with the
+ * layer it resolved from (#3155). Per-provider workspace copies written by
+ * `swao lz catalogue copy/new` (`<provider>/index.json`) are reported as
+ * `origin: workspace`; a copy that fails validation is reported, not hidden.
+ */
+export function buildLzCatalogueMeta(workspaceRoot: string): Record<string, unknown> {
   try {
-    const dir = resolveLzCataloguesDir(undefined, workspaceRoot);
-    if (!dir) return { error: 'no-catalogue-dir' };
-    const index = loadLzCatalogueIndex(dir);
-    const isWorkspaceOverride = dir.includes(join('wsp', 'inputs', 'catalogs', 'lz-catalogues'));
+    const providers = listLzCatalogueProviders(workspaceRoot);
+    if (providers.length === 0) return { error: 'no-catalogue-dir' };
+    const catalogues = providers.map((provider) => {
+      try {
+        const { catalogue, provenance, filePath } = resolveProviderCatalogue(provider, workspaceRoot);
+        return {
+          provider,
+          name: catalogue.meta.name,
+          last_updated: catalogue.meta.last_updated,
+          source: catalogue.meta.source.mode,
+          confidence: catalogue.meta.confidence,
+          origin: provenance,
+          // Workspace-relative, or the bare file name for bundled files (no absolute user paths in the bundle).
+          file: provenance === 'workspace' ? relative(workspaceRoot, filePath).split(sep).join('/') : basename(filePath),
+        };
+      } catch (err) {
+        return { provider, error: err instanceof Error ? err.message : String(err) };
+      }
+    });
     return {
-      is_workspace_override: isWorkspaceOverride,
-      catalogues: index.catalogues.map(c => ({
-        provider: c.provider,
-        name: c.name,
-        last_updated: c.last_updated,
-        source: c.source,
-        confidence: c.confidence,
-      })),
-      coming_soon: index.coming_soon,
+      is_workspace_override: catalogues.some((c) => 'origin' in c && c.origin === 'workspace'),
+      catalogues,
+      // #3298: from the bundled _coming-soon.json (the list's one home; no index.json).
+      coming_soon: loadLzComingSoon(),
     };
   } catch { return { error: 'catalogue-load-failed' }; }
 }
@@ -567,7 +587,12 @@ function buildFrameworksUsed(workspaceRoot: string): Record<string, unknown> {
   return result;
 }
 
-function buildChallengeAgentInventory(workspaceRoot: string): Record<string, unknown> {
+// #3336: the support bundle is a diagnostic INVENTORY of what is on disk, not
+// a report of one run, so "newest challenge folder" (last_run_ts) is the right
+// reading here and selectChallengeForRun does not apply. The run a challenge
+// belongs to (#3330 challenged_run) is recorded alongside so support can see a
+// challenge/run mismatch.
+export function buildChallengeAgentInventory(workspaceRoot: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const appsDir = join(workspaceRoot, 'apps');
   if (!existsSync(appsDir)) return result;
@@ -621,6 +646,7 @@ function buildChallengeAgentInventory(workspaceRoot: string): Record<string, unk
         agents_configured: agentIds,
         agent_count: agentIds.length,
         combined_yaml_exists: combinedExists,
+        combined_challenged_run_id: combinedExists ? (readChallengedRun(combinedPath)?.run_id ?? null) : null,
         last_run_ts: lastRunTs,
         agents_from_combined: agentsFromCombined,
       };
@@ -684,6 +710,75 @@ function redactAbsolutePathsInValue(value: unknown): unknown {
     return out;
   }
   return value;
+}
+
+// ---- #3331: user-identity scrub over every bundle file ----
+
+export interface BundleIdentity {
+  /** The user's home directory (os.homedir()). */
+  home: string | null;
+  /** OS user names (os.userInfo().username, USERNAME, USER). */
+  users: string[];
+  /** Host names (os.hostname(), COMPUTERNAME, HOSTNAME). */
+  hosts: string[];
+}
+
+/** Tokens too generic to scrub as a standalone word (would mangle ordinary text). */
+const GENERIC_IDENTITY_TOKENS = new Set([
+  'root', 'user', 'users', 'admin', 'administrator', 'default', 'public', 'guest',
+  'node', 'runner', 'swao', 'system', 'localhost', 'home', 'unknown',
+]);
+
+export function currentBundleIdentity(): BundleIdentity {
+  const users: string[] = [];
+  const hosts: string[] = [];
+  try { users.push(userInfo().username); } catch { /* no passwd entry */ }
+  for (const k of ['USERNAME', 'USER']) { const v = process.env[k]; if (v) users.push(v); }
+  try { hosts.push(osHostname()); } catch { /* ignore */ }
+  for (const k of ['COMPUTERNAME', 'HOSTNAME']) { const v = process.env[k]; if (v) hosts.push(v); }
+  let home: string | null = null;
+  try { home = homedir() || null; } catch { /* ignore */ }
+  return { home, users, hosts };
+}
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * #3331: remove user-identifying values from serialised bundle text, wherever
+ * they occur inside a string (not only whole-value paths). Works on the final
+ * file text (JSON, NDJSON, YAML, plain text), so a separator may appear as `\`,
+ * as JSON-escaped `\\`, or as `/`. Replacements contain no quote or backslash,
+ * so JSON stays valid. Order:
+ *   1. the real home directory, any separator style -> <home>
+ *   2. %USERPROFILE% -> <home>
+ *   3. X:\Users\<name>, /home/<name>, /Users/<name> (any user) -> <home>
+ *   4. the OS user name / host name as a standalone token -> <user> / <host>
+ */
+export function redactUserIdentity(text: string, id: BundleIdentity = currentBundleIdentity()): string {
+  const SEP = '(?:\\\\\\\\|\\\\|/)'; // matches \\ (JSON-escaped), \ or /
+  let out = text;
+  if (id.home && id.home.length > 3) {
+    const parts = id.home.split(/[\\/]+/).filter(Boolean).map(escapeRe);
+    const lead = /^[\\/]/.test(id.home) ? SEP : '';
+    out = out.replace(new RegExp(`${lead}${parts.join(SEP)}(?![A-Za-z0-9_.-])`, 'gi'), '<home>');
+  }
+  out = out.replace(/%USERPROFILE%/gi, '<home>');
+  out = out.replace(
+    new RegExp(`(?<![A-Za-z0-9])[A-Za-z]:${SEP}Users${SEP}(?!(?:Public|Default|All Users)(?![^\\\\/"'\\s]))[^\\\\/"'\\s<>|:*?]+`, 'gi'),
+    '<home>',
+  );
+  out = out.replace(
+    new RegExp(`(?<![A-Za-z0-9_.~-])${SEP}(?:home|Users)${SEP}(?!(?:Shared|Public)(?![^\\\\/"'\\s]))[^\\\\/"'\\s<>|:*?]+`, 'g'),
+    '<home>',
+  );
+  const tokens = (list: string[]): string[] => [...new Set(list.map((t) => t.trim()).filter((t) =>
+    t.length >= 3 && !GENERIC_IDENTITY_TOKENS.has(t.toLowerCase())))].sort((a, b) => b.length - a.length);
+  for (const [list, repl] of [[tokens(id.users), '<user>'], [tokens(id.hosts), '<host>']] as const) {
+    for (const t of list) {
+      out = out.replace(new RegExp(`(?<![A-Za-z0-9_])${escapeRe(t)}(?![A-Za-z0-9_])`, 'gi'), repl);
+    }
+  }
+  return out;
 }
 
 // ---- v2.2 artefact builders (#2771) ----
@@ -837,7 +932,18 @@ function parseCompactTs(ts: string): string | null {
   return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
 }
 
-function buildLzChallengeStats(workspaceRoot: string): Record<string, Record<string, unknown>> {
+/**
+ * #3339: per-app iteration statistic for a challenge folder kind: the number
+ * of timestamped <ts>/ folders and the first / last one. An inventory (no run
+ * pairing, #3336), so the newest folder is the right reading. `lz` counts
+ * wsp/challenge-lz/<ts>/ (landing-zone challenges, the `lz_challenge` field of
+ * #2965, which used to count challenge-app/ folders despite its name); `app`
+ * counts the wsp/challenge-app/<ts>/ folders of older application challenge
+ * runs (`app_challenge`). first_run / last_run: compact timestamps
+ * (20261018T123709Z) as ISO 8601, run-id folder names (2026-10-18T12-37-09)
+ * verbatim.
+ */
+export function buildChallengeIterationStats(workspaceRoot: string, kind: 'lz' | 'app'): Record<string, Record<string, unknown>> {
   const result: Record<string, Record<string, unknown>> = {};
   const appsDir = join(workspaceRoot, 'apps');
   if (!existsSync(appsDir)) return result;
@@ -847,15 +953,22 @@ function buildLzChallengeStats(workspaceRoot: string): Record<string, Record<str
     let isDir = false;
     try { isDir = statSync(join(appsDir, app)).isDirectory(); } catch { continue; }
     if (!isDir) continue;
-    const challengeDir = join(appsDir, app, 'wsp', 'challenge-app');
+    const challengeDir = join(appsDir, app, 'wsp', kind === 'lz' ? 'challenge-lz' : 'challenge-app');
     if (!existsSync(challengeDir)) continue;
     let entries: string[];
-    try { entries = readdirSync(challengeDir).filter(d => /^\d{4}/.test(d)).sort(); } catch { continue; }
+    try {
+      entries = readdirSync(challengeDir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && /^\d{4}/.test(d.name))
+        .map(d => d.name)
+        .sort();
+    } catch { continue; }
     if (entries.length === 0) continue;
+    const first = entries[0]!;
+    const last = entries[entries.length - 1]!;
     result[app] = {
       total_iterations: entries.length,
-      first_run: parseCompactTs(entries[0]),
-      last_run: parseCompactTs(entries[entries.length - 1]),
+      first_run: parseCompactTs(first) ?? first,
+      last_run: parseCompactTs(last) ?? last,
     };
   }
   return result;
@@ -1035,7 +1148,8 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const chatSessionStats = buildChatSessionStats(workspaceRoot);
 
   // v2.3 artefacts (#2965)
-  const lzChallengeStats = buildLzChallengeStats(workspaceRoot);
+  const lzChallengeStats = buildChallengeIterationStats(workspaceRoot, 'lz');
+  const appChallengeStats = buildChallengeIterationStats(workspaceRoot, 'app');
   const connectorMeta = buildConnectorMeta(workspaceRoot);
 
   // Redacted SWAO env vars (exclude secret-shaped names defensively)
@@ -1057,6 +1171,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     ...entry,
     ...(fpDetail[entry.app_id] ? { false_positive_detail: fpDetail[entry.app_id] } : {}),
     ...(lzChallengeStats[entry.app_id] ? { lz_challenge: lzChallengeStats[entry.app_id] } : {}),
+    ...(appChallengeStats[entry.app_id] ? { app_challenge: appChallengeStats[entry.app_id] } : {}),
     ...(ctxDiag[entry.app_id] ? { ctx_diagnostics: ctxDiag[entry.app_id] } : {}),
   }));
 
@@ -1086,6 +1201,10 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const hasIngestionManifest = existsSync(ingestionManifestPath);
   if (hasIngestionManifest) bundleContents.push('ingestion-manifest.json');
 
+  // Design 103 §19.5 (#3135, #3136): service workspaces only; application bundles unchanged.
+  const service = collectServiceArtefacts(workspaceRoot, counts, redactAbsolutePathsInValue);
+  if (service) bundleContents.push(...service.entries.map((e) => e.name));
+
   const manifest = {
     bundle_version: BUNDLE_VERSION,
     created_at: now,
@@ -1097,6 +1216,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     bundle_contents: bundleContents,
     prior_bundles: priorBundles,
     pii_attestation: 'no-user-data-collected',
+    ...(service ? { service_pii_redactions: service.redactions.length } : {}),
   };
 
   const environment = {
@@ -1146,6 +1266,8 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     } catch { /* skip if unreadable or malformed */ }
   }
 
+  if (service) tarEntries.push(...service.entries);
+
   try {
     mkdirSync(diagDir, { recursive: true });
   } catch (err) {
@@ -1156,6 +1278,14 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
 
   const ts = now.replace(/[:.]/g, '-');
   const outPath = join(diagDir, `${ts}.tar.gz`);
+
+  // #3331: final user-identity scrub over every file the bundle writes (all
+  // entries are UTF-8 text), so a path or name embedded mid-string in any
+  // artefact (health-check probe messages, log text, env values) is removed.
+  const identity = currentBundleIdentity();
+  for (const entry of tarEntries) {
+    entry.content = Buffer.from(redactUserIdentity(entry.content.toString('utf-8'), identity), 'utf-8');
+  }
 
   const tar = buildTar(tarEntries);
   const gz = gzipSync(tar);
@@ -1170,6 +1300,10 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   console.log(`[ok]  Support bundle created: ${outPath}`);
   console.log(`[ok]  ${traceEntries.length} event trace entries | ${errorEntries.length} error context entries | ${files.length} log files`);
   console.log(`[ok]  17 diagnostic artefacts (bundle v${BUNDLE_VERSION})`);
+  if (service) {
+    console.log(`[ok]  ${service.entries.length - 1} service assessment artefact(s) under service/ + redaction-log.txt`);
+    if (service.redactions.length > 0) console.log(`[warn] PII redacted (${service.redactions.length} field(s)) - check redaction-log.txt`);
+  }
   console.log(`[ok]  Extract with: tar -xzf "${outPath}"`);
   console.log(`[ok]  No user data, document content, or credentials included.`);
   // #2644: emit support.bundle.created so log monitors can confirm successful completion.

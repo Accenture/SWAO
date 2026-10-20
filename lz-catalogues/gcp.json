@@ -13499,9 +13499,10 @@
     },
     {
       "id": "europe-north2",
-      "country": "UNKNOWN",
+      "display": "Stockholm, Sweden",
+      "country": "SE",
       "sovereignty": {
-        "residency_country": "UNKNOWN",
+        "residency_country": "SE",
         "operator_jurisdiction": "US-entity",
         "extraterritorial_exposure": [
           "us_cloud_act",
@@ -16088,7 +16089,7 @@
           "fisa_702"
         ],
         "certifications": [
-          "C5",
+          "BSI_C5",
           "ISO_27001",
           "SOC_2"
         ]
@@ -18803,7 +18804,7 @@
           "fisa_702"
         ],
         "certifications": [
-          "C5",
+          "BSI_C5",
           "ISO_27001",
           "SOC_2",
           "PCI_DSS"
@@ -19876,7 +19877,7 @@
           "fisa_702"
         ],
         "certifications": [
-          "C5",
+          "BSI_C5",
           "ISO_27001",
           "SOC_2",
           "PCI_DSS"

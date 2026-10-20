@@ -38,25 +38,25 @@ migrating to sovereign or regulated cloud environments.
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install NIST_SP_800_66R2
 ```
 
 ```yaml
-compliance:
-  frameworks: [NIST_SP_800_66R2]
+assessment:
+  regimes_active: [NIST_SP_800_66R2]
 ```
 
 ## Control domains
 
 | Domain | Controls | HIPAA safeguard |
 |---|---|---|
-| Administrative safeguards | 22 | Risk analysis, workforce training, access management, contingency planning |
-| Physical safeguards | 9 | Facility access, workstation security, device disposal |
-| Technical safeguards | 10 | Access controls, audit controls, integrity, transmission security |
-| Organisational requirements | 4 | Business Associate Agreements, group health plans |
+| Administrative safeguards | 23 | Risk analysis, workforce training, access management, contingency planning |
+| Physical safeguards | 10 | Facility access, workstation security, device disposal |
+| Technical safeguards | 9 | Access controls, audit controls, integrity, transmission security |
+| Organisational requirements | 3 | Business Associate Agreements, group health plans |
 | Policies, procedures, documentation | 4 | Documentation requirements, retention |
 
 ## Customising this framework
@@ -67,7 +67,7 @@ Install a local copy to override specific controls for your engagement:
 swao framework install NIST_SP_800_66R2
 ```
 
-The installed copy at `catalogs/community/nist-sp-800-66r2-hipaa/controls.yaml` overrides
+The installed copy at `wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa/controls.yaml` overrides
 the bundled version. See `CONTRIBUTING.md` for the authoring guide.
 
 ## Contributor

@@ -17,7 +17,7 @@ It defines 8 Sovereignty Objectives (SOV domains) scored via a 5-level maturity 
 (SEAL-0 to SEAL-4 -- Sovereignty Effectiveness Assurance Level). The framework was used in
 the EUR 180M EU institutional cloud procurement awarded in April 2026.
 
-This SWAO community framework provides 40 controls across all 8 SOV domains, with severity
+This SWAO community framework provides 34 controls across all 8 SOV domains, with severity
 mapped from SEAL level requirements.
 
 **Contributor:** SWAO Development Team (Accenture)
@@ -50,7 +50,7 @@ SWAO severity mapping: SEAL-3/4 requirements -> `high`; SEAL-1/2 -> `medium`.
 | SOV-6 | Technology Sovereignty | 4 |
 | SOV-7 | Security Sovereignty | 5 |
 | SOV-8 | Environmental Sovereignty | 4 |
-| **Total** | | **40** |
+| **Total** | | **34** |
 
 ---
 
@@ -105,22 +105,18 @@ Together they form the primary assessment model for EU institutional sovereign c
 
 ---
 
-## How to enable in `.swao.yml`
+## How to enable in `apps/<app-id>/.swao.yml`
 
 ```yaml
-compliance:
-  frameworks:
-    - EC_CSF
+assessment:
+  regimes_active: [EC_CSF]
 ```
 
 For comprehensive EU sovereign cloud assessment, combine with SecNumCloud:
 
 ```yaml
-compliance:
-  frameworks:
-    - EC_CSF
-    - SECNUMCLOUD
-    - GDPR
+assessment:
+  regimes_active: [EC_CSF, SECNUMCLOUD, GDPR]
 ```
 
 ---

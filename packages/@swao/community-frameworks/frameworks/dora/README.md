@@ -34,15 +34,15 @@ services workloads to sovereign cloud must demonstrate DORA compliance from Janu
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install DORA
 ```
 
 ```yaml
-compliance:
-  frameworks: [DORA]
+assessment:
+  regimes_active: [DORA]
 ```
 
 ## Control domains
@@ -61,12 +61,11 @@ compliance:
 swao framework install DORA
 ```
 
-The installed copy at `catalogs/community/dora/controls.yaml` overrides the bundled
+The installed copy at `wsp/inputs/catalogs/community/dora/controls.yaml` overrides the bundled
 version. See `CONTRIBUTING.md` for the authoring guide.
 
-**Note:** This is a PoC-depth packaging (5 controls). The full DORA text and EBA/ESMA/EIOPA
-regulatory technical standards are available from EUR-Lex. A full-depth SWAO packaging is
-tracked as a community contribution opportunity.
+**Note:** This packaging carries 31 controls across the 5 DORA pillars. The full DORA text
+and the EBA/ESMA/EIOPA regulatory technical standards are available from EUR-Lex.
 
 ## Contributor
 

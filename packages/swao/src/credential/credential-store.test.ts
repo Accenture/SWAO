@@ -14,26 +14,36 @@
 // ================================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, readFileSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { CredentialStore } from '@swao/core';
 import { resolveVcsToken, vcsTokenKey } from './vcs-credential.js';
 
-const TMP_DIR = join(tmpdir(), `swao-cred-test-${process.pid}`);
+// #3219: a fresh vault folder per test (the old PID-based folder could be shared
+// under parallel load), and every SWAO_CREDENTIAL_* override cleared for the
+// test and restored afterwards, so env overrides from the host shell or another
+// test (for example SWAO_CREDENTIAL_PROVIDER__GITHUB__TOKEN) cannot leak in.
+let TMP_DIR: string;
+let savedCredentialEnv: Record<string, string>;
+
+function credentialEnvKeys(): string[] {
+  return Object.keys(process.env).filter((k) => k.startsWith('SWAO_CREDENTIAL_'));
+}
 
 beforeEach(() => {
-  mkdirSync(TMP_DIR, { recursive: true });
-  delete process.env['SWAO_CREDENTIAL_ANTHROPIC_API_KEY'];
-  delete process.env['SWAO_CREDENTIAL_TEST_KEY'];
-  delete process.env['SWAO_CREDENTIAL_MYKEY'];
+  TMP_DIR = mkdtempSync(join(tmpdir(), 'swao-cli-cred-test-'));
+  savedCredentialEnv = {};
+  for (const k of credentialEnvKeys()) {
+    savedCredentialEnv[k] = process.env[k] as string;
+    delete process.env[k];
+  }
 });
 
 afterEach(() => {
   rmSync(TMP_DIR, { recursive: true, force: true });
-  delete process.env['SWAO_CREDENTIAL_ANTHROPIC_API_KEY'];
-  delete process.env['SWAO_CREDENTIAL_TEST_KEY'];
-  delete process.env['SWAO_CREDENTIAL_MYKEY'];
+  for (const k of credentialEnvKeys()) delete process.env[k];
+  Object.assign(process.env, savedCredentialEnv);
 });
 
 function makeStore(): CredentialStore {

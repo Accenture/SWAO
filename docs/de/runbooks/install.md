@@ -1,9 +1,9 @@
-# Installation -- Alle Plattformen
+# Installation: Alle Plattformen
 
-SWAO ist als vorkompiliertes Binary fuer Windows, macOS und Linux verfuegbar.
-Kein Node.js, kein Buildprozess erforderlich -- Binary herunterladen, fertig.
+SWAO ist als vorkompiliertes Binary für Windows, macOS und Linux verfügbar.
+Kein Node.js, kein Buildprozess erforderlich: Binary herunterladen, fertig.
 
-## Plattform auswaehlen
+## Plattform auswählen
 
 | Plattform | Anleitung |
 |---|---|
@@ -25,7 +25,7 @@ Dateinamen der Windows-Binaries:
 | Consultant | `swao-consultant-win-x64.exe` |
 | Enterprise | `swao-enterprise-win-x64.exe` |
 
-Fuer macOS und Linux entsprechend `swao-community-macos-x64`, `swao-community-linux-x64` usw.
+Für macOS und Linux entsprechend `swao-community-macos-x64`, `swao-community-linux-x64` usw.
 
 ## Nach dem Download
 
@@ -38,11 +38,11 @@ chmod +x swao-community-linux-x64
 .\swao-community-win-x64.exe --version
 ```
 
-Anschliessend mit [Workspace-Setup](/de/workspace-setup) fortfahren.
+Anschließend mit [Workspace-Setup](/de/workspace-setup) fortfahren.
 
-## Checksums pruefen
+## Checksums prüfen
 
-Die Datei `SHA256SUMS` im Release enthaelt kryptografische Pruefwerte fuer alle Binaries:
+Die Datei `SHA256SUMS` im Release enthält kryptografische Prüfwerte für alle Binaries:
 
 ```bash
 # Linux / macOS
@@ -52,8 +52,8 @@ sha256sum --check SHA256SUMS
 Get-FileHash swao-community-win-x64.exe -Algorithm SHA256
 ```
 
-## Naechste Schritte
+## Nächste Schritte
 
 - [Workspace konfigurieren](/de/workspace-setup)
-- [Health Check durchfuehren](/de/health-check)
-- [Bewertung starten](/assessment/)
+- [Health Check durchführen](/de/health-check)
+- [Bewertung starten](/de/assessment/)

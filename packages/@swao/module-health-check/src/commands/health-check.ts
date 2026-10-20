@@ -17,16 +17,16 @@ import type { Command } from 'commander';
 import { resolve, join, extname, isAbsolute } from 'path';
 import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { load } from 'js-yaml';
-import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot } from '@swao/core';
+import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot, readRunStatus, isRunStale } from '@swao/core';
 import { createHash } from 'crypto';
-import { resolveProviderCatalogue, LzCatalogueSchemaError, resolveLzCataloguesDir, loadLzCatalogueIndex } from '@swao/module-landing-zone';
+import { resolveProviderCatalogue, LzCatalogueSchemaError, LzCatalogueDuplicateIdError, listLzCatalogueProviders } from '@swao/module-landing-zone';
 import type { LicenseState } from '@swao/core';
 // Result types for the two host-coupled, injected probes (#0573). Their
 // builders stay host-side (see HealthCheckHostDeps below); module-health-check needs
 // only the result types, which live in @swao/core as the single source of
 // truth.
 import type { VcsAuthProbeResult, ImportsProbeResult, ProbeContribution } from '@swao/core';
-import { buildMcpProbe } from '../probes/claude-desktop.js';
+import { buildMcpProbe, formatStaleEntry, VERSION_CHECK_TIMEOUT_MS } from '../probes/claude-desktop.js';
 import type { McpProbeResult } from '../probes/claude-desktop.js';
 import { buildCommunityFrameworksProbe } from '../probes/compliance-catalogues-probe.js';
 import type { CommunityFrameworksProbeResult } from '../probes/compliance-catalogues-probe.js';
@@ -47,6 +47,12 @@ import type { IaCToolchainProbeResult } from '../probes/iac-toolchain-probe.js';
 import { buildWspMetadataProbe } from '../probes/wsp-metadata-probe.js';
 import type { WspMetadataProbeResult } from '../probes/wsp-metadata-probe.js';
 import { buildCredentialVaultProbe } from '../probes/credential-vault-probe.js';
+import { buildIntakeMappingProbe } from '../probes/intake-mapping-probe.js';
+import type { IntakeMappingProbeResult } from '../probes/intake-mapping-probe.js';
+import { buildApmWeightsProbe } from '../probes/apm-weights-probe.js';
+import type { ApmWeightsProbeResult } from '../probes/apm-weights-probe.js';
+import { runServiceProbes, formatServiceProbeLine, PROBE_TOTAL } from '../probes/service-probes.js';
+import type { ServiceProbeResult } from '../probes/service-probes.js';
 import type { CredentialVaultProbeResult } from '../probes/credential-vault-probe.js';
 
 // ---------------------------------------------------------------------------
@@ -377,50 +383,12 @@ export function checkLzrCoveragePerApp(workspacePath: string): string[] {
 export function checkLzCatalogueProvenance(workspacePath: string): string[] {
   const lines: string[] = [];
 
-  // Discover all providers: bundled index + any workspace-local extras.
-  const allProviders = new Set<string>();
-  try {
-    const bundledDir = resolveLzCataloguesDir();
-    if (bundledDir) {
-      const idx = loadLzCatalogueIndex(bundledDir);
-      for (const e of idx.catalogues) allProviders.add(e.provider);
-    }
-  } catch { /* bundled index unreadable -- continue with workspace-only */ }
-
-  // Workspace-local extras (canonical path).
-  const canonicalBaseDir = join(workspacePath, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
-  if (existsSync(canonicalBaseDir)) {
-    try {
-      for (const entry of readdirSync(canonicalBaseDir, { withFileTypes: true })) {
-        if (entry.isDirectory() && existsSync(join(canonicalBaseDir, entry.name, 'index.json'))) {
-          allProviders.add(entry.name);
-        } else if (entry.isFile() && entry.name.endsWith('.json') && entry.name !== 'index.json') {
-          const providerName = entry.name.replace(/\.json$/, '');
-          // #2327: exclude metadata, service-meta, and template authoring files from provider
-          // discovery -- they use _comment_* keys that fail strict Zod validation.
-          const isTemplate = entry.name.startsWith('_') || entry.name.endsWith('-template.json') || providerName.endsWith('-service-meta');
-          if (!isTemplate && providerName !== 'aws-service-meta') allProviders.add(providerName);
-        }
-      }
-    } catch { /* skip unreadable */ }
-  }
-  // Legacy path.
-  const oldBaseDir = join(workspacePath, 'lz-catalogues');
-  if (existsSync(oldBaseDir)) {
-    try {
-      for (const entry of readdirSync(oldBaseDir, { withFileTypes: true })) {
-        if (entry.isFile() && entry.name.endsWith('.json') && entry.name !== 'index.json') {
-          // #2327: skip template / metadata files (same filter as canonical path above)
-          if (!entry.name.startsWith('_') && !entry.name.endsWith('-template.json') && !entry.name.endsWith('-service-meta.json')) {
-            allProviders.add(entry.name.replace(/\.json$/, ''));
-          }
-        }
-      }
-    } catch { /* skip unreadable */ }
-  }
+  // Discover all providers: bundled catalogue files + workspace copies in every
+  // layout the resolver reads (#3155, #3298: shared discovery, no index.json).
+  const allProviders = new Set<string>(listLzCatalogueProviders(workspacePath));
 
   if (allProviders.size === 0) {
-    return ['[INFO] LZ catalogues: no providers found (bundled index unresolvable).'];
+    return ['[INFO] LZ catalogues: no providers found (no catalogue files found).'];
   }
 
   let workspaceCount = 0;
@@ -432,11 +400,16 @@ export function checkLzCatalogueProvenance(workspacePath: string): string[] {
       if (provenance === 'workspace') workspaceCount++;
       lines.push(`[INFO] LZ catalogue: ${p.padEnd(16)} origin=${provenance}  hash=${sha256}  last_updated=${lastUpdated}`);
     } catch (err) {
-      if (err instanceof LzCatalogueSchemaError) {
+      if (err instanceof LzCatalogueSchemaError || err instanceof LzCatalogueDuplicateIdError) {
         workspaceCount++;
         lines.push(`[WARN] LZ catalogue: ${p.padEnd(16)} origin=workspace  INVALID: ${err.message}`);
+      } else if (!(err instanceof Error && err.message.startsWith('No catalogue found'))) {
+        // #3282: a bundled catalogue that fails to parse or validate is a WARN
+        // naming file and reason; it used to be skipped silently.
+        const reason = err instanceof Error ? err.message.replace(/\s+/g, ' ').slice(0, 300) : String(err);
+        lines.push(`[WARN] LZ catalogue: ${p.padEnd(16)} origin=bundled  file=${p}.json  INVALID: ${reason}`);
       }
-      // Provider not found or bundled-only + resolution failed: skip silently.
+      // No file in any layer: cannot occur, the provider list is built from the files (#3298).
     }
   }
 
@@ -487,14 +460,19 @@ export function checkSourceAccessibility(workspacePath: string): string[] {
     if (!existsSync(ymlPath)) continue;
     let sourcePath: string | undefined;
     let hasVcsUrl = false;
+    let isServiceApp = false;
     try {
       const raw = readFileSync(ymlPath, 'utf-8').slice(0, 100_000);
+      // Service Portfolio Assessment apps (ADR-0064) have no source code by design.
+      isServiceApp = /^\s+type\s*:\s*service\s*$/m.test(raw);
       const pathMatch = raw.match(/source\s*:[\s\S]*?(?:^|\s)path\s*:\s*["']?([^\s"'#\n]+)/m);
       if (pathMatch) sourcePath = pathMatch[1];
       hasVcsUrl = /source\s*:[\s\S]*?vcs\s*:[\s\S]*?url\s*:/m.test(raw);
     } catch { continue; }
 
     const label = id ? `apps/${id}` : 'workspace';
+
+    if (isServiceApp) continue;
 
     if (!sourcePath && !hasVcsUrl) {
       warnings.push(
@@ -642,7 +620,7 @@ export function buildLicenseProbe(state: LicenseState): LicenseProbeResult {
 
 function formatLicenseProbeLine(probe: LicenseProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[1/16] License', LABEL_W);
+  const label = pad('[1/25] License', LABEL_W);
   const tierDisplay = probe.tier === 'community' ? 'Community (free, unlimited)' : probe.tier;
   const limit = probe.assessments_limit;
   const budgetDisplay =
@@ -672,7 +650,7 @@ function formatLicenseProbeLine(probe: LicenseProbeResult): string {
 
 function formatPlaywrightProbeLine(probe: PlaywrightProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[2/16] Playwright / Chromium', LABEL_W);
+  const label = pad('[2/25] Playwright / Chromium', LABEL_W);
   if (probe.status === 'fail') {
     return `  ${label}  FAIL  ${probe.error ?? 'Chromium unavailable'}`;
   }
@@ -685,24 +663,36 @@ function formatPlaywrightProbeLine(probe: PlaywrightProbeResult): string {
 
 function formatMcpProbeLine(probe: McpProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[3/16] SWAO-MCP', LABEL_W);
-  switch (probe.status) {
-    case 'ok':
-      return `  ${label}  ok    swao server configured at ${probe.commandPath}`;
-    case 'missing_entry':
-      return `  ${label}  WARN  swao server entry missing from Claude Desktop config (run Setup Wizard to fix)`;
-    case 'binary_not_found':
-      return `  ${label}  WARN  swao binary path in config not found: ${probe.commandPath}`;
-    case 'binary_unreachable':
-      return `  ${label}  WARN  swao binary found but did not respond to --version: ${probe.commandPath}`;
-    case 'not_installed':
-      return `  ${label}  INFO  Claude Desktop not installed (config file absent)`;
-  }
+  const label = pad('[3/25] SWAO-MCP', LABEL_W);
+  const head = ((): string => {
+    switch (probe.status) {
+      case 'ok':
+        return `  ${label}  ok    swao server configured at ${probe.commandPath}`;
+      case 'missing_entry':
+        return `  ${label}  WARN  swao server entry missing from Claude Desktop config (run Setup Wizard to fix)`;
+      case 'binary_not_found':
+        return `  ${label}  WARN  swao binary path in config not found: ${probe.commandPath}`;
+      case 'binary_unreachable':
+        return `  ${label}  WARN  swao binary found but did not respond to --version: ${probe.commandPath}`;
+      case 'binary_slow':
+        // #3333: timed out twice (VERSION_CHECK_TIMEOUT_MS each); the binary exists and is not reported as unreachable.
+        return `  ${label}  WARN  swao binary found but slow to respond to --version (>${VERSION_CHECK_TIMEOUT_MS / 1000} s, retried once): ${probe.commandPath}`;
+      case 'stale_entry': {
+        const n = probe.staleEntries?.length ?? 0;
+        return `  ${label}  WARN  ${n} stale SWAO entr${n === 1 ? 'y' : 'ies'} in Claude Desktop config (run Setup Wizard or swao mcp install to fix)`;
+      }
+      case 'not_installed':
+        return `  ${label}  INFO  Claude Desktop not installed (config file absent)`;
+    }
+  })();
+  // #3163: one continuation line per stale entry, in any of the configs checked.
+  const detail = (probe.staleEntries ?? []).map((e) => `          ${formatStaleEntry(e)}`);
+  return [head, ...detail].join('\n');
 }
 
 function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[4/16] Community frameworks', LABEL_W);
+  const label = pad('[4/25] Community frameworks', LABEL_W);
   if (probe.status === 'absent') {
     // #2910: when bundled frameworks are available, emit 'ok' with an explanatory note
     // instead of a misleading INFO warning. Bundled frameworks are always functional;
@@ -735,7 +725,7 @@ function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResul
 
 function formatImportsProbeLine(probe: ImportsProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[5/16] Import templates', LABEL_W);
+  const label = pad('[5/25] Import templates', LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -752,7 +742,7 @@ function formatImportsProbeLine(probe: ImportsProbeResult): string {
 
 function formatTraceabilityProbeLine(probe: TraceabilityProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[6/16] Traceability', LABEL_W);
+  const label = pad('[6/25] Traceability', LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -767,7 +757,7 @@ function formatTraceabilityProbeLine(probe: TraceabilityProbeResult): string {
 
 function formatBiExportProbeLine(probe: BiExportProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[7/16] BI export', LABEL_W);
+  const label = pad('[7/25] BI export', LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -783,7 +773,7 @@ function formatBiExportProbeLine(probe: BiExportProbeResult): string {
 // #0263 Phase 2 -- Scope coverage probe formatter.
 function formatScopeProbeLine(probe: ScopeProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[8/16] Scope', LABEL_W);
+  const label = pad('[8/25] Scope', LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -799,7 +789,7 @@ function formatScopeProbeLine(probe: ScopeProbeResult): string {
 // #0326 sprint-036 -- Prerequisites probe formatter (git / ssh / node on PATH).
 function formatPrerequisitesProbeLine(probe: PrerequisitesProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[9/16] Prerequisites', LABEL_W);
+  const label = pad('[9/25] Prerequisites', LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -815,7 +805,7 @@ function formatPrerequisitesProbeLine(probe: PrerequisitesProbeResult): string {
 // #0326 sprint-036 -- VCS auth probe formatter (ls-remote against configured URLs).
 function formatVcsAuthProbeLine(probe: VcsAuthProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[10/16] VCS auth', LABEL_W);
+  const label = pad('[10/25] VCS auth', LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -835,7 +825,7 @@ function formatVcsAuthProbeLine(probe: VcsAuthProbeResult): string {
 // so the output stays visually uniform.
 export function formatLlmGatewayLine(probe: { ok: boolean | null; message: string }): string {
   const LABEL_W = 26;
-  const label = pad('[13/16] LLM gateway', LABEL_W);
+  const label = pad('[13/25] LLM gateway', LABEL_W);
   const m = probe.message.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
   const msgState = m ? m[1]!.toUpperCase() : (probe.ok === true ? 'PASS' : probe.ok === null ? 'N/A' : 'FAIL');
   // #2366: probe.ok is authoritative; a [WARNING] message prefix must not
@@ -858,7 +848,7 @@ export function formatLlmGatewayLine(probe: { ok: boolean | null; message: strin
 // #1509: wsp metadata (engagement placeholder) probe formatter.
 function formatWspMetadataProbeLine(probe: WspMetadataProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[14/16] Engagement', LABEL_W);
+  const label = pad('[14/25] Engagement', LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -869,10 +859,40 @@ function formatWspMetadataProbeLine(probe: WspMetadataProbeResult): string {
   }
 }
 
+// #3102: SWAO_APM domain-weights probe formatter.
+function formatApmWeightsProbeLine(probe: ApmWeightsProbeResult): string {
+  const label = pad('[18/25] SWAO_APM weights', 26);
+  switch (probe.status) {
+    case 'skip':
+      return `  ${label}  INFO  ${probe.message}`;
+    case 'ok':
+      return `  ${label}  ok    ${probe.message}`;
+    case 'warn':
+      return `  ${label}  WARN  ${probe.message}`;
+    case 'error':
+      return `  ${label}  FAIL  ${probe.message}`;
+  }
+}
+
+// #3084: service intake column-mapping probe formatter.
+function formatIntakeMappingProbeLine(probe: IntakeMappingProbeResult): string {
+  const label = pad('[17/25] Intake mapping', 26);
+  switch (probe.status) {
+    case 'skip':
+      return `  ${label}  INFO  ${probe.message}`;
+    case 'ok':
+      return `  ${label}  ok    ${probe.message}`;
+    case 'warn':
+      return `  ${label}  WARN  ${probe.message}`;
+    case 'error':
+      return `  ${label}  FAIL  ${probe.message}`;
+  }
+}
+
 // #0995 / #1212: ingestion folder probe formatter.
 function formatIngestionFolderProbeLine(probe: IngestionProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[11/16] Ingestion folder', LABEL_W);
+  const label = pad('[11/25] Ingestion folder', LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -890,7 +910,7 @@ function formatIngestionFolderProbeLine(probe: IngestionProbeResult): string {
 // #1340: IaC toolchain probe formatter.
 function formatIaCToolchainProbeLine(probe: IaCToolchainProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[12/16] IaC toolchain', LABEL_W);
+  const label = pad('[12/25] IaC toolchain', LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
     case 'warn': return `  ${label}  WARN  ${probe.message}`;
@@ -900,21 +920,30 @@ function formatIaCToolchainProbeLine(probe: IaCToolchainProbeResult): string {
 // #1698: LZ catalogue service-dep coverage probe formatter.
 function formatLzCatalogueCoverageProbeLine(probe: LzCatalogueCoverageProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[15/16] LZ catalogue', LABEL_W);
+  const label = pad('[15/25] LZ catalogue', LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
-    case 'warn':
-      return `  ${label}  WARN  ${probe.message}` +
-        (probe.detail ? `\n  ${pad('', LABEL_W)}        ${probe.detail}` : '');
+    case 'warn': {
+      // #3282: one line per structural issue / grouped quality finding, capped;
+      // `health-check --json` carries every finding (lz_catalogue_coverage.quality).
+      const indent = `\n  ${pad('', LABEL_W)}        `;
+      const lines = probe.detail_lines ?? (probe.detail ? [probe.detail] : []);
+      const shown = lines.slice(0, LZ_DETAIL_LINES_MAX);
+      const more = lines.length > shown.length ? `${indent}... ${lines.length - shown.length} more (see health-check --json)` : '';
+      return `  ${label}  WARN  ${probe.message}` + shown.map((l) => `${indent}${l}`).join('') + more;
+    }
     case 'info':  return `  ${label}  INFO  ${probe.message}`;
     case 'fail':  return `  ${label}  FAIL  ${probe.message}`;
   }
 }
 
+/** #3282: text-mode cap on LZ catalogue finding lines under probe 15. */
+const LZ_DETAIL_LINES_MAX = 15;
+
 // #2325: credential vault probe formatter.
 function formatCredentialVaultProbeLine(probe: CredentialVaultProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[16/16] Credential vault', LABEL_W);
+  const label = pad('[16/25] Credential vault', LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
     case 'warn': return `  ${label}  WARN  ${probe.message}`;
@@ -951,6 +980,41 @@ export function checkRunAccumulation(workspacePath: string | null): string[] {
   return warnings;
 }
 
+// #3283: runs among the latest N per app whose run-status.json says `failed`
+// or `aborted`, or that stayed `started` past the stale threshold (a crashed
+// or killed run). Runs without a marker (before #3283) are not reported.
+export const RUN_STATUS_LATEST_N = 10;
+export function checkRunStatusMarkers(workspacePath: string | null, opts: { latestN?: number; now?: Date } = {}): string[] {
+  if (!workspacePath) return [];
+  const latestN = opts.latestN ?? RUN_STATUS_LATEST_N;
+  const warnings: string[] = [];
+  const appsDir = join(workspacePath, 'apps');
+  if (!existsSync(appsDir)) return warnings;
+  let apps: string[];
+  try {
+    apps = readdirSync(appsDir).filter(d => {
+      try { return statSync(join(appsDir, d)).isDirectory(); } catch { return false; }
+    }).sort();
+  } catch { return warnings; }
+  for (const app of apps) {
+    const runsDir = join(appsDir, app, 'wsp', 'runs');
+    if (!existsSync(runsDir)) continue;
+    let runs: string[];
+    try { runs = readdirSync(runsDir).filter(d => /^\d{4}-\d{2}-\d{2}/.test(d)).sort().reverse().slice(0, latestN); } catch { continue; }
+    for (const run of runs) {
+      const s = readRunStatus(join(runsDir, run));
+      if (!s) continue;
+      const where = `apps/${app}/wsp/runs/${run}`;
+      if (s.status === 'failed' || s.status === 'aborted') {
+        warnings.push(`[WARN] ${where}: ${s.assessment_type} run ${s.status}${s.exit_code !== undefined ? ` (exit ${s.exit_code})` : ''}${s.reason ? `: ${s.reason}` : ''}`);
+      } else if (isRunStale(s, opts.now)) {
+        warnings.push(`[WARN] ${where}: ${s.assessment_type} run started at ${s.started_at} and never closed (stale; the process was killed or crashed)`);
+      }
+    }
+  }
+  return warnings;
+}
+
 // #0192: extracted so health-check-json.test.ts can call this directly instead of
 // spawning `npx tsx` per case (~150 s saved on a full vitest run). The CLI
 // `.action` below reuses the exact same payload for `--format json`.
@@ -976,6 +1040,12 @@ export interface HealthCheckPayload {
   lz_catalogue_coverage: LzCatalogueCoverageProbeResult;
   /** #2325: credential vault accessibility + completeness. */
   credential_vault: CredentialVaultProbeResult;
+  /** #3084: service intake column-mapping validation (skip outside service workspaces). */
+  intake_mapping: IntakeMappingProbeResult;
+  /** #3102: SWAO_APM domain_weights integrity (skip outside service workspaces). */
+  apm_weights: ApmWeightsProbeResult;
+  /** #3127-#3133: service workspace probes keyed by probe key. */
+  service_probes: Record<string, ServiceProbeResult>;
   llm_provider_errors: string[];
   lzr_snapshot_warnings: string[];
   llm_temperature_warnings: string[];
@@ -984,6 +1054,8 @@ export interface HealthCheckPayload {
   lzr_coverage_info: string[];
   source_accessibility_warnings: string[];
   run_accumulation_warnings: string[];
+  /** #3283: failed, aborted or stale started runs among the latest N per app (run-status.json). */
+  run_status_warnings: string[];
   /** #2968: .swao.yml context block validation messages. */
   context_config_messages: string[];
   /** #2956: image files in apps/<app>/ingestion/ without a .description.txt sidecar. */
@@ -1008,7 +1080,13 @@ export interface BuildHealthCheckContext {
   iacToolchainProbe: IaCToolchainProbeResult;
   wspMetadataProbe: WspMetadataProbeResult;
   lzCatalogueCoverageProbe: LzCatalogueCoverageProbeResult;
+  /** #3282: provenance lines computed once in gatherProbes (logged + printed in text mode). */
+  lzCatalogueProvenance?: string[];
   credentialVaultProbe: CredentialVaultProbeResult;
+  intakeMappingProbe: IntakeMappingProbeResult;
+  apmWeightsProbe: ApmWeightsProbeResult;
+  /** #3127-#3133: service workspace probes [19]-[25]; each skips outside a service workspace. */
+  serviceProbes: ServiceProbeResult[];
 }
 
 async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, onProbeLine?: (line: string) => void): Promise<BuildHealthCheckContext> {
@@ -1060,7 +1138,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: mcp', { context: { probe: 'mcp' } });
   const mcpProbe: McpProbeResult = buildMcpProbe();
-  logPortfolio('info', 'health-check.probe.complete', `probe: mcp status=${mcpProbe.status}`, { context: { probe: 'mcp', status: mcpProbe.status, elapsed_ms: Date.now() - t0 } });
+  logPortfolio('info', 'health-check.probe.complete', `probe: mcp status=${mcpProbe.status}`, { context: { probe: 'mcp', status: mcpProbe.status, configs_checked: mcpProbe.configsChecked?.length ?? 0, stale_entries: mcpProbe.staleEntries?.length ?? 0, elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatMcpProbeLine(mcpProbe));
 
   t0 = Date.now();
@@ -1143,12 +1221,13 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: lz_catalogue_coverage', { context: { probe: 'lz_catalogue_coverage' } });
   const lzCatalogueCoverageProbe = buildLzCatalogueCoverageProbe(workspacePath);  // #1698
-  logPortfolio('info', 'health-check.probe.complete', `probe: lz_catalogue_coverage status=${lzCatalogueCoverageProbe.status}`, { context: { probe: 'lz_catalogue_coverage', status: lzCatalogueCoverageProbe.status, gaps: lzCatalogueCoverageProbe.gaps_count, elapsed_ms: Date.now() - t0 } });
+  logPortfolio('info', 'health-check.probe.complete', `probe: lz_catalogue_coverage status=${lzCatalogueCoverageProbe.status}`, { context: { probe: 'lz_catalogue_coverage', status: lzCatalogueCoverageProbe.status, gaps: lzCatalogueCoverageProbe.gaps_count, quality_errors: lzCatalogueCoverageProbe.quality?.errors ?? 0, quality_warnings: lzCatalogueCoverageProbe.quality?.warnings ?? 0, elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatLzCatalogueCoverageProbeLine(lzCatalogueCoverageProbe));
   // #2222: persist per-file provenance (hash, origin, last_updated) so Support Bundle
   // captures full catalogue detail without requiring text-format health-check output.
+  const lzCatalogueProvenance = checkLzCatalogueProvenance(workspacePath);  // #3282: once per run
   logPortfolio('info', 'health-check.lz-catalogue-provenance', 'LZ catalogue provenance', {
-    context: { detail: checkLzCatalogueProvenance(workspacePath) },
+    context: { detail: lzCatalogueProvenance },
   });
 
   t0 = Date.now();
@@ -1156,6 +1235,25 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   const credentialVaultProbe = buildCredentialVaultProbe();  // #2325
   logPortfolio('info', 'health-check.probe.complete', `probe: credential_vault status=${credentialVaultProbe.status}`, { context: { probe: 'credential_vault', status: credentialVaultProbe.status, key_count: credentialVaultProbe.keyCount, categories: credentialVaultProbe.categories, elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatCredentialVaultProbeLine(credentialVaultProbe));
+
+  t0 = Date.now();
+  logPortfolio('info', 'health-check.probe.start', 'probe: intake_mapping', { context: { probe: 'intake_mapping' } });
+  const intakeMappingProbe = buildIntakeMappingProbe(workspacePath);  // #3084
+  logPortfolio('info', 'health-check.probe.complete', `probe: intake_mapping status=${intakeMappingProbe.status}`, { context: { probe: 'intake_mapping', status: intakeMappingProbe.status, errors: intakeMappingProbe.errors.length, warnings: intakeMappingProbe.warnings.length, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatIntakeMappingProbeLine(intakeMappingProbe));
+
+  t0 = Date.now();
+  logPortfolio('info', 'health-check.probe.start', 'probe: apm_weights', { context: { probe: 'apm_weights' } });
+  const apmWeightsProbe = buildApmWeightsProbe(workspacePath);  // #3102
+  logPortfolio('info', 'health-check.probe.complete', `probe: apm_weights status=${apmWeightsProbe.status}`, { context: { probe: 'apm_weights', status: apmWeightsProbe.status, elapsed_ms: Date.now() - t0 } });
+  onProbeLine?.(formatApmWeightsProbeLine(apmWeightsProbe));
+
+  // #3127-#3133 probes [19]-[25]. #3171: start/complete per probe, per-probe elapsed_ms.
+  const serviceProbes = runServiceProbes(
+    workspacePath,
+    (level, code, message, opts) => logPortfolio(level, code, message, opts),
+    (sp, i) => onProbeLine?.(formatServiceProbeLine(sp, i)),
+  );
 
   return {
     licenseProbe,
@@ -1175,7 +1273,11 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
     llmGatewayProbe,
     wspMetadataProbe,
     lzCatalogueCoverageProbe,
+    lzCatalogueProvenance,
     credentialVaultProbe,
+    intakeMappingProbe,
+    apmWeightsProbe,
+    serviceProbes,
   };
 }
 
@@ -1204,11 +1306,54 @@ export async function buildHealthCheckPayload(workspacePath: string, host: Healt
     lzr_coverage_info: checkLzrCoveragePerApp(workspacePath),
     source_accessibility_warnings: checkSourceAccessibility(workspacePath),
     run_accumulation_warnings: checkRunAccumulation(workspacePath),
+    run_status_warnings: checkRunStatusMarkers(workspacePath),
     context_config_messages: checkContextConfig(workspacePath),
     image_sidecar_warnings: checkImageSidecars(workspacePath),
     lz_catalogue_coverage: ctx.lzCatalogueCoverageProbe,
     credential_vault: ctx.credentialVaultProbe,
+    intake_mapping: ctx.intakeMappingProbe,
+    apm_weights: ctx.apmWeightsProbe,
+    service_probes: Object.fromEntries(ctx.serviceProbes.map((sp) => [sp.key, sp])),
   };
+}
+
+/**
+ * #3170: the single definition of a health-check failure, shared by the
+ * health-check.complete NDJSON event (fail_count / failed_probes), the
+ * `--json` exit code, the text-mode exit code and the text summary line that
+ * the Setup Wizard reads. Only FAIL-level outcomes count: WARN, INFO, skip,
+ * absent and the MCP probe's binary_not_found / missing_entry states are
+ * warnings, never failures. Before #3170 the three call sites each kept their
+ * own list and disagreed (imports, traceability, BI export, VCS auth and the
+ * LLM gateway were counted by some and not others).
+ */
+export function computeFailedProbes(ctx: BuildHealthCheckContext): string[] {
+  const failed: string[] = [];
+  if (ctx.licenseInvalid) failed.push('license');
+  if (ctx.playwrightProbe.status === 'fail') failed.push('playwright');
+  if (ctx.communityFrameworksProbe.status === 'fail') failed.push('community-frameworks');
+  if (ctx.importsProbe.status === 'fail' || ctx.importsProbe.status === 'blocked') failed.push('imports');
+  if (ctx.traceabilityProbe.status === 'fail') failed.push('traceability');
+  if (ctx.biExportProbe.status === 'fail') failed.push('bi-export');
+  if (ctx.prerequisitesProbe.status === 'fail') failed.push('prerequisites');
+  if (ctx.vcsAuthProbe.status === 'fail') failed.push('vcs-auth');
+  if (ctx.llmGatewayProbe.ok === false) failed.push('llm-gateway');  // #2897: null = skip, not failure
+  if (ctx.credentialVaultProbe.status === 'fail') failed.push('credential-vault');
+  if (ctx.intakeMappingProbe.status === 'error') failed.push('intake-mapping');
+  if (ctx.apmWeightsProbe.status === 'error') failed.push('apm-weights');
+  for (const sp of ctx.serviceProbes) if (sp.status === 'error') failed.push(sp.key.replace(/_/g, '-'));
+  return failed;
+}
+
+/**
+ * #3170: text-mode epilogue. The Setup Wizard parses this line (via
+ * summariseHealthCheckOutput) instead of re-deriving failures from the probe
+ * lines, so both always report the same count.
+ */
+export function formatHealthCheckSummaryLine(failedProbes: readonly string[]): string {
+  return failedProbes.length === 0
+    ? 'All probes passed.'
+    : `${failedProbes.length} probe(s) failed: ${failedProbes.join(', ')}.`;
 }
 
 // #1094: extracted so health-check-json.test.ts can unit-test the log context
@@ -1228,7 +1373,7 @@ export function buildHealthCheckLogContext(
   return {
     fail_count: failedProbes.length,
     failed_probes: failedProbes,
-    probe_count: 16,
+    probe_count: PROBE_TOTAL,
     probes: {
       license: probeEntry(ctx.licenseProbe),
       playwright: probeEntry(ctx.playwrightProbe),
@@ -1248,8 +1393,16 @@ export function buildHealthCheckLogContext(
       // #2318: include message when probe is not ok. #2897: null = skip (credential not loaded).
       llm_gateway: { status: ctx.llmGatewayProbe.ok === true ? 'ok' : ctx.llmGatewayProbe.ok === null ? 'skip' : 'fail', ...(ctx.llmGatewayProbe.ok !== true ? { message: ctx.llmGatewayProbe.message } : {}) },
       wsp_metadata: probeEntry(ctx.wspMetadataProbe),
-      lz_catalogue_coverage: { ...probeEntry(ctx.lzCatalogueCoverageProbe), gaps_count: ctx.lzCatalogueCoverageProbe.gaps_count },
+      lz_catalogue_coverage: {
+        ...probeEntry(ctx.lzCatalogueCoverageProbe),
+        gaps_count: ctx.lzCatalogueCoverageProbe.gaps_count,
+        // #3282: quality rule counts (the full findings list is in --json).
+        ...(ctx.lzCatalogueCoverageProbe.quality ? { quality_errors: ctx.lzCatalogueCoverageProbe.quality.errors, quality_warnings: ctx.lzCatalogueCoverageProbe.quality.warnings } : {}),
+      },
       credential_vault: { ...probeEntry(ctx.credentialVaultProbe), key_count: ctx.credentialVaultProbe.keyCount, categories: ctx.credentialVaultProbe.categories },
+      intake_mapping: probeEntry(ctx.intakeMappingProbe),
+      apm_weights: probeEntry(ctx.apmWeightsProbe),
+      ...Object.fromEntries(ctx.serviceProbes.map((sp) => [sp.key, probeEntry(sp)])),
     },
   };
 }
@@ -1258,7 +1411,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
   program
     .command('health-check')
     .alias('doctor') // #2745: restore backward-compat alias removed from module rename (sprint-074)
-    .description('Health Check: run pre-flight environment checks -- licence state, Playwright/Chromium, SWAO-MCP server, compliance catalogues, import templates, traceability, BI export, scope, prerequisites, VCS auth, ingestion folder, IaC toolchain, LLM gateway, engagement metadata, LZ catalogue coverage, credential vault (16 probes total).')
+    .description('Health Check: run pre-flight environment checks -- licence state, Playwright/Chromium, SWAO-MCP server, compliance catalogues, import templates, traceability, BI export, scope, prerequisites, VCS auth, ingestion folder, IaC toolchain, LLM gateway, engagement metadata, LZ catalogue coverage, credential vault, service intake mapping, SWAO_APM weights, and service workspace checks (25 probes total).')
     .option('--format <fmt>', 'Output format: text, yaml, or json (default: text)', 'text')
     .option('--json', 'Shorthand for --format json; exits with code 1 when errors are present')
     .option('--workspace <path>', 'Workspace path (default: current directory)')
@@ -1288,7 +1441,6 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
       const ctx = await gatherProbes(workspacePath, host, onProbeLine);
       const {
         licenseProbe,
-        licenseInvalid,
         fingerprint,
         playwrightProbe,
         mcpProbe,
@@ -1305,15 +1457,13 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         wspMetadataProbe,
         lzCatalogueCoverageProbe,
         credentialVaultProbe,
+        intakeMappingProbe,
+        apmWeightsProbe,
+        serviceProbes,
       } = ctx;
 
-      const hcFailedProbes: string[] = [];
-      if (licenseInvalid) hcFailedProbes.push('license');
-      if (playwrightProbe.status === 'fail') hcFailedProbes.push('playwright');
-      if (communityFrameworksProbe.status === 'fail') hcFailedProbes.push('community-frameworks');
-      if (prerequisitesProbe.status === 'fail') hcFailedProbes.push('prerequisites');
-      if (llmGatewayProbe.ok === false) hcFailedProbes.push('llm-gateway');  // #2897: null = skip, not failure
-      if (credentialVaultProbe.status === 'fail') hcFailedProbes.push('credential-vault');
+      // #3170: one shared failure definition for the log, the JSON exit code and the text summary.
+      const hcFailedProbes = computeFailedProbes(ctx);
       // #1047: scope and traceability probes return 'absent' when no apps exist.
       // Report this in the summary so the operator knows the check was partial.
       const hcAbsentProbes: string[] = [];
@@ -1372,12 +1522,16 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           scope: scopeProbe,
           prerequisites: prerequisitesProbe,
           vcs_auth: vcsAuthProbe,
-          ingestion: buildIngestionProbe(workspacePath),
-          iac_toolchain: buildIaCToolchainProbe(),
+          // #3215: reuse the gatherProbes results; each probe runs once per invocation.
+          ingestion: ingestionProbe,
+          iac_toolchain: iacToolchainProbe,
           llm_gateway: llmGatewayProbe,
-          wsp_metadata: buildWspMetadataProbe(workspacePath),
+          wsp_metadata: wspMetadataProbe,
           lz_catalogue_coverage: lzCatalogueCoverageProbe,
           credential_vault: credentialVaultProbe,
+          intake_mapping: intakeMappingProbe,
+          apm_weights: apmWeightsProbe,
+          service_probes: Object.fromEntries(serviceProbes.map((sp) => [sp.key, sp])),
           llm_provider_errors: llmProviderErrors,
           lzr_snapshot_warnings: lzrSnapshotWarnings,
           llm_temperature_warnings: llmTempWarnings,
@@ -1386,6 +1540,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           lzr_coverage_info: lzrCoverageInfo,
           source_accessibility_warnings: checkSourceAccessibility(workspacePath),
           run_accumulation_warnings: checkRunAccumulation(workspacePath),
+          run_status_warnings: checkRunStatusMarkers(workspacePath),
           context_config_messages: checkContextConfig(workspacePath),
           image_sidecar_warnings: checkImageSidecars(workspacePath),
         };
@@ -1397,12 +1552,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         // #2229: call process.exit() unconditionally so dangling HTTP connections
         // from the LLM gateway probe do not hold the event loop open when stdout
         // is a pipe (Windows grandchild pipe deadlock variant).
-        const hasErrors = licenseInvalid ||
-          (playwrightProbe.status === 'fail') ||
-          (communityFrameworksProbe.status === 'fail') ||
-          (prerequisitesProbe.status === 'fail') ||
-          (importsProbe.status === 'blocked' || importsProbe.status === 'fail') ||
-          (credentialVaultProbe.status === 'fail');
+        // #3170: same failure definition as health-check.complete fail_count.
+        const hasErrors = hcFailedProbes.length > 0;
         process.exit(hasErrors ? 1 : 0);
       } else if (opts.format === 'yaml') {
         const yamlLines = [
@@ -1493,9 +1644,10 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         for (const msg of checkLlmContextWindow(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkPlaceholderInputs(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkLzrCoveragePerApp(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkLzCatalogueProvenance(workspacePath)) { console.log(`  ${msg}`); }
+        for (const msg of ctx.lzCatalogueProvenance ?? []) { console.log(`  ${msg}`); }
         for (const msg of checkSourceAccessibility(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkRunAccumulation(workspacePath)) { console.log(`  ${msg}`); }
+        for (const msg of checkRunStatusMarkers(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkContextConfig(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkImageSidecars(workspacePath)) { console.log(`  ${msg}`); }
 
@@ -1503,25 +1655,10 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         if (licenseProbe.warning) {
           console.log(`\n  [!] ${licenseProbe.warning}`);
         }
-        const failCount =
-          (licenseInvalid ? 1 : 0) +
-          (playwrightProbe.status === 'fail' ? 1 : 0) +
-          (communityFrameworksProbe.status === 'fail' ? 1 : 0) +
-          (importsProbe.status === 'fail' || importsProbe.status === 'blocked' ? 1 : 0) +
-          (traceabilityProbe.status === 'fail' ? 1 : 0) +
-          (biExportProbe.status === 'fail' ? 1 : 0) +
-          (prerequisitesProbe.status === 'fail' ? 1 : 0) +
-          (vcsAuthProbe.status === 'fail' ? 1 : 0) +
-          // #2222: align text-format exit code with NDJSON fail_count; ok=false only
-          // when primary connector fails (secondary-only failures are ok=true via #2392).
-          // #2897: ok === null = credential not loaded (skip); does not count as failure.
-          (llmGatewayProbe.ok === false ? 1 : 0) +
-          (credentialVaultProbe.status === 'fail' ? 1 : 0);
-        if (failCount === 0) {
-          console.log('\nAll probes passed.');
-        } else {
-          console.log(`\n${failCount} probe(s) failed.`);
-        }
+        // #2222 / #3170: text-format exit code and summary use the same
+        // failure definition as the NDJSON fail_count (computeFailedProbes).
+        const failCount = hcFailedProbes.length;
+        console.log(`\n${formatHealthCheckSummaryLine(hcFailedProbes)}`);
         // #2229: explicit exit so LLM gateway HTTP connections do not hold event loop.
         process.exit(failCount > 0 ? 1 : 0);
       }

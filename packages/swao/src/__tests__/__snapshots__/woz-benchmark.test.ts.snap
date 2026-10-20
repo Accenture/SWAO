@@ -22,6 +22,7 @@ exports[`WoZ benchmark -- ghostfolio > engine signal ID set matches regression b
   "INV-03",
   "INV-04",
   "INV-05",
+  "INV-07",
   "SBOM-01",
   "SBOM-02",
   "SBOM-03",
@@ -40,6 +41,7 @@ exports[`WoZ benchmark -- ghostfolio > engine signal ID set matches regression b
 exports[`WoZ benchmark -- medplum > engine signal ID set matches regression baseline (snapshot) 1`] = `
 [
   "CRYPTO-01",
+  "CRYPTO-02",
   "CTX-01",
   "CTX-02",
   "CTX-03",
@@ -51,6 +53,8 @@ exports[`WoZ benchmark -- medplum > engine signal ID set matches regression base
   "INV-02",
   "INV-04",
   "INV-05",
+  "INV-07",
+  "INV-09",
   "SBOM-01",
   "SBOM-02",
   "STATE-01",

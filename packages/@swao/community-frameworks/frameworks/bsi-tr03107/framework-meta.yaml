@@ -1,0 +1,67 @@
+# SWAO community framework metadata -- BSI_TR_03107
+# Sprint-149 #3061: BSI TR-03107 eID and e-government trust levels.
+# Covers authentication assurance levels and eID integration patterns
+# for German public-sector digital services.
+
+framework:
+  id: BSI_TR_03107
+  name: "BSI-TR-03107 -- Electronic Identities and Trust Services in E-Government"
+  version: "BSI TR-03107-1 v1.4 (2022) / TR-03107-2 v1.0 / TR-03107-3 eIDAS"
+  authority: >-
+    Federal Office for Information Security (BSI) -- Bundesamt fuer Sicherheit
+    in der Informationstechnik; issued under BSI Act (BSIG) §8 Abs. 3 Nr. 2.
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://accenture.example/swao/community-frameworks/bsi-tr03107"
+  applicability_hints:
+    - de_sovereign
+    - german_public_sector
+    - e_government
+    - eid_integration
+    - bundid
+    - elster
+    - trust_levels
+    - eidas_assurance
+    - de_federated_identity
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    Community packaging of BSI Technical Guideline TR-03107 "Elektronische
+    Identitaeten und Vertrauensdienste im E-Government" for German public-sector
+    digital services. 12 controls across 3 domains: Trust Level Assessment
+    (BSID-TL, 4 controls) covering Vertrauensniveaus normal/substantiell/hoch;
+    eID Integration Patterns (BSID-EID, 5 controls) covering BundID, Personalausweis
+    eID, and ELSTER authentication; Trust Service Providers and eIDAS (BSID-TSP,
+    3 controls) covering qualified trust services, eIDAS node, and cross-border
+    recognition. Aligned with ISO/IEC 29115:2013 (eAuthentication Assurance
+    Framework) and eIDAS Regulation (EU) 910/2014. Cross-mapped to SGBX_DE,
+    GDPR, and BSI_GRUNDSCHUTZ_2023.
+  references:
+    - "BSI TR-03107-1 v1.4 (2022) -- Vertrauensniveaus im E-Government"
+    - "BSI TR-03107-2 v1.0 -- Einsatz elektronischer Identitaeten"
+    - "BSI TR-03107-3 -- Interoperabilitaet mit der eIDAS-Verordnung"
+    - "eIDAS Regulation (EU) 910/2014 -- Trust levels: low/substantial/high"
+    - "ISO/IEC 29115:2013 -- Entity Authentication Assurance Framework"
+    - "https://www.bsi.bund.de/SharedDocs/Downloads/DE/BSI/Publikationen/TechnischeRichtlinien/TR03107/"
+    - "Online-Zugangsgesetz (OZG) -- digital service delivery mandate"
+    - "BundID / Servicekonto Bund -- federated identity provider"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-10-09"
+  signal_prefix: BSID
+
+  cross_mapping_hints:
+    target_frameworks:
+      - SGBX_DE             # Sozialdaten access requires substantiell/hoch trust level
+      - GDPR                # identity verification feeds GDPR Art. 9 processing lawfulness
+      - BSI_GRUNDSCHUTZ_2023 # ORP.4 (identity management), SYS.1.8 (CA services)
+      - BSI_C5              # IAM domain (BSI C5 IDM controls)
+      - NIS2                # MFA / secure authentication overlaps NIS2 Art. 21
+
+  redistribution_note: >-
+    Controls derived from BSI Technical Guidelines published under German
+    government open-content terms (www.bsi.bund.de). BSI TRs are freely
+    accessible; this packaging does not reproduce BSI text verbatim.
+    This framework does not constitute legal advice. eIDAS notified schemes
+    require separate national body approval.
+
+  replaces: []

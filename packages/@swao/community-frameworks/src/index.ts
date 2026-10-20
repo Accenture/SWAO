@@ -54,8 +54,7 @@ function resolveCommunityFrameworksDir(): string {
 }
 
 /** Absolute path to the bundled community framework catalogues directory
- *  (contains _registry.yaml + one folder per framework). */
+ *  (one folder per framework). There is no index file (#3297): each folder's
+ *  framework-meta.yaml declares the framework, and readers discover them with
+ *  discoverFrameworks() from @swao/core. */
 export const communityFrameworksDir: string = resolveCommunityFrameworksDir();
-
-/** The framework registry index file shipped with the community catalogues. */
-export const communityRegistryFile: string = join(communityFrameworksDir, '_registry.yaml');

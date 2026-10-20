@@ -16,7 +16,7 @@
 #   Standard Basic Criteria                                 -- high
 #   Availability and compliance criteria                    -- medium
 #
-# v1.0.0 scope: 62 controls across all 17 C5:2020 Basic Criteria domains.
+# v1.0.0 scope: 62 controls across 16 C5:2020 Basic Criteria domains.
 
 regime_meta:
   id: BSI_C5
@@ -433,7 +433,7 @@ controls:
     references:
       - "BSI C5:2020 CRY-01"
       - "BSI TR-02102-1"
-    maps_to: [BSI_CON1_A1, ISO_27001_A.8.24, GDPR_Art_32]
+    maps_to: [BSI_CON1_A1, ISO_27001_A.8.24]
     remediation: >-
       Document a cryptography policy aligned to BSI TR-02102; enforce approved
       algorithms at the platform level; review and update when TR-02102 is
@@ -455,7 +455,7 @@ controls:
     references:
       - "BSI C5:2020 CRY-02"
       - "BSI TR-02102-1"
-    maps_to: [BSI_CON1_A2, ISO_27001_A.8.24, GDPR_Art_32]
+    maps_to: [BSI_CON1_A2, ISO_27001_A.8.24]
     remediation: >-
       Enable encryption at rest for all storage containing sensitive or personal
       data; ensure keys are held in a managed key store separate from the data.
@@ -696,7 +696,7 @@ controls:
       - { signal_prefix: OBS }
     references:
       - "BSI C5:2020 OPS-06"
-    maps_to: [BSI_DER1_A1, ISO_27001_A.8.15, ISO_27001_A.8.16, GDPR_Art_32]
+    maps_to: [BSI_DER1_A1, ISO_27001_A.8.15, ISO_27001_A.8.16]
     remediation: >-
       Define logging requirements per event category; centralise logs in a
       tamper-evident store; configure retention per regulatory requirements;
@@ -1277,7 +1277,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 PI-03"
-    maps_to: [BSI_NET33_A1, ISO_27001_A.8.24, GDPR_Art_32]
+    maps_to: [BSI_NET33_A1, ISO_27001_A.8.24]
     remediation: >-
       Enforce TLS 1.2+ on all public endpoints; disable weak cipher suites;
       scan for unencrypted transmission paths quarterly.

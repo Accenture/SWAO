@@ -6,27 +6,28 @@ Das Werkzeuge-Menü (Option 9 im Hauptmenü) gruppiert Hilfsbefehle zur Verwaltu
 
 | Werkzeug | CLI-Befehl | Beschreibung |
 |---|---|---|
-| Linsen | `swao lens list` / `swao lens apply` | Zwischen vorkonfigurierten Analyselinsen wechseln |
-| Lizenz | `swao licence show` / `swao licence activate` | Aktuelle Edition anzeigen und Lizenzschlüssel aktivieren |
+| Linsen | `swao lenses list` / `swao lenses set <ids>` | Zwischen vorkonfigurierten Analyselinsen (Pass-Auswahlprofilen) wechseln |
+| Lizenz | `swao license status` / `swao license activate <key>` | Aktuelle Edition anzeigen und Lizenzschlüssel aktivieren |
 | Zugangsdaten | `swao credential set` / `swao credential list` | API-Schlüssel und Vault-Referenzen speichern und verwalten |
-| Rahmenwerk installieren | `swao framework install <name>` | Zusätzliche Community-Rahmenwerke installieren |
-| Katalog aktualisieren | `swao catalogue update` | Neuesten LZ-Anbieter-Katalog und Rahmenwerk-Updates abrufen |
+| Rahmenwerk | `swao framework list` / `swao framework install <id>` | Zusätzliche mitgelieferte Community-Rahmenwerke in den Workspace kopieren (`wsp/inputs/catalogs/community/<ordner>/`); oder [von GitHub herunterladen](https://github.com/Accenture/SWAO/tree/main/community-frameworks) und den Ordner dorthin kopieren |
+| Katalog aktualisieren | `swao lz catalogue update` | LZ-Dienstekataloge der Anbieter aus deren öffentlichen Quellen aktualisieren, dazu die VM-Preise des Kostenmodells der Service-Bewertung aus den Preis-APIs von Azure und AWS (ab Consultant) |
+| SWAO Chat | `swao chat` | Mehrstufige LLM-Unterhaltung über Ergebnisse des Portfolio-Assessments (Enterprise) |
 | Hilfe | `swao --help` / `swao <befehl> --help` | Vollständige CLI-Referenz |
 
 ## Linsen
 
-Linsen sind vorkonfigurierte Sets aus aktivierten Analysedurchläufen, Signal-Gewichtungen und Rahmenwerk-Filtern. Drei Community-Linsen werden mit jeder Edition ausgeliefert:
+Linsen sind vorkonfigurierte Pass-Auswahlprofile; einige aktivieren zusätzlich passende Rahmenwerke. Drei Linsen werden mitgeliefert (`swao lenses list`):
 
-| Linse | Fokus |
-|---|---|
-| `cloud-migration` | 7R-Migrationsurteil, Abhängigkeitskartierung, Wellenplanung |
-| `security-focus` | Sicherheitspostur, Geheimnisentdeckung, Kryptographie, SAST |
-| `data-governance` | PII-Klassifizierung, Datenresidenz, Ausgangsanalyse, DSGVO-Kontrollen |
+| Linse | Passes | Automatisch aktivierte Rahmenwerke |
+|---|---|---|
+| `cloud-migration` (Standard) | INV, STATE, DATA, CTX, SBOM, TF, EGR, CRYPTO, SYNTH, LZR, COMP, SCOPE | keine |
+| `security-focus` | SBOM, CRYPTO, EGR, MAL | KRITIS, NIS2 |
+| `data-governance` | DATA, CTX | GDPR |
 
-Linse vor einer Bewertung anwenden:
+Linse vor einer Bewertung festlegen:
 
 ```bash
-swao lens apply security-focus
+swao lenses set security-focus
 swao assess --app meine-app
 ```
 

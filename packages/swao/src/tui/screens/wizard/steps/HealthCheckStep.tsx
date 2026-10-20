@@ -17,12 +17,40 @@ import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { spawn } from 'child_process';
 import { logPortfolio } from '@swao/core';
-import { HealthCheckProbeList } from '@swao/module-health-check';
+import { HealthCheckProbeList, summariseHealthCheckOutput } from '@swao/module-health-check';
 import { BIN, SELF_ARGS, setWizardGuidanceOpen } from '../shared.js';
+
+/**
+ * #1675 / #3170: emit setup.health-check.complete (or .empty) for the wizard's
+ * health-check run. fail_count uses the runner's failure definition (read from
+ * its summary line), so it equals health-check.complete fail_count; WARN probes
+ * stay visible (#2388) as warn_count + warned_probes. Exported for tests.
+ */
+export function logSetupHealthCheckResult(lines: ReadonlyArray<string>): void {
+  const summary = summariseHealthCheckOutput(lines);
+  if (summary.probeCount === 0) {
+    logPortfolio('warn', 'setup.health-check.empty', 'Setup Wizard health-check: zero probes parsed -- output may be corrupt or binary mismatch');
+    return;
+  }
+  logPortfolio(
+    'info',
+    'setup.health-check.complete',
+    `Setup Wizard health-check finished: ${summary.probeCount} probes, ${summary.failCount} failure(s), ${summary.warnCount} warning(s)`,
+    {
+      context: {
+        probe_count: summary.probeCount,
+        fail_count: summary.failCount,
+        failed_probes: summary.failedProbes,
+        warn_count: summary.warnCount,
+        warned_probes: summary.warnedProbes,
+      },
+    },
+  );
+}
 
 // -- Step 4: Health Check -------------------------------------------------
 
-export function HealthCheckStep({ onNext }: { onNext: () => void }) {
+export function HealthCheckStep({ onNext, stepNumber = 4 }: { onNext: () => void; stepNumber?: number }) {
   const [lines, setLines] = useState<string[]>([]);
   const [done, setDone] = useState(false);
 
@@ -42,9 +70,12 @@ export function HealthCheckStep({ onNext }: { onNext: () => void }) {
     // and causes probes to be silently dropped from the TUI list.
     let stdoutBuf = '';
     let stderrBuf = '';
-    // #1675: track probe count via closure so close handler can emit NDJSON events.
-    let hcProbeCount = 0;
-    let hcFailCount = 0;
+    // #1675: keep every complete stdout/stderr line via closure so the close
+    // handler can emit NDJSON events. #3170: the counts come from
+    // summariseHealthCheckOutput, which reads the runner's own summary line, so
+    // fail_count always matches health-check.complete; WARN probes are reported
+    // as warn_count + warned_probes and are no longer added to fail_count.
+    const hcLines: string[] = [];
     // Idle watchdog: if the child produces no output for 120 s, assume it is
     // wedged (post-probe sync check blocks exit) and unblock the wizard.
     // The timer resets on every data chunk so a slow-but-active health-check
@@ -64,12 +95,7 @@ export function HealthCheckStep({ onNext }: { onNext: () => void }) {
       const parts = text.split('\n');
       setBuf(parts.pop() ?? '');
       const completeLines = parts.filter(Boolean);
-      // #1675: count probes and failures via closure so close handler can emit events.
-      // #2388: count WARN probes too -- WARN (e.g. LLM gateway) was masking the real fail_count.
-      for (const l of completeLines) {
-        if (/\[\d+\/\d+\]/.test(l)) hcProbeCount++;
-        if (/\b(FAIL|WARN)\b/.test(l)) hcFailCount++;
-      }
+      hcLines.push(...completeLines);
       if (completeLines.length > 0) setLines(prev => [...prev, ...completeLines]);
     };
     child.stdout.on('data', makePush(() => stdoutBuf, s => { stdoutBuf = s; }));
@@ -91,11 +117,8 @@ export function HealthCheckStep({ onNext }: { onNext: () => void }) {
       // #1675: emit setup.health-check.complete / .empty so the E2E monitor
       // can confirm the wizard health-check step ran and detect silent failures.
       try {
-        if (hcProbeCount === 0) {
-          logPortfolio('warn', 'setup.health-check.empty', 'Setup Wizard health-check: zero probes parsed -- output may be corrupt or binary mismatch');
-        } else {
-          logPortfolio('info', 'setup.health-check.complete', `Setup Wizard health-check finished: ${hcProbeCount} probes, ${hcFailCount} failure(s)`, { context: { probe_count: hcProbeCount, fail_count: hcFailCount } });
-        }
+        if (stdoutBuf.trim()) hcLines.push(stdoutBuf);
+        logSetupHealthCheckResult(hcLines);
       } catch { /* best-effort */ }
     });
     return () => {
@@ -110,7 +133,7 @@ export function HealthCheckStep({ onNext }: { onNext: () => void }) {
 
   return (
     <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 4 -- Health Check</Text>
+      <Text bold color="cyanBright">Step {stepNumber} -- Health Check</Text>
       {!done && <Text color="yellow">Running swao health-check...</Text>}
       <HealthCheckProbeList
         lines={lines}

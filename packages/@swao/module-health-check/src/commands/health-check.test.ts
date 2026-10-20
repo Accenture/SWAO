@@ -461,7 +461,7 @@ describe('formatLlmGatewayLine -- #2366 ok-vs-message-prefix alignment', () => {
 
   // #2897: ok === null = credential not loaded (SKIP) -- must show INFO, not FAIL.
   it('shows INFO when ok=null and message has [N/A] prefix (#2897)', () => {
-    const line = formatLlmGatewayLine({ ok: null, message: "[N/A] credential 'preme-api-key' not loaded -- run 'swao session setup'" });
+    const line = formatLlmGatewayLine({ ok: null, message: "[N/A] credential 'corp-genai-api-key' not loaded -- run 'swao session setup'" });
     expect(line).toContain('INFO');
     expect(line).not.toContain('FAIL');
     expect(line).not.toContain('WARN');

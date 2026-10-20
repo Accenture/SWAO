@@ -21,6 +21,10 @@ framework:
     - hipaa_security_rule
     - demo
   assessment_type_scope: [app]
+  # #3297: kept out of `swao framework list` and the copy helper, as before
+  # (it was never in the old _registry.yaml); `swao init` seeds the
+  # nist-sp-800-66r2-demo folder instead.
+  listed: false
   description: >
     Demo-sized subset of the NIST SP 800-66r2 HIPAA community framework for
     live-presentation use with the sovereign-health demo application. Contains

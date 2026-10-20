@@ -183,10 +183,10 @@ describe('fromConnectionString', () => {
 describe('parseConnectionString -- open-llm-provider (Design 082 §4.9)', () => {
   it('parses open-llm-provider:<url> with path prefix as model prefix and infers model', () => {
     const result = parseConnectionString(
-      'open-llm-provider:https://preme-genai-hub.preme-plus.con.dst.baintern.de/Mistral-Small-24B-Instruct-2501',
+      'open-llm-provider:https://genai-hub.example.internal/Mistral-Small-24B-Instruct-2501',
     );
     expect(result.provider).toBe('open-llm-provider');
-    expect(result.baseUrl).toBe('https://preme-genai-hub.preme-plus.con.dst.baintern.de');
+    expect(result.baseUrl).toBe('https://genai-hub.example.internal');
     expect(result.modelPrefix).toBe('/Mistral-Small-24B-Instruct-2501');
     expect(result.model).toBe('Mistral-Small-24B-Instruct-2501');
   });
@@ -216,7 +216,7 @@ describe('fromConnectionString -- open-llm-provider (Design 082 §4.9)', () => {
     process.env['SWAO_OPEN_LLM_MODEL'] = 'Mistral-Small-24B-Instruct-2501';
     const { OpenLlmProvider } = await import('./open-llm-provider.js');
     const p = await fromConnectionString(
-      'open-llm-provider:https://preme-genai-hub.example.com/Mistral-Small-24B-Instruct-2501',
+      'open-llm-provider:https://genai-hub.example.com/Mistral-Small-24B-Instruct-2501',
     );
     expect(p).toBeInstanceOf(OpenLlmProvider);
     expect(p.name).toBe('open-llm-provider');

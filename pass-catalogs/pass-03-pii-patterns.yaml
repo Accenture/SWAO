@@ -1,0 +1,144 @@
+# Pass 03 -- Data Classification: deterministic PII field pattern catalogue
+# German social-law and health-data regulated identifiers for pre-LLM detection.
+# Sources: SGB IV §147, SGB V §290, SGB X §67, AO §139b, GDPR Art.4/Art.9.
+# Workspace overrides: wsp/inputs/pass-catalogs/pass-03-pii-patterns.yaml
+#
+# Pattern is matched case-insensitively against: field names, column names,
+# variable names, API parameter names, and DTO property names found in source.
+# The loader applies the 'i' (case-insensitive) flag; patterns are plain alternation groups.
+# Entry ID collision: workspace entry wins over built-in on matching id.
+# Contribute additions: https://github.com/Accenture/SWAO
+
+pass_number: 3
+pass_name: "Data Classification"
+
+entries:
+
+  # ---------- German social and pension insurance identifiers ----------
+  # Regulated under SGB IV and classified as Sozialdaten per SGB X §67.
+
+  - id: rentenversicherungsnummer
+    name: "Rentenversicherungsnummer (German pension insurance number)"
+    pattern: "(rentenversicherungsnummer|renten_vers_nr|rentenversnr|rvnr|rv_nr|rente_nr)"
+    data_category: national_id
+    sgbx_category: sozialdaten
+    regulatory_basis: "SGB IV §147; SGB X §67 Abs.1"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  - id: sozialversicherungsnummer
+    name: "Sozialversicherungsnummer (German social security number)"
+    pattern: "(sozialversicherungsnummer|sozialvers_nr|sozialversnr|svnr|sv_nr|sozialversicherung_id)"
+    data_category: national_id
+    sgbx_category: sozialdaten
+    regulatory_basis: "SGB IV; SGB X §67 Abs.1"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  - id: steuernummer
+    name: "Steuernummer (German tax number)"
+    pattern: "(steuernummer|steuer_nr|steuernr|tax_number_de|tax_id_de)"
+    data_category: national_id
+    sgbx_category: null
+    regulatory_basis: "AO §139b"
+    severity: high
+    cross_reference_frameworks: [GDPR, BSI_TR_03107]
+
+  - id: steueridentifikationsnummer
+    name: "Steueridentifikationsnummer (permanent German tax ID)"
+    pattern: "(steueridentifikationsnummer|steuer_id|steueridentnr|steuerident_nr|tin_de|idnr)"
+    data_category: national_id
+    sgbx_category: null
+    regulatory_basis: "AO §139b Abs.1"
+    severity: high
+    cross_reference_frameworks: [GDPR, BSI_TR_03107]
+
+  - id: bedarfsgemeinschaftsnummer
+    name: "Bedarfsgemeinschaftsnummer (SGB II household benefits reference)"
+    pattern: "(bedarfsgemeinschaftsnummer|bedarfsgemeinschaft_nr|bedarfsgemeinschaft_id|bgn|bg_nr)"
+    data_category: social_benefit_id
+    sgbx_category: sozialdaten
+    regulatory_basis: "SGB II; SGB X §67 Abs.2"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  - id: kindergeld-nr
+    name: "Kindergeldnummer (child benefit reference)"
+    pattern: "(kindergeld_nr|kindergeldnummer|kindergeld_id|child_benefit_nr)"
+    data_category: social_benefit_id
+    sgbx_category: sozialdaten
+    regulatory_basis: "BKGG; SGB X §67"
+    severity: high
+    cross_reference_frameworks: [GDPR, SGBX_DE]
+
+  # ---------- German statutory health insurance identifiers ----------
+  # Regulated under SGB V §290 and classified as besondere Sozialdaten per SGB X §67a.
+
+  - id: kvnr
+    name: "Krankenversicherungsnummer (statutory health insurance number)"
+    pattern: "(krankenversicherungsnummer|kassen_nr|krankenkasse_nr|kvnr|kv_nr|versichertennummer_gkv|insurance_number_de)"
+    data_category: gdpr_art9_health
+    sgbx_category: besondere_sozialdaten
+    regulatory_basis: "SGB V §290; SGB X §67 Abs.1a; GDPR Art.9"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  - id: patientennummer
+    name: "Patientennummer / Patient-ID (hospital patient reference)"
+    pattern: "(patientennummer|patient_nr|patient_id|patienten_id|pid|fall_patient_id)"
+    data_category: gdpr_art9_health
+    sgbx_category: besondere_sozialdaten
+    regulatory_basis: "GDPR Art.9; SGB X §67a"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  - id: fallnummer
+    name: "Fallnummer / Behandlungsfall (treatment case reference)"
+    pattern: "(fallnummer|fall_nr|behandlungsfall|behandlungsfall_id|case_nr|encounter_id)"
+    data_category: gdpr_art9_health
+    sgbx_category: besondere_sozialdaten
+    regulatory_basis: "GDPR Art.9; SGB X §67a"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE, BSI_TR_03107]
+
+  # ---------- GDPR Art.9 special category health data field names ----------
+  # These field name patterns strongly signal health data processing.
+  # The LLM pass refines classification; this layer surfaces them deterministically.
+
+  - id: gesundheitsdaten
+    name: "Gesundheitsdaten (health data field name)"
+    pattern: "(gesundheitsdaten|gesundheits_daten|health_data|health_status|diagnose|diagnosis|icd_code|icd10|icd11)"
+    data_category: gdpr_art9_health
+    sgbx_category: besondere_sozialdaten
+    regulatory_basis: "GDPR Art.9 Abs.1; SGB X §67 Abs.1"
+    severity: critical
+    cross_reference_frameworks: [GDPR, SGBX_DE]
+
+  - id: behandlung
+    name: "Behandlung / Medikament / Pflegegrad (treatment and care level indicators)"
+    pattern: "(behandlung|behandlungs_art|medikament|medication|pflegegrad|pflegestufe|care_level|therapy|therapie)"
+    data_category: gdpr_art9_health
+    sgbx_category: besondere_sozialdaten
+    regulatory_basis: "GDPR Art.9; SGB XI"
+    severity: high
+    cross_reference_frameworks: [GDPR, SGBX_DE]
+
+  # ---------- GDPR Art.9 biometric and ethnic origin indicators ----------
+
+  - id: biometrie
+    name: "Biometric data field names"
+    pattern: "(biometrie|biometric|fingerabdruck|fingerprint|iris_scan|gesichtserkennung|face_recognition|stimmerkennung|voice_print)"
+    data_category: gdpr_art9_biometric
+    sgbx_category: null
+    regulatory_basis: "GDPR Art.9 Abs.1"
+    severity: critical
+    cross_reference_frameworks: [GDPR, BSI_TR_03107]
+
+  - id: nationalitaet
+    name: "Nationalitaet / Herkunft (ethnic origin indicators)"
+    pattern: "(nationalitaet|nationalitaet_id|herkunft|ethnic_origin|ethnicity|staatsangehoerigkeit)"
+    data_category: gdpr_art9_ethnic_origin
+    sgbx_category: null
+    regulatory_basis: "GDPR Art.9 Abs.1"
+    severity: high
+    cross_reference_frameworks: [GDPR]

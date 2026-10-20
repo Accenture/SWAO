@@ -19,8 +19,38 @@ import { AnthropicLlmProvider } from './anthropic.js';
 import { OpenAiLlmProvider } from './openai.js';
 import { OpenLlmProvider } from './open-llm-provider.js';
 import { logPortfolio } from '@swao/core';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { load as loadYaml } from 'js-yaml';
 import { getConnector, listConnectors } from './gateway/connector-loader.js';
 import { createProviderFromConnector, type ConnectorProvenance } from './gateway/resolve.js';
+import { applyLlmConcurrency, normaliseMaxConcurrency, MAX_LLM_MAX_CONCURRENCY } from './concurrency.js';
+
+/**
+ * #3284 (Design 110 D-14): `providers.llm.max_concurrency` from the workspace
+ * .swao.yml. Used when the host did not pass `max_concurrency` in the config.
+ * Invalid values are reported once per call and ignored.
+ */
+function readWorkspaceMaxConcurrency(workspaceRoot: string | undefined): number | undefined {
+  if (!workspaceRoot) return undefined;
+  const ymlPath = join(workspaceRoot, '.swao.yml');
+  if (!existsSync(ymlPath)) return undefined;
+  try {
+    const raw = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown> | null;
+    const llm = (raw?.['providers'] as Record<string, unknown> | undefined)?.['llm'] as Record<string, unknown> | undefined;
+    const value = llm?.['max_concurrency'];
+    if (value === undefined || value === null) return undefined;
+    const n = normaliseMaxConcurrency(value);
+    if (n === undefined) {
+      logPortfolio('warn', 'provider.llm.max-concurrency-invalid',
+        `providers.llm.max_concurrency must be an integer from 1 to ${MAX_LLM_MAX_CONCURRENCY}; using the default`,
+        { context: { value: String(value).slice(0, 40) } });
+    }
+    return n;
+  } catch {
+    return undefined; // unreadable yml: the host reports parse errors elsewhere
+  }
+}
 
 /** Subset of .swao.yml's `providers.llm.primary` block. */
 export interface LlmProviderConfig {
@@ -63,6 +93,10 @@ export interface LlmProviderConfig {
   environments?: Record<string, LlmProviderConfig>;
   /** Default environment name when SWAO_LLM_ENV is not set. */
   activeEnv?: string;
+  /** `providers.llm.max_concurrency` (#3284, D-14): in-flight request limit
+   *  per endpoint. When absent the factory reads it from the workspace
+   *  .swao.yml (workspaceRoot), then the gateway connector, then 4. */
+  max_concurrency?: number;
 }
 
 const VALID_PROVIDERS = ['anthropic', 'openai', 'ollama', 'open-llm-provider'] as const;
@@ -108,6 +142,9 @@ export function createLlmProvider(
   config?: LlmProviderConfig,
 ): LlmProvider {
   _lastGatewayProvenance = undefined;
+  // #3284: .swao.yml concurrency limit (explicit config first, then workspace file).
+  const ymlMaxConcurrency = normaliseMaxConcurrency(config?.max_concurrency)
+    ?? readWorkspaceMaxConcurrency(config?.workspaceRoot);
 
   // SWAO LLM-Gateway path (Design 090, #1398): a connector id resolves through
   // the file-based gateway. The legacy `type` switch below stays byte-for-byte
@@ -133,6 +170,7 @@ export function createLlmProvider(
       baseUrl: config?.baseUrl,
       // #1691: propagate appId for dual-logging to app-events.
       appId: _appId,
+      maxConcurrency: ymlMaxConcurrency,
     });
     _lastGatewayProvenance = resolved.provenance;
     return resolved.provider;
@@ -149,33 +187,42 @@ export function createLlmProvider(
     );
   }
 
+  // #3284: every legacy provider gets the configured concurrency limit and
+  // the app id, so its events also reach the app log.
+  const withLimit = <P extends LlmProvider>(p: P): P => {
+    applyLlmConcurrency(p, ymlMaxConcurrency);
+    return p;
+  };
+
   switch (provider) {
     case 'ollama':
-      return new OllamaLlmProvider(
+      return withLimit(new OllamaLlmProvider(
         resolvedConfig?.model,
         undefined,
         resolvedConfig?.temperature,
         resolvedConfig?.seed,
         resolvedConfig?.costPerToken,
-      );
+        _appId,
+      ));
     case 'anthropic':
-      return new AnthropicLlmProvider(
+      return withLimit(new AnthropicLlmProvider(
         undefined,
         resolvedConfig?.model,
         resolvedConfig?.temperature,
         resolvedConfig?.max_tokens,
         undefined,
         _appId,
-      );
+      ));
     case 'openai':
-      return new OpenAiLlmProvider(
+      return withLimit(new OpenAiLlmProvider(
         undefined,
         resolvedConfig?.model,
         resolvedConfig?.temperature,
         resolvedConfig?.seed,
-      );
+        _appId,
+      ));
     case 'open-llm-provider':
-      return new OpenLlmProvider(
+      return withLimit(new OpenLlmProvider(
         undefined,
         resolvedConfig?.model,
         resolvedConfig?.baseUrl,
@@ -183,7 +230,8 @@ export function createLlmProvider(
         resolvedConfig?.temperature,
         resolvedConfig?.seed,
         resolvedConfig?.costPerToken,
-      );
+        _appId ? { appId: _appId } : undefined,
+      ));
     default: {
       const bedrockHint = provider === 'bedrock'
         ? ' Bedrock is available via the connector gateway -- copy wsp/inputs/llm-gateway/bedrock.yaml from the bundled seeds and run swao setup.'

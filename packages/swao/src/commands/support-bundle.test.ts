@@ -17,7 +17,7 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { describe, it, expect, afterEach } from 'vitest';
-import { buildLlmLegsSummary, BUNDLE_VERSION } from './support-bundle.js';
+import { buildLlmLegsSummary, buildLzCatalogueMeta, BUNDLE_VERSION } from './support-bundle.js';
 
 describe('buildLlmLegsSummary', () => {
   let tmpDir: string;
@@ -44,7 +44,7 @@ describe('buildLlmLegsSummary', () => {
     // because all calls DNF'd and quality-content is unimplemented (follow-on #1421).
     const ws = makeWorkspace({
       schema_version: '1.0', kind: 'swao', app_id: 'test-app',
-      legs: [{ id: 'gemma-4-31b-it', connector: 'preme', model: 'gemma-4-31b-it', primary: false }],
+      legs: [{ id: 'gemma-4-31b-it', connector: 'corp-genai-preprod', model: 'gemma-4-31b-it', primary: false }],
       run: { run_ts: '20261007T120000Z', duration_minutes: 2.3, legs: {
         'gemma-4-31b-it': { cost_usd: 0, duration_minutes: 2.3, call_count: 4 },
       } },
@@ -62,7 +62,7 @@ describe('buildLlmLegsSummary', () => {
     const legs = app['legs'] as Array<Record<string, unknown>>;
     expect(legs).toHaveLength(1);
     const leg = legs[0];
-    expect(leg['connector']).toBe('preme');
+    expect(leg['connector']).toBe('corp-genai-preprod');
     expect(leg['model']).toBe('gemma-4-31b-it');
     expect(leg['partial']).toBe(true);
     expect(leg['missing_fields']).toEqual(['quality-content', 'quality-structural', 'cost']);
@@ -98,7 +98,7 @@ describe('buildLlmLegsSummary', () => {
   it('marks status no-calls when call_count is 0', () => {
     const ws = makeWorkspace({
       schema_version: '1.0', kind: 'swao', app_id: 'test-app',
-      legs: [{ id: 'failed-leg', connector: 'preme', model: 'some-model', primary: false }],
+      legs: [{ id: 'failed-leg', connector: 'corp-genai-preprod', model: 'some-model', primary: false }],
       run: { run_ts: '20261007T120000Z', duration_minutes: 0, legs: {
         'failed-leg': { cost_usd: 0, duration_minutes: 0, call_count: 0 },
       } },
@@ -118,7 +118,7 @@ describe('buildLlmLegsSummary', () => {
       schema_version: '1.0', kind: 'swao', app_id: 'test-app',
       legs: [
         { id: 'full-leg', connector: 'azure', model: 'gpt-4o', primary: true },
-        { id: 'partial-leg', connector: 'preme', model: 'gemma', primary: false },
+        { id: 'partial-leg', connector: 'corp-genai-preprod', model: 'gemma', primary: false },
       ],
       run: { run_ts: '20261007T120000Z', duration_minutes: 2, legs: {
         'full-leg': { cost_usd: 0.01, duration_minutes: 1, call_count: 5 },
@@ -164,5 +164,27 @@ describe('buildLlmLegsSummary', () => {
     expect(app['last_run_ts']).toBe('20261007T150000Z');
     const legs = app['legs'] as Array<Record<string, unknown>>;
     expect(legs[0]['model']).toBe('model-v2');
+  });
+});
+
+describe('buildLzCatalogueMeta (#3155)', () => {
+  it('reports a per-provider workspace copy as origin workspace, other providers as bundled', () => {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-sbt-lz-'));
+    try {
+      const dir = join(ws, 'wsp', 'inputs', 'catalogs', 'lz-catalogues', 'aws');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, 'index.json'), JSON.stringify({
+        meta: { schema_version: '0.1', name: 'aws (workspace-local catalogue)', provider: 'aws', last_updated: '2026-10-10', source: { mode: 'curated', source_note: 'support bundle test' }, confidence: 'medium' },
+        regions: [{ id: 'example-region', display: 'Example', services: [] }],
+      }));
+      const meta = buildLzCatalogueMeta(ws) as { is_workspace_override: boolean; catalogues: Array<Record<string, unknown>>; coming_soon: string[] };
+      expect(meta.is_workspace_override).toBe(true);
+      // #3298: coming_soon comes from the bundled _coming-soon.json, not from an index.json.
+      expect(meta.coming_soon).toEqual(['ionos', 'ovhcloud']);
+      expect(meta.catalogues.find((c) => c['provider'] === 'aws')).toMatchObject({ origin: 'workspace', file: 'wsp/inputs/catalogs/lz-catalogues/aws/index.json', last_updated: '2026-10-10' });
+      expect(meta.catalogues.find((c) => c['provider'] === 'stackit')).toMatchObject({ origin: 'bundled', file: 'stackit.json' });
+    } finally {
+      rmSync(ws, { recursive: true, force: true });
+    }
   });
 });

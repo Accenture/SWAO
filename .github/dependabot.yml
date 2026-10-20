@@ -43,7 +43,7 @@ updates:
         versions: [">=0"]
       - dependency-name: "jsonwebtoken"
         versions: [">=0"]
-      - dependency-name: "@aws-sdk/client-comprehend-medical"
+      - dependency-name: "@aws-sdk/client-comprehendmedical"
         versions: [">=0"]
     schedule:
       interval: weekly

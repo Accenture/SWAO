@@ -16,7 +16,8 @@
 import { describe, it, expect } from 'vitest';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import {
   generateReport,
   formatText,
@@ -26,7 +27,10 @@ import {
   formatViewCompliance,
   formatViewFinops,
   formatViewMigrationManager,
+  formatViewAuditor,
   VALID_VIEWS,
+  loadInlineLzCatalogueFit,
+  formatLzCatalogueFitSection,
 } from '../commands/report.js';
 import {
   generateLzReport, formatLzText, formatLzYaml,
@@ -686,5 +690,154 @@ describe('swao report --type llm text format (#2273)', () => {
     expect(parsed['app']).toBe('sovereign-health');
     expect(Array.isArray(parsed['legs'])).toBe(true);
     expect(parsed['final']).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3244 / #3240: dash convention on RENDERED text reports (CLAUDE.md 5.1).
+// The rendered output of every text view is checked, not the source strings:
+// LLM-authored challenge prose, quoted evidence, derivations and next steps
+// are seeded with em-dashes, en-dashes and spaced double-dashes.
+// ---------------------------------------------------------------------------
+describe('text reports: no em-dash, en-dash or spaced double-dash in rendered output (#3244)', () => {
+  const EM = String.fromCharCode(0x2014);
+  const EN = String.fromCharCode(0x2013);
+  const wspDir = mkdtempSync(join(tmpdir(), 'swao-dash-audit-'));
+  writeFileSync(join(wspDir, 'wsp.yaml'), dump({
+    overall: { seven_r_label: 'Replatform', portability_score: 0.7, confidence: 'medium' },
+    client_scenario: { regulatory: [`GDPR ${EM} EU`] },
+  }));
+  writeFileSync(join(wspDir, 'wsp-plan.yaml'), dump({
+    compliance: { regimes: [{ name: 'GDPR', status: 'partial', gaps: [`Art 32 ${EM} encryption at rest`] }] },
+  }));
+  const challenge = (agentId: string) => ({
+    agentId,
+    agentRole: `Role ${EN} ${agentId}`,
+    findings: [
+      { id: 'CH-01', concern: `Concern ${EM} LLM prose -- with a separator`, evidenceGap: `Gap ${EN} none`, recommendedQuestion: `Why ${EM} now?` },
+      { id: 'CH-02', concern: `Second concern -- quoted ${EM} text` },
+    ],
+  });
+  const sig = (id: string, severity: string) => ({
+    id, severity,
+    derivation: `Derivation ${EM} from the LLM ${EN} 2026 -- detail`,
+    evidence: [`Workshop note: "data stays in the EU ${EM} always"`],
+  });
+  const data = {
+    appId: 'sovereign-health',
+    assessedAt: '2026-10-11',
+    iter: 1,
+    sevenRLabel: 'Replatform',
+    coverageScore: '0.72',
+    landingZone: `sovereign ${EM} eu`,
+    signalCounts: { high: 2 },
+    blockers: [sig('DATA-01', 'critical')],
+    topFindings: [sig('DATA-01', 'critical'), sig('CRYPTO-01', 'high')],
+    allSignals: [sig('DATA-01', 'critical'), sig('CRYPTO-01', 'high'), sig('CTX-03', 'medium')],
+    nextSteps: [`Run the encryption review ${EM} owner: platform team -- by Q1`],
+    challengeFindings: ['application-architect', 'business-owner', 'grc-compliance-officer', 'finops-lead', 'programme-manager', 'auditor'].map(challenge),
+    challengeStatus: 'included' as const,
+  };
+
+  const views: Array<[string, () => string]> = [
+    ['application-architect', () => formatText(data)],
+    ['business-owner', () => formatViewExec(data, wspDir)],
+    ['grc-compliance-officer', () => formatViewCompliance(data, wspDir)],
+    ['finops-lead', () => formatViewFinops(data, wspDir)],
+    ['programme-manager', () => formatViewMigrationManager(data, wspDir)],
+    ['auditor', () => formatViewAuditor(data, wspDir)],
+  ];
+
+  for (const [name, render] of views) {
+    it(`${name} view`, () => {
+      const text = render();
+      expect(text).not.toContain(EM);
+      expect(text).not.toContain(EN);
+      expect(text).not.toMatch(/\s--\s/);
+    });
+  }
+
+  it('exec view: Replatform description is dash-free and the challenge prose survives normalised', () => {
+    const text = formatViewExec(data, wspDir);
+    expect(text).toContain('Move to the cloud with targeted infrastructure improvements, no code rewrite.');
+    expect(text).toContain('Concern, LLM prose, with a separator');
+  });
+
+  it('compliance view: quoted evidence excerpt is normalised', () => {
+    const text = formatViewCompliance(data, wspDir);
+    expect(text).toContain('Workshop note: "data stays in the EU, always"');
+  });
+});
+
+// #3306: the inline LZ catalogue fit of an application run is shown in the
+// text report, including targets the run skipped and geographies it resolved
+// (run-status.json failed_targets / resolved_targets).
+describe('swao report -- inline LZ catalogue fit section (#3306)', () => {
+  const makeApp = (): { appDir: string; runDir: string } => {
+    const appDir = mkdtempSync(join(tmpdir(), 'swao-report-inline-lz-'));
+    const runDir = join(appDir, 'wsp', 'runs', '2026-10-18T10-00-00');
+    mkdirSync(runDir, { recursive: true });
+    writeFileSync(join(appDir, 'wsp', 'latest-application.txt'), 'runs/2026-10-18T10-00-00', 'utf-8');
+    writeFileSync(join(runDir, 'wsp.yaml'), dump({ assessed_at: '2026-10-18T10:00:00Z', overall: { seven_r_label: 'Replatform' } }), 'utf-8');
+    return { appDir, runDir };
+  };
+  const marker = (extra: Record<string, unknown>) => JSON.stringify({
+    schema_version: '1.0', assessment_type: 'application', app: 'demo', run_id: 'r', started_at: '2026-10-18T10:00:00.000Z',
+    swao_version: '1.4.0', ...extra,
+  });
+
+  it('lists fitted, resolved and skipped targets of a partial run', () => {
+    const { appDir, runDir } = makeApp();
+    try {
+      writeFileSync(join(runDir, 'lz-catalogue-fit-azure-germanywestcentral.yaml'), dump({ provider: 'azure', region: 'germanywestcentral', overall: 'READY' }), 'utf-8');
+      writeFileSync(join(runDir, 'run-status.json'), marker({
+        status: 'partial', exit_code: 0,
+        targets: ['azure:germanywestcentral', 'aws:Atlantis'],
+        resolved_targets: [{ requested: 'azure:Europe', resolved: 'azure:germanywestcentral', geography: 'europe' }],
+        failed_targets: [{ provider: 'aws', region: 'Atlantis', reason: 'Region "Atlantis" not found in aws catalogue' }],
+      }), 'utf-8');
+      const data = generateReport(appDir, 'demo');
+      expect(data.lzCatalogueFit).toEqual({
+        fitted: [{ target: 'azure:germanywestcentral', verdict: 'READY' }],
+        skipped: [{ target: 'aws:Atlantis', reason: 'Region "Atlantis" not found in aws catalogue' }],
+        resolved: [{ requested: 'azure:Europe', resolved: 'azure:germanywestcentral', geography: 'europe' }],
+      });
+      const text = formatText(data);
+      expect(text).toContain('Landing Zone Catalogue Fit');
+      expect(text).toMatch(/azure:germanywestcentral\s+READY/);
+      expect(text).toContain('Resolved: azure:Europe names the geography europe; the default region azure:germanywestcentral was used.');
+      expect(text).toContain('Skipped: aws:Atlantis: Region "Atlantis" not found in aws catalogue');
+      expect(text).toContain('Skipped targets mark the run as partial.');
+      expect(text).not.toMatch(/\s--\s/);
+    } finally {
+      rmSync(appDir, { recursive: true, force: true });
+    }
+  });
+
+  it('a run whose only target was skipped still shows the section', () => {
+    const { appDir, runDir } = makeApp();
+    try {
+      writeFileSync(join(runDir, 'run-status.json'), marker({
+        status: 'partial', failed_targets: [{ provider: 'aws', region: 'Atlantis', reason: 'unknown region' }],
+      }), 'utf-8');
+      const fit = loadInlineLzCatalogueFit(runDir);
+      expect(fit).toEqual({ fitted: [], skipped: [{ target: 'aws:Atlantis', reason: 'unknown region' }], resolved: [] });
+      const lines = formatLzCatalogueFitSection(fit);
+      expect(lines).toContain('  No target was fitted.');
+    } finally {
+      rmSync(appDir, { recursive: true, force: true });
+    }
+  });
+
+  it('a run without LZ targets has no section', () => {
+    const { appDir, runDir } = makeApp();
+    try {
+      writeFileSync(join(runDir, 'run-status.json'), marker({ status: 'complete', exit_code: 0 }), 'utf-8');
+      const data = generateReport(appDir, 'demo');
+      expect(data.lzCatalogueFit).toBeUndefined();
+      expect(formatText(data)).not.toContain('Landing Zone Catalogue Fit');
+    } finally {
+      rmSync(appDir, { recursive: true, force: true });
+    }
   });
 });

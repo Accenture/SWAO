@@ -1,0 +1,35 @@
+# Manual questionnaire for APO07: Manage Human Resources
+# Sample answers for illustration; replace them with the client's own answers.
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: APO07
+framework_id: COBIT_5
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "Is there an up-to-date record of the skills held for each critical IT role?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "HR skills matrix 2026-Q1"
+  - id: q2
+    text: "Are staffing gaps compared with the IT strategy at least twice a year?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Workforce-planning review 2025-H2 + 2026-H1"
+  - id: q3
+    text: "Is there a named successor or cover plan for every role that only one person can currently fill?"
+    answer: "no"
+    severity_if_no: medium
+    evidence_ref: ""
+  - id: q4
+    text: "Do IT staff receive performance reviews on a fixed schedule, with ratings compared across teams?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "PM cycle 2025-2026 documented"
+  - id: q5
+    text: "Are reasons for leaving collected from departing staff and used to adjust people plans?"
+    answer: "n/a"
+    severity_if_no: low
+    evidence_ref: "Attrition below threshold; trend analysis paused for FY26"

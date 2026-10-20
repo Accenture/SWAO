@@ -11,6 +11,27 @@
 # regardless of customer cooperation; some can be closed by context
 # inputs, some require future product features.
 #
+# Applicability (requires_evidence):
+#
+# An entry may list evidence kinds the workload must show before the
+# blind spot applies. Pass 13 enforces them for service workloads
+# (assessment.type: service, one server or VM per intake row) only;
+# application assessments always get the full catalogue. A supplied
+# input under the entry's input_paths always keeps the entry. Entries
+# that do not apply are left out of coverage and SCOPE signals and are
+# listed in scope_not_applicable with the reason.
+#
+# - container_platform (#3246): a deterministic signal of the run or the
+#   app record names Kubernetes, OpenShift, a service mesh or similar.
+# - web_facing (#3290, Design 110 D-25): a deterministic signal of the
+#   run names an HTTP endpoint, URL, web UI, API, web server or API
+#   gateway; or the app record shows vendor_type saas, an internet-facing
+#   network zone (DMZ, internet, external), or web or API wording in the
+#   app name, business function, authentication method (SAML, OAuth,
+#   OpenID Connect) or integration notes. The vendor website column is
+#   not evidence. LLM-inferred signals and negated wording are ignored
+#   for both kinds.
+#
 # See:
 # - ADR-0030 (Assessment Scope Disclosure)
 # - SPEC.md §10.1c
@@ -36,6 +57,9 @@ blind_spots:
       - "wsp/inputs/platform"
     input_path_hint: "Drop network policies under wsp/inputs/network-policies/ or platform configs under wsp/inputs/platform/"
     related_regimes: [BSI_C5, ISO_27001, SOC_2]
+    # #3246: a service workload (server or VM from an intake row) gets this
+    # blind spot only when it shows container-platform evidence.
+    requires_evidence: [container_platform]
 
   - id: BS_RUNTIME_SECRETS
     name: "Runtime secret injection"
@@ -84,6 +108,7 @@ blind_spots:
       - "wsp/inputs/pen-test"
     input_path_hint: "Drop mesh config exports or a pen-test report under wsp/inputs/service-mesh/ or wsp/inputs/pen-test/"
     related_regimes: [GDPR, HIPAA, BSI_C5]
+    requires_evidence: [container_platform]
 
   - id: BS_SIEM_DETECTION
     name: "SIEM / EDR detection rules"
@@ -117,6 +142,10 @@ blind_spots:
       - "wsp/inputs/api-gateway"
     input_path_hint: "Document edge controls at wsp/inputs/edge-controls.md or stage WAF/API gateway exports under wsp/inputs/waf/ or wsp/inputs/api-gateway/"
     related_regimes: [PCI_DSS, GDPR]
+    # #3290 (Design 110 D-25): a service workload gets this blind spot
+    # only when it shows web-facing evidence; a WAF gap in front of a
+    # batch or back-end server is noise.
+    requires_evidence: [web_facing]
 
   - id: BS_CLOUD_IAM
     name: "Cloud IAM beyond IaC stubs"

@@ -29,6 +29,7 @@ import { runSynthPass } from './passes/pass-09-synth.js';
 import { runBlocksPass } from './passes/pass-12-blocks.js';
 import { runScopePass } from './passes/pass-13-scope.js';
 import { runMalwarePass } from './passes/pass-14-malware.js';
+import { runIamPass } from './passes/pass-21-iam.js';
 
 /**
  * AssessOrchestrator (#0549) -- owns the ordered application-assessment pass
@@ -72,9 +73,8 @@ export interface AppAssessmentPassDescriptor {
   llmPassName: string | null;
 }
 
-// Ordered profile. Order here is the canonical pass order; the caller still
-// honours the user-specified --passes order when iterating, using this map
-// purely as the lookup table (mirrors the previous PASS_MAP semantics).
+// Lookup table for the uniform passes, listed by pass number. The execution
+// order is CANONICAL_PASS_ORDER below (#3152), not the key order of this map.
 const PASS_PROFILE: Record<AppAssessmentPassKey, AppAssessmentPassDescriptor> = {
   inv: { num: '01', name: 'inventory', runner: runInvPass, llmPassName: null },
   state: { num: '02', name: 'state_analysis', runner: runStatePass, llmPassName: null },
@@ -96,6 +96,7 @@ const PASS_PROFILE: Record<AppAssessmentPassKey, AppAssessmentPassDescriptor> = 
 // explicitly via --passes <key>.
 const OPT_IN_PASSES: Record<string, AppAssessmentPassDescriptor> = {
   malware: { num: '14', name: 'malware_scanning', runner: runMalwarePass, llmPassName: null },
+  iam: { num: '21', name: 'iam_assessment', runner: runIamPass, llmPassName: null },
 };
 
 export class AssessOrchestrator {
@@ -107,7 +108,7 @@ export class AssessOrchestrator {
       ?? OPT_IN_PASSES[key];
   }
 
-  /** Canonical ordered pass keys (the default pass profile). */
+  /** Pass keys of the default pass profile, by pass number (execution order: CANONICAL_PASS_ORDER). */
   get passKeys(): AppAssessmentPassKey[] {
     return Object.keys(PASS_PROFILE) as AppAssessmentPassKey[];
   }
@@ -122,3 +123,214 @@ export class AssessOrchestrator {
 }
 
 export const assessOrchestrator = new AssessOrchestrator();
+
+// ---------------------------------------------------------------------------
+// Execution order, aliases and --skip-llm filtering (#3152, #3158)
+//
+// Kept here as pure functions so the host `swao assess` command stays thin and
+// the decisions are unit-tested in this package (the host CLI tests spawn the
+// built binary and cannot exercise source changes directly).
+// ---------------------------------------------------------------------------
+
+/**
+ * Canonical execution order. The user-supplied `--passes` order and the
+ * pass_profile / lens order are treated as a SET; the host always runs in this
+ * sequence (#1282 root B, #1350, #3152).
+ *
+ * Signal-read dependencies that fix the order:
+ * - `dynamic`, `scope` and `malware` read no other pass file, so they run with
+ *   the static passes and their DYN, SCOPE and MAL signals are on disk before
+ *   COMP evaluates the run (#3152: previously they ran after COMP and BLOCKS).
+ * - `lzr` (Pass 23, only when `--lzr <landingZoneId>` is set) runs before
+ *   SYNTH, which reads `23-lzr.yaml` of the current run for its LZ adjustment
+ *   (#3152 / #3158: previously it ran after the loop, so SYNTH read the
+ *   previous run's verdict).
+ * - `comp` runs before `synth` so the 7R verdict sees compliance gaps (#1350).
+ *   No bundled framework names a SYNTH evidence basis, so COMP loses nothing.
+ * - `blocks` runs last: its prompt carries the SYNTH context (7R label,
+ *   coverage score, rationale) from `09-synth.yaml` of the current run, which
+ *   did not exist yet when BLOCKS ran before SYNTH (#3152). BLOCKS emits no
+ *   signals, so SYNTH loses nothing by running first.
+ */
+export const CANONICAL_PASS_ORDER: readonly string[] = [
+  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
+  'dynamic', 'scope', 'malware', 'lzr', 'comp', 'synth', 'blocks',
+];
+
+/** Default `--passes` list (every default-profile pass; malware is opt-in, lzr is driven by `--lzr`). */
+export const DEFAULT_PASS_KEYS: readonly string[] = [
+  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
+  'dynamic', 'scope', 'comp', 'synth', 'blocks',
+];
+
+/** Passes removed from the run by `--skip-llm`: their result is meaningless
+ *  without an LLM (#1625, #2441). DATA and SYNTH stay and emit their
+ *  llmSkipResult marker, because the host withholds the provider (#3158). */
+export const SKIP_LLM_REMOVED_PASSES: readonly string[] = ['ctx', 'comp', 'blocks'];
+
+/**
+ * Shorthand IDs used in lens definitions and docs (#1040). `lzr` maps to
+ * `null`: Pass 23 is not a `--passes` key, it runs only when `--lzr
+ * <landingZoneId>` names a landing zone. It used to map to `scope`, which ran
+ * the wrong pass under the LZR name (#3152).
+ */
+export const PASS_ALIASES: Readonly<Record<string, string | null>> = {
+  mal: 'malware',
+  dyn: 'dynamic',
+  lzr: null,
+};
+
+/** Every key accepted in `--passes` or pass_profile, aliases included. */
+export const INDIVIDUAL_PASS_KEYS: ReadonlySet<string> = new Set([
+  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
+  'synth', 'dynamic', 'comp', 'blocks', 'scope', 'malware',
+  ...Object.keys(PASS_ALIASES),
+]);
+
+/** Opt-in passes: not in the default list, but added when a configured lens or
+ *  pass_profile names them and the operator did not pass an explicit `--passes`. */
+export const OPT_IN_PASS_KEYS: ReadonlySet<string> = new Set(['malware']);
+
+/**
+ * Resolve a pass key or alias (case-insensitive) to its canonical key.
+ * Returns `null` for keys that are recognised but select no `--passes` entry
+ * (`lzr`), and `undefined` for unknown keys.
+ */
+export function resolvePassAlias(key: string): string | null | undefined {
+  const lc = key.trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(PASS_ALIASES, lc)) return PASS_ALIASES[lc] ?? null;
+  return INDIVIDUAL_PASS_KEYS.has(lc) ? lc : undefined;
+}
+
+/** Deduplicate (case-insensitive) and sort into CANONICAL_PASS_ORDER. Unknown keys keep their relative order at the end. */
+export function sortPassesCanonical(keys: readonly string[]): string[] {
+  const unique = Array.from(new Set(keys.map((k) => k.trim().toLowerCase()).filter((k) => k.length > 0)));
+  const rank = (k: string): number => {
+    const i = CANONICAL_PASS_ORDER.indexOf(k);
+    return i === -1 ? CANONICAL_PASS_ORDER.length : i;
+  };
+  return unique
+    .map((k, i) => ({ k, i }))
+    .sort((a, b) => rank(a.k) - rank(b.k) || a.i - b.i)
+    .map((e) => e.k);
+}
+
+/**
+ * Normalise a requested `--passes` list: resolve aliases (`mal`, `dyn`), drop
+ * `lzr` (it selects Pass 23, which `--lzr <landingZoneId>` drives) and sort into
+ * canonical order. Unknown keys are kept so the host can warn about them.
+ * The TUI writes lens pass codes (MAL, LZR) straight into `--passes` (#3158).
+ */
+export function normaliseRequestedPasses(keys: readonly string[]): { passes: string[]; lzrRequested: boolean } {
+  let lzrRequested = false;
+  const out: string[] = [];
+  for (const raw of keys) {
+    const lc = raw.trim().toLowerCase();
+    if (lc.length === 0) continue;
+    if (lc === 'lzr') lzrRequested = true;
+    const canonical = resolvePassAlias(lc);
+    if (canonical === null) continue;
+    out.push(canonical ?? lc);
+  }
+  return { passes: sortPassesCanonical(out), lzrRequested };
+}
+
+/**
+ * Reference catalogues under swao/controls/ that no pass reads (#3158). When
+ * a catalogue is listed here, orchestrator.test.ts checks that no pass source
+ * names it, so the list stays accurate. #3160 wired the five catalogues that
+ * were listed (vendor-sdk, db-compatibility and legacy-indicators in Pass 01
+ * via passes/inv-reference-scans.ts; sovereign-service in Pass 07; licence-risk
+ * in Pass 14), so the list is empty; WIRED_REFERENCE_CATALOGUES records them.
+ */
+export const UNREAD_REFERENCE_CATALOGUES: ReadonlyArray<{ file: string; intendedConsumer: string }> = [];
+
+/** Reference catalogues wired by #3160 and the pass that reads each one. */
+export const WIRED_REFERENCE_CATALOGUES: ReadonlyArray<{ file: string; consumer: string }> = [
+  { file: 'vendor-sdk-catalogue.yaml', consumer: 'Pass 01 INV-09 (passes/inv-reference-scans.ts)' },
+  { file: 'db-compatibility-catalogue.yaml', consumer: 'Pass 01 INV-07 (passes/inv-reference-scans.ts)' },
+  { file: 'legacy-indicators-catalogue.yaml', consumer: 'Pass 01 INV-08 (passes/inv-reference-scans.ts)' },
+  { file: 'licence-risk-catalogue.yaml', consumer: 'Pass 14 MAL-10 and MAL-13 (ORT licence classification)' },
+  { file: 'sovereign-service-catalogue.yaml', consumer: 'Pass 07 EGR sovereign service signals' },
+];
+
+/** Apply `--skip-llm` to a comma-separated `--passes` value. */
+export function applySkipLlm(passes: string): string {
+  return passes
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !SKIP_LLM_REMOVED_PASSES.includes(p.toLowerCase()))
+    .join(',');
+}
+
+/** Minimal lens shape (mirrors LensDef in the host's commands/lenses.ts). */
+export interface PassProfileLens {
+  id: string;
+  passes: readonly string[];
+}
+
+export interface PassProfileExpansion {
+  /** Canonical pass keys enabled by the profile (aliases resolved). */
+  enabledKeys: Set<string>;
+  /** Entries that are neither a lens ID nor a pass key. */
+  unknownEntries: string[];
+  /** Entries removed as case-insensitive duplicates. */
+  duplicateEntries: string[];
+  /** True when the profile (directly or through a lens) names LZR. */
+  lzrRequested: boolean;
+}
+
+/**
+ * Expand an `assessment.lenses` / `pass_profile` list into canonical pass
+ * keys. Lens pass codes go through the same alias resolution as individual
+ * entries (#3158: `security-focus` lists MAL and `cloud-migration` lists LZR;
+ * neither matched a key before, so malware was silently dropped).
+ */
+export function expandPassProfile(profile: readonly string[], lenses: readonly PassProfileLens[]): PassProfileExpansion {
+  const enabledKeys = new Set<string>();
+  const unknownEntries: string[] = [];
+  const duplicateEntries: string[] = [];
+  let lzrRequested = false;
+  const seen = new Set<string>();
+  const addKey = (raw: string): boolean => {
+    if (raw.trim().toLowerCase() === 'lzr') lzrRequested = true;
+    const canonical = resolvePassAlias(raw);
+    if (canonical === undefined) return false;
+    if (canonical !== null) enabledKeys.add(canonical);
+    return true;
+  };
+  for (const entry of profile) {
+    const lc = entry.toLowerCase();
+    if (seen.has(lc)) { duplicateEntries.push(entry); continue; }
+    seen.add(lc);
+    const lens = lenses.find((l) => l.id === entry);
+    if (lens) {
+      for (const p of lens.passes) addKey(p);
+    } else if (!addKey(entry)) {
+      unknownEntries.push(entry);
+    }
+  }
+  return { enabledKeys, unknownEntries, duplicateEntries, lzrRequested };
+}
+
+/**
+ * Filter the requested pass list by an expanded profile. Opt-in passes the
+ * profile names (malware) are added when the operator did not set `--passes`
+ * explicitly, because the profile is then the only statement of intent.
+ * An empty enabled set leaves the list unfiltered (e.g. a profile of only
+ * `lzr`, which selects no `--passes` entry).
+ */
+export function filterByPassProfile(
+  requested: readonly string[],
+  expansion: PassProfileExpansion,
+  passesExplicit: boolean,
+): string[] {
+  if (expansion.enabledKeys.size === 0) return [...requested];
+  const kept = requested.filter((p) => expansion.enabledKeys.has(p));
+  if (!passesExplicit) {
+    for (const k of expansion.enabledKeys) {
+      if (OPT_IN_PASS_KEYS.has(k) && !kept.includes(k)) kept.push(k);
+    }
+  }
+  return sortPassesCanonical(kept);
+}

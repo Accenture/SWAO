@@ -21,6 +21,7 @@
     { "path": "../../@swao/core" },
     { "path": "../../@swao/community-frameworks" },
     { "path": "../../@swao/module-landing-zone" },
+    { "path": "../../@swao/module-service-assessment" },
     { "path": "../../@swao/tui-kit" }
   ],
   "include": ["src/**/*"],

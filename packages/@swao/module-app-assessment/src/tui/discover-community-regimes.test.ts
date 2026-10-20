@@ -85,6 +85,12 @@ describe('discoverCommunityRegimes -- empty-state detection (#0621)', () => {
     addFramework(ws, 'broken', 'framework:\n  name: No Id Here\n');
     expect(discoverCommunityRegimes(ws)).toEqual([]);
   });
+
+  it('uses the shared discovery (#3297): an invalid meta is skipped, listed: false still shows', () => {
+    addFramework(ws, 'bad-mode', 'framework:\n  id: BAD_MODE\n  name: Bad mode\n  scoring_mode: weighted\n');
+    addFramework(ws, 'nist-hipaa-demo', 'framework:\n  id: NIST_HIPAA_DEMO\n  name: HIPAA demo\n  listed: false\n');
+    expect(discoverCommunityRegimes(ws).map(r => r.id)).toEqual(['NIST_HIPAA_DEMO']);
+  });
 });
 
 describe('discoverCommunityRegimes -- bundled dir + Demo filter (#1601)', () => {

@@ -62,6 +62,7 @@ export const FrameworkMetaSchema = z.object({
     id: RegimeIdSchema,
     name: z.string().min(3).max(120).optional(),
     version: z.string().min(1).optional(),
+    authority: z.string().optional(),
     contributor: z.union([
       z.string().min(1),
       ContributorSchema,
@@ -76,6 +77,10 @@ export const FrameworkMetaSchema = z.object({
     national_overlay_of: RegimeIdSchema.optional(),
     companion_standards: z.array(z.string()).default([]),
     assessment_type_scope: z.array(z.string()).default([]),
+    // #3297: the framework list is built from these metas (no _registry.yaml).
+    // `listed: false` keeps a shipped folder out of `swao framework list` and
+    // the copy helper (the role absence from the old registry played).
+    listed: z.boolean().default(true),
   }),
 });
 
@@ -128,6 +133,8 @@ const EvidenceBasisEntrySchema = z.union([
   z.object({ regulatory_approval: z.string() }),
   z.object({ sbom_scan: z.string() }),
   z.object({ apm_export: z.string() }),
+  // #3150: a single named signal (used by EC_CSF and SECNUMCLOUD controls).
+  z.object({ signal: z.string().min(1) }),
 ]);
 
 export const RegimeControlSchema = z.object({

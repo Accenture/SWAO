@@ -17,7 +17,7 @@
 # Runbook: LLM Provider Swap (Anthropic <-> Ollama)
 
 **Applies to:** SWAO v0.0.1+  
-**SPEC criterion:** SC-24 -- at least one LLM provider switch demonstrated end-to-end  
+**SPEC criterion:** SC-24: at least one LLM provider switch demonstrated end-to-end  
 **Related issues:** #0117 (OllamaLlmProvider), #0118 (credential store), #0126 (this runbook)
 
 ---
@@ -26,7 +26,7 @@
 
 SWAO routes all LLM calls through a single factory function (`createLlmProvider()` in
 `src/providers/llm/factory.ts`). The active provider is selected by the `SWAO_LLM_PROVIDER`
-environment variable. Swapping providers requires no code changes -- only a variable change
+environment variable. Swapping providers requires no code changes, only a variable change
 and credential setup.
 
 Supported providers:
@@ -260,6 +260,22 @@ bash scripts/validate-llm-swap.sh
 > still pass a `--llm-stub` flag that the current `swao assess` no longer defines (the
 > stub was removed in #0473). Those scripts need refreshing to use cassette replay; tracked
 > separately, not part of #0601.
+
+---
+
+## Timeouts, retries and concurrency (#3284)
+
+All providers share one request policy: 6 attempts per call (back-off 3, 6, 12,
+24, 48 s), retries on 408, 429 and 5xx, a per-attempt idle timeout and a
+provider-level concurrency limit.
+
+| Setting | Default | Notes |
+|---|---|---|
+| `SWAO_LLM_IDLE_TIMEOUT_MS` | `120000` | Idle timeout per attempt (headers wait and gaps between body chunks). `SWAO_ANTHROPIC_IDLE_TIMEOUT_MS` is kept as an alias. Non-streaming calls wait at least 300 s for headers. |
+| `providers.llm.max_concurrency` (`.swao.yml`) | `4` | LLM requests in flight per endpoint, shared by all passes. A gateway connector may set `max_concurrency`; the `.swao.yml` value wins. |
+
+Every attempt, wait, timeout, retry, HTTP error and result is logged as
+`provider.llm.<provider>.*`. See [Log event reference](/runbooks/log-events).
 
 ---
 

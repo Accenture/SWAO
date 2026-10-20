@@ -102,9 +102,29 @@ describe('OllamaLlmProvider (#0117)', () => {
   });
 
   it('throws on non-ok response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' }));
+    // #3284: 503 is transient under the shared retry policy; after the
+    // 6 attempts the error still names the status.
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable' });
+    vi.stubGlobal('fetch', mockFetch);
+    vi.useFakeTimers();
+    try {
+      const llm = new OllamaLlmProvider();
+      const p = llm.complete('prompt');
+      const assertion = expect(p).rejects.toThrow('503');
+      await vi.runAllTimersAsync();
+      await assertion;
+      expect(mockFetch).toHaveBeenCalledTimes(6);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fails fast on a non-transient status (400)', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 400, statusText: 'Bad Request' });
+    vi.stubGlobal('fetch', mockFetch);
     const llm = new OllamaLlmProvider();
-    await expect(llm.complete('prompt')).rejects.toThrow('503');
+    await expect(llm.complete('prompt')).rejects.toThrow('Ollama request failed: 400');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('throws when response field is missing', async () => {

@@ -24,6 +24,7 @@ import { AnthropicLlmProvider } from '../anthropic.js';
 import { BedrockLlmProvider } from '../bedrock.js';
 import { OllamaLlmProvider } from '../ollama.js';
 import { OpenLlmProvider } from '../open-llm-provider.js';
+import { applyLlmConcurrency } from '../concurrency.js';
 import type { LoadedConnector } from './connector-loader.js';
 import type { Connector } from './connector-schema.js';
 
@@ -174,7 +175,14 @@ const _warnedModelCatalogueKeys = new Set<string>();
  */
 export function createProviderFromConnector(
   loaded: LoadedConnector,
-  opts?: { model?: string; env?: string; appId?: string; baseUrl?: string },
+  opts?: {
+    model?: string;
+    env?: string;
+    appId?: string;
+    baseUrl?: string;
+    /** #3284: providers.llm.max_concurrency from .swao.yml; beats the connector value. */
+    maxConcurrency?: number;
+  },
 ): ResolvedGatewayProvider {
   const connector = loaded.file.connector;
   const conn = applyEnvironment(connector, opts?.env);
@@ -265,13 +273,14 @@ export function createProviderFromConnector(
       );
       break;
     case 'anthropic-messages':
-      provider = new AnthropicLlmProvider(apiKey, model, temperature, maxTokens, effectiveBaseUrl);
+      // #3284: appId threaded so events also reach the app log.
+      provider = new AnthropicLlmProvider(apiKey, model, temperature, maxTokens, effectiveBaseUrl, opts?.appId);
       break;
     case 'ollama':
-      provider = new OllamaLlmProvider(model, effectiveBaseUrl, temperature, seed, cost);
+      provider = new OllamaLlmProvider(model, effectiveBaseUrl, temperature, seed, cost, opts?.appId);
       break;
     case 'bedrock':
-      provider = new BedrockLlmProvider(model, effectiveBaseUrl, temperature, maxTokens, cost);
+      provider = new BedrockLlmProvider(model, effectiveBaseUrl, temperature, maxTokens, cost, opts?.appId);
       break;
     default: {
       // Exhaustiveness guard -- the schema enum prevents this at parse time.
@@ -279,6 +288,10 @@ export function createProviderFromConnector(
       throw new Error(`Unsupported connector protocol: ${String(never)}`);
     }
   }
+
+  // #3284 (Design 110 D-14): provider-level concurrency limit. Precedence:
+  // .swao.yml providers.llm.max_concurrency > connector max_concurrency > 4.
+  applyLlmConcurrency(provider, opts?.maxConcurrency ?? connector.max_concurrency);
 
   let sha256 = '';
   try {

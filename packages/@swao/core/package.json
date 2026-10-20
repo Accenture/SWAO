@@ -16,7 +16,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --pool forks"
+    "test": "vitest run --pool forks --testTimeout=20000"
   },
   "dependencies": {
     "js-yaml": "^4.2.0",

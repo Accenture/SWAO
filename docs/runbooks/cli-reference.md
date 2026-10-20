@@ -62,16 +62,16 @@ For a portfolio (multiple apps in one engagement) jump to the
                                     +----------+    +----------+
 ```
 
-- **init / setup** -- one-time per workspace.
-- **health-check** -- always before the first assess; re-run whenever the
+- **init / setup**: one-time per workspace.
+- **health-check**: always before the first assess; re-run whenever the
   environment changes (new licence, new MCP install, new catalogue).
-- **assess** -- once per app per engagement (re-run when source
+- **assess**: once per app per engagement (re-run when source
   code or imports change).
-- **report** -- generate stakeholder views from completed assess
+- **report**: generate stakeholder views from completed assess
   output. Cheap to re-run; no LLM calls.
-- **export** -- emit the BI bundle for PowerBI dashboards. Run
+- **export**: emit the BI bundle for PowerBI dashboards. Run
   after every assess if you want fresh dashboards.
-- **challenge** -- optional adversarial review of an assessment
+- **challenge**: optional adversarial review of an assessment
   before the report goes to the client.
 
 ---
@@ -86,16 +86,26 @@ Each entry below is a one-paragraph orientation. Run
 **Purpose.** Scaffold a fresh SWAO workspace: `.swao.yml` engagement
 spine, `apps/` skeleton, `catalogs/`, sample `imports/` content. Use
 when you are starting a new engagement and don't yet have a
-workspace directory.
+workspace directory. The workspace-root `.swao.yml` (the file that marks
+the workspace for `swao assess` and `swao report`) is written when absent
+and never overwritten; edit its `engagement:` block afterwards. Re-running
+`swao init` in a workspace that lacks it adds it.
 
 **Typical use.** First command of any engagement.
 
 ```cmd
 swao init                  :: scaffold in the current directory
 swao init C:\swao-acme     :: scaffold in a named directory
+swao init --reconfigure    :: refresh the workspace framework mirror only
 ```
 
-Pairs with `setup` -- they overlap on functionality. `init` is the
+`--reconfigure` without `--name` refreshes the workspace-level scaffolds
+(community-framework mirror, Power BI templates where licensed,
+`.gitignore`) and leaves `apps/` unchanged; it scaffolds no app. With
+`--name <app-id>` it also refreshes that app's scaffold without
+overwriting its `.swao.yml`.
+
+Pairs with `setup`: they overlap on functionality. `init` is the
 non-interactive script-friendly path; `setup` is the guided TUI.
 
 ### `swao setup`
@@ -126,7 +136,9 @@ swao setup
 
 Output: `ok` / `warn` / `INFO` / `FAIL` per row. `--format text`
 (default), `--format yaml`, or `--format json` for machine-readable
-output.
+output. A missing credential vault is a WARN (no credentials stored yet,
+the normal state of a fresh workspace); a vault that cannot be decrypted
+is a FAIL.
 
 **Typical use.** Always run before the first `assess` of an
 engagement. Re-run whenever the environment changes (new MCP
@@ -174,16 +186,16 @@ swao assess --portfolio                      :: all apps (Enterprise)
 **Purpose.** Generate stakeholder-facing reports from completed
 assess output. Six views ship today:
 
-- `technical` (default) -- full signal listing for engineers
-- `exec` -- one-page disposition + blockers for executives
-- `compliance` -- regime-by-regime breakdown for GRC
-- `finops` -- portability and egress cost view
-- `migration-manager` -- runbook + risk register for programme leads
-- `auditor` -- traceability coverage with FP narratives
-- `lzr` -- landing zone readiness focused view
+- `technical` (default): full signal listing for engineers
+- `exec`: one-page disposition + blockers for executives
+- `compliance`: regime-by-regime breakdown for GRC
+- `finops`: portability and egress cost view
+- `migration-manager`: runbook + risk register for programme leads
+- `auditor`: traceability coverage with FP narratives
+- `lzr`: landing zone readiness focused view
 
-Three formats: `text` (default), `yaml`, `json`. `pdf` requires
-Consultant tier. `--view auditor --format json` produces a
+Three formats on every tier: `text` (default), `yaml`, `json`. `pdf` and
+`html` require a Consultant or Enterprise licence. `--view auditor --format json` produces a
 Zod-validated payload for CI / ETL consumers.
 
 **Typical use.** After every assess. Cheap (no LLM calls); regenerate
@@ -193,14 +205,21 @@ freely as views are tuned for stakeholder feedback.
 swao report --app my-app --view auditor
 swao report --app my-app --view exec --format yaml
 swao report --app my-app --all-views    :: write all views to wsp/reports/
+swao report --app my-app --run 2026-10-18T21-36-25   :: report that run, not the latest
 ```
+
+`--run <id>` (also accepted as `runs/<id>`) selects `wsp/runs/<id>` for the
+data, every view, the challenge pairing and the output file name, for
+application and `--type landing-zone-catalog` reports. A malformed id, a
+missing run or a run of another assessment type exits 1 with an `[error]`
+line instead of falling back to the latest run.
 
 ### `swao export`
 
 **Purpose.** Emit the BI export bundle: 19-table star schema in
 CSV + NDJSON + XLSX, with the `swao-report.pbit` and
 `swao-portfolio.pbit` PowerBI templates ready for refresh against
-the bundle. Bundle path is printed on completion -- paste it into
+the bundle. Bundle path is printed on completion: paste it into
 PowerBI Desktop's SWAOExportPath parameter.
 
 **Typical use.** After every assess (single-app) or after the last
@@ -249,10 +268,10 @@ swao menu
 
 **Purpose.** Licence management. Three subcommands:
 
-- `status` -- show current tier + fingerprint + usage counters
-- `request` -- generate a licence-request email template
+- `status`: show current tier + fingerprint + usage counters
+- `request`: generate a licence-request email template
   pre-filled with the machine fingerprint
-- `activate <key>` -- install a licence key received by email
+- `activate <key>`: install a licence key received by email
 
 **Typical use.** Upgrade from Community to Consultant or Enterprise when
 the engagement needs portfolio mode, PDF export, Terraform
@@ -267,18 +286,78 @@ swao license activate <key-from-email>
 
 ### `swao mcp`
 
-**Purpose.** Start the SWAO MCP server on the stdio transport.
+**Purpose.** Start the SWAO MCP server, on the stdio transport by default.
 Exposes `swao_assess`, `swao_report`, `swao_health_check`, and
 `swao_challenge` as MCP tools for Claude Desktop, Claude.ai web,
 or any MCP-compatible client.
 
+Service Portfolio Assessment tools (#3213): `swao_service_portfolio`,
+`swao_service_app`, `swao_service_research`, `swao_service_waves`,
+`swao_service_vendors`, `swao_service_delta`, `swao_service_scaffold`,
+`swao_service_runs` (read; gate `service-assessment`, Community) and
+`swao_service_init`, `swao_service_research_run`, `swao_service_export`
+(export: Enterprise), the MCP
+counterparts of `swao service`. See the MCP integration runbook, section 4.1.
+
+```
+swao mcp [options]
+swao mcp install
+```
+
+| Flag | Description |
+|---|---|
+| `--http` | Use the HTTP transport instead of stdio (optional) |
+| `--port <port>` | Listening port (default: 3737, only with `--http`) |
+| `--workspace <path>` | Pin the workspace root path (overrides cwd-based detection) |
+
 **Typical use.** Not invoked directly by operators. Called by
-Claude Desktop based on the entry in
-`%APPDATA%\Claude\claude_desktop_config.json`. Surface in `health-check`
-under `SWAO-MCP`.
+Claude Desktop based on the `mcpServers` entry in its config file.
+Surface in `health-check` under `SWAO-MCP`.
+
+**Claude Desktop config locations (Windows).**
+
+- Microsoft Store (MSIX) installation:
+  `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\claude_desktop_config.json`
+  (considered only when that folder exists, that is after Claude Desktop
+  has run at least once)
+- Direct .exe (classic) installation:
+  `%APPDATA%\Claude\claude_desktop_config.json`
+
+Claude Desktop reads the Store (MSIX) config when it exists; otherwise it
+reads the `%APPDATA%` config. On macOS the config is
+`~/Library/Application Support/Claude/claude_desktop_config.json`.
+
+**Registering SWAO.** `swao mcp install`, `swao init --mcp` and the
+MCP Client step of the Setup Wizard apply the same rule: they update the
+config Claude Desktop reads (created if needed) plus every other config
+that already holds a SWAO entry, and list each file with its result. A
+config without a SWAO entry is not created or changed while the Store
+config is the one Claude Desktop reads. All three register the same
+binary: a stable copy in the folder of the running binary, so a rebuild or
+upgrade of the downloaded binary is not blocked by Claude Desktop holding
+the registered file open. The copy is named for the running binary's own
+tier on every platform (`swao-<tier>-<os>-<arch>[.exe]`; the Enterprise
+Windows binary registers `swao-enterprise-win-x64.exe`), so a release
+binary is registered under its own name and a binary of one tier never
+overwrites a binary of another tier. Registering the MCP server is an
+Enterprise feature: from the Community or Consultant binary, or without an
+Enterprise licence, all three refuse with the `[LICENSE]` message (the CLI
+exits 1) before anything is copied or written. The copy is made only when the running
+binary is a SWAO release binary: when SWAO runs from source
+(`node dist/index.js`), nothing is copied and the entry registers `node`
+with the script path and `mcp` as arguments. An existing SWAO entry is
+recognised under any key, whether it registers a SWAO binary or `node` with
+a SWAO script, and is updated in place. After each
+upgrade, quit Claude Desktop fully via the system tray icon (Quit, not just
+close the window), run `swao mcp install`, then start Claude Desktop again.
+While Claude Desktop runs it holds the stable copy open, so the copy cannot
+be refreshed: `swao mcp install` then prints a warning and keeps the
+previous copy registered.
 
 ```cmd
 swao mcp           :: typically auto-launched by Claude Desktop
+swao mcp --http --port 3737   :: HTTP transport on localhost for Claude Code
+swao mcp install   :: write or refresh the SWAO entry in the Claude Desktop config(s)
 ```
 
 ### `swao credential`
@@ -351,7 +430,8 @@ swao install-playwright
 **Purpose.** Emit Terraform modules for a sovereign landing zone
 based on the wsp-plan output. Reads the assess pipeline's selected
 landing-zone catalogue entry and renders HCL ready for `terraform
-apply`. Consultant or Enterprise tier required.
+apply`. Enterprise roadmap: the Enterprise binary prints a coming-soon
+notice; lower tiers print the Enterprise `[LICENSE]` block and exit 2.
 
 **Typical use.** After assess completes and the 7R verdict is
 Rehost / Replatform / Refactor / Re-architect (any disposition
@@ -415,11 +495,11 @@ swao report --app my-app --view technical
 Ready-to-edit batch scripts for the common multi-app + portfolio
 workflow live under `examples/batch-samples/`:
 
-- `assess-portfolio.cmd` -- Windows; iterates a configurable app
+- `assess-portfolio.cmd`: Windows; iterates a configurable app
   list, runs `health-check` as a pre-flight gate, halts on any failure,
   finishes with `export --portfolio`.
-- `assess-portfolio.sh` -- POSIX equivalent (macOS / Linux / Git Bash).
-- `README.md` -- operator instructions: what variables to edit,
+- `assess-portfolio.sh`: POSIX equivalent (macOS / Linux / Git Bash).
+- `README.md`: operator instructions: what variables to edit,
   how to run, how to interpret the exit codes.
 
 Copy the script to the operator's workspace, edit the three
@@ -445,7 +525,7 @@ swao health-check --help
 ```
 
 If something in this runbook contradicts `swao <cmd> --help`, the
-help is correct -- file a docs fix.
+help is correct: file a docs fix.
 
 ---
 

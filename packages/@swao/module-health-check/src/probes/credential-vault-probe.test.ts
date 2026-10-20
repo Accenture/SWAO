@@ -33,11 +33,13 @@ function cleanup(dir: string): void {
 }
 
 describe('buildCredentialVaultProbe (#2325 Feature 3)', () => {
-  it('returns FAIL when vault file is absent', () => {
+  // #3344: a fresh workspace has no vault yet; that is a WARN, not a FAIL.
+  it('returns WARN (not FAIL) when vault file is absent', () => {
     const dir = makeTempDir();
     try {
       const result = buildCredentialVaultProbe(dir);
-      expect(result.status).toBe('fail');
+      expect(result.status).toBe('warn');
+      expect(result.message).toContain('no credentials stored yet');
       expect(result.vaultExists).toBe(false);
       expect(result.decryptable).toBe(false);
       expect(result.keyCount).toBe(0);

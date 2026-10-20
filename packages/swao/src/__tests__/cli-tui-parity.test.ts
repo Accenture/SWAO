@@ -61,8 +61,8 @@ const MODULE_HTML_REPORT_COMMANDS_DIR = join(
   REPO_ROOT, 'packages', '@swao', 'module-html-report', 'src', 'commands',
 );
 // Sprint-128 #2132: module-terraform, module-challenge, module-portfolio moved to
-// swao-premium/ (sibling to swao/ in the private monorepo, absent from public CI).
-// Paths below resolve to swao-premium/ when present; existsSync guards skip them
+// the private premium tree (sibling to swao/, absent from public CI).
+// Paths below resolve to the private premium tree when present; existsSync guards skip them
 // gracefully in the public Accenture/SWAO checkout.
 const PREMIUM_PACKAGES_ROOT = join(REPO_ROOT, '..', 'swao-premium', 'packages', '@swao');
 const PREMIUM_PRESENT = existsSync(PREMIUM_PACKAGES_ROOT);
@@ -97,15 +97,15 @@ const MODULE_TUI_DIR = join(REPO_ROOT, 'packages', '@swao', 'module-app-assessme
 const MODULE_DOCTOR_TUI_DIR = join(REPO_ROOT, 'packages', '@swao', 'module-health-check', 'src', 'tui');
 const MODULE_HTML_REPORT_TUI_DIR = join(REPO_ROOT, 'packages', '@swao', 'module-html-report', 'src', 'tui');
 // #0578: GenerateTfScreen relocated to @swao/module-terraform/src/tui/
-// (now in swao-premium/ after sprint-128 #2132).
+// (now in the private premium tree after sprint-128 #2132).
 const MODULE_TERRAFORM_TUI_DIR = join(PREMIUM_PACKAGES_ROOT, 'module-terraform', 'src', 'tui');
 // #0580: ChallengeScreen relocated to @swao/module-challenge/src/tui/
-// (now in swao-premium/ after sprint-128 #2132).
+// (now in the private premium tree after sprint-128 #2132).
 const MODULE_CHALLENGE_TUI_DIR = join(PREMIUM_PACKAGES_ROOT, 'module-challenge', 'src', 'tui');
 // #0577: ExportBiScreen relocated to @swao/module-powerbi/src/tui/.
 const MODULE_POWERBI_TUI_DIR = join(REPO_ROOT, 'packages', '@swao', 'module-powerbi', 'src', 'tui');
 // #0579: PortfolioScreen relocated to @swao/module-portfolio/src/tui/
-// (now in swao-premium/ after sprint-128 #2132).
+// (now in the private premium tree after sprint-128 #2132).
 const MODULE_PORTFOLIO_TUI_DIR = join(PREMIUM_PACKAGES_ROOT, 'module-portfolio', 'src', 'tui');
 const INDEX_TS = join(REPO_ROOT, 'packages', 'swao', 'src', 'index.ts');
 // #0673: MCP parity -- server.ts lists MCP tool names that must mirror CLI commands.
@@ -144,23 +144,24 @@ const EXPECTED_CLI_COMMANDS = new Set([
   'machine-id',                   // #2128 sprint-128 -- print machine fingerprint; CLI-only
   'llm',                          // #1558 -- LLM workload assessment command group; TUI path goes through AssessScreen (--type llm)
   'chat',                         // #2779 sprint-135 -- multi-turn portfolio chat (Enterprise); TUI: ChatScreen (Tools submenu)
+  'service',                      // #3075 sprint-150 -- Service Portfolio Assessment; TUI: ServiceInitScreen via AssessmentTypeScreen [2]
 ]);
 
 // TUI screen files (under src/tui/screens/) that wrap a CLI command.
 // Each screen file's basename minus 'Screen.tsx' is the canonical name.
 // Intentionally CLI-only: 'mcp' (stdio server), 'menu' (TUI entry point itself).
 // Sprint-128 #2132: premium screens (ChallengeScreen, GenerateTfScreen, PortfolioScreen)
-// live in swao-premium/ when the private monorepo is checked out. Public CI omits them.
+// live in the private premium tree when the private monorepo is checked out. Public CI omits them.
 const EXPECTED_TUI_SCREENS = new Set([
   // Screens that wrap a CLI command
   'AssessScreen',
-  ...(PREMIUM_PRESENT ? ['ChallengeScreen'] : []),  // Enterprise-gated (swao-premium)
+  ...(PREMIUM_PRESENT ? ['ChallengeScreen'] : []),  // Enterprise-gated (private premium tree)
   'CredentialScreen',
   'HealthCheckScreen',
   'ExportBiScreen',
-  ...(PREMIUM_PRESENT ? ['GenerateTfScreen'] : []),  // Consultant/Enterprise (swao-premium)
+  ...(PREMIUM_PRESENT ? ['GenerateTfScreen'] : []),  // Consultant/Enterprise (private premium tree)
   'LicenseScreen',
-  ...(PREMIUM_PRESENT ? ['PortfolioScreen'] : []),   // Enterprise-gated (swao-premium)
+  ...(PREMIUM_PRESENT ? ['PortfolioScreen'] : []),   // Enterprise-gated (private premium tree)
   'RegimeSelectorScreen',
   'ReportScreen',
   'SetupWizard',
@@ -174,6 +175,7 @@ const EXPECTED_TUI_SCREENS = new Set([
   'LlmAssessmentScreen',      // #1427 -- LLM Assessment TUI flow; reached via AssessmentTypeScreen 'llm'
   'UpgradePromptScreen',      // #2128 sprint-128 -- version upgrade nudge; shown when newer release detected
   'ChatScreen',               // #2778 sprint-135 -- multi-turn portfolio chat (Enterprise); Tools submenu key 6
+  'ServiceInitScreen',        // #3075 sprint-150 -- swao service init; reached via AssessmentTypeScreen 'service'
   // Navigation / help screens (TUI-only, no CLI counterpart)
   'HelpScreen',
   'MainMenu',
@@ -278,6 +280,7 @@ describe('CLI/TUI parity gate (#0261)', () => {
       ingest: 'IngestScreen',           // #0967 -- pre-process ingestion/; Tools submenu
       'support-bundle': 'SupportBundleScreen', // #1477 sprint-116 -- PII-free diagnostic archive
       'chat':           'ChatScreen',           // #2779 sprint-135 -- multi-turn portfolio chat
+      service:          'ServiceInitScreen',    // #3075 sprint-150 -- Service Portfolio Assessment intake
     };
     for (const cmd of EXPECTED_CLI_COMMANDS) {
       if (CLI_ONLY.has(cmd)) continue;
@@ -373,6 +376,18 @@ const EXPECTED_MCP_TOOLS = new Set([
   // sprint-136 -- workspace file access tools for MCP context.
   'swao_list_directory',
   'swao_read_file',
+  // #3213 (sprint-151) -- Service Portfolio Assessment tools.
+  'swao_service_portfolio',
+  'swao_service_app',
+  'swao_service_research',
+  'swao_service_waves',
+  'swao_service_vendors',
+  'swao_service_delta',
+  'swao_service_scaffold',
+  'swao_service_runs',
+  'swao_service_init',
+  'swao_service_research_run',
+  'swao_service_export',
   // Sprint-104 prompt name + argument names (picked up by the name-regex scanner
   // from the swao_evidence_interview prompt definition in server.ts).
   'swao_evidence_interview',
@@ -397,6 +412,19 @@ const MCP_CLI_MAP: Record<string, string> = {
   swao_lz_catalogue_list:   'lz',
   swao_lz_catalogue_show:   'lz',
   swao_lz_fit:              'lz',
+  // #3213: every Service Portfolio Assessment tool maps to `swao service` (init / research / export / rank
+  // read the same artefacts the read tools expose).
+  swao_service_portfolio:    'service',
+  swao_service_app:          'service',
+  swao_service_research:     'service',
+  swao_service_waves:        'service',
+  swao_service_vendors:      'service',
+  swao_service_delta:        'service',
+  swao_service_scaffold:     'service',
+  swao_service_runs:         'service',
+  swao_service_init:         'service',
+  swao_service_research_run: 'service',
+  swao_service_export:       'service',
 };
 
 describe('CLI/MCP parity gate (#0673)', () => {

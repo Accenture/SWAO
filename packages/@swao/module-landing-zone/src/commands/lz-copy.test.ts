@@ -116,3 +116,23 @@ describe('swao lz catalogue copy (#1436)', () => {
     expect(aws.provenance).toBe('bundled');
   });
 });
+
+describe('swao lz catalogue show reads the workspace copy (#3155)', () => {
+  it('prints the regions of a catalogue written by lz catalogue new, with its workspace origin', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'swao-lz-show-'));
+    try {
+      const out: string[] = [];
+      vi.spyOn(console, 'log').mockImplementation((...a: unknown[]) => { out.push(a.join(' ')); });
+      await buildProgram().parseAsync(['node', 'swao', 'lz', 'catalogue', 'new', 'aws', '--workspace', tmp]);
+      out.length = 0;
+      await buildProgram().parseAsync(['node', 'swao', 'lz', 'catalogue', 'show', 'aws', '--workspace', tmp]);
+      const text = out.join('\n');
+      expect(text).toContain('region example-region');
+      expect(text).toContain(`origin workspace: ${destPath(tmp, 'aws')}`);
+      expect(text).not.toContain('region eu-central-1');
+    } finally {
+      vi.restoreAllMocks();
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});

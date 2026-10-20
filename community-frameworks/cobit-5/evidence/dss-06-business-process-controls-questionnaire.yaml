@@ -1,0 +1,35 @@
+# Manual questionnaire for DSS06: Manage Business Process Controls
+# Sample answers for illustration; replace them with the client's own answers.
+# Evidence kind: manual_questionnaire (design 029 §3.4)
+
+control_id: DSS06
+framework_id: COBIT_5
+collected_at: 2026-05-23
+collected_by: consultant
+
+questions:
+  - id: q1
+    text: "For high-impact processes such as financial close, payroll and payments, is it documented which duties must be held by different people?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "SoD matrix 2026-Q1"
+  - id: q2
+    text: "Do the IT systems themselves block transactions above a person's approval limit?"
+    answer: "yes"
+    severity_if_no: high
+    evidence_ref: "ERP authorisation configuration baseline"
+  - id: q3
+    text: "Are batches passed between systems reconciled to confirm nothing was lost or altered?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Integration ops runbook, daily reconciliation"
+  - id: q4
+    text: "Does every key process control have a named owner, a defined frequency and a recorded last test result?"
+    answer: "yes"
+    severity_if_no: medium
+    evidence_ref: "Internal control register 2026-Q1"
+  - id: q5
+    text: "Does an independent function, such as internal audit, retest a sample of these controls every year?"
+    answer: "unknown"
+    severity_if_no: medium
+    evidence_ref: "Awaiting confirmation of the 2026 internal audit plan"

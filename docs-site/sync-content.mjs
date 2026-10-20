@@ -39,6 +39,9 @@ const FILES = [
   { src: 'de/portfolio.md', dst: 'de/portfolio.md' },
   { src: 'de/generate-tf.md', dst: 'de/generate-tf.md' },
   { src: 'de/tools.md', dst: 'de/tools.md' },
+  { src: 'de/getting-started.md', dst: 'de/getting-started.md' },
+  { src: 'de/malware-scanning.md', dst: 'de/malware-scanning.md' },
+  { src: 'de/assessment-dimension-catalogue.md', dst: 'de/assessment-dimension-catalogue.md' },
 ];
 
 // Image extensions to copy alongside the samples markdown.
@@ -228,6 +231,29 @@ for (const { src, dst } of FILES) {
       copyFileSync(join(s, file), join(d, file));
       console.log(`  copied: samples/${file} -> manual/samples/${file}`);
     }
+  }
+}
+
+// Sprint-150 Phase 12: reference sections, EN + DE (Design 103 §18.4).
+// docs/<dir>/*.md -> manual/<dir>/*.md for every folder below.
+const REFERENCE_FOLDERS = [
+  'de/frameworks',
+  'passes', 'de/passes',
+  'service-assessment', 'de/service-assessment',
+  'releases', 'de/releases',
+];
+for (const dir of REFERENCE_FOLDERS) {
+  const s = join(srcRoot, dir);
+  const d = join(dstRoot, dir);
+  if (!existsSync(s)) {
+    console.warn(`[warn] source folder missing: ${s}`);
+    continue;
+  }
+  mkdirSync(d, { recursive: true });
+  for (const file of readdirSync(s)) {
+    if (!file.endsWith('.md')) continue;
+    copyFileSync(join(s, file), join(d, file));
+    console.log(`  copied: ${dir}/${file} -> manual/${dir}/${file}`);
   }
 }
 

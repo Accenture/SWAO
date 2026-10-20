@@ -59,8 +59,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Strategy subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_EDM_01
-      - NCA_ECC_GOV
+      - EDM01
       - ISO_27001_A.5.1
       - ISO_27001_A.5.2
       - NIST_CSF_GV_01
@@ -92,8 +91,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Management structure subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_EDM_01
-      - NCA_ECC_GOV
+      - EDM01
       - ISO_27001_A.5.2
       - ISO_27001_A.5.3
       - NIST_CSF_GV_02
@@ -126,8 +124,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Policy framework subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_APO_01
-      - NCA_ECC_GOV
+      - APO01
       - ISO_27001_A.5.1
       - NIST_CSF_GV_01
     remediation: >-
@@ -159,8 +156,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Roles and responsibilities subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_APO_01
-      - NCA_ECC_GOV
+      - APO01
       - ISO_27001_A.5.2
       - ISO_27001_A.6.1
       - NIST_CSF_GV_02
@@ -193,8 +189,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Risk appetite subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_EDM_03
-      - NCA_ECC_GOV
+      - EDM03
       - ISO_27001_A.5.4
       - NIST_CSF_GV_06
     remediation: >-
@@ -226,8 +221,7 @@ controls:
       - "SAMA CSF v1.0 Domain 1, Leadership and Governance -- Compliance and audit subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_MEA_01
-      - NCA_ECC_GOV
+      - MEA01
       - ISO_27001_A.5.35
       - ISO_27001_A.5.36
       - NIST_CSF_GV_04
@@ -266,8 +260,7 @@ controls:
       - "SAMA CSF v1.0 Domain 2, Risk Management and Compliance -- Cyber risk management subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_APO_12
-      - NCA_ECC_GOV
+      - APO12
       - ISO_27001_A.6.1
       - ISO_27001_A.8.2
       - NIST_CSF_ID_RA
@@ -301,7 +294,7 @@ controls:
       - "SAMA CSF v1.0 Domain 2, Risk Management and Compliance -- Third-party risk subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_APO_10
+      - APO10
       - NCA_ECC_GOV_05
       - ISO_27001_A.5.19
       - ISO_27001_A.5.21
@@ -337,8 +330,7 @@ controls:
       - "SAMA CSF v1.0 Domain 2, Risk Management and Compliance -- Compliance monitoring subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_MEA_03
-      - NCA_ECC_GOV
+      - MEA03
       - ISO_27001_A.5.35
       - ISO_27001_A.5.36
       - NIST_CSF_GV_04
@@ -371,8 +363,7 @@ controls:
       - "SAMA CSF v1.0 Domain 2, Risk Management and Compliance -- Risk reporting subdomain"
     overrides: []
     maps_to:
-      - COBIT_5_MEA_01
-      - NCA_ECC_GOV
+      - MEA01
       - ISO_27001_A.5.4
       - ISO_27001_A.6.1
       - NIST_CSF_GV_04
@@ -414,7 +405,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Asset management subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.5.9
       - ISO_27001_A.5.10
       - NIST_CSF_ID_AM
@@ -453,7 +443,6 @@ controls:
       - ISO_27001_A.5.15
       - ISO_27001_A.5.16
       - SOC_2_CC6.1
-      - PCI_DSS_7.1
     remediation: >-
       Implement an IAM platform with automated provisioning and de-provisioning
       workflows. Enforce MFA for all privileged accounts and remote access. Conduct
@@ -486,7 +475,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Data classification subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.5.12
       - ISO_27001_A.5.13
       - NIST_CSF_PR_DS
@@ -522,11 +510,9 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Network security subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.8.20
       - ISO_27001_A.8.21
       - NIST_CSF_PR_IR
-      - PCI_DSS_1.1
     remediation: >-
       Produce a network architecture diagram and review it against SAMA CSF
       requirements. Implement network segmentation between production, test, and
@@ -594,10 +580,8 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Vulnerability management subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.8.8
       - NIST_CSF_ID_RA
-      - PCI_DSS_6.3
     remediation: >-
       Deploy an authenticated vulnerability scanner against all in-scope systems.
       Define patch SLAs: critical within 24 hours, high within 7 days, medium within
@@ -667,7 +651,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Incident management subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.5.24
       - ISO_27001_A.5.26
       - NIST_CSF_RS
@@ -704,7 +687,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Physical security subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.7.1
       - ISO_27001_A.7.2
       - NIST_CSF_PR_AA
@@ -740,7 +722,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Application security subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.8.25
       - ISO_27001_A.8.32
       - NIST_CSF_PR_PS
@@ -776,7 +757,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Endpoint and communication security subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_DEF
       - ISO_27001_A.8.7
       - ISO_27001_A.8.19
       - NIST_CSF_PR_PS
@@ -811,7 +791,6 @@ controls:
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Awareness and training subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_GOV
       - ISO_27001_A.6.3
       - NIST_CSF_PR_AT
       - SOC_2_CC2.2
@@ -853,11 +832,10 @@ controls:
       - "SAMA CSF v1.0 Domain 4, Third-Party Cybersecurity -- Outsourcing governance subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_TPC
       - ISO_27001_A.5.19
       - ISO_27001_A.5.20
       - NIST_CSF_GV_06
-      - COBIT_5_APO_10
+      - APO10
     remediation: >-
       Establish a third-party cybersecurity register classifying all suppliers by
       risk tier. Require Tier 1 (critical) suppliers to provide evidence of ISO 27001
@@ -891,8 +869,6 @@ controls:
       - "SAMA CSF v1.0 Domain 4, Third-Party Cybersecurity -- Cloud computing adoption (section 3.4.3)"
     overrides: []
     maps_to:
-      - NCA_ECC_TPC
-      - NCA_CCC_CST
       - ISO_27001_A.5.19
       - ISO_27001_A.5.23
       - NIST_CSF_PR_AA
@@ -931,10 +907,7 @@ controls:
       - "SAMA CSF v1.0 Domain 4, Third-Party Cybersecurity -- Cloud data location and controls (section 3.4.3)"
     overrides: []
     maps_to:
-      - NCA_ECC_TPC
-      - NCA_CCC_CST
       - ISO_27001_A.5.23
-      - PCI_DSS_12.8
       - NIST_CSF_PR_DS
     remediation: >-
       Map all regulated data flows to their cloud storage regions. For data stored
@@ -969,11 +942,10 @@ controls:
       - "SAMA CSF v1.0 Domain 4, Third-Party Cybersecurity -- Supply chain security subdomain"
     overrides: []
     maps_to:
-      - NCA_ECC_TPC
       - ISO_27001_A.5.21
       - ISO_27001_A.5.22
       - NIST_CSF_ID_SC
-      - COBIT_5_APO_10
+      - APO10
     remediation: >-
       Produce a critical technology dependency map identifying single points of
       failure in the supply chain. Require software vendors to provide a Software
@@ -1017,7 +989,7 @@ controls:
       - ISO_27001_A.5.29
       - ISO_27001_A.5.30
       - NIST_CSF_PR_IP
-      - COBIT_5_DSS_04
+      - DSS04
     remediation: >-
       Update the BIA to include cyber incident scenarios (ransomware, prolonged
       outage, data breach) and derive RTOs/RPOs for each critical service. Verify
@@ -1055,7 +1027,7 @@ controls:
       - ISO_27001_A.8.13
       - ISO_27001_A.5.29
       - NIST_CSF_RC_RP
-      - COBIT_5_DSS_04
+      - DSS04
     remediation: >-
       Produce DR runbooks for each critical system covering step-by-step recovery
       procedures, required tooling, and responsible roles. Test backup integrity
@@ -1091,7 +1063,7 @@ controls:
       - ISO_27001_A.5.29
       - ISO_27001_A.5.24
       - NIST_CSF_RS_CO
-      - COBIT_5_DSS_04
+      - DSS04
     remediation: >-
       Develop a crisis management playbook with a contact tree for the CISO, board,
       SAMA regulatory liaison, legal counsel, and external PR. Define pre-approved
@@ -1128,7 +1100,7 @@ controls:
       - ISO_27001_A.5.27
       - ISO_27001_A.5.24
       - NIST_CSF_RC_IM
-      - COBIT_5_BAI_06
+      - BAI06
     remediation: >-
       Implement a mandatory post-incident review process triggered for all P1 and P2
       incidents within 5 business days of closure. Use a standard template covering

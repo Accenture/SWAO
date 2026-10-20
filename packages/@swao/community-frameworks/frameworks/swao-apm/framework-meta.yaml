@@ -1,0 +1,97 @@
+# SWAO community framework metadata -- SWAO_APM Application Portfolio Management
+# Source of truth for controls.yaml: input.csv + this file, compiled by
+# scripts/generate-swao-apm-controls.py. Design 103 §7, issue #2811 / #3099.
+#
+# STATUS: APPROVED by the SWAO maintainer on 2026-10-10 (#2811). Controls, domain
+# weights, and TIME rules were drafted from Design 103 §7.2, §18.2 G-07 and
+# issue #2811 during sprint-150.
+
+framework:
+  id: SWAO_APM
+  name: "SWAO Application Portfolio Management"
+  version: "2026.10"
+  status: approved
+  authority: "SWAO Development Team (synthesis of Gartner TIME, ISO/IEC 25010:2023, TOGAF 10, ENISA, EU sovereign cloud criteria)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://accenture.github.io/SWAO/en/"
+  signal_prefix: APM
+  catalogue_version: "0.1.0"
+  last_reviewed: "2026-10-10"
+  applicability_hints:
+    - application_portfolio
+    - third_party_software
+    - saas
+    - cots
+  assessment_type_scope: [service]
+  description: >
+    Portfolio-level assessment of third-party, SaaS, and COTS applications across
+    eleven domains. Produces a 0-100 health score per domain, a weighted risk
+    score per application, and a TIME (Tolerate / Invest / Migrate / Eliminate)
+    recommendation for portfolio decisions.
+  references:
+    - "Gartner TIME application portfolio model"
+    - "ISO/IEC 25010:2023 Systems and software quality models"
+    - "TOGAF 10 Application Portfolio Catalogue"
+    - "ENISA Application Security Good Practices (2017)"
+  redistribution_note: >
+    Original SWAO synthesis; no third-party control text is reproduced. Apache-2.0
+    with the SWAO community framework catalogue.
+
+  # Domain codes and names (Design 103 §7.2).
+  domains:
+    APM-STR: "Strategic fit"
+    APM-VND: "Vendor health"
+    APM-TCH: "Technical health"
+    APM-SEC: "Security posture"
+    APM-DAT: "Data governance"
+    APM-SOV: "Sovereignty readiness"
+    APM-BIZ: "Business criticality"
+    APM-HW: "Hardware and cost"
+    APM-INT: "Integration complexity"
+    APM-MIG: "Migration readiness"
+    APM-REG: "Compliance obligations"
+
+  # Risk score weights (Design 103 Q4: weights live here only; must sum to 100).
+  # Basis (approved 2026-10-10): G-07's ordering APM-TCH > APM-SEC > APM-VND > APM-DAT > APM-REG
+  # kept, scaled to 68 points, and the remaining 32 points spread over the other
+  # six domains. Edit per engagement; `swao health-check` validates the sum.
+  domain_weights:
+    APM-TCH: 20
+    APM-SEC: 18
+    APM-VND: 12
+    APM-DAT: 10
+    APM-REG: 8
+    APM-SOV: 8
+    APM-MIG: 6
+    APM-INT: 6
+    APM-HW: 4
+    APM-BIZ: 4
+    APM-STR: 4
+
+  # TIME classification (Design 103 §7.1, #2811, #3100). Domain thresholds use
+  # the 0-100 HEALTH scale (100 = healthy). Overrides are applied first.
+  time_rules:
+    # G-03 / G-04. `restricted` (keep, do not start) is intentionally excluded.
+    eliminate_operational_status: [decommissioned, unused, inactive]
+    migrate_critical:
+      kev_match: true
+      cve_critical_min: 1
+      eol_months_max: 12
+    eol_past_without_extended_support: Migrate-Critical
+    # End of life inside 0-36 months is at least Migrate (inside 12 months with a
+    # critical CVE it is Migrate-Critical above).
+    migrate:
+      eol_months_min: 0
+      eol_months_max: 36
+      vendor_health_max: 40
+      technical_health_max: 40
+      migration_readiness_min: 60
+    invest:
+      strategic_fit_min: 70
+      technical_health_min: 70
+      vendor_health_min: 70
+    eliminate:
+      strategic_fit_max: 30
+      business_criticality_max: 30

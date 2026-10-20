@@ -87,7 +87,7 @@ describe('buildTar (#0327 Part D -- minimal pure-Node tar writer)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  }, 20000); // system tar on Windows/WSL can be slow
+  }, 60_000); // system tar on Windows/WSL can be slow; D-32 (#3294)
 
   it('throws on filename longer than 100 bytes (POSIX tar limit)', () => {
     const longName = 'a/'.repeat(60) + 'file.txt';

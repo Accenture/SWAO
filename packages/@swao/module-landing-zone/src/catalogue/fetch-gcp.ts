@@ -14,6 +14,10 @@
 // ================================================================
 
 import type { LzServiceCatalogue, LzRegion, LzSovereigntyFacts } from '@swao/core';
+import {
+  GCP_SOVEREIGNTY_PINS as GCP_REGION_OVERLAY,
+  type GcpSovereigntyPin as GcpSovereigntyEntry,
+} from './sovereignty-pins.js';
 
 /**
  * GCP catalogue fetcher (Design 056 §4.3, #0870). GCP availability comes from
@@ -180,68 +184,8 @@ const GCP_SERVICE_MAX_VERSIONS: Record<string, number> = {
 // gcp-fr-sovereign distinct providers when in scope.
 // C5 certification: applies to europe-west3 (Frankfurt), europe-west4 (Amsterdam),
 // europe-west10 (Berlin); source: cloud.google.com/security/compliance/c5.
+// The pinned table lives in catalogue/sovereignty-pins.ts (#3282).
 // ---------------------------------------------------------------------------
-
-interface GcpSovereigntyEntry {
-  display: string;
-  residency_country: string;
-  operator_jurisdiction: string;
-  extraterritorial_exposure: string[];
-  certifications: string[];
-}
-
-const GCP_REGION_OVERLAY: Record<string, GcpSovereigntyEntry> = {
-  // Europe
-  'europe-west1':          { display: 'Belgium',                   residency_country: 'BE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'europe-west2':          { display: 'London, United Kingdom',    residency_country: 'GB', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'europe-west3':          { display: 'Frankfurt, Germany',        residency_country: 'DE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'europe-west4':          { display: 'Netherlands',               residency_country: 'NL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'europe-west6':          { display: 'Zurich, Switzerland',       residency_country: 'CH', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-west8':          { display: 'Milan, Italy',              residency_country: 'IT', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-west9':          { display: 'Paris, France',             residency_country: 'FR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-west10':         { display: 'Berlin, Germany',           residency_country: 'DE', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['C5', 'ISO_27001', 'SOC_2'] },
-  'europe-west12':         { display: 'Turin, Italy',              residency_country: 'IT', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-north1':         { display: 'Finland',                   residency_country: 'FI', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-central2':       { display: 'Warsaw, Poland',            residency_country: 'PL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'europe-southwest1':     { display: 'Madrid, Spain',             residency_country: 'ES', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // USA
-  'us-central1':           { display: 'Iowa, USA',                 residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'us-east1':              { display: 'South Carolina, USA',       residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'us-east4':              { display: 'Northern Virginia, USA',    residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS', 'FedRAMP_High'] },
-  'us-east5':              { display: 'Columbus, USA',             residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'us-south1':             { display: 'Dallas, USA',               residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'us-west1':              { display: 'Oregon, USA',               residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'us-west2':              { display: 'Los Angeles, USA',          residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'us-west3':              { display: 'Salt Lake City, USA',       residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'us-west4':              { display: 'Las Vegas, USA',            residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // North America (non-US)
-  'northamerica-northeast1': { display: 'Montreal, Canada',        residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'northamerica-northeast2': { display: 'Toronto, Canada',         residency_country: 'CA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'northamerica-south1':   { display: 'Queretaro, Mexico',         residency_country: 'MX', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // South America
-  'southamerica-east1':    { display: 'Sao Paulo, Brazil',         residency_country: 'BR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'southamerica-west1':    { display: 'Santiago, Chile',           residency_country: 'CL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Asia
-  'asia-east1':            { display: 'Taiwan',                    residency_country: 'TW', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-east2':            { display: 'Hong Kong',                 residency_country: 'HK', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-northeast1':       { display: 'Tokyo, Japan',              residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'PCI_DSS'] },
-  'asia-northeast2':       { display: 'Osaka, Japan',              residency_country: 'JP', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-northeast3':       { display: 'Seoul, South Korea',        residency_country: 'KR', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-south1':           { display: 'Mumbai, India',             residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-south2':           { display: 'Delhi, India',              residency_country: 'IN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'asia-southeast1':       { display: 'Singapore',                 residency_country: 'SG', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'MAS_TRM'] },
-  'asia-southeast2':       { display: 'Jakarta, Indonesia',        residency_country: 'ID', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Oceania
-  'australia-southeast1':  { display: 'Sydney, Australia',         residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2', 'IRAP'] },
-  'australia-southeast2':  { display: 'Melbourne, Australia',      residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Middle East
-  'me-central1':           { display: 'Doha, Qatar',               residency_country: 'QA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'me-central2':           { display: 'Dammam, Saudi Arabia',      residency_country: 'SA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  'me-west1':              { display: 'Tel Aviv, Israel',          residency_country: 'IL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-  // Africa
-  'africa-south1':         { display: 'Johannesburg, South Africa', residency_country: 'ZA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001', 'SOC_2'] },
-};
-
 const DEFAULT_GCP_SOVEREIGNTY: GcpSovereigntyEntry = {
   display: '',
   residency_country: 'UNKNOWN',

@@ -16,49 +16,102 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { spawn } from 'child_process';
-import { existsSync, copyFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
-import { claudeDesktopConfigPath } from '@swao/module-health-check';
+import { existsSync } from 'fs';
+import { findInstalledChromium, PLAYWRIGHT_VERSION, resolveClaudeDesktopConfigs, selectClaudeDesktopPatchTargets, type ClaudeDesktopConfigCandidate } from '@swao/core';
 import { GuidanceBox } from '@swao/tui-kit';
 import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
-import { patchClaudeDesktopConfig } from '../../../mcp-config.js';
+import { formatMcpRegistrationRefusal, mcpRegistrationRefusal, patchAllClaudeDesktopConfigs, resolveStableBinary, stableCopyWarning, type ClaudeDesktopPatchOutcome, type StableBinaryResolution } from '../../../mcp-config.js';
 
-// Derive the stable binary path: swao-enterprise-win-x64.exe in the same
-// folder as the running binary. If the running binary already has that name,
-// no copy is needed (#2908).
-function resolveStableBinaryPath(): string {
-  const stableName = 'swao-enterprise-win-x64.exe';
-  const stablePath = join(dirname(process.execPath), stableName);
-  if (process.execPath === stablePath) return stablePath;
-  try {
-    copyFileSync(process.execPath, stablePath);
-  } catch { /* copy failed -- fall back to current path */ }
-  return existsSync(stablePath) ? stablePath : process.execPath;
+// #3217: the stable binary path (a stable copy next to the running SWAO
+// binary, #2908; node plus the script path on a source run, #3286) comes from
+// the shared resolver in mcp-config.ts, the same one `swao init --mcp` and
+// `swao mcp install` use.
+
+/** #3216: Claude Desktop config state, resolved once per step mount. */
+interface ClaudeDesktopConfigState {
+  candidates: ClaudeDesktopConfigCandidate[];
+  configPath: string;
+  installed: boolean;
+  targets: ClaudeDesktopConfigCandidate[];
+}
+
+function resolveConfigState(resolveConfigs: () => ClaudeDesktopConfigCandidate[]): ClaudeDesktopConfigState {
+  // #3163: every Claude Desktop config (MSIX virtualised + conventional), not
+  // only the effective one, so a stale SWAO entry in the other config is updated.
+  const candidates = resolveConfigs();
+  // Same rule as claudeDesktopConfigPath(): the effective config, else the first.
+  const configPath = (candidates.find((c) => c.effective) ?? candidates[0])?.path ?? '';
+  const installed = candidates.some((c) => existsSync(c.path));
+  const targets = installed ? selectClaudeDesktopPatchTargets(candidates) : [];
+  return { candidates, configPath, installed, targets };
 }
 
 // -- Step 4: Claude Desktop MCP config ------------------------------------
 
-export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext: () => void }) {
-  const configPath = claudeDesktopConfigPath();
-  const binaryPath = resolveStableBinaryPath();
-  const installed = existsSync(configPath);
+export interface ClaudeDesktopStepProps {
+  workDir: string;
+  onNext: () => void;
+  /** #3216: injectable for tests; defaults to resolveClaudeDesktopConfigs. */
+  resolveConfigs?: () => ClaudeDesktopConfigCandidate[];
+  /** #3216 / #3217: injectable for tests; defaults to the shared stable-copy resolver. */
+  resolveBinary?: () => StableBinaryResolution;
+  /**
+   * #3341: the MCP registration gate shared with `swao mcp install` and
+   * `swao init --mcp` (licence tier and binary edition). Returns the [LICENSE]
+   * text when registration is refused, undefined when allowed. Injectable for tests.
+   */
+  checkLicence?: () => string | undefined;
+}
 
-  // Check current state once at mount
+/** #3341: default wizard gate, same decision as the CLI entry points. */
+export function defaultMcpWizardLicenceCheck(): string | undefined {
+  const r = mcpRegistrationRefusal();
+  return r ? formatMcpRegistrationRefusal(r, 'MCP server registration') : undefined;
+}
+
+export function ClaudeDesktopStep({
+  workDir,
+  onNext,
+  resolveConfigs = resolveClaudeDesktopConfigs,
+  resolveBinary = () => resolveStableBinary(),
+  checkLicence = defaultMcpWizardLicenceCheck,
+}: ClaudeDesktopStepProps) {
+  // #3341: evaluated once per mount, before any copy or config write.
+  const [licenceRefusal] = useState<string | undefined>(() => checkLicence());
+  // #3216: resolve and read the configs once per step mount (lazy initial
+  // state), not on every Ink render.
+  const [{ candidates, configPath, installed, targets }] = useState<ClaudeDesktopConfigState>(
+    () => resolveConfigState(resolveConfigs),
+  );
+
   const [status, setStatus] = useState<'idle' | 'done' | 'skipped'>('idle');
-  const [result, setResult] = useState('');
+  const [outcomes, setOutcomes] = useState<ClaudeDesktopPatchOutcome[]>([]);
+  // #3286 (Design 110 D-10): copy failure shown like `mcp install` and `init` print it.
+  const [copyWarning, setCopyWarning] = useState<string[] | undefined>(undefined);
 
   const doSkip = () => { setStatus('skipped'); onNext(); };
   const doPatch = () => {
-    const r = patchClaudeDesktopConfig(configPath, binaryPath);
-    setResult(r);
+    if (licenceRefusal !== undefined) return; // #3341: never copy or write below Enterprise
+    // #3216: the binary copy is a side effect, so it runs only on the user's
+    // Enter (the path is not displayed before then), never during render.
+    // #3217: resolveStableBinary is the helper shared with init and mcp install.
+    const resolved = resolveBinary();
+    setCopyWarning(stableCopyWarning(resolved));
+    setOutcomes(patchAllClaudeDesktopConfigs(resolved.path, candidates, resolved.args));
     setStatus('done');
   };
+  const anyPatched = outcomes.some((o) => o.result === 'patched');
+  const anyError = outcomes.some((o) => o.result === 'error');
 
   useInput((_input, key) => {
     if (status === 'skipped') return;
     if (status === 'done' && key.return) { onNext(); return; }
     if (status !== 'idle') return;
+    // #3341: refused below Enterprise; Enter and Esc both skip.
+    if (licenceRefusal !== undefined) {
+      if ((key.return || key.escape) && !_wizardGuidanceOpen) doSkip();
+      return;
+    }
     // #2320: when Claude Desktop is not installed, Enter and Esc both skip --
     // never call doPatch() against a non-existent config file.
     if (!installed) {
@@ -75,15 +128,20 @@ export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext
     return (
       <Box flexDirection="column">
         <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
-        <Box marginTop={1}>
-          {result === 'patched' && (
-            <Box flexDirection="column">
-              <Text color="green">MCP config updated.</Text>
-              <Text color="yellow">Restart Claude Desktop to load the new tool registry.</Text>
-            </Box>
-          )}
-          {result === 'already_present' && <Text color="green">SWAO already registered in Claude Desktop.</Text>}
-          {result === 'error' && <Text color="red">Failed to write config -- add the SWAO entry manually.</Text>}
+        <Box marginTop={1} flexDirection="column">
+          {/* #3163: one line per config file SWAO touched (path + result). */}
+          {outcomes.map((o) => (
+            <Text key={o.path} color={o.result === 'error' ? 'red' : 'green'}>
+              {o.result === 'patched' ? 'Updated' : o.result === 'already_present' ? 'Already current' : 'Failed to write'}
+              {`  ${o.path}`}{o.effective ? '' : '  (older install, stale SWAO entry refreshed)'}
+            </Text>
+          ))}
+          {copyWarning && copyWarning.map((line, i) => (
+            <Text key={`copy-warn-${i}`} color="yellow">{i === 0 ? `Warning: ${line}` : `  ${line}`}</Text>
+          ))}
+          {anyPatched && <Text color="yellow">Restart Claude Desktop to load the new tool registry.</Text>}
+          {!anyPatched && !anyError && <Text color="green">SWAO already registered in Claude Desktop.</Text>}
+          {anyError && <Text color="red">Failed to write a config -- add the SWAO entry manually to the file marked above.</Text>}
         </Box>
         <Box marginTop={1}><Text dimColor>Press Enter to continue...</Text></Box>
         <GuidanceBox
@@ -93,6 +151,22 @@ export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext
           affordances={['Enter -- continue to next step']}
           onOpenChange={setWizardGuidanceOpen}
         />
+      </Box>
+    );
+  }
+
+  if (licenceRefusal !== undefined) {
+    return (
+      <Box flexDirection="column">
+        <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+        <Box marginTop={1} flexDirection="column">
+          {licenceRefusal.split('\n').map((line, i) => (
+            <Text key={`lic-${i}`} color={i === 0 ? 'yellow' : undefined}>{line}</Text>
+          ))}
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>Enter / Esc -- skip this step (nothing is copied or written)</Text>
+        </Box>
       </Box>
     );
   }
@@ -129,6 +203,13 @@ export function ClaudeDesktopStep({ workDir, onNext }: { workDir: string; onNext
       <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
       <Text>Detected Claude Desktop config at: <Text bold color="whiteBright">{configPath}</Text></Text>
       <Text dimColor>(SWAO probes only Claude Desktop today -- it is the only MCP host currently shipped. Path is Claude\ because that is the host detected.)</Text>
+      {/* #3163: list every file Enter will write, not only the effective one. */}
+      {targets.length > 1 && (
+        <Box marginTop={1} flexDirection="column">
+          <Text>SWAO will update {targets.length} Claude Desktop configs:</Text>
+          {targets.map((t) => <Text key={t.path} dimColor>  {t.path}{t.effective ? '' : '  (holds an older SWAO entry)'}</Text>)}
+        </Box>
+      )}
       <Box marginTop={1} flexDirection="column">
         <Text>SWAO will register itself as an MCP server with this client.</Text>
         <Text dimColor>After patching, the client can ask SWAO about findings, apps, and reports.</Text>

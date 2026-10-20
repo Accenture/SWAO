@@ -93,7 +93,7 @@ If you have intentionally rolled back to an older binary, ensure the binary vers
 
 **Symptom:** `Playwright: yellow` in `swao health-check`; the `dynamic` pass is skipped.
 
-**Cause:** Playwright and/or Chromium are not installed. The yellow status means the dynamic pass is automatically disabled -- other passes run normally.
+**Cause:** Playwright and/or Chromium are not installed. The yellow status means the dynamic pass is automatically disabled. Other passes run normally.
 
 **Fix:**
 
@@ -149,7 +149,7 @@ Community edition features remain available without a licence key.
 
 ## Binary reports virus
 
-**Symptom:** Windows Defender or a third-party AV product quarantines or deletes `swao-enterprise-win.exe`.
+**Symptom:** Windows Defender or a third-party AV product quarantines or deletes `swao-enterprise-win-x64.exe`.
 
 **Cause:** Heuristic false positive. Packed Node.js binaries are sometimes flagged by reputation-based AV engines.
 
@@ -248,16 +248,16 @@ If the issue persists on a specific app, check for unusually large context impor
 
 ## Windows: blank screen on first launch or TUI does not start
 
-**Symptom:** Double-clicking `swao-enterprise-win.exe` in Explorer (or running it directly from a terminal)
-shows a blank window for several seconds, then exits -- or the TUI appears but navigation keys do not work.
+**Symptom:** Double-clicking `swao-enterprise-win-x64.exe` in Explorer (or running it directly from a terminal)
+shows a blank window for several seconds, then exits, or the TUI appears but navigation keys do not work.
 
-**Cause:** `swao-enterprise-win.exe` is the raw pkg binary. It is designed to be called
+**Cause:** `swao-enterprise-win-x64.exe` is the raw pkg binary. It is designed to be called
 programmatically (scripts, CI pipelines, MCP configuration). It does not configure a
 Windows console environment suitable for the interactive TUI (Ink/React requires a proper
 TTY with VT100 escape-code support).
 
-**Fix:** Use `swao.bat` -- the mandated Windows entry point for interactive terminal use.
-`swao.bat` is distributed alongside `swao-enterprise-win.exe` in every release. It configures the
+**Fix:** Use `swao.bat`, the mandated Windows entry point for interactive terminal use.
+`swao.bat` is distributed alongside `swao-enterprise-win-x64.exe` in every release. It configures the
 Windows console (UTF-8 code page, ANSI/VT100 mode, TTY detection) before handing control to
 the binary:
 
@@ -266,18 +266,18 @@ the binary:
 C:\Tools\swao\swao.bat
 
 # Also correct for scripted / non-interactive use (CI, MCP configuration)
-C:\Tools\swao\swao-enterprise-win.exe mcp --help
-C:\Tools\swao\swao-enterprise-win.exe assess --app my-app --skip-llm
+C:\Tools\swao\swao-enterprise-win-x64.exe mcp --help
+C:\Tools\swao\swao-enterprise-win-x64.exe assess --app my-app --skip-llm
 
 # Incorrect for interactive TUI: bypasses console setup
-C:\Tools\swao\swao-enterprise-win.exe          # may show blank screen
+C:\Tools\swao\swao-enterprise-win-x64.exe          # may show blank screen
 ```
 
 If `swao.bat` is not present, download it from the same GitHub release page as the
 `.exe` binary and place it in the same directory. Do not rename either file.
 
 **Note on startup delay:** The first launch after download (or after a Windows update)
-may show a 5-20 second blank terminal. This is normal -- it is the V8 snapshot
+may show a 5-20 second blank terminal. This is normal: it is the V8 snapshot
 being decompressed by the pkg runtime. Subsequent launches are faster.
 
 ---

@@ -20,6 +20,7 @@ import { runAwsChecks } from './providers/aws-adapter.js';
 import { runAzureChecks } from './providers/azure-adapter.js';
 import { runMeshstackChecks } from './providers/meshstack-adapter.js';
 import { findLzrInputFiles, runLzrPass } from '../passes/index.js';
+import { deriveLzrProviderId } from '@swao/module-app-assessment';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -89,7 +90,6 @@ const AZURE_PROVIDER = 'azure_eu_west';
 const AZURE_LZ = 'lz-azure-eu-west';
 const MESHSTACK_PROVIDER = 'stackit_de_sovereign';
 const MESHSTACK_LZ = 'lz-stackit-de-01';
-const TERRAFORM_PROVIDER = 'stackit_de_sovereign';
 
 function discoverApps(workspaceRoot: string): string[] {
   const appsDir = join(workspaceRoot, 'apps');
@@ -164,7 +164,8 @@ export function detectAdapterConfig(
       appId,
       appDir,
       adapterType: 'terraform',
-      providerId: TERRAFORM_PROVIDER,
+      // #3153: derived from the landing-zone ID instead of hard-coding STACKIT.
+      providerId: deriveLzrProviderId({ landingZoneId }).providerId,
       landingZoneId,
     };
   }

@@ -14,13 +14,14 @@
 // ================================================================
 
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { load } from 'js-yaml';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal } from '@swao/core';
-import { llmSkipResult } from './llm-skip.js';
+import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 import type { LandingZoneResult } from '@swao/core';
 import {
   resolveDefaultCataloguePath,
@@ -71,8 +72,11 @@ interface LzrVerdictInfo {
   first_blocker_id: string | null;
 }
 
-export function readLzrVerdict(workspacePath: string): LzrVerdictInfo {
-  const lzrFile = join(resolvePassesDir(workspacePath), '23-lzr.yaml');
+// #3158: an active run passes its own passes/ dir. Without it the resolver
+// follows latest.txt, which during a run still points at the PREVIOUS run, so
+// SYNTH applied a stale LZR verdict (or one from a different landing zone).
+export function readLzrVerdict(workspacePath: string, passesDirOverride?: string): LzrVerdictInfo {
+  const lzrFile = join(passesDirOverride ?? resolvePassesDir(workspacePath), '23-lzr.yaml');
   if (!existsSync(lzrFile)) {
     return { verdict: null, landing_zone_id: null, first_blocker_description: null, first_blocker_id: null };
   }
@@ -333,6 +337,71 @@ function buildSynthPrompt(priorSignals: Signal[], appId: string, recommendedProv
   return lines.join('\n');
 }
 
+// #3158: the cloud-provider catalogue lives at swao/controls/. The core
+// default resolver assumes one layout (4 levels up), which misses the
+// catalogue in the bundled binary, where this module is collapsed into
+// packages/swao/dist (3 levels up). Try each layout, mirroring
+// pass-13-scope.ts; return null when none exists so the pass records why the
+// landing-zone match did not run instead of skipping it silently.
+export function resolveCloudProviderCataloguePath(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    resolveDefaultCataloguePath(),
+    resolve(here, '../../../../../controls/cloud-provider-catalogue.yaml'),
+    resolve(here, '../../../../controls/cloud-provider-catalogue.yaml'),
+    resolve(here, '../../../controls/cloud-provider-catalogue.yaml'),
+    resolve(here, '_controls/cloud-provider-catalogue.yaml'),
+  ];
+  return candidates.find((c) => existsSync(c)) ?? null;
+}
+
+/**
+ * Body of the first markdown code fence, or null. Same result as
+ * `/```(?:json)?\s*\n([\s\S]*?)\n```/` (group 1): an opening fence, an optional
+ * `json` tag, whitespace that contains a newline, and the text up to the next
+ * newline-fence. Written as a scan because the regex backtracks polynomially on
+ * long whitespace runs (CodeQL js/polynomial-redos). Exported for tests.
+ */
+export function firstFenceBody(raw: string): string | null {
+  let from = 0;
+  // No newline-fence exists at or after this index (each search is done once).
+  let noCloseFrom = Number.POSITIVE_INFINITY;
+  for (;;) {
+    const open = raw.indexOf('```', from);
+    if (open < 0) return null;
+    from = open + 1;
+    let i = open + 3;
+    if (raw.startsWith('json', i)) i += 4;
+    // Whitespace run after the tag; the body starts after its last newline
+    // (greedy `\s*` backtracks to the last newline first).
+    let lastNl = -1;
+    let prevNl = -1;
+    let j = i;
+    while (j < raw.length && /\s/.test(raw[j] as string)) {
+      if (raw[j] === '\n') { prevNl = lastNl; lastNl = j; }
+      j++;
+    }
+    if (lastNl < 0) continue;
+    const start = lastNl + 1;
+    const close = start >= noCloseFrom ? -1 : raw.indexOf('\n```', start);
+    if (close >= 0) return raw.slice(start, close);
+    noCloseFrom = Math.min(noCloseFrom, start);
+    // Regex backtracking: an earlier newline in the run starts the body, and the
+    // run's last newline plus the fence right after it closes it.
+    if (prevNl >= 0 && raw.startsWith('```', start)) return raw.slice(prevNl + 1, lastNl);
+  }
+}
+
+/** Extract the JSON object from an LLM answer (markdown fences or stray prose around it). */
+export function extractJsonObject(raw: string): unknown {
+  const fenced = firstFenceBody(raw);
+  const candidate = fenced ?? raw;
+  const first = candidate.indexOf('{');
+  const last = candidate.lastIndexOf('}');
+  if (first < 0 || last <= first) return null;
+  try { return JSON.parse(candidate.slice(first, last + 1)); } catch { return null; }
+}
+
 export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
   const { workspacePath, appId, iter, assessedAt, llm } = ctx;
 
@@ -345,33 +414,58 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
 
   // Landing zone matching sub-pass: runs before LLM call to inform the prompt
   let landingZoneResult: LandingZoneResult | undefined;
-  try {
-    const cataloguePath = resolveDefaultCataloguePath();
-    const providers = loadCatalogue(cataloguePath);
-    const constraints = deriveConstraints(priorSignals);
-    const coverageScoreForLz = computeCoverageScore(priorSignals);
-    landingZoneResult = matchLandingZone(providers, constraints, {}, coverageScoreForLz);
-  } catch {
-    // Catalogue unavailable (e.g. in CI without repo root): skip sub-pass silently
+  let landingZoneSkipReason: string | undefined;
+  const cataloguePath = resolveCloudProviderCataloguePath();
+  if (!cataloguePath) {
+    landingZoneSkipReason = 'cloud-provider-catalogue.yaml not found';
+  } else {
+    try {
+      const providers = loadCatalogue(cataloguePath);
+      const constraints = deriveConstraints(priorSignals);
+      const coverageScoreForLz = computeCoverageScore(priorSignals);
+      landingZoneResult = matchLandingZone(providers, constraints, {}, coverageScoreForLz);
+    } catch (err) {
+      landingZoneSkipReason = `cloud-provider catalogue unreadable: ${(err as Error).message.split('\n')[0]}`;
+    }
   }
+  const lzContext: Record<string, unknown> = {
+    ...(landingZoneResult ?? {}),
+    ...(landingZoneSkipReason ? { landing_zone_match_skipped_reason: landingZoneSkipReason } : {}),
+  };
 
-  // Read LZR verdict from 23-lzr.yaml (if Pass 23 has already run)
-  const lzrVerdictInfo = readLzrVerdict(workspacePath);
+  // Read the LZR verdict from 23-lzr.yaml of THIS run (Pass 23 runs before SYNTH, #3152).
+  const lzrVerdictInfo = readLzrVerdict(workspacePath, ctx.passesDir);
 
   const prompt = buildSynthPrompt(priorSignals, appId, landingZoneResult?.recommended_landing_zone);
   const raw = await llm.complete(prompt);
 
-  let parsed: LlmPassResponse;
-  try {
-    parsed = JSON.parse(raw) as LlmPassResponse;
-  } catch {
-    throw new Error(`SYNTH pass: LLM response is not valid JSON.\n${raw.slice(0, 200)}`);
+  // #3158: an unusable answer degrades this pass (SYNTH-00, not_applicable)
+  // instead of throwing, which used to abort the whole assessment run.
+  const degrade = (detail: string): PassResult => {
+    console.warn(`[warn] SYNTH pass: ${detail}; pass degraded.\n${raw.slice(0, 200)}`);
+    return llmInvalidResponseResult({
+      id: 9, name: 'synthesis', signalPrefix: 'SYNTH', iter, assessedAt, detail,
+      assessment: { prior_signals_analysed: priorSignals.length, coverage_score: computeCoverageScore(priorSignals), ...lzContext },
+    });
+  };
+
+  const json = extractJsonObject(raw);
+  if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+    return degrade('LLM response is not valid JSON');
   }
+  const candidate = json as { signals?: unknown; assessment?: unknown };
+  if (candidate.assessment === null || typeof candidate.assessment !== 'object' || Array.isArray(candidate.assessment)) {
+    return degrade('LLM response has no assessment object');
+  }
+  const parsed: LlmPassResponse = {
+    signals: Array.isArray(candidate.signals) ? (candidate.signals as LlmPassResponse['signals']) : [],
+    assessment: candidate.assessment as LlmPassResponse['assessment'],
+  };
 
   const sevenRRaw = parsed.assessment['seven_r_label'];
   const sevenR = canonicaliseSevenR(sevenRRaw);
   if (!sevenR) {
-    throw new Error(`SYNTH pass: invalid seven_r_label "${String(sevenRRaw)}". Must be one of: ${[...VALID_7R].join(', ')} (case-insensitive; underscores normalised).`);
+    return degrade(`invalid seven_r_label "${String(sevenRRaw)}"; expected one of ${[...VALID_7R].join(', ')}`);
   }
   // Stash back the canonical form so downstream consumers see PascalCase.
   parsed.assessment['seven_r_label'] = sevenR;
@@ -381,19 +475,16 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
 
   const modernizationPosition = parsed.assessment['modernization_position'];
   if (typeof modernizationPosition !== 'string' || modernizationPosition.length === 0) {
-    throw new Error(
-      'SYNTH pass: modernization_position missing or not a non-empty string. ' +
-      'Expected a strategic disposition (canonical: invest_modernize_now, migrate_stabilize, ' +
-      'tolerate_contain, retire_replace).',
+    return degrade(
+      'modernization_position missing or not a non-empty string (canonical: invest_modernize_now, ' +
+      'migrate_stabilize, tolerate_contain, retire_replace)',
     );
   }
 
   const portabilityScore = parsed.assessment['portability_score'];
   if (typeof portabilityScore !== 'number' || !Number.isFinite(portabilityScore) ||
       portabilityScore < 0 || portabilityScore > 1) {
-    throw new Error(
-      `SYNTH pass: portability_score must be a decimal 0.0-1.0, got ${String(portabilityScore)}.`,
-    );
+    return degrade(`portability_score must be a decimal 0.0-1.0, got ${String(portabilityScore)}`);
   }
 
   // Apply LZR adjustment to the 7R label and emit lzr_adjustment block
@@ -422,7 +513,7 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
       lzr_adjustment: lzrAdjustment,
       coverage_score: coverageScore,
       prior_signals_analysed: priorSignals.length,
-      ...(landingZoneResult ?? {}),
+      ...lzContext,
     },
   };
 }

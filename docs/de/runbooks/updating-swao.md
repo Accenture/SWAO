@@ -1,10 +1,10 @@
 # SWAO aktualisieren
 
-Dieses Runbook beschreibt das Herunterladen eines neün SWAO-Releases, die Integritätsprüfung, das Ersetzen der alten Binary und die Prüfung auf Konfigurationsänderungen, die eventüll Handlungsbedarf erfordern.
+Dieses Runbook beschreibt das Herunterladen eines neuen SWAO-Releases, die Integritätsprüfung, das Ersetzen der alten Binary und die Prüfung auf Konfigurationsänderungen, die eventuell Handlungsbedarf erfordern.
 
 ---
 
-## 1. Aktüllstes Release finden
+## 1. Aktuellstes Release finden
 
 Release-Binaries und Prüfsummen sind veröffentlicht unter:
 
@@ -15,10 +15,10 @@ https://github.com/Accenture/SWAO/releases
 Jede Release-Seite enthält:
 
 - Versionierte Binaries für jede Plattform (`swao-enterprise-win-x64.exe`, `swao-enterprise-linux-x64`, `swao-enterprise-linux-arm64`, `swao-enterprise-macos-x64`, `swao-enterprise-macos-arm64`)
-- `sha256sums.txt` -- SHA-256-Prüfsummen für jede Binary
-- `CHANGELOG.md`-Auszug -- Zusammenfassung der Änderungen seit dem vorherigen Release
+- `sha256sums.txt`: SHA-256-Prüfsummen für jede Binary
+- `CHANGELOG.md`-Auszug: Zusammenfassung der Änderungen seit dem vorherigen Release
 
-Die aktüll installierte Version vor dem Upgrade notieren:
+Die aktuell installierte Version vor dem Upgrade notieren:
 
 ```bash
 swao --version
@@ -103,20 +103,20 @@ Unblock-File -Path "C:\Tools\swao\swao-enterprise-win-x64.exe"
 
 ---
 
-## 4. Neü Version bestätigen
+## 4. Neue Version bestätigen
 
 ```bash
 swao --version
 swao health-check
 ```
 
-`swao health-check` führt alle Umgebungsprüfungen einschliesslich der Schema-Version durch. Wenn der Schema-Prüfpunkt nach dem Upgrade rot wird, ist zwischen den Versionen eine brechende WSP-Schema-Änderung erfolgt -- siehe Abschnitt 5.
+`swao health-check` führt alle Umgebungsprüfungen einschließlich der Schema-Version durch. Wenn der Schema-Prüfpunkt nach dem Upgrade rot wird, ist zwischen den Versionen eine brechende WSP-Schema-Änderung erfolgt (siehe Abschnitt 5).
 
 ---
 
 ## 5. Auf Breaking Changes prüfen
 
-Das Changelog für die neü Version vor dem Einsatz in gemeinsam genutzten oder produktiven Workspaces lesen:
+Das Changelog für die neue Version vor dem Einsatz in gemeinsam genutzten oder produktiven Workspaces lesen:
 
 ```
 https://github.com/Accenture/SWAO/releases/tag/v<version>
@@ -124,7 +124,7 @@ https://github.com/Accenture/SWAO/releases/tag/v<version>
 
 ### WSP-Schema-Änderungen
 
-Die WSP-Schema-Version wird in `schema_version` in der `run-manifest.json` jedes Laufs getrackt. Wenn die Binary eine neüre Schema-Version erwartet als die `.swao.yml` des Workspaces deklariert, meldet `swao health-check` eine Schema-Diskrepanz.
+Die WSP-Schema-Version wird in `schema_version` in der `run-manifest.json` jedes Laufs getrackt. Wenn die Binary eine neuere Schema-Version erwartet als die `.swao.yml` des Workspaces deklariert, meldet `swao health-check` eine Schema-Diskrepanz.
 
 Behebung mit dem Konfigurations-Migrations-Befehl:
 
@@ -141,12 +141,12 @@ swao health-check
 
 ### Pass-Konfigurationsänderungen
 
-Wenn ein neür Pass-Schlüssel eingeführt wird (z. B. ein neüs Analysemodul), überspringen bestehende `.swao.yml`-Dateien, die ihn nicht auflisten, den neün Pass. Ihn bei Bedarf zu `passes.enabled` in `.swao.yml` hinzufügen.
+Wenn ein neuer Pass-Schlüssel eingeführt wird (z. B. ein neues Analysemodul), überspringen bestehende `.swao.yml`-Dateien, die ihn nicht auflisten, den neuen Pass. Ihn bei Bedarf zu `passes.enabled` in `.swao.yml` hinzufügen.
 
 ---
 
 ## 6. Rollback
 
-Falls die neü Version Regressionen verursacht, die alte Binary bis zur Beheibung des Problems behalten. Das vorherige Release mit denselben Schritten unter Angabe des älteren Versions-Tags herunterladen.
+Falls die neue Version Regressionen verursacht, die alte Binary bis zur Beheibung des Problems behalten. Das vorherige Release mit denselben Schritten unter Angabe des älteren Versions-Tags herunterladen.
 
 Es gibt keinen eingebauten Rollback-Befehl. Der Austausch der Binary ist der Rollback-Mechanismus.

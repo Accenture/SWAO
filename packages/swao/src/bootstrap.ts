@@ -38,6 +38,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { registerInit } from './commands/init.js';
 import { registerAssess, type AssessDeps } from './commands/assess.js';
+import { registerService, serviceExportUnavailable, type ServiceDeps } from './commands/service.js';
 import { registerReport, type ReportDeps } from './commands/report.js';
 import { registerLicense } from './commands/license.js';
 import { registerMachineId } from './commands/machine-id.js';
@@ -55,7 +56,7 @@ import { registerSetup } from './commands/setup.js';
 // the correct entry after the module's extraction; module-mcp must not import
 // host code, so the host mediates.
 import { registerMcp, type McpHostDeps, type McpInstallDeps } from '@swao/module-mcp';
-import { patchClaudeDesktopConfig } from './tui/mcp-config.js';
+import { buildMcpInstallDeps } from './tui/mcp-config.js';
 import { registerInstallPlaywright } from './commands/install-playwright.js';
 import { registerRegimeSelect } from './commands/regime-select.js';
 // #0577: export command + ExportBiScreen + the star writers relocated to
@@ -114,6 +115,11 @@ export interface BootstrapDeps {
   reportDeps: ReportDeps;
   /** Consultant HTML Portal builder; gated stub in Community. */
   buildPortal: BuildPortal;
+  /**
+   * #3353: `swao service export` implementation. Real (@swao/module-service-export)
+   * only in the Enterprise entry; communityServiceDeps in Community and Consultant.
+   */
+  serviceDeps: ServiceDeps;
 }
 
 function editionLabel(): string {
@@ -170,6 +176,7 @@ export function buildProgram(deps: BootstrapDeps): Command {
 
   registerInit(program);
   registerAssess(program, deps.assessDeps);
+  registerService(program, deps.serviceDeps);
   registerReport(program, deps.reportDeps);
   registerLicense(program);
   registerMachineId(program);
@@ -190,14 +197,13 @@ export function buildProgram(deps: BootstrapDeps): Command {
   registerSetup(program);
   // #0574/#0579: the MCP server spawns the same resolved swao CLI as the
   // portfolio orchestrator; the descriptor is computed by the entry.
-  // #2877: inject the Claude Desktop config path and patchConfig function so
-  // `swao mcp install` can update the config without module-mcp importing host code.
-  const mcpInstallDeps: McpInstallDeps = {
-    configPath: process.env['APPDATA']
-      ? join(process.env['APPDATA'], 'Claude', 'claude_desktop_config.json')
-      : join(process.env['HOME'] ?? '~', 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
-    patchConfig: patchClaudeDesktopConfig,
-  };
+  // #2877: inject the Claude Desktop patcher so `swao mcp install` can update
+  // the config without module-mcp importing host code. #3163: the same
+  // multi-config patcher as the Setup Wizard (TUI/CLI parity): the effective
+  // config (MSIX when present) plus every config that already holds a SWAO entry.
+  // #3217: plus the same stable-copy binary resolver as the wizard and
+  // `swao init --mcp`, so every entry point registers the same `command`.
+  const mcpInstallDeps: McpInstallDeps = buildMcpInstallDeps();
   registerMcp(program, deps.cliSpawnDescriptor, SWAO_VERSION, mcpInstallDeps);
   registerInstallPlaywright(program);
   registerRegimeSelect(program);
@@ -250,9 +256,11 @@ export const communityRenderLlmPdf: NonNullable<ReportDeps['renderLlmPdf']> = as
   tierStub('consultant', 'report --type llm --format pdf');
 
 /**
- * Community (all tiers) HTML renderer for report --format html (#0877).
- * Delegates to renderModeA from @swao/module-html-report (Community tier),
- * which writes wsp/publications/<runTs>-<appId>.html and returns the path.
+ * HTML renderer for report --format html (#0877). Wired into every tier entry,
+ * but the report action gates the format with FEATURE_GATES['html-report']
+ * (Consultant+, licence tier matrix F-082, #3320) before this runs. Delegates to
+ * renderModeA from @swao/module-html-report, which writes
+ * wsp/publications/<runTs>-<appId>.html and returns the path.
  */
 export const communityRenderHtml: NonNullable<ReportDeps['renderHtml']> = async (wspRunDir) => {
   const result = await renderModeA({ wspRunDir, swaoVersion: SWAO_VERSION });
@@ -273,6 +281,12 @@ export const communityRunPortfolio: NonNullable<AssessDeps['runPortfolio']> = as
 /** Community stub for the Enterprise portfolio summary formatter. */
 export const communityFormatPortfolioResult: NonNullable<AssessDeps['formatPortfolioResult']> = () =>
   tierStub('enterprise', 'assess/report --portfolio');
+
+/** Community/Consultant slot for `swao service export` (#3353, F-133 Enterprise).
+ * @swao/module-service-export is absent from these bundles; the command's
+ * service-excel / bi-export gate answers first with the [LICENSE] block and
+ * exit 1, and serviceExportUnavailable repeats that answer if the gate is bypassed. */
+export const communityServiceDeps: ServiceDeps = { runExport: serviceExportUnavailable };
 
 /** Community/Consultant stub for the Enterprise HTML Portal builder (#1228, D-06). */
 export const communityBuildPortal: BuildPortal = async () =>

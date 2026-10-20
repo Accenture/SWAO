@@ -14,7 +14,7 @@
 // ================================================================
 
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { join, resolve } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 import { load } from 'js-yaml';
 import { z } from 'zod';
 import type { PassContext, PassResult } from '@swao/core';
@@ -62,6 +62,48 @@ const NO_LLM_REASON = 'no_llm_provider';
 // counts of GAP / PARTIAL / SATISFIED across that regime's controls.
 
 const BATCH_SIZE = 20;
+
+/**
+ * #3222: upper bound on in-flight Pass 11 LLM calls. The batch calls of all
+ * selected regimes are independent, so they are sent concurrently instead of
+ * one after another (a service run spent about 131 s on four sequential
+ * calls).
+ *
+ * #3284 (Design 110 D-14): the provider layer now owns the limit. Pass 11
+ * sizes its fan-out from `llm.maxConcurrency` (configured by
+ * `providers.llm.max_concurrency`, default 4) and the provider-level limiter
+ * bounds in-flight requests across all passes. This constant is only the
+ * fallback for providers that do not report a limit (fixtures, stubs).
+ */
+export const COMPLIANCE_LLM_MAX_CONCURRENCY = 4;
+
+/** Pass 11 fan-out width: the provider's limit, else the fallback (#3284). */
+export function complianceLlmConcurrency(llm: { readonly maxConcurrency?: number } | undefined): number {
+  const n = llm?.maxConcurrency;
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 ? n : COMPLIANCE_LLM_MAX_CONCURRENCY;
+}
+
+/**
+ * Run `fn` over `items` with at most `limit` calls in flight. Results keep
+ * the order of `items`. `fn` must not throw (callers catch per item).
+ */
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!, i);
+    }
+  };
+  const width = Math.max(1, Math.min(Math.floor(limit) || 1, items.length));
+  await Promise.all(Array.from({ length: width }, () => worker()));
+  return out;
+}
 
 const ControlEvaluationSchema = z.object({
   id: z.string(),
@@ -129,11 +171,10 @@ function resolvePassesDir(workspacePath: string): string {
 
 // #1282: accept ctx.passesDir override (current run, before latest.txt is written).
 // Falls back to resolvePassesDir (latest.txt) for standalone / post-run callers.
-function loadAllSignals(workspacePath: string, passesDirOverride?: string): Signal[] {
+export function loadAllSignals(workspacePath: string, passesDirOverride?: string): Signal[] {
   const passesDir = passesDirOverride ?? resolvePassesDir(workspacePath);
-  if (!existsSync(passesDir)) return [];
   const signals: Signal[] = [];
-  for (const file of readdirSync(passesDir).sort()) {
+  for (const file of existsSync(passesDir) ? readdirSync(passesDir).sort() : []) {
     if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
     // Don't re-ingest our own output if a previous Pass 11 run wrote one.
     if (file.startsWith('11-')) continue;
@@ -142,11 +183,21 @@ function loadAllSignals(workspacePath: string, passesDirOverride?: string): Sign
       if (parsed?.signals) signals.push(...parsed.signals);
     } catch { /* skip unreadable */ }
   }
+  // #3154: service-mode signals written outside the passes folder (Pass 24
+  // RESEARCH, Pass 25 BINARY) are evidence for the same controls.
+  for (const file of APP_SIGNAL_FILES) {
+    try {
+      const parsed = JSON.parse(readFileSync(join(workspacePath, 'wsp', 'signals', file), 'utf-8')) as { signals?: Signal[] } | null;
+      if (Array.isArray(parsed?.signals)) signals.push(...parsed.signals);
+    } catch { /* absent or unreadable */ }
+  }
   return signals;
 }
 
-function loadSelectedRegimes(workspacePath: string): string[] {
-  const ymlPath = join(workspacePath, '.swao.yml');
+/** App-level signal files read in addition to the run's pass files (#3154). */
+export const APP_SIGNAL_FILES = ['research-signals.json', 'binary-signals.json'] as const;
+
+function readRegimesActive(ymlPath: string): string[] {
   if (!existsSync(ymlPath)) return [];
   try {
     // Written by writeRegimesActive() in compliance/regime-picker.ts.
@@ -154,6 +205,19 @@ function loadSelectedRegimes(workspacePath: string): string[] {
     const yml = load(readFileSync(ymlPath, 'utf-8')) as { assessment?: { regimes_active?: string[] } } | null;
     return Array.isArray(yml?.assessment?.regimes_active) ? yml.assessment!.regimes_active : [];
   } catch { return []; }
+}
+
+/**
+ * The app's own selection wins; when the app has none, the workspace-wide
+ * selection applies (#3148: `swao regime-select` without `--app` writes the
+ * workspace `.swao.yml`, which was previously never read).
+ */
+export function loadSelectedRegimes(workspacePath: string): string[] {
+  const own = readRegimesActive(join(workspacePath, '.swao.yml'));
+  if (own.length > 0) return own;
+  // Only an app folder (<workspace>/apps/<id>) has a workspace two levels up.
+  if (basename(dirname(resolve(workspacePath))) !== 'apps') return [];
+  return readRegimesActive(join(resolveWorkspaceRoot(workspacePath), '.swao.yml'));
 }
 
 // Workspace root sits two levels above an app dir: <workspace>/apps/<app>.
@@ -314,6 +378,14 @@ function safeJsonParse(raw: string): unknown {
   catch { return null; }
 }
 
+function regimeMetaOf(catalog: RegimeCatalog, regimeId: string): { id: string; name: string; version: string } {
+  return {
+    id: catalog.regime_meta?.id ?? regimeId,
+    name: catalog.regime_meta?.name ?? regimeId,
+    version: catalog.regime_meta?.version ?? '',
+  };
+}
+
 export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
   const { workspacePath, iter, assessedAt, llm, passesDir } = ctx;
 
@@ -361,12 +433,49 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
 
   // #0246: emit per-regime progress so the AssessScreen progress bar
   // can advance during the long LLM evaluation instead of looking
-  // stuck at one position for 60-90 seconds.
+  // stuck at one position for 60-90 seconds. #3222: a regime with LLM
+  // batches reports progress when its last batch returns; a regime without
+  // batches reports when the evaluation loop below reaches it.
   let regimeProgress = 0;
-  for (const regimeId of regimeIds) {
+  const reportProgress = (regimeId: string): void => {
     regimeProgress += 1;
     console.log(`[progress] Pass 11 -- ${regimeId} (${regimeProgress}/${regimeIds.length})`);
-    const catalog = loadRegimeCatalog(workspaceRoot, regimeId);
+  };
+  const catalogs = regimeIds.map((regimeId) => loadRegimeCatalog(workspaceRoot, regimeId));
+
+  // #3222 phase A: send every regime's batch prompts concurrently (bounded by
+  // the provider's limit, #3284: complianceLlmConcurrency). Prompts are built exactly as before; a
+  // failed call yields null and falls back to UNKNOWN in phase B, as the
+  // sequential loop did. Phase B below consumes the responses in the original
+  // regime and batch order, so signal numbering and output are unchanged.
+  const rawResponses: Array<Array<string | null>> = regimeIds.map(() => []);
+  const regimeHasBatches: boolean[] = regimeIds.map(() => false);
+  if (llm) {
+    const jobs: Array<{ r: number; b: number; prompt: string }> = [];
+    regimeIds.forEach((regimeId, r) => {
+      const catalog = catalogs[r];
+      if (!catalog) return;
+      const controls = catalog.controls ?? [];
+      const meta = regimeMetaOf(catalog, regimeId);
+      for (let i = 0, b = 0; i < controls.length; i += BATCH_SIZE, b += 1) {
+        jobs.push({ r, b, prompt: buildCompliancePrompt(meta, controls.slice(i, i + BATCH_SIZE), signals) });
+      }
+    });
+    const pending = regimeIds.map((_, r) => jobs.filter((j) => j.r === r).length);
+    pending.forEach((n, r) => { regimeHasBatches[r] = n > 0; });
+    await mapWithConcurrency(jobs, complianceLlmConcurrency(llm), async (job) => {
+      let raw: string | null = null;
+      try { raw = await llm.complete(job.prompt); } catch { raw = null; /* UNKNOWN fallback in phase B */ }
+      rawResponses[job.r]![job.b] = raw;
+      pending[job.r]! -= 1;
+      if (pending[job.r] === 0) reportProgress(regimeIds[job.r]!);
+    });
+  }
+
+  for (let r = 0; r < regimeIds.length; r += 1) {
+    const regimeId = regimeIds[r]!;
+    if (!regimeHasBatches[r]) reportProgress(regimeId);
+    const catalog = catalogs[r];
     if (!catalog) {
       signalCounter += 1;
       summarySignals.push({
@@ -408,23 +517,18 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
     }
 
     const controls = catalog.controls ?? [];
-    const regimeMeta = {
-      id: catalog.regime_meta?.id ?? regimeId,
-      name: catalog.regime_meta?.name ?? regimeId,
-      version: catalog.regime_meta?.version ?? '',
-    };
+    const regimeMeta = regimeMetaOf(catalog, regimeId);
 
     const evaluated: EvaluatedControl[] = [];
 
-    for (let i = 0; i < controls.length; i += BATCH_SIZE) {
+    for (let i = 0, b = 0; i < controls.length; i += BATCH_SIZE, b += 1) {
       const batch = controls.slice(i, i + BATCH_SIZE);
       let batchResults: z.infer<typeof BatchResponseSchema> | null = null;
 
       if (llm) {
         try {
-          const prompt = buildCompliancePrompt(regimeMeta, batch, signals);
-          const raw = await llm.complete(prompt);
-          const parsed = safeJsonParse(raw);
+          const raw = rawResponses[r]![b] ?? null;
+          const parsed = raw === null ? null : safeJsonParse(raw);
           if (parsed !== null) {
             const validation = BatchResponseSchema.safeParse(parsed);
             if (validation.success) batchResults = validation.data;

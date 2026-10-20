@@ -6,17 +6,17 @@ Windows Defender SmartScreen blockiert die SWAO-Programmdatei beim ersten Start,
 
 ## Warum SmartScreen die Binary blockiert
 
-SmartScreen prüft jede heruntergeladene Programmdatei gegen eine cloudbasierte Reputationsdatenbank. Binaries, die noch keine ausreichende Download-Historie aufgebaut haben, erhalten eine Warnung -- unabhängig davon, ob sie signiert sind. SWAO-Binaries sind signiert und sicher; die Blockierung ist ein Reputationsschwellenproblem, kein Sicherheitsbefund.
+SmartScreen prüft jede heruntergeladene Programmdatei gegen eine cloudbasierte Reputationsdatenbank. Binaries, die noch keine ausreichende Download-Historie aufgebaut haben, erhalten eine Warnung, unabhängig davon, ob sie signiert sind. SWAO-Binaries sind signiert und sicher; die Blockierung ist ein Reputationsschwellenproblem, kein Sicherheitsbefund.
 
 ---
 
 ## 1. Interaktive Freigabe über Dateieigenschaften
 
-1. `swao-enterprise-win.exe` von der GitHub-Releases-Seite herunterladen.
+1. `swao-enterprise-win-x64.exe` von der GitHub-Releases-Seite herunterladen.
 2. Rechtsklick auf die Datei im Windows Explorer und **Eigenschaften** auswählen.
 3. Auf der Registerkarte **Allgemein** den Sicherheitshinweis unten suchen: "Diese Datei stammt von einem anderen Computer. Der Zugriff wurde möglicherweise aus Sicherheitsgründen blockiert."
 4. Das Kontrollkästchen **Zulassen** anhaaken und auf **Übernehmen** klicken.
-5. **OK** klicken. Die Datei ist nun auf diesem Rechner vertraünswürdig.
+5. **OK** klicken. Die Datei ist nun auf diesem Rechner vertrauenswürdig.
 
 ---
 
@@ -26,10 +26,10 @@ Für die Bereitstellung per Skript oder bei bevorzugter Kommandozeilennutzung:
 
 ```powershell
 # Unblock the downloaded binary
-Unblock-File -Path "C:\Tools\swao\swao-enterprise-win.exe"
+Unblock-File -Path "C:\Tools\swao\swao-enterprise-win-x64.exe"
 
 # Verify the Zone.Identifier alternate data stream is removed
-Get-Item -Path "C:\Tools\swao\swao-enterprise-win.exe" -Stream * |
+Get-Item -Path "C:\Tools\swao\swao-enterprise-win-x64.exe" -Stream * |
   Where-Object Stream -ne ':$DATA'
 # Expected: no output (Zone.Identifier stream removed)
 ```
@@ -38,7 +38,7 @@ Get-Item -Path "C:\Tools\swao\swao-enterprise-win.exe" -Stream * |
 
 ## 3. Umgang mit der Meldung "Windows hat Ihren PC geschützt"
 
-Wenn die Binary ausgeführt wird, bevor sie freigegeben wurde, zeigt SmartScreen einen blaün Dialog mit der Meldung "Windows hat Ihren PC geschützt":
+Wenn die Binary ausgeführt wird, bevor sie freigegeben wurde, zeigt SmartScreen einen blauen Dialog mit der Meldung "Windows hat Ihren PC geschützt":
 
 1. Auf **Weitere Informationen** (den Link unterhalb der Hauptmeldung) klicken.
 2. Der Dialog erweitert sich und zeigt den Herausgebernamen sowie die Herkunft der Datei.
@@ -56,7 +56,7 @@ Für Organisationen, die Endpunkte über Microsoft Intune, Endpoint Configuratio
 # Add publisher rule via AppLocker (example -- adjust OU/policy target)
 # Path rule for a managed install location
 New-AppLockerPolicy -RuleType Path `
-  -Path "C:\Program Files\SWAO\swao-enterprise-win.exe" `
+  -Path "C:\Program Files\SWAO\swao-enterprise-win-x64.exe" `
   -User Everyone `
   -Action Allow
 ```
@@ -64,7 +64,7 @@ New-AppLockerPolicy -RuleType Path `
 Alternativ kann der Binary-Hash zur Software-Allowlist hinzugefügt werden. Den SHA-256-Hash abrufen:
 
 ```powershell
-Get-FileHash -Path "C:\Tools\swao\swao-enterprise-win.exe" -Algorithm SHA256 |
+Get-FileHash -Path "C:\Tools\swao\swao-enterprise-win-x64.exe" -Algorithm SHA256 |
   Select-Object Hash, Path
 ```
 
@@ -81,10 +81,10 @@ Auf dedizierten Build- oder CI-Rechnern, auf denen keine interaktiven Abfragen m
 Add-MpPreference -ExclusionPath "C:\Tools\swao"
 
 # Or add a process exclusion
-Add-MpPreference -ExclusionProcess "swao-enterprise-win.exe"
+Add-MpPreference -ExclusionProcess "swao-enterprise-win-x64.exe"
 ```
 
-Die Ausnahme muss vor dem Pipeline-Schritt gesetzt werden, der `swao-enterprise-win.exe` ausführt. Siehe auch das Runbook [CI/CD-Pipeline-Integration](./cicd-pipeline.md) für ein vollständiges Workflow-Beispiel.
+Die Ausnahme muss vor dem Pipeline-Schritt gesetzt werden, der `swao-enterprise-win-x64.exe` ausführt. Siehe auch das Runbook [CI/CD-Pipeline-Integration](./cicd-pipeline.md) für ein vollständiges Workflow-Beispiel.
 
 ---
 
@@ -92,10 +92,10 @@ Die Ausnahme muss vor dem Pipeline-Schritt gesetzt werden, der `swao-enterprise-
 
 ```powershell
 # Confirm the binary runs correctly after allowlisting
-& "C:\Tools\swao\swao-enterprise-win.exe" --version
+& "C:\Tools\swao\swao-enterprise-win-x64.exe" --version
 
 # Full health check
-& "C:\Tools\swao\swao-enterprise-win.exe" doctor
+& "C:\Tools\swao\swao-enterprise-win-x64.exe" doctor
 ```
 
-Eine saubere `swao health-check`-Ausgabe mit allen grünen Prüfpunkten bestätigt, dass die Binary vertraünswürdig und betriebsbereit ist.
+Eine saubere `swao health-check`-Ausgabe mit allen grünen Prüfpunkten bestätigt, dass die Binary vertrauenswürdig und betriebsbereit ist.

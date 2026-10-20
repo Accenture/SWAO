@@ -15,12 +15,12 @@
 // =======================================================================
 -->
 
-# COBIT 5 -- SWAO Community Framework
+# COBIT 5: SWAO Community Framework
 
 **Framework ID:** `COBIT_5`
-**Version:** COBIT 5 (ISACA, 2012 -- ISBN 978-1-60420-237-3)
+**Version:** COBIT 5 (ISACA, 2012, ISBN 978-1-60420-237-3)
 **Authority:** ISACA
-**SWAO tier:** Community (install required -- `swao framework install COBIT_5`)
+**SWAO tier:** Community (shipped with SWAO; `swao framework install COBIT_5` copies it into the workspace)
 **Controls:** 37 process controls across 5 COBIT 5 domains
 
 ## What this framework evaluates
@@ -37,15 +37,13 @@ board-level IT governance review, or regulatory alignment across multiple framew
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
-
-```bash
-swao framework install COBIT_5
-```
+Copy this `cobit-5/` folder into the workspace at
+`<workspace>/wsp/inputs/catalogs/community/cobit-5/` (`swao framework install COBIT_5`
+does this for you), then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
-compliance:
-  frameworks: [COBIT_5]
+assessment:
+  regimes_active: [COBIT_5]
 ```
 
 ## Control domains
@@ -53,7 +51,7 @@ compliance:
 | Domain | Abbreviation | Processes | Focus |
 |---|---|---|---|
 | Evaluate, Direct and Monitor | EDM | EDM01-05 | Board oversight, value delivery, risk optimisation |
-| Align, Plan and Organise | APO | APO01-14 | Strategy, architecture, innovation, HR, suppliers |
+| Align, Plan and Organise | APO | APO01-13 | Strategy, architecture, innovation, HR, suppliers |
 | Build, Acquire and Implement | BAI | BAI01-10 | Programme management, change, configuration, testing |
 | Deliver, Service and Support | DSS | DSS01-06 | Operations, incidents, business process controls |
 | Monitor, Evaluate and Assess | MEA | MEA01-03 | Performance monitoring, internal controls, external compliance |
@@ -67,22 +65,20 @@ reports, capacity plans.
 
 ## Customising this framework
 
-Install a local copy to override specific controls:
-
-```bash
-swao framework install COBIT_5
-```
-
-The installed copy at `catalogs/community/cobit-5/controls.yaml` overrides the bundled
-version for all assessments in that workspace. See `CONTRIBUTING.md` for the full authoring
+Edit the copied folder to adjust specific controls. The copy at
+`wsp/inputs/catalogs/community/cobit-5/controls.yaml` is the catalogue SWAO evaluates for all
+assessments in that workspace. See `CONTRIBUTING.md` for the full authoring
 guide.
 
-**Licensing note:** COBIT 5 is copyright (c) 2012 ISACA -- all rights reserved. This
-catalogue paraphrases process descriptions for assessment purposes; it does not redistribute
-the verbatim ISACA text or figures. Implementers should review https://www.isaca.org for
-usage and redistribution terms.
+**Licensing note:** the control descriptions and assessor guidance in this catalogue were
+re-authored in original SWAO wording (#3292, 2026-10-17); the remediation text is SWAO
+practitioner advice. None of it is copied or adapted from ISACA material. Process IDs (EDM01 to MEA03) and process names are the COBIT 5
+identifiers, used as factual references. Reference publication: ISACA, *COBIT 5: A Business
+Framework for the Governance and Management of Enterprise IT* (2012, ISBN 978-1-60420-237-3).
+COBIT is a registered trademark of ISACA. No ISACA publication is bundled with this folder;
+see https://www.isaca.org for the official COBIT material.
 
 ## Contributor
 
-SWAO Development Team (Accenture) -- https://github.com/Accenture/SWAO
+SWAO Development Team (Accenture): https://github.com/Accenture/SWAO
 https://github.com/Accenture/SWAO

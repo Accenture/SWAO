@@ -88,8 +88,14 @@ export function createLegRecorderFromEnv(
       // code and provenance reporting keep working.
       return Object.assign(Object.create(Object.getPrototypeOf(inner) as object) as T, inner, {
         complete: (prompt: string) => recording.complete(prompt),
+        // #3301: the per-call-usage variants must record too; otherwise the
+        // inner provider's prototype methods would bypass the recorder.
+        completeDetailed: (prompt: string) => recording.completeDetailed(prompt),
         ...(recording.completeVision
-          ? { completeVision: (prompt: string, images: Buffer[]) => recording.completeVision!(prompt, images) }
+          ? {
+              completeVision: (prompt: string, images: Buffer[]) => recording.completeVision!(prompt, images),
+              completeVisionDetailed: (prompt: string, images: Buffer[]) => recording.completeVisionDetailed!(prompt, images),
+            }
           : {}),
       });
     },

@@ -37,26 +37,26 @@ businesses and needs to demonstrate trustworthiness to customers and auditors.
 
 ## How to activate in SWAO
 
-Install the framework, then add to your workspace `.swao.yml`:
+Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
 swao framework install SOC_2
 ```
 
 ```yaml
-compliance:
-  frameworks: [SOC_2]
+assessment:
+  regimes_active: [SOC_2]
 ```
 
 ## Trust Services Criteria
 
 | Category | Controls | Focus |
 |---|---|---|
-| Security (CC) | CC6, CC7, CC8, CC9 | Logical access, encryption, change management, risk management |
-| Availability (A) | A1 | System availability commitments; capacity management |
-| Processing Integrity (PI) | PI1 | Complete, accurate, timely processing |
-| Confidentiality (C) | C1 | Data identified as confidential; protection and disposal |
-| Privacy (P) | P1-P8 | Personal information collection, use, retention, disclosure |
+| Security (CC) | CC1-CC9 (36 controls) | Logical access, encryption, change management, risk management |
+| Availability (A) | A1 (3 controls) | System availability commitments; capacity management |
+| Processing Integrity (PI) | PI1 (5 controls) | Complete, accurate, timely processing |
+| Confidentiality (C) | C1 (2 controls) | Data identified as confidential; protection and disposal |
+| Privacy (P) | P1-P8 (18 controls) | Personal information collection, use, retention, disclosure |
 
 ## Customising this framework
 
@@ -64,12 +64,11 @@ compliance:
 swao framework install SOC_2
 ```
 
-The installed copy at `catalogs/community/soc-2/controls.yaml` overrides the bundled
+The installed copy at `wsp/inputs/catalogs/community/soc-2/controls.yaml` overrides the bundled
 version. See `CONTRIBUTING.md` for the authoring guide.
 
-**Note:** This is a PoC-depth packaging (5 controls covering the CC security baseline). The
-full Trust Services Criteria publication is available from https://www.aicpa.org. A
-full-depth SWAO packaging is tracked as a community contribution opportunity.
+**Note:** This packaging carries 64 controls across the 5 Trust Service Categories. The
+full Trust Services Criteria publication is available from https://www.aicpa.org.
 
 ## Contributor
 

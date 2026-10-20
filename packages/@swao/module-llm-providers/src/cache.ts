@@ -16,7 +16,8 @@
 import { createHash } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import type { LlmProvider, LlmUsage } from './types.js';
+import type { LlmProvider, LlmUsage, LlmCompletion } from './types.js';
+import { completeWithUsage } from './completion.js';
 
 interface CacheEntry {
   model: string;
@@ -82,10 +83,18 @@ export class LlmCacheLayer implements LlmProvider {
 
   get name(): LlmProvider['name'] { return this.inner.name; }
   get model(): string { return this.inner.model; }
+  /** #3284: forward the provider's in-flight limit (Pass 11 fan-out width). */
+  get maxConcurrency(): number | undefined { return this.inner.maxConcurrency; }
 
   wasCacheHit(): boolean { return this._lastCacheHit; }
 
   async complete(prompt: string): Promise<string> {
+    return (await this.completeDetailed(prompt)).text;
+  }
+
+  /** complete() with the call's own usage (#3301): zero on a cache hit. */
+  async completeDetailed(prompt: string): Promise<LlmCompletion> {
+    const hitUsage: LlmUsage = { input_tokens: 0, output_tokens: 0, cost_usd: 0 };
     const sha256 = createHash('sha256')
       .update(`${prompt}:${this.inner.model}`)
       .digest('hex');
@@ -98,7 +107,7 @@ export class LlmCacheLayer implements LlmProvider {
         const ageDays = (Date.now() - new Date(entry.cached_at).getTime()) / 86_400_000;
         if (ageDays <= this.maxAgeDays) {
           this._lastCacheHit = true;
-          return entry.response;
+          return { text: entry.response, usage: hitUsage };
         }
       } catch { /* expired or corrupt: fall through */ }
     }
@@ -110,12 +119,13 @@ export class LlmCacheLayer implements LlmProvider {
       try {
         const entry = JSON.parse(readFileSync(fixture, 'utf-8')) as CacheEntry;
         this._lastCacheHit = true;
-        return entry.response;
+        return { text: entry.response, usage: hitUsage };
       } catch { /* corrupt fixture: fall through to real call */ }
     }
 
     this._lastCacheHit = false;
-    const response = await this.inner.complete(prompt);
+    const result = await completeWithUsage(this.inner, prompt);
+    const response = result.text;
 
     mkdirSync(this.cacheDir, { recursive: true });
     const entry: CacheEntry = {
@@ -126,9 +136,10 @@ export class LlmCacheLayer implements LlmProvider {
     };
     writeFileSync(cacheFile, JSON.stringify(entry, null, 2), 'utf-8');
 
-    return response;
+    return result;
   }
 
+  /** @deprecated #3301: shared state; read `usage` from completeDetailed(). */
   getLastUsage(): LlmUsage | undefined {
     if (this._lastCacheHit) return { input_tokens: 0, output_tokens: 0, cost_usd: 0 };
     return this.inner.getLastUsage?.();

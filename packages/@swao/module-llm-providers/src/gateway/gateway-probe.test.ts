@@ -180,19 +180,19 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
       'providers:',
       '  llm:',
       '    primary:',
-      '      connector: preme-preprod',
+      '      connector: corp-genai-preprod',
       '      model: /Llama-3.3-70B',
     ].join('\n'), 'utf-8');
     const gwDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
     const { mkdirSync } = await import('node:fs');
     mkdirSync(gwDir, { recursive: true });
-    writeFileSync(join(gwDir, 'preme-preprod.yaml'), [
+    writeFileSync(join(gwDir, 'corp-genai-preprod.yaml'), [
       'schema_version: "1.0"',
       'connector:',
-      '  id: preme-preprod',
-      '  name: BA PREME GenAI Hub (PREPROD)',
+      '  id: corp-genai-preprod',
+      '  name: Corporate GenAI Hub (PREPROD)',
       '  protocol: openai-chat',
-      '  base_url: https://preme-genai-hub-preprod.example.com',
+      '  base_url: https://genai-hub-preprod.example.com',
       '  auth:',
       '    credential_key: openai-api-key',
       '    env_var: SWAO_OPEN_LLM_API_KEY',

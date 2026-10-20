@@ -1,0 +1,50 @@
+# SWAO-INFRA-CAT -- Workplace services (Design 103 §17.2)
+# cluster_hint: true lets the scaffold consolidate many identical rows (for
+# example VDI worker VMs) into one cluster assessment (guardrail G-02).
+id: INFRA_WORKPLACE
+name: "Workplace Services"
+# Load order among the built-in files (#3299): ascending; a later file wins
+# on a duplicate service id. Replaces the retired _registry.yaml.
+load_order: 30
+services:
+  - id: INFRA_WORKPLACE_VDI
+    name: "VDI / Virtual Desktop Infrastructure"
+    short: "VDI"
+    sovereign_rating: proprietary
+    cluster_hint: true
+    cluster_by: id_prefix
+    vendor_patterns:
+      - "Citrix"
+      - "VMware Horizon"
+      - "Omnissa"
+    product_name_patterns:
+      - "\\bCitrix\\b"
+      - "\\bVDI\\b"
+      - "\\bXenApp\\b"
+      - "\\bVirtual\\s+Apps\\b"
+    sovereign_alternatives:
+      - id: openstack-guacamole
+        name: "OpenStack + Apache Guacamole"
+        sovereign_rating: open-source
+
+  - id: INFRA_WORKPLACE_PRINT
+    name: "Print Services"
+    short: "Print"
+    sovereign_rating: proprietary
+    product_name_patterns:
+      - "\\bprint\\s*server\\b"
+      - "\\bDruck\\w*\\b"
+    sovereign_alternatives:
+      - id: cups
+        name: "CUPS"
+        sovereign_rating: open-source
+
+  - id: INFRA_WORKPLACE_THIN_CLIENT
+    name: "Thin Client Management"
+    short: "ThinClient"
+    sovereign_rating: proprietary
+    vendor_patterns:
+      - "IGEL"
+    product_name_patterns:
+      - "\\bIGEL\\b"
+      - "\\bthin\\s*client\\b"

@@ -110,7 +110,7 @@ key: swao-${{ env.SWAO_VERSION }}
 ```
 :::
 
-Binary size is approximately 50--80 MB depending on the build target. Caching it avoids a full download on every run.
+Binary size is approximately 50-80 MB depending on the build target. Caching it avoids a full download on every run.
 
 ---
 

@@ -41,17 +41,17 @@ Summary: 5 green, 1 yellow, 0 red
 | Licence | Valid licence, >30 days until expiry | Valid licence, <=30 days until expiry | Licence expired or key file missing/corrupt |
 | Schema version | Workspace schema matches binary expectation | Minor schema version mismatch (additive fields) | Major schema mismatch (breaking change) |
 | Workspace layout | `.swao.yml` found and parses; at least one app defined | App `source_path` directories missing | `.swao.yml` absent or fails schema validation |
-| Output directory | Configured output path exists and is writable | -- | Output path does not exist or is read-only |
+| Output directory | Configured output path exists and is writable | n/a | Output path does not exist or is read-only |
 
 ---
 
 ## LLM connectivity probe
 
-**Green** -- the configured provider returns a successful response to a lightweight test prompt.
+**Green**: the configured provider returns a successful response to a lightweight test prompt.
 
-**Yellow** -- the request succeeded but took longer than five seconds. The assessment will run but may time out on individual passes if the provider is under load.
+**Yellow**: the request succeeded but took longer than five seconds. The assessment will run but may time out on individual passes if the provider is under load.
 
-**Red** -- the request failed. Common causes:
+**Red**: the request failed. Common causes:
 
 - `ANTHROPIC_API_KEY` is not set or is incorrect.
 - The `SWAO_LLM_PROVIDER` variable points to a provider that is not running (e.g. Ollama stopped).
@@ -73,11 +73,11 @@ curl -s https://api.anthropic.com/v1/models \
 
 ## Playwright probe
 
-**Green** -- Chromium is installed and launches without error.
+**Green**: Chromium is installed and launches without error.
 
-**Yellow** -- Chromium is not found. The `dynamic` pass is automatically disabled; all other passes run normally. This is acceptable for server environments and CI pipelines that do not require browser-driven probing.
+**Yellow**: Chromium is not found. The `dynamic` pass is automatically disabled; all other passes run normally. This is acceptable for server environments and CI pipelines that do not require browser-driven probing.
 
-**Red** -- Chromium is found but fails to launch (e.g. missing shared libraries on Linux).
+**Red**: Chromium is found but fails to launch (e.g. missing shared libraries on Linux).
 
 Fix for yellow:
 
@@ -102,11 +102,11 @@ sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
 
 ## Licence probe
 
-**Green** -- a valid licence is present and has more than 30 days remaining.
+**Green**: a valid licence is present and has more than 30 days remaining.
 
-**Yellow** -- the licence expires within 30 days. Assessment runs normally; renew before expiry to avoid interruption.
+**Yellow**: the licence expires within 30 days. Assessment runs normally; renew before expiry to avoid interruption.
 
-**Red** -- the licence has expired or the licence file is missing. Consultant/Enterprise features are gated. Community features remain available.
+**Red**: the licence has expired or the licence file is missing. Consultant/Enterprise features are gated. Community features remain available.
 
 Fix:
 
@@ -124,11 +124,11 @@ swao license activate <new-key>
 
 ## Schema version probe
 
-**Green** -- the `schema_version` field in `.swao.yml` matches the version the installed binary expects.
+**Green**: the `schema_version` field in `.swao.yml` matches the version the installed binary expects.
 
-**Yellow** -- a minor version mismatch (e.g. workspace is `1.2`, binary expects `1.3`). The assessment runs but new fields may default to zero/null.
+**Yellow**: a minor version mismatch (e.g. workspace is `1.2`, binary expects `1.3`). The assessment runs but new fields may default to zero/null.
 
-**Red** -- a major version mismatch. The binary cannot safely parse the workspace configuration. Either upgrade the binary or run `swao migrate-config` to update the workspace schema.
+**Red**: a major version mismatch. The binary cannot safely parse the workspace configuration. Either upgrade the binary or run `swao migrate-config` to update the workspace schema.
 
 ```bash
 # Migrate workspace config to current schema
@@ -142,11 +142,11 @@ swao health-check
 
 ## Workspace layout probe
 
-**Green** -- `.swao.yml` is present, parses without error, and defines at least one app.
+**Green**: `.swao.yml` is present, parses without error, and defines at least one app.
 
-**Yellow** -- one or more `source_path` directories referenced in `.swao.yml` do not exist on disk. Static and SAST passes will be skipped for those apps.
+**Yellow**: one or more `source_path` directories referenced in `.swao.yml` do not exist on disk. Static and SAST passes will be skipped for those apps.
 
-**Red** -- `.swao.yml` is absent, unparseable (YAML syntax error), or fails schema validation.
+**Red**: `.swao.yml` is absent, unparseable (YAML syntax error), or fails schema validation.
 
 ```bash
 # Validate YAML syntax

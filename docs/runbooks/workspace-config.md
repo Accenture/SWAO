@@ -67,12 +67,12 @@ output:
 
 | Pass key | What it does |
 |---|---|
-| `static` | Inventory scan -- file types, dependency lists, framework detection |
+| `static` | Inventory scan: file types, dependency lists, framework detection |
 | `dynamic` | Browser-driven probe (requires Playwright + Chromium) |
 | `context` | Ingests CSV/JSON context files (CMDB exports, FinOps data) |
 | `compliance` | Maps inventory against selected control frameworks |
 | `security` | SAST analysis + container image scanning (where configured) |
-| `llm` | LLM-driven analysis pass -- generates narrative findings and migration recommendations |
+| `llm` | LLM-driven analysis pass: generates narrative findings and migration recommendations |
 
 Disable a pass globally by removing it from `passes.enabled`, or per-app via `exclusions.pass_ids`.
 

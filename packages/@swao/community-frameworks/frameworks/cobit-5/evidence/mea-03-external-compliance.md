@@ -6,35 +6,35 @@ collected_by: consultant
 classification: community
 ---
 
-# MEA03 -- Monitor, Evaluate and Assess Compliance With External Requirements
+# MEA03: Monitor, Evaluate and Assess Compliance With External Requirements
+
+Sample evidence for illustration; replace it with the client's own findings.
 
 ## Verdict (consultant-asserted)
 
 outcome: SATISFIED
 severity: high
 rationale: >-
-  A compliance register links 73 external requirements (GDPR articles, ISO
-  27001 controls, DORA articles, SOC 2 criteria, jurisdiction-specific
-  reporting obligations) to internal control owners. Status is reported
-  quarterly to the audit committee; the latest report (2026-Q1) showed 0
-  open critical non-compliances and 7 minor items in remediation, all
-  within the agreed SLA. COBIT 5 process capability assessed at Level 3
-  (Established).
+  A compliance register lists 73 external obligations (GDPR articles, ISO
+  27001 controls, DORA articles, SOC 2 criteria and local reporting duties)
+  and links each one to an internal control owner. The audit committee
+  receives a status report every quarter. The 2026-Q1 report showed no open
+  critical breaches and 7 minor items being fixed, all within the agreed
+  deadline. Capability is rated Level 3 (established).
 
 ## Evidence references
 
-- Compliance register (CR-2026-Q1) -- 73 external requirements indexed
-- Audit Committee minutes 2026-Q1 -- compliance report (item 5.3)
-- Open-items tracker -- 7 minor items, all in SLA
+- Compliance register (CR-2026-Q1): 73 external obligations
+- Audit committee minutes 2026-Q1: compliance report, item 5.3
+- Open-items tracker: 7 minor items, all within deadline
 - Regulator correspondence log (Q1 2026)
 
 ## Counter-hypothesis considered
 
-Considered whether new AI regulations (EU AI Act) are properly tracked
-given the catalogue references it in the cross_mapping_hints; checked the
-register -- the EU AI Act is on it as a "2026-Q3 readiness assessment"
-item with named owner. Tracked appropriately.
+Is new AI regulation (EU AI Act) tracked, given that it is relevant to
+the client's plans? Checked the register: the EU AI Act is listed as a
+2026-Q3 readiness assessment with a named owner, so it is tracked.
 
 ## Auditor notes
 
-(empty -- filled in at sign-off)
+(empty, completed at sign-off)

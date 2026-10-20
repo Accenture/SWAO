@@ -23,7 +23,7 @@ Three variables at the top of each file:
 
 | Variable | What it points at | Example |
 |---|---|---|
-| `SWAO_BIN`   | Absolute path to the SWAO binary | `C:\Projects\accenture\swao\dist-bin\swao-enterprise-win.exe` |
+| `SWAO_BIN`   | Absolute path to the SWAO binary | `C:\swao\bin\swao-enterprise-win.exe` |
 | `WORKSPACE`  | Absolute path to the engagement workspace (contains `.swao.yml`) | `C:\swao-e2e` |
 | `APP_LIST`   | Space-separated app ids -- one per `apps/<id>/` directory | `sovereign-health e2e-ct app-three` |
 
@@ -39,7 +39,7 @@ SWAO_BIN=/path/to/swao APP_LIST=(app-a app-b) bash assess-portfolio.sh
 ### Windows
 
 ```cmd
-cd C:\Projects\accenture\swao\ops\batch-samples
+cd C:\src\swao\examples\batch-samples
 assess-portfolio.cmd
 ```
 

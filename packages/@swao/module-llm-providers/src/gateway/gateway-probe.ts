@@ -25,6 +25,7 @@ import type { ProbeContribution } from '@swao/core';
 import { CredentialStore } from '@swao/core';
 import { getConnector, listConnectors } from './connector-loader.js';
 import { createProviderFromConnector } from './resolve.js';
+import { withLlmAttemptLimit } from '../llm-request.js';
 import { resolveModelAlias } from './alias-resolver.js';
 import { scaffoldWorkspaceGateway } from './scaffold.js';
 
@@ -47,6 +48,7 @@ export const llmGatewayProbeContribution: ProbeContribution = {
 // 20 s ceiling fired during the third retry sleep, losing the HTTP 503 status from
 // the thrown error and producing the misleading "endpoint unreachable" message.
 const PING_TIMEOUT_MS = 35_000;
+const PING_MAX_ATTEMPTS = 4;
 const PING_PROMPT = 'SWAO connectivity check. Reply with the single word: OK';
 
 interface ActiveConnectorSpec {
@@ -227,7 +229,10 @@ async function pingActiveConnector(
     model = resolved.provider.model;
     const started = Date.now();
     await Promise.race([
-      resolved.provider.complete(PING_PROMPT),
+      // #3284: assessment calls make 6 attempts; the ping keeps 4 so its
+      // back-off (3 + 6 + 12 s) stays inside PING_TIMEOUT_MS and the real
+      // failure cause is reported instead of the ceiling.
+      withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT)),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`live ping timed out after ${PING_TIMEOUT_MS}ms`)), PING_TIMEOUT_MS).unref?.(),
       ),

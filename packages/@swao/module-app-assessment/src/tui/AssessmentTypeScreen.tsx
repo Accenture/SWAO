@@ -30,7 +30,7 @@ import { GuidanceBox, HeaderView, type LicenseStateView } from '@swao/tui-kit';
 import { LicenseGuard } from '@swao/core';
 
 /** Canonical assessment types -- mirrors KNOWN_ASSESSMENT_TYPE_ENTRIES in assess-router.ts */
-export type AssessmentType = 'application' | 'audit' | 'landing-zone-catalog' | 'landing-zone-customer' | 'llm' | 'hybrid';
+export type AssessmentType = 'application' | 'audit' | 'landing-zone-catalog' | 'landing-zone-customer' | 'llm' | 'hybrid' | 'service';
 
 interface AssessmentTypeScreenProps {
   onSelect: (type: AssessmentType) => void;
@@ -53,8 +53,8 @@ interface TypeEntry {
   comingSoonBody?: string[];
 }
 
-// Design 092 s2 (#1419, sprint-114): the menu lists the three REAL
-// assessment surfaces only. The former coming-soon placeholder entries
+// Design 092 s2 (#1419, sprint-114) + Design 103 s3.6 (#3073, sprint-150):
+// the menu lists the four REAL assessment surfaces in a fixed order. The former coming-soon placeholder entries
 // (audit, landing-zone-customer, hybrid) are removed from this array by
 // operator direction; their TYPE values remain canonical in
 // KNOWN_ASSESSMENT_TYPES (router coming-soon guard + historical run
@@ -73,6 +73,16 @@ export const ASSESSMENT_TYPE_ENTRIES: TypeEntry[] = [
   },
   {
     key: '2',
+    label: 'Service Portfolio Assessment',
+    detail: 'swao service - third-party apps, SaaS, COTS from an Excel intake',
+    what: 'Assesses a portfolio of third-party, SaaS, and COTS applications from an Excel inventory, ' +
+          'with no source code required. Scaffolds one workspace app per row, researches CVE and ' +
+          'end-of-life status, and produces per-app risk findings and a portfolio summary.',
+    type: 'service',
+    available: true,
+  },
+  {
+    key: '3',
     label: 'Landing Zone Catalog Assessment',
     detail: 'swao assess --type landing-zone-catalog - CSP service catalog fit/gap',
     what: 'Assesses an application against CSP service catalogs (Azure, AWS, GCP) to identify sovereignty ' +
@@ -82,7 +92,7 @@ export const ASSESSMENT_TYPE_ENTRIES: TypeEntry[] = [
     available: true,
   },
   {
-    key: '3',
+    key: '4',
     label: 'LLM Assessment for SWAO',
     detail: 'swao assess --type llm - compare up to 5 LLMs on your assessed app',
     what: 'Runs your already-assessed application through 2 to 5 LLM (connector, model) legs and compares the ' +

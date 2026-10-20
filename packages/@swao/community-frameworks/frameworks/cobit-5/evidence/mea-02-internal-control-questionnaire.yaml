@@ -1,4 +1,5 @@
-# Manual questionnaire for MEA02 -- Monitor, Evaluate and Assess the System of Internal Control
+# Manual questionnaire for MEA02: Monitor, Evaluate and Assess the System of Internal Control
+# Sample answers for illustration; replace them with the client's own answers.
 # Evidence kind: manual_questionnaire (design 029 §3.4)
 
 control_id: MEA02
@@ -8,27 +9,27 @@ collected_by: consultant
 
 questions:
   - id: q1
-    text: "Is there a documented internal-control register covering both IT general controls and business-process controls?"
+    text: "Is there a single register that lists both general IT controls and controls inside business processes?"
     answer: "yes"
     severity_if_no: high
     evidence_ref: "ICR-2026 (COSO-aligned)"
   - id: q2
-    text: "Has internal audit completed a coverage plan against the register for the current year?"
+    text: "Has internal audit planned which of these controls it will cover this year?"
     answer: "yes"
     severity_if_no: high
-    evidence_ref: "IA plan 2026 -- approved by audit committee 2026-Q1"
+    evidence_ref: "IA plan 2026, approved by the audit committee 2026-Q1"
   - id: q3
-    text: "Are control deficiencies tracked through to remediation with named owners and target dates?"
+    text: "Is every control weakness logged with an owner and a target date until it is fixed?"
     answer: "yes"
     severity_if_no: high
     evidence_ref: "Deficiency tracker DT-2026-Q1"
   - id: q4
-    text: "Are design-effectiveness AND operating-effectiveness assessments performed for high-risk controls?"
+    text: "For high-risk controls, is it tested both whether the control is well designed and whether it worked in practice over the period?"
     answer: "no"
     severity_if_no: high
-    evidence_ref: "Only design-effectiveness tested in 2025; operating-effectiveness deferred"
+    evidence_ref: "Only design tested in 2025; operating tests deferred"
   - id: q5
-    text: "Are control test results reported to the audit committee at least semi-annually?"
+    text: "Are control test results presented to the audit committee at least twice a year?"
     answer: "yes"
     severity_if_no: high
     evidence_ref: "Audit committee minutes 2025-H2 + 2026-Q1"

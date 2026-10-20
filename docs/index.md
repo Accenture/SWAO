@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: Three assessment types
-    details: Application Assessment, Landing Zone Assessment, and LLM Assessment -- all available now with no additional configuration.
+    details: Application Assessment, Landing Zone Assessment, and LLM Assessment, all available now with no additional configuration.
   - title: Bring your own LLM
     details: Anthropic Claude, OpenAI, Ollama, or run with `--skip-llm` to skip LLM passes for fully offline assessments. LLM access is included in every edition.
   - title: Audit-grade traceability
@@ -35,7 +35,7 @@ features:
 
 SWAO analyses cloud applications and infrastructure and produces an auditor-grade
 assessment report. It combines static code analysis, LLM-driven compliance evaluation,
-and context ingestion from your CMDB and operational documents -- and outputs a full
+and context ingestion from your CMDB and operational documents, and outputs a full
 traceability chain from source evidence to compliance verdict.
 
 **File-only on disk.** No telemetry, no hosted endpoint, no call-home. Your source
@@ -45,16 +45,16 @@ code and assessment data never leave your machine. Bring your own LLM provider.
 
 ## What's new in v1.0
 
-- **LLM Assessment** -- benchmark multiple AI providers against the same sovereignty
+- **LLM Assessment**: benchmark multiple AI providers against the same sovereignty
   controls that govern the assessed workload. Parallel and serial leg execution.
   Includes the vision pass: Playwright screenshots analysed by the configured LLM.
-- **HTML portal publication** -- self-contained single-file report with executive,
+- **HTML portal publication**: self-contained single-file report with executive,
   technical, compliance, and auditor views. Works offline and in air-gapped environments.
-- **Terraform module generation** -- `swao generate-tf` produces validated Terraform
+- **Terraform module generation**: `swao generate-tf` produces validated Terraform
   modules for the assessed landing zone configuration.
-- **Multi-leg LLM runs** -- configure 2 to 5 LLM connectors and compare their
+- **Multi-leg LLM runs**: configure 2 to 5 LLM connectors and compare their
   sovereignty scores side by side in a single command.
-- **Three-tier licensing** -- Community (Apache 2.0, no activation), Consultant, and
+- **Three-tier licensing**: Community (Apache 2.0, no activation), Consultant, and
   Enterprise. All tiers include the full assessment engine and LLM integration.
 
 ---

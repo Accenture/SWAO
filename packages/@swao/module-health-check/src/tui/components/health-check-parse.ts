@@ -69,6 +69,7 @@ export function parseHealthCheckOutput(lines: ReadonlyArray<string>): HealthChec
       if (!trimmed) continue;
       // Epilogue lines we don't want attached to the last probe.
       if (/^All probes passed/.test(trimmed)) continue;
+      if (SUMMARY_FAILED_RE.test(trimmed.slice(0, MAX_HEADER_LEN))) continue;
       if (/^Press Enter/.test(trimmed)) continue;
       if (/^Machine fingerprint:/.test(trimmed)) continue;
       current.detailLines.push(trimmed);
@@ -76,6 +77,55 @@ export function parseHealthCheckOutput(lines: ReadonlyArray<string>): HealthChec
   }
   if (current) probes.push(current);
   return probes;
+}
+
+// #3170: text-mode epilogue written by the runner (formatHealthCheckSummaryLine):
+//   "All probes passed."  or  "N probe(s) failed: key-a, key-b."
+// Linear: a bounded digit run, a literal, then one greedy tail (trimmed in code).
+const SUMMARY_FAILED_RE = /^(\d{1,4}) probe\(s\) failed(?::(.*))?/;
+
+export interface HealthCheckOutputSummary {
+  /** Number of probe header lines parsed. */
+  probeCount: number;
+  /** Failures as declared by the runner's own summary line (the single definition, #3170). */
+  failCount: number;
+  /** Runner probe keys named in the summary line (empty when none or not stated). */
+  failedProbes: string[];
+  /** Probes whose header status is WARN (not failures; reported separately, #2388). */
+  warnCount: number;
+  warnedProbes: string[];
+}
+
+/**
+ * Summarise `swao health-check` text output for the Setup Wizard (#3170).
+ *
+ * The failure count is read from the runner's summary line so the wizard's
+ * setup.health-check.complete event always matches health-check.complete.
+ * Only when the summary line is missing (for example the child was killed by
+ * the watchdog) does it fall back to counting FAIL probe headers. WARN probes
+ * are counted separately and never added to the failure count.
+ */
+export function summariseHealthCheckOutput(lines: ReadonlyArray<string>): HealthCheckOutputSummary {
+  const probes = parseHealthCheckOutput(lines);
+  let summaryFail: { count: number; keys: string[] } | null = null;
+  for (const raw of lines) {
+    const trimmed = raw.trim().slice(0, MAX_HEADER_LEN);
+    if (/^All probes passed/.test(trimmed)) { summaryFail = { count: 0, keys: [] }; continue; }
+    const m = SUMMARY_FAILED_RE.exec(trimmed);
+    if (m) {
+      const keys = (m[2] ?? '').replace(/\.$/, '').split(',').map((k) => k.trim()).filter(Boolean);
+      summaryFail = { count: parseInt(m[1] ?? '0', 10), keys };
+    }
+  }
+  const failHeaders = probes.filter((p) => p.status === 'FAIL').map((p) => p.name);
+  const warned = probes.filter((p) => p.status === 'WARN').map((p) => p.name);
+  return {
+    probeCount: probes.length,
+    failCount: summaryFail ? summaryFail.count : failHeaders.length,
+    failedProbes: summaryFail ? summaryFail.keys : failHeaders,
+    warnCount: warned.length,
+    warnedProbes: warned,
+  };
 }
 
 // Per-probe business-user-readable action text. Maps the probe name (from the

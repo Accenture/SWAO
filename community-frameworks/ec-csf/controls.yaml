@@ -1,5 +1,5 @@
 # SWAO Community Framework -- EC Cloud Sovereignty Framework v1.2.1
-# Sprint-139 #2847: 40 controls across 8 SOV domains.
+# Sprint-139 #2847: 34 controls across 8 SOV domains.
 # SEAL maturity mapping: SEAL-3/4 requirements -> high; SEAL-1/2 -> medium; SEAL-0 baseline -> low.
 
 regime_meta:
@@ -22,7 +22,7 @@ regime_meta:
     - digital_sovereignty
   description: >-
     EC Cloud Sovereignty Framework v1.2.1 (European Commission, October 2025).
-    40 controls across 8 SOV domains assessed at SEAL-0 to SEAL-4 maturity.
+    34 controls across 8 SOV domains assessed at SEAL-0 to SEAL-4 maturity.
     Used in EUR 180M EU institutional cloud procurement. Companion to
     SecNumCloud v3.2; together they form the primary EU institutional
     sovereign cloud assessment model.
@@ -53,7 +53,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_REV_03
+      - SECNUM_REV_03
     references:
       - "EC CSF v1.2.1 SOV-1"
 
@@ -90,7 +90,7 @@ controls:
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
-      - SECNUMCLOUD_REV_01
+      - SECNUM_REV_01
     references:
       - "EC CSF v1.2.1 SOV-1"
 
@@ -131,7 +131,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SOV_01
+      - SECNUM_SOV_01
       - GDPR_Art_44
     references:
       - "EC CSF v1.2.1 SOV-2"
@@ -151,7 +151,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SOV_01
+      - SECNUM_SOV_01
       - GDPR_Art_48
     references:
       - "EC CSF v1.2.1 SOV-2"
@@ -171,7 +171,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SOV_03
+      - SECNUM_SOV_03
       - GDPR_Art_48
     references:
       - "EC CSF v1.2.1 SOV-2"
@@ -216,7 +216,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - SECNUMCLOUD_SOV_01
+      - SECNUM_SOV_01
       - GDPR_Art_44
     references:
       - "EC CSF v1.2.1 SOV-3"
@@ -238,9 +238,8 @@ controls:
       - signal: ENCRYPT_AT_REST
       - context_input: solution_arch
     maps_to:
-      - SECNUMCLOUD_CRY_01
-      - SECNUMCLOUD_CRY_03
-      - GDPR_Art_32
+      - SECNUM_CRY_01
+      - SECNUM_CRY_03
     references:
       - "EC CSF v1.2.1 SOV-3"
 
@@ -278,7 +277,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - SECNUMCLOUD_REV_01
+      - SECNUM_REV_01
       - GDPR_Art_20
     references:
       - "EC CSF v1.2.1 SOV-3"
@@ -298,7 +297,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_REV_02
+      - SECNUM_REV_02
       - GDPR_Art_17
     references:
       - "EC CSF v1.2.1 SOV-3"
@@ -323,7 +322,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - SECNUMCLOUD_SOV_02
+      - SECNUM_SOV_02
     references:
       - "EC CSF v1.2.1 SOV-4"
 
@@ -342,7 +341,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SOV_01
+      - SECNUM_SOV_01
     references:
       - "EC CSF v1.2.1 SOV-4"
 
@@ -361,8 +360,8 @@ controls:
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
-      - SECNUMCLOUD_INC_01
-      - NIS2_INC_01
+      - SECNUM_INC_01
+      - NIS2_INC_1
     references:
       - "EC CSF v1.2.1 SOV-4"
 
@@ -381,7 +380,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_TRS_03
+      - SECNUM_TRS_03
     references:
       - "EC CSF v1.2.1 SOV-4"
 
@@ -406,8 +405,8 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SCM_01
-      - NIS2_SCM_01
+      - SECNUM_SCM_01
+      - NIS2_SCM_1
     references:
       - "EC CSF v1.2.1 SOV-5"
 
@@ -426,7 +425,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SCM_03
+      - SECNUM_SCM_03
     references:
       - "EC CSF v1.2.1 SOV-5"
 
@@ -445,7 +444,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SCM_01
+      - SECNUM_SCM_01
     references:
       - "EC CSF v1.2.1 SOV-5"
 
@@ -464,7 +463,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_SCM_02
+      - SECNUM_SCM_02
       - GDPR_Art_28
     references:
       - "EC CSF v1.2.1 SOV-5"
@@ -568,8 +567,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_TRS_01
-      - ISO_27001_Cl.6.1
+      - SECNUM_TRS_01
     references:
       - "EC CSF v1.2.1 SOV-7"
 
@@ -588,7 +586,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_DEV_02
+      - SECNUM_DEV_02
     references:
       - "EC CSF v1.2.1 SOV-7"
 
@@ -607,7 +605,7 @@ controls:
     evidence_basis:
       - context_input: solution_arch
     maps_to:
-      - SECNUMCLOUD_NET_01
+      - SECNUM_NET_01
     references:
       - "EC CSF v1.2.1 SOV-7"
 
@@ -626,8 +624,8 @@ controls:
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
-      - SECNUMCLOUD_VUL_01
-      - NIS2_NSC_01
+      - SECNUM_VUL_01
+      - NIS2_NSC_1
     references:
       - "EC CSF v1.2.1 SOV-7"
 
@@ -647,8 +645,8 @@ controls:
       - signal: ENCRYPT_AT_REST
       - signal: ENCRYPT_IN_TRANSIT
     maps_to:
-      - SECNUMCLOUD_CRY_01
-      - SECNUMCLOUD_CRY_02
+      - SECNUM_CRY_01
+      - SECNUM_CRY_02
     references:
       - "EC CSF v1.2.1 SOV-7"
 
@@ -672,7 +670,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_ENV_01
+      - SECNUM_ENV_01
     references:
       - "EC CSF v1.2.1 SOV-8"
 
@@ -691,7 +689,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_ENV_02
+      - SECNUM_ENV_02
     references:
       - "EC CSF v1.2.1 SOV-8"
 
@@ -710,7 +708,7 @@ controls:
     evidence_basis:
       - context_input: compliance_documentation
     maps_to:
-      - SECNUMCLOUD_ENV_03
+      - SECNUM_ENV_03
     references:
       - "EC CSF v1.2.1 SOV-8"
 

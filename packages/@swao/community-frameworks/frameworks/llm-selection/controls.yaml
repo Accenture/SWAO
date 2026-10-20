@@ -1,9 +1,9 @@
 # LLM Selection Framework for Sovereign Deployment -- control catalogue
 # Design 063 Appendix A -- 34 controls across 7 domains.
-# Schema: RegimeCatalogueSchema v0.11 (design 029 Â§4.5; design 018 Â§2.1).
+# Schema: RegimeCatalogueSchema v0.11 (design 029 §4.5; design 018 §2.1).
 #
 # Source of truth: docs/design/063-llm-assessment-framework-and-multi-provider-configuration.md
-# Appendix A Â§A.5. Every control description is drawn from that source.
+# Appendix A §A.5. Every control description is drawn from that source.
 # Gartner G00794364 dimension names are used as domain publication subtitles.
 #
 # Sovereignty Readiness Score (SRS) weights: DSR=0.20 MT=0.17 PR=0.17
@@ -56,7 +56,7 @@ controls:
     description: >-
       A verified zero-retention endpoint exists where no prompt or response data is
       logged or used for model training. SWAO verifies this per run via the SPEC.md
-      Â§10.10 provider client check. Absence of a zero-retention endpoint is a hard gate: BLOCKED.
+      §10.10 provider client check. Absence of a zero-retention endpoint is a hard gate: BLOCKED.
     severity_default: critical
     pillar: "DSR -- Data sovereignty and residency"
     evidence_basis:

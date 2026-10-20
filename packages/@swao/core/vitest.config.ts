@@ -20,7 +20,6 @@ export default defineConfig({
     environment: 'node',
     pool: 'forks',
     include: ['src/**/*.test.ts'],
-    exclude: ['src/__tests__/**'],
     // Set ephemeral Ed25519 keypair before any test module loads license-guard.ts
     // so buildLicenseKey / verifyKey round-trips work without the real signing secret.
     setupFiles: ['src/__tests__/setup.ts'],

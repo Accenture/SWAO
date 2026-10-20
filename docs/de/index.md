@@ -18,7 +18,7 @@ hero:
 
 features:
   - title: Drei Bewertungstypen
-    details: Anwendungs-, Landing-Zone- und LLM-Bewertung -- alle jetzt verfügbar ohne zusätzliche Konfiguration.
+    details: Anwendungs-, Landing-Zone- und LLM-Bewertung, alle jetzt verfügbar ohne zusätzliche Konfiguration.
   - title: Eigenes LLM mitbringen
     details: Anthropic Claude, OpenAI, Ollama, oder mit `--skip-llm` starten, um LLM-Passes für vollständig offline Assessments zu überspringen. LLM-Zugriff ist in jeder Edition enthalten.
   - title: Audit-konforme Nachvollziehbarkeit
@@ -35,7 +35,7 @@ features:
 
 SWAO analysiert Cloud-Anwendungen und -Infrastruktur und erstellt einen audit-konformen
 Bewertungsbericht. Es kombiniert statische Code-Analyse, LLM-gestützte Compliance-Bewertung
-und Kontexteinlese aus Ihrem CMDB und Betriebsdokumenten -- und liefert eine vollständige
+und Kontexteinlese aus Ihrem CMDB und Betriebsdokumenten, und liefert eine vollständige
 Rückverfolgungskette von Quellevidenz bis zum Compliance-Urteil.
 
 **Nur Dateien auf der Festplatte.** Keine Telemetrie, kein gehosteter Endpunkt, kein Call-home.

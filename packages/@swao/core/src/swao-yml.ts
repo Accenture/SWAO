@@ -77,7 +77,7 @@ export const SwaoYmlPublicationSchema = z.object({
   default_lang: z.string().optional(),    // e.g. "en" | "de" (Design 041 §5 i18n)
   site: SwaoYmlPublicationSiteSchema.optional(),
   // Design 006 §10.2 -- configurable chrome text (no hardcoded strings in templates)
-  classification_band: z.string().optional(),   // default: "Accenture Internal, Confidential"
+  classification_band: z.string().optional(),   // default: "SWAO - Sovereign Workload Assessment & Onboarding"
   logo_name: z.string().optional(),             // default: "SWAO"
   logo_sub: z.string().optional(),              // default: "Publication"
   footer_note: z.string().optional(),           // appended to footer
@@ -128,11 +128,38 @@ export type SwaoYmlEngagement = z.infer<typeof SwaoYmlEngagementSchema>;
 //                      normalised by the @swao/core assess router; removed at v2.0.0
 //   lenses             deprecated alias for pass_profile (accepted, emits no warning yet)
 //   regimes:           top-level key, unioned with assessment.frameworks at runtime
+
+// #3281: LZ catalogue target, `<provider>:<region>` (for example
+// `azure:germanywestcentral`). A `{ provider, region }` object is tolerated.
+// The schema checks the shape only: an unknown provider or region is not a
+// parse error. At run time a known geography (for example `azure:Europe`)
+// resolves through the shared geography model of @swao/module-landing-zone
+// (the same rule for every catalogue), and any
+// other unknown value becomes a skipped target with a valid-region hint.
+export const LZ_TARGET_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*:\S.*$/;
+export const SwaoYmlLzTargetSchema = z.union([
+  z.string().regex(LZ_TARGET_PATTERN, {
+    message: 'assessment.landing_zone.targets entries must have the form <provider>:<region>, for example azure:germanywestcentral',
+  }),
+  z.object({ provider: z.string().min(1), region: z.string().min(1) }).passthrough(),
+]);
+
+// #3281: assessment.landing_zone. `targets` is the multi-target list read by
+// `swao assess --type landing-zone-catalog` and by the inline catalogue fit of
+// an Application Assessment (`--lz-cat-targets` wins when given). The single
+// `provider` + `region` pair stays supported; `provider` alone drives Pass 23
+// (LZR) only.
+export const SwaoYmlLandingZoneSchema = z.object({
+  provider: z.string().nullish(),
+  region: z.string().nullish(),
+  targets: z.array(SwaoYmlLzTargetSchema).nullish(),
+}).passthrough();
+
 export const SwaoYmlAssessmentSchema = z.object({
   // WHICH assessment kind (default: application when absent). Deprecated aliases
   // accepted here and normalised by the assess router: `source-code` ->
   // `application` (am.3), `human` -> `audit` (am.4).
-  type: z.enum(['application', 'audit', 'landing-zone', 'landing-zone-catalog', 'landing-zone-customer', 'hybrid', 'llm', 'source-code', 'human']).optional(),
+  type: z.enum(['application', 'audit', 'landing-zone', 'landing-zone-catalog', 'landing-zone-customer', 'hybrid', 'llm', 'service', 'source-code', 'human']).optional(),
   // WHAT: community frameworks to evaluate (alias for top-level regimes:)
   frameworks: z.array(z.string()).optional(),
   // WHICH: analysis pass profiles to run (source-code mode only)
@@ -149,6 +176,11 @@ export const SwaoYmlAssessmentSchema = z.object({
   // after reviewing the data-sovereignty implications.
   vision_analysis: z.boolean().optional(),
   vision_max_screens: z.number().int().positive().optional(),
+  // #3281: landing zone catalogue targets (see SwaoYmlLandingZoneSchema).
+  landing_zone: SwaoYmlLandingZoneSchema.nullish(),
+  // #2755, deprecated by #3281: comma-separated `provider:region` pairs written
+  // by older TUI versions. Still read when assessment.landing_zone.targets is absent.
+  lz_cat_targets: z.string().nullish(),
 }).passthrough();
 
 // #1016: workspace-level settings (run retention, housekeeping)
@@ -224,6 +256,23 @@ export const SwaoYmlContextSchema = z.object({
 
 export type SwaoYmlContext = z.infer<typeof SwaoYmlContextSchema>;
 
+// #3284 (Design 110 D-14): providers.llm. Only the keys SWAO validates are
+// declared; primary / secondary / environments and every other providers.*
+// block pass through unchanged (read by assess.ts and the LLM factory).
+export const SwaoYmlProvidersLlmSchema = z
+  .object({
+    // In-flight LLM request limit per endpoint, shared by all passes. Default 4;
+    // a gateway connector may set its own max_concurrency, this value wins.
+    max_concurrency: z.number().int().min(1).max(64).optional(),
+  })
+  .passthrough();
+
+export const SwaoYmlProvidersSchema = z
+  .object({
+    llm: SwaoYmlProvidersLlmSchema.nullish(),
+  })
+  .passthrough();
+
 export const SwaoYmlSchema = z
   .object({
     source: z
@@ -248,12 +297,14 @@ export const SwaoYmlSchema = z
     iac: SwaoYmlIacSchema.optional(),
     llm_assessment: SwaoYmlLlmAssessmentSchema.optional(),
     context: SwaoYmlContextSchema.optional(),
+    providers: SwaoYmlProvidersSchema.nullish(),
   })
   .passthrough();
 
 export type SwaoYml = z.infer<typeof SwaoYmlSchema>;
 export type SwaoYmlCrawl = z.infer<typeof SwaoYmlCrawlSchema>;
 export type SwaoYmlAssessment = z.infer<typeof SwaoYmlAssessmentSchema>;
+export type SwaoYmlLandingZone = z.infer<typeof SwaoYmlLandingZoneSchema>;
 export type SwaoYmlPublication = z.infer<typeof SwaoYmlPublicationSchema>;
 export type SwaoYmlWorkspace = z.infer<typeof SwaoYmlWorkspaceSchema>;
 export type SwaoYmlIac = z.infer<typeof SwaoYmlIacSchema>;

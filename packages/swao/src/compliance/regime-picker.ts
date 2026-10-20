@@ -32,9 +32,10 @@ export interface AvailableRegime {
  * regimes the consultant can pick. Sprint-039 #0358 Phase 3 retired the
  * standard scope; every entry is community now.
  *
- * Sort order: registry iteration order (which mirrors the canonical
- * entries from `_registry.yaml` plus any engagement-authored community
- * folders discovered by `loadCommunityIndex()`). Cross-id `replaces:`
+ * There is no installation step and no registry file (#3297): the list is
+ * whatever framework folders sit in the workspace, discovered by
+ * `loadCommunityIndex()`. Sort order: registry iteration order (folder
+ * order, plus any legacy `index.yaml` entries first). Cross-id `replaces:`
  * aliases are deduped by their resolved entry so e.g. HIPAA + NIST_SP_800_66R2
  * surface once.
  */

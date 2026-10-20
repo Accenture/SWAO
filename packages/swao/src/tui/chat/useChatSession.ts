@@ -29,21 +29,31 @@
 // connector; falls back to createLlmProvider from the factory if no
 // connector YAML is found. The complete(prompt) interface is used, with
 // full conversation history formatted into the prompt string.
+// #3301: every chat call runs with LLM_CHAT_MAX_ATTEMPTS (3) attempts so a
+// failing endpoint does not freeze the chat for the full ~93 s assessment
+// retry policy, and token usage is read from the call's own result.
 //
 // History: each turn is appended to wsp/chat/<sessionTs>.ndjson as
 // ChatTurn NDJSON (#2782). The token budget guard warns at 80% of the
 // model's configured max_tokens.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
 import type { ChatTurn } from '@swao/core';
 import { findWorkspace } from '@swao/core';
-import { getConnector, listConnectors, createProviderFromConnector } from '@swao/module-llm-providers';
-import type { LlmProvider } from '@swao/module-llm-providers';
+import {
+  getConnector,
+  listConnectors,
+  createProviderFromConnector,
+  withLlmAttemptLimit,
+  completeWithUsage,
+  completeWithToolsWithUsage,
+  LLM_CHAT_MAX_ATTEMPTS,
+} from '@swao/module-llm-providers';
+import type { LlmProvider, LlmUsage } from '@swao/module-llm-providers';
 import { registerChild } from '../child-process-registry.js';
 import {
   chatHistoryPath,
@@ -57,6 +67,9 @@ import {
   listMcpTools,
   fetchPortfolioContext,
   buildSystemPrompt,
+  autoStartMcpServer,
+  isMcpError,
+  mcpError,
   type McpSession,
 } from './mcp-context.js';
 import type { LlmTool } from '@swao/module-llm-providers';
@@ -163,6 +176,96 @@ export function formatChatPrompt(messages: ChatTurn[], newContent: string): stri
   return `${systemSection}${historySection}User: ${newContent}\n\nAssistant:`;
 }
 
+/** One chat request (#3301). */
+export interface ChatCompletionRequest {
+  system: string;
+  /** Conversation so far (excluding the new user message). */
+  history: ChatTurn[];
+  content: string;
+  tools: LlmTool[];
+  /** MCP tool executor; tool calling is used only when set and tools exist. */
+  onToolCall?: (name: string, input: Record<string, unknown>) => Promise<string>;
+}
+
+/** Providers whose model rejected tool calling in this process (#3311). */
+const toolsUnsupportedProviders = new WeakSet<LlmProvider>();
+
+/** LlmToolsUnsupportedError of the provider module (#3311), matched by name
+ *  so every copy of the module (dist or src) is recognised. */
+function isToolsUnsupported(err: unknown): boolean {
+  return err instanceof Error && err.name === 'LlmToolsUnsupportedError';
+}
+
+/** One-line notice shown once when Chat degrades to no-tools mode (#3311). */
+export function toolsUnsupportedNotice(model: string): string {
+  return `[Note: the model ${model} does not support tool calling, so SWAO MCP tools are off for this chat; answers use the portfolio context only.]`;
+}
+
+/**
+ * Send one chat message (#3301). Runs with the per-call attempt limit
+ * LLM_CHAT_MAX_ATTEMPTS (the shared helper's scoped option; assessment calls
+ * keep their full policy) and returns the usage of this call from its result.
+ */
+export function runChatCompletion(
+  provider: LlmProvider,
+  req: ChatCompletionRequest,
+): Promise<{ text: string; usage: LlmUsage | undefined }> {
+  return withLlmAttemptLimit(LLM_CHAT_MAX_ATTEMPTS, async () => {
+    // #2915: use dynamic tool-calling when available (Claude Desktop parity).
+    // Requires: provider supports completeWithTools, MCP session is active, tools were fetched.
+    // #3311: ollama and bedrock connectors offer tools too; a model without
+    // tool support (detected from the API error, LlmToolsUnsupportedError)
+    // degrades to the prompt without tools below, with a one-time notice.
+    let notice = '';
+    if (provider.completeWithTools && req.onToolCall && req.tools.length > 0 && !toolsUnsupportedProviders.has(provider)) {
+      // Convert ChatTurn history to the flat messages format (filter system messages)
+      const llmMessages = req.history
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      llmMessages.push({ role: 'user', content: req.content });
+      try {
+        const result = await completeWithToolsWithUsage(provider, {
+          system: req.system,
+          messages: llmMessages,
+          tools: req.tools,
+          onToolCall: req.onToolCall,
+        });
+        // Tool-calling responses are already prose -- no JSON stripping needed
+        return { text: result.text, usage: result.usage };
+      } catch (err) {
+        if (!isToolsUnsupported(err)) throw err;
+        toolsUnsupportedProviders.add(provider);
+        notice = `${toolsUnsupportedNotice(provider.model)}\n\n`;
+      }
+    }
+    // Fallback: format as a single prompt string (no tool calling)
+    const result = await completeWithUsage(provider, formatChatPrompt(req.history, req.content));
+    // Strip JSON envelope and unescape \n before storing in history (#2786)
+    return { text: notice + extractProseFromResponse(result.text), usage: result.usage };
+  });
+}
+
+/**
+ * Chat's MCP tool executor (#3315). A failed call reaches the model as
+ * `[MCP error: ...]` (callMcpTool) and is recorded in the chat log; it is not
+ * added as a visible turn, which would put consecutive assistant turns into
+ * the tool loop's history.
+ */
+export async function callMcpToolLogged(
+  session: McpSession,
+  historyPath: string,
+  name: string,
+  input: Record<string, unknown>,
+): Promise<string> {
+  const text = await callMcpTool(session, name, input);
+  if (isMcpError(text)) {
+    try {
+      appendTurn(historyPath, { ts: new Date().toISOString(), role: 'assistant', content: `${text} (tool ${name})` });
+    } catch { /* non-fatal */ }
+  }
+  return text;
+}
+
 export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
   const {
     workspace: wsOpt,
@@ -241,6 +344,8 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
       safeSet(setStatus, 'mcp-probe');
       safeSet(setStatusDetail, 'probing MCP server');
       let mcpSession: McpSession | null = null;
+      // #3314 / #3315: MCP start-up failures, shown in the chat and the chat log.
+      const mcpNotices: string[] = [];
 
       try {
         mcpSession = await initMcpSession(mcpPort, 2000);
@@ -256,35 +361,29 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
           const spawnCmd = isPkg ? swaoCliPath : process.execPath;
           const finalArgs = isPkg ? spawnArgs : [swaoCliPath, ...spawnArgs];
 
-          try {
-            const child = spawn(spawnCmd, finalArgs, {
-              stdio: 'ignore',
-              detached: false,
-              // PKG_EXECPATH: '' prevents pkg spawn-patch from re-injecting parent binary path.
-              env: { ...process.env, PKG_EXECPATH: '' },
-              windowsHide: true,
-            });
-            mcpChildRef.current = child;
-            registerChild(child);
-
-            // Wait for MCP to start -- pkg binary on Windows needs ~5-8 s to
-            // unpack, initialise, and bind the port on first launch.
-            // Strategy: wait 5 s, probe once; if still down wait 4 s more, probe again.
-            await new Promise<void>(resolve => setTimeout(resolve, 5000));
-            try {
-              mcpSession = await initMcpSession(mcpPort, 4000);
-              mcpSessionRef.current = mcpSession;
-              safeSet(setMcpAvailable, true);
-            } catch {
-              // First probe failed -- give it one more chance after 4 extra seconds
-              await new Promise<void>(resolve => setTimeout(resolve, 4000));
-              try {
-                mcpSession = await initMcpSession(mcpPort, 4000);
-                mcpSessionRef.current = mcpSession;
-                safeSet(setMcpAvailable, true);
-              } catch { /* MCP still not up -- proceed without it */ }
-            }
-          } catch { /* spawn failed -- proceed without MCP */ }
+          // #3314: poll until the server answers (pkg binary on Windows needs
+          // ~5-8 s on first launch) and stop at once when the child exits, with
+          // the reason from its stderr (for example the Enterprise licence gate).
+          // A server that never answers is tree-killed; nothing is left behind.
+          const started = await autoStartMcpServer({
+            command: spawnCmd,
+            args: finalArgs,
+            port: mcpPort,
+            // PKG_EXECPATH: '' prevents pkg spawn-patch from re-injecting parent binary path.
+            env: { ...process.env, PKG_EXECPATH: '' },
+            onSpawn: child => {
+              mcpChildRef.current = child;
+              registerChild(child);
+            },
+          });
+          mcpChildRef.current = started.child;
+          if (started.session) {
+            mcpSession = started.session;
+            mcpSessionRef.current = mcpSession;
+            safeSet(setMcpAvailable, true);
+          } else if (started.error) {
+            mcpNotices.push(mcpError(started.error));
+          }
         }
       }
 
@@ -299,11 +398,20 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
           const tools = await listMcpTools(mcpSession);
           mcpToolsRef.current = tools;
           safeSet(setMcpToolCount, tools.length);
-        } catch { /* non-fatal -- tool calling degrades gracefully */ }
+        } catch (err) {
+          // Non-fatal: tool calling degrades gracefully, but the reason is reported (#3315).
+          mcpNotices.push(mcpError(err instanceof Error ? err.message : String(err)));
+        }
 
         safeSet(setStatusDetail, 'loading portfolio context');
         try {
-          context = await fetchPortfolioContext(mcpSession, ws, appId);
+          // #3315: failed context sections are recorded in the chat log (NDJSON
+          // only; a visible turn here would lead the tool loop's history).
+          context = await fetchPortfolioContext(mcpSession, ws, appId, (label, error) => {
+            try {
+              appendTurn(historyPathRef.current, { ts: new Date().toISOString(), role: 'assistant', content: `${error} (context: ${label})` });
+            } catch { /* non-fatal */ }
+          });
         } catch { /* context fetch failure is non-fatal */ }
       }
 
@@ -317,7 +425,12 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
       };
 
       if (!isMountedRef.current) return;
-      setMessages([systemTurn]);
+      // #3314 / #3315: MCP start-up failures appear in the chat and the chat log.
+      const noticeTurns: ChatTurn[] = mcpNotices.map(content => ({ ts: new Date().toISOString(), role: 'assistant', content }));
+      for (const turn of noticeTurns) {
+        try { appendTurn(historyPathRef.current, turn); } catch { /* non-fatal */ }
+      }
+      setMessages([systemTurn, ...noticeTurns]);
 
       if (!providerRef.current) {
         safeSet(setStatus, 'error');
@@ -393,37 +506,20 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
     }
 
     try {
-      let responseText: string;
-
       const provider = providerRef.current;
       const mcpSession = mcpSessionRef.current;
-      const tools = mcpToolsRef.current;
 
-      // #2915: use dynamic tool-calling when available (Claude Desktop parity).
-      // Requires: provider supports completeWithTools, MCP session is active, tools were fetched.
-      if (provider.completeWithTools && mcpSession && tools.length > 0) {
-        // Convert ChatTurn history to the flat messages format (filter system messages)
-        const llmMessages = messages
-          .filter(m => m.role === 'user' || m.role === 'assistant')
-          .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
-        llmMessages.push({ role: 'user', content });
+      // #3301: 3 attempts per chat call; usage from this call's own result.
+      const { text: responseText, usage } = await runChatCompletion(provider, {
+        system: systemPromptRef.current,
+        history: messages,
+        content,
+        tools: mcpToolsRef.current,
+        ...(mcpSession
+          ? { onToolCall: (name: string, input: Record<string, unknown>) => callMcpToolLogged(mcpSession, historyPathRef.current, name, input) }
+          : {}),
+      });
 
-        responseText = await provider.completeWithTools({
-          system: systemPromptRef.current,
-          messages: llmMessages,
-          tools,
-          onToolCall: (name: string, input: Record<string, unknown>) => callMcpTool(mcpSession, name, input),
-        });
-        // Tool-calling responses are already prose -- no JSON stripping needed
-      } else {
-        // Fallback: format as a single prompt string (no tool calling)
-        const conversationPrompt = formatChatPrompt(messages, content);
-        const rawResponse = await provider.complete(conversationPrompt);
-        // Strip JSON envelope and unescape \\n before storing in history (#2786)
-        responseText = extractProseFromResponse(rawResponse);
-      }
-
-      const usage = provider.getLastUsage?.();
       const tokensOut = usage?.output_tokens ?? estimateTokens(responseText);
 
       const assistantTurn: ChatTurn = {

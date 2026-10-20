@@ -23,10 +23,11 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { spawnSync } from 'child_process';
-import { cpSync, existsSync, mkdtempSync, openSync, closeSync, readdirSync, readFileSync, rmSync, statSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, closeSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { findInstalledChromium } from '@swao/core';
+import { injectTestLicence, sandboxEnv, probeLicensedTier, TEST_LICENCE_REFUSED_REASON } from './helpers/injected-licence.js';
 
 // When Playwright/Chromium is installed on the host, the binary uses it for
 // dynamic analysis rather than showing "playwright not bundled". Tests that
@@ -80,6 +81,7 @@ function treeKillSync(pid: number): void {
 function runBinary(
   bin: string, args: string[], cwd: string,
   env: NodeJS.ProcessEnv,
+  timeoutMs = 60_000,
 ): { stdout: string; stderr: string; status: number } {
   const base = join(tmpdir(), `swao-e2e-${Date.now()}`);
   const outPath = `${base}-out.txt`;
@@ -89,7 +91,7 @@ function runBinary(
   let pid: number | undefined;
   let status: number | null = null;
   try {
-    const r = spawnSync(bin, args, { cwd, timeout: 60_000, stdio: ['ignore', outFd, errFd], env });
+    const r = spawnSync(bin, args, { cwd, timeout: timeoutMs, stdio: ['ignore', outFd, errFd], env });
     pid = r.pid;
     status = r.status;
   } finally {
@@ -193,8 +195,7 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     expect(status).toBe(0);
     // All bundled frameworks must appear in the binary's listing -- proves
     // the pkg.assets `../../community-frameworks/**` glob shipped them.
-    // COBIT_5 removed from the bundle by #1226 (D-02); available as a
-    // standalone download from GitHub.
+    // COBIT_5 ships again in original wording (#3292) but has no registry entry.
     expect(combined).toContain('GDPR');
     expect(combined).toContain('AI_10_PILLARS');
     expect(combined).toContain('NIST_SP_800_66R2');
@@ -878,4 +879,157 @@ describe.skipIf(!hasConsultantBinary)('Consultant binary -- tier-specific comman
     expect(combined).not.toMatch(/Cannot find module/i);
     expect(combined).not.toMatch(/MODULE_NOT_FOUND/);
   });
+});
+
+// ---------------------------------------------------------------------------
+// Licence tier matrix gates (#3318, #3320, #3321, #3322, #3323), every tier
+// binary run without a licence (sandboxed HOME / LOCALAPPDATA / APPDATA): a
+// licence failure prints the [LICENSE] block and exits non-zero, never a
+// stack trace or exit 0. Skipped per binary when it has not been built.
+// ---------------------------------------------------------------------------
+
+const TIER_BINARIES: Array<[string, string, boolean]> = [
+  ['community', BIN_COMMUNITY, hasCommunityBinary],
+  ['consultant', BIN_CONSULTANT, hasConsultantBinary],
+  ['enterprise', BIN_WIN, hasBinary],
+];
+
+for (const [tierName, bin, present] of TIER_BINARIES) {
+  describe.skipIf(!present)(`${tierName} binary without a licence -- licence tier matrix gates`, () => {
+    let ws: string;
+    let home: string;
+
+    beforeAll(() => {
+      ws = mkdtempSync(join(tmpdir(), `swao-golden-${tierName}-`));
+      home = mkdtempSync(join(tmpdir(), `swao-golden-home-${tierName}-`));
+    });
+
+    afterAll(() => {
+      if (ws) rmSync(ws, { recursive: true, force: true });
+      if (home) rmSync(home, { recursive: true, force: true });
+    });
+
+    const runTier = (args: string[]) => runBinary(bin, args, ws, {
+      ...process.env, HOME: home, USERPROFILE: home, HOMEDRIVE: '', HOMEPATH: '',
+      LOCALAPPDATA: home, APPDATA: home,
+    });
+
+    it('#3318 chat prints the Enterprise [LICENSE] block and exits 1, no stack trace', () => {
+      const { stdout, stderr, status } = runTier(['chat']);
+      const combined = stdout + stderr;
+      expect(status).toBe(1);
+      expect(combined).toContain('[LICENSE] swao chat requires an Enterprise licence.');
+      expect(combined).not.toMatch(/LicenseTierError|unhandledRejection|at\s+\w+\s+\(/);
+    });
+
+    it('#3322 publish --portfolio prints the Enterprise [LICENSE] block and exits 2', () => {
+      const { stdout, stderr, status } = runTier(['publish', '--portfolio', '--workspace', ws]);
+      const combined = stdout + stderr;
+      expect(status).toBe(2);
+      expect(combined).toContain('[LICENSE] swao publish --portfolio (Portfolio publication) requires an Enterprise licence.');
+      expect(combined).not.toMatch(/Premium|swao\.accenture\.com/);
+    });
+
+    it('#3320 report --format html prints the Consultant [LICENSE] block and exits 1', () => {
+      const { stdout, stderr, status } = runTier(['report', '--app', 'nonexistent', '--format', 'html', '--workspace', ws]);
+      expect(status).toBe(1);
+      expect(stdout + stderr).toContain('[LICENSE] swao report --format html (HTML Report) requires a Consultant licence.');
+    });
+
+    it('#3321 generate-tf names the Enterprise licence', () => {
+      const { stdout, stderr, status } = runTier(['generate-tf']);
+      expect(status).toBe(2);
+      expect(stdout + stderr).toMatch(/\[LICENSE\] swao generate-tf.* requires an Enterprise licence\./);
+    });
+
+    it('#3323 lz catalogue update prints the Consultant [LICENSE] block, not "unknown command"', () => {
+      const { stdout, stderr, status } = runTier(['lz', 'catalogue', 'update', '--provider', 'azure', '--dry-run', '--skip-prices', '--catalogues-dir', ws]);
+      const combined = stdout + stderr;
+      expect(status).toBe(2);
+      expect(combined).toMatch(/\[LICENSE\] (swao lz catalogue update|LZ catalogue update) requires a Consultant or Enterprise licence\./);
+      expect(combined).not.toContain('unknown command');
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// #3335: portfolio assess / report against the binary with an injected
+// Enterprise licence. The harness writes a test-signed Enterprise licence
+// (helpers/injected-licence.ts, vitest setup signing seed) into a SEPARATE
+// sandbox HOME, so the Community sandbox above stays licence-free. The binary
+// verifies licences only against the production public key (src/index.ts
+// forces NODE_ENV=production), so it refuses the test-signed licence: the
+// probe below detects that and the cases skip with TEST_LICENCE_REFUSED_REASON
+// instead of faking a tier. They run unchanged against any build that accepts
+// the injected licence.
+// ---------------------------------------------------------------------------
+describe.skipIf(!hasBinary)('binary E2E -- portfolio assess/report with an injected Enterprise licence (#3335)', () => {
+  let licHome: string;
+  let portfolioWs: string;
+  let licensedTier: string | null = null;
+  let probeOutput = '';
+
+  const runLicensed = (args: string[], timeoutMs = 600_000) =>
+    runBinary(BIN_WIN, args, portfolioWs, sandboxEnv(licHome), timeoutMs);
+
+  /** Two-app workspace (apps/alpha, apps/beta): a small Node.js source each, no LLM configured. */
+  function makePortfolioWorkspace(root: string): string {
+    const ws = join(root, 'ws');
+    mkdirSync(ws, { recursive: true });
+    writeFileSync(join(ws, '.swao.yml'), [
+      'engagement:', '  name: "E2E Portfolio"', '  client_code: e2e',
+      'providers:', '  llm:', '    primary:', '      type: ~', '      model: ~', '',
+    ].join('\n'), 'utf-8');
+    for (const id of ['alpha', 'beta']) {
+      const app = join(ws, 'apps', id);
+      mkdirSync(join(app, 'source'), { recursive: true });
+      writeFileSync(join(app, '.swao.yml'), ['app:', `  id: ${id}`, `  name: "${id}"`, 'source:', '  path: source/', ''].join('\n'), 'utf-8');
+      writeFileSync(join(app, 'source', 'package.json'),
+        JSON.stringify({ name: id, version: '1.0.0', dependencies: { express: '^4.18.0' } }, null, 2), 'utf-8');
+      writeFileSync(join(app, 'source', 'index.js'), [
+        "const express = require('express');", 'const app = express();',
+        "app.get('/', (_q, r) => r.send('ok'));", 'app.listen(3000);', '',
+      ].join('\n'), 'utf-8');
+    }
+    return ws;
+  }
+
+  beforeAll(() => {
+    licHome = mkdtempSync(join(tmpdir(), 'swao-e2e-lic-home-'));
+    portfolioWs = makePortfolioWorkspace(mkdtempSync(join(tmpdir(), 'swao-e2e-portfolio-')));
+    injectTestLicence(licHome, 'enterprise');
+    const r = runLicensed(['license', 'status'], 60_000);
+    probeOutput = r.stdout + r.stderr;
+    licensedTier = probeLicensedTier(probeOutput);
+  }, 120_000);
+
+  afterAll(() => {
+    if (licHome) rmSync(licHome, { recursive: true, force: true });
+    if (portfolioWs) rmSync(resolve(portfolioWs, '..'), { recursive: true, force: true });
+  });
+
+  it('the probe either accepts the injected Enterprise licence or refuses its signature (never another tier)', () => {
+    expect(licensedTier === 'enterprise' || /signature is invalid/i.test(probeOutput), probeOutput).toBe(true);
+  });
+
+  it('assess --portfolio --skip-llm runs every app in the binary (no "Cannot find module", #3319)', (ctx) => {
+    if (licensedTier !== 'enterprise') ctx.skip(TEST_LICENCE_REFUSED_REASON);
+    const { stdout, stderr, status } = runLicensed(['assess', '--portfolio', '--skip-llm']);
+    const combined = stdout + stderr;
+    expect(combined).not.toContain('Cannot find module');
+    expect(combined).toContain('2 ok, 0 failed');
+    expect(status).toBe(0);
+    for (const id of ['alpha', 'beta']) {
+      expect(existsSync(join(portfolioWs, 'apps', id, 'wsp', 'latest-application.txt')), `${id} assessed`).toBe(true);
+    }
+  }, 660_000);
+
+  it('report --portfolio reports every app in the binary', (ctx) => {
+    if (licensedTier !== 'enterprise') ctx.skip(TEST_LICENCE_REFUSED_REASON);
+    const { stdout, stderr, status } = runLicensed(['report', '--portfolio']);
+    const combined = stdout + stderr;
+    expect(combined).not.toContain('Cannot find module');
+    expect(combined).toContain('2 ok, 0 failed');
+    expect(status).toBe(0);
+  }, 660_000);
 });

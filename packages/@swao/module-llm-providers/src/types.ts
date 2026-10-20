@@ -42,12 +42,43 @@ export interface LlmTool {
   input_schema: Record<string, unknown>;
 }
 
+/** Parameters of a tool-calling chat (#2915). */
+export interface LlmToolChatParams {
+  system: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  tools: LlmTool[];
+  onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
+  maxIterations?: number;
+}
+
+/**
+ * Result of one LLM call together with its own usage (#3301). Concurrent
+ * calls on one provider (Pass 11, #3222 / #3284) each get their own usage
+ * here, which the shared `getLastUsage()` state cannot guarantee.
+ */
+export interface LlmCompletion {
+  text: string;
+  /** Tokens and cost of this call (summed over every tool-call iteration).
+   *  Undefined when the provider does not surface usage. */
+  usage: LlmUsage | undefined;
+  /** Post-redaction prompt + response of this call; never pre-redaction
+   *  content (#1709 / CLAUDE.md section 5.7). */
+  trace?: LlmTrace;
+}
+
 export interface LlmProvider {
   /** Provider type identifier; recorded in run-manifest.llm.provider. */
   readonly name: LlmProviderName;
   /** Model identifier (e.g. 'claude-opus-4-7', 'llama3', 'stub-fixture');
    *  recorded in run-manifest.llm.model. */
   readonly model: string;
+  /**
+   * In-flight request limit of this provider's endpoint (#3284, D-14):
+   * `providers.llm.max_concurrency` in .swao.yml, else the gateway
+   * connector's `max_concurrency`, else 4. Optional: fixtures and stubs omit
+   * it. Wrappers forward it so callers such as Pass 11 size their fan-out.
+   */
+  readonly maxConcurrency?: number;
   complete(prompt: string): Promise<string>;
   /**
    * Multi-turn chat with dynamic MCP tool-calling (#2915).
@@ -71,11 +102,22 @@ export interface LlmProvider {
    * is explicitly set in .swao.yml (sovereignty warning shown at run start).
    */
   completeVision?(prompt: string, images: Buffer[]): Promise<string>;
+  /** `complete()` returning the call's own usage and trace (#3301). */
+  completeDetailed?(prompt: string): Promise<LlmCompletion>;
+  /** `completeVision()` returning the call's own usage and trace (#3301). */
+  completeVisionDetailed?(prompt: string, images: Buffer[]): Promise<LlmCompletion>;
+  /** `completeWithTools()` returning the usage summed over all iterations (#3301). */
+  completeWithToolsDetailed?(params: LlmToolChatParams): Promise<LlmCompletion>;
   /**
    * Usage from the most recent `complete()` call. Optional: providers
    * that do not surface usage (e.g. older fixtures or third-party
    * drivers) return undefined. The assess.ts accumulator skips those
    * silently rather than fail.
+   *
+   * @deprecated #3301: shared provider state; under concurrent calls it can
+   * belong to another call. Read `usage` from the `*Detailed()` result
+   * instead (see `completeWithUsage()`); kept only as a fallback for
+   * providers without the detailed methods.
    */
   getLastUsage?(): LlmUsage | undefined;
   /**

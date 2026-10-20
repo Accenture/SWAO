@@ -15,8 +15,8 @@ https://github.com/Accenture/SWAO/releases
 Each release page lists:
 
 - Versioned binaries for each platform (`swao-enterprise-win-x64.exe`, `swao-enterprise-linux-x64`, `swao-enterprise-linux-arm64`, `swao-enterprise-macos-x64`, `swao-enterprise-macos-arm64`)
-- `sha256sums.txt` -- SHA-256 checksums for every binary
-- `CHANGELOG.md` excerpt -- summary of changes since the previous release
+- `sha256sums.txt`: SHA-256 checksums for every binary
+- `CHANGELOG.md` excerpt: summary of changes since the previous release
 
 Note the current installed version before upgrading:
 
@@ -110,7 +110,7 @@ swao --version
 swao health-check
 ```
 
-`swao health-check` runs all environment probes including schema version. If the schema probe turns red after upgrading, a breaking WSP schema change occurred between versions -- see section 5.
+`swao health-check` runs all environment probes including schema version. If the schema probe turns red after upgrading, a breaking WSP schema change occurred between versions (see section 5).
 
 ---
 

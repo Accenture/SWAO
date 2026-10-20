@@ -1,0 +1,29 @@
+# Pass-catalogue entry template
+# Copy this file to pass-NN-description.yaml and fill in the fields.
+# Files starting with underscore are ignored by SWAO discovery.
+#
+# pass_number: integer matching the SWAO TUI menu pass number
+# pass_name:   human-readable label (used in log output)
+# entries:     list of catalogue entries for this pass
+#
+# Entry schema varies by pass type. The IAM provider schema is shown
+# below as the reference example. See pass-21-iam-providers.yaml for
+# a fully annotated real-world example.
+
+pass_number: 21
+pass_name: "IAM Assessment"
+
+entries:
+  - id: example-provider          # unique kebab-case slug
+    name: "Example Identity Provider"
+    detection:
+      imports: []                 # import path substrings matched in source
+      env_vars: []                # env var name patterns (regex)
+      config_keys: []             # config file key patterns (regex)
+    posture:
+      data_residency: []          # ISO country codes or region tags: [DE, EU, US]
+      sovereignty: unknown        # de_sovereign | eu_sovereign | hyperscaler | unknown
+      schrems_ii_risk: unknown    # none | low | medium | high | unknown
+      eidas_trust_level: none     # basis | substantiell | hoch | none
+      operator: ""
+    cross_reference_frameworks: []

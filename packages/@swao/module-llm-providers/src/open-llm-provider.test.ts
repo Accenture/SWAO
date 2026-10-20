@@ -29,6 +29,25 @@
 //   - TEI 1.8 embed request and flat/batch response parsing
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// #3159: the drivers send through undici's own `fetch` (#2944), not
+// globalThis.fetch, so stubbing global fetch alone let these tests reach the
+// real network. Route undici `fetch` to whatever global fetch the test has
+// stubbed, and refuse outright when no stub is installed so no test can touch
+// the network.
+const { originalGlobalFetch } = vi.hoisted(() => ({ originalGlobalFetch: globalThis.fetch }));
+vi.mock('undici', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('undici')>();
+  return {
+    ...actual,
+    fetch: (...args: Parameters<typeof globalThis.fetch>) => {
+      if (globalThis.fetch === originalGlobalFetch) {
+        throw new Error('network access blocked in tests: stub global fetch first (#3159)');
+      }
+      return globalThis.fetch(...args);
+    },
+  };
+});
 import { Agent, ProxyAgent } from 'undici';
 import { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 import type { LlmTool } from './types.js';
@@ -133,11 +152,11 @@ describe('OpenLlmProvider URL construction', () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const p = new OpenLlmProvider(undefined, 'Mistral-Small-24B', 'https://preme.example.com');
+    const p = new OpenLlmProvider(undefined, 'Mistral-Small-24B', 'https://genai-hub.example.com');
     await p.complete('test');
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://preme.example.com/Mistral-Small-24B/v1/chat/completions');
+    expect(url).toBe('https://genai-hub.example.com/Mistral-Small-24B/v1/chat/completions');
   });
 
   it('uses explicit modelPrefix instead of /<model>', async () => {
@@ -147,13 +166,13 @@ describe('OpenLlmProvider URL construction', () => {
     const p = new OpenLlmProvider(
       undefined,
       'Mistral-Small-24B',
-      'https://preme.example.com',
+      'https://genai-hub.example.com',
       '/custom-prefix',
     );
     await p.complete('test');
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://preme.example.com/custom-prefix/v1/chat/completions');
+    expect(url).toBe('https://genai-hub.example.com/custom-prefix/v1/chat/completions');
   });
 
   it('empty-string modelPrefix disables path routing (body model field only)', async () => {
@@ -161,12 +180,12 @@ describe('OpenLlmProvider URL construction', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     // modelPrefix = '' (empty string, valid -- not undefined)
-    const p = new OpenLlmProvider(undefined, 'Mistral-Small-24B', 'https://preme.example.com', '');
+    const p = new OpenLlmProvider(undefined, 'Mistral-Small-24B', 'https://genai-hub.example.com', '');
     await p.complete('test');
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
     // With empty prefix: baseUrl + '' + /v1/chat/completions
-    expect(url).toBe('https://preme.example.com/v1/chat/completions');
+    expect(url).toBe('https://genai-hub.example.com/v1/chat/completions');
   });
 });
 
@@ -346,37 +365,36 @@ describe('OpenLlmProvider.complete', () => {
     await expect(p.complete('hello')).rejects.toThrow(/401/);
   });
 
+  // #3284: one retry policy for every provider -- 6 attempts with back-off
+  // 3 + 6 + 12 + 24 + 48 s (was 4 attempts here).
   it('throws LlmConnectivityError when all retries exhausted on 429', async () => {
-    mockFetchSequence([
-      errorResponse(429, 'rate limited'),
-      errorResponse(429, 'rate limited'),
-      errorResponse(429, 'rate limited'),
-      errorResponse(429, 'rate limited'),
-    ]);
+    const mock = vi.fn().mockImplementation(async () => errorResponse(429, 'rate limited'));
+    global.fetch = mock as unknown as typeof fetch;
     const p = new OpenLlmProvider('tok', 'my-model', 'https://host.example.com');
     vi.useFakeTimers();
     const promise = p.complete('hello');
-    await vi.advanceTimersByTimeAsync(3_000);
-    await vi.advanceTimersByTimeAsync(6_000);
-    await vi.advanceTimersByTimeAsync(12_000);
-    await expect(promise).rejects.toBeInstanceOf(LlmConnectivityError);
+    // #3159: attach the rejection handler before advancing timers so the
+    // rejection is never momentarily unhandled (vitest reports that as an error).
+    const assertion = expect(promise).rejects.toBeInstanceOf(LlmConnectivityError);
+    await vi.runAllTimersAsync();
+    await assertion;
+    await expect(promise).rejects.toThrow(/HTTP 429 after 6 attempts/);
+    expect(mock).toHaveBeenCalledTimes(6);
     vi.useRealTimers();
   }, 30_000);
 
   it('throws LlmConnectivityError when all retries exhausted on 503', async () => {
-    mockFetchSequence([
-      errorResponse(503, 'unavailable'),
-      errorResponse(503, 'unavailable'),
-      errorResponse(503, 'unavailable'),
-      errorResponse(503, 'unavailable'),
-    ]);
+    const mock = vi.fn().mockImplementation(async () => errorResponse(503, 'unavailable'));
+    global.fetch = mock as unknown as typeof fetch;
     const p = new OpenLlmProvider('tok', 'my-model', 'https://host.example.com');
     vi.useFakeTimers();
     const promise = p.complete('hello');
-    await vi.advanceTimersByTimeAsync(3_000);
-    await vi.advanceTimersByTimeAsync(6_000);
-    await vi.advanceTimersByTimeAsync(12_000);
-    await expect(promise).rejects.toBeInstanceOf(LlmConnectivityError);
+    // #3159: attach the rejection handler before advancing timers so the
+    // rejection is never momentarily unhandled (vitest reports that as an error).
+    const assertion = expect(promise).rejects.toBeInstanceOf(LlmConnectivityError);
+    await vi.runAllTimersAsync();
+    await assertion;
+    expect(mock).toHaveBeenCalledTimes(6);
     vi.useRealTimers();
   }, 30_000);
 });
@@ -447,7 +465,7 @@ describe('OpenLlmEmbeddingProvider', () => {
 
   function makeEmbedProvider(apiKey?: string): OpenLlmEmbeddingProvider {
     return new OpenLlmEmbeddingProvider(
-      'https://preme.example.com',
+      'https://genai-hub.example.com',
       'nomic-embed-text-v15',
       apiKey,
     );
@@ -464,7 +482,7 @@ describe('OpenLlmEmbeddingProvider', () => {
     await makeEmbedProvider('tok').embed('hello world');
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://preme.example.com/nomic-embed-text-v15/embed');
+    expect(url).toBe('https://genai-hub.example.com/nomic-embed-text-v15/embed');
     expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer tok');
     const body = JSON.parse(init.body as string) as { inputs: string };
     expect(body.inputs).toBe('hello world');
@@ -598,12 +616,12 @@ describe('OpenLlmProvider URL construction -- base_url with trailing /v1', () =>
     const fetchMock = vi.fn().mockResolvedValueOnce(okCompletions('{}') as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    // PREME PREPROD catalogue entries use leading-slash model ids
-    const p = new OpenLlmProvider(undefined, '/Llama-3.3-70B-Instruct-FP8-Dynamic', 'https://preme.example.com/v1');
+    // Enterprise GenAI hub catalogue entries use leading-slash model ids
+    const p = new OpenLlmProvider(undefined, '/Llama-3.3-70B-Instruct-FP8-Dynamic', 'https://genai-hub.example.com/v1');
     await p.complete('test');
 
     const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://preme.example.com/Llama-3.3-70B-Instruct-FP8-Dynamic/v1/chat/completions');
+    expect(url).toBe('https://genai-hub.example.com/Llama-3.3-70B-Instruct-FP8-Dynamic/v1/chat/completions');
     // toBe above is an exact-match; a path-level double-slash would cause it to fail already
     expect(new URL(url).pathname).not.toContain('//');
   });
@@ -652,6 +670,12 @@ describe('OpenLlmProvider -- HTTPS_PROXY dispatcher', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildFetchDispatcher -- NODE_TLS_REJECT_UNAUTHORIZED env var', () => {
+  beforeEach(() => {
+    // #3159: start from a proxy-free env so host proxy settings cannot leak in.
+    vi.stubEnv('HTTPS_PROXY', '');
+    vi.stubEnv('HTTP_PROXY', '');
+    vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', '');
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -675,7 +699,9 @@ describe('buildFetchDispatcher -- NODE_TLS_REJECT_UNAUTHORIZED env var', () => {
   });
 
   it('returns a ProxyAgent when HTTPS_PROXY set and TLS verify is on (regression)', () => {
-    process.env['HTTPS_PROXY'] = 'http://proxy.example.com:8080';
+    // #3159: stubEnv (not a raw process.env write) so the value is restored and
+    // does not leak into the following no-proxy test.
+    vi.stubEnv('HTTPS_PROXY', 'http://proxy.example.com:8080');
     const d = buildFetchDispatcher({});
     expect(d).toBeInstanceOf(ProxyAgent);
   });
@@ -697,15 +723,15 @@ describe('buildFetchDispatcher -- NO_PROXY bypass', () => {
 
   it('bypasses proxy when NO_PROXY contains exact hostname', () => {
     vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
-    vi.stubEnv('NO_PROXY', 'preme.internal.example.com,other.example.com');
-    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    vi.stubEnv('NO_PROXY', 'genai-hub.internal.example.com,other.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://genai-hub.internal.example.com' });
     expect(d).toBeUndefined();
   });
 
   it('bypasses proxy when NO_PROXY contains .suffix match', () => {
     vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
     vi.stubEnv('NO_PROXY', '.internal.example.com');
-    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    const d = buildFetchDispatcher({ targetUrl: 'https://genai-hub.internal.example.com' });
     expect(d).toBeUndefined();
   });
 
@@ -725,15 +751,15 @@ describe('buildFetchDispatcher -- NO_PROXY bypass', () => {
 
   it('respects lowercase no_proxy env var', () => {
     vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
-    vi.stubEnv('no_proxy', 'preme.internal.example.com');
-    const d = buildFetchDispatcher({ targetUrl: 'https://preme.internal.example.com' });
+    vi.stubEnv('no_proxy', 'genai-hub.internal.example.com');
+    const d = buildFetchDispatcher({ targetUrl: 'https://genai-hub.internal.example.com' });
     expect(d).toBeUndefined();
   });
 
   it('bypasses proxy + applies TLS skip when both NO_PROXY and rejectUnauthorized:false', () => {
     vi.stubEnv('HTTPS_PROXY', 'http://proxy.corp.example.com:8080');
-    vi.stubEnv('NO_PROXY', 'preme.internal.example.com');
-    const d = buildFetchDispatcher({ rejectUnauthorized: false, targetUrl: 'https://preme.internal.example.com' });
+    vi.stubEnv('NO_PROXY', 'genai-hub.internal.example.com');
+    const d = buildFetchDispatcher({ rejectUnauthorized: false, targetUrl: 'https://genai-hub.internal.example.com' });
     expect(d).toBeInstanceOf(Agent);
   });
 });
@@ -755,7 +781,7 @@ describe('OpenLlmProvider.completeWithTools (#2952)', () => {
   }];
 
   function makeProvider(): OpenLlmProvider {
-    return new OpenLlmProvider('test-token', 'Llama-3.3-70B', 'https://preme.example.com', '');
+    return new OpenLlmProvider('test-token', 'Llama-3.3-70B', 'https://genai-hub.example.com', '');
   }
 
   function toolCallResponse(toolCalls: Array<{ id: string; name: string; args: string }>): Partial<Response> {
@@ -861,7 +887,7 @@ describe('OpenLlmProvider.completeWithTools (#2952)', () => {
 
     let refreshCalled = false;
     const providerWithRefresh = new OpenLlmProvider(
-      'old-token', 'Llama-3.3-70B', 'https://preme.example.com', '', undefined, undefined, undefined,
+      'old-token', 'Llama-3.3-70B', 'https://genai-hub.example.com', '', undefined, undefined, undefined,
       { tokenRefresh: () => { refreshCalled = true; return 'new-token'; } },
     );
 
@@ -876,14 +902,66 @@ describe('OpenLlmProvider.completeWithTools (#2952)', () => {
     expect(result).toBe('Refreshed answer');
   });
 
+  it('a failing onToolCall is passed to the model as [Tool error: ...] instead of failing the turn (#3312)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(toolCallResponse([
+        { id: 'tc1', name: 'swao_risks', args: '{}' },
+        { id: 'tc2', name: 'swao_passes', args: '{}' },
+      ]) as Response)
+      .mockResolvedValueOnce(textResponse('One tool failed.') as Response);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const onToolCall = vi.fn(async (name: string) => {
+      if (name === 'swao_risks') throw new Error('MCP timeout after 300000ms');
+      return '["P1"]';
+    });
+    const result = await makeProvider().completeWithTools({
+      system: 'sys', messages: [{ role: 'user', content: 'q' }], tools: testTools, onToolCall,
+    });
+
+    expect(result).toBe('One tool failed.');
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const sent = (JSON.parse(init.body as string) as { messages: Array<Record<string, unknown>> }).messages;
+    expect(sent.slice(-2)).toEqual([
+      { tool_call_id: 'tc1', role: 'tool', content: '[Tool error: MCP timeout after 300000ms]' },
+      { tool_call_id: 'tc2', role: 'tool', content: '["P1"]' },
+    ]);
+  });
+
   it('throws on non-401 HTTP error', async () => {
-    mockFetchOnce({ ok: false, status: 503, text: async () => 'service unavailable' });
+    // #3284: 503 is now retried by the shared helper; a non-transient status
+    // still fails at once with the historical message shape.
+    mockFetchOnce({ ok: false, status: 400, text: async () => 'bad request' });
 
     await expect(makeProvider().completeWithTools({
       system: 'sys',
       messages: [{ role: 'user', content: 'q' }],
       tools: testTools,
       onToolCall: vi.fn(),
-    })).rejects.toThrow(/completeWithTools: HTTP 503/);
+    })).rejects.toThrow(/completeWithTools: HTTP 400/);
+  });
+
+  it('retries a transient 503 on a tool-call iteration (#3284)', async () => {
+    const mock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, text: async () => 'service unavailable' })
+      .mockResolvedValueOnce({
+        ok: true, status: 200,
+        json: async () => ({ choices: [{ message: { content: 'after retry' } }], usage: { prompt_tokens: 5, completion_tokens: 3 } }),
+      });
+    global.fetch = mock as unknown as typeof fetch;
+    vi.useFakeTimers();
+    try {
+      const p = makeProvider().completeWithTools({
+        system: 'sys',
+        messages: [{ role: 'user', content: 'q' }],
+        tools: testTools,
+        onToolCall: vi.fn(),
+      });
+      await vi.advanceTimersByTimeAsync(3_000);
+      expect(await p).toBe('after retry');
+      expect(mock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

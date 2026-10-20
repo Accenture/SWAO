@@ -6,7 +6,7 @@ SWAO lässt sich in einem Docker-Container betreiben, um reproduzierbare Assessm
 
 ## Voraussetzungen
 
-- Docker Engine 24.x oder neür (oder Docker Desktop 4.x)
+- Docker Engine 24.x oder neuer (oder Docker Desktop 4.x)
 - Docker Compose v2 (für das Compose-Beispiel)
 - Ein Workspace-Verzeichnis auf dem Host-Rechner
 
@@ -38,7 +38,7 @@ Wichtige Flags:
 
 | Variable | Erforderlich | Beschreibung |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Ja (ausser bei `--skip-llm`) | Anthropic-API-Key für Claude |
+| `ANTHROPIC_API_KEY` | Ja (außer bei `--skip-llm`) | Anthropic-API-Key für Claude |
 | `SWAO_LLM_PROVIDER` | Nein | Standard-LLM-Provider überschreiben (`anthropic`, `ollama`, `openai`) |
 | `SWAO_LOG_LEVEL` | Nein | Log-Ausführlichkeit: `debug`, `info`, `warn`, `error` |
 | `SWAO_WORKSPACE` | Nein | Standard-Workspace-Pfad innerhalb des Containers |
@@ -122,7 +122,7 @@ volumes:
 
 ## 6. Air-Gap-Betrieb mit --skip-llm
 
-Verwenden Sie `--skip-llm`, um LLM-Passes vollständig zu überspringen -- hilfreich für CI-Pipelines oder Umgebungen ohne LLM-Zugang.
+Verwenden Sie `--skip-llm`, um LLM-Passes vollständig zu überspringen, hilfreich für CI-Pipelines oder Umgebungen ohne LLM-Zugang.
 
 ```bash
 docker run --rm \
@@ -148,4 +148,4 @@ docker run --rm \
   assess --app sovereign-health --workspace /workspace
 ```
 
-Aktülle Release-Tags sind unter `https://github.com/Accenture/SWAO/releases` aufgelistet.
+Aktuelle Release-Tags sind unter `https://github.com/Accenture/SWAO/releases` aufgelistet.

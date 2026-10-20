@@ -29,11 +29,13 @@ import { CredentialsStep } from './wizard/steps/CredentialsStep.js';
 import { HealthCheckStep } from './wizard/steps/HealthCheckStep.js';
 import { ClaudeDesktopStep, PlaywrightStep } from './wizard/steps/IntegrationsStep.js';
 import { ReadyStep } from './wizard/steps/ReadyStep.js';
+import { LzTargetsStep } from './wizard/steps/LzTargetsStep.js';
 
-type Step = 'init' | 'llm' | 'llm-secondary' | 'credentials' | 'credentials-secondary' | 'health-check' | 'claude-desktop' | 'playwright' | 'ready';
-// 'llm-secondary' and 'credentials-secondary' are sub-steps -- not in STEP_LABELS so StepBar still shows 7 steps.
-const STEP_LABELS: Exclude<Step, 'llm-secondary' | 'credentials-secondary'>[] = ['init', 'llm', 'credentials', 'health-check', 'claude-desktop', 'playwright', 'ready'];
-const STEP_NAMES = ['Init', 'LLM', 'Credentials', 'Health Check', 'MCP Client', 'Playwright', 'Ready'];
+type Step = 'init' | 'llm' | 'llm-secondary' | 'credentials' | 'credentials-secondary' | 'lz-targets' | 'health-check' | 'claude-desktop' | 'playwright' | 'ready';
+// 'llm-secondary' and 'credentials-secondary' are sub-steps -- not in STEP_LABELS so StepBar still shows 8 steps.
+// #3306: 'lz-targets' sits before the health check so probe 15 checks the chosen targets.
+const STEP_LABELS: Exclude<Step, 'llm-secondary' | 'credentials-secondary'>[] = ['init', 'llm', 'credentials', 'lz-targets', 'health-check', 'claude-desktop', 'playwright', 'ready'];
+const STEP_NAMES = ['Init', 'LLM', 'Credentials', 'LZ Targets', 'Health Check', 'MCP Client', 'Playwright', 'Ready'];
 
 interface SetupWizardProps {
   onBack: () => void;
@@ -61,8 +63,9 @@ function McpUpgradeNotice({ onNext }: { onNext: () => void }) {
           <Text>  - All Consultant features</Text>
           <Text>  - Portfolio Operations (multi-app aggregation)</Text>
           <Text>  - Stakeholder Challenge agents</Text>
-          <Text>  - SWAO Live Portal (Mode B server)</Text>
+          <Text>  - HTML Editor (swao publish --edit)</Text>
           <Text>  - MCP server integration (Claude Desktop / Claude Code)</Text>
+          <Text>  - SWAO Chat</Text>
         </Box>
         <Box marginTop={1}>
           <Text dimColor>To request an upgrade, run: <Text color="cyanBright">swao license request --tier enterprise</Text></Text>
@@ -232,7 +235,7 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
             }
             // #2355: if secondary LLM is configured, show its credential step (auto-skips for Ollama/env-var).
             const hasSecondary = !!state.llmSecondaryProvider && state.llmSecondaryProvider !== 'skip';
-            setStep(hasSecondary ? 'credentials-secondary' : 'health-check');
+            setStep(hasSecondary ? 'credentials-secondary' : 'lz-targets');
           }}
         />
       )}
@@ -245,13 +248,34 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
           stepNumber={stepIdx + 1}
           onNext={() => {
             try { logPortfolio('info', 'wizard.step.complete', 'Secondary credentials step completed', { context: { step: 'credentials-secondary', provider: state.llmSecondaryProvider } }); } catch { /* best-effort */ }
+            setStep('lz-targets');
+          }}
+        />
+      )}
+
+      {/* #3306: LZ catalogue targets (TUI parity with --lz-cat-targets / assessment.landing_zone.targets). */}
+      {step === 'lz-targets' && (
+        <LzTargetsStep
+          workDir={state.workDir}
+          stepNumber={stepIdx + 1}
+          onNext={(targets) => {
+            setState(s => ({ ...s, lzTargets: targets }));
+            if (!loggedSteps.current.has('lz-targets')) {
+              loggedSteps.current.add('lz-targets');
+              try { setWorkspaceRoot(state.workDir); } catch { /* best-effort */ }
+              try { logPortfolio('info', 'wizard.step.complete', 'LZ targets step completed', { context: { step: 'lz-targets', target_count: targets.length } }); } catch { /* best-effort */ }
+              try {
+                if (targets.length > 0) logPortfolio('info', 'wizard.lz.targets.configured', 'LZ catalogue targets configured', { context: { targets } });
+                else logPortfolio('info', 'wizard.lz.targets.skipped', 'LZ catalogue targets step skipped', { context: {} });
+              } catch { /* best-effort */ }
+            }
             setStep('health-check');
           }}
         />
       )}
 
       {step === 'health-check' && (
-        <HealthCheckStep onNext={() => setStep('claude-desktop')} />
+        <HealthCheckStep stepNumber={stepIdx + 1} onNext={() => setStep('claude-desktop')} />
       )}
 
       {step === 'claude-desktop' && isEnterpriseTier && (

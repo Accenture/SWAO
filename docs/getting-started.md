@@ -55,13 +55,18 @@ and apply overrides through natural-language prompts - no command line needed.
 Add the following entry to your Claude Desktop config file:
 
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+(Microsoft Store installation: `%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude\claude_desktop_config.json`)
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+Instead of editing the file by hand, run `swao mcp install` (or the MCP Client
+step of the Setup Wizard). It updates every Claude Desktop config that needs
+the entry and lists each file it changed.
 
 ```json
 {
   "mcpServers": {
     "swao-mcp": {
-      "command": "C:\\path\\to\\swao-enterprise-win.exe",
+      "command": "C:\\path\\to\\swao-enterprise-win-x64.exe",
       "args": ["mcp"]
     }
   }
@@ -83,20 +88,36 @@ if the MCP server already has the correct workspace loaded.
 | Step | CLI command | Claude Desktop prompt |
 |---|---|---|
 | Check health | `swao health-check` | `Use swao_health_check at workspace C:\path\to\workspace.` |
-| Show workspace | `swao ls` | `Use swao_workspace_inventory at workspace C:\path\to\workspace.` |
+| Show workspace | - (MCP only; `swao menu` opens the interactive interface) | `Use swao_workspace_inventory at workspace C:\path\to\workspace.` |
 | Run assessment | `swao assess --app sovereign-health` | `Use swao_assess for sovereign-health at workspace C:\path\to\workspace.` |
 | Run selected passes | `swao assess --app ... --passes inv,data,egr` | `Use swao_assess for sovereign-health, passes: inv,data,egr.` |
-| Read report (all views) | `swao report --app ... --view exec` | `Use swao_report for sovereign-health, view business-owner.` |
-| List signals | `swao signals --app ...` | `Use swao_signals for sovereign-health.` |
-| Signal detail | `swao signal --id CTX-03` | `Use swao_signal_detail for sovereign-health, signal_id: CTX-03.` |
-| Explain LZ choice | `swao lz-explain --app ...` | `Use swao_explain_landing_zone for sovereign-health.` |
-| Run challenge | `swao challenge --app ... --agent compliance` | `Use swao_challenge for sovereign-health, agent: grc-compliance-officer.` |
+| Read report (all views) | `swao report --app ... --view business-owner` | `Use swao_report for sovereign-health, view business-owner.` |
+| List signals | - (MCP only; the report lists signals) | `Use swao_signals for sovereign-health.` |
+| Signal detail | - (MCP only) | `Use swao_signal_detail for sovereign-health, signal_id: CTX-03.` |
+| Explain LZ choice | - (MCP only) | `Use swao_explain_landing_zone for sovereign-health.` |
+| Run challenge | `swao challenge --app ... --agent grc-compliance-officer` | `Use swao_challenge for sovereign-health, agent: grc-compliance-officer.` |
 | Ingest a document | `swao ingest --app ...` | `Use swao_ingest for sovereign-health. Category: compliance. Filename: dpa.md. Content: [text].` |
-| Override a verdict | `swao feedback add ...` | `Use swao_feedback_add for sovereign-health. Target_type: signal. Target_id: CTX-03. Override_outcome: RISK_ACCEPTED. Rationale: [reason]. Author: you@example.com.` |
+| Override a verdict | - (MCP only) | `Use swao_feedback_add for sovereign-health. Target_type: signal. Target_id: CTX-03. Override_outcome: RISK_ACCEPTED. Rationale: [reason]. Author: you@example.com.` |
 | Generate HTML report | `swao publish --app ...` | `Use swao_publish for sovereign-health, mode: html.` |
-| Portfolio summary | `swao portfolio summary` | `Use swao_portfolio_summary at workspace C:\path\to\workspace.` |
+| Portfolio summary | `swao report --portfolio` (Enterprise) | `Use swao_portfolio_summary at workspace C:\path\to\workspace.` |
 
-Full tool reference and extended prompts: [MCP Integration](runbooks/mcp-integration).
+A dash in the CLI column means the step has no command of its own and is available through the MCP server only.
+
+For a Service Portfolio Assessment (a workspace scaffolded with `swao service init`),
+11 service tools are available as well:
+
+- Read tools: `swao_service_portfolio` (one row per service app), `swao_service_app`
+  (everything about one app), `swao_service_research` (research stubs of one app),
+  `swao_service_waves` (migration waves and integration hubs), `swao_service_vendors`
+  (vendor consolidation), `swao_service_delta` (changes since the last snapshot),
+  `swao_service_scaffold` (scaffold summary) and `swao_service_runs` (service runs per app).
+- Tools that write to the workspace: `swao_service_init`, `swao_service_research_run` and
+  `swao_service_export` (Enterprise) run `swao service init`, `swao service research` and
+  `swao service export`.
+
+Example: `Use swao_service_portfolio at workspace C:\path\to\workspace, time_quadrant: Migrate.`
+
+Full tool reference and extended prompts: [MCP Integration](runbooks/mcp-integration) (section 4.1 for the service tools).
 
 ---
 
@@ -169,15 +190,18 @@ called a portfolio.
 
 ### Workspace
 
-A directory on your machine that holds everything SWAO needs to assess one
-application. It contains:
+A directory on your machine that holds everything SWAO needs for an
+engagement: one or more applications and their inputs and results. It contains:
 
-- `.swao.yml`: the configuration file for this assessment (which application,
-  which cloud provider, which data files to read)
-- `imports/`: a folder where you place data files the client gives you (CMDB
-  exports, incident reports, cost data, workshop notes)
-- `source/`: where you clone or place the application's source code
-- `wsp/`: created automatically when the assessment runs; contains the results
+- `.swao.yml`: the workspace configuration (for example the LLM provider)
+- `apps/<app-id>/.swao.yml`: the configuration of one application (source code
+  location, active frameworks, target landing zone)
+- `apps/<app-id>/ingestion/`: a drop folder for data files the client gives you
+  (CMDB exports, incident reports, cost data, workshop notes)
+- `apps/<app-id>/wsp/inputs/source/`: where you clone or place the
+  application's source code
+- `apps/<app-id>/wsp/`: inputs and results of the application; each run is
+  written to `wsp/runs/<timestamp>/`
 
 You create the workspace with `swao init`. You never need to create these
 folders manually.
@@ -202,24 +226,32 @@ Signals are the building blocks of the entire assessment. Everything else
 
 ### Pass
 
-A pass is one chapter of the assessment. SWAO runs up to 14 passes, each
-focused on a different aspect of the application. The passes run in sequence
-because later passes build on what earlier ones found.
+A pass is one chapter of the assessment. By default `swao assess` runs 13
+passes, each focused on a different aspect of the application. The passes run
+in sequence because later passes build on what earlier ones found. Pass 00
+(INGEST) runs before them and prepares the supplied documents.
 
-| Pass group | What it looks at |
+| Pass | What it looks at |
 |---|---|
-| INV (Inventory) | What is in the codebase: languages, frameworks, Docker, databases |
-| STATE (Statefulness) | Does the application store data? How? Is it stateful or stateless? |
-| DATA (Data Classes) | What categories of data does the application handle? (personal, medical, financial) |
-| EGR (Egress) | Which external services does the application call? Are they available in the target cloud? |
-| CRYPTO (Cryptography) | How does the application handle encryption, keys, and authentication? |
-| SBOM (Dependencies) | What open-source libraries does it use? Are any vulnerable or legally restricted? |
-| TF (Twelve-Factor) | Does the application follow cloud-native design principles? |
-| CTX (Context) | What do the data files (CMDB, incidents, cost reports, workshop notes) say? |
-| SYNTH (Synthesis) | Aggregates all signals into a migration verdict and a coverage score |
-| OBS, LIC, QA, PAT, DBA, INT, IAM, DR | Observability, licences, quality, patterns, databases, integrations, identity, disaster recovery |
-| LZR (Landing Zone) | Is the target cloud environment ready to receive this application? |
-| DYN (Dynamic) | What does the running application actually do? (Playwright browser crawl) |
+| 01 INV (Inventory) | What is in the codebase: languages, frameworks, Docker, databases |
+| 02 STATE (Statefulness) | Does the application store data? How? Is it stateful or stateless? |
+| 03 DATA (Data classes) | What categories of data does the application handle? (personal, medical, financial) |
+| 04 CTX (Context) | What do the data files (CMDB, incidents, cost reports, workshop notes) say? |
+| 05 SBOM (Dependencies) | What open-source libraries does it use? Are any vulnerable or unmaintained? |
+| 06 TF (Twelve-Factor) | Does the application follow cloud-native design principles? |
+| 07 EGR (Egress) | Which external services does the application call? Are they available in the target cloud? |
+| 08 CRYPTO (Cryptography) | How does the application handle encryption, keys, and token signing? |
+| 09 SYNTH (Synthesis) | Aggregates all signals into a migration verdict and a portability score |
+| 10 DYNAMIC | What does the running application actually do? (Playwright browser crawl; needs a crawl target) |
+| 11 COMP (Compliance) | Which controls of the selected frameworks are met? |
+| 12 BLOCKS | How mature are the eight operational blocks: observability, licences, testing, architecture, databases, integrations, identity, disaster recovery? |
+| 13 SCOPE | Which known blind spots does the evidence cover, and how complete is the assessment? |
+
+Two further passes run only on request: Pass 14 MALWARE (malware and secret
+scanning) and Pass 23 LZR (landing zone readiness, with `--lzr`). The numbers
+identify the passes; the run order differs slightly, because COMP, SYNTH, and
+BLOCKS run last so that they see the results of all other passes. The
+[passes overview](/passes/) describes every pass.
 
 You do not need to understand every pass to start. INV, STATE, DATA, EGR, and
 SYNTH are the core five that drive the primary verdict.
@@ -280,49 +312,56 @@ configured:
 - Licence: that your SWAO licence is valid
 
 All probes should show a green tick. If any probe fails, fix it before
-continuing. The most common failure is a missing or expired LLM API key --
-run `swao credential set` to update it.
+continuing. The most common failure is a missing or expired LLM API key.
+Run `swao credential set anthropic-api-key <key>` to update it.
 
 ### Step 1: Set up the workspace
 
 Create a new workspace for the application you are assessing:
 
 ```
-swao init --app <application-name>
+swao init <workspace-folder> --name <app-id>
 ```
 
-Replace `<application-name>` with a short identifier for the application,
-using only letters, numbers, and hyphens. For example: `sovereign-health` or
-`medplum`.
+Replace `<app-id>` with a short identifier for the application, using only
+letters, numbers, and hyphens. For example: `sovereign-health` or
+`app-crm-01`. Running `swao setup` instead opens the same steps as a guided
+wizard.
 
-This creates a folder called `<application-name>` with:
+This creates the workspace folder with, among other files:
 
 ```
-<application-name>/
-├── .swao.yml          -- the configuration file you will edit
-├── .swao.secrets.env  -- where you put credentials (never commit this file)
-├── .gitignore         -- pre-configured to keep credentials and outputs out of git
-├── imports/           -- put data files from the client here
-└── source/            -- put the application source code here
+<workspace-folder>/
+├── .swao.yml                    # workspace configuration
+└── apps/
+    └── <app-id>/
+        ├── .swao.yml            # the app configuration you will edit
+        ├── ingestion/           # put data files from the client here
+        └── wsp/
+            └── inputs/
+                └── source/      # put the application source code here
 ```
 
 ### Step 2: Put the source code in place
 
-Clone or copy the application's source code into the `source/` folder:
+Clone or copy the application's source code into the `source/` folder of the
+app:
 
 ```
-cd <application-name>
+cd <workspace-folder>/apps/<app-id>/wsp/inputs
 git clone <client-repository-url> source
 ```
 
 If you do not have a git URL, copy the source files into `source/` manually.
+Alternatively, set `source.vcs.url` in the app's `.swao.yml` and SWAO clones
+the repository itself.
 SWAO reads the source code but never writes to it and never uploads it.
 
-### Step 3: Add client data files to imports/
+### Step 3: Add client data files to ingestion/
 
-The `imports/` folder is where you put any data the client has given you.
+The app's `ingestion/` folder is where you put any data the client has given you.
 SWAO reads these to enrich the assessment with real operational context.
-None of these files are required - the assessment can run without them --
+None of these files are required - the assessment can run without them,
 but each one improves the quality of the findings.
 
 Common files to add:
@@ -335,23 +374,29 @@ Common files to add:
 | `arch-<date>.md` | Architecture document or design notes | Client engineering team |
 | `workshops/<date>-<topic>.md` | Notes or transcript from a discovery workshop | Your own notes |
 
-Drop the files into the `imports/` folder. SWAO will pick them up
-automatically.
+Drop the files into `apps/<app-id>/ingestion/`. Pass 00 (INGEST) picks them up
+automatically and routes them into `wsp/inputs/`.
 
 ### Step 4: Configure .swao.yml
 
-Open `.swao.yml` in a text editor. The file is pre-populated with a template.
-Edit the values marked `# REQUIRED`:
+Open `apps/<app-id>/.swao.yml` in a text editor. The file is pre-populated
+with a template. A minimal configuration looks like this:
 
 ```yaml
-app:
-  name: sovereign-health          # REQUIRED: must match the folder name
-  target_url: "https://staging.sovereign-health.example"  # REQUIRED: non-production URL
+app_id: sovereign-health
 
-landing_zone:
-  provider: stackit               # REQUIRED: the target cloud (stackit, azure, aws, etc.)
-  region: de-central-1            # REQUIRED: the target region
+source:
+  path: wsp/inputs/source/
+
+assessment:
+  regimes_active: [GDPR]          # frameworks to evaluate (see the frameworks overview)
+  landing_zone:
+    provider: stackit             # the target cloud (stackit, azure, aws, etc.)
+    region: eu01                  # the target region
 ```
+
+The URL and login of a running test instance (for the browser crawl) are not
+written to `.swao.yml`; they are stored in the credential vault.
 
 Leave everything else at its default for now. You can refine it after the
 first assessment run.
@@ -362,16 +407,16 @@ SWAO needs an API key for the language model it uses to reason about code.
 Store it in the credential store (not in `.swao.yml`):
 
 ```
-swao credential set ANTHROPIC_API_KEY
+swao credential set anthropic-api-key <your-api-key>
 ```
 
-You will be prompted to enter the key. It is stored encrypted and never
-written to any file you might accidentally share.
+The value is not echoed. It is stored encrypted and never written to any file
+you might accidentally share. `swao setup` asks for the key interactively.
 
 ### Step 6: Run the assessment
 
 ```
-swao assess --app <application-name>
+swao assess --app <app-id>
 ```
 
 Or, from an AI assistant:
@@ -392,7 +437,7 @@ contains the complete results.
 Generate a plain-language report from the assessment results:
 
 ```
-swao report --app <application-name>
+swao report --app <app-id>
 ```
 
 Or, from an AI assistant:
@@ -412,7 +457,7 @@ The report shows:
 You can also request a report written for a specific audience:
 
 ```
-swao report --app <application-name> --view exec
+swao report --app <app-id> --view business-owner
 ```
 
 Available views:
@@ -450,15 +495,15 @@ The signal prefixes you will see most often:
 | `TF` | Twelve-Factor | Configuration, logging, port binding, process model |
 | `CTX` | Context | Signals derived from CMDB, incident history, cost data, workshops |
 | `SYNTH` | Synthesis | Final 7R verdict, coverage score, key gaps |
-| `OBS` | Observability | Monitoring, tracing, structured logging coverage |
-| `LIC` | Licence | Copyleft, commercial, geographic restrictions |
-| `QA` | Quality | Test coverage, flakiness, required PR checks |
-| `DBA` | Database | Engine compatibility, stored procedures, migration complexity |
-| `INT` | Integrations | Message brokers, ESB, synchronous vs asynchronous patterns |
-| `IAM` | Identity | RBAC, service accounts, federation, privilege escalation paths |
-| `DR` | Disaster Recovery | RTO/RPO gaps, backup strategy, failover evidence |
-| `LZR` | Landing Zone | Target cloud readiness: quotas, policies, network |
 | `DYN` | Dynamic | Runtime behaviour from browser crawl |
+| `COMP` | Compliance | Findings of the compliance pass, for example a missing framework catalogue |
+| `SCOPE` | Scope | Coverage of known blind spots and completeness of the assessment |
+| `LZR` | Landing Zone | Target cloud readiness: quotas, policies, network (only with `--lzr`) |
+| `MAL` | Malware | Secrets, vulnerable packages, malware (only when Pass 14 is requested) |
+
+Pass 12 (BLOCKS) rates observability, licences, testing, architecture,
+databases, integrations, identity, and disaster recovery as blocks. It records
+the result in the assessment but emits no signals of its own.
 
 ### Signal confidence levels
 
@@ -668,10 +713,11 @@ reliably detect regressions.
 **What it answers:** Are there open-source software licences in the
 application's dependency tree that could create legal problems?
 
-The most common finding is AGPL (GNU Affero General Public License).
-AGPL requires that any organisation running the software over a network must
-make its own source code publicly available. In a client-hosted sovereign
-cloud deployment, this can create obligations the client did not anticipate.
+The most common finding is AGPL (GNU Affero General Public License). If an
+organisation modifies AGPL-licensed software and lets users interact with it
+over a network, it must offer those users the source code of the modified
+version, including the changes. In a client-hosted sovereign cloud deployment,
+this can create obligations the client did not anticipate.
 
 Verdicts:
 
@@ -727,7 +773,7 @@ Coverage score measures what fraction of signals are backed by high-confidence
 evidence. Below 0.75, the assessment is relying heavily on inference rather
 than direct evidence. This is common early in an engagement when context data
 files (CMDB, incidents) are not yet available. Add the missing context files
-to `imports/` and re-run to improve the score.
+to `apps/<app-id>/ingestion/` and re-run to improve the score.
 
 **Q: The assessment mentions DORA compliance. What is DORA?**
 
@@ -785,7 +831,7 @@ context data): 15-30 minutes each.
    will delay or block the migration if not addressed.
 
 2. **Share the executive view with the client sponsor.** Run
-   `swao report --view exec` and walk through it with the business owner.
+   `swao report --app <name> --view business-owner` and walk through it with the business owner.
    Avoid technical jargon. Lead with the 7R verdict, the timeline implication,
    and the top two or three risks.
 
@@ -796,11 +842,11 @@ context data): 15-30 minutes each.
 
 4. **Add context data and iterate.** After the first conversation, ask the
    client for the data files you are missing (CMDB, incidents, FinOps). Drop
-   them in `imports/` and re-run. Watch the coverage score rise as each
+   them in `apps/<app-id>/ingestion/` and re-run. Watch the coverage score rise as each
    file is added.
 
 5. **Run the challenge session before the final presentation.** Use
-   `swao challenge --app <name> --agent compliance` (and other agents) to
+   `swao challenge --app <name> --agent grc-compliance-officer` (and other agents) to
    stress-test the findings from each stakeholder perspective before you sit
    in the room with them.
 

@@ -65,7 +65,7 @@ import type { LlmProvider } from '@swao/module-llm-providers';
 // #1819: when spawned as a challenge subprocess inside an LLM Assessment leg,
 // wrap createLlmProvider so every challenge LLM call is recorded to the leg sink.
 import { createLegRecorderFromEnv } from '@swao/module-llm-assessment';
-// #0578: generate-tf command (Consultant). registerGenerateTf imports only
+// #0578: generate-tf command (Enterprise roadmap, F-090). registerGenerateTf imports only
 // @swao/core, so the host wires it directly.
 import { registerGenerateTf, GenerateTfScreen } from '@swao/module-terraform';
 // #0872: lz catalogue update command (Consultant+). Must be called after
@@ -87,6 +87,9 @@ import type { McpHostDeps } from '@swao/module-mcp';
 import { renderTextReportToPdf, renderLlmComparisonToPdf } from '@swao/module-pdf-report';
 // #0582: the HTML Portal builder (Consultant) -- `publish --site`.
 import { buildPortalSite } from '@swao/module-html-portal';
+// #3353: the Enterprise service export (F-133, `swao service export`) lives in
+// the private @swao/module-service-export; only this entry injects it.
+import { runPortfolioExport } from '@swao/module-service-export';
 
 // #0574/#0579: resolve the swao CLI invocation once, shared by the MCP server
 // and the portfolio orchestrator (both spawn the CLI). In a pkg binary,
@@ -116,6 +119,7 @@ const portfolioRunForApp = buildSpawnRunForApp(cliSpawnDescriptor);
 const program = buildProgram({
   cliSpawnDescriptor,
   buildPortal: buildPortalSite,
+  serviceDeps: { runExport: runPortfolioExport },
   assessDeps: {
     runForApp: portfolioRunForApp,
     runPortfolio,
@@ -131,11 +135,11 @@ const program = buildProgram({
   },
 });
 
-// Consultant command: generate-tf (Terraform HCL generator).
+// Enterprise roadmap command: generate-tf (F-090, FEATURE_GATES['generate-tf']).
 registerGenerateTf(program);
 // Consultant command: lz catalogue update (Design 065 §5.6).
 registerLzCatalogueUpdate(program);
-// Consultant+ command: unipipe (meshcloud UniPipe integration stub, #1652).
+// Enterprise roadmap command: unipipe (meshcloud UniPipe stub, #1652; FEATURE_GATES['unipipe']).
 registerUnipipe(program);
 // Enterprise command: challenge (LLM-driven assessment challenge personas).
 // When SWAO_LLM_ASSESSMENT_RECORD is set this process is a challenge subprocess

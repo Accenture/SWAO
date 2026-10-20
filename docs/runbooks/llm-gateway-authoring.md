@@ -15,7 +15,7 @@ a code change or rebuild.
 
 | Your platform speaks | protocol value |
 |---|---|
-| OpenAI Chat Completions (`/v1/chat/completions`) -- vLLM, internal GenAI hubs, OpenRouter, LLMGateway, most aggregators | `openai-chat` |
+| OpenAI Chat Completions (`/v1/chat/completions`): vLLM, internal GenAI hubs, OpenRouter, LLMGateway, most aggregators | `openai-chat` |
 | Anthropic Messages (`/v1/messages`) | `anthropic-messages` |
 | Amazon Bedrock Gateway (Bedrock API via AWS SDK) | `bedrock-gateway` |
 | Local Ollama daemon | `ollama` |
@@ -61,7 +61,7 @@ OpenRouter, a self-hosted LLMGateway, or any multi-vendor gateway is just a
 connector whose catalogue spans vendors. The bundled `openrouter` seed shows
 the pattern, including:
 
-- `models.discovery_endpoint: /v1/models` -- SWAO can refresh the model
+- `models.discovery_endpoint: /v1/models`: SWAO can refresh the model
   list AND capture per-model prices from the platform; refreshes are
   written to your workspace copy, bundled seeds are never modified.
 - `headers:` for static attribution or routing headers.
@@ -84,5 +84,5 @@ Every run records the connector id, file hash, and model in
   lives; SWAO refuses files containing secret-shaped values.
 - Legacy `type: anthropic|openai|ollama|open-llm-provider` configurations
   keep working unchanged; migration is opt-in.
-- Sovereignty facts in the connector are facts, not verdicts -- they feed
+- Sovereignty facts in the connector are facts, not verdicts: they feed
   the provider eligibility checks of the LLM benchmark.

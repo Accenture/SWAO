@@ -32,28 +32,65 @@
 //   3. credential store key open-llm-api-key-{SWAO_LLM_ENV | prod}
 //   4. empty string (valid for unauthenticated deployments)
 
-import type { LlmProvider, LlmUsage, LlmTrace, LlmTool, EmbeddingProvider, EmbeddingResult } from './types.js';
-import { CredentialStore, redactPreLlm, recordRedaction, logPortfolio, logApp } from '@swao/core';
-import { LlmConnectivityError } from './anthropic.js';
+import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion, LlmToolChatParams, EmbeddingProvider, EmbeddingResult } from './types.js';
+import { CredentialStore, logPortfolio, logApp } from '@swao/core';
+import { scrubForEgress } from './egress-redaction.js';
 import { ConnectivityFailureError } from './errors.js';
 import { fetch as undiciFetch, Agent, ProxyAgent } from 'undici';
+import {
+  requestLlmWithRetry,
+  LlmConnectivityError,
+  LlmHttpStatusError,
+  LLM_MAX_ATTEMPTS,
+  type AttemptWatchdog,
+  type LlmCallKind,
+} from './llm-request.js';
+import { llmLimiterKey, getLlmConcurrencyLimit } from './concurrency.js';
+
+// #3284: every call (text, vision, tools) runs through the shared request
+// helper (llm-request.ts): one retry policy (6 attempts), idle watchdog,
+// concurrency limiter and the provider.llm.open-llm-provider.* event set.
+// The wire format (non-streaming OpenAI chat/completions) is unchanged.
 
 const DEFAULT_MAX_TOKENS = 32768;
-const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 3_000; // 3 s, 6 s, 12 s (same as openai.ts)
 
-function isRetryable(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  return err.message === 'fetch failed' || /ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up/i.test(err.message);
+/** #2584: strip known PII fields from provider error bodies before any sink
+ *  (event body_excerpt, thrown messages). OpenRouter error JSON can carry a
+ *  user_id that identifies the account. */
+function sanitiseErrorBody(text: string): string {
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    delete parsed['user_id'];
+    delete parsed['user'];
+    delete parsed['email'];
+    return JSON.stringify(parsed);
+  } catch {
+    return text; // not JSON -- use raw text as-is
+  }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+type ChatCompletion = {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+      /** Reasoning-model fallback: deepseek-R1 / deepseek-v4-flash-latest return
+       *  content=null with output in reasoning_content (#1689). */
+      reasoning_content?: string | null;
+      tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+    };
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    /** OpenAI/OpenRouter breakdown; reasoning tokens are INCLUDED in
+     *  completion_tokens, so cost already counts them (#1397). */
+    completion_tokens_details?: { reasoning_tokens?: number };
+  };
+};
 
 /**
- * #2944: honour NO_PROXY / no_proxy env var so internal endpoints (e.g. PREME
- * on 10.x.x.x) bypass the corporate proxy while external endpoints still route
+ * #2944: honour NO_PROXY / no_proxy env var so internal endpoints (e.g. an
+ * enterprise GenAI hub on 10.x.x.x) bypass the corporate proxy while external endpoints still route
  * through it.  Matches exact hostname, .suffix, and *.suffix patterns; does NOT
  * match IP-range CIDR notation (not needed for current deployments).
  */
@@ -158,6 +195,9 @@ export class OpenLlmProvider implements LlmProvider {
   private readonly gateway: OpenLlmGatewayOpts;
   // #2894: scoped dispatcher (ProxyAgent, Agent with rejectUnauthorized:false, or both combined).
   private readonly dispatcher: ProxyAgent | Agent | undefined;
+  /** Concurrency limiter key (#3284): provider + endpoint origin, so every
+   *  model behind one gateway shares the gateway's slot pool. */
+  readonly concurrencyKey: string;
   private lastUsage: LlmUsage | undefined;
   private _lastTrace: LlmTrace | undefined;
   /** Which response field carried the text on the last call (#1690). */
@@ -228,13 +268,14 @@ export class OpenLlmProvider implements LlmProvider {
     this.baseUrl = resolvedBaseUrl.replace(/\/$/, '').replace(/\/v1$/, '');
 
     // Normalise model segment: strip any leading slashes so a model id such as
-    // '/Llama-3.3-70B...' (common in PREME PREPROD catalogue entries) does not
+    // '/Llama-3.3-70B...' (common in enterprise GenAI hub catalogues) does not
     // produce a double slash in the path (#2892).
     const modelSegment = '/' + this.model.replace(/^\/+/, '');
     // effectivePrefix = modelPrefix ?? modelSegment
     // Using ?? (not ||) so that an empty string disables path routing.
     const effectivePrefix = modelPrefix ?? modelSegment;
     this.completionsUrl = `${this.baseUrl}${effectivePrefix}/v1/chat/completions`;
+    this.concurrencyKey = llmLimiterKey(this.name, this.completionsUrl);
 
     this.temperature = temperature ?? 0;
     this.seed = seed;
@@ -244,6 +285,12 @@ export class OpenLlmProvider implements LlmProvider {
     });
   }
 
+  /** In-flight limit of this provider's endpoint (#3284, D-14). */
+  get maxConcurrency(): number {
+    return getLlmConcurrencyLimit(this.concurrencyKey);
+  }
+
+  /** @deprecated #3301: shared state; read `usage` from the `*Detailed()` result. */
   getLastUsage(): LlmUsage | undefined {
     return this.lastUsage;
   }
@@ -258,9 +305,161 @@ export class OpenLlmProvider implements LlmProvider {
     return this.lastContentSource;
   }
 
+  private costOf(inputTokens: number, outputTokens: number): number {
+    return this.costPerToken
+      ? (inputTokens * this.costPerToken.inputPerMillion + outputTokens * this.costPerToken.outputPerMillion) / 1_000_000
+      : 0;
+  }
+
+  /**
+   * One chat/completions call through the shared request helper (#3284).
+   * `failPrefix` keeps each entry point's historical error message shape.
+   * HTTP 401 triggers the one-shot token refresh (#2743) when configured,
+   * otherwise a typed ConnectivityFailureError (#2899).
+   */
+  private async chat(opts: {
+    kind: LlmCallKind;
+    body: () => string;
+    promptChars: number;
+    imageCount?: number;
+    failPrefix: string;
+    attemptContext?: Record<string, unknown>;
+  }): Promise<{ data: ChatCompletion; status: number }> {
+    let tokenRefreshed = false;
+    const authHeaderName = this.gateway.authHeader ?? 'Authorization';
+    return requestLlmWithRetry<{ data: ChatCompletion; status: number }>({
+      provider: 'open-llm-provider',
+      label: 'open-llm-provider',
+      model: this.model,
+      kind: opts.kind,
+      endpoint: this.completionsUrl,
+      limiterKey: this.concurrencyKey,
+      streaming: false,
+      promptChars: opts.promptChars,
+      imageCount: opts.imageCount,
+      appId: this.gateway.appId,
+      // #1896: HTTP errors from LLM providers are configuration or provider
+      // issues, not SWAO defects; warn so monitors do not report crashes.
+      httpErrorLevel: 'warn',
+      attemptContext: {
+        api_key_suffix: this.apiKey ? this.apiKey.slice(-4) : '(none)',
+        ...(opts.attemptContext ?? {}),
+      },
+      exhaustedError: (lastError, attempts) => this.exhausted(lastError, attempts),
+      run: async (wd: AttemptWatchdog) => {
+        // Gateway auth parameterisation (#1397): connector-defined header name
+        // and scheme; static connector headers merged (non-secret enforced at
+        // connector parse time). Defaults reproduce pre-gateway behaviour.
+        const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
+        // #2944: undici's own fetch so the dispatcher (Agent/ProxyAgent) is
+        // always recognised -- globalThis.fetch in Node.js 20+ uses a different
+        // undici instance than the npm package and would ignore it silently.
+        const response = await wd.race(undiciFetch(this.completionsUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.gateway.headers ?? {}),
+            ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
+          },
+          body: opts.body(),
+          signal: wd.signal,
+          ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
+        }));
+        wd.setPhase('body');
+        wd.touch(0);
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            // #2743: one-shot token refresh, re-sent at once without consuming
+            // an attempt. The refreshed token is never logged.
+            if (this.gateway.tokenRefresh && !tokenRefreshed) {
+              const fresh = this.gateway.tokenRefresh();
+              if (fresh) {
+                this.apiKey = fresh;
+                tokenRefreshed = true;
+                throw new LlmHttpStatusError(`${opts.failPrefix} 401 (token refreshed)`, 401, {
+                  retryNow: true, context: { token_refreshed: true },
+                });
+              }
+            }
+            // #2899: 401 means the token is wrong or expired -- not transient.
+            throw new LlmHttpStatusError(`${opts.failPrefix} 401`, 401, {
+              throwAs: new ConnectivityFailureError(
+                'auth',
+                `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid. ` +
+                `Re-authenticate (swao setup or update SWAO_ADFS_TOKEN) and retry.`,
+              ),
+            });
+          }
+          const sanitizedText = sanitiseErrorBody(await wd.race(response.text()));
+          throw new LlmHttpStatusError(`${opts.failPrefix} ${response.status} ${sanitizedText.slice(0, 200)}`, response.status, {
+            bodyExcerpt: sanitizedText.slice(0, 200),
+          });
+        }
+
+        const data = (await wd.race(response.json())) as ChatCompletion;
+        const inputTokens = data.usage?.prompt_tokens ?? 0;
+        const outputTokens = data.usage?.completion_tokens ?? 0;
+        return {
+          value: { data, status: response.status },
+          status: response.status,
+          okContext: {
+            tokens_in: inputTokens,
+            tokens_out: outputTokens,
+            // Reasoning-token visibility (#1397): part of tokens_out on the
+            // wire; surfaced separately for benchmark cost analysis.
+            tokens_reasoning: data.usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+            cost_usd: this.costOf(inputTokens, outputTokens),
+            // #1690: which response field carried the output.
+            content_source: data.choices?.[0]?.message?.content
+              ? 'content'
+              : data.choices?.[0]?.message?.reasoning_content ? 'reasoning_content' : undefined,
+          },
+        };
+      },
+    });
+  }
+
+  /** LlmConnectivityError after every attempt failed. #2944: the cause code
+   *  stays in the message so gateway-probe classifyPingFailure can match TLS /
+   *  protocol error codes (EPROTO, ERR_TLS_*, ...). */
+  private exhausted(lastError: Error, attempts: number = LLM_MAX_ATTEMPTS): Error {
+    if (lastError instanceof LlmHttpStatusError) {
+      return new LlmConnectivityError(
+        `open-llm-provider: HTTP ${lastError.status} after ${attempts} attempts: ${lastError.bodyExcerpt}`,
+      );
+    }
+    const e = lastError as Error & { cause?: Error & { code?: string } };
+    if (process.env['SWAO_DEBUG_GATEWAY']) {
+      const causeDetail = e.cause ? ` cause.code=${e.cause.code ?? '?'} cause.msg=${e.cause.message}` : '';
+      console.error(`[debug] open-llm-provider final: ${e.message}${causeDetail} | url=${this.completionsUrl} | dispatcher=${this.dispatcher?.constructor?.name ?? 'none'}`);
+    }
+    const causeCode = e.cause?.code;
+    const causeMsg = causeCode ? `: ${causeCode} (${e.cause!.message})` : '';
+    return new LlmConnectivityError(
+      `open-llm-provider: network error after ${attempts} attempts: ${e.message}${causeMsg}`,
+    );
+  }
+
+  /** Usage of one response (#3301); also kept as the deprecated last usage. */
+  private recordUsage(data: ChatCompletion): LlmUsage {
+    const inputTokens = data.usage?.prompt_tokens ?? 0;
+    const outputTokens = data.usage?.completion_tokens ?? 0;
+    const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: this.costOf(inputTokens, outputTokens) };
+    this.lastUsage = usage;
+    return usage;
+  }
+
   async completeVision(prompt: string, images: Buffer[]): Promise<string> {
+    return (await this.completeVisionDetailed(prompt, images)).text;
+  }
+
+  /** completeVision() with the call's own usage and trace (#3301). */
+  async completeVisionDetailed(prompt: string, images: Buffer[]): Promise<LlmCompletion> {
     // Vision path (#1802): OpenAI-compatible image_url content blocks.
     // Images are NOT redacted -- sovereignty warning emitted by assess.ts at run start.
+    // The text prompt IS redacted (#3157 / CLAUDE.md §5.7).
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
     const imageBlocks = images.map((img) => ({
       type: 'image_url' as const,
       image_url: { url: `data:image/jpeg;base64,${img.toString('base64')}` },
@@ -269,62 +468,36 @@ export class OpenLlmProvider implements LlmProvider {
       model: this.model,
       max_completion_tokens: this.gateway.maxTokens ?? DEFAULT_MAX_TOKENS,
       messages: [
-        { role: 'user', content: [...imageBlocks, { type: 'text', text: prompt }] },
+        { role: 'user', content: [...imageBlocks, { type: 'text', text: scrubbedPrompt }] },
       ],
       temperature: this.temperature ?? 0,
       ...(this.seed !== undefined && { seed: this.seed }),
     });
-    const authKey = this.gateway.authHeader ?? 'Authorization';
-    const authVal = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
-    const extraHeaders: Record<string, string> = this.gateway.headers ?? {};
-    // #2944: use undici's own fetch so dispatcher (Agent/ProxyAgent) is always
-    // recognised -- globalThis.fetch in Node.js 20+ uses a different undici
-    // instance than the npm package, causing dispatcher to be silently ignored.
-    const response = await undiciFetch(
-      this.completionsUrl,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', [authKey]: authVal, ...extraHeaders },
-        body,
-        ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
-      },
-    );
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new ConnectivityFailureError(
-          'auth',
-          `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid.`,
-        );
-      }
-      const text = await response.text();
-      throw new Error(`OpenLlmProvider vision request failed: ${response.status} ${text.slice(0, 300)}`);
-    }
-    const data = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-    };
+    const { data } = await this.chat({
+      kind: 'vision',
+      body: () => body,
+      promptChars: scrubbedPrompt.length,
+      imageCount: images.length,
+      failPrefix: 'OpenLlmProvider vision request failed:',
+    });
+    const usage = this.recordUsage(data);
     const rawText = data.choices?.[0]?.message?.content ?? '';
-    const inputTokens = data.usage?.prompt_tokens ?? 0;
-    const outputTokens = data.usage?.completion_tokens ?? 0;
-    const costUsd = this.costPerToken
-      ? (inputTokens * this.costPerToken.inputPerMillion + outputTokens * this.costPerToken.outputPerMillion) / 1_000_000
-      : 0;
-    this.lastUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd };
-    this._lastTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
-    return rawText;
+    const trace: LlmTrace = { scrubbedPrompt: `[vision prompt ${images.length} image(s)]`, response: rawText };
+    this._lastTrace = trace;
+    return { text: rawText, usage, trace };
   }
 
   // #2952: OpenAI-compatible tool-calling loop (Design 082 SS6.2).
   // Converts SWAO/Anthropic input_schema to OpenAI function.parameters format,
   // loops up to maxIterations executing tool calls via onToolCall, returns
-  // final text response. Uses undiciFetch + dispatcher so proxy/TLS applies.
-  async completeWithTools(params: {
-    system: string;
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>;
-    tools: LlmTool[];
-    onToolCall: (name: string, input: Record<string, unknown>) => Promise<string>;
-    maxIterations?: number;
-  }): Promise<string> {
+  // final text response. #3284: each iteration's request runs through the
+  // shared request helper (retries, watchdog, limiter, events with kind 'tools').
+  async completeWithTools(params: LlmToolChatParams): Promise<string> {
+    return (await this.completeWithToolsDetailed(params)).text;
+  }
+
+  /** completeWithTools() with the usage summed over every iteration (#3301). */
+  async completeWithToolsDetailed(params: LlmToolChatParams): Promise<LlmCompletion> {
     const { system, messages, tools, onToolCall, maxIterations = 10 } = params;
 
     const openAiTools = tools.map(t => ({
@@ -332,16 +505,18 @@ export class OpenLlmProvider implements LlmProvider {
       function: { name: t.name, description: t.description, parameters: t.input_schema },
     }));
 
+    // Egress redaction (#3157 / CLAUDE.md §5.7): system prompt (workspace
+    // context), every history message and every tool result are scrubbed
+    // before they are placed into a request body.
     const chatMessages: Array<Record<string, unknown>> = [
-      { role: 'system', content: system },
-      ...messages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'system', content: scrubForEgress(system, this.name, this.model) },
+      ...messages.map(m => ({ role: m.role, content: scrubForEgress(m.content, this.name, this.model) })),
     ];
 
-    const authHeaderName = this.gateway.authHeader ?? 'Authorization';
-    let tokenRefreshed = false;
-
+    let inTotal = 0;
+    let outTotal = 0;
+    let usage: LlmUsage | undefined;
     for (let i = 0; i < maxIterations; i++) {
-      const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
       const body = JSON.stringify({
         model: this.model,
         messages: chatMessages,
@@ -349,43 +524,20 @@ export class OpenLlmProvider implements LlmProvider {
         tool_choice: 'auto',
         max_completion_tokens: this.gateway.maxTokens ?? DEFAULT_MAX_TOKENS,
       });
-
-      const resp = await undiciFetch(this.completionsUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(this.gateway.headers ?? {}),
-          ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
-        },
-        body,
-        ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
+      const { data: json } = await this.chat({
+        kind: 'tools',
+        body: () => body,
+        promptChars: body.length,
+        failPrefix: 'completeWithTools: HTTP',
+        attemptContext: { iteration: i + 1, max_iterations: maxIterations, tool_count: tools.length },
       });
+      inTotal += json.usage?.prompt_tokens ?? 0;
+      outTotal += json.usage?.completion_tokens ?? 0;
+      usage = { input_tokens: inTotal, output_tokens: outTotal, cost_usd: this.costOf(inTotal, outTotal) };
+      this.lastUsage = usage;
 
-      if (!resp.ok) {
-        if (resp.status === 401 && this.gateway.tokenRefresh && !tokenRefreshed) {
-          const fresh = this.gateway.tokenRefresh();
-          if (fresh) {
-            this.apiKey = fresh;
-            tokenRefreshed = true;
-            i--;
-            continue;
-          }
-        }
-        const text = await resp.text();
-        throw new Error(`completeWithTools: HTTP ${resp.status} ${text.slice(0, 200)}`);
-      }
-
-      const json = (await resp.json()) as {
-        choices: Array<{
-          message: {
-            content: string | null;
-            tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
-          };
-        }>;
-      };
-
-      const choice = json.choices[0];
-      if (!choice) return '';
+      const choice = json.choices?.[0];
+      if (!choice?.message) return { text: '', usage };
       const { message } = choice;
 
       const assistantEntry: Record<string, unknown> = { role: 'assistant', content: message.content ?? '' };
@@ -393,32 +545,40 @@ export class OpenLlmProvider implements LlmProvider {
       chatMessages.push(assistantEntry);
 
       if (!message.tool_calls || message.tool_calls.length === 0) {
-        return message.content ?? '';
+        const trace: LlmTrace = { scrubbedPrompt: `[tool-call chat, ${i + 1} iterations]`, response: message.content ?? '' };
+        this._lastTrace = trace;
+        return { text: message.content ?? '', usage, trace };
       }
 
+      // No limiter slot is held while the tools run.
       const toolResults = await Promise.all(
         message.tool_calls.map(async tc => {
           let args: Record<string, unknown> = {};
           try { args = JSON.parse(tc.function.arguments) as Record<string, unknown>; } catch { /* noop */ }
-          const result = await onToolCall(tc.function.name, args);
-          return { tool_call_id: tc.id, role: 'tool' as const, content: result };
+          // #3312: a failing tool (timeout, MCP error) is reported to the
+          // model like the Anthropic path instead of failing the whole turn.
+          let result: string;
+          try {
+            result = await onToolCall(tc.function.name, args);
+          } catch (e) {
+            result = `[Tool error: ${String(e instanceof Error ? e.message : e)}]`;
+          }
+          return { tool_call_id: tc.id, role: 'tool' as const, content: scrubForEgress(result, this.name, this.model) };
         }),
       );
       chatMessages.push(...toolResults);
     }
 
-    return '[tool-calling loop exceeded max iterations]';
+    return { text: '[tool-calling loop exceeded max iterations]', usage };
   }
 
   async complete(prompt: string): Promise<string> {
-    const { text: scrubbedPrompt, counts } = redactPreLlm(prompt);
-    recordRedaction({
-      provider: this.name,
-      model: this.model,
-      input_chars: prompt.length,
-      scrubbed_chars: scrubbedPrompt.length,
-      counts,
-    });
+    return (await this.completeDetailed(prompt)).text;
+  }
+
+  /** complete() with the call's own usage and trace (#3301). */
+  async completeDetailed(prompt: string): Promise<LlmCompletion> {
+    const scrubbedPrompt = scrubForEgress(prompt, this.name, this.model);
 
     // Gateway request_overrides merge (#1397): vendor extensions first, then
     // the fields this driver owns, so overrides can adjust e.g. reasoning or
@@ -443,274 +603,46 @@ export class OpenLlmProvider implements LlmProvider {
       ...(this.seed !== undefined && { seed: this.seed }),
     });
 
-    let lastError: Error = new Error('unreachable');
-    // #2743: one token refresh is allowed per send() call; tracked here so we
-    // do not loop endlessly if the refreshed token is also rejected.
-    let tokenRefreshed = false;
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      if (attempt > 0) {
-        const delayMs = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-        console.error(
-          `[warn] open-llm-provider fetch failed (attempt ${attempt}/${MAX_RETRIES}) -- retrying in ${delayMs / 1000}s...`,
-        );
-        await sleep(delayMs);
+    const { data } = await this.chat({
+      kind: 'text',
+      body: () => body,
+      promptChars: scrubbedPrompt.length,
+      failPrefix: 'open-llm-provider request failed:',
+    });
+
+    // #1689: fall back to reasoning_content when content is absent (deepseek reasoning mode).
+    const rawContent = data.choices?.[0]?.message?.content;
+    const rawReasoning = data.choices?.[0]?.message?.reasoning_content;
+    const rawText = rawContent || rawReasoning;
+    // #1690: track which field was used so the call recorder can annotate the record.
+    this.lastContentSource = rawContent ? 'content' : rawReasoning ? 'reasoning_content' : undefined;
+
+    if (!rawText) {
+      const completionTokens = data.usage?.completion_tokens ?? 0;
+      const hint = completionTokens === 0
+        ? 'provider returned 0 completion tokens -- model may have refused, hit a context limit, or the connector filtered the response'
+        : 'choices[0].message.content and reasoning_content are both empty or null';
+      // #1692: log before throwing so the failure appears in the support bundle.
+      // #2488: warn, not error -- the throw below propagates to the caller.
+      const ctx = { provider: 'open-llm-provider', model: this.model, completion_tokens: completionTokens, hint };
+      logPortfolio('warn', 'provider.llm.open-llm-provider.empty-response',
+        `open-llm-provider missing content: ${hint}`, { context: ctx });
+      if (this.gateway.appId) {
+        logApp(this.gateway.appId, 'warn', 'provider.llm.open-llm-provider.empty-response',
+          `open-llm-provider missing content: ${hint}`, { context: ctx });
       }
-
-      const attemptStartedAt = Date.now();
-      logPortfolio(
-        'info',
-        'provider.llm.open-llm-provider.attempt',
-        `open-llm-provider ${this.model} call attempt ${attempt + 1}/${MAX_RETRIES + 1}`,
-        {
-          context: {
-            provider: 'open-llm-provider',
-            model: this.model,
-            endpoint: this.completionsUrl,
-            attempt: attempt + 1,
-            max_attempts: MAX_RETRIES + 1,
-            prompt_chars: scrubbedPrompt.length,
-            api_key_suffix: this.apiKey ? this.apiKey.slice(-4) : '(none)',
-          },
-        },
-      );
-
-      try {
-        // Gateway auth parameterisation (#1397): connector-defined header name
-        // and scheme; static connector headers merged (non-secret enforced at
-        // connector parse time). Defaults reproduce pre-gateway behaviour.
-        const authHeaderName = this.gateway.authHeader ?? 'Authorization';
-        const authValue = this.gateway.authScheme === 'raw' ? this.apiKey : `Bearer ${this.apiKey}`;
-        // #2944: undici fetch so dispatcher is always applied (see vision path above).
-        const response = await undiciFetch(
-          this.completionsUrl,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(this.gateway.headers ?? {}),
-              ...(this.apiKey ? { [authHeaderName]: authValue } : {}),
-            },
-            body,
-            ...(this.dispatcher ? { dispatcher: this.dispatcher } : {}),
-          },
-        );
-
-        if (!response.ok) {
-          // #2899: 401 means the token is wrong or expired -- not a transient error.
-          // Abort immediately with a typed error so the leg can surface a clear hint
-          // rather than recording a malformed WSP finding.
-          if (response.status === 401) {
-            // #2743: try a one-shot token refresh before giving up.
-            // Reset attempt to -1 so the loop increments to 0 (no backoff delay
-            // between the 401 and the immediate refresh retry).
-            if (this.gateway.tokenRefresh && !tokenRefreshed) {
-              const fresh = this.gateway.tokenRefresh();
-              if (fresh) {
-                this.apiKey = fresh;
-                tokenRefreshed = true;
-                attempt = -1;
-                continue;
-              }
-            }
-            throw new ConnectivityFailureError(
-              'auth',
-              `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid. ` +
-              `Re-authenticate (swao setup or update SWAO_ADFS_TOKEN) and retry.`,
-            );
-          }
-          const text = await response.text();
-          // #2584: strip known PII fields from LLM provider error bodies before
-          // logging. OpenRouter error JSON can contain a user_id field that
-          // identifies the account. Sanitise the raw text once so every downstream
-          // sink (body_excerpt, thrown Error messages) is clean.
-          let sanitizedText = text;
-          try {
-            const parsed = JSON.parse(text) as Record<string, unknown>;
-            delete parsed['user_id'];
-            delete parsed['user'];
-            delete parsed['email'];
-            sanitizedText = JSON.stringify(parsed);
-          } catch { /* not JSON -- use raw text as-is */ }
-          const isTransient =
-            response.status === 429 || (response.status >= 500 && response.status < 600);
-          const httpErrCtx = {
-            provider: 'open-llm-provider',
-            model: this.model,
-            http_status: response.status,
-            latency_ms: Date.now() - attemptStartedAt,
-            body_excerpt: sanitizedText.slice(0, 200),
-            transient: isTransient,
-          };
-          // #1896: HTTP errors from LLM providers are user/provider configuration
-          // issues (bad model ID, invalid key, provider outage), not SWAO defects.
-          // Use warn for all HTTP errors so monitors don't classify them as crashes.
-          logPortfolio(
-            'warn',
-            'provider.llm.open-llm-provider.http-error',
-            `open-llm-provider HTTP ${response.status} on attempt ${attempt + 1}`,
-            { context: httpErrCtx },
-          );
-          // #1692: dual-log HTTP errors to app-events when in an app context.
-          if (this.gateway.appId) {
-            logApp(this.gateway.appId, 'warn',
-              'provider.llm.gateway.http-error',
-              `LLM gateway HTTP ${response.status} on attempt ${attempt + 1}`,
-              { context: { model: this.model, http_status: response.status, latency_ms: httpErrCtx.latency_ms, transient: isTransient } },
-            );
-          }
-          if (isTransient && attempt < MAX_RETRIES) {
-            lastError = new Error(
-              `open-llm-provider request failed: ${response.status} ${sanitizedText.slice(0, 200)}`,
-            );
-            continue;
-          }
-          if (isTransient) {
-            throw new LlmConnectivityError(
-              `open-llm-provider: HTTP ${response.status} after ${MAX_RETRIES + 1} attempts: ${sanitizedText.slice(0, 200)}`,
-            );
-          }
-          throw new Error(
-            `open-llm-provider request failed: ${response.status} ${sanitizedText.slice(0, 200)}`,
-          );
-        }
-
-        const data = (await response.json()) as {
-          choices?: Array<{
-            message?: {
-              content?: string | null;
-              /** Reasoning-model fallback: deepseek-R1 / deepseek-v4-flash-latest return
-               *  content=null with output in reasoning_content (#1689). */
-              reasoning_content?: string | null;
-            }
-          }>;
-          usage?: {
-            prompt_tokens?: number;
-            completion_tokens?: number;
-            /** OpenAI/OpenRouter breakdown; reasoning tokens are INCLUDED in
-             *  completion_tokens, so cost already counts them (#1397). */
-            completion_tokens_details?: { reasoning_tokens?: number };
-          };
-        };
-
-        // #1689: fall back to reasoning_content when content is absent (deepseek reasoning mode).
-        const rawContent = data.choices?.[0]?.message?.content;
-        const rawReasoning = data.choices?.[0]?.message?.reasoning_content;
-        const rawText = rawContent || rawReasoning;
-        // #1690: track which field was used so the call recorder can annotate the record.
-        this.lastContentSource = rawContent ? 'content' : rawReasoning ? 'reasoning_content' : undefined;
-
-        if (!rawText) {
-          const completionTokens = data.usage?.completion_tokens ?? 0;
-          const hint = completionTokens === 0
-            ? 'provider returned 0 completion tokens -- model may have refused, hit a context limit, or the connector filtered the response'
-            : 'choices[0].message.content and reasoning_content are both empty or null';
-          // #1692: log before throwing so the failure appears in the support bundle.
-          // #2488: downgraded from error to warn -- the throw below propagates to
-          // the caller which handles it; error-level triggered false-positive alerts.
-          logPortfolio('warn', 'provider.llm.open-llm-provider.empty-response',
-            `open-llm-provider missing content: ${hint}`,
-            { context: { provider: 'open-llm-provider', model: this.model, completion_tokens: completionTokens, hint } },
-          );
-          if (this.gateway.appId) {
-            logApp(this.gateway.appId, 'warn', 'provider.llm.gateway.empty-response',
-              `open-llm-provider missing content: ${hint}`,
-              { context: { model: this.model, completion_tokens: completionTokens, hint } },
-            );
-          }
-          throw new Error(`open-llm-provider response missing content (#1541): ${hint}`);
-        }
-
-        const inputTokens = data.usage?.prompt_tokens ?? 0;
-        const outputTokens = data.usage?.completion_tokens ?? 0;
-        let costUsd = 0;
-        if (this.costPerToken) {
-          costUsd =
-            (inputTokens * this.costPerToken.inputPerMillion +
-              outputTokens * this.costPerToken.outputPerMillion) /
-            1_000_000;
-        }
-        this.lastUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd };
-
-        const callLatencyMs = Date.now() - attemptStartedAt;
-        const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens ?? 0;
-        logPortfolio(
-          'info',
-          'provider.llm.open-llm-provider.ok',
-          `open-llm-provider ${this.model} -> ${response.status} in ${callLatencyMs}ms`,
-          {
-            context: {
-              provider: 'open-llm-provider',
-              model: this.model,
-              http_status: response.status,
-              latency_ms: callLatencyMs,
-              tokens_in: inputTokens,
-              tokens_out: outputTokens,
-              // Reasoning-token visibility (#1397): part of tokens_out on the
-              // wire; surfaced separately for benchmark cost analysis.
-              tokens_reasoning: reasoningTokens,
-              cost_usd: costUsd,
-              // #1690: surface which response field carried the output.
-              content_source: this.lastContentSource,
-            },
-          },
-        );
-        // #1691: dual-log to app-events when an app context is available.
-        if (this.gateway.appId) {
-          logApp(this.gateway.appId, 'info', 'provider.llm.gateway.ok',
-            `${this.model} -> ${response.status} in ${callLatencyMs}ms`,
-            {
-              context: {
-                model: this.model,
-                latency_ms: callLatencyMs,
-                tokens_in: inputTokens,
-                tokens_out: outputTokens,
-                tokens_reasoning: reasoningTokens,
-                cost_usd: costUsd,
-                content_source: this.lastContentSource,
-              },
-            },
-          );
-        }
-
-        // Strip markdown code fences if present (any language tag: json, yaml, etc.).
-        const fenced = rawText.match(/```(?:\w+)?\s*([\s\S]*?)```/);
-        const responseText = fenced ? fenced[1].trim() : rawText;
-        // #1709: capture post-redaction prompt + response for trace writing.
-        this._lastTrace = { scrubbedPrompt, response: responseText };
-        return responseText;
-      } catch (err) {
-        if (err instanceof LlmConnectivityError) throw err;
-        if (err instanceof ConnectivityFailureError) throw err;
-        if (isRetryable(err) && attempt < MAX_RETRIES) {
-          lastError = err as Error;
-          // #2944 debug: surface full error cause to diagnose proxy / TLS / network failures
-          if (process.env['SWAO_DEBUG_GATEWAY']) {
-            const e = err as Error & { cause?: Error & { code?: string } };
-            const causeDetail = e.cause ? ` cause.code=${e.cause.code ?? '?'} cause.msg=${e.cause.message}` : '';
-            console.error(`[debug] open-llm-provider attempt ${attempt + 1}: ${e.message}${causeDetail} | url=${this.completionsUrl} | dispatcher=${this.dispatcher?.constructor?.name ?? 'none'}`);
-          }
-          continue;
-        }
-        if (isRetryable(err)) {
-          // #2944: preserve the original cause so gateway-probe can extract the real error code
-          const e = err as Error & { cause?: Error & { code?: string } };
-          if (process.env['SWAO_DEBUG_GATEWAY']) {
-            const causeDetail = e.cause ? ` cause.code=${e.cause.code ?? '?'} cause.msg=${e.cause.message}` : '';
-            console.error(`[debug] open-llm-provider final: ${e.message}${causeDetail}`);
-          }
-          // #2944: embed cause code in message so gateway-probe classifyPingFailure
-          // can match TLS / protocol error codes (EPROTO, ERR_TLS_*, etc.)
-          const causeCode = e.cause?.code;
-          const causeMsg = causeCode ? `: ${causeCode} (${e.cause!.message})` : '';
-          throw new LlmConnectivityError(
-            `open-llm-provider: network error after ${MAX_RETRIES + 1} attempts: ${e.message}${causeMsg}`,
-          );
-        }
-        throw err;
-      }
+      throw new Error(`open-llm-provider response missing content (#1541): ${hint}`);
     }
 
-    throw new LlmConnectivityError(lastError.message);
+    const usage = this.recordUsage(data);
+
+    // Strip markdown code fences if present (any language tag: json, yaml, etc.).
+    const fenced = rawText.match(/```(?:\w+)?\s*([\s\S]*?)```/);
+    const responseText = fenced ? fenced[1].trim() : rawText;
+    // #1709: capture post-redaction prompt + response for trace writing.
+    const trace: LlmTrace = { scrubbedPrompt, response: responseText };
+    this._lastTrace = trace;
+    return { text: responseText, usage, trace };
   }
 }
 
@@ -749,7 +681,8 @@ export class OpenLlmEmbeddingProvider implements EmbeddingProvider {
           'Content-Type': 'application/json',
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
-        body: JSON.stringify({ inputs: text }),
+        // #3157: embedding input is egress to a model endpoint; redact it too.
+        body: JSON.stringify({ inputs: scrubForEgress(text, this.name, this.model) }),
         ...(proxyAgent ? { dispatcher: proxyAgent } : {}),
       },
     );

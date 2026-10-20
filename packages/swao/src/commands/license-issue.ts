@@ -20,7 +20,7 @@
 // excludes it from all compiled binaries (no production tree-path reaches it),
 // which satisfies the isolation requirement in #1227 / Design 062 section 10.
 //
-// Signing in production uses swao-premium/lib/license-admin.mjs on the
+// Signing in production uses the private licence tooling on the
 // operator-side admin machine; this file mirrors the validation logic so
 // tests can exercise it without spawning a separate process.
 
@@ -162,7 +162,7 @@ export function issueLicense(opts: IssueOptions): IssueResult {
   } catch {
     throw new Error(
       'Licence signing failed. Verify SWAO_LICENSE_SECRET is set and decodes ' +
-      'to a 32-byte Ed25519 seed (see swao-premium/secrets/README.md).',
+      'to a 32-byte Ed25519 seed (see the private licence tooling documentation).',
     );
   }
   return { key, payload };

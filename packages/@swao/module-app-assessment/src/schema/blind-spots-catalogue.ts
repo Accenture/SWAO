@@ -32,6 +32,16 @@ export const SeverityDefaultSchema = z.enum([
 
 export const CurrentCoverageSchema = z.enum(['none', 'partial', 'full']);
 
+/**
+ * Evidence kinds a blind spot can require before it applies to a service
+ * workload (Pass 13). `container_platform` (#3246): Kubernetes, OpenShift or
+ * service-mesh evidence. `web_facing` (#3290, Design 110 D-25): an HTTP
+ * endpoint, URL, web UI, API, web server or API gateway, an internet-facing
+ * network zone, or SaaS delivery.
+ */
+export const BLIND_SPOT_EVIDENCE_KINDS = ['container_platform', 'web_facing'] as const;
+export type BlindSpotEvidenceKind = (typeof BLIND_SPOT_EVIDENCE_KINDS)[number];
+
 export const BlindSpotEntrySchema = z.object({
   id: z.string().regex(/^BS_[A-Z0-9_]+$/, 'blind-spot id must match ^BS_[A-Z0-9_]+$'),
   name: z.string().min(3),
@@ -49,6 +59,11 @@ export const BlindSpotEntrySchema = z.object({
   /** Regimes this blind spot maps to. `[all]` expands at load time
    *  to the full registered regime set. */
   related_regimes: z.array(z.string()).min(1),
+  /** #3246 / #3290: evidence the workload must show before the blind spot
+   *  applies (every listed kind). `container_platform`: Kubernetes /
+   *  OpenShift / service-mesh evidence. `web_facing`: web or API exposure.
+   *  Absent = always applies. Pass 13 enforces it for service workloads. */
+  requires_evidence: z.array(z.enum(BLIND_SPOT_EVIDENCE_KINDS)).optional(),
 });
 
 export const BlindSpotsCatalogueSchema = z.object({

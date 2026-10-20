@@ -46,7 +46,7 @@ chmod +x "$(which swao)"
 
 **Symptom:** `Error: ANTHROPIC_API_KEY is not set` oder `LLM connectivity: red` in `swao health-check`.
 
-**Ursache:** Die Anthropic-API-Key-Umgebungsvariable fehlt in der aktüllen Shell-Sitzung.
+**Ursache:** Die Anthropic-API-Key-Umgebungsvariable fehlt in der aktuellen Shell-Sitzung.
 
 **Behebung:**
 
@@ -93,7 +93,7 @@ Bei einem bewussten Rollback auf eine ältere Binary sicherstellen, dass die Bin
 
 **Symptom:** `Playwright: yellow` in `swao health-check`; der `dynamic`-Pass wird übersprungen.
 
-**Ursache:** Playwright und/oder Chromium sind nicht installiert. Der gelbe Status bedeutet, dass der Dynamic Pass automatisch deaktiviert wird -- andere Passes laufen normal.
+**Ursache:** Playwright und/oder Chromium sind nicht installiert. Der gelbe Status bedeutet, dass der Dynamic Pass automatisch deaktiviert wird. Andere Passes laufen normal.
 
 **Behebung:**
 
@@ -149,11 +149,11 @@ Community-Edition-Funktionen bleiben ohne Lizenzschlüssel verfügbar.
 
 ## Binary wird als Virus gemeldet
 
-**Symptom:** Windows Defender oder ein Drittanbieter-AV-Produkt stellt `swao-enterprise-win.exe` unter Quarantäne oder löscht die Datei.
+**Symptom:** Windows Defender oder ein Drittanbieter-AV-Produkt stellt `swao-enterprise-win-x64.exe` unter Quarantäne oder löscht die Datei.
 
 **Ursache:** Heuristischer Fehlalarm. Gepackte Node.js-Binaries werden von reputationsbasierten AV-Engines manchmal markiert.
 
-**Behebung:** Die vollständige Freigabeprozedur findet sich unter [Windows: SWAO-Binary freigeben](./windows-binary-allowlisting.md). Den SHA-256-Hash der heruntergeladenen Binary vor der Freigabe gegen die veröffentlichte `sha256sums.txt` verifizieren, um eine echte Bedrohung auszuschliessen.
+**Behebung:** Die vollständige Freigabeprozedur findet sich unter [Windows: SWAO-Binary freigeben](./windows-binary-allowlisting.md). Den SHA-256-Hash der heruntergeladenen Binary vor der Freigabe gegen die veröffentlichte `sha256sums.txt` verifizieren, um eine echte Bedrohung auszuschließen.
 
 ---
 
@@ -214,9 +214,9 @@ npx playwright install chromium
 
 **Behebung:** Die `.pbit`-Datei nativ aus Power BI Desktop re-exportieren:
 
-1. Die `.pbix`-Qülldatei in Power BI Desktop öffnen.
+1. Die `.pbix`-Quelldatei in Power BI Desktop öffnen.
 2. **Datei > Exportieren > Power BI-Vorlage** auswählen.
-3. Die neü `.pbit`-Datei speichern.
+3. Die neue `.pbit`-Datei speichern.
 
 Keine `jszip`- oder ähnlichen Bibliotheken zum Patchen von `.pbit`-Dateien verwenden. Die Begründung findet sich im Audit-Gate `pbit-template-native`.
 
@@ -224,9 +224,9 @@ Keine `jszip`- oder ähnlichen Bibliotheken zum Patchen von `.pbit`-Dateien verw
 
 ## Speichermangel
 
-**Symptom:** Der SWAO-Prozess wird während eines grossen Assessment-Laufs aufgrund von Speichermangel beendet.
+**Symptom:** Der SWAO-Prozess wird während eines großen Assessment-Laufs aufgrund von Speichermangel beendet.
 
-**Ursache:** Der LLM-Pass verarbeitet App-Qülldateien oder Kontexteingaben im Arbeitsspeicher. Sehr grosse Repositories oder hohe `--max-apps`-Werte können den verfügbaren RAM erschöpfen.
+**Ursache:** Der LLM-Pass verarbeitet App-Quelldateien oder Kontexteingaben im Arbeitsspeicher. Sehr große Repositories oder hohe `--max-apps`-Werte können den verfügbaren RAM erschöpfen.
 
 **Behebung:**
 
@@ -242,4 +242,4 @@ swao assess --app app-two
 NODE_OPTIONS="--max-old-space-size=4096" swao assess --app my-app
 ```
 
-Tritt das Problem bei einer bestimmten App weiterhin auf, grosse Kontextimportdateien (`imports/*.csv`) vor dem Assessment-Lauf auf ihre Grösse prüfen und bei Bedarf reduzieren.
+Tritt das Problem bei einer bestimmten App weiterhin auf, große Kontextimportdateien (`imports/*.csv`) vor dem Assessment-Lauf auf ihre Größe prüfen und bei Bedarf reduzieren.

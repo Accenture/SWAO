@@ -13,7 +13,7 @@
 //
 // ================================================================
 import { Command } from 'commander';
-import { saveDefaultWorkspace } from '@swao/core';
+import { saveDefaultWorkspace, discoverFrameworks } from '@swao/core';
 import {
   copyFileSync,
   existsSync,
@@ -26,10 +26,16 @@ import { dirname, resolve, join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import { scaffoldWorkspaceGateway } from '@swao/module-llm-providers';
-import { resolveLzCataloguesDir } from '@swao/module-landing-zone';
-import { LicenseGuard } from '../license/license-guard.js';
-import { claudeDesktopConfigPath } from '@swao/module-health-check';
-import { patchClaudeDesktopConfig } from '../tui/mcp-config.js';
+import { resolveBundledLzCataloguesDir } from '@swao/module-landing-zone';
+import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '../license/license-guard.js';
+import { printLicenseGateError, printLicenseLimitError, printLicenseInvalidError } from '../lib/license-gate-error.js';
+import {
+  patchAllClaudeDesktopConfigs,
+  requireMcpRegistration,
+  resolveStableBinary,
+  type McpRegistrationGateOps,
+  type StableBinaryResolution,
+} from '../tui/mcp-config.js';
 
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -69,8 +75,9 @@ function swaoFileHeader(purpose: string, style: 'slash' | 'hash' = 'slash'): str
 
 // Bundled community frameworks (sprint-037 #0340; relocated #0572). The
 // catalogues now live in the @swao/controls-community leaf content package
-// (frameworks/<id>/ -- framework-meta.yaml + controls.yaml [+ evidence/] plus
-// an `_registry.yaml` index). The init scaffolder mirrors these into
+// (frameworks/<id>/ -- framework-meta.yaml + controls.yaml [+ evidence/]; no
+// index file since #3297: each framework-meta.yaml declares its framework and
+// discoverFrameworks() in @swao/core lists them). The init scaffolder mirrors these into
 // `<workspace>/wsp/inputs/catalogs/community/.bundled/<id>/` so `swao assess`
 // sees them out of the box. Engagement-authored community catalogues sit
 // alongside at `<workspace>/wsp/inputs/catalogs/community/<id>/` and are
@@ -221,6 +228,9 @@ export function appSwaoYmlTemplate(opts: AppYamlOptions): string {
     } else {
       lines.push(`  # pass_profile: []  # optional: pass subset (run swao lenses list for options)`);
     }
+    // #3281: LZ catalogue targets (also written by the TUI Landing Zone Catalog Assessment).
+    lines.push(`  # landing_zone:`);
+    lines.push(`  #   targets: [stackit:eu01, azure:germanywestcentral]  # <provider>:<region> or <provider>:<geography> (e.g. azure:Europe)`);
   } else {
     // #1050: no regimes yet -- emit the assessment block as comments so the
     // operator knows how to configure regimes and pass_profile after creation.
@@ -229,6 +239,9 @@ export function appSwaoYmlTemplate(opts: AppYamlOptions): string {
     lines.push(`#   regimes_active:   # compliance frameworks to evaluate (swao lenses list shows IDs)`);
     lines.push(`#     - GDPR_DEMO`);
     lines.push(`#   pass_profile: []  # pass subset to run (empty = all passes)`);
+    // #3281: LZ catalogue targets (also written by the TUI Landing Zone Catalog Assessment).
+    lines.push(`#   landing_zone:`);
+    lines.push(`#     targets: [stackit:eu01, azure:germanywestcentral]  # <provider>:<region> or <provider>:<geography> (e.g. azure:Europe)`);
   }
 
   return lines.join('\n') + '\n';
@@ -586,7 +599,17 @@ export function scaffoldCatalogs(workspaceDir: string): CatalogsScaffoldResult {
     : new Set<string>();
 
   if (existsSync(BUNDLED_COMMUNITY_DIR)) {
-    const toSeed = SCAFFOLD_FW_FOLDERS.filter((fw) => !alreadySeeded.has(fw));
+    // #3297: seed through the same discovery as `swao framework list`, so a
+    // demo folder whose framework-meta.yaml is missing or invalid is skipped
+    // (with a warning) instead of being copied. The seed set itself stays the
+    // fixed demo list above.
+    const shippedFolders = new Set(
+      discoverFrameworks(BUNDLED_COMMUNITY_DIR, {
+        includeUnlisted: true,
+        warn: (m) => result.warnings.push(m),
+      }).map((f) => f.folder),
+    );
+    const toSeed = SCAFFOLD_FW_FOLDERS.filter((fw) => !alreadySeeded.has(fw) && shippedFolders.has(fw));
     if (toSeed.length > 0) {
       for (const fw of toSeed) {
         const src = join(BUNDLED_COMMUNITY_DIR, fw);
@@ -616,7 +639,9 @@ export function scaffoldCatalogs(workspaceDir: string): CatalogsScaffoldResult {
   // (fresh workspace); subsequent updates go via "Update LZ Catalogue".
   if (!existsSync(result.lzCataloguesDir)) {
     mkdirSync(result.lzCataloguesDir, { recursive: true });
-    const bundledLzDir = resolveLzCataloguesDir();
+    // #3155: seed from the bundled catalogues only; the directory resolver also
+    // probes cwd-relative workspace paths and could copy another workspace's files.
+    const bundledLzDir = resolveBundledLzCataloguesDir();
     if (bundledLzDir) {
       for (const f of readdirSync(bundledLzDir)) {
         if (!f.endsWith('.json')) continue;
@@ -778,15 +803,13 @@ export function scaffoldPowerBiTemplates(workspaceDir: string): PowerBiScaffoldR
     warnings: [],
   };
 
-  // #2566: PowerBI .pbit templates are Enterprise-only. Skip on Community tier
-  // to avoid placing unusable 5.8 MB files in every Community workspace.
-  // Templates are refreshed on every `swao export` so they will appear once a
-  // Consultant/Enterprise licence is activated.
+  // #2566 / #3324: PowerBI .pbit templates are FEATURE_GATES['bi-templates']
+  // (licence tier matrix F-088, Consultant+). Skip below that tier to avoid placing
+  // unusable 5.8 MB files in every Community workspace. Templates are refreshed
+  // on every `swao export` so they will appear once a Consultant or Enterprise
+  // licence is activated.
   try {
-    const guardState = LicenseGuard.load().state;
-    if (!guardState || guardState.tier === 'community') {
-      return result;
-    }
+    LicenseGuard.load().requireFeature('bi-templates');
   } catch {
     return result;
   }
@@ -931,13 +954,34 @@ export function buildWorkspaceSwaoYml(params: WorkspaceSwaoYmlParams): string {
     `\n` +
     `# publication:\n` +
     `#   cover_subtitle: "Cloud Sovereignty Assessment"\n` +
-    `#   classification_band: "Accenture Internal, Confidential"\n` +
+    `#   classification_band: "Client Confidential"\n` +
     `#   engagement_lead: "${ownerLead}"\n` +
     `#   logo_name: "SWAO"\n` +
     `\n` +
     `# assessment:\n` +
-    `#   vision_max_screens: 2  # screenshots sent to LLM vision pass per assessment run\n`
+    `#   vision_max_screens: 2  # screenshots sent to LLM vision pass per assessment run\n` +
+    `\n` +
+    `# LZ catalogue targets for every app (#3281); nest under assessment: (an app .swao.yml overrides):\n` +
+    `#   landing_zone:\n` +
+    `#     targets: [stackit:eu01, azure:germanywestcentral]  # <provider>:<region> or <provider>:<geography> (e.g. azure:Europe)\n`
   );
+}
+
+/**
+ * #3344: write a minimal workspace-root .swao.yml (buildWorkspaceSwaoYml, the
+ * same builder the Setup Wizard InitStep and `swao service init` use) when
+ * none exists. Never overwrites an existing file. Returns true when written.
+ */
+export function ensureWorkspaceSwaoYml(workspaceDir: string): boolean {
+  const path = join(workspaceDir, '.swao.yml');
+  if (existsSync(path)) return false;
+  mkdirSync(workspaceDir, { recursive: true });
+  writeFileSync(
+    path,
+    buildWorkspaceSwaoYml({ name: basename(resolve(workspaceDir)), code: '', ownerLead: '', engLead: '', endDate: '' }),
+    { encoding: 'utf-8', flag: 'wx' },
+  );
+  return true;
 }
 
 export function runWorkspaceScaffolders(workspaceDir: string): void {
@@ -957,63 +1001,127 @@ export function runWorkspaceScaffolders(workspaceDir: string): void {
   }
 }
 
+/** #3341: injectable for tests so `swao init --mcp` runs without the real licence, binary or configs. */
+export interface InitMcpDeps {
+  gate?: McpRegistrationGateOps;
+  resolveBinary?: () => StableBinaryResolution;
+  patchAll?: typeof patchAllClaudeDesktopConfigs;
+}
+
+/**
+ * `swao init --mcp` (#2908): only the MCP setup step. Returns the exit code.
+ * #3341: the Enterprise gate (licence and binary edition, shared with
+ * `swao mcp install` and the Setup Wizard) runs first; on refusal it prints
+ * [LICENSE] and exits non-zero before any binary copy or config write.
+ */
+export function runInitMcp(deps: InitMcpDeps = {}): number {
+  requireMcpRegistration('swao init --mcp', deps.gate);
+  // #3217: shared resolver (same as the Setup Wizard and `swao mcp install`).
+  // #3286: copies only a SWAO release binary; a source run registers node + script.
+  const stable = (deps.resolveBinary ?? (() => resolveStableBinary()))();
+  const stablePath = stable.stablePath ?? stable.path;
+  if (stable.sourceRun) {
+    console.log(`[ok]  Source run: registering node with ${stable.args.join(' ')} (no binary copy)`);
+  } else if (stable.copied) {
+    console.log(`[ok]  Binary copied to stable path: ${stablePath}`);
+  } else if (stable.copyError !== undefined) {
+    console.error(`[warn] Could not copy binary to ${stablePath}: ${stable.copyError}`);
+    console.error(`       Proceeding with binary path: ${stable.path}`);
+    console.error('       Quit Claude Desktop (tray icon, Quit) and re-run `swao init --mcp` to register the current binary.');
+  }
+  const effectiveBinary = stable.path;
+  // #3163: patch every Claude Desktop config that needs it (effective
+  // MSIX or conventional config, plus any other config that already holds
+  // a SWAO entry) and report each file, same logic as the Setup Wizard.
+  const outcomes = (deps.patchAll ?? patchAllClaudeDesktopConfigs)(effectiveBinary, undefined, stable.args);
+  for (const o of outcomes) {
+    if (o.result === 'patched') console.log(`[ok]  Config updated: ${o.path}`);
+    else if (o.result === 'already_present') console.log(`[ok]  Config already current (no change): ${o.path}`);
+    else console.error(`[error] Failed to write MCP config at ${o.path}. Edit manually.`);
+  }
+  if (outcomes.some((o) => o.result === 'error')) return 1;
+  if (outcomes.some((o) => o.result === 'patched')) {
+    console.log(`[ok]  MCP server registered at: ${effectiveBinary}`);
+    console.log(`[!]   Restart Claude Desktop to activate the SWAO tool registry.`);
+  } else {
+    console.log(`[ok]  SWAO MCP server already registered (no change).`);
+  }
+  return 0;
+}
+
+/**
+ * #3347: `swao init --reconfigure` without `--name`: refresh the
+ * workspace-level scaffolds (community-framework mirror, Power BI templates,
+ * .gitignore) and touch nothing under apps/. Returns the exit code.
+ */
+export function reconfigureWorkspaceOnly(workspaceDir: string): number {
+  if (!existsSync(workspaceDir)) {
+    mkdirSync(workspaceDir, { recursive: true });
+  }
+  const scaffold = scaffoldCatalogs(workspaceDir);
+  const pbi = scaffoldPowerBiTemplates(workspaceDir);
+  ensureGitignore(workspaceDir);
+  for (const w of [...scaffold.warnings, ...pbi.warnings]) {
+    console.error(`[warn] ${w}`);
+  }
+  if (scaffold.copiedFiles.length > 0) {
+    console.log(`[ok]  Frameworks refreshed (${scaffold.copiedFiles.length}) -> ${scaffold.communityDir}`);
+  }
+  if (pbi.copiedFiles.length > 0) {
+    console.log(`[ok]  PowerBI templates scaffolded -> ${pbi.templatesDir}`);
+  }
+  console.log('[ok]  Workspace reconfigured; no app scaffolded (add --name <app-id> to scaffold or refresh an app).');
+  console.log(workspaceDir);
+  saveDefaultWorkspace(workspaceDir);
+  return 0;
+}
+
 export function registerInit(program: Command): void {
   program
     .command('init [directory]')
     .description('Initialise a new SWAO workspace')
     .option('--name <app-id>', 'Application ID to set in .swao.yml')
-    .option('--reconfigure', 'Refresh bundled community-framework mirror under wsp/inputs/catalogs/community/ without overwriting .swao.yml')
+    .option('--reconfigure', 'Refresh bundled community-framework mirror under wsp/inputs/catalogs/community/ without overwriting .swao.yml; scaffolds no app unless --name is given')
     .option('--force', 'Re-scaffold the app directory even when .swao.yml already exists')
-    .option('--powerbi', 'Scaffold Power BI templates into the workspace (Enterprise tier)')
+    .option('--powerbi', 'Scaffold Power BI templates into the workspace (Consultant+)')
     .option('--mcp', 'Configure MCP server in Claude Desktop only (skip workspace scaffold) -- re-run after each upgrade (#2908)')
     .action((directory: string = '.', options: { name?: string; reconfigure?: boolean; force?: boolean; powerbi?: boolean; mcp?: boolean }) => {
       // #2908: --mcp runs only the MCP setup step and exits. The stable binary
-      // name is swao-enterprise-win-x64.exe in the same folder as the running binary.
+      // sits in the same folder as the running binary (swao-enterprise-win-x64.exe
+      // on Windows, derived from the running binary elsewhere, #3286).
       if (options.mcp) {
-        const stableName = 'swao-enterprise-win-x64.exe';
-        const stablePath = join(dirname(process.execPath), stableName);
-        if (process.execPath !== stablePath) {
-          try {
-            copyFileSync(process.execPath, stablePath);
-            console.log(`[ok]  Binary copied to stable path: ${stablePath}`);
-          } catch (e) {
-            console.error(`[warn] Could not copy binary to ${stablePath}: ${(e as Error).message}`);
-            console.error(`       Proceeding with current binary path: ${process.execPath}`);
-          }
-        }
-        const configPath = claudeDesktopConfigPath();
-        const effectiveBinary = existsSync(stablePath) ? stablePath : process.execPath;
-        const r = patchClaudeDesktopConfig(configPath, effectiveBinary);
-        if (r === 'patched') {
-          console.log(`[ok]  MCP server registered at: ${effectiveBinary}`);
-          console.log(`      Config: ${configPath}`);
-          console.log(`[!]   Restart Claude Desktop to activate the SWAO tool registry.`);
-        } else if (r === 'already_present') {
-          console.log(`[ok]  SWAO MCP server already registered (no change).`);
-          console.log(`      Config: ${configPath}`);
-        } else {
-          console.error(`[error] Failed to write MCP config at ${configPath}. Edit manually.`);
-          process.exit(1);
-        }
-        process.exit(0);
+        process.exit(runInitMcp());
       }
-      // #2462: gate --powerbi at Enterprise tier (Power BI templates are Enterprise-only per D-06).
+      // #2462 / #3324: gate --powerbi with FEATURE_GATES['bi-templates']
+      // (licence tier matrix F-088, Consultant+; was Enterprise per D-06).
       if (options.powerbi) {
         try {
-          const { state } = LicenseGuard.load();
-          if (!state || (state.tier !== 'enterprise')) {
-            const current = state?.tier ?? 'community';
-            console.error(`[LICENSE] swao init --powerbi requires an Enterprise licence (current: ${current}).`);
-            console.error(`To upgrade: swao license request --tier enterprise`);
-            console.error(`Contact: https://github.com/Accenture/SWAO/discussions`);
-            process.exit(1);
+          LicenseGuard.load().requireFeature('bi-templates');
+        } catch (err) {
+          if (err instanceof LicenseTierError) {
+            printLicenseGateError('swao init --powerbi (Power BI templates)', err.required, err.current);
           }
-        } catch {
-          console.error('[LICENSE] swao init --powerbi requires an Enterprise licence.');
-          process.exit(1);
+          if (err instanceof LicenseLimitError) printLicenseLimitError(err);
+          if (err instanceof LicenseInvalidError) printLicenseInvalidError(err.message);
+          throw err;
         }
       }
       const workspaceDir = resolve(directory);
+
+      // #3344: the workspace-root .swao.yml marks the workspace (findWorkspace);
+      // written when absent, never overwritten. Runs before the early exit so a
+      // re-run repairs a workspace scaffolded without it.
+      if (ensureWorkspaceSwaoYml(workspaceDir)) {
+        console.log(`[ok]  Workspace config written: ${join(workspaceDir, '.swao.yml')}`);
+      }
+
+      // #3347: --reconfigure without --name reconfigures the workspace only
+      // (framework mirror, Power BI templates, .gitignore). Defaulting the app
+      // id to my-app here scaffolded an unwanted apps/my-app/.
+      if (options.reconfigure && options.name === undefined) {
+        process.exit(reconfigureWorkspaceOnly(workspaceDir));
+      }
+
       const appId = options.name ?? 'my-app';
       const appDir = join(workspaceDir, 'apps', appId);
       const swaoYmlPath = join(appDir, '.swao.yml');

@@ -25,6 +25,8 @@
     { "path": "../@swao/module-health-check" },
     { "path": "../@swao/module-landing-zone" },
     { "path": "../@swao/module-llm-assessment" },
+    { "path": "../@swao/module-service-assessment" },
+    { "path": "../../../swao-premium/packages/@swao/module-service-export" },
     { "path": "../@swao/module-llm-providers" },
     { "path": "../@swao/module-mcp" },
     { "path": "../../../swao-premium/packages/@swao/module-pdf-report" },

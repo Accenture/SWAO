@@ -8,10 +8,10 @@
     "_comment_schema_version": "Always '0.1' for the current schema generation. Do not change.",
 
     "name": "My Private Cloud service catalogue",
-    "_comment_name": "Human-readable name shown in 'swao lz catalogue list'.",
+    "_comment_name": "Human-readable name shown in 'swao lz catalogue list'; the TUI provider lists show it without the trailing 'service catalogue'.",
 
     "provider": "my-private-cloud",
-    "_comment_provider": "Unique machine-readable identifier. Use kebab-case. Must match the filename (my-private-cloud.json). Register in index.json if you want SWAO to discover it automatically.",
+    "_comment_provider": "Unique machine-readable identifier. Use kebab-case. Must match the filename (my-private-cloud.json). SWAO discovers every <provider>.json in the catalogue folder from its meta block; there is no index to register in.",
 
     "last_updated": "2026-08-11",
     "_comment_last_updated": "ISO-8601 date when this file was last manually reviewed or updated.",
@@ -53,7 +53,7 @@
         "_comment_sovereignty": "Sovereignty facts for this region. Stored as facts only; verdicts are computed by installed frameworks (D-LZ-07).",
 
         "residency_country": "DE",
-        "_comment_residency_country": "ISO 3166-1 alpha-2 country where data physically resides. Omit if genuinely unknown (e.g. Azure Local where the customer chooses the site).",
+        "_comment_residency_country": "Required. ISO 3166-1 alpha-2 country where data physically resides (or EU for EU-wide residency). Use the sentinel OPERATOR_SITE where the customer chooses the site (e.g. Azure Local), together with operator_jurisdiction operator-site; such a region belongs to no geography. Never omit the field.",
 
         "operator_jurisdiction": "EU-entity",
         "_comment_operator_jurisdiction": "Free-form string describing the legal jurisdiction of the cloud operator. Common values: 'EU-entity' (EU-incorporated, EU-staff), 'US-entity' (US-incorporated, CLOUD Act attaches), 'operator-site' (customer premises -- jurisdiction is the customer's).",
@@ -62,7 +62,7 @@
         "_comment_extraterritorial_exposure": "Array of known extraterritorial legal exposure vectors. Common values: 'us_cloud_act' (US CLOUD Act applies to operator), 'fisa_702' (US FISA 702 applies). Empty array means no known extraterritorial exposure.",
 
         "certifications": ["BSI_C5", "ISO_27001", "SOC_2"],
-        "_comment_certifications": "Array of confirmed third-party certifications. Valid SWAO vocabulary: BSI_C5, ISO_27001, SOC_2, TISAX_L3. Only include certifications that have been issued (not 'planned' or 'in progress'). Record in-progress ones in source_note instead."
+        "_comment_certifications": "Array of confirmed third-party certifications. Valid SWAO vocabulary: BSI_C5, ISO_27001, SOC_2, TISAX_L3, PCI_DSS, FedRAMP_High, MAS_TRM, IRAP (values outside it are reported by the certification-vocabulary quality rule). Only include certifications that have been issued (not 'planned' or 'in progress'). Record in-progress ones in source_note instead."
       },
 
       "services": [

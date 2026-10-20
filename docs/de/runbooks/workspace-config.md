@@ -1,6 +1,6 @@
 # Workspace-Konfiguration
 
-Die Datei `.swao.yml` ist die zentrale Konfigurationsschnittstelle eines SWAO-Workspaces. Dieses Runbook beschreibt alle verfügbaren Optionen, einschliesslich benutzerdefinierter Pass-Konfiguration, Ausschlüssen, Multi-Repo-Layouts und Umgebungsvariablen-Overrides.
+Die Datei `.swao.yml` ist die zentrale Konfigurationsschnittstelle eines SWAO-Workspaces. Dieses Runbook beschreibt alle verfügbaren Optionen, einschließlich benutzerdefinierter Pass-Konfiguration, Ausschlüssen, Multi-Repo-Layouts und Umgebungsvariablen-Overrides.
 
 ---
 
@@ -67,12 +67,12 @@ output:
 
 | Pass-Schlüssel | Funktion |
 |---|---|
-| `static` | Bestandsaufnahme -- Dateitypen, Abhängigkeitslisten, Framework-Erkennung |
+| `static` | Bestandsaufnahme: Dateitypen, Abhängigkeitslisten, Framework-Erkennung |
 | `dynamic` | Browser-gestützte Prüfroutine (erfordert Playwright + Chromium) |
 | `context` | Liest CSV-/JSON-Kontextdateien ein (CMDB-Exporte, FinOps-Daten) |
 | `compliance` | Ordnet den Bestand den ausgewählten Control-Frameworks zu |
 | `security` | SAST-Analyse und Container-Image-Scanning (sofern konfiguriert) |
-| `llm` | LLM-gestützter Analysedurchlauf -- erstellt narrative Befunde und Migrationsempfehlungen |
+| `llm` | LLM-gestützter Analysedurchlauf: erstellt narrative Befunde und Migrationsempfehlungen |
 
 Einen Pass global deaktivieren, indem er aus `passes.enabled` entfernt wird, oder pro App über `exclusions.pass_ids`.
 
@@ -103,7 +103,7 @@ Pfade werden relativ zum Verzeichnis aufgelöst, das `.swao.yml` enthält. Absol
 
 ## Umgebungsvariablen-Overrides
 
-Jeder skalare Wert in `.swao.yml` kann zur Laufzeit durch eine Umgebungsvariable überschrieben werden. Die Namenskonvention lautet `SWAO_` gefolgt vom YAML-Pfad in Grossbuchstaben mit Unterstrichen:
+Jeder skalare Wert in `.swao.yml` kann zur Laufzeit durch eine Umgebungsvariable überschrieben werden. Die Namenskonvention lautet `SWAO_` gefolgt vom YAML-Pfad in Großbuchstaben mit Unterstrichen:
 
 | YAML-Pfad | Umgebungsvariable |
 |---|---|
@@ -117,7 +117,7 @@ Umgebungsvariablen werden nach dem Parsen der `.swao.yml` angewendet und haben d
 
 ## Ausschlüsse
 
-Ausschlüsse verhindern, dass bestimmte Pfade oder Passes in die Analyse einbezogen werden, ohne sie aus dem Qüllverzeichnis zu entfernen:
+Ausschlüsse verhindern, dass bestimmte Pfade oder Passes in die Analyse einbezogen werden, ohne sie aus dem Quellverzeichnis zu entfernen:
 
 ```yaml
 apps:

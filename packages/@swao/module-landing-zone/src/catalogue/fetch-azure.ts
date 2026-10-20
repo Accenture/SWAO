@@ -42,13 +42,25 @@ export interface AzureRegionOverlay {
   sovereignty?: LzSovereigntyFacts;
 }
 
+/**
+ * True for Azure Retail Prices billing zones that are not deployable regions
+ * (#3155): "Global", "Europe", "Intercontinental", "US Gov", "Zone 1",
+ * "Azure Stack", and similar. ARM region names (`armRegionName`) are always
+ * lower-case alphanumeric (`westeurope`, `germanywestcentral`), so anything
+ * with an upper-case letter, a space, or punctuation is dropped from the
+ * catalogue rather than offered as a fit target.
+ */
+export function isAzurePseudoRegion(id: string): boolean {
+  return !/^[a-z][a-z0-9]*$/.test(id);
+}
+
 export function normalizeAzureProducts(
   rows: AzureAvailabilityRow[],
   opts: { lastUpdated: string; overlay?: Record<string, AzureRegionOverlay>; operator?: string },
 ): LzServiceCatalogue {
   const byRegion = new Map<string, Map<string, string | undefined>>();
   for (const r of rows) {
-    if (!r.region || !r.service) continue;
+    if (!r.region || !r.service || isAzurePseudoRegion(r.region)) continue;
     if (!byRegion.has(r.region)) byRegion.set(r.region, new Map());
     byRegion.get(r.region)!.set(r.service, r.serviceName);
   }

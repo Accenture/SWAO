@@ -45,26 +45,67 @@ const TOOL_DEFS: Array<{ name: IaCToolEntry['name']; cmd: string; versionArgs: s
   { name: 'kics',      cmd: 'kics',       versionArgs: ['version'] },
 ];
 
-function detectTool(cmd: string, versionArgs: string[]): string | null {
+/**
+ * Extract a printable version from a tool's version output (#3172).
+ *
+ * `terraform version -json` and `tofu version -json` print a multi-line JSON
+ * object whose first line is a bare "{"; taking the first line rendered the
+ * health-check message as "terraform {.". JSON output (stdout only) is parsed
+ * for its `terraform_version` field (OpenTofu uses the same key) or `version`
+ * and returned as "v1.9.8". Plain-text output keeps its first non-empty line,
+ * as before. Returns null when no version text can be recovered.
+ */
+export function parseToolVersion(stdout: string, stderr = ''): string | null {
+  const out = stdout.trim();
+  if (out.startsWith('{')) {
+    try {
+      const doc = JSON.parse(out) as Record<string, unknown>;
+      const raw = doc['terraform_version'] ?? doc['version'];
+      if (typeof raw === 'string' && raw.trim().length > 0) {
+        const v = raw.trim();
+        return /^\d/.test(v) ? `v${v}` : v;
+      }
+      return null;
+    } catch {
+      // Truncated or otherwise invalid JSON: scan for the version field.
+      const m = /"(?:terraform_)?version"\s*:\s*"v?(\d+\.\d+[^"]*)"/.exec(out.slice(0, 4096));
+      return m ? `v${m[1]}` : null;
+    }
+  }
+  const text = out.length > 0 ? out : stderr.trim();
+  const firstLine = text.split('\n')[0]?.trim();
+  return firstLine && firstLine.length > 0 ? firstLine : null;
+}
+
+/** Message fragment: "terraform v1.9.8", or "terraform (version unknown)" when no version number is present. */
+export function formatToolVersion(name: string, version: string | null): string {
+  const m = version ? /v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.]+)?)/.exec(version.slice(0, 256)) : null;
+  return m ? `${name} v${m[1]}` : `${name} (version unknown)`;
+}
+
+function detectTool(cmd: string, versionArgs: string[]): { available: boolean; version: string | null } {
   try {
     const result = spawnSync(cmd, versionArgs, {
       encoding: 'utf-8',
       timeout: 3_000,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    if (result.error || result.status === null) return null;
-    const out = ((result.stdout ?? '') + (result.stderr ?? '')).toString();
-    const firstLine = out.split('\n')[0]?.trim();
-    return firstLine && firstLine.length > 0 ? firstLine : null;
+    if (result.error || result.status === null) return { available: false, version: null };
+    const stdout = (result.stdout ?? '').toString();
+    const stderr = (result.stderr ?? '').toString();
+    // A tool that ran and printed anything is available, even when its
+    // version cannot be parsed (it then renders as "(version unknown)").
+    if ((stdout + stderr).trim().length === 0) return { available: false, version: null };
+    return { available: true, version: parseToolVersion(stdout, stderr) };
   } catch {
-    return null;
+    return { available: false, version: null };
   }
 }
 
 export function buildIaCToolchainProbe(): IaCToolchainProbeResult {
   const tools: IaCToolEntry[] = TOOL_DEFS.map(({ name, cmd, versionArgs }) => {
-    const version = detectTool(cmd, versionArgs);
-    return { name, available: version !== null, version, required: false as const };
+    const { available, version } = detectTool(cmd, versionArgs);
+    return { name, available, version, required: false as const };
   });
 
   const absent = tools.filter((t) => !t.available);
@@ -81,7 +122,7 @@ export function buildIaCToolchainProbe(): IaCToolchainProbeResult {
 
   const found = tools
     .filter((t) => t.available)
-    .map((t) => `${t.name} ${t.version}`)
+    .map((t) => formatToolVersion(t.name, t.version))
     .join(', ');
   const missing = absent.map((t) => t.name);
   const status: IaCToolchainStatus = absent.length > 0 ? 'warn' : 'ok';

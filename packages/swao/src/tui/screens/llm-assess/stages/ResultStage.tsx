@@ -38,12 +38,12 @@ export function ResultStage({
   if (stage === 'error') {
     // #2575: show error-specific guidance rather than a hardcoded licence message.
     const isFilesystemErr = /EBUSY|EPERM|EACCES|rmdir|unlink/i.test(errorMsg);
-    const isLicenceErr = /licence|license|tier|consultant|enterprise/i.test(errorMsg);
+    const isLicenceErr = /licence|license|tier/i.test(errorMsg);
     const isNetworkErr = /ECONNREFUSED|ENOTFOUND|fetch|timeout|http_status|404|503/i.test(errorMsg);
     const errorWhat = isFilesystemErr
       ? 'A temp directory is locked from a previous run. Restart SWAO and try again. If the error persists, delete temp dirs matching "swao-leg-*" in %TEMP%.'
       : isLicenceErr
-        ? 'LLM Assessment requires a Consultant or Enterprise licence. Run "swao license request --tier consultant" or contact support.'
+        ? 'A licence check failed. LLM Assessment itself is available on all tiers (#3161); open Tools -> Licence to check that your licence file is valid and not expired.'
         : isNetworkErr
           ? 'Check LLM provider connectivity (run Health Check). Verify the connector base_url and API key are correct.'
           : 'Check the error message above. Common causes: missing connector credentials, a leg that returned no parseable responses, or a filesystem error.';

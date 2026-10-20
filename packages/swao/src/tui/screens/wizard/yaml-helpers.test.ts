@@ -38,7 +38,7 @@ describe('inferOpenLlmConnectorId (#2886)', () => {
   });
 
   it('returns open-llm for remote HTTPS', () => {
-    expect(inferOpenLlmConnectorId('https://preme-genai-hub-preprod.example.com')).toBe('open-llm');
+    expect(inferOpenLlmConnectorId('https://genai-hub.example.com')).toBe('open-llm');
   });
 
   it('returns open-llm for remote HTTP (non-loopback)', () => {
@@ -93,10 +93,10 @@ function readYaml(): string {
 describe('writeLlmToYaml -- open-llm-provider connector inference (#2886)', () => {
   it('writes connector: open-llm for remote HTTPS URL', () => {
     writeYaml(VIRGIN_YAML);
-    writeLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://preme.example.com');
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://genai-hub.example.com');
     const out = readYaml();
     expect(out).toContain('connector: open-llm');
-    expect(out).toContain('baseUrl: "https://preme.example.com"');
+    expect(out).toContain('baseUrl: "https://genai-hub.example.com"');
     expect(out).toContain('model: gemma-4');
     expect(out).not.toContain('type: open-llm-provider');
     expect(out).not.toContain('vllm-generic');
@@ -122,7 +122,7 @@ describe('writeLlmToYaml -- open-llm-provider connector inference (#2886)', () =
 
   it('is idempotent: re-running with a different URL replaces the connector block', () => {
     writeYaml(VIRGIN_YAML);
-    writeLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://preme.example.com');
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://genai-hub.example.com');
     writeLlmToYaml(tmpDir, 'open-llm-provider', 'mistral', '', 'http://localhost:8000');
     const out = readYaml();
     expect(out).toContain('connector: vllm-generic');
@@ -149,11 +149,11 @@ providers:
 
   it('writes connector: open-llm for remote HTTPS URL in secondary block', () => {
     writeYaml(YAML_WITH_PRIMARY);
-    writeSecondaryLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://preme.example.com');
+    writeSecondaryLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://genai-hub.example.com');
     const out = readYaml();
     expect(out).toContain('secondary:');
     expect(out).toContain('connector: open-llm');
-    expect(out).toContain('baseUrl: "https://preme.example.com"');
+    expect(out).toContain('baseUrl: "https://genai-hub.example.com"');
     expect(out).not.toContain('type: open-llm-provider');
   });
 

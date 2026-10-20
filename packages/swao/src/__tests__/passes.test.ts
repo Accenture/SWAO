@@ -651,6 +651,16 @@ describe('Pass 9 -- SYNTH (ghostfolio fixture)', () => {
 });
 
 describe('Pass 9 -- SYNTH (#0249 validation rejection)', () => {
+  // #3158: an unusable answer degrades the pass (SYNTH-00, not_applicable,
+  // skipped_reason invalid_llm_response) instead of aborting the whole run.
+  async function expectDegraded(ctx: ReturnType<typeof buildSynthCtx>, field: RegExp): Promise<void> {
+    const result = await runSynthPass(ctx);
+    expect(result.pass.status).toBe('not_applicable');
+    expect(result.signals.map((s) => s.id)).toEqual(['SYNTH-00']);
+    expect(result.assessment['skipped_reason']).toBe('invalid_llm_response');
+    expect(String(result.assessment['invalid_response_detail'])).toMatch(field);
+  }
+
   function buildSynthCtx(appId: string, response: string) {
     return { ...sourceCtx(appId), llm: new InlineLlmStub(response) };
   }
@@ -670,17 +680,17 @@ describe('Pass 9 -- SYNTH (#0249 validation rejection)', () => {
     return JSON.stringify({ signals: [], assessment });
   }
 
-  it('throws when modernization_position is missing', async () => {
+  it('degrades when modernization_position is missing', async () => {
     const ctx = buildSynthCtx('ghostfolio', baseResponseWithout('modernization_position'));
-    await expect(runSynthPass(ctx)).rejects.toThrow(/modernization_position/);
+    await expectDegraded(ctx, /modernization_position/);
   });
 
-  it('throws when portability_score is missing', async () => {
+  it('degrades when portability_score is missing', async () => {
     const ctx = buildSynthCtx('ghostfolio', baseResponseWithout('portability_score'));
-    await expect(runSynthPass(ctx)).rejects.toThrow(/portability_score/);
+    await expectDegraded(ctx, /portability_score/);
   });
 
-  it('throws when portability_score is out of [0, 1] range', async () => {
+  it('degrades when portability_score is out of [0, 1] range', async () => {
     const response = JSON.stringify({
       signals: [],
       assessment: {
@@ -695,7 +705,7 @@ describe('Pass 9 -- SYNTH (#0249 validation rejection)', () => {
       },
     });
     const ctx = buildSynthCtx('ghostfolio', response);
-    await expect(runSynthPass(ctx)).rejects.toThrow(/portability_score/);
+    await expectDegraded(ctx, /portability_score.*1\.5/);
   });
 });
 

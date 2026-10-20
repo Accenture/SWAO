@@ -1,5 +1,5 @@
 # SWAO Community Framework -- EC Cloud Sovereignty Framework v1.2.1
-# Sprint-139 #2847: 40 controls across 8 SOV domains (SEAL-0 to SEAL-4 maturity).
+# Sprint-139 #2847: 34 controls across 8 SOV domains (SEAL-0 to SEAL-4 maturity).
 # Source: European Commission, October 2025.
 # Used in EUR 180M EU institutional cloud procurement (awarded April 2026).
 
@@ -24,7 +24,7 @@ framework:
     Commission in October 2025, defines 8 Sovereignty Objectives (SOV domains)
     scored via a 5-level maturity system (SEAL-0 to SEAL-4 -- Sovereignty
     Effectiveness Assurance Level). The framework was used in the EUR 180M EU
-    institutional cloud procurement awarded in April 2026. 40 controls across
+    institutional cloud procurement awarded in April 2026. 34 controls across
     8 SOV domains: Strategic (SOV-1), Legal (SOV-2), Data (SOV-3), Operational
     (SOV-4), Supply Chain (SOV-5), Technology (SOV-6), Security (SOV-7), and
     Environmental (SOV-8). Companion to SecNumCloud v3.2; together they cover

@@ -19,10 +19,11 @@
 // @swao/module-pdf-report via a ReportData stub so the same renderer is reused.
 
 import { join } from 'path';
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { load as loadYaml, dump } from 'js-yaml';
 import type { ReportData, EngagementMeta, SignalEntry, ChallengeAgentFinding } from '@swao/core';
-import { wrapLines, normalizeDashes } from './report.js';
+import { readRunStatus, normalizeDashes, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE } from '@swao/core';
+import { wrapLines } from './report.js';
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -78,7 +79,15 @@ export interface LzReportData {
   assessedAt: string;
   assessmentMode: string;
   targets: LzFitEntry[];
+  /** #3281: targets a `partial` run skipped, with the reason (run-status.json failed_targets). */
+  skippedTargets?: Array<{ provider: string; region: string; reason: string }>;
+  /** #3281: configured geographies resolved to their default region. */
+  resolvedTargets?: Array<{ requested: string; resolved: string; geography: string }>;
   challengeFindings: LzChallengeEntry[];
+  /** #3330: which challenge (timestamp, run) the findings come from. */
+  challengeSource?: string;
+  /** #3330: a challenge of another run exists and was left out. */
+  challengeOtherRunOmitted?: boolean;
   engagement?: EngagementMeta;
   /** Files that could not be parsed; used to log report.generate.error events. */
   parseErrors?: Array<{ file: string; reason: string }>;
@@ -100,9 +109,71 @@ export function resolveLzRunDir(wspDir: string): string {
   return wspDir;
 }
 
-export function generateLzReport(workspaceAppDir: string, appId: string): LzReportData {
+/** #3343: run-directory id shape (`2026-10-18T21-36-25`, optional suffix); rejects paths such as `../x`. */
+const RUN_ID_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}[A-Za-z0-9_-]*$/;
+
+/** #3346: `--run <id>` names no usable run of the requested assessment type. */
+export class RunNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RunNotFoundError';
+  }
+}
+
+/** #3343: `--run <id>` names no usable landing-zone-catalog run. */
+export class LzRunNotFoundError extends RunNotFoundError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LzRunNotFoundError';
+  }
+}
+
+/** Assessment types whose reports accept `--run` (#3343, #3346). */
+export type RunReportType = 'application' | 'landing-zone-catalog';
+
+/**
+ * #3343 / #3346: resolve `--run <id>` (also accepted as `runs/<id>`) to
+ * `wsp/runs/<id>`. Throws (via `makeError`, RunNotFoundError by default) when
+ * the id is malformed, the run directory does not exist, or run-status.json
+ * names another assessment type, so `swao report --run` never silently falls
+ * back to the latest run. A run without run-status.json (older runs) passes.
+ */
+export function resolveRunDirById(
+  wspDir: string,
+  runId: string,
+  expectedType: RunReportType,
+  makeError: (message: string) => RunNotFoundError = (m) => new RunNotFoundError(m),
+): string {
+  const id = runId.trim().replace(/^runs[\\/]/, '');
+  if (!RUN_ID_RE.test(id)) {
+    throw makeError(`Invalid --run '${runId}': expected a run-directory timestamp such as 2026-10-18T21-36-25.`);
+  }
+  const runDir = join(wspDir, 'runs', id);
+  if (!existsSync(runDir)) {
+    throw makeError(`Run '${id}' not found: ${runDir} does not exist.`);
+  }
+  const type = readRunStatus(runDir)?.assessment_type;
+  if (type !== undefined && type !== expectedType) {
+    throw makeError(`Run '${id}' is a ${type} run, not ${expectedType === 'application' ? 'an' : 'a'} ${expectedType} run.`);
+  }
+  return runDir;
+}
+
+/**
+ * #3343: `--run <id>` for `--type landing-zone-catalog`; throws
+ * LzRunNotFoundError (see resolveRunDirById).
+ */
+export function resolveLzRunDirById(wspDir: string, runId: string): string {
+  return resolveRunDirById(wspDir, runId, 'landing-zone-catalog', (m) => new LzRunNotFoundError(m));
+}
+
+/**
+ * #3343: `runId` (from `--run`) selects the run; without it the latest LZ run
+ * pointer decides (resolveLzRunDir). The challenge is paired with the selected run.
+ */
+export function generateLzReport(workspaceAppDir: string, appId: string, runId?: string): LzReportData {
   const wspDir = join(workspaceAppDir, 'wsp');
-  const runDir = resolveLzRunDir(wspDir);
+  const runDir = runId !== undefined ? resolveLzRunDirById(wspDir, runId) : resolveLzRunDir(wspDir);
 
   const passesDir = join(runDir, 'passes');
   const targets: LzFitEntry[] = [];
@@ -139,24 +210,32 @@ export function generateLzReport(workspaceAppDir: string, appId: string): LzRepo
   const assessmentMode = modes.length === 1 ? (modes[0] ?? 'catalogue-sovereignty-only') : 'mixed';
 
   const parseErrors: Array<{ file: string; reason: string }> = [];
-  const challengeFindings = loadLzChallengeFindings(wspDir, parseErrors);
+  // #3330: only the challenge of the reported run (or none) is embedded.
+  const challengeSel = selectChallengeForRun(wspDir, 'lz', runDir);
+  const challengeFindings = challengeSel.dir ? loadLzChallengeFindings(challengeSel.dir, parseErrors) : [];
+  const challengeSource = challengeFindings.length > 0 ? challengeSourceLabel(challengeSel) : undefined;
   const engagement = loadLzEngagement(runDir);
 
-  return { appId, assessedAt, assessmentMode, targets, challengeFindings, engagement, parseErrors: parseErrors.length > 0 ? parseErrors : undefined };
+  // #3281: a partial run (some targets skipped) records them in run-status.json.
+  const status = runDir !== wspDir ? readRunStatus(runDir) : undefined;
+  const skippedTargets = status?.status === 'partial' && status.failed_targets?.length
+    ? status.failed_targets.map(f => ({ provider: f.provider, region: f.region, reason: normalizeDashes(f.reason) }))
+    : undefined;
+  const resolvedTargets = status?.resolved_targets?.length ? status.resolved_targets.map(r => ({ ...r })) : undefined;
+
+  return {
+    appId, assessedAt, assessmentMode, targets,
+    ...(skippedTargets ? { skippedTargets } : {}),
+    ...(resolvedTargets ? { resolvedTargets } : {}),
+    challengeFindings,
+    ...(challengeSource ? { challengeSource } : {}),
+    ...(challengeSel.otherRunOmitted ? { challengeOtherRunOmitted: true } : {}),
+    engagement, parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
+  };
 }
 
-function loadLzChallengeFindings(wspDir: string, parseErrors: Array<{ file: string; reason: string }> = []): LzChallengeEntry[] {
-  const challengeBase = join(wspDir, 'challenge-lz');
-  if (!existsSync(challengeBase)) return [];
-
-  let challengeDir = challengeBase;
-  try {
-    const subDirs = readdirSync(challengeBase)
-      .filter(f => { try { return statSync(join(challengeBase, f)).isDirectory(); } catch { return false; } })
-      .sort();
-    if (subDirs.length > 0) challengeDir = join(challengeBase, subDirs[subDirs.length - 1]!);
-  } catch { /* use base dir */ }
-
+/** Read LZCA_*.yaml from the challenge dir selected for the reported run (#3330). */
+function loadLzChallengeFindings(challengeDir: string, parseErrors: Array<{ file: string; reason: string }> = []): LzChallengeEntry[] {
   const entries: LzChallengeEntry[] = [];
   let files: string[] = [];
   try { files = readdirSync(challengeDir).filter(f => /^LZCA_.+\.ya?ml$/.test(f)).sort(); }
@@ -295,6 +374,7 @@ export function formatLzText(data: LzReportData): string {
       lines.push(`  ${verdictLabel(v)} ${t.provider} / ${t.region}`);
     }
     lines.push('');
+    lines.push(...formatLzTargetNotes(data));
 
     lines.push('Sovereignty Gate Analysis');
     lines.push('-------------------------');
@@ -321,11 +401,14 @@ export function formatLzText(data: LzReportData): string {
   }
 
   if (data.challengeFindings.length === 0) {
-    lines.push('Stakeholder Challenge Findings: none. Run the LZ Sovereignty Challenge to generate.');
+    lines.push(data.challengeOtherRunOmitted
+      ? `Stakeholder Challenge Findings: none for this run (${CHALLENGE_OTHER_RUN_NOTE}). Run the LZ Sovereignty Challenge to generate.`
+      : 'Stakeholder Challenge Findings: none. Run the LZ Sovereignty Challenge to generate.');
     lines.push('');
   } else {
     lines.push('Stakeholder Challenge Findings');
     lines.push('------------------------------');
+    if (data.challengeSource) lines.push(`Source: ${data.challengeSource}`);
     for (const agent of data.challengeFindings) {
       lines.push('');
       lines.push(`${agent.agentRole} (${agent.findings.length} finding${agent.findings.length === 1 ? '' : 's'})`);
@@ -349,6 +432,27 @@ export function formatLzText(data: LzReportData): string {
   return lines.join('\n');
 }
 
+/** #3281: skipped targets of a partial run and resolved geographies (text report). */
+export function formatLzTargetNotes(data: LzReportData): string[] {
+  const out: string[] = [];
+  if (data.skippedTargets && data.skippedTargets.length > 0) {
+    out.push('Skipped Targets (partial run)');
+    out.push('-----------------------------');
+    for (const s of data.skippedTargets) {
+      const prefix = `  [SKIPPED]  ${s.provider} / ${s.region}: `;
+      out.push(...wrapLines(normalizeDashes(s.reason), prefix, ' '.repeat(prefix.length)));
+    }
+    out.push('');
+  }
+  if (data.resolvedTargets && data.resolvedTargets.length > 0) {
+    out.push('Resolved Geographies');
+    out.push('--------------------');
+    for (const r of data.resolvedTargets) out.push(`  ${r.requested} (geography ${r.geography}) assessed as ${r.resolved}`);
+    out.push('');
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // YAML formatter
 // ---------------------------------------------------------------------------
@@ -369,6 +473,10 @@ export function formatLzYaml(data: LzReportData): string {
       ...(t.blockerCategory ? { blocker_category: t.blockerCategory } : {}),
       items: t.items,
     })),
+    ...(data.skippedTargets?.length ? { skipped_targets: data.skippedTargets } : {}),
+    ...(data.resolvedTargets?.length ? { resolved_targets: data.resolvedTargets } : {}),
+    ...(data.challengeSource ? { challenge_source: data.challengeSource } : {}),
+    ...(data.challengeOtherRunOmitted ? { challenge_note: CHALLENGE_OTHER_RUN_NOTE } : {}),
     challenge_findings: data.challengeFindings.map(a => ({
       agent_id: a.agentId,
       agent_role: a.agentRole,
@@ -539,6 +647,8 @@ function buildLzReportDataStubInternal(data: LzReportData, agentId: string | nul
     nextSteps,
     engagement: data.engagement,
     challengeFindings,
+    ...(data.challengeSource ? { challengeSource: data.challengeSource } : {}),
+    ...(data.challengeOtherRunOmitted ? { challengeOtherRunOmitted: true } : {}),
   };
 }
 

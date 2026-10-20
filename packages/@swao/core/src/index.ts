@@ -66,6 +66,18 @@ export {
   WspOverrideBlockSchema,
 } from './signals.js';
 export type { SignalId, WspOverrideBlock } from './signals.js';
+export {
+  SCAFFOLD_SIGNALS,
+  SCAFFOLD_SIGNAL_CODES,
+  ScaffoldSignalSchema,
+  ScaffoldSignalsFileSchema,
+  scaffoldSignal,
+} from './scaffold-signals.js';
+export type { ScaffoldSignal, ScaffoldSignalCode, ScaffoldSignalsFile } from './scaffold-signals.js';
+export { BINARY_SIGNALS, BINARY_SIGNAL_CODES, BinarySignalSchema, BinarySignalsFileSchema, binarySignal } from './binary-signals.js';
+export type { BinarySignal, BinarySignalCode, BinarySignalsFile } from './binary-signals.js';
+export { TIME_QUADRANTS, TimeQuadrantSchema, PortfolioAppSchema, PortfolioSummarySchema, PORTFOLIO_ASSESSMENT_TYPES, PortfolioAssessmentTypeSchema, portfolioAppType } from './portfolio-summary.js';
+export type { TimeQuadrant, PortfolioApp, PortfolioSummary, PortfolioAssessmentType } from './portfolio-summary.js';
 export { PassFileSchema, DataSourceSchema } from './wsp-pass.js';
 export type { PassFile } from './wsp-pass.js';
 export {
@@ -77,6 +89,9 @@ export {
   SwaoYmlLlmAssessmentSchema,
   SwaoYmlLlmAssessmentLegSchema,
   SwaoYmlContextSchema,
+  SwaoYmlLandingZoneSchema,
+  SwaoYmlLzTargetSchema,
+  LZ_TARGET_PATTERN,
 } from './swao-yml.js';
 export type {
   SwaoYml,
@@ -86,14 +101,29 @@ export type {
   SwaoYmlLlmAssessment,
   SwaoYmlLlmAssessmentLeg,
   SwaoYmlContext,
+  SwaoYmlLandingZone,
 } from './swao-yml.js';
+// #3281: LZ catalogue target selection shared by the CLI, run-context and the TUI.
+export {
+  parseLzTarget,
+  parseLzTargetList,
+  lzTargetLabel,
+  readLzTargetsKey,
+  lzTargetsFromAssessment,
+  resolveLzTargets,
+  setLzTargetsInSwaoYml,
+} from './lz-targets.js';
+export type { LzTargetSpec, LzTargetSource, ResolvedLzTargets, ResolveLzTargetsInput } from './lz-targets.js';
 // PII redaction (#0591): relocated from @swao/swao so the app-assessment
 // module's `normalize` command can redact without importing from @swao/swao.
 // redact-pre-llm holds process-global state (allowlist, person-name opt-in);
 // there is one @swao/core instance in the workspace, so the singleton is shared
 // across swao (via re-export stubs) and the modules.
-export { emptyCounts, redactPiiString, redactPiiValue } from './redact-pii.js';
+export { emptyCounts, redactPiiString, redactPiiValue, looksLikePhone, redactPhoneNumbers } from './redact-pii.js';
 export type { RedactionCounts } from './redact-pii.js';
+// Report-output dash normalisation (CLAUDE.md section 5.1; #3291, Design 110 D-28):
+// one implementation shared by the CLI text report and the publication renderer.
+export { normalizeDashes } from './normalize-dashes.js';
 export {
   emptyPreLlmCounts,
   setAllowlist,
@@ -192,6 +222,19 @@ export type {
   LzService,
   LzSovereigntyFacts,
 } from './lz-service-catalogue.js';
+// VM price table for the service cost model (#3288, Design 110 D-23).
+export {
+  VM_PRICE_TABLE_FILE,
+  VM_PRICE_PROVIDERS,
+  VM_PRICE_OS,
+  VM_PRICE_TARGETS,
+  VmPriceSourceSchema,
+  VmPriceRowSchema,
+  VmPriceTableSchema,
+  safeParseVmPriceTable,
+  findVmPrice,
+} from './vm-price-table.js';
+export type { VmPriceProvider, VmPriceOs, VmPriceSource, VmPriceRow, VmPriceTable } from './vm-price-table.js';
 // LZ scan result (Design 056 Layer B, #0566): normalised customer-LZ inventory.
 export {
   LzScanResultSchema,
@@ -224,6 +267,7 @@ export type {
   SignalEntry,
   EngagementMeta,
   ReportData,
+  ReportLzCatalogueFit,
   LicenseeBranding,
   ChallengeFindingEntry,
   ChallengeAgentFinding,
@@ -274,6 +318,8 @@ export {
   loadRegimeCatalogue,
 } from './compliance-registry.js';
 export type { ResolvedRegime, RegimeRegistry } from './compliance-registry.js';
+export { discoverFrameworks, findFramework, frameworkContributorName } from './framework-discovery.js';
+export type { DiscoveredFramework, DiscoverFrameworksOptions } from './framework-discovery.js';
 export type {
   LicenceTier,
   AssessmentType,
@@ -311,10 +357,46 @@ export type {
   CoreContext,
 } from './plugin-types.js';
 export { RunContextSchema } from './run-context.js';
+// #3245 / #3281: run-status.json lifecycle marker (skipped targets of a partial run).
+export {
+  RUN_STATUS_FILE,
+  RunStatusSchema,
+  RunStatusValueSchema,
+  RunStatusFailedTargetSchema,
+  RunStatusResolvedTargetSchema,
+  readRunStatus,
+  readSkippedTargets,
+  isRunUsable,
+  isRunStale,
+  USABLE_RUN_STATUSES,
+  RUN_STATUS_STALE_MS,
+} from './run-status.js';
+export type { RunStatus, RunStatusValue, RunStatusFailedTarget, RunStatusResolvedTarget } from './run-status.js';
+// #3330: pair stakeholder challenges with the run they challenged.
+export {
+  CHALLENGED_RUN_FIELD,
+  CHALLENGE_OTHER_RUN_NOTE,
+  selectChallengeForRun,
+  readChallengedRun,
+  challengeSourceLabel,
+  toFolderTs,
+} from './challenge-run.js';
+export type { ChallengedRunRef, ChallengeKind, ChallengeMatch, ChallengeSelection } from './challenge-run.js';
 export type { RunContext } from './run-context.js';
 // Filesystem-based Chromium detection (#0799): shared by SetupWizard, health-check
 // Playwright probe, and swao install-playwright. Safe in PKG binaries (no require).
 export { findInstalledChromium, isPlaywrightPackageInstalled, PLAYWRIGHT_VERSION } from './playwright-detect.js';
+// #3163: single Claude Desktop config resolver for the wizard, `swao init --mcp`, `swao mcp install` and the MCP health-check probe.
+export {
+  resolveClaudeDesktopConfigs,
+  claudeDesktopConfigPath,
+  claudeDesktopConfigHasSwaoEntry,
+  selectClaudeDesktopPatchTargets,
+  findSwaoServerKey,
+  SWAO_BIN_RE,
+  CLAUDE_DESKTOP_CONFIG_FILE,
+} from './claude-desktop-config.js';
+export type { ClaudeDesktopConfigCandidate, ClaudeDesktopConfigKind, ClaudeDesktopResolveOptions } from './claude-desktop-config.js';
 // WSP compliance + risk-register schemas (Design 080 Phase 0, #1172): relocated from
 // @swao/swao so @swao/module-mcp can import them without a circular package dependency.
 // Re-exported from packages/swao/src/schema/wsp-plan.ts for existing import sites.
@@ -351,3 +433,13 @@ export { DEFAULT_PASS_NAMES, TOTAL_DEFAULT_PASSES } from './wsp-pass-profile.js'
 // product major.minor automatically. Update this string whenever the schema
 // gains or removes fields (additive = minor bump per ADR-0012).
 export const WSP_SCHEMA_VERSION = '0.10' as const;
+// #3342: LZ fit artefact file names (single-target lz-fit.yaml and
+// multi-target lz-fit-<p>-<r>.yaml); every lz-fit reader goes through these.
+export {
+  LZ_FIT_PASS_FILE_RE,
+  LZ_CATALOGUE_FIT_FILE_RE,
+  isLzFitPassFile,
+  isLzCatalogueFitFile,
+  listLzFitPassFiles,
+  listLzCatalogueFitFiles,
+} from './lz-fit-files.js';

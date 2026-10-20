@@ -28,7 +28,6 @@ import { detectPiiFormFields } from './phase2/rules/pii-form-fields.js';
 import { detectThirdPartyScripts } from './phase2/rules/third-party-scripts.js';
 import { detectCookieConsentAbsence } from './phase2/rules/cookie-consent.js';
 import { loadAnalyticsBlocklist } from './phase2/analytics-blocklist.js';
-import { compareBaselines } from './phase2/parity-hash.js';
 
 const LOCAL_HOST_PATTERNS = [
   /^localhost$/i,
@@ -64,7 +63,11 @@ export async function runDynamicPass(
 ): Promise<PassResult> {
   const { iter, assessedAt } = ctx;
   const signals: Signal[] = [];
-  let sigNum = 1;
+  // #3152: fixed signal IDs. The a11y and console-error signals used a counter
+  // starting at 1, which collided with the DYN-01 crawl summary and the
+  // Phase 2 DYN-02 external-hosts signal. DYN-09 and DYN-11 are unused by
+  // every other DYN rule (DYN-01..08 Phase 1/2, DYN-10 reserved for the
+  // visual parity hash, DYN-VIS-* for vision findings).
 
   let targetHostname = '';
   try {
@@ -88,7 +91,7 @@ export async function runDynamicPass(
   const totalA11yViolations = crawlResult.screens.reduce((sum, s) => sum + s.a11yViolations, 0);
   if (a11yScreens.length > 0) {
     signals.push({
-      id: `DYN-${String(sigNum).padStart(2, '0')}`,
+      id: 'DYN-09',
       source: 'dynamic_analysis',
       category: 'application',
       severity: 'low',
@@ -96,7 +99,6 @@ export async function runDynamicPass(
       evidence: a11yScreens.slice(0, 5).map((s) => `screen ${s.index}: ${s.url} (${s.a11yViolations} violations)`),
       confidence: 'medium',
     });
-    sigNum++;
   }
 
   // Console errors.
@@ -107,7 +109,7 @@ export async function runDynamicPass(
   );
   if (allConsoleErrors.length > 0) {
     signals.push({
-      id: `DYN-${String(sigNum).padStart(2, '0')}`,
+      id: 'DYN-11',
       source: 'dynamic_analysis',
       category: 'application',
       severity: 'low',
@@ -115,7 +117,6 @@ export async function runDynamicPass(
       evidence: allConsoleErrors.slice(0, 5),
       confidence: 'medium',
     });
-    sigNum++;
   }
 
   // DYN-01: crawl summary (always emitted). External host detail is provided by Phase 2 DYN-02.
@@ -178,30 +179,13 @@ export async function runDynamicPass(
     }
   }
 
-  // DYN-10: visual parity hash (Design 083 Section 4.2, #1274).
-  // No-op when current-crawl/ does not exist -- compareBaselines returns skipped_reason.
-  try {
-    const currentCrawlDir = join(ctx.workspacePath, 'current-crawl');
-    const parityResult = await compareBaselines(baselineDir, currentCrawlDir);
-    for (const diff of parityResult.diffs) {
-      signals.push({
-        id: 'DYN-10',
-        source: 'dynamic_analysis',
-        category: 'application',
-        severity: diff.severity,
-        derivation:
-          `Visual parity regression detected on screen "${diff.slug}". ` +
-          `Perceptual hash Hamming distance: ${diff.distance} (threshold: 10). ` +
-          `Indicates a layout or rendering change between baseline and current crawl.`,
-        evidence: [
-          `screen ${diff.slug}: Hamming distance ${diff.distance} (${diff.severity === 'high' ? '>30' : '11-30'})`,
-        ],
-        confidence: 'medium',
-      });
-    }
-  } catch {
-    // DYN-10 failure is non-fatal.
-  }
+  // DYN-10 (visual parity hash, Design 083 Section 4.2, #1274) is not emitted
+  // (#3152). It compared parity-baseline/ with a current-crawl/ folder that no
+  // SWAO command writes, every live crawl overwrites the baseline it would
+  // compare against, and the image decoder it needs (sharp) is not a declared
+  // dependency, so it could never fire. The dHash helpers stay in
+  // phase2/parity-hash.ts (with their tests) for a future rewiring that keeps
+  // the previous baseline and declares the decoder.
 
   // Phase 3 -- vision analysis of Playwright screenshots (#1802, #2814).
   // Gated on: (a) visionOpts provided by assess.ts, (b) ctx.llm.completeVision defined.
