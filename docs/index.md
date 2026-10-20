@@ -5,6 +5,9 @@ hero:
   name: SWAO
   text: Sovereign Workload Assessment and Onboarding
   tagline: Audit-grade cloud workload assessments in a single command. No telemetry. No call-home. Your data stays on your machine.
+  image:
+    src: /swao-hero.png
+    alt: SWAO logo
   actions:
     - theme: brand
       text: Quick start (5 min)
@@ -17,18 +20,18 @@ hero:
       link: /how-it-works
 
 features:
-  - title: Three assessment types
-    details: Application Assessment, Landing Zone Assessment, and LLM Assessment, all available now with no additional configuration.
+  - title: Four assessment types
+    details: Application, Service Portfolio, Landing Zone Catalog, and LLM Assessment. Every assessment type runs in every edition.
   - title: Bring your own LLM
     details: Anthropic Claude, OpenAI, Ollama, or run with `--skip-llm` to skip LLM passes for fully offline assessments. LLM access is included in every edition.
   - title: Audit-grade traceability
     details: Every signal carries outcome, derivation, assessor identity, false-positive consideration, and timestamp. Defensible against external auditors.
   - title: HTML publication
-    details: A self-contained HTML file with executive, technical, compliance, and auditor views. Works offline, in air-gapped environments, and in email.
+    details: A self-contained HTML file with executive, technical, compliance, and auditor views. Works offline, in air-gapped environments, and in email. Consultant and Enterprise editions.
   - title: PowerBI dashboards
-    details: Pre-built templates for single-app and portfolio assessments. Star-schema CSV export works with any BI tool.
+    details: Star-schema export for any BI tool in every edition; pre-built Power BI templates in the Consultant and Enterprise editions.
   - title: MCP integration
-    details: Ask Claude AI questions about your assessment findings in natural language via the Model Context Protocol.
+    details: Ask Claude AI questions about your assessment findings in natural language via the Model Context Protocol. Enterprise edition.
 ---
 
 ## What is SWAO?

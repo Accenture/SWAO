@@ -1,4 +1,5 @@
 import DefaultTheme from 'vitepress/theme'
+import './custom.css'
 import FeatureTooltip from './FeatureTooltip.vue'
 import type { Theme } from 'vitepress'
 

@@ -1,25 +1,47 @@
 /* ── SWAO brand palette overrides for VitePress 1.x ─────────────────────────
-   Source of truth: docs/brand/branding-guidelines.md §4
-   Primary: #a100ff  Soft: #c87bff  Dim: #4a0080
+   Source of truth: docs/brand/branding-guidelines.md §4 and the SWAO image
+   design system (Style B, Cinematic Neon).
+   Primary: #a100ff  Soft: #c87bff  Dim: #4a0080  Card fill: #1a0033
    Background: #070707  Surface: #111113  Border: #24242a
    Text: #aaaab5  Text-high: #d6d6dd  White: #f2f2f5
-   Teal (partner): #1bbaa4
+   Teal (partner, output): #1bbaa4  Amber: #e5a85a  Rose: #d46a7a
+   Verdicts: PASS #00e676  PARTIAL #f5a623  FAIL #ff3d3d
    ──────────────────────────────────────────────────────────────────────────── */
 
-/* Brand accent -- applied in both light and dark */
+/* ── Tier 1: brand accent, applied in both light and dark ──────────────── */
 :root {
+  --swao-purple:      #a100ff;
+  --swao-purple-soft: #c87bff;
+  --swao-purple-dim:  #4a0080;
+  --swao-card:        #1a0033;
+  --swao-teal:        #1bbaa4;
+  --swao-amber:       #e5a85a;
+  --swao-rose:        #d46a7a;
+  --swao-glow:        0 0 12px rgba(161, 0, 255, 0.55);
+
   --vp-c-brand-1: #a100ff;
   --vp-c-brand-2: #8c00e0;
   --vp-c-brand-3: #c87bff;
-  --vp-c-brand-soft: rgba(161, 0, 255, 0.12);
+  --vp-c-brand-soft: rgba(161, 0, 255, 0.14);
 
   --vp-c-indigo-1: #a100ff;
   --vp-c-indigo-2: #8c00e0;
   --vp-c-indigo-3: #c87bff;
-  --vp-c-indigo-soft: rgba(161, 0, 255, 0.12);
+  --vp-c-indigo-soft: rgba(161, 0, 255, 0.14);
+
+  --vp-button-brand-bg: #a100ff;
+  --vp-button-brand-hover-bg: #8c00e0;
+  --vp-button-brand-active-bg: #7400bb;
+  --vp-button-brand-border: transparent;
+
+  /* Home hero: purple to teal, the output-beam motif */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #c87bff 10%, #a100ff 45%, #1bbaa4 95%);
+  --vp-home-hero-image-background-image: radial-gradient(circle, rgba(161, 0, 255, 0.45) 0%, rgba(27, 186, 164, 0.18) 45%, transparent 70%);
+  --vp-home-hero-image-filter: blur(56px);
 }
 
-/* ── Dark mode surface overrides ────────────────────────────────────────── */
+/* ── Dark mode surfaces ─────────────────────────────────────────────────── */
 .dark {
   --vp-c-bg:         #0a0a0c;
   --vp-c-bg-alt:     #070707;
@@ -34,52 +56,205 @@
   --vp-c-text-2:     #aaaab5;
   --vp-c-text-3:     #6b6b75;
 
-  /* Nav */
   --vp-nav-bg-color:      #0a0a0c;
-
-  /* Sidebar */
   --vp-sidebar-bg-color:  #070707;
 
-  /* Code blocks */
-  --vp-code-block-bg:     #111113;
-  --vp-code-bg:           #17171a;
+  --vp-code-block-bg:     #0d0714;
+  --vp-code-bg:           rgba(161, 0, 255, 0.10);
+  --vp-code-color:        #d9b3ff;
 
-  /* Tip / info / warning / danger callout tints */
-  --vp-custom-block-tip-bg:     rgba(161, 0, 255, 0.08);
-  --vp-custom-block-tip-border: rgba(161, 0, 255, 0.30);
-  --vp-custom-block-tip-text:   #c87bff;
+  /* Callouts in brand tones */
+  --vp-custom-block-tip-bg:         rgba(161, 0, 255, 0.08);
+  --vp-custom-block-tip-border:     rgba(161, 0, 255, 0.35);
+  --vp-custom-block-tip-text:       #d6d6dd;
+  --vp-custom-block-info-bg:        rgba(27, 186, 164, 0.07);
+  --vp-custom-block-info-border:    rgba(27, 186, 164, 0.35);
+  --vp-custom-block-warning-bg:     rgba(229, 168, 90, 0.08);
+  --vp-custom-block-warning-border: rgba(229, 168, 90, 0.40);
+  --vp-custom-block-danger-bg:      rgba(212, 106, 122, 0.08);
+  --vp-custom-block-danger-border:  rgba(212, 106, 122, 0.40);
 }
 
-/* ── Nav: "SWAO" title text in brand white ───────────────────────────────── */
+/* ── Tier 1: nav title and logo ─────────────────────────────────────────── */
 .VPNavBarTitle .title {
   color: #f2f2f5 !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-shadow: var(--swao-glow);
+}
+.VPNavBarTitle .logo {
+  height: 30px;
+  width: 30px;
+  border-radius: 6px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(161, 0, 255, 0.6));
+}
+.dark .VPNav,
+.dark .VPNavBar:not(.home.top) .divider-line {
+  border-bottom: 1px solid rgba(161, 0, 255, 0.25);
+}
+
+/* ── Tier 1: sidebar active entry with a purple left border ─────────────── */
+.VPSidebarItem.is-active > .item .link .text {
+  color: #c87bff;
   font-weight: 600;
 }
-
-/* ── Sidebar active link in brand purple ─────────────────────────────────── */
-.dark .VPSidebarItem.is-active > .item .link .text {
-  color: #c87bff;
+.VPSidebarItem.is-active > .item {
+  box-shadow: inset 2px 0 0 #a100ff;
+  margin-left: -12px;
+  padding-left: 10px;
+}
+.VPSidebarItem .item:hover .link .text {
+  color: #f2f2f5;
 }
 
-/* ── Links ──────────────────────────────────────────────────────────────── */
-.dark a,
+/* ── Tier 1: links inside the documentation content only ────────────────── */
 .dark .vp-doc a {
   color: #c87bff;
+  text-decoration-color: rgba(200, 123, 255, 0.35);
 }
-.dark a:hover,
 .dark .vp-doc a:hover {
+  color: #e3c4ff;
+  text-shadow: 0 0 8px rgba(161, 0, 255, 0.45);
+}
+
+/* ── Tier 2: faint hexagonal grid with a soft purple glow at the edges ──── */
+.dark .VPContent {
+  background-color: #0a0a0c;
+  background-image:
+    radial-gradient(ellipse at 100% 0%, rgba(161, 0, 255, 0.10), transparent 45%),
+    radial-gradient(ellipse at 0% 100%, rgba(27, 186, 164, 0.05), transparent 40%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 L56 16.2 L56 48.5 L28 64.7 L0 48.5 L0 16.2 Z M28 64.7 L28 97' fill='none' stroke='%23a100ff' stroke-opacity='0.07' stroke-width='1'/%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, fixed;
+}
+
+/* ── Tier 2: headings ──────────────────────────────────────────────────── */
+.dark .vp-doc h1 {
+  color: #f2f2f5;
+  letter-spacing: -0.01em;
+  padding-bottom: 14px;
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, #a100ff, rgba(27, 186, 164, 0.6) 60%, transparent) 1;
+}
+.dark .vp-doc h2 {
+  color: #f2f2f5;
+  border-top-color: rgba(161, 0, 255, 0.22);
+}
+.dark .vp-doc h3,
+.dark .vp-doc h4 {
+  color: #d6d6dd;
+}
+.dark .vp-doc h2 .header-anchor,
+.dark .vp-doc h3 .header-anchor {
   color: #a100ff;
 }
 
-/* ── Nav top-bar thin bottom border in brand purple ─────────────────────── */
-.dark .VPNav {
-  border-bottom: 1px solid #24242a;
+/* ── Tier 2: code blocks and inline code in the neon card style ─────────── */
+.dark .vp-doc div[class*='language-'] {
+  border: 1px solid rgba(161, 0, 255, 0.30);
+  box-shadow: 0 0 18px rgba(161, 0, 255, 0.10);
+}
+.dark .vp-doc :not(pre) > code {
+  border: 1px solid rgba(161, 0, 255, 0.22);
 }
 
-/* ── Nav logo: square corners rounded, sized to match nav height ─────────── */
-.VPNavBarTitle .logo {
-  height: 32px;
-  width: 32px;
-  border-radius: 6px;
-  object-fit: cover;
+/* ── Tier 2: tables ────────────────────────────────────────────────────── */
+.dark .vp-doc table {
+  border: 1px solid rgba(161, 0, 255, 0.28);
+  border-radius: 8px;
+  overflow: hidden;
+  display: table;
+  box-shadow: 0 0 18px rgba(161, 0, 255, 0.08);
+}
+.dark .vp-doc tr {
+  background-color: rgba(26, 0, 51, 0.35);
+  border-top-color: rgba(161, 0, 255, 0.18);
+}
+.dark .vp-doc tr:nth-child(2n) {
+  background-color: rgba(26, 0, 51, 0.60);
+}
+.dark .vp-doc th {
+  background-color: #1a0033;
+  color: #f2f2f5;
+  border-color: rgba(161, 0, 255, 0.30);
+}
+.dark .vp-doc td {
+  border-color: rgba(161, 0, 255, 0.14);
+}
+
+/* ── Tier 2: callouts ──────────────────────────────────────────────────── */
+.dark .vp-doc .custom-block {
+  border-left-width: 3px;
+}
+.dark .vp-doc .custom-block.tip     { border-left-color: #a100ff; }
+.dark .vp-doc .custom-block.info    { border-left-color: #1bbaa4; }
+.dark .vp-doc .custom-block.warning { border-left-color: #e5a85a; }
+.dark .vp-doc .custom-block.danger  { border-left-color: #d46a7a; }
+.dark .vp-doc .custom-block .custom-block-title { color: #f2f2f5; }
+
+/* ── Tier 2: verdict badges for documentation (PASS / PARTIAL / FAIL) ───── */
+.swao-badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.7;
+  border: 1px solid currentColor;
+}
+.swao-badge.pass    { color: #00e676; box-shadow: 0 0 8px rgba(0, 230, 118, 0.35); }
+.swao-badge.partial { color: #f5a623; box-shadow: 0 0 6px rgba(245, 166, 35, 0.25); }
+.swao-badge.fail    { color: #ff3d3d; opacity: 0.9; }
+
+/* ── Tier 2: VitePress badges in brand tones ────────────────────────────── */
+.dark .VPBadge.tip     { background-color: rgba(161, 0, 255, 0.16); color: #d9b3ff; border-color: rgba(161, 0, 255, 0.4); }
+.dark .VPBadge.info    { background-color: rgba(27, 186, 164, 0.14); color: #6fe3d3; }
+.dark .VPBadge.warning { background-color: rgba(229, 168, 90, 0.14); color: #f0c38c; }
+.dark .VPBadge.danger  { background-color: rgba(212, 106, 122, 0.14); color: #eaa0ab; }
+
+/* ── Tier 3: home hero ─────────────────────────────────────────────────── */
+.VPHero .name .clip {
+  filter: drop-shadow(0 0 18px rgba(161, 0, 255, 0.45));
+  letter-spacing: 0.06em;
+}
+.dark .VPHero .text {
+  color: #f2f2f5;
+}
+.dark .VPHero .tagline {
+  color: #aaaab5;
+}
+.VPHero .image-src {
+  max-width: 340px;
+  max-height: 340px;
+  border-radius: 24px;
+}
+.dark .VPButton.brand {
+  box-shadow: 0 0 16px rgba(161, 0, 255, 0.45);
+}
+.dark .VPButton.alt {
+  border-color: rgba(161, 0, 255, 0.45);
+  background-color: rgba(26, 0, 51, 0.55);
+}
+.dark .VPButton.alt:hover {
+  border-color: #a100ff;
+}
+
+/* ── Tier 3: feature cards as neon cards ───────────────────────────────── */
+.dark .VPFeature {
+  background-color: rgba(26, 0, 51, 0.55);
+  border: 1px solid rgba(161, 0, 255, 0.30);
+  box-shadow: 0 0 18px rgba(161, 0, 255, 0.08);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.dark .VPFeature:hover {
+  border-color: #a100ff;
+  box-shadow: 0 0 22px rgba(161, 0, 255, 0.30);
+  transform: translateY(-2px);
+}
+.dark .VPFeature .title {
+  color: #f2f2f5;
+}
+.dark .VPFeature .details {
+  color: #aaaab5;
 }

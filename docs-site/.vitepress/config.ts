@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { fileURLToPath } from 'node:url'
 
 // ---------------------------------------------------------------------------
 // Sidebar: ONE definition, rendered for both locales (EN/DE parity, sprint-150).
@@ -66,7 +67,6 @@ const sidebar: Entry[] = [
       { en: 'How it works', de: 'Wie es funktioniert', link: '/how-it-works' },
       { en: 'Features & Editions', de: 'Funktionen & Editionen', link: '/features' },
       { en: 'Getting started guide', de: 'Leitfaden für den Einstieg', link: '/getting-started' },
-      { en: 'Release notes v1.4.1', de: 'Versionshinweise v1.4.1', link: '/releases/v1.4.1' },
     ],
   },
   {
@@ -192,6 +192,12 @@ export default defineConfig({
   // bracket placeholders that Vue can't parse. Re-sync with
   // `npm run docs:sync` (see below) when source markdown changes.
   srcDir: './manual',
+  // Static assets (logo.svg, swao-hero.png) live in docs-site/public/. With
+  // srcDir set, VitePress would look in manual/public/ instead, so the logo and
+  // favicon returned 404 on the live site.
+  vite: {
+    publicDir: fileURLToPath(new URL('../public', import.meta.url)),
+  },
   base: '/SWAO/',
   cleanUrls: true,
   appearance: 'dark',

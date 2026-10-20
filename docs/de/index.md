@@ -5,6 +5,9 @@ hero:
   name: SWAO
   text: Sovereign Workload Assessment and Onboarding
   tagline: Audit-konforme Cloud-Workload-Bewertungen in einem einzigen Befehl. Keine Telemetrie. Kein Call-home. Ihre Daten bleiben auf Ihrem Rechner.
+  image:
+    src: /swao-hero.png
+    alt: SWAO-Logo
   actions:
     - theme: brand
       text: Schnellstart (5 Min.)
@@ -17,18 +20,18 @@ hero:
       link: /de/how-it-works
 
 features:
-  - title: Drei Bewertungstypen
-    details: Anwendungs-, Landing-Zone- und LLM-Bewertung, alle jetzt verfügbar ohne zusätzliche Konfiguration.
+  - title: Vier Bewertungstypen
+    details: Anwendungs-, Service-Portfolio-, Landing-Zone-Katalog- und LLM-Bewertung. Jeder Bewertungstyp läuft in jeder Edition.
   - title: Eigenes LLM mitbringen
     details: Anthropic Claude, OpenAI, Ollama, oder mit `--skip-llm` starten, um LLM-Passes für vollständig offline Assessments zu überspringen. LLM-Zugriff ist in jeder Edition enthalten.
   - title: Audit-konforme Nachvollziehbarkeit
     details: Jedes Signal enthält Ergebnis, Ableitung, Bewerteridentität, Falsch-Positiv-Betrachtung und Zeitstempel. Vertretbar gegenüber externen Prüfern.
   - title: HTML-Veröffentlichung
-    details: Eine eigenständige HTML-Datei mit Führungs-, Fach-, Compliance- und Prüferansichten. Funktioniert offline, in luftgespalteten Umgebungen und per E-Mail.
+    details: Eine eigenständige HTML-Datei mit Führungs-, Fach-, Compliance- und Prüferansichten. Funktioniert offline, in abgeschotteten Umgebungen und per E-Mail. Consultant- und Enterprise-Edition.
   - title: PowerBI-Dashboards
-    details: Vorgefertigte Vorlagen für Einzel- und Portfolio-Bewertungen. Sternschema-CSV-Export funktioniert mit jedem BI-Tool.
+    details: Sternschema-Export für jedes BI-Tool in jeder Edition; vorgefertigte Power-BI-Vorlagen in der Consultant- und Enterprise-Edition.
   - title: MCP-Integration
-    details: Stellen Sie Claude AI Fragen zu Ihren Bewertungsergebnissen in natürlicher Sprache über das Model Context Protocol.
+    details: Stellen Sie Claude AI Fragen zu Ihren Bewertungsergebnissen in natürlicher Sprache über das Model Context Protocol. Enterprise-Edition.
 ---
 
 ## Was ist SWAO?

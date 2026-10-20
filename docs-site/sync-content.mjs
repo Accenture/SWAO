@@ -240,7 +240,6 @@ const REFERENCE_FOLDERS = [
   'de/frameworks',
   'passes', 'de/passes',
   'service-assessment', 'de/service-assessment',
-  'releases', 'de/releases',
 ];
 for (const dir of REFERENCE_FOLDERS) {
   const s = join(srcRoot, dir);
