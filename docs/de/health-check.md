@@ -60,6 +60,9 @@ Jeder Bewertungslauf (Anwendung, Service und Landing-Zone-Katalog) schreibt `run
 
 Der Health Check listet Läufe unter den jüngsten 10 je App, die `failed` oder `aborted` sind oder mehr als 6 Stunden nach dem Start noch `started` sind (veraltet), zum Beispiel `[WARN] apps/billing/wsp/runs/2026-10-17T09-00-00: application run failed (exit 6): --fail-on severity=high: 3 signal(s) matched`. Der Laufverlauf der Publikation, der Engagement Hub, die MCP-Laufliste, der Power-BI-Export und die Aufbewahrung (`workspace.run_retention.keep_latest`, die nur abgeschlossene Läufe zählt) verwenden nur Läufe mit `complete` und `partial`, und der Engagement Hub markiert eine App, deren jüngster Lauf nicht abgeschlossen wurde. Läufe aus der Zeit vor dieser Markierung werden wie bisher behandelt: Ein Lauf gilt als abgeschlossen, wenn er eine `run-manifest.json` hat.
 
+![Health-Check-Bildschirm in der Terminaloberfläche mit der Liste der Prüfungen und ihrem Status OK, WARN und INFO](../samples/12-tui-health-check.png)
+*Der Health-Check-Bildschirm in der Terminaloberfläche (Menüpunkt 2). Aufgenommen mit einer früheren SWAO-Version mit 11 Prüfungen; wählen Sie eine Prüfung, um ihren Hinweistext zu lesen.*
+
 ## Ergebnisse interpretieren
 
 - **Grün**: Prüfung bestanden; keine Aktion erforderlich.

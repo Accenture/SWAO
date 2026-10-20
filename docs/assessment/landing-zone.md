@@ -1,5 +1,7 @@
 # Landing Zone Catalog Assessment
 
+![Landing Zone Catalog Assessment banner: the SWAO engine evaluates five provider catalogue cards and lists a pass, partial or fail verdict for each](/visuals/banner-landing-zone.svg)
+
 The Landing Zone Catalog Assessment answers one question: **can this cloud provider
 region host this application under the sovereignty requirements of my active
 frameworks?** SWAO takes the platform services your application needs, looks them up
@@ -335,11 +337,11 @@ is critical; `NOT_AVAILABLE_IN_REGION` and `MISCONFIGURED` are high;
 
 | Overall verdict | When |
 |---|---|
-| `SOVEREIGNTY_BLOCKED` | Any sovereignty failure. `blocker_category` says whether it is structural (jurisdiction, exposure), a certification gap, or mixed |
-| `BLOCKED` | A required service is not available, or is available only in the wrong version or without a required capability |
-| `READY_WITH_CHANGES` | Everything is available, but services must be enabled or fixed in the deployed landing zone |
-| `NEEDS_VERIFICATION` | Would be READY, but no required services were found or a baseline category (compute, network, key management, storage) was not covered |
-| `READY` | All required services are supported and all sovereignty gates pass |
+| `SOVEREIGNTY_BLOCKED` <span class="swao-badge fail">FAIL</span> | Any sovereignty failure. `blocker_category` says whether it is structural (jurisdiction, exposure), a certification gap, or mixed |
+| `BLOCKED` <span class="swao-badge fail">FAIL</span> | A required service is not available, or is available only in the wrong version or without a required capability |
+| `READY_WITH_CHANGES` <span class="swao-badge partial">PARTIAL</span> | Everything is available, but services must be enabled or fixed in the deployed landing zone |
+| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Would be READY, but no required services were found or a baseline category (compute, network, key management, storage) was not covered |
+| `READY` <span class="swao-badge pass">PASS</span> | All required services are supported and all sovereignty gates pass |
 
 When at least one target in a multi-target run is READY, the remediation text of every
 sovereignty-blocked target names it as a sovereign-compliant alternative.

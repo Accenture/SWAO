@@ -1,5 +1,7 @@
 # Anwendungsbewertung
 
+![Banner Anwendungsbewertung: eine kristalline Anwendung speist die SWAO-Engine, die einen Ergebnisbildschirm erzeugt](/visuals/banner-application.svg)
+
 Die Anwendungsbewertung ist der zentrale Arbeitsablauf von SWAO. Sie verweisen SWAO auf
 den Quellcode einer Anwendung, ergänzen den vorhandenen Betriebskontext, und SWAO führt
 eine Folge von Analyse-Passes aus. Das Ergebnis ist eine auditfähige Beweiskette: Jeder

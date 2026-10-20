@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="t d" xml:lang="en" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <title id="t">Application Assessment</title>
+  <desc id="d">Cinematic neon banner: a crystalline application workload on a glowing pedestal sends a purple beam into the SWAO engine, which feeds a teal result screen with bars and a dot matrix.</desc>
+  <defs>
+    <pattern id="hex" width="60" height="34.64" patternUnits="userSpaceOnUse">
+      <path d="M0,17.32 L10,0 L30,0 L40,17.32 L30,34.64 L10,34.64 Z M40,17.32 L60,17.32" fill="none" stroke="#a100ff" stroke-width="0.7" stroke-opacity="0.22"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#070707" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#070707" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#070707" stop-opacity="1"/>
+    </radialGradient>
+    <radialGradient id="floorGlow" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#a100ff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#a100ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#f0d9ff"/>
+      <stop offset="100%" stop-color="#a100ff"/>
+    </radialGradient>
+    <linearGradient id="pt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a100ff"/>
+      <stop offset="100%" stop-color="#1bbaa4"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arP" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a100ff"/>
+    </marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1bbaa4"/>
+    </marker>
+  </defs>
+  <style>
+    .flow { stroke-dasharray: 4 12; animation: flow 1.6s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -32; } }
+    @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+  </style>
+  <rect width="1200" height="300" fill="#070707"/>
+  <rect width="1200" height="300" fill="url(#hex)"/>
+  <rect width="1200" height="300" fill="url(#floorGlow)"/>
+  <rect width="1200" height="300" fill="url(#vignette)"/>
+    <path d="M305,150 C390,108 450,192 528,150" fill="none" stroke="#a100ff" stroke-width="3.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M305,150 C390,108 450,192 528,150" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M672,150 C730,118 780,182 842,150" fill="none" stroke="#1bbaa4" stroke-width="3" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arT)"/>
+    <path class="flow" d="M672,150 C730,118 780,182 842,150" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+  <ellipse cx="230" cy="236" rx="86" ry="16" fill="none" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+  <ellipse cx="230" cy="236" rx="58" ry="10" fill="#a100ff" fill-opacity="0.18"/>
+  <polygon points="230,60 290,100 290,180 230,218 170,180 170,100" fill="#1a0033" stroke="#a100ff" stroke-width="2.4" filter="url(#bloom)"/>
+  <path d="M230,60 L230,140 L290,100 M230,140 L170,100 M230,140 L230,218 M230,140 L290,180 M230,140 L170,180" stroke="#c77dff" stroke-width="1" stroke-opacity="0.6" fill="none"/>
+  <path d="M186,120 L206,132 L206,150 M252,118 L272,108 M250,160 L270,170 L270,152 M190,168 L210,178" stroke="#e0b3ff" stroke-width="1.4" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+  <ellipse cx="600" cy="150" rx="110" ry="28" fill="none" stroke="#d0a0ff" stroke-width="1.3" stroke-opacity="0.7" transform="rotate(-14 600 150)"/>
+  <ellipse cx="600" cy="150" rx="104" ry="24" fill="none" stroke="#d0a0ff" stroke-width="1.1" stroke-opacity="0.5" transform="rotate(18 600 150)"/>
+  <polygon points="664.0,150.0 632.0,205.4 568.0,205.4 536.0,150.0 568.0,94.6 632.0,94.6" fill="#1a0033" stroke="#a100ff" stroke-width="2.2" filter="url(#glow)"/>
+  <polygon points="630.0,150.0 615.0,176.0 585.0,176.0 570.0,150.0 585.0,124.0 615.0,124.0" fill="url(#core)" stroke="#ffffff" filter="url(#bloom)"/>
+  <circle cx="700" cy="124" r="3.5" fill="#ffffff" filter="url(#glow)"/>
+  <circle cx="505" cy="177" r="3" fill="#d0a0ff" filter="url(#glow)"/>
+  <rect x="850" y="70" width="230" height="160" rx="10" fill="#0d0a14" stroke="url(#pt)" stroke-width="3" filter="url(#glow)"/>
+  <rect x="872" y="98" width="74" height="11" rx="3" fill="#1bbaa4" fill-opacity="0.85"/>
+  <rect x="872" y="122" width="56" height="11" rx="3" fill="#1bbaa4" fill-opacity="0.85"/>
+  <rect x="872" y="146" width="90" height="11" rx="3" fill="#1bbaa4" fill-opacity="0.85"/>
+  <rect x="872" y="170" width="48" height="11" rx="3" fill="#1bbaa4" fill-opacity="0.85"/>
+  <rect x="872" y="194" width="66" height="11" rx="3" fill="#1bbaa4" fill-opacity="0.85"/>
+  <circle cx="996" cy="108" r="7" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+  <circle cx="1026" cy="108" r="7" fill="#1bbaa4" fill-opacity="0.5" filter="url(#glow)"/>
+  <circle cx="1056" cy="108" r="7" fill="#1bbaa4" fill-opacity="0.8" filter="url(#glow)"/>
+  <circle cx="996" cy="150" r="7" fill="#1bbaa4" fill-opacity="0.45" filter="url(#glow)"/>
+  <circle cx="1026" cy="150" r="7" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+  <circle cx="1056" cy="150" r="7" fill="#1bbaa4" fill-opacity="0.6" filter="url(#glow)"/>
+  <circle cx="996" cy="192" r="7" fill="#1bbaa4" fill-opacity="0.85" filter="url(#glow)"/>
+  <circle cx="1026" cy="192" r="7" fill="#1bbaa4" fill-opacity="0.5" filter="url(#glow)"/>
+  <circle cx="1056" cy="192" r="7" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+</svg>

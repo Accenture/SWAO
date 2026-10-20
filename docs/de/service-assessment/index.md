@@ -1,5 +1,7 @@
 # Service-Portfolio-Bewertung
 
+![Banner Service-Portfolio-Bewertung: eine Intake-Tabelle speist ein Recherche-Radar, das eine Portfolio-Arbeitsmappe mit TIME-Quadrant erzeugt](/visuals/banner-service-portfolio.svg)
+
 Die Service-Portfolio-Bewertung (Bewertungstyp `service`, neu in v1.4.0) bewertet die Anwendungen, die Sie **kaufen, mieten oder betreiben, aber nicht selbst entwickeln**: Drittanbieter-Software, Standardprodukte (COTS), SaaS-Dienste, Appliances und Altserver. Quellcode wird nicht benötigt. Als Eingabe dient das Anwendungsinventar, das Sie bereits als Tabelle oder CMDB-Export pflegen.
 
 Für jede Anwendung recherchiert SWAO öffentliche Schwachstellen- und End-of-Life-Daten, analysiert bereitgestellte Installationspakete, bewertet die Anwendung in elf Portfolio-Domänen und empfiehlt eine **TIME**-Einordnung. Über das gesamte Portfolio hinweg erstellt SWAO einen Integrationsgraphen, plant Migrationswellen, zeigt Konsolidierungspotenzial bei Herstellern auf und verfolgt Veränderungen zwischen zwei Läufen.

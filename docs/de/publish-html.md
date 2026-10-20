@@ -15,6 +15,19 @@ Wählen Sie Option 5 im Hauptmenü (oder führen `swao publish` aus), um eine **
 
 Die Veröffentlichung enthält einen Volltextsuchindex, der zur Generierungszeit erstellt wird: kein externer Suchdienst.
 
+![Publish-Bildschirm in der Terminaloberfläche mit den Optionen Single HTML page und HTML Editor](../samples/14-tui-publish-html.png)
+*Der Publish-Bildschirm in der Terminaloberfläche (Menüpunkt 5): eine eigenständige HTML-Seite oder der HTML-Editor (Enterprise). Aufgenommen mit einer früheren SWAO-Version.*
+
+## Beispiel-Veröffentlichungen
+
+Drei HTML-Veröffentlichungen für die Demo-Anwendung Sovereign Health, dargestellt aus dem öffentlichen Repository:
+
+| Typ | Beschreibung | Link |
+|---|---|---|
+| Anwendungsbewertung | Vollständiger DSGVO- und BSI-C5-Compliance-Bericht für eine fiktive Patientenverwaltungsanwendung. Signalbefunde, Risikoregister und 7R-Migrationsstrategie, alle aus statischer und LLM-Analyse belegt. | [Live-Bericht öffnen](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-23T17-29-27-sovereign-health.html) |
+| Landing-Zone-Bewertung | Fit/Gap-Analyse, die EU-souveräne Cloud-Anbieter und Hyperscaler für die Anwendung Sovereign Health vergleicht. Zeigt, welche Anbieter die Anforderungen an Datenresidenz und Compliance erfüllen. | [Live-Bericht öffnen](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24T11-36-12-sovereign-health-lz.html) |
+| LLM-Bewertung | Souveränitäts-Benchmark über mehrere LLMs. Bewertet Sprachmodelle anhand von Datenresidenz, DSGVO und BSI C5, mit Urteilen pro Modell und belegter Begründung. | [Live-Bericht öffnen](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24-08-32-09-llm-assessment.html) |
+
 ## CLI
 
 ```bash
@@ -24,6 +37,8 @@ swao publish --app meine-app
 
 ## Edition
 
-Verfügbar in **Consultant** und **Enterprise** Editionen.
+<Badge type="tip" text="Consultant"/> <Badge type="warning" text="Enterprise"/>
+
+Verfügbar in **Consultant** und **Enterprise** Editionen. Der HTML-Editor (`swao publish --edit`) ist nur in Enterprise enthalten.
 
 Siehe auch: [Bericht erstellen](/de/generate-report) | [BI exportieren](/de/export-bi)

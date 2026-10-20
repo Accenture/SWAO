@@ -51,9 +51,9 @@ Die verfügbaren Framework-IDs finden Sie unter [Frameworks](/de/frameworks/).
 
 | Ergebnis | Regel für den Prüfer |
 |---|---|
-| `SATISFIED` | Die Signale bestätigen positiv, dass das Control erfüllt ist |
-| `PARTIAL` | Einige Elemente sind vorhanden, es bleiben Lücken; ein Satz zur Behebung ist Pflicht |
-| `GAP` | Die Signale zeigen, dass das Control nicht erfüllt ist; ein Satz zur Behebung ist Pflicht |
+| `SATISFIED` <span class="swao-badge pass">PASS</span> | Die Signale bestätigen positiv, dass das Control erfüllt ist |
+| `PARTIAL` <span class="swao-badge partial">PARTIAL</span> | Einige Elemente sind vorhanden, es bleiben Lücken; ein Satz zur Behebung ist Pflicht |
+| `GAP` <span class="swao-badge fail">FAIL</span> | Die Signale zeigen, dass das Control nicht erfüllt ist; ein Satz zur Behebung ist Pflicht |
 | `N_A` | Das Control ist für diesen Workload nicht anwendbar (mit Begründung) |
 | `UNKNOWN` | Kein Signal betrifft das Control, oder es gab keine LLM-Bewertung |
 

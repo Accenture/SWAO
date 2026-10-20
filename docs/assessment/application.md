@@ -1,5 +1,7 @@
 # Application Assessment
 
+![Application Assessment banner: a crystalline application workload feeds the SWAO engine, which produces a result screen](/visuals/banner-application.svg)
+
 The Application Assessment is the core SWAO workflow. You point SWAO at an
 application's source code, add whatever operational context you have, and SWAO runs a
 sequence of analysis passes. The result is an audit-grade evidence chain: every

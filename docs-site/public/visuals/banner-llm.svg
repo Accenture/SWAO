@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="t d" xml:lang="en" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <title id="t">LLM Assessment for SWAO</title>
+  <desc id="d">Cinematic neon banner: a stack of five glowing pass slabs in purple, blue, teal, amber and violet fans out coloured beams to five abstract provider nodes, whose response beams lead to a teal benchmark matrix of green checkmarks and red crosses.</desc>
+  <defs>
+    <pattern id="hex" width="60" height="34.64" patternUnits="userSpaceOnUse">
+      <path d="M0,17.32 L10,0 L30,0 L40,17.32 L30,34.64 L10,34.64 Z M40,17.32 L60,17.32" fill="none" stroke="#a100ff" stroke-width="0.7" stroke-opacity="0.22"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#070707" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#070707" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#070707" stop-opacity="1"/>
+    </radialGradient>
+    <radialGradient id="floorGlow" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#a100ff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#a100ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#f0d9ff"/>
+      <stop offset="100%" stop-color="#a100ff"/>
+    </radialGradient>
+    <linearGradient id="pt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a100ff"/>
+      <stop offset="100%" stop-color="#1bbaa4"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arP" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a100ff"/>
+    </marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1bbaa4"/>
+    </marker>
+  </defs>
+  <style>
+    .flow { stroke-dasharray: 4 12; animation: flow 1.6s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -32; } }
+    @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+  </style>
+  <rect width="1200" height="300" fill="#070707"/>
+  <rect width="1200" height="300" fill="url(#hex)"/>
+  <rect width="1200" height="300" fill="url(#floorGlow)"/>
+  <rect width="1200" height="300" fill="url(#vignette)"/>
+  <path d="M318,62 C420,62 480,52 566,52" fill="none" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M634,52 C720,52 800,150 862,110" fill="none" stroke="#1bbaa4" stroke-width="1.1" stroke-opacity="0.65"/>
+  <path d="M318,104 C420,104 520,101 606,101" fill="none" stroke="#4060ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M674,101 C760,101 800,150 862,131" fill="none" stroke="#1bbaa4" stroke-width="1.1" stroke-opacity="0.65"/>
+  <path d="M318,146 C420,146 536,150 622,150" fill="none" stroke="#1bbaa4" stroke-width="2" filter="url(#glow)"/>
+  <path d="M690,150 C776,150 800,150 862,151" fill="none" stroke="#1bbaa4" stroke-width="1.1" stroke-opacity="0.65"/>
+  <path d="M318,188 C420,188 520,199 606,199" fill="none" stroke="#f5a623" stroke-width="2" filter="url(#glow)"/>
+  <path d="M674,199 C760,199 800,150 862,172" fill="none" stroke="#1bbaa4" stroke-width="1.1" stroke-opacity="0.65"/>
+  <path d="M318,230 C420,230 480,248 566,248" fill="none" stroke="#8b00ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M634,248 C720,248 800,150 862,192" fill="none" stroke="#1bbaa4" stroke-width="1.1" stroke-opacity="0.65"/>
+  <path d="M210,50 L210,244" stroke="#c77dff" stroke-width="1" stroke-opacity="0.6"/>
+  <rect x="110" y="48" width="208" height="28" rx="6" fill="#14001f" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M126,62 L216,62" stroke="#a100ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M236,58 L296,58 M236,66 L276,66" stroke="#a100ff" stroke-width="1.2" stroke-opacity="0.6"/>
+  <rect x="110" y="90" width="208" height="28" rx="6" fill="#14001f" stroke="#4060ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M126,104 L216,104" stroke="#4060ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M236,100 L296,100 M236,108 L276,108" stroke="#4060ff" stroke-width="1.2" stroke-opacity="0.6"/>
+  <rect x="110" y="132" width="208" height="28" rx="6" fill="#14001f" stroke="#1bbaa4" stroke-width="2" filter="url(#glow)"/>
+  <path d="M126,146 L216,146" stroke="#1bbaa4" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M236,142 L296,142 M236,150 L276,150" stroke="#1bbaa4" stroke-width="1.2" stroke-opacity="0.6"/>
+  <rect x="110" y="174" width="208" height="28" rx="6" fill="#14001f" stroke="#f5a623" stroke-width="2" filter="url(#glow)"/>
+  <path d="M126,188 L216,188" stroke="#f5a623" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M236,184 L296,184 M236,192 L276,192" stroke="#f5a623" stroke-width="1.2" stroke-opacity="0.6"/>
+  <rect x="110" y="216" width="208" height="28" rx="6" fill="#14001f" stroke="#8b00ff" stroke-width="2" filter="url(#glow)"/>
+  <path d="M126,230 L216,230" stroke="#8b00ff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M236,226 L296,226 M236,234 L276,234" stroke="#8b00ff" stroke-width="1.2" stroke-opacity="0.6"/>
+  <circle cx="600" cy="52" r="22" fill="url(#core)" fill-opacity="0.85" stroke="#a100ff" stroke-width="2" filter="url(#bloom)"/>
+  <polygon points="664.0,101.0 652.0,121.8 628.0,121.8 616.0,101.0 628.0,80.2 652.0,80.2" fill="#0d1240" stroke="#4060ff" stroke-width="2.2" filter="url(#glow)"/>
+  <path d="M616,101 L664,101 M628,80.2 L652,121.8" stroke="#6f8bff" stroke-width="0.9" stroke-opacity="0.6"/>
+  <rect x="641" y="126" width="30" height="48" rx="3" fill="#061a17" stroke="#1bbaa4" stroke-width="2.2" filter="url(#glow)"/>
+  <path d="M647,136 L661,136" stroke="#00e676" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M647,145 L661,145" stroke="#00e676" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M647,154 L661,154" stroke="#00e676" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+  <path d="M647,163 L661,163" stroke="#00e676" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+  <ellipse cx="640" cy="199" rx="24" ry="13" fill="none" stroke="#f5a623" stroke-width="6" stroke-opacity="0.75" filter="url(#glow)"/>
+    <polygon points="600,232 615.588,241.0 600,250 584.412,241.0" fill="#3a0070" stroke="#b266ff" stroke-width="1.2"/>
+    <polygon points="584.412,241.0 600,250 600,268 584.412,259.0" fill="#24004a" stroke="#b266ff" stroke-width="1.2"/>
+    <polygon points="600,250 615.588,241.0 615.588,259.0 600,268" fill="#4c0090" stroke="#b266ff" stroke-width="1.2"/>
+  <rect x="862" y="46" width="270" height="208" rx="10" fill="#061513" fill-opacity="0.92" stroke="#1bbaa4" stroke-width="2.4" filter="url(#glow)"/>
+  <path d="M912,66 L912,236" stroke="#1bbaa4" stroke-width="0.7" stroke-opacity="0.25"/>
+  <path d="M956,66 L956,236" stroke="#1bbaa4" stroke-width="0.7" stroke-opacity="0.25"/>
+  <path d="M1000,66 L1000,236" stroke="#1bbaa4" stroke-width="0.7" stroke-opacity="0.25"/>
+  <path d="M1044,66 L1044,236" stroke="#1bbaa4" stroke-width="0.7" stroke-opacity="0.25"/>
+  <path d="M1088,66 L1088,236" stroke="#1bbaa4" stroke-width="0.7" stroke-opacity="0.25"/>
+  <rect x="878" y="81" width="16" height="10" rx="2" fill="#1bbaa4" fill-opacity="0.5"/>
+  <path d="M904,86 L910,92 L921,79" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M948,86 L954,92 L965,79" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M994,80 L1006,92 M1006,80 L994,92" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M1036,86 L1042,92 L1053,79" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1080,86 L1086,92 L1097,79" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <rect x="878" y="123" width="16" height="10" rx="2" fill="#1bbaa4" fill-opacity="0.5"/>
+  <path d="M904,128 L910,134 L921,121" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M950,122 L962,134 M962,122 L950,134" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M992,128 L998,134 L1009,121" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1036,128 L1042,134 L1053,121" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1082,122 L1094,134 M1094,122 L1082,134" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+  <rect x="878" y="165" width="16" height="10" rx="2" fill="#1bbaa4" fill-opacity="0.5"/>
+  <path d="M904,170 L910,176 L921,163" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M948,170 L954,176 L965,163" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M992,170 L998,176 L1009,163" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1038,164 L1050,176 M1050,164 L1038,176" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M1080,170 L1086,176 L1097,163" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <rect x="878" y="207" width="16" height="10" rx="2" fill="#1bbaa4" fill-opacity="0.5"/>
+  <path d="M906,206 L918,218 M918,206 L906,218" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+  <path d="M948,212 L954,218 L965,205" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M992,212 L998,218 L1009,205" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1036,212 L1042,218 L1053,205" fill="none" stroke="#00e676" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M1082,206 L1094,218 M1094,206 L1082,218" stroke="#ff3d3d" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.75"/>
+</svg>

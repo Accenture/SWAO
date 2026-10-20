@@ -238,6 +238,7 @@ for (const { src, dst } of FILES) {
 // docs/<dir>/*.md -> manual/<dir>/*.md for every folder below.
 const REFERENCE_FOLDERS = [
   'de/frameworks',
+  'lz-catalogues', 'de/lz-catalogues',
   'passes', 'de/passes',
   'service-assessment', 'de/service-assessment',
 ];

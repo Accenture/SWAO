@@ -60,6 +60,9 @@ Every assessment run (application, service and landing zone catalogue) writes `r
 
 The health check lists runs among the latest 10 per app that are `failed` or `aborted`, or still `started` more than 6 hours after they began (stale), for example `[WARN] apps/billing/wsp/runs/2026-10-17T09-00-00: application run failed (exit 6): --fail-on severity=high: 3 signal(s) matched`. The publication run history, the engagement hub, the MCP run listing, the Power BI export and run retention (`workspace.run_retention.keep_latest`, which counts only completed runs) use only `complete` and `partial` runs, and the engagement hub flags an app whose newest run did not complete. Runs from before this marker existed are treated as before: a run counts as completed when it has a `run-manifest.json`.
 
+![Health Check screen in the terminal interface with the probe list and their OK, WARN and INFO status](./samples/12-tui-health-check.png)
+*The Health Check screen in the terminal interface (menu option 2). Captured with an earlier SWAO version that ran 11 probes; select a probe to read its guidance text.*
+
 ## Interpreting results
 
 - **Green**: check passed; no action needed.

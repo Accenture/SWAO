@@ -23,7 +23,7 @@ SWAO supports four assessment types, all available now.
 
 ## Edition comparison
 
-| Feature | Community | Consultant | Enterprise |
+| Feature | <Badge type="info" text="Community"/> | <Badge type="tip" text="Consultant"/> | <Badge type="warning" text="Enterprise"/> |
 |---|---|---|---|
 | **Assessment** | | | |
 | <FeatureTooltip tip="Runs 13 default analysis passes on your application source code and produces signals, reports, and a BI export bundle.">Application Assessment</FeatureTooltip> | Yes | Yes | Yes |
@@ -116,8 +116,8 @@ and vLLM are available for download:
 
 ## Licence
 
-- **Community** - Apache 2.0. Free to use, modify, and distribute. Community frameworks and LZ catalogues are included in every edition.
-- **Consultant** - Proprietary (SWAO Premium Edition). Adds HTML publication, PDF report, Power BI dashboard templates, and LZ catalogue update.
-- **Enterprise** - Proprietary (SWAO Premium Edition). Adds portfolio assessment, reporting and BI export, service portfolio export, adversarial challenge review, the HTML Editor, MCP integration, SWAO Chat, sector-specific engagement templates, and the roadmap items (Terraform module stubs, meshStack integration).
+- <Badge type="info" text="Community"/> Apache 2.0. Free to use, modify, and distribute. Community frameworks and LZ catalogues are included in every edition.
+- <Badge type="tip" text="Consultant"/> Proprietary (SWAO Premium Edition). Adds HTML publication, PDF report, Power BI dashboard templates, and LZ catalogue update.
+- <Badge type="warning" text="Enterprise"/> Proprietary (SWAO Premium Edition). Adds portfolio assessment, reporting and BI export, service portfolio export, adversarial challenge review, the HTML Editor, MCP integration, SWAO Chat, sector-specific engagement templates, and the roadmap items (Terraform module stubs, meshStack integration).
 
 Questions or licence requests: start a [GitHub Discussion](https://github.com/Accenture/SWAO/discussions) or [raise an issue](https://github.com/Accenture/SWAO/issues).

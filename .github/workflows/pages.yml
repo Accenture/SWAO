@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the docs-site lastUpdated date is per page (Design 111, #3364).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
 
 // ---------------------------------------------------------------------------
 // Sidebar: ONE definition, rendered for both locales (EN/DE parity, sprint-150).
@@ -59,63 +60,69 @@ const frameworks: Entry[] = [
   { en: 'SWAO_APM (portfolio)', de: 'SWAO_APM (Portfolio)', link: '/frameworks/swao-apm' },
 ]
 
+// Task-based grouping (#3364, Design 111 section 3, Iteration 3): Get started,
+// Assess, Report, Operate, Reference. The order is also the reading order: the
+// doc footer (prev / next) walks the flattened sidebar, so Getting started guide,
+// Workspace setup, Health check, the assessment pages, Generate report, Publish
+// HTML and Export BI follow each other, and every guide page ends with a
+// "Next page" link to the next step. Keep each link exactly once: a duplicate
+// breaks the single highlight from Iteration 1 and the prev / next chain.
+const lzCatalogues: Entry[] = [
+  { en: 'Overview', de: 'Übersicht', link: '/lz-catalogues/' },
+  { en: 'Amazon Web Services', de: 'Amazon Web Services', link: '/lz-catalogues/aws' },
+  { en: 'AWS European Sovereign Cloud', de: 'AWS European Sovereign Cloud', link: '/lz-catalogues/aws-esc' },
+  { en: 'AWS ISOE Europe (classified)', de: 'AWS ISOE Europe (klassifiziert)', link: '/lz-catalogues/aws-iso-e' },
+  { en: 'Microsoft Azure', de: 'Microsoft Azure', link: '/lz-catalogues/azure' },
+  { en: 'Azure Local', de: 'Azure Local', link: '/lz-catalogues/azure-local' },
+  { en: 'Delos Cloud', de: 'Delos Cloud', link: '/lz-catalogues/delos' },
+  { en: 'Google Cloud Platform', de: 'Google Cloud Platform', link: '/lz-catalogues/gcp' },
+  { en: 'Oracle Cloud Infrastructure', de: 'Oracle Cloud Infrastructure', link: '/lz-catalogues/oci' },
+  { en: 'Open Telekom Cloud / T Cloud Public', de: 'Open Telekom Cloud / T Cloud Public', link: '/lz-catalogues/otc' },
+  { en: 'STACKIT', de: 'STACKIT', link: '/lz-catalogues/stackit' },
+]
+
 const sidebar: Entry[] = [
   {
-    en: 'Getting started', de: 'Erste Schritte',
+    en: 'Get started', de: 'Erste Schritte', collapsed: false,
     items: [
       { en: 'Quick start (5 min)', de: 'Schnellstart (5 Min.)', link: '/quick-start' },
       { en: 'How it works', de: 'Wie es funktioniert', link: '/how-it-works' },
       { en: 'Features & Editions', de: 'Funktionen & Editionen', link: '/features' },
       { en: 'Getting started guide', de: 'Leitfaden für den Einstieg', link: '/getting-started' },
+      { en: 'Workspace setup', de: 'Workspace-Setup', link: '/workspace-setup' },
+      { en: 'Health check', de: 'Health Check', link: '/health-check' },
     ],
   },
   {
-    en: 'Using SWAO', de: 'SWAO verwenden',
+    en: 'Assess', de: 'Bewerten', collapsed: false,
     items: [
-      { en: '1. Workspace Setup', de: '1. Workspace-Setup', link: '/workspace-setup' },
-      { en: '2. Health Check', de: '2. Health Check', link: '/health-check' },
+      { en: 'Run an assessment', de: 'Bewertung durchführen', link: '/assessment/' },
+      // Numbered like the TUI assessment type menu.
+      { en: '1. Application Assessment', de: '1. Anwendungsbewertung', link: '/assessment/application' },
       {
-        en: '3. Run Assessment', de: '3. Bewertung durchführen', link: '/assessment/', collapsed: false,
-        // Numbered like the TUI assessment type menu.
+        en: '2. Service Portfolio Assessment', de: '2. Service-Portfolio-Bewertung', link: '/service-assessment/', collapsed: true,
         items: [
-          { en: '1. Application Assessment', de: '1. Anwendungsbewertung', link: '/assessment/application' },
-          {
-            en: '2. Service Portfolio Assessment', de: '2. Service-Portfolio-Bewertung', link: '/service-assessment/', collapsed: true,
-            items: [
-              { en: 'Command reference', de: 'Befehlsreferenz', link: '/service-assessment/commands' },
-              { en: 'Column mapping', de: 'Spaltenzuordnung', link: '/service-assessment/column-mapping' },
-              { en: 'INFRA-CAT reference', de: 'INFRA-CAT-Referenz', link: '/service-assessment/infra-cat' },
-              { en: 'Configuration', de: 'Konfiguration', link: '/service-assessment/configuration' },
-              { en: 'Optional API keys', de: 'Optionale API-Schlüssel', link: '/service-assessment/api-keys' },
-              { en: 'SWAO_APM framework and TIME', de: 'Rahmenwerk SWAO_APM und TIME', link: '/service-assessment/framework' },
-              { en: 'Migration waves', de: 'Migrationswellen', link: '/service-assessment/migration-waves' },
-            ],
-          },
-          { en: '3. Landing Zone Catalog Assessment', de: '3. Landing-Zone-Katalog-Bewertung', link: '/assessment/landing-zone' },
-          { en: '4. LLM Assessment', de: '4. LLM-Bewertung', link: '/assessment/llm' },
+          { en: 'Command reference', de: 'Befehlsreferenz', link: '/service-assessment/commands' },
+          { en: 'Column mapping', de: 'Spaltenzuordnung', link: '/service-assessment/column-mapping' },
+          { en: 'INFRA-CAT reference', de: 'INFRA-CAT-Referenz', link: '/service-assessment/infra-cat' },
+          { en: 'Configuration', de: 'Konfiguration', link: '/service-assessment/configuration' },
+          { en: 'Optional API keys', de: 'Optionale API-Schlüssel', link: '/service-assessment/api-keys' },
+          { en: 'SWAO_APM framework and TIME', de: 'Rahmenwerk SWAO_APM und TIME', link: '/service-assessment/framework' },
+          { en: 'Migration waves', de: 'Migrationswellen', link: '/service-assessment/migration-waves' },
         ],
       },
-      { en: '4. Generate Report', de: '4. Bericht erstellen', link: '/generate-report' },
-      { en: '5. Publish HTML', de: '5. HTML veröffentlichen', link: '/publish-html' },
-      { en: '6. Export BI', de: '6. BI exportieren', link: '/export-bi' },
-      { en: '7. Portfolio Operations', de: '7. Portfolio-Betrieb', link: '/portfolio' },
-      { en: '8. Generate TF Modules', de: '8. TF-Module erstellen', link: '/generate-tf' },
-      { en: '9. Tools', de: '9. Werkzeuge', link: '/tools' },
+      { en: '3. Landing Zone Catalog Assessment', de: '3. Landing-Zone-Katalog-Bewertung', link: '/assessment/landing-zone' },
+      { en: '4. LLM Assessment', de: '4. LLM-Bewertung', link: '/assessment/llm' },
     ],
   },
   {
-    en: 'Reference', de: 'Referenz',
+    en: 'Report', de: 'Berichten', collapsed: false,
     items: [
-      { en: 'Analysis passes', de: 'Analyse-Passes', link: '/passes/', collapsed: true, items: passes },
-      { en: 'Community frameworks', de: 'Community-Rahmenwerke', link: '/frameworks/', collapsed: true, items: frameworks },
-      { en: 'Dimension catalogue', de: 'Dimensionskatalog', link: '/assessment-dimension-catalogue' },
-    ],
-  },
-  {
-    en: 'Samples + screenshots', de: 'Beispiele + Screenshots',
-    items: [
+      { en: 'Generate report', de: 'Bericht erstellen', link: '/generate-report' },
+      { en: 'Publish HTML', de: 'HTML veröffentlichen', link: '/publish-html' },
+      { en: 'Export BI', de: 'BI exportieren', link: '/export-bi' },
       {
-        en: 'Sample gallery', de: 'Beispielgalerie', link: '/samples/',
+        en: 'Samples + screenshots', de: 'Beispiele + Screenshots', link: '/samples/', collapsed: true,
         items: [
           { en: 'CLI', de: 'CLI', link: '/samples/#cli' },
           { en: 'Power BI reports', de: 'Power BI Berichte', link: '/samples/#power-bi-reports' },
@@ -126,9 +133,12 @@ const sidebar: Entry[] = [
     ],
   },
   {
-    en: 'Runbooks', de: 'Runbooks',
-    // Every runbook group collapsed by default (#3362, Design 111 Iteration 1).
+    en: 'Operate', de: 'Betreiben', collapsed: false,
+    // Runbook groups collapsed by default (#3362, Design 111 Iteration 1).
     items: [
+      { en: 'Portfolio operations', de: 'Portfolio-Betrieb', link: '/portfolio' },
+      { en: 'Generate TF modules', de: 'TF-Module erstellen', link: '/generate-tf' },
+      { en: 'Tools', de: 'Werkzeuge', link: '/tools' },
       {
         en: 'Installation', de: 'Installation', collapsed: true,
         items: [
@@ -142,11 +152,11 @@ const sidebar: Entry[] = [
       {
         en: 'Configuration', de: 'Konfiguration', collapsed: true,
         items: [
+          { en: 'Workspace config', de: 'Workspace konfigurieren', link: '/runbooks/workspace-config' },
           { en: 'LLM gateway authoring', de: 'LLM-Gateway erstellen', link: '/runbooks/llm-gateway-authoring' },
           { en: 'LLM provider swap', de: 'LLM-Anbieter wechseln', link: '/runbooks/llm-provider-swap' },
           { en: 'Adapting LZ catalogues', de: 'LZ-Kataloge anpassen', link: '/runbooks/adapting-lz-catalogues' },
           { en: 'Licence management', de: 'Lizenzverwaltung', link: '/runbooks/licence-management' },
-          { en: 'Workspace config', de: 'Workspace konfigurieren', link: '/runbooks/workspace-config' },
         ],
       },
       {
@@ -158,15 +168,30 @@ const sidebar: Entry[] = [
         ],
       },
       {
-        en: 'Operations', de: 'Betrieb', collapsed: true,
+        en: 'Maintenance', de: 'Wartung', collapsed: true,
         items: [
-          { en: 'CLI reference', de: 'CLI-Referenz', link: '/runbooks/cli-reference' },
-          { en: 'Health-check output', de: 'Health-Check-Ausgabe', link: '/runbooks/health-check-output' },
-          { en: 'Log event reference', de: 'Log-Ereignisse', link: '/runbooks/log-events' },
           { en: 'Malware scanning', de: 'Malware-Scan', link: '/malware-scanning' },
           { en: 'Code signing', de: 'Code-Signierung', link: '/runbooks/code-signing' },
           { en: 'Updating SWAO', de: 'SWAO aktualisieren', link: '/runbooks/updating-swao' },
           { en: 'Troubleshooting', de: 'Fehlerbehebung', link: '/runbooks/troubleshooting' },
+        ],
+      },
+    ],
+  },
+  {
+    en: 'Reference', de: 'Referenz', collapsed: false,
+    // Every reference group collapsed by default.
+    items: [
+      { en: 'Analysis passes', de: 'Analyse-Passes', link: '/passes/', collapsed: true, items: passes },
+      { en: 'Community frameworks', de: 'Community-Rahmenwerke', link: '/frameworks/', collapsed: true, items: frameworks },
+      { en: 'Landing Zone catalogues', de: 'Landing-Zone-Kataloge', link: '/lz-catalogues/', collapsed: true, items: lzCatalogues },
+      { en: 'Dimension catalogue', de: 'Dimensionskatalog', link: '/assessment-dimension-catalogue' },
+      {
+        en: 'CLI and logs', de: 'CLI und Logs', collapsed: true,
+        items: [
+          { en: 'CLI reference', de: 'CLI-Referenz', link: '/runbooks/cli-reference' },
+          { en: 'Health-check output', de: 'Health-Check-Ausgabe', link: '/runbooks/health-check-output' },
+          { en: 'Log event reference', de: 'Log-Ereignisse', link: '/runbooks/log-events' },
         ],
       },
     ],
@@ -184,16 +209,88 @@ function render(entries: Entry[], lang: 'en' | 'de'): SidebarItem[] {
   }))
 }
 
+// ---------------------------------------------------------------------------
+// Page metadata (#3364, Design 111 section 3, Iteration 3).
+// ---------------------------------------------------------------------------
+
+const SITE_URL = 'https://accenture.github.io/SWAO/'
+const SITE_TITLE = 'SWAO: Sovereign Workload Assessment and Onboarding'
+const SOCIAL_DESCRIPTION = {
+  en: 'Audit-grade cloud workload assessments in a single command. No telemetry, no call-home: your data stays on your machine.',
+  de: 'Revisionssichere Bewertungen von Cloud-Workloads mit einem einzigen Befehl. Keine Telemetrie, kein Call-Home: Ihre Daten bleiben auf Ihrem Rechner.',
+}
+
+// Source file in swao/docs/ for a page in docs-site/manual/ (see sync-content.mjs).
+const DOCS_ROOT = fileURLToPath(new URL('../../docs/', import.meta.url))
+function sourcePath(relativePath: string): string {
+  if (relativePath === 'samples/index.md') return 'samples/README.md'
+  if (relativePath.startsWith('templates/')) return relativePath.replace(/^templates\//, 'templates/powerbi/')
+  return relativePath
+}
+
+// docs-site/manual/ is a gitignored copy, so the VitePress git lookup finds no
+// history there. Read the last commit of the source file in swao/docs/ instead.
+// Uncommitted files get no date (the footer then hides "Last updated").
+// The public site shows real dates only if pages.yml checks out enough history.
+// One `git log` for the whole folder (one call per page made the build 4x slower).
+let commitTimes: Map<string, number> | undefined
+function sourceTimestamp(relativePath: string): number | undefined {
+  if (!commitTimes) {
+    commitTimes = new Map()
+    try {
+      const out = execFileSync('git', ['log', '--format=@%ct', '--name-only', '--relative', '--', '.'], {
+        cwd: DOCS_ROOT, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 64 * 1024 * 1024,
+      })
+      let ts = 0
+      for (const line of out.split('\n')) {
+        if (line.startsWith('@')) ts = Number(line.slice(1)) * 1000
+        else if (line && !commitTimes.has(line)) commitTimes.set(line, ts) // newest commit first
+      }
+    } catch {
+      // No git (for example a source archive): no "Last updated" dates.
+    }
+  }
+  return commitTimes.get(sourcePath(relativePath))
+}
+
+// Page URL with the base, matching cleanUrls: 'de/assessment/index.md' -> 'de/assessment/'.
+function pageUrl(relativePath: string): string {
+  return SITE_URL + relativePath.replace(/\.md$/, '').replace(/(^|\/)index$/, '$1')
+}
+
 export default defineConfig({
   title: 'SWAO',
   description: 'Sovereign Workload Assessment and Onboarding: consultant and customer documentation',
+  // "Last updated" per page; the date comes from transformPageData below.
+  lastUpdated: true,
+  transformPageData(pageData) {
+    const fm = pageData.frontmatter.lastUpdated
+    if (fm === false || fm instanceof Date) return
+    const ts = sourceTimestamp(pageData.relativePath)
+    return { lastUpdated: ts }
+  },
+  // Per-page link previews: title and description per page, the card image
+  // stays site-wide (head below).
+  transformHead({ pageData, title }) {
+    const de = pageData.relativePath.startsWith('de/')
+    const pageTitle = pageData.title && pageData.frontmatter.layout !== 'home' ? title : SITE_TITLE
+    const description = pageData.frontmatter.description || SOCIAL_DESCRIPTION[de ? 'de' : 'en']
+    return [
+      ['meta', { property: 'og:title', content: pageTitle }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: pageUrl(pageData.relativePath) }],
+      ['meta', { property: 'og:locale', content: de ? 'de_DE' : 'en_GB' }],
+      ['meta', { name: 'twitter:title', content: pageTitle }],
+      ['meta', { name: 'twitter:description', content: description }],
+    ]
+  },
   // Curated content folder. Source-of-truth files live under
   // swao/docs/, but VitePress reads from a copied subset under
   // docs-site/manual/ to avoid building docs with bare-angle-
   // bracket placeholders that Vue can't parse. Re-sync with
   // `npm run docs:sync` (see below) when source markdown changes.
   srcDir: './manual',
-  // Static assets (logo.svg, favicons, swao-icon-512.png) live in docs-site/public/. With
+  // Static assets (swao-mark-96.png, favicons, swao-icon-512.png) live in docs-site/public/. With
   // srcDir set, VitePress would look in manual/public/ instead, so the logo and
   // favicon returned 404 on the live site.
   vite: {
@@ -230,23 +327,21 @@ export default defineConfig({
     ['link', { rel: 'apple-touch-icon', href: '/SWAO/apple-touch-icon.png' }],
     // Link previews (#3362, Design 111 section 3, Iteration 1). The image is
     // the 1280x640 brand social card in docs-site/public/swao-social.png.
+    // Title, description and URL are per page (transformHead above, #3364).
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'SWAO Documentation' }],
-    ['meta', { property: 'og:title', content: 'SWAO: Sovereign Workload Assessment and Onboarding' }],
-    ['meta', { property: 'og:description', content: 'Audit-grade cloud workload assessments in a single command. No telemetry, no call-home: your data stays on your machine.' }],
     ['meta', { property: 'og:image', content: 'https://accenture.github.io/SWAO/swao-social.png' }],
     ['meta', { property: 'og:image:width', content: '1280' }],
     ['meta', { property: 'og:image:height', content: '640' }],
     ['meta', { property: 'og:image:alt', content: 'SWAO logo with the title Sovereign Workload Assessment and Onboarding' }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    ['meta', { name: 'twitter:title', content: 'SWAO: Sovereign Workload Assessment and Onboarding' }],
-    ['meta', { name: 'twitter:description', content: 'Audit-grade cloud workload assessments in a single command. No telemetry, no call-home: your data stays on your machine.' }],
     ['meta', { name: 'twitter:image', content: 'https://accenture.github.io/SWAO/swao-social.png' }],
   ],
   locales: {
     root: {
       label: 'English',
-      lang: 'en',
+      // en-GB: British date format for "Last updated" (forceLocale below).
+      lang: 'en-GB',
     },
     de: {
       label: 'Deutsch',
@@ -260,11 +355,18 @@ export default defineConfig({
           { text: 'Beispiele', link: '/de/samples/' },
         ],
         sidebar: { '/de/': render(sidebar, 'de') },
+        lastUpdated: { text: 'Zuletzt aktualisiert', formatOptions: { dateStyle: 'long', forceLocale: true } },
+        docFooter: { prev: 'Vorherige Seite', next: 'Nächste Seite' },
+        outline: { label: 'Auf dieser Seite' },
+        sidebarMenuLabel: 'Menü',
+        returnToTopLabel: 'Zurück nach oben',
+        langMenuLabel: 'Sprache wählen',
       },
     },
   },
   themeConfig: {
-    logo: '/logo.svg',
+    // Transparent 96x96 brand mark (#3364); logo.svg stays in public/.
+    logo: '/swao-mark-96.png',
     nav: [
       { text: 'Quick start', link: '/quick-start' },
       { text: 'How it works', link: '/how-it-works' },
@@ -272,7 +374,42 @@ export default defineConfig({
       { text: 'Samples', link: '/samples/' },
     ],
     sidebar: { '/': render(sidebar, 'en') },
-    search: { provider: 'local' },
+    // No editLink: the public repo accepts no pull requests (Design 111, Iteration 3).
+    lastUpdated: { text: 'Last updated', formatOptions: { dateStyle: 'long', forceLocale: true } },
+    docFooter: { prev: 'Previous page', next: 'Next page' },
+    // Local search, one index per locale (#3364). The index is loaded only
+    // when the search dialog opens.
+    search: {
+      provider: 'local',
+      options: {
+        detailedView: true,
+        miniSearch: {
+          searchOptions: { prefix: true, fuzzy: 0.2, boost: { title: 4, text: 2, titles: 1 } },
+        },
+        locales: {
+          de: {
+            translations: {
+              button: { buttonText: 'Suchen', buttonAriaLabel: 'Suchen' },
+              modal: {
+                displayDetails: 'Detailansicht anzeigen',
+                resetButtonTitle: 'Suche zurücksetzen',
+                backButtonTitle: 'Suche schließen',
+                noResultsText: 'Keine Ergebnisse für',
+                footer: {
+                  selectText: 'auswählen',
+                  selectKeyAriaLabel: 'Eingabetaste',
+                  navigateText: 'navigieren',
+                  navigateUpKeyAriaLabel: 'Pfeil nach oben',
+                  navigateDownKeyAriaLabel: 'Pfeil nach unten',
+                  closeText: 'schließen',
+                  closeKeyAriaLabel: 'Escape',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/Accenture/SWAO' },
     ],

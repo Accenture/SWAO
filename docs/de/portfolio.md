@@ -1,6 +1,6 @@
 # 7. Portfolio-Betrieb
 
-Portfolio-Betrieb (Option 7 im Hauptmenü) aggregiert Bewertungsergebnisse über mehrere Anwendungen in einem einzelnen Workspace. Verfügbar in **Consultant** und **Enterprise** Editionen.
+Portfolio-Betrieb (Option 7 im Hauptmenü) aggregiert Bewertungsergebnisse über mehrere Anwendungen in einem einzelnen Workspace. Verfügbar in der **Enterprise**-Edition <Badge type="warning" text="Enterprise"/>.
 
 ## Was der Portfolio-Modus bietet
 
@@ -10,7 +10,10 @@ Portfolio-Betrieb (Option 7 im Hauptmenü) aggregiert Bewertungsergebnisse über
 | Aggregiertes Risikoregister | Appübergreifende Erkenntnisliste, dedupliziert und priorisiert |
 | Portfolio-Compliance-Matrix | Rahmenwerk-Abdeckung über alle bewerteten Apps |
 | Migrationsplanung | Abhängigkeitsbewusste Sequenzierung für phasenweise Cloud-Migration |
-| Portfolio-PowerBI-Dashboard | `swao-portfolio.pbit` mit Heatmap- und Wellenansichten (Enterprise) |
+| Portfolio-PowerBI-Dashboard | `swao-portfolio.pbit` mit Heatmap- und Wellenansichten (Portfolio-Daten: Enterprise) |
+
+![Power-BI-Portfolio-Auditor-Rollup mit Abdeckung je App, Compliance-Drilldown und Nachweisen](../samples/09-auditor-md-excerpt.png)
+*Das Auditor-Rollup von `swao-portfolio.pbit` für einen Demo-Workspace mit vier Apps: Abdeckung je App, Status je Control und die Nachweise nebeneinander.*
 
 ## CLI
 
@@ -42,6 +45,6 @@ Wo der Typ erscheint:
 
 ## Edition
 
-Vollständiger Portfolio-Betrieb erfordert **Consultant** oder **Enterprise**. Die Community-Edition kann einzelne Bewertungen im selben Workspace-Ordner ausführen, aggregiert jedoch keine Ergebnisse.
+Portfolio-Betrieb erfordert **Enterprise**. Die Community- und die Consultant-Edition können einzelne Bewertungen im selben Workspace-Ordner ausführen, aggregieren jedoch keine Ergebnisse. Das Sternschema pro App (`swao export`) ist in jeder Edition verfügbar.
 
 Siehe auch: [BI exportieren](/de/export-bi) | [Funktionen & Editionen](/de/features)

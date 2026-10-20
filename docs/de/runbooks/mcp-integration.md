@@ -28,6 +28,9 @@ last_updated: 2026-04-29
 
 ## Zusammenfassung
 
+
+<Badge type="warning" text="Enterprise"/> Der SWAO-MCP-Server ist Teil der Enterprise-Edition.
+
 SWAO stellt seine Assessment-Funktionen über den STDIO-Transport des Model
 Context Protocol (MCP) bereit. Nach der Registrierung kann jeder MCP-kompatible
 Client (Claude Desktop, Cursor, VS Code mit einer MCP-Erweiterung usw.)
@@ -417,6 +420,10 @@ Run swao_health_check
 
 Erwartet: ein Health-Bericht, der die Probes für LLM, Credentials, Workspace und
 Lizenz jeweils mit Bestanden/Fehlgeschlagen-Status auflistet.
+
+
+![Claude Desktop beantwortet eine DSGVO-Frage mit Befunden aus dem SWAO-Signal-Tool](../../samples/16-mcp-deep-dive-question.png)
+*Nach der Verbindung beantwortet der Client Fragen aus den Signalen des Workspace. Hier nennt Claude Desktop die wichtigsten DSGVO-Risiken der Demo-Anwendung Sovereign Health mit ihren Signal-IDs.*
 
 ---
 

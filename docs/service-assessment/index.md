@@ -1,5 +1,7 @@
 # Service Portfolio Assessment
 
+![Service Portfolio Assessment banner: an intake spreadsheet feeds a research radar, which produces a portfolio workbook with a TIME quadrant](/visuals/banner-service-portfolio.svg)
+
 Service Portfolio Assessment (assessment type `service`, new in v1.4.0) assesses the applications you **buy, rent, or operate but do not build**: third-party software, commercial off-the-shelf (COTS) products, SaaS services, appliances, and legacy servers. No source code is needed. The input is the application inventory you already keep in a spreadsheet or CMDB export.
 
 For each application SWAO researches public vulnerability and end-of-life data, analyses any installers you supply, scores the application across eleven portfolio domains, and recommends a **TIME** disposition. Across the whole portfolio it builds an integration graph, plans migration waves, finds vendor consolidation opportunities, and tracks changes between runs.

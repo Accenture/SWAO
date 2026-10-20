@@ -239,10 +239,17 @@
 .dark .VPHero .tagline {
   color: #aaaab5;
 }
+/* Transparent mark (alpha background): no box, so the radial glow
+   (--vp-home-hero-image-background-image) shows behind it (#3364). */
+.VPHero .image-container,
+.VPHero .image-src {
+  background: none;
+}
 .VPHero .image-src {
   max-width: 340px;
   max-height: 340px;
-  border-radius: 24px;
+  border-radius: 0;
+  filter: drop-shadow(0 0 28px rgba(161, 0, 255, 0.55));
 }
 .dark .VPButton.brand {
   box-shadow: 0 0 16px rgba(161, 0, 255, 0.45);
@@ -353,4 +360,45 @@
   font-weight: 600;
   letter-spacing: 0.03em;
   line-height: 1.8;
+}
+
+/* Iteration 2 (#3363): visuals, screenshot captions. Append to .vitepress/theme/custom.css. */
+
+/* Image-system graphics (process flow and assessment banners) */
+.vp-doc img[src*="/visuals/"] {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(161, 0, 255, 0.35);
+  box-shadow: 0 0 24px rgba(161, 0, 255, 0.18);
+}
+.vp-doc img[src*="/visuals/banner-"] {
+  margin: 8px 0 24px;
+}
+
+/* Screenshots on guide pages */
+.vp-doc p > img:not([src*="/visuals/"]) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+/* Caption: the italic line directly after an image in the same paragraph */
+.vp-doc p > img + em {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.875em;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--vp-c-text-2);
+}
+
+/* Verdict badges inside tables sit next to the verdict code */
+.vp-doc td .swao-badge {
+  margin-left: 6px;
+  vertical-align: middle;
 }

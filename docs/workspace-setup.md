@@ -24,6 +24,9 @@ The **Workspace Setup** wizard runs when you select option 1 from the SWAO main 
 New workspaces contain four demo frameworks. Further community frameworks are copied into the workspace with
 `swao framework install <ID>` and chosen per app when you run an assessment.
 
+![Workspace Setup wizard in the terminal interface at step 1 of 7, asking for the workspace directory](./samples/11-tui-workspace-setup.png)
+*The Workspace Setup wizard at step 1 (Init). The progress dots show the remaining steps. Captured with an earlier SWAO version; the current wizard also offers the LZ targets step.*
+
 ## CLI equivalent
 
 ```bash

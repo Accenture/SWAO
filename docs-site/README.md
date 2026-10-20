@@ -50,3 +50,15 @@ automatically on every push to `main`. To deploy manually:
 npm run build
 # push .vitepress/dist/ to the gh-pages branch
 ```
+
+### Landing Zone catalogue pages
+
+The factual part of `swao/docs/lz-catalogues/*.md` and `swao/docs/de/lz-catalogues/*.md`
+(summary, regions, certifications, usage) is generated from `swao/lz-catalogues/*.json`
+by `node swao/docs-site/scripts/generate-lz-catalogue-pages.mjs`. Only the block between the
+`lz-catalogue-facts` marker comments is rewritten; the title and the hand-written
+introduction are kept. Run it after a catalogue refresh; `--check` exits 1 when a page is
+out of date. A new catalogue gets a page with a placeholder introduction that must be
+replaced by hand, plus a sidebar entry in `.vitepress/config.ts`. The audit gate
+`tests/audit-gates/lz-catalogue-docs.gate.mjs` fails when a catalogue has no page or a
+page has no catalogue.

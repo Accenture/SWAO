@@ -1,5 +1,7 @@
 # Landing-Zone-Katalogbewertung
 
+![Banner Landing-Zone-Katalogbewertung: die SWAO-Engine prüft fünf Katalogkarten von Anbietern und führt je Karte ein Urteil PASS, PARTIAL oder FAIL](/visuals/banner-landing-zone.svg)
+
 Die Landing-Zone-Katalogbewertung beantwortet eine Frage: **Kann diese Region eines
 Cloud-Anbieters diese Anwendung unter den Souveränitätsanforderungen meiner aktiven
 Rahmenwerke betreiben?** SWAO nimmt die Plattformdienste, die Ihre Anwendung benötigt,
@@ -350,11 +352,11 @@ Jeder nicht unterstützte Eintrag wird zusätzlich zu einem `LZ-NN`-Signal. Schw
 
 | Gesamturteil | Wann |
 |---|---|
-| `SOVEREIGNTY_BLOCKED` | Jede Souveränitätsverletzung. `blocker_category` gibt an, ob sie strukturell ist (Rechtsraum, Exposition), eine Zertifizierungslücke oder gemischt |
-| `BLOCKED` | Ein benötigter Dienst fehlt oder ist nur in falscher Version beziehungsweise ohne benötigte Fähigkeit verfügbar |
-| `READY_WITH_CHANGES` | Alles ist verfügbar, aber Dienste müssen in der betriebenen Landing Zone aktiviert oder korrigiert werden |
-| `NEEDS_VERIFICATION` | Wäre READY, aber es wurden keine benötigten Dienste gefunden oder eine Basiskategorie (Compute, Netzwerk, Schlüsselverwaltung, Speicher) wurde nicht abgedeckt |
-| `READY` | Alle benötigten Dienste werden unterstützt, und alle Souveränitätsprüfungen sind bestanden |
+| `SOVEREIGNTY_BLOCKED` <span class="swao-badge fail">FAIL</span> | Jede Souveränitätsverletzung. `blocker_category` gibt an, ob sie strukturell ist (Rechtsraum, Exposition), eine Zertifizierungslücke oder gemischt |
+| `BLOCKED` <span class="swao-badge fail">FAIL</span> | Ein benötigter Dienst fehlt oder ist nur in falscher Version beziehungsweise ohne benötigte Fähigkeit verfügbar |
+| `READY_WITH_CHANGES` <span class="swao-badge partial">PARTIAL</span> | Alles ist verfügbar, aber Dienste müssen in der betriebenen Landing Zone aktiviert oder korrigiert werden |
+| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Wäre READY, aber es wurden keine benötigten Dienste gefunden oder eine Basiskategorie (Compute, Netzwerk, Schlüsselverwaltung, Speicher) wurde nicht abgedeckt |
+| `READY` <span class="swao-badge pass">PASS</span> | Alle benötigten Dienste werden unterstützt, und alle Souveränitätsprüfungen sind bestanden |
 
 Ist in einem Lauf mit mehreren Zielen mindestens ein Ziel READY, nennt der
 Behebungshinweis jedes souveränitätsblockierten Ziels dieses als souveräne Alternative.

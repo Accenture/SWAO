@@ -4,6 +4,9 @@ SWAO analysiert eine Cloud-Anwendung und erstellt in einem einzigen Befehl (oder
 die geführte Terminaloberfläche) einen audit-konformen Bewertungsbericht. Keine externen
 Dienste, keine Datenuploads, kein Call-home.
 
+![SWAO-Prozessablauf: Workspace und Eingabedateien speisen die SWAO-Engine, die die Analyse-Passes ausführt und Ergebnisse, eine 7R-Entscheidung und das Onboarding in eine Landing Zone liefert, mit einer Schleife der kontinuierlichen Verbesserung zurück zum Workspace](/visuals/process-flow-de.svg)
+*Vom Workspace zum Onboarding: eine Engine, 13 Standard-Passes und eine durchgängige Beweiskette von der Eingabe bis zur Migrationsentscheidung.*
+
 ---
 
 ## Die geführte Oberfläche (TUI)

@@ -1,6 +1,6 @@
 # 7. Portfolio Operations
 
-Portfolio Operations (option 7 in the main menu) aggregate assessment results across multiple applications in a single workspace. Available in **Consultant** and **Enterprise** editions.
+Portfolio Operations (option 7 in the main menu) aggregate assessment results across multiple applications in a single workspace. Available in the **Enterprise** edition <Badge type="warning" text="Enterprise"/>.
 
 ## What portfolio mode provides
 
@@ -10,7 +10,10 @@ Portfolio Operations (option 7 in the main menu) aggregate assessment results ac
 | Aggregated risk register | Cross-application finding list, deduplicated and ranked |
 | Portfolio compliance matrix | Framework coverage across every assessed app |
 | Migration wave planning | Dependency-aware sequencing for phased cloud migration |
-| Portfolio Power BI dashboard | `swao-portfolio.pbit` with heatmap and wave views (Enterprise) |
+| Portfolio Power BI dashboard | `swao-portfolio.pbit` with heatmap and wave views (portfolio data: Enterprise) |
+
+![Power BI Portfolio Auditor roll-up with per-app coverage, the compliance drill-down and supporting evidence](./samples/09-auditor-md-excerpt.png)
+*The Auditor roll-up of `swao-portfolio.pbit` for a demo workspace with four apps: coverage per app, per-control status and the supporting evidence side by side.*
 
 ## CLI
 
@@ -45,6 +48,6 @@ Where the type shows:
 
 ## Edition
 
-Full portfolio operations require **Consultant** or **Enterprise**. The Community edition can run individual assessments in the same workspace folder but does not aggregate results.
+Portfolio operations require **Enterprise**. The Community and Consultant editions can run individual assessments in the same workspace folder but do not aggregate results. The per-app star schema (`swao export`) is available in every edition.
 
 See also: [Export BI](/export-bi) | [Features & Editions](/features)

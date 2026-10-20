@@ -51,9 +51,9 @@ See [Frameworks](/frameworks/) for the available framework IDs.
 
 | Outcome | Rule given to the evaluator |
 |---|---|
-| `SATISFIED` | The signals positively confirm the control is met |
-| `PARTIAL` | Some elements are present but gaps remain; a remediation sentence is required |
-| `GAP` | The signals show the control is not met; a remediation sentence is required |
+| `SATISFIED` <span class="swao-badge pass">PASS</span> | The signals positively confirm the control is met |
+| `PARTIAL` <span class="swao-badge partial">PARTIAL</span> | Some elements are present but gaps remain; a remediation sentence is required |
+| `GAP` <span class="swao-badge fail">FAIL</span> | The signals show the control is not met; a remediation sentence is required |
 | `N_A` | The control does not apply to this workload (with justification) |
 | `UNKNOWN` | No signal addresses the control either way, or no LLM evaluation was available |
 

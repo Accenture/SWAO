@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="t d" xml:lang="en" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <title id="t">Service Portfolio Assessment</title>
+  <desc id="d">Cinematic neon banner: a translucent intake spreadsheet with ruled rows and sheet tabs feeds a radar scope with range rings, a sweep line and four blips, which feeds a teal stack of portfolio workbook sheets showing a TIME quadrant.</desc>
+  <defs>
+    <pattern id="hex" width="60" height="34.64" patternUnits="userSpaceOnUse">
+      <path d="M0,17.32 L10,0 L30,0 L40,17.32 L30,34.64 L10,34.64 Z M40,17.32 L60,17.32" fill="none" stroke="#a100ff" stroke-width="0.7" stroke-opacity="0.22"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#070707" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#070707" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#070707" stop-opacity="1"/>
+    </radialGradient>
+    <radialGradient id="floorGlow" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#a100ff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#a100ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#f0d9ff"/>
+      <stop offset="100%" stop-color="#a100ff"/>
+    </radialGradient>
+    <linearGradient id="pt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a100ff"/>
+      <stop offset="100%" stop-color="#1bbaa4"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arP" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a100ff"/>
+    </marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1bbaa4"/>
+    </marker>
+  </defs>
+  <style>
+    .flow { stroke-dasharray: 4 12; animation: flow 1.6s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -32; } }
+    @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+  </style>
+  <rect width="1200" height="300" fill="#070707"/>
+  <rect width="1200" height="300" fill="url(#hex)"/>
+  <rect width="1200" height="300" fill="url(#floorGlow)"/>
+  <rect width="1200" height="300" fill="url(#vignette)"/>
+    <path d="M345,150 C410,116 460,184 505,150" fill="none" stroke="#a100ff" stroke-width="3.2" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M345,150 C410,116 460,184 505,150" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M695,150 C750,118 800,182 852,150" fill="none" stroke="#1bbaa4" stroke-width="3" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arT)"/>
+    <path class="flow" d="M695,150 C750,118 800,182 852,150" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+  <g transform="translate(180 52) rotate(-5)">
+    <rect x="0" y="0" width="150" height="192" rx="6" fill="#1a0033" fill-opacity="0.85" stroke="#a100ff" stroke-width="2.2" filter="url(#glow)"/>
+    <rect x="8" y="10" width="134" height="18" rx="2" fill="#a100ff" fill-opacity="0.45"/>
+    <path d="M10,42 L140,42" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,60 L140,60" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,78 L140,78" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,96 L140,96" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,114 L140,114" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,132 L140,132" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M10,150 L140,150" stroke="#c77dff" stroke-width="1" stroke-opacity="0.55"/>
+    <path d="M52,30 L52,160 M96,30 L96,160" stroke="#c77dff" stroke-width="1" stroke-opacity="0.35"/>
+    <rect x="10" y="170" width="34" height="12" rx="2" fill="#2a0047" stroke="#c77dff" stroke-width="1" stroke-opacity="1"/>
+    <rect x="50" y="170" width="34" height="12" rx="2" fill="#2a0047" stroke="#c77dff" stroke-width="1" stroke-opacity="0.5"/>
+    <rect x="90" y="170" width="34" height="12" rx="2" fill="#2a0047" stroke="#c77dff" stroke-width="1" stroke-opacity="0.5"/>
+  </g>
+  <circle cx="600" cy="150" r="92" fill="#1a0033" stroke="#a100ff" stroke-width="2.4" filter="url(#glow)"/>
+  <circle cx="600" cy="150" r="62" fill="none" stroke="#c77dff" stroke-width="1.1" stroke-opacity="0.6"/>
+  <circle cx="600" cy="150" r="31" fill="none" stroke="#c77dff" stroke-width="1.1" stroke-opacity="0.6"/>
+  <path d="M600,150 L668,88 A92,92 0 0 0 600,58 Z" fill="#d0a0ff" fill-opacity="0.18"/>
+  <path d="M600,150 L668,88" stroke="#f0d9ff" stroke-width="2" stroke-linecap="round" filter="url(#glow)"/>
+  <circle cx="600" cy="150" r="4" fill="#ffffff" filter="url(#glow)"/>
+  <circle cx="640" cy="104" r="4.5" fill="#d0a0ff" filter="url(#bloom)"/>
+  <circle cx="552" cy="120" r="4.5" fill="#d0a0ff" filter="url(#bloom)"/>
+  <circle cx="630" cy="196" r="4.5" fill="#d0a0ff" filter="url(#bloom)"/>
+  <circle cx="566" cy="186" r="4.5" fill="#d0a0ff" filter="url(#bloom)"/>
+  <rect x="900" y="44" width="170" height="176" rx="6" fill="#071a18" fill-opacity="0.9" stroke="#1bbaa4" stroke-width="2" stroke-opacity="0.35" filter="url(#glow)"/>
+  <rect x="922" y="60" width="170" height="176" rx="6" fill="#071a18" fill-opacity="0.9" stroke="#1bbaa4" stroke-width="2" stroke-opacity="0.6" filter="url(#glow)"/>
+  <rect x="944" y="76" width="170" height="176" rx="6" fill="#071a18" fill-opacity="0.9" stroke="#1bbaa4" stroke-width="2" stroke-opacity="1.0" filter="url(#glow)"/>
+  <rect x="962" y="92" width="52" height="40" rx="4" fill="#1bbaa4" fill-opacity="0.22" stroke="#1bbaa4" stroke-width="1.4" filter="url(#glow)"/>
+  <rect x="1020" y="92" width="52" height="40" rx="4" fill="#00e676" fill-opacity="0.22" stroke="#00e676" stroke-width="1.4" filter="url(#glow)"/>
+  <rect x="962" y="138" width="52" height="40" rx="4" fill="#f5a623" fill-opacity="0.22" stroke="#f5a623" stroke-width="1.4" filter="url(#glow)"/>
+  <rect x="1020" y="138" width="52" height="40" rx="4" fill="#ff3d3d" fill-opacity="0.22" stroke="#ff3d3d" stroke-width="1.4" filter="url(#glow)"/>
+  <path d="M962,192 L1072,192" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.6"/>
+  <path d="M962,202 L1072,202" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.6"/>
+  <rect x="952" y="208" width="19" height="9" rx="2" fill="#0b2a26" stroke="#1bbaa4" stroke-width="1" stroke-opacity="1"/>
+  <rect x="975" y="208" width="19" height="9" rx="2" fill="#0b2a26" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.5"/>
+  <rect x="998" y="208" width="19" height="9" rx="2" fill="#0b2a26" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.5"/>
+  <rect x="1021" y="208" width="19" height="9" rx="2" fill="#0b2a26" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.5"/>
+  <rect x="1044" y="208" width="19" height="9" rx="2" fill="#0b2a26" stroke="#1bbaa4" stroke-width="1" stroke-opacity="0.5"/>
+</svg>

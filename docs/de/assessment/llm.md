@@ -1,5 +1,7 @@
 # LLM-Bewertung für SWAO
 
+![Banner LLM-Bewertung: fünf Pass-Schichten verzweigen zu fünf LLM-Anbietern, deren Antworten in eine Vergleichsmatrix aus Häkchen und Kreuzen münden](/visuals/banner-llm.svg)
+
 Die LLM-Bewertung für SWAO beantwortet eine praktische Frage: **Welches LLM erledigt die
 Bewertungsarbeit von SWAO für meine Anwendung am besten?** Sie nimmt eine Ihrer
 Anwendungen, für die bereits eine abgeschlossene
@@ -265,6 +267,9 @@ Enterprise-Befehl `swao challenge`, ein PDF-Bericht mindestens Consultant.
 Eine Publikation der LLM-Bewertung mit dem Vergleich mehrerer Modelle:
 
 [Live-Bericht öffnen](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24-08-32-09-llm-assessment.html)
+
+![Publikation einer LLM-Bewertung für die Demo-Anwendung Sovereign Health mit Legs, Zusammenfassung und Gesamtranking](../../samples/llm-assessment-smoke.png)
+*Ausschnitt aus der Publikation einer LLM-Bewertung für die Demo-Anwendung Sovereign Health: die verglichenen Legs, die Zusammenfassung und das Gesamtranking.*
 
 ---
 

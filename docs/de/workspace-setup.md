@@ -16,6 +16,9 @@ Der **Workspace-Setup-Assistent** startet bei Auswahl von Option 1 im SWAO-Haupt
 Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere Community-Rahmenwerke kopieren Sie mit
 `swao framework install <ID>` in den Workspace und wählen sie je App beim Ausführen einer Bewertung.
 
+![Workspace-Setup-Assistent in der Terminaloberfläche bei Schritt 1 von 7 mit der Abfrage des Workspace-Verzeichnisses](../samples/11-tui-workspace-setup.png)
+*Der Workspace-Setup-Assistent bei Schritt 1 (Init). Die Fortschrittspunkte zeigen die folgenden Schritte. Aufgenommen mit einer früheren SWAO-Version; der aktuelle Assistent bietet zusätzlich den Schritt LZ-Ziele.*
+
 ## CLI-Äquivalent
 
 ```bash

@@ -1,5 +1,7 @@
 # LLM Assessment for SWAO
 
+![LLM Assessment banner: five pass slabs fan out to five LLM provider nodes, whose answers feed a benchmark matrix of checkmarks and crosses](/visuals/banner-llm.svg)
+
 The LLM Assessment for SWAO answers a practical question: **which LLM runs SWAO's own
 assessment work best on my application?** It takes one of your applications that
 already has a completed [Application Assessment](/assessment/application) and runs that
@@ -255,6 +257,9 @@ and a PDF report needs Consultant or above.
 An LLM Assessment publication comparing several models:
 
 [Open live report](https://htmlpreview.github.io/?https://github.com/Accenture/SWAO/blob/main/examples/publications/2026-08-24-08-32-09-llm-assessment.html)
+
+![LLM Assessment publication for the Sovereign Health demo application with legs, executive summary and final ranking](../samples/llm-assessment-smoke.png)
+*Extract from an LLM Assessment publication for the Sovereign Health demo application: the legs under comparison, the executive summary and the final ranking.*
 
 ---
 

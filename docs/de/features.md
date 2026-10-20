@@ -23,7 +23,7 @@ SWAO unterstützt vier Bewertungstypen, alle jetzt verfügbar.
 
 ## Editionsvergleich
 
-| Funktion | Community | Consultant | Enterprise |
+| Funktion | <Badge type="info" text="Community"/> | <Badge type="tip" text="Consultant"/> | <Badge type="warning" text="Enterprise"/> |
 |---|---|---|---|
 | **Bewertung** | | | |
 | <FeatureTooltip tip="Führt 13 Standard-Analyse-Passes durch und erzeugt Signale, Berichte und ein BI-Exportpaket.">Anwendungsbewertung</FeatureTooltip> | Ja | Ja | Ja |
@@ -118,8 +118,8 @@ OpenRouter und vLLM zum Download:
 
 ## Lizenz
 
-- **Community** - Apache 2.0. Kostenlos nutzbar, veränderbar und verteilbar. Beiträge willkommen. Community-Rahmenwerke und LZ-Kataloge in jeder Edition enthalten.
-- **Consultant** - Proprietär (SWAO Premium Edition). Enthält HTML-Veröffentlichung, PDF-Bericht, Power-BI-Dashboard-Vorlagen und LZ-Katalog-Aktualisierung.
-- **Enterprise** - Proprietär (SWAO Premium Edition). Enthält Portfolio-Bewertung, -Bericht und -BI-Export, Service-Portfolio-Export, adversarielle Challenge-Review, HTML-Editor, MCP-Integration, SWAO Chat, Sector-Engagement-Vorlagen und die Roadmap-Funktionen (Terraform-Modul-Stubs, meshStack-Integration).
+- <Badge type="info" text="Community"/> Apache 2.0. Kostenlos nutzbar, veränderbar und verteilbar. Beiträge willkommen. Community-Rahmenwerke und LZ-Kataloge in jeder Edition enthalten.
+- <Badge type="tip" text="Consultant"/> Proprietär (SWAO Premium Edition). Enthält HTML-Veröffentlichung, PDF-Bericht, Power-BI-Dashboard-Vorlagen und LZ-Katalog-Aktualisierung.
+- <Badge type="warning" text="Enterprise"/> Proprietär (SWAO Premium Edition). Enthält Portfolio-Bewertung, -Bericht und -BI-Export, Service-Portfolio-Export, adversarielle Challenge-Review, HTML-Editor, MCP-Integration, SWAO Chat, Sector-Engagement-Vorlagen und die Roadmap-Funktionen (Terraform-Modul-Stubs, meshStack-Integration).
 
 Fragen oder Lizenzanfragen: Starten Sie eine [GitHub-Diskussion](https://github.com/Accenture/SWAO/discussions) oder [eröffnen Sie ein Issue](https://github.com/Accenture/SWAO/issues).

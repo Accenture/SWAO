@@ -4,6 +4,9 @@ SWAO analyses a cloud application and produces an auditor-grade assessment repor
 in a single command - or through the guided terminal interface. No external services,
 no data uploads, no call-home.
 
+![SWAO process flow: the workspace and its input files feed the SWAO engine, which runs the analysis passes and produces results, a 7R decision and the onboarding into a landing zone, with a continuous improvement loop back to the workspace](/visuals/process-flow.svg)
+*From workspace to onboarding: one engine, 13 default passes and one evidence chain from input to migration decision.*
+
 <a href="https://www.youtube.com/watch?v=WvBnFoKzil4" target="_blank" rel="noopener"
    style="display:block;position:relative;max-width:720px;margin:24px auto;">
   <img

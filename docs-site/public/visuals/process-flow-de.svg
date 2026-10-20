@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" width="1200" height="540" role="img" aria-labelledby="t d" xml:lang="de" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <title id="t">So funktioniert SWAO: vom Workspace zum Onboarding</title>
+  <desc id="d">Prozessablauf in sieben Schritten. Eine Workspace-Karte und eine Karte mit Eingabedateien speisen die SWAO-Engine, die 13 Analyse-Passes ausführt, statisch und LLM-gestützt. Die Passes erzeugen Ergebnisse (Signale und Bewertungen), die zu einer 7R-Migrationsentscheidung und weiter zum Onboarding in eine Landing Zone führen. Eine Schleife der kontinuierlichen Verbesserung führt von der 7R-Entscheidung zurück zum Workspace für eine erneute Bewertung.</desc>
+  <defs>
+    <pattern id="hex" width="60" height="34.64" patternUnits="userSpaceOnUse">
+      <path d="M0,17.32 L10,0 L30,0 L40,17.32 L30,34.64 L10,34.64 Z M40,17.32 L60,17.32" fill="none" stroke="#a100ff" stroke-width="0.7" stroke-opacity="0.22"/>
+    </pattern>
+    <radialGradient id="vignette" cx="50%" cy="45%" r="70%">
+      <stop offset="0%" stop-color="#070707" stop-opacity="0"/>
+      <stop offset="70%" stop-color="#070707" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#070707" stop-opacity="1"/>
+    </radialGradient>
+    <radialGradient id="floorGlow" cx="50%" cy="55%" r="55%">
+      <stop offset="0%" stop-color="#a100ff" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#a100ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#f0d9ff"/>
+      <stop offset="100%" stop-color="#a100ff"/>
+    </radialGradient>
+    <linearGradient id="pt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#a100ff"/>
+      <stop offset="100%" stop-color="#1bbaa4"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arP" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a100ff"/>
+    </marker>
+    <marker id="arT" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#1bbaa4"/>
+    </marker>
+  </defs>
+  <style>
+    .flow { stroke-dasharray: 4 12; animation: flow 1.6s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -32; } }
+    @media (prefers-reduced-motion: reduce) { .flow { animation: none; } }
+  </style>
+  <rect width="1200" height="540" fill="#070707"/>
+  <rect width="1200" height="540" fill="url(#hex)"/>
+  <rect width="1200" height="540" fill="url(#floorGlow)"/>
+  <rect width="1200" height="540" fill="url(#vignette)"/>
+  <g id="beams">
+    <path d="M164,240 C176,226 186,254 196,240" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M164,240 C176,226 186,254 196,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M324,240 C334,228 342,252 350,240" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M324,240 C334,228 342,252 350,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M530,240 C542,226 552,254 561,240" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M530,240 C542,226 552,254 561,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M679,240 C690,226 700,254 709,240" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M679,240 C690,226 700,254 709,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M879,240 C888,228 894,252 901,240" fill="none" stroke="#1bbaa4" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arT)"/>
+    <path class="flow" d="M879,240 C888,228 894,252 901,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M989,240 C1000,228 1012,252 1024,240" fill="none" stroke="#1bbaa4" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arT)"/>
+    <path class="flow" d="M989,240 C1000,228 1012,252 1024,240" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M962,298 C995,318 1034,330 1034,360 L1034,412 C1034,442 995,453 928,453" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M962,298 C995,318 1034,330 1034,360 L1034,412 C1034,442 995,453 928,453" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M196,453 L48,453 Q24,453 24,429 L24,214" fill="none" stroke="#a100ff" stroke-width="2.5" stroke-linecap="round" filter="url(#glow)" marker-end="url(#arP)"/>
+    <path class="flow" d="M196,453 L48,453 Q24,453 24,429 L24,214" fill="none" stroke="#ffffff" stroke-opacity="0.75" stroke-width="1.2" stroke-linecap="round"/>
+  </g>
+  <g id="entities">
+    <rect x="40" y="150" width="120" height="180" rx="10" fill="#1a0033" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+    <polygon points="100,206 127.712,222.0 100,238 72.288,222.0" fill="#3d0066" stroke="#c77dff" stroke-width="1.2"/>
+    <polygon points="72.288,222.0 100,238 100,270 72.288,254.0" fill="#2a0047" stroke="#c77dff" stroke-width="1.2"/>
+    <polygon points="100,238 127.712,222.0 127.712,254.0 100,270" fill="#4b0080" stroke="#c77dff" stroke-width="1.2"/>
+    <path d="M104,248 L122,238 M104,256 L116,249 M104,264 L119,255" stroke="#e0b3ff" stroke-width="1.3" stroke-linecap="round"/>
+    <path d="M80,236 L95,245 M80,244 L90,250" stroke="#e0b3ff" stroke-width="1.3" stroke-linecap="round"/>
+    <rect x="200" y="150" width="120" height="180" rx="10" fill="#1a0033" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+    <rect x="226" y="208" width="68" height="16" rx="3" fill="#2a0047" stroke="#c77dff" stroke-width="1.3" stroke-opacity="0.55" filter="url(#glow)"/>
+    <path d="M234,216 L276,216" stroke="#e0b3ff" stroke-width="1.2" stroke-opacity="0.55" stroke-linecap="round"/>
+    <rect x="226" y="232" width="68" height="16" rx="3" fill="#2a0047" stroke="#c77dff" stroke-width="1.3" stroke-opacity="0.75" filter="url(#glow)"/>
+    <path d="M234,240 L276,240" stroke="#e0b3ff" stroke-width="1.2" stroke-opacity="0.75" stroke-linecap="round"/>
+    <rect x="226" y="256" width="68" height="16" rx="3" fill="#2a0047" stroke="#c77dff" stroke-width="1.3" stroke-opacity="1.0" filter="url(#glow)"/>
+    <path d="M234,264 L276,264" stroke="#e0b3ff" stroke-width="1.2" stroke-opacity="1.0" stroke-linecap="round"/>
+    <polygon points="528.0,240.0 484.0,316.2 396.0,316.2 352.0,240.0 396.0,163.8 484.0,163.8" fill="#1a0033" stroke="#a100ff" stroke-width="2.2" filter="url(#glow)"/>
+    <ellipse cx="440" cy="240" rx="62" ry="17" fill="none" stroke="#d0a0ff" stroke-width="1.2" stroke-opacity="0.75" transform="rotate(-22 440 240)"/>
+    <ellipse cx="440" cy="240" rx="62" ry="17" fill="none" stroke="#d0a0ff" stroke-width="1.2" stroke-opacity="0.55" transform="rotate(26 440 240)"/>
+    <polygon points="470.0,240.0 455.0,266.0 425.0,266.0 410.0,240.0 425.0,214.0 455.0,214.0" fill="url(#core)" stroke="#ffffff" stroke-width="1" filter="url(#bloom)"/>
+    <circle cx="497" cy="217" r="3" fill="#ffffff" filter="url(#glow)"/>
+    <circle cx="389" cy="215" r="2.5" fill="#d0a0ff" filter="url(#glow)"/>
+    <rect x="565" y="150" width="110" height="180" rx="10" fill="#1a0033" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+    <path d="M620,180 L620,302" stroke="#c77dff" stroke-width="1" stroke-opacity="0.6"/>
+    <rect x="581" y="184" width="78" height="13" rx="3" fill="#14001f" stroke="#a100ff" stroke-width="1.6" filter="url(#glow)"/>
+    <path d="M589,190.5 L620,190.5" stroke="#a100ff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+    <rect x="581" y="207" width="78" height="13" rx="3" fill="#14001f" stroke="#4060ff" stroke-width="1.6" filter="url(#glow)"/>
+    <path d="M589,213.5 L628,213.5" stroke="#4060ff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+    <rect x="581" y="230" width="78" height="13" rx="3" fill="#14001f" stroke="#1bbaa4" stroke-width="1.6" filter="url(#glow)"/>
+    <path d="M589,236.5 L636,236.5" stroke="#1bbaa4" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+    <rect x="581" y="253" width="78" height="13" rx="3" fill="#14001f" stroke="#f5a623" stroke-width="1.6" filter="url(#glow)"/>
+    <path d="M589,259.5 L620,259.5" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+    <rect x="581" y="276" width="78" height="13" rx="3" fill="#14001f" stroke="#8b00ff" stroke-width="1.6" filter="url(#glow)"/>
+    <path d="M589,282.5 L628,282.5" stroke="#8b00ff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+    <text x="620" y="318" text-anchor="middle" font-size="12" fill="#b9a6cc">statisch + LLM</text>
+    <rect x="713" y="172" width="164" height="120" rx="8" fill="#0d0a14" stroke="url(#pt)" stroke-width="2.6" filter="url(#glow)"/>
+    <rect x="728" y="192" width="52" height="8" rx="2" fill="#1bbaa4" fill-opacity="0.85"/>
+    <rect x="728" y="210" width="40" height="8" rx="2" fill="#1bbaa4" fill-opacity="0.85"/>
+    <rect x="728" y="228" width="60" height="8" rx="2" fill="#1bbaa4" fill-opacity="0.85"/>
+    <rect x="728" y="246" width="34" height="8" rx="2" fill="#1bbaa4" fill-opacity="0.85"/>
+    <rect x="728" y="264" width="46" height="8" rx="2" fill="#1bbaa4" fill-opacity="0.85"/>
+    <circle cx="818" cy="200" r="5.5" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+    <circle cx="841" cy="200" r="5.5" fill="#1bbaa4" fill-opacity="0.55" filter="url(#glow)"/>
+    <circle cx="864" cy="200" r="5.5" fill="#1bbaa4" fill-opacity="0.8" filter="url(#glow)"/>
+    <circle cx="818" cy="230" r="5.5" fill="#1bbaa4" fill-opacity="0.45" filter="url(#glow)"/>
+    <circle cx="841" cy="230" r="5.5" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+    <circle cx="864" cy="230" r="5.5" fill="#1bbaa4" fill-opacity="0.6" filter="url(#glow)"/>
+    <circle cx="818" cy="260" r="5.5" fill="#1bbaa4" fill-opacity="0.85" filter="url(#glow)"/>
+    <circle cx="841" cy="260" r="5.5" fill="#1bbaa4" fill-opacity="0.5" filter="url(#glow)"/>
+    <circle cx="864" cy="260" r="5.5" fill="#1bbaa4" fill-opacity="1" filter="url(#glow)"/>
+    <ellipse cx="945" cy="314" rx="34" ry="6" fill="none" stroke="#d0a0ff" stroke-opacity="0.5" stroke-width="1.2"/>
+    <polygon points="945,178 987,240 945,302 903,240" fill="#2a0047" stroke="#d0a0ff" stroke-width="2" filter="url(#bloom)"/>
+    <path d="M903,240 L987,240 M945,178 L926,240 L945,302 M945,178 L964,240 L945,302" stroke="#d0a0ff" stroke-width="0.9" stroke-opacity="0.6" fill="none"/>
+    <text x="945" y="246" text-anchor="middle" font-size="17" font-weight="800" fill="#ffffff">7R</text>
+    <polygon points="1100.0,160.0 1169.3,200.0 1169.3,280.0 1100.0,320.0 1030.7,280.0 1030.7,200.0" fill="#1a0033" stroke="#a100ff" stroke-width="2.2" filter="url(#glow)"/>
+    <path d="M1100,213 L1100,229 M1100,251 L1100,268" stroke="#c77dff" stroke-width="1.2"/>
+    <polygon points="1100.0,187.0 1111.3,193.5 1111.3,206.5 1100.0,213.0 1088.7,206.5 1088.7,193.5" fill="#0b2a1a" stroke="#00e676" stroke-width="1.8" filter="url(#glow)"/>
+    <rect x="1085" y="229" width="30" height="22" rx="3" fill="#06241f" stroke="#1bbaa4" stroke-width="1.8" filter="url(#glow)"/>
+    <circle cx="1100" cy="280" r="12" fill="#0a1433" stroke="#3d8bff" stroke-width="1.8" filter="url(#glow)"/>
+    <rect x="200" y="430" width="724" height="46" rx="23" fill="#1a0033" stroke="#a100ff" stroke-width="2" filter="url(#glow)"/>
+    <path d="M300,453 L820,453" stroke="#c77dff" stroke-width="1.2" stroke-opacity="0.7"/>
+    <circle cx="300" cy="453" r="6" fill="#d0a0ff" filter="url(#glow)"/>
+    <circle cx="430" cy="453" r="6" fill="#d0a0ff" filter="url(#glow)"/>
+    <circle cx="560" cy="453" r="6" fill="#d0a0ff" filter="url(#glow)"/>
+    <circle cx="690" cy="453" r="6" fill="#d0a0ff" filter="url(#glow)"/>
+    <circle cx="820" cy="453" r="6" fill="#d0a0ff" filter="url(#glow)"/>
+    <text x="562" y="506" text-anchor="middle" font-size="16" fill="#b9a6cc">Kontinuierliche Verbesserung: nach jeder Änderung neu bewerten</text>
+  </g>
+  <g id="labels">
+    <circle cx="100" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="100" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">1</text>
+    <text x="100" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">Workspace</text>
+    <text x="100" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">apps/ + .swao.yml</text>
+    <circle cx="260" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="260" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">2</text>
+    <text x="260" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">Eingabedateien</text>
+    <text x="260" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">Code, CMDB, Doku</text>
+    <circle cx="440" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="440" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">3</text>
+    <text x="440" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">SWAO-Engine</text>
+    <text x="440" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">ein Befehl</text>
+    <circle cx="620" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="620" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">4</text>
+    <text x="620" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">Passes</text>
+    <text x="620" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">13 standardmäßig</text>
+    <circle cx="795" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="795" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">5</text>
+    <text x="795" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">Ergebnisse</text>
+    <text x="795" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">Signale, Bewertungen</text>
+    <circle cx="945" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="945" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">6</text>
+    <text x="945" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">7R-Entscheidung</text>
+    <text x="945" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">Migrationspfad</text>
+    <circle cx="1100" cy="122" r="15" fill="#1a0033" stroke="#a100ff" stroke-width="1.5" filter="url(#glow)"/>
+    <text x="1100" y="127.5" text-anchor="middle" font-size="15" font-weight="700" fill="#f2e6ff">7</text>
+    <text x="1100" y="362" text-anchor="middle" font-size="19" font-weight="600" fill="#f2e6ff">Onboarding</text>
+    <text x="1100" y="384" text-anchor="middle" font-size="14.5" fill="#b9a6cc">Landing Zone</text>
+  </g>
+</svg>
