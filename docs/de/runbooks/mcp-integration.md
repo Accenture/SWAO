@@ -206,7 +206,7 @@ Beispielfragen:
 - "Welche Apps erreichen innerhalb von 12 Monaten ihr End of Life?" (ruft
   `swao_service_portfolio` mit `eol_within_months: 12`, `sort_by: eol_date` auf)
 - "Zeige die Apps der Welle 1" (ruft `swao_service_waves` mit `wave: 1` auf)
-- "Was weiß SWAO über <app>?" (ruft `swao_service_app` und für Details
+- "Was weiß SWAO über `<app>`?" (ruft `swao_service_app` und für Details
   `swao_service_research` auf)
 
 ---

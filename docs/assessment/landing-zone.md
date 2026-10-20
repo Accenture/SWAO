@@ -159,8 +159,9 @@ assessment:
 ```
 
 Each entry has the form `<provider>:<region>`. `.swao.yml` validation rejects an entry
-without a colon (`[error] .swao.yml validation failed: ... must have the form
-<provider>:<region>`). The single `provider` + `region` pair stays supported; `provider`
+without a colon:
+`[error] .swao.yml validation failed: ... must have the form <provider>:<region>`.
+The single `provider` + `region` pair stays supported; `provider`
 on its own only names the provider for Pass 23 (LZR).
 
 ### Geographies

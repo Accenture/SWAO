@@ -167,8 +167,9 @@ assessment:
 ```
 
 Jeder Eintrag hat die Form `<anbieter>:<region>`. Die Prüfung der `.swao.yml` weist einen
-Eintrag ohne Doppelpunkt zurück (`[error] .swao.yml validation failed: ... must have the
-form <provider>:<region>`). Das einzelne Paar `provider` + `region` bleibt unterstützt;
+Eintrag ohne Doppelpunkt zurück:
+`[error] .swao.yml validation failed: ... must have the form <provider>:<region>`.
+Das einzelne Paar `provider` + `region` bleibt unterstützt;
 `provider` allein benennt nur den Anbieter für Pass 23 (LZR).
 
 ### Geografien
