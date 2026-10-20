@@ -94,15 +94,30 @@
   border-bottom: 1px solid rgba(161, 0, 255, 0.25);
 }
 
-/* ── Tier 1: sidebar active entry with a purple left border ─────────────── */
-.VPSidebarItem.is-active > .item .link .text {
-  color: #c87bff;
+/* ── Tier 1: sidebar, exactly one highlight for the selected page ─────────
+   Only the active link is highlighted: purple text plus VitePress's own
+   single .indicator bar. Parent groups (.has-active, collapsible headers)
+   keep the normal text colour and no bar. A group whose own link equals the
+   active child's link (Analysis passes and its Overview both point at
+   /passes/) is is-active too; it stands down when it contains an active
+   descendant, so the deepest active link wins. The nested-list guide line
+   stays neutral. (#3362, Design 111 section 3, Iteration 1.) */
+.VPSidebarItem.is-link.is-active > .item .link .text {
+  color: #c87bff !important;
   font-weight: 600;
 }
-.VPSidebarItem.is-active > .item {
-  box-shadow: inset 2px 0 0 #a100ff;
-  margin-left: -12px;
-  padding-left: 10px;
+.VPSidebarItem.is-active > .item > .indicator {
+  background-color: #a100ff !important;
+}
+.VPSidebarItem.is-active:has(.VPSidebarItem.is-active) > .item .link .text {
+  color: var(--vp-c-text-1) !important;
+  font-weight: 500;
+}
+.VPSidebarItem.is-active:has(.VPSidebarItem.is-active) > .item > .indicator {
+  background-color: transparent !important;
+}
+.VPSidebarItem .items {
+  border-left-color: #24242a !important;
 }
 .VPSidebarItem .item:hover .link .text {
   color: #f2f2f5;
@@ -257,4 +272,85 @@
 }
 .dark .VPFeature .details {
   color: #aaaab5;
+}
+
+/* ── Tier 3: home page, latest-release banner and output cards ──────────────
+   #3362, Design 111 section 3, Iteration 1. The cards reuse the neon look of
+   .VPFeature; screenshots come from docs-site/public/home/. */
+.vp-doc .swao-release-banner {
+  margin: 24px 0 32px;
+  padding: 12px 18px;
+  border: 1px solid rgba(27, 186, 164, 0.45);
+  border-left: 3px solid #1bbaa4;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(27, 186, 164, 0.10), rgba(161, 0, 255, 0.08));
+  box-shadow: 0 0 18px rgba(27, 186, 164, 0.10);
+}
+.vp-doc .swao-release-banner p {
+  margin: 0;
+}
+.vp-doc .swao-outputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 20px 0 8px;
+}
+.vp-doc .swao-output {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 18px;
+  border-radius: 12px;
+  background-color: rgba(26, 0, 51, 0.55);
+  border: 1px solid rgba(161, 0, 255, 0.30);
+  box-shadow: 0 0 18px rgba(161, 0, 255, 0.08);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.vp-doc .swao-output:hover {
+  border-color: #a100ff;
+  box-shadow: 0 0 22px rgba(161, 0, 255, 0.30);
+  transform: translateY(-2px);
+}
+.vp-doc .swao-output img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top left;
+  border-radius: 8px;
+  border: 1px solid rgba(161, 0, 255, 0.25);
+  background-color: #070707;
+}
+.vp-doc .swao-output p {
+  margin: 10px 0 0;
+  color: #aaaab5;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.vp-doc .swao-output p:first-child {
+  margin-top: 0;
+}
+.vp-doc .swao-output h3 {
+  margin: 14px 0 0;
+  padding-top: 0;
+  border-top: none;
+  font-size: 17px;
+  color: #f2f2f5;
+}
+.vp-doc .swao-output h3 .header-anchor {
+  display: none;
+}
+.vp-doc .swao-output p:last-child {
+  margin-top: auto;
+  padding-top: 12px;
+  font-weight: 600;
+}
+.vp-doc .swao-edition {
+  display: inline-block;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(200, 123, 255, 0.55);
+  color: #d9b3ff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.8;
 }

@@ -6,7 +6,7 @@ hero:
   text: Sovereign Workload Assessment and Onboarding
   tagline: Audit-grade cloud workload assessments in a single command. No telemetry. No call-home. Your data stays on your machine.
   image:
-    src: /swao-hero.png
+    src: /swao-icon-512.png
     alt: SWAO logo
   actions:
     - theme: brand
@@ -34,6 +34,73 @@ features:
     details: Ask Claude AI questions about your assessment findings in natural language via the Model Context Protocol. Enterprise edition.
 ---
 
+<div class="swao-release-banner">
+
+**Latest release:** download the current binaries and read the release notes on the [SWAO releases page on GitHub](https://github.com/Accenture/SWAO/releases/latest).
+
+</div>
+
+## What you get
+
+<div class="swao-outputs">
+<div class="swao-output">
+
+![SWAO HTML publication of an LLM Assessment for the demo application sovereign-health](/home/html-publication.png)
+
+### HTML publication
+
+A single self-contained HTML file with executive, technical, compliance and auditor views. Open it in any browser, send it by email or use it offline.
+
+<span class="swao-edition">Consultant and Enterprise</span>
+
+[Publish HTML](/publish-html)
+
+</div>
+<div class="swao-output">
+
+![SWAO Power BI report, risks page, for the demo application sovereign-health](/home/power-bi-dashboard.png)
+
+### Power BI dashboards
+
+Pre-built Power BI templates on top of the star-schema export: overview, compliance, signals, risks and auditor pages. The star schema itself is available in every edition.
+
+<span class="swao-edition">Consultant and Enterprise</span>
+
+[Export BI](/export-bi)
+
+</div>
+<div class="swao-output">
+
+![An AI assistant answering a question about the GDPR findings of the demo application sovereign-health through the SWAO MCP server](/home/mcp-chat.png)
+
+### MCP and SWAO Chat
+
+Ask questions about your assessment findings in natural language, from an AI assistant through the Model Context Protocol or in the built-in SWAO Chat.
+
+<span class="swao-edition">Enterprise</span>
+
+[MCP server](/runbooks/mcp-integration)
+
+</div>
+</div>
+
+---
+
+## Editions at a glance
+
+| | Community | Consultant | Enterprise |
+|---|---|---|---|
+| All four assessment types, unlimited single-application runs | Yes | Yes | Yes |
+| Bring your own LLM, or run fully offline | Yes | Yes | Yes |
+| Text and Markdown reports, BI export bundle (star schema) | Yes | Yes | Yes |
+| HTML publication, PDF report, Power BI templates | - | Yes | Yes |
+| Portfolio assessment, reporting and BI export | - | - | Yes |
+| MCP server, SWAO Chat, adversarial challenge review | - | - | Yes |
+
+Community is Apache 2.0 and needs no activation. See [Features & Editions](/features) for the full comparison.
+
+---
+
 ## What is SWAO?
 
 SWAO analyses cloud applications and infrastructure and produces an auditor-grade
@@ -46,29 +113,14 @@ code and assessment data never leave your machine. Bring your own LLM provider.
 
 ---
 
-## What's new in v1.0
-
-- **LLM Assessment**: benchmark multiple AI providers against the same sovereignty
-  controls that govern the assessed workload. Parallel and serial leg execution.
-  Includes the vision pass: Playwright screenshots analysed by the configured LLM.
-- **HTML portal publication**: self-contained single-file report with executive,
-  technical, compliance, and auditor views. Works offline and in air-gapped environments.
-- **Terraform module generation**: `swao generate-tf` produces validated Terraform
-  modules for the assessed landing zone configuration.
-- **Multi-leg LLM runs**: configure 2 to 5 LLM connectors and compare their
-  sovereignty scores side by side in a single command.
-- **Three-tier licensing**: Community (Apache 2.0, no activation), Consultant, and
-  Enterprise. All tiers include the full assessment engine and LLM integration.
-
----
-
 ## Assessment types
 
 | Type | Status | What you get |
 |---|---|---|
-| Application Assessment | Available | Full pipeline: inventory, SBOM, data classification, compliance, 7R synthesis |
-| Landing Zone Assessment | Available | Cloud infrastructure fit/gap report against sovereignty requirements |
-| LLM Assessment | Available | Side-by-side sovereignty benchmarking across multiple LLM providers |
+| [Application Assessment](/assessment/application) | Available | Analysis passes over the application source code and its operational context, with every finding traced to file, derivation and assessor. You get per-control compliance verdicts for your active frameworks, a 7R migration recommendation and a landing zone fit. |
+| [Service Portfolio Assessment](/service-assessment/) | Available | Assesses bought, rented and operated applications (third-party, COTS, SaaS, legacy servers) from a spreadsheet intake, without source code. Each application gets researched vulnerabilities and end of life, scores across eleven portfolio domains and a TIME recommendation; the portfolio gets migration waves and vendor consolidation. |
+| [Landing Zone Catalog Assessment](/assessment/landing-zone) | Available | Checks whether one or more cloud provider regions can host the application under the sovereignty requirements of your active frameworks. You get a per-service fit/gap verdict and an overall verdict per target; the assessment is deterministic and makes no LLM calls. |
+| [LLM Assessment](/assessment/llm) | Available | Reruns a completed Application Assessment with 2 to 5 LLM models side by side to find the model that does SWAO's assessment work best on your application. You get a comparison of quality, reliability, speed, cost and security behaviour, a weighted final ranking and a findings log. |
 
 ---
 

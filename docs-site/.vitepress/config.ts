@@ -127,9 +127,10 @@ const sidebar: Entry[] = [
   },
   {
     en: 'Runbooks', de: 'Runbooks',
+    // Every runbook group collapsed by default (#3362, Design 111 Iteration 1).
     items: [
       {
-        en: 'Installation', de: 'Installation',
+        en: 'Installation', de: 'Installation', collapsed: true,
         items: [
           { en: 'All platforms (overview)', de: 'Alle Plattformen (Übersicht)', link: '/runbooks/install' },
           { en: 'Windows', de: 'Windows', link: '/runbooks/windows-binary-allowlisting' },
@@ -139,7 +140,7 @@ const sidebar: Entry[] = [
         ],
       },
       {
-        en: 'Configuration', de: 'Konfiguration',
+        en: 'Configuration', de: 'Konfiguration', collapsed: true,
         items: [
           { en: 'LLM gateway authoring', de: 'LLM-Gateway erstellen', link: '/runbooks/llm-gateway-authoring' },
           { en: 'LLM provider swap', de: 'LLM-Anbieter wechseln', link: '/runbooks/llm-provider-swap' },
@@ -149,7 +150,7 @@ const sidebar: Entry[] = [
         ],
       },
       {
-        en: 'Integration', de: 'Integration',
+        en: 'Integration', de: 'Integration', collapsed: true,
         items: [
           { en: 'MCP server', de: 'MCP-Server', link: '/runbooks/mcp-integration' },
           { en: 'CI/CD pipeline', de: 'CI/CD-Pipeline', link: '/runbooks/cicd-pipeline' },
@@ -157,7 +158,7 @@ const sidebar: Entry[] = [
         ],
       },
       {
-        en: 'Operations', de: 'Betrieb',
+        en: 'Operations', de: 'Betrieb', collapsed: true,
         items: [
           { en: 'CLI reference', de: 'CLI-Referenz', link: '/runbooks/cli-reference' },
           { en: 'Health-check output', de: 'Health-Check-Ausgabe', link: '/runbooks/health-check-output' },
@@ -192,7 +193,7 @@ export default defineConfig({
   // bracket placeholders that Vue can't parse. Re-sync with
   // `npm run docs:sync` (see below) when source markdown changes.
   srcDir: './manual',
-  // Static assets (logo.svg, swao-hero.png) live in docs-site/public/. With
+  // Static assets (logo.svg, favicons, swao-icon-512.png) live in docs-site/public/. With
   // srcDir set, VitePress would look in manual/public/ instead, so the logo and
   // favicon returned 404 on the live site.
   vite: {
@@ -200,7 +201,9 @@ export default defineConfig({
   },
   base: '/SWAO/',
   cleanUrls: true,
-  appearance: 'dark',
+  // The brand is designed for dark backgrounds only; no light-mode toggle
+  // (#3361, Design 111 section 3, Iteration 4).
+  appearance: 'force-dark',
   ignoreDeadLinks: true,
   buildEnd: async (siteConfig) => {
     // GitHub Pages 404 fix: /SWAO/en/ has no static file because English
@@ -219,7 +222,26 @@ export default defineConfig({
     await fs.writeFile(join(enDir, 'index.html'), redirectHtml)
   },
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/SWAO/logo.svg' }],
+    // Favicons scaled from the brand icon (docs/brand/assets/logo-icon-dark.png,
+    // mark on black) with Pillow LANCZOS (#3362). Head hrefs need the base.
+    ['link', { rel: 'icon', href: '/SWAO/favicon.ico', sizes: 'any' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/SWAO/favicon-32.png' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/SWAO/favicon-16.png' }],
+    ['link', { rel: 'apple-touch-icon', href: '/SWAO/apple-touch-icon.png' }],
+    // Link previews (#3362, Design 111 section 3, Iteration 1). The image is
+    // the 1280x640 brand social card in docs-site/public/swao-social.png.
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'SWAO Documentation' }],
+    ['meta', { property: 'og:title', content: 'SWAO: Sovereign Workload Assessment and Onboarding' }],
+    ['meta', { property: 'og:description', content: 'Audit-grade cloud workload assessments in a single command. No telemetry, no call-home: your data stays on your machine.' }],
+    ['meta', { property: 'og:image', content: 'https://accenture.github.io/SWAO/swao-social.png' }],
+    ['meta', { property: 'og:image:width', content: '1280' }],
+    ['meta', { property: 'og:image:height', content: '640' }],
+    ['meta', { property: 'og:image:alt', content: 'SWAO logo with the title Sovereign Workload Assessment and Onboarding' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:title', content: 'SWAO: Sovereign Workload Assessment and Onboarding' }],
+    ['meta', { name: 'twitter:description', content: 'Audit-grade cloud workload assessments in a single command. No telemetry, no call-home: your data stays on your machine.' }],
+    ['meta', { name: 'twitter:image', content: 'https://accenture.github.io/SWAO/swao-social.png' }],
   ],
   locales: {
     root: {
