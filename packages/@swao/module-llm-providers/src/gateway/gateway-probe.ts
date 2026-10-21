@@ -371,9 +371,34 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
     };
   }
 
+  // #3375 (ADR-0069): no LLM configured at all is a warning, not a pass. ok
+  // stays null so it never counts as a failed probe; the [WARNING] prefix
+  // renders as WARN. A legacy provider slot without connector: stays a pass.
+  if (!hasLegacyLlmSlot(workspaceRoot)) {
+    return {
+      ok: null,
+      message: `[WARNING] no LLM configured; LLM passes will be skipped (${connectors.length} connector(s) discovered: ` +
+        `${bundled} bundled, ${workspace} workspace)`,
+    };
+  }
   return {
     ok: true,
     message: `[PASS] ${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace); ` +
       'all files schema-valid (no active connector; discovery-only)',
   };
+}
+
+/** #3375: a providers.llm.primary/secondary slot that names a provider or model without a gateway connector. */
+function hasLegacyLlmSlot(workspaceRoot?: string | null): boolean {
+  if (!workspaceRoot) return false;
+  try {
+    const raw = loadYaml(readFileSync(join(workspaceRoot, '.swao.yml'), 'utf-8')) as Record<string, unknown> | null;
+    const llm = (raw?.['providers'] as Record<string, unknown> | undefined)?.['llm'] as Record<string, unknown> | undefined;
+    return ['primary', 'secondary'].some((k) => {
+      const slot = llm?.[k] as Record<string, unknown> | undefined;
+      return typeof slot?.['provider'] === 'string' || typeof slot?.['model'] === 'string';
+    });
+  } catch {
+    return false;
+  }
 }

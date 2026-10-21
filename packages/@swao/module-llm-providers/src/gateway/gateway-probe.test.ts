@@ -124,7 +124,21 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
     else process.env['SWAO_LLM_MODEL'] = savedModel;
   });
 
-  it('stays discovery-only when no connector is active', async () => {
+  it('warns (ok null, not a failure) when no LLM is configured (#3375)', async () => {
+    const r = await buildLlmGatewayProbe(dir);
+    expect(r.ok).toBeNull();
+    expect(r.message).toMatch(/^\[WARNING\] no LLM configured; LLM passes will be skipped/);
+  });
+
+  it('stays discovery-only when a legacy provider slot without connector is configured (#3375)', async () => {
+    writeFileSync(join(dir, '.swao.yml'), [
+      'providers:',
+      '  llm:',
+      '    primary:',
+      '      provider: anthropic',
+      '      model: claude-sonnet-4-6',
+      '',
+    ].join('\n'), 'utf-8');
     const r = await buildLlmGatewayProbe(dir);
     expect(r.ok).toBe(true);
     expect(r.message).toContain('discovery-only');

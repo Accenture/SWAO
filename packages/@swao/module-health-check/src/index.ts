@@ -142,8 +142,8 @@ export const probes: ProbeContribution[] = [
   {
     id: 'prerequisites',
     name: 'prerequisites',
-    run: async () => {
-      const r = buildPrerequisitesProbe();
+    run: async ({ workspacePath }) => {
+      const r = buildPrerequisitesProbe(workspacePath);
       return { ok: r.status !== 'fail', message: r.message };
     },
   },

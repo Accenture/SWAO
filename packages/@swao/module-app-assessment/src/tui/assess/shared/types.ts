@@ -24,4 +24,8 @@ export interface LocalConnectorInfo {
   baseUrl: string;
   protocol: string;
   defaultModel: string;
+  /** #3385: false when the connector sets tls.reject_unauthorized: false. */
+  rejectUnauthorized?: boolean;
+  /** #3385: model of this run (app or workspace .swao.yml); the preflight pings it, not defaultModel. */
+  model?: string;
 }

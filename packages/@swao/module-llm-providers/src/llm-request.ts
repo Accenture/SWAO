@@ -264,7 +264,34 @@ export interface LlmCallSpec<T> {
   run: (wd: AttemptWatchdog) => Promise<LlmAttemptResult<T>>;
 }
 
+// #3384: certificate errors cannot succeed on a retry; they surface as
+// "fetch failed" with the TLS code on the cause chain.
+const TLS_CERT_ERROR_CODES = new Set([
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'CERT_HAS_EXPIRED',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'CERT_UNTRUSTED',
+]);
+
+export const TLS_CERT_HINT =
+  'TLS certificate not trusted: set tls.reject_unauthorized: false or tls.ca_bundle in the connector YAML, or NODE_EXTRA_CA_CERTS';
+
+/** The TLS certificate error code on the error or its cause chain, or null. */
+export function tlsCertErrorCode(err: unknown): string | null {
+  let cur: unknown = err;
+  for (let depth = 0; depth < 5 && cur && typeof cur === 'object'; depth++) {
+    const code = (cur as { code?: unknown }).code;
+    if (typeof code === 'string' && TLS_CERT_ERROR_CODES.has(code)) return code;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return null;
+}
+
 function isRetryableNetworkError(err: Error): boolean {
+  if (tlsCertErrorCode(err)) return false;
   // "fetch failed" = TCP-level failure; ECONNRESET / ETIMEDOUT = transient.
   // AbortError / TimeoutError arise from abort signals (#1086).
   // "terminated" = undici closes the response body mid-stream (#2016).
@@ -424,6 +451,21 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
         lastError = err;
         lastReason = `timeout_${err.limit}_${err.phase}`;
         continue;
+      }
+
+      const tlsCode = tlsCertErrorCode(err);
+      if (tlsCode) {
+        // #3384: fail at once with the fix, instead of six retries with back-off.
+        const message = `${label} ${model}${kindLabel}: ${TLS_CERT_HINT} (${tlsCode})`;
+        emit('error', 'error',
+          `${label} ${model}${kindLabel} attempt ${attemptNo}/${maxAttempts} failed: ${TLS_CERT_HINT} (${tlsCode})`, {
+            ...base, attempt: attemptNo, max_attempts: maxAttempts,
+            reason: 'tls_certificate', error_name: err.name, tls_code: tlsCode,
+            error_message: err.message.slice(0, 300), latency_ms: latencyMs,
+          });
+        const tlsErr = new Error(message, { cause: err });
+        tlsErr.name = 'LlmTlsCertificateError';
+        throw tlsErr;
       }
 
       const retryable = isRetryableNetworkError(err) || (spec.isRetryableError?.(err) ?? false);

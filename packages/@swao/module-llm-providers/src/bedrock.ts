@@ -64,9 +64,16 @@ function isBedrockRetryable(err: Error): boolean {
 
 /** A model without tool use (#3311): ValidationException such as "This model
  *  doesn't support tool use." The wording varies, so the match is loose. */
-function isBedrockToolsUnsupported(err: unknown): boolean {
+export function isBedrockToolsUnsupported(err: unknown): boolean {
   if (!(err instanceof Error) || err.name !== 'ValidationException') return false;
-  return /(?:does ?n[o']t|not) support tool|tool use (?:is )?not supported|tool ?use.*unsupported/i.test(err.message);
+  // CodeQL #127 (js/polynomial-redos): plain substring checks instead of a regex
+  // with a greedy wildcard over the provider message.
+  const m = err.message.toLowerCase();
+  const support = m.indexOf('support tool');
+  if (support > 0 && /(?:doesn't|doesnt|does not|don't|not) $/.test(m.slice(Math.max(0, support - 9), support))) return true;
+  if (m.includes('tool use not supported') || m.includes('tool use is not supported')) return true;
+  const tu = m.indexOf('tool use') >= 0 ? m.indexOf('tool use') : m.indexOf('tooluse');
+  return tu >= 0 && m.indexOf('unsupported', tu) > tu;
 }
 
 /**

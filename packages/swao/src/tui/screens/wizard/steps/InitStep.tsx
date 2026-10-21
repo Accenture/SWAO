@@ -55,6 +55,14 @@ export function ConfirmContinue({ onConfirm, onBack }: { onConfirm: () => void; 
   return null;
 }
 
+// #3373: Enter-only confirmation (Escape is handled by the wizard shell).
+function ConfirmEnter({ onConfirm }: { onConfirm: () => void }) {
+  useInput((_input, key) => {
+    if (key.return) onConfirm();
+  });
+  return null;
+}
+
 function ConfirmOrEdit({ onConfirm, onEdit, onBack }: { onConfirm: () => void; onEdit: () => void; onBack: () => void }) {
   useInput((input, key) => {
     if (key.return) onConfirm(); // #1412: same one-press advance
@@ -386,18 +394,19 @@ export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagement
     <Box flexDirection="column">
       <Text bold color="cyanBright">Step 1 -- Initialise Workspace</Text>
       <Text dimColor>Creates .swao.yml for a new workspace, or continues with an existing one.</Text>
+      {/* #3373 / ADR-0070: the portfolio root is the folder SWAO runs in; no
+          free-text directory, because the TUI and its child commands work
+          from this folder (a sub-folder workspace was not found by the health
+          check and the support bundle). */}
       <Box marginTop={1} flexDirection="column">
-        <TextInput
-          label="Workspace directory (Enter for current)"
-          placeholder="."
-          onSubmit={tryDir}
-          active
-        />
+        <Text>Portfolio root: <Text bold color="whiteBright">{resolve('.')}</Text></Text>
+        <Text dimColor>Press Enter to use this folder. To use another folder, quit, copy the SWAO executable there and start it from that folder.</Text>
+        <ConfirmEnter onConfirm={() => tryDir('.')} />
       </Box>
       {error && <Text color="red">{error}</Text>}
       <GuidanceBox
-        title="Workspace directory"
-        what="Folder for this engagement. Enter for current directory; existing workspaces are detected and reused."
+        title="Portfolio root"
+        what="The folder SWAO was started in is the portfolio root: .swao.yml, apps/ and wsp/ are created here. An existing workspace in this folder is detected and reused."
         affordances={['Enter -- confirm  |  Esc -- back']}
         onOpenChange={setWizardGuidanceOpen}
       />

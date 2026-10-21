@@ -73,6 +73,8 @@ import {
   LlmHttpStatusError,
   LLM_MAX_ATTEMPTS,
   LLM_CHAT_MAX_ATTEMPTS,
+  TLS_CERT_HINT,
+  tlsCertErrorCode,
 } from './llm-request.js';
 import {
   acquireLlmSlot,
@@ -434,6 +436,44 @@ describe('requestLlmWithRetry policy', () => {
       ...spec,
       run: async () => { throw new LlmHttpStatusError('401', 401, { throwAs: replacement }); },
     })).rejects.toBe(replacement);
+  });
+
+  // #3384: a self-signed corporate chain cannot succeed on a retry.
+  it('certificate error on the cause chain fails after one attempt with the TLS hint', async () => {
+    let calls = 0;
+    const certErr = Object.assign(new Error('self-signed certificate in certificate chain'), { code: 'SELF_SIGNED_CERT_IN_CHAIN' });
+    await expect(requestLlmWithRetry({
+      ...spec,
+      run: async () => { calls += 1; throw new TypeError('fetch failed', { cause: certErr }); },
+    })).rejects.toThrow(TLS_CERT_HINT);
+    expect(calls).toBe(1);
+    expect(eventsOf('provider.llm.unit.retry')).toHaveLength(0);
+    const errs = eventsOf('provider.llm.unit.error');
+    expect(errs).toHaveLength(1);
+    expect(ctxOf(errs[0])).toMatchObject({ reason: 'tls_certificate', tls_code: 'SELF_SIGNED_CERT_IN_CHAIN' });
+  });
+
+  it('tlsCertErrorCode walks nested causes and ignores transient codes', () => {
+    const nested = new TypeError('fetch failed', { cause: new Error('wrap', { cause: Object.assign(new Error('x'), { code: 'CERT_HAS_EXPIRED' }) }) });
+    expect(tlsCertErrorCode(nested)).toBe('CERT_HAS_EXPIRED');
+    expect(tlsCertErrorCode(new TypeError('fetch failed', { cause: Object.assign(new Error('reset'), { code: 'ECONNRESET' }) }))).toBeNull();
+  });
+
+  it('a transient ECONNRESET is still retried', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const p = withLlmAttemptLimit(2, () => requestLlmWithRetry({
+      ...spec,
+      run: async () => {
+        calls += 1;
+        if (calls === 1) throw new TypeError('fetch failed', { cause: Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }) });
+        return { value: 'ok', status: 200, okContext: {} };
+      },
+    }));
+    await vi.runAllTimersAsync();
+    await expect(p).resolves.toBe('ok');
+    expect(calls).toBe(2);
+    expect(eventsOf('provider.llm.unit.retry')).toHaveLength(1);
   });
 
   it('withLlmAttemptLimit lowers the count for probes ("attempt N/4")', async () => {

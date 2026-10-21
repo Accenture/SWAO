@@ -20,10 +20,14 @@
 // paths), and Node.js (the runtime itself; sanity check the version).
 //
 // Doesn't fail-hard on missing tools -- reports `warn` for the optional
-// ones and `fail` only for `git` (which is the most common dependency).
+// ones. Missing `git` is `fail` only when an app declares a VCS source;
+// otherwise `warn` (#3375, ADR-0069: FAIL only when an assessment cannot run).
 // Codifies what the sprint-034 Dockerfile fix (#0326 Part B) made implicit.
 
 import { spawnSync } from 'child_process';
+import { existsSync, readdirSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { load } from 'js-yaml';
 
 export type PrerequisitesProbeStatus = 'ok' | 'info' | 'warn' | 'fail';
 
@@ -73,27 +77,51 @@ function detectTool(cmd: string, versionArg: string, linePattern?: RegExp): stri
   }
 }
 
-export function buildPrerequisitesProbe(): PrerequisitesProbeResult {
+/** #3375: app ids under apps/ whose .swao.yml declares a VCS source (source.vcs with url or type). */
+export function findVcsSourcedApps(workspacePath?: string): string[] {
+  if (!workspacePath) return [];
+  const appsDir = join(workspacePath, 'apps');
+  if (!existsSync(appsDir)) return [];
+  const out: string[] = [];
+  let entries: string[] = [];
+  try { entries = readdirSync(appsDir); } catch { return []; }
+  for (const id of entries.sort()) {
+    const yml = join(appsDir, id, '.swao.yml');
+    if (!existsSync(yml)) continue;
+    try {
+      const raw = load(readFileSync(yml, 'utf-8')) as Record<string, any> | null;
+      const vcs = raw?.['source']?.['vcs'];
+      if (vcs && typeof vcs === 'object' && (typeof vcs['url'] === 'string' || typeof vcs['type'] === 'string')) out.push(id);
+    } catch { /* unreadable app config: not counted */ }
+  }
+  return out;
+}
+
+export function buildPrerequisitesProbe(
+  workspacePath?: string,
+  opts: { detect?: (cmd: string, versionArg: string, linePattern?: RegExp) => string | null } = {},
+): PrerequisitesProbeResult {
+  const detect = opts.detect ?? detectTool;
   // #2964 Part C: when running as a pkg binary, Node is embedded -- it will
   // never appear on PATH. Skip the `node` PATH check to avoid a false-positive
   // 'not on PATH' result that confuses operators into thinking something is wrong.
   const isBinary = Object.prototype.hasOwnProperty.call(process, 'pkg');
   // `git --version` -> "git version 2.43.0"
-  const gitVersion = detectTool('git', '--version');
+  const gitVersion = detect('git', '--version');
   // `ssh -V` -> "OpenSSH_9.0p1, OpenSSL ..." (writes to stderr)
-  const sshVersion = detectTool('ssh', '-V');
+  const sshVersion = detect('ssh', '-V');
   // `node --version` -> "v22.11.0"; scan all lines because pkg binaries may
   // emit extra module-path lines alongside the version string (#2896).
   // In binary mode, Node is embedded and will not appear on PATH.
-  const nodeVersion = isBinary ? process.version : detectTool('node', '--version', /^v\d+\.\d+\.\d+/);
+  const nodeVersion = isBinary ? process.version : detect('node', '--version', /^v\d+\.\d+\.\d+/);
   // Pass 14 malware scan tools -- optional; warn when any are absent so operators
   // know what to install before running `swao assess --passes malware`.
   // gitleaks uses a positional `version` subcommand rather than `--version`.
-  const gitleaksVersion = detectTool('gitleaks', 'version');
-  const osvVersion = detectTool('osv-scanner', '--version');
+  const gitleaksVersion = detect('gitleaks', 'version');
+  const osvVersion = detect('osv-scanner', '--version');
   // ClamAV: probe `clamscan` (one-shot binary, always present when clamav is installed)
-  const clamavVersion = detectTool('clamscan', '--version');
-  const yaraVersion = detectTool('yara', '--version');
+  const clamavVersion = detect('clamscan', '--version');
+  const yaraVersion = detect('yara', '--version');
 
   const tools: PrerequisitesProbeResult['tools'] = [
     { name: 'git',        available: gitVersion   !== null, version: gitVersion,   required: true  },
@@ -106,10 +134,20 @@ export function buildPrerequisitesProbe(): PrerequisitesProbeResult {
   ];
 
   if (!tools[0].available) {
+    const install = 'Install git: brew install git (macOS), apt-get install git (Debian/Ubuntu), or https://git-scm.com/downloads (Windows).';
+    const vcsApps = findVcsSourcedApps(workspacePath);
+    if (vcsApps.length > 0) {
+      return {
+        status: 'fail',
+        tools,
+        message: `\`git\` not found on PATH. Required for \`swao assess\` of the VCS-sourced app(s) ${vcsApps.join(', ')}. ${install}`,
+      };
+    }
+    // #3375: no app clones from a repository, so assessments still run.
     return {
-      status: 'fail',
+      status: 'warn',
       tools,
-      message: '`git` not found on PATH. Required for `swao assess` against any VCS-sourced app. Install git: brew install git (macOS), apt-get install git (Debian/Ubuntu), or https://git-scm.com/downloads (Windows).',
+      message: `\`git\` not found on PATH. Only needed for apps with a VCS source (none configured); local folders, uploads, service and LZ assessments work without it. ${install}`,
     };
   }
 

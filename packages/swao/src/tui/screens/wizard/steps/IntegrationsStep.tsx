@@ -127,7 +127,7 @@ export function ClaudeDesktopStep({
   if (status === 'done') {
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+        <Text bold color="cyanBright">MCP Client Setup</Text>
         <Box marginTop={1} flexDirection="column">
           {/* #3163: one line per config file SWAO touched (path + result). */}
           {outcomes.map((o) => (
@@ -158,7 +158,7 @@ export function ClaudeDesktopStep({
   if (licenceRefusal !== undefined) {
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+        <Text bold color="cyanBright">MCP Client Setup</Text>
         <Box marginTop={1} flexDirection="column">
           {licenceRefusal.split('\n').map((line, i) => (
             <Text key={`lic-${i}`} color={i === 0 ? 'yellow' : undefined}>{line}</Text>
@@ -174,13 +174,14 @@ export function ClaudeDesktopStep({
   if (!installed) {
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+        <Text bold color="cyanBright">MCP Client Setup</Text>
         <Box marginTop={1}>
           <Text color="yellow">No MCP client detected.</Text>
         </Box>
         <Text dimColor>SWAO could not find a Claude Desktop config at:</Text>
         <Text dimColor>  {configPath}</Text>
-        <Box marginTop={1}>
+        {/* #3386: column layout; Ink rows put both hint lines side by side. */}
+        <Box marginTop={1} flexDirection="column">
           <Text dimColor>If you do not use Claude Desktop, you can skip this step.</Text>
           <Text dimColor>To add SWAO as an MCP server manually later, run: <Text bold>swao mcp --help</Text></Text>
         </Box>
@@ -200,7 +201,7 @@ export function ClaudeDesktopStep({
 
   return (
     <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+      <Text bold color="cyanBright">MCP Client Setup</Text>
       <Text>Detected Claude Desktop config at: <Text bold color="whiteBright">{configPath}</Text></Text>
       <Text dimColor>(SWAO probes only Claude Desktop today -- it is the only MCP host currently shipped. Path is Claude\ because that is the host detected.)</Text>
       {/* #3163: list every file Enter will write, not only the effective one. */}
@@ -305,7 +306,7 @@ export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number)
     const valid = !isNaN(screens) && screens >= MIN_VISION_SCREENS && screens <= MAX_VISION_SCREENS;
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
+        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
         <Text color="green">Chromium is installed.</Text>
         <Box marginTop={1} flexDirection="column">
           <Text bold>Vision analysis: how many screenshots should SWAO send to the LLM per assessment?</Text>
@@ -326,7 +327,7 @@ export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number)
   if (playwrightOk === null) {
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
+        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
         <Text dimColor>Checking Chromium...</Text>
         {crawlerGuidance}
       </Box>
@@ -336,7 +337,7 @@ export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number)
   if (playwrightOk) {
     return (
       <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
+        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
         <Text color="green">Chromium is installed -- the dynamic UI crawler pass is available.</Text>
         <Text dimColor>SWAO will capture screenshots and analyse web app UI flows during assessments.</Text>
         <Box marginTop={1}><Text dimColor>Press Enter to configure vision settings and continue...</Text></Box>
@@ -347,7 +348,7 @@ export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number)
 
   return (
     <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 5 -- Dynamic UI Crawler (optional)</Text>
+      <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
       <Text color="yellow">Chromium not detected. Press Ctrl+G to see install instructions.</Text>
       <Box marginTop={1} flexDirection="column">
         <Text dimColor>  <Text color="cyanBright">S</Text>      -- Open shell here (to run: swao install-playwright)</Text>

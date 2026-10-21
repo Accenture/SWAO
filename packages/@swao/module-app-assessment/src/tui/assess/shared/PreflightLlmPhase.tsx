@@ -24,8 +24,15 @@ import { Box, Text, useInput } from 'ink';
 import { logPortfolio } from '@swao/core';
 import { GuidanceBox } from '@swao/tui-kit';
 import type { LocalConnectorInfo } from './types.js';
+import { buildPreflightRequest, type PreflightRequest } from './preflight-request.js';
 
 type PingStatus = 'running' | 'ok' | 'warn' | 'fail';
+
+/** POST the preflight request with the global fetch (no certificate bypass in the TUI, #3385). */
+async function sendPreflight(req: PreflightRequest, signal: AbortSignal): Promise<{ ok: boolean; status: number; text: string }> {
+  const resp = await fetch(req.url, { method: 'POST', headers: req.headers, body: JSON.stringify(req.body), signal });
+  return { ok: resp.ok, status: resp.status, text: resp.ok ? '' : await resp.text().catch(() => '') };
+}
 
 interface PreflightResult {
   connectorId: string;
@@ -55,7 +62,6 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
   useEffect(() => {
     let cancelled = false;
     const PING_TIMEOUT_MS = 20_000;
-    const PING_PROMPT = 'SWAO connectivity check. Reply with the single word: OK';
 
     void (async () => {
       if (!apiKey) {
@@ -69,52 +75,42 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
       const pingStart = Date.now();
+      const req = buildPreflightRequest(connector, apiKey);
       try {
-        const proto = connector.protocol;
-        let url: string;
-        let reqBody: Record<string, unknown>;
-        const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (proto === 'anthropic-messages') {
-          url = `${connector.baseUrl}/v1/messages`;
-          reqBody = { model: connector.defaultModel, max_tokens: 16, messages: [{ role: 'user', content: PING_PROMPT }] };
-          reqHeaders['x-api-key'] = apiKey;
-          reqHeaders['anthropic-version'] = '2023-06-01';
-        } else if (proto === 'ollama') {
-          url = `${connector.baseUrl}/api/chat`;
-          reqBody = { model: connector.defaultModel, messages: [{ role: 'user', content: PING_PROMPT }], stream: false };
-        } else {
-          // openai-chat and bedrock (OpenAI-compatible path)
-          url = `${connector.baseUrl}/chat/completions`;
-          reqBody = { model: connector.defaultModel, max_tokens: 16, messages: [{ role: 'user', content: PING_PROMPT }] };
-          reqHeaders['Authorization'] = `Bearer ${apiKey}`;
-        }
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: reqHeaders,
-          body: JSON.stringify(reqBody),
-          signal: controller.signal,
-        });
+        const resp = await sendPreflight(req, controller.signal);
         clearTimeout(timeoutId);
         if (cancelled) return;
         if (resp.ok) {
           // #2383: log preflight ping result to portfolio event log for operator visibility
-          try { logPortfolio('info', 'assess.preflight.llm.ping.ok', 'LLM preflight ping succeeded', { context: { app, connector_id: connector.id, protocol: connector.protocol, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
-          setResults([{ connectorId: connector.id, status: 'ok', message: 'reachable' }]);
+          try { logPortfolio('info', 'assess.preflight.llm.ping.ok', 'LLM preflight ping succeeded', { context: { app, connector_id: connector.id, protocol: connector.protocol, model: req.model, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
+          setResults([{ connectorId: connector.id, status: 'ok', message: `reachable (${req.model})` }]);
           setDone(true);
           onPass();
         } else {
-          const errText = await resp.text().catch(() => '');
           // #2383: log preflight ping failure to portfolio event log
-          try { logPortfolio('warn', 'assess.preflight.llm.ping.fail', 'LLM preflight ping failed', { context: { app, connector_id: connector.id, protocol: connector.protocol, http_status: resp.status, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
-          setResults([{ connectorId: connector.id, status: 'fail', message: `HTTP ${resp.status}: ${errText.slice(0, 80)}` }]);
+          try { logPortfolio('warn', 'assess.preflight.llm.ping.fail', 'LLM preflight ping failed', { context: { app, connector_id: connector.id, protocol: connector.protocol, model: req.model, endpoint: req.url, http_status: resp.status, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
+          setResults([{ connectorId: connector.id, status: 'fail', message: `HTTP ${resp.status} (${req.model}): ${resp.text.slice(0, 80)}` }]);
           setDone(true);
         }
       } catch (err) {
         clearTimeout(timeoutId);
         if (cancelled) return;
+        const cause = (err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code;
+        const certError = !!cause && /CERT|SELF_SIGNED|UNABLE_TO_VERIFY/.test(cause);
+        // #3385: the pre-check never bypasses certificate checks itself. When the
+        // connector disables verification, the provider applies it during the run,
+        // so a certificate error here is a warning, not a failure.
+        if (certError && connector.rejectUnauthorized === false) {
+          try { logPortfolio('info', 'assess.preflight.llm.ping.tls-skipped', 'LLM preflight: certificate not checked (connector disables TLS verification)', { context: { app, connector_id: connector.id, model: req.model, cause } }); } catch { /* best-effort */ }
+          setResults([{ connectorId: connector.id, status: 'warn', message: `certificate not checked by the pre-check (connector sets tls.reject_unauthorized: false; the assessment applies it). Model: ${req.model}` }]);
+          setDone(true);
+          return;
+        }
         const msg = (err as Error).name === 'AbortError'
           ? `timed out after ${PING_TIMEOUT_MS / 1000}s`
-          : (err as Error).message;
+          : certError
+            ? `TLS certificate not trusted (${cause}): set tls.reject_unauthorized: false or tls.ca_bundle in the connector YAML`
+            : (err as Error).message;
         // #2383: log preflight ping error to portfolio event log
         try { logPortfolio('warn', 'assess.preflight.llm.ping.fail', 'LLM preflight ping error', { context: { app, connector_id: connector.id, error: msg, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
         setResults([{ connectorId: connector.id, status: 'fail', message: msg }]);

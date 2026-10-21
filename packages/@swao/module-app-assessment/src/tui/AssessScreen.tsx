@@ -342,6 +342,8 @@ export function buildChildEnv(
   // Per-app config takes precedence over workspace config; workspace is the fallback.
   const effectiveLlm: WorkspaceLlmConfig = { ...wsLlm, ...Object.fromEntries(Object.entries(appLlm).filter(([, v]) => v !== undefined)) };
   const env = { ...process.env };
+  // #3387: Node process warnings (experimental APIs, TLS env) stay out of the TUI output.
+  env['NODE_NO_WARNINGS'] = '1';
   // #1409: gateway connector config wins (Design 090). Without this branch
   // the legacy key-based detection below silently rerouted gateway
   // workspaces to anthropic/openai while the TUI banner said "Gateway:".
@@ -488,6 +490,7 @@ function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
           id?: string; name?: string; base_url?: string; protocol?: string;
           models?: { default?: string };
           auth?: { credential_key?: string; env_var?: string };
+          tls?: { reject_unauthorized?: boolean };
         };
       } | null;
       const c = raw?.connector;
@@ -502,6 +505,7 @@ function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
         baseUrl: c?.base_url ?? '',
         protocol: c?.protocol ?? '',
         defaultModel: c?.models?.default ?? '',
+        rejectUnauthorized: c?.tls?.reject_unauthorized,
       });
     } catch { /* skip invalid connector files */ }
   }
@@ -1135,7 +1139,8 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
     const resolvedApiKey = active.credentialKey
       ? (storedCreds[active.credentialKey] ?? undefined)
       : (active.envVar ? process.env[active.envVar] : undefined);
-    setPreflightConnector(active);
+    // #3385: ping the model of this run, not the connector default.
+    setPreflightConnector({ ...active, model: appLlm.model ?? wsLlmConfig.model });
     setPreflightApiKey(resolvedApiKey);
     setPhase('preflight-llm');
   };

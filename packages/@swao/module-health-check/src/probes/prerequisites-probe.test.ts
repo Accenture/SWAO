@@ -120,3 +120,56 @@ describe('buildPrerequisitesProbe -- binary mode', { timeout: 60_000 }, () => { 
     expect(probe.message).not.toMatch(/node.*not on PATH/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// #3375 (ADR-0069): missing git is WARN unless an app declares a VCS source
+// ---------------------------------------------------------------------------
+
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { findVcsSourcedApps } from './prerequisites-probe.js';
+
+describe('buildPrerequisitesProbe -- git rule (#3375)', () => {
+  let ws: string;
+  // Every tool present except git.
+  const noGit = (cmd: string) => (cmd === 'git' ? null : `${cmd} 1.0.0`);
+  beforeEach(() => {
+    ws = mkdtempSync(join(tmpdir(), 'swao-prereq-'));
+    mkdirSync(join(ws, 'apps', 'local-app'), { recursive: true });
+    writeFileSync(join(ws, 'apps', 'local-app', '.swao.yml'), 'app_id: local-app\nsource:\n  path: wsp/inputs/source/\n', 'utf-8');
+  });
+  afterEach(() => rmSync(ws, { recursive: true, force: true }));
+
+  it('warns (not fails) when git is missing and no app has a VCS source', () => {
+    const probe = buildPrerequisitesProbe(ws, { detect: noGit });
+    expect(probe.status).toBe('warn');
+    expect(probe.message).toMatch(/git/);
+    expect(probe.message).toMatch(/none configured/);
+  });
+
+  it('warns when git is missing and there is no workspace', () => {
+    expect(buildPrerequisitesProbe(undefined, { detect: noGit }).status).toBe('warn');
+  });
+
+  it('fails when git is missing and an app declares a VCS source, naming the app', () => {
+    mkdirSync(join(ws, 'apps', 'vcs-app'), { recursive: true });
+    writeFileSync(join(ws, 'apps', 'vcs-app', '.swao.yml'),
+      'app_id: vcs-app\nsource:\n  vcs:\n    type: github\n    url: https://github.com/example/repo.git\n', 'utf-8');
+    const probe = buildPrerequisitesProbe(ws, { detect: noGit });
+    expect(probe.status).toBe('fail');
+    expect(probe.message).toContain('vcs-app');
+    expect(probe.message).not.toContain('local-app');
+  });
+
+  it('findVcsSourcedApps ignores apps without source.vcs and unreadable files', () => {
+    mkdirSync(join(ws, 'apps', 'broken'), { recursive: true });
+    writeFileSync(join(ws, 'apps', 'broken', '.swao.yml'), ':\n  - [unclosed', 'utf-8');
+    expect(findVcsSourcedApps(ws)).toEqual([]);
+  });
+
+  it('is ok when every tool is present', () => {
+    const probe = buildPrerequisitesProbe(ws, { detect: (cmd) => `${cmd} 1.0.0` });
+    expect(['ok', 'info']).toContain(probe.status);
+  });
+});

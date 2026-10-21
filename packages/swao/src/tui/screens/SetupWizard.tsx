@@ -49,7 +49,7 @@ function McpUpgradeNotice({ onNext }: { onNext: () => void }) {
   });
   return (
     <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 4 -- MCP Client Setup</Text>
+      <Text bold color="cyanBright">MCP Client Setup</Text>
       <Box
         flexDirection="column"
         marginTop={1}
@@ -226,6 +226,7 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
         <CredentialsStep
           provider={state.llmProvider}
           workspaceRoot={state.workDir}
+          model={state.llmModel}
           stepNumber={stepIdx + 1}
           onNext={() => {
             if (!loggedSteps.current.has('credentials')) {
@@ -244,6 +245,7 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
       {step === 'credentials-secondary' && state.llmSecondaryProvider && (
         <CredentialsStep
           provider={state.llmSecondaryProvider}
+          model={state.llmSecondaryModel}
           workspaceRoot={state.workDir}
           stepNumber={stepIdx + 1}
           onNext={() => {

@@ -288,6 +288,7 @@ function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
           id?: string; name?: string; base_url?: string; protocol?: string;
           models?: { default?: string };
           auth?: { credential_key?: string; env_var?: string };
+          tls?: { reject_unauthorized?: boolean };
         };
       } | null;
       const c = raw?.connector;
@@ -302,6 +303,7 @@ function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
         baseUrl: c?.base_url ?? '',
         protocol: c?.protocol ?? '',
         defaultModel: c?.models?.default ?? '',
+        rejectUnauthorized: c?.tls?.reject_unauthorized,
       });
     } catch { /* skip invalid connector files */ }
   }
@@ -824,7 +826,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const resolvedApiKey = active.credentialKey
       ? (storedCreds[active.credentialKey] ?? undefined)
       : (active.envVar ? process.env[active.envVar] : undefined);
-    setPreflightConnector(active);
+    // #3385: ping the model of this run, not the connector default.
+    setPreflightConnector({ ...active, model: appLlm.model ?? wsLlmConfig.model });
     setPreflightApiKey(resolvedApiKey);
     setPhase('preflight-llm');
   };

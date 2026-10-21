@@ -18,6 +18,8 @@ export type { LlmProvider, LlmUsage, LlmTrace, LlmTool, LlmCompletion, LlmToolCh
 export { completeWithUsage, completeVisionWithUsage, completeWithToolsWithUsage } from './completion.js';
 export { anthropicCostUsd } from './types.js';
 export { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
+// #3381 / #3385: connectivity checks with the connector's TLS and proxy rules.
+export { connectorPostJson, openAiChatCompletionsUrl, type ConnectorFetchResult } from './gateway/connector-fetch.js';
 export { FixedLlmProvider } from './fixed.js';
 export { OllamaLlmProvider } from './ollama.js';
 export { AnthropicLlmProvider, LlmConnectivityError } from './anthropic.js';

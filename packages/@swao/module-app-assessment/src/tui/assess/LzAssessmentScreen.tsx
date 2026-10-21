@@ -166,13 +166,13 @@ function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
   for (const entry of entries.sort()) {
     try {
       const raw = loadYaml(readFileSync(join(wsDir, entry), 'utf-8')) as {
-        connector?: { id?: string; name?: string; base_url?: string; protocol?: string; models?: { default?: string }; auth?: { credential_key?: string; env_var?: string } };
+        connector?: { id?: string; name?: string; base_url?: string; protocol?: string; models?: { default?: string }; auth?: { credential_key?: string; env_var?: string }; tls?: { reject_unauthorized?: boolean } };
       } | null;
       const c = raw?.connector;
       const id = c?.id;
       if (!id || seen.has(id)) continue;
       seen.add(id);
-      out.push({ id, name: c?.name ?? id, credentialKey: c?.auth?.credential_key, envVar: c?.auth?.env_var, baseUrl: c?.base_url ?? '', protocol: c?.protocol ?? '', defaultModel: c?.models?.default ?? '' });
+      out.push({ id, name: c?.name ?? id, credentialKey: c?.auth?.credential_key, envVar: c?.auth?.env_var, baseUrl: c?.base_url ?? '', protocol: c?.protocol ?? '', defaultModel: c?.models?.default ?? '', rejectUnauthorized: c?.tls?.reject_unauthorized });
     } catch { /* skip */ }
   }
   return out;
@@ -329,7 +329,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const resolvedApiKey = active.credentialKey
       ? (storedCreds[active.credentialKey] ?? undefined)
       : (active.envVar ? process.env[active.envVar] : undefined);
-    setPreflightConnector(active);
+    // #3385: ping the model of this run, not the connector default.
+    setPreflightConnector({ ...active, model: appLlm.model ?? wsLlmConfig.model });
     setPreflightApiKey(resolvedApiKey);
     setPhase('preflight-llm');
   };

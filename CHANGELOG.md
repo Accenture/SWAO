@@ -11,6 +11,45 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.2] - 2026-10-21
+
+Patch release from a field test of 1.4.1 on a corporate network with a self-hosted,
+OpenAI-compatible LLM gateway behind a self-signed certificate chain.
+
+### Fixed
+
+- Assessment start check (application and landing-zone assessments): calls
+  `{base_url}/v1/chat/completions` like the provider (a `base_url` ending in `/v1` is
+  kept), pings the model configured for the run instead of the connector default, and
+  honours `tls.reject_unauthorized: false` of the connector. It no longer reports
+  HTTP 404 for OpenAI-compatible connectors whose `base_url` has no `/v1` (#3385)
+- Setup wizard connectivity check: pings the model selected in the LLM step and uses
+  the connector's TLS and proxy settings (#3381)
+- LLM requests that fail on an untrusted TLS certificate are no longer retried six
+  times; they fail at once and name the fix (`tls.reject_unauthorized: false` or
+  `tls.ca_bundle` in the connector file, or `NODE_EXTRA_CA_CERTS`) (#3384)
+- Setup wizard Init step uses the folder SWAO was started in as the portfolio root
+  instead of asking for a directory; a workspace created in a sub-folder was not found
+  by the health check and the support bundle (#3373)
+- Health check: no configured LLM is reported as WARN ("LLM passes will be skipped")
+  instead of OK and does not count as a failed probe; a missing `git` is WARN unless
+  an app declares a VCS source (#3375)
+- Setup wizard: MCP Client step hint lines no longer render side by side (#3386);
+  step headers no longer show a hard-coded step number that disagreed with the
+  stepper (#3377)
+- Terminal screens that stream child output (assessments, stakeholder challenge) no
+  longer show Node process warnings; the "TLS certificate verification disabled"
+  warning is logged once per connector instead of on every LLM call (#3387)
+
+### Security
+
+- Bedrock provider: the "model does not support tool use" detection no longer uses a
+  backtracking regular expression on provider error messages (CodeQL
+  js/polynomial-redos, #3394)
+- Documentation site build dependency `vite` updated to 6.4.5
+
+---
+
 ## [1.4.1] - 2026-10-20
 
 First public release of the 1.4 line; v1.4.0 was an internal build and was not published.

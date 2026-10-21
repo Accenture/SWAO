@@ -823,6 +823,13 @@ function formatVcsAuthProbeLine(probe: VcsAuthProbeResult): string {
 // self-describing with a bracketed state prefix ([PASS] / [WARNING] / [N/A]).
 // Map that prefix to the same aligned status token the other probe lines use
 // so the output stays visually uniform.
+/** #3375: JSON / log status of the LLM gateway probe; ok === null with a [WARNING] prefix is 'warn' (no LLM configured), otherwise 'skip'. */
+export function llmGatewayStatus(probe: { ok: boolean | null; message: string }): 'ok' | 'warn' | 'skip' | 'fail' {
+  if (probe.ok === true) return 'ok';
+  if (probe.ok === false) return 'fail';
+  return /^\[WARNING\]/.test(probe.message) ? 'warn' : 'skip';
+}
+
 export function formatLlmGatewayLine(probe: { ok: boolean | null; message: string }): string {
   const LABEL_W = 26;
   const label = pad('[13/25] LLM gateway', LABEL_W);
@@ -1173,7 +1180,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: prerequisites', { context: { probe: 'prerequisites' } });
-  const prerequisitesProbe = buildPrerequisitesProbe();  // #0326 sprint-036
+  const prerequisitesProbe = buildPrerequisitesProbe(workspacePath);  // #0326 sprint-036; #3375 VCS-aware git rule
   logPortfolio('info', 'health-check.probe.complete', `probe: prerequisites status=${prerequisitesProbe.status}`, { context: { probe: 'prerequisites', status: prerequisitesProbe.status, elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatPrerequisitesProbeLine(prerequisitesProbe));
 
@@ -1209,7 +1216,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   // #2318: include message in log when probe is not ok so support bundle captures the reason.
   // #2251: add status field (string) to match all other probe.complete events; ok:boolean kept for compat.
   // #2897: ok: null = credential not loaded (skip) -- distinct from fail.
-  logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayProbe.ok === true ? 'ok' : llmGatewayProbe.ok === null ? 'skip' : 'fail', ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok !== true ? { message: llmGatewayProbe.message } : {}), elapsed_ms: Date.now() - t0 } });
+  logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayStatus(llmGatewayProbe), ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok !== true ? { message: llmGatewayProbe.message } : {}), elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatLlmGatewayLine(llmGatewayProbe));
 
   t0 = Date.now();
@@ -1391,7 +1398,7 @@ export function buildHealthCheckLogContext(
       ingestion: { ...probeEntry(ctx.ingestionProbe), file_count: ctx.ingestionProbe.file_count },
       iac_toolchain: probeEntry(ctx.iacToolchainProbe),
       // #2318: include message when probe is not ok. #2897: null = skip (credential not loaded).
-      llm_gateway: { status: ctx.llmGatewayProbe.ok === true ? 'ok' : ctx.llmGatewayProbe.ok === null ? 'skip' : 'fail', ...(ctx.llmGatewayProbe.ok !== true ? { message: ctx.llmGatewayProbe.message } : {}) },
+      llm_gateway: { status: llmGatewayStatus(ctx.llmGatewayProbe), ...(ctx.llmGatewayProbe.ok !== true ? { message: ctx.llmGatewayProbe.message } : {}) },
       wsp_metadata: probeEntry(ctx.wspMetadataProbe),
       lz_catalogue_coverage: {
         ...probeEntry(ctx.lzCatalogueCoverageProbe),

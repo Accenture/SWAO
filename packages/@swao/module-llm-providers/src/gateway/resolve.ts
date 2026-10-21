@@ -30,6 +30,9 @@ import type { Connector } from './connector-schema.js';
 
 /** Provenance recorded in run-manifest (#1401): which file, which bytes,
  *  which model actually served the run. */
+
+// #3387: connector ids whose TLS-disabled warning was already logged in this process.
+const tlsDisabledWarned = new Set<string>();
 export interface ConnectorProvenance {
   connector_id: string;
   connector_path: string;
@@ -228,7 +231,9 @@ export function createProviderFromConnector(
   // call; this does NOT set process-wide NODE_TLS_REJECT_UNAUTHORIZED.
   const tls = connector.tls;
   const rejectUnauthorized = tls?.reject_unauthorized === false ? false : undefined;
-  if (rejectUnauthorized === false) {
+  if (rejectUnauthorized === false && !tlsDisabledWarned.has(connector.id)) {
+    // #3387: once per connector and process, not on every provider construction.
+    tlsDisabledWarned.add(connector.id);
     logPortfolio('warn', 'provider.llm.gateway.tls-reject-unauthorized-disabled',
       `[warn] connector '${connector.id}': TLS certificate verification disabled ` +
       `(tls.reject_unauthorized: false). Use only on trusted internal networks.`,

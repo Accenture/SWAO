@@ -19,7 +19,7 @@ import { spawn } from 'child_process';
 import { homedir } from 'os';
 import { join } from 'path';
 import { CredentialStore, logPortfolio } from '@swao/core';
-import { getConnector } from '@swao/module-llm-providers';
+import { getConnector, connectorPostJson, openAiChatCompletionsUrl } from '@swao/module-llm-providers';
 import { PasswordInput, GuidanceBox } from '@swao/tui-kit';
 import { type LlmProvider, BIN, SELF_ARGS, setWizardGuidanceOpen } from '../shared.js';
 
@@ -41,10 +41,13 @@ export function CredentialsStep({
   onNext,
   workspaceRoot,
   stepNumber = 3,
+  model: selectedModel,
 }: {
   provider: LlmProvider;
   onNext: () => void;
   workspaceRoot?: string;
+  /** #3381: model chosen in the LLM step; the check pings it, not the connector default. */
+  model?: string;
   /** #2381: 1-indexed step position matching the wizard header display. */
   stepNumber?: number;
 }) {
@@ -121,11 +124,13 @@ export function CredentialsStep({
       try {
         let url: string;
         let reqBody: Record<string, unknown>;
+        let pingModel = '';
         const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
         if (gwConnector) {
           const proto = gwConnector.file.connector.protocol;
           const base = gwConnector.file.connector.base_url.replace(/\/$/, '');
-          const model = gwConnector.file.connector.models.default;
+          const model = selectedModel || gwConnector.file.connector.models.default;
+          pingModel = model;
           if (proto === 'anthropic-messages') {
             url = `${base}/v1/messages`;
             reqBody = { model, max_tokens: 16, messages: [{ role: 'user', content: PING_PROMPT }] };
@@ -137,7 +142,7 @@ export function CredentialsStep({
           } else {
             // #2540: OpenAI-compatible connectors (OpenRouter, vLLM, etc.) use /v1/chat/completions.
             // The base_url omits /v1 (e.g. https://openrouter.ai/api) so we append it here.
-            url = `${base}/v1/chat/completions`;
+            url = openAiChatCompletionsUrl(base);
             reqBody = { model, max_tokens: 16, messages: [{ role: 'user', content: PING_PROMPT }] };
             reqHeaders['Authorization'] = `Bearer ${apiKey}`;
           }
@@ -155,7 +160,11 @@ export function CredentialsStep({
           onNextRef.current();
           return;
         }
-        const resp = await fetch(url, { method: 'POST', headers: reqHeaders, body: JSON.stringify(reqBody), signal: controller.signal });
+        // #3381: gateway connectors go through the connector's TLS and proxy rules
+        // (tls.reject_unauthorized, HTTPS_PROXY, NO_PROXY), like the provider.
+        const resp = gwConnector
+          ? await connectorPostJson(url, reqHeaders, reqBody, { rejectUnauthorized: gwConnector.file.connector.tls?.reject_unauthorized === false ? false : undefined, signal: controller.signal })
+          : await (async () => { const r = await fetch(url, { method: 'POST', headers: reqHeaders, body: JSON.stringify(reqBody), signal: controller.signal }); return { ok: r.ok, status: r.status, text: r.ok ? '' : await r.text().catch(() => '') }; })();
         clearTimeout(timeoutId);
         if (resp.ok) {
           // #2383: log connectivity check result to portfolio event log
@@ -165,15 +174,15 @@ export function CredentialsStep({
           setTestPhase('ok');
         } else {
           // #2379: strip HTML bodies (Nginx/gateway error pages) from the error message.
-          const rawText = await resp.text().catch(() => '');
+          const rawText = resp.text;
           const isHtml = rawText.trimStart().startsWith('<');
           const errText = isHtml ? `server returned HTML (check gateway URL and credentials)` : rawText.slice(0, 120);
           const connId = gwConnector ? gwConnector.file.connector.id : (provider ?? 'unknown');
           const proto = gwConnector ? gwConnector.file.connector.protocol : (provider === 'anthropic' ? 'anthropic-messages' : 'openai-chat');
           // #2383: log connectivity check failure to portfolio event log
-          try { logPortfolio('warn', 'wizard.credentials.llm.ping.fail', 'Wizard LLM connectivity check failed', { context: { connector_id: connId, protocol: proto, http_status: resp.status, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
+          try { logPortfolio('warn', 'wizard.credentials.llm.ping.fail', 'Wizard LLM connectivity check failed', { context: { connector_id: connId, protocol: proto, model: pingModel || null, http_status: resp.status, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
           setTestPhase('fail');
-          setTestMessage(`HTTP ${resp.status} -- ${errText}`);
+          setTestMessage(`HTTP ${resp.status}${pingModel ? ` (model ${pingModel})` : ''} -- ${errText}`);
         }
       } catch (err) {
         clearTimeout(timeoutId);
