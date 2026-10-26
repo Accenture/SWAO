@@ -14,7 +14,7 @@
 // ================================================================
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
-import { basename, join, resolve } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 import { load, dump } from 'js-yaml';
 import type { Command } from 'commander';
 import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError, FEATURE_GATES } from '@swao/core';
@@ -31,7 +31,8 @@ import type { PortfolioLzrSummary } from '../lzr/portfolio-lzr.js';
 // host-side (it is Community).
 import type { PortfolioRunDeps, PortfolioResult } from '@swao/module-portfolio';
 import { buildAuditorReport } from './auditor-report-schema.js';
-import { findWorkspace, setWorkspaceRoot, logPortfolio, normalizeDashes, readRunStatus, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, listLzCatalogueFitFiles } from '@swao/core';
+import { findWorkspace, setWorkspaceRoot, logPortfolio, normalizeDashes, readRunStatus, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, listLzCatalogueFitFiles, staleChallengeNote, challengeCommand } from '@swao/core';
+import type { ChallengeSelection } from '@swao/core';
 // #0583: renderTextReportToPdf lives in @swao/module-pdf-report (Consultant
 // tier). Import the TYPE only (erased by esbuild) and inject the renderer via
 // ReportDeps so the Community bundle never contains the pdf module's code.
@@ -164,10 +165,36 @@ export function resolveAppRunDirById(wspDir: string, runId: string): string {
 }
 
 /**
+ * #3446: challenge hint fields of an application report without a challenge
+ * of its run: `challengeNote` (staleChallengeNote, names the other run's
+ * challenge) and `challengeRunCommand` (challengeCommand, pinned to the
+ * reported run). Both come from @swao/core so every reader says the same.
+ */
+export interface AppReportChallengeHint {
+  challengeNote?: string;
+  challengeRunCommand?: string;
+}
+
+export type AppReportData = ReportData & AppReportChallengeHint;
+
+/** #3446: reported run id of a wsp/runs/<id> dir; undefined for the flat legacy layout. */
+function reportedRunIdOf(runDir: string): string | undefined {
+  return basename(dirname(runDir)) === 'runs' ? basename(runDir) : undefined;
+}
+
+function challengeHintFor(appId: string, sel: ChallengeSelection, runDir: string): AppReportChallengeHint {
+  const note = staleChallengeNote(sel);
+  return {
+    ...(note ? { challengeNote: note } : {}),
+    challengeRunCommand: challengeCommand(appId, 'app', reportedRunIdOf(runDir)),
+  };
+}
+
+/**
  * #3346: `runId` (from `--run`) selects the run for the data and the challenge
  * pairing; without it the latest application run pointer decides.
  */
-export function generateReport(workspaceAppDir: string, appId: string, runId?: string): ReportData {
+export function generateReport(workspaceAppDir: string, appId: string, runId?: string): AppReportData {
   const latest = resolveRunDirs(workspaceAppDir);
   const wspDir = latest.wspDir;
   const runDir = runId !== undefined ? resolveAppRunDirById(wspDir, runId) : resolveRunDir(wspDir);
@@ -424,6 +451,8 @@ export function generateReport(workspaceAppDir: string, appId: string, runId?: s
     ...(challengeFindings.length > 0 && challengeSourceLabel(challengeSel)
       ? { challengeSource: challengeSourceLabel(challengeSel) } : {}),
     ...(challengeSel.otherRunOmitted && challengeFindings.length === 0 ? { challengeOtherRunOmitted: true } : {}),
+    // #3446: name the other run's challenge and the exact command for this run.
+    ...(challengeFindings.length === 0 ? challengeHintFor(appId, challengeSel, runDir) : {}),
     ...(() => {
       const lzCatalogueFit = loadInlineLzCatalogueFit(runDir);
       return lzCatalogueFit ? { lzCatalogueFit } : {};
@@ -589,19 +618,42 @@ export const CHALLENGE_NOT_LICENSED_NOTE =
  *   Enterprise-only hint is shown below Enterprise.
  * An included challenge is left untouched on every tier.
  */
-export function applyChallengeLicence(data: ReportData, challengeLicensed: boolean): ReportData {
+export function applyChallengeLicence<T extends AppReportData>(data: T, challengeLicensed: boolean): T {
   if (challengeLicensed && data.challengeStatus === 'not-available') {
     return { ...data, challengeStatus: 'not-run' };
   }
   if (!challengeLicensed && data.challengeStatus === 'not-run') {
     const rest = { ...data };
     delete rest.challengeOtherRunOmitted;
+    // #3446: no Enterprise-only command or other-run note below Enterprise.
+    delete rest.challengeNote;
+    delete rest.challengeRunCommand;
     return { ...rest, challengeStatus: 'not-available' };
   }
   return data;
 }
 
-export function formatText(data: ReportData): string {
+/**
+ * #3446: header lines for a report without a challenge of its run. Names the
+ * other run's challenge (staleChallengeNote, @swao/core) and the exact
+ * command (challengeCommand) when generateReport supplied them.
+ */
+function challengeNotRunLines(data: AppReportData): string[] {
+  const cmd = data.challengeRunCommand ?? 'swao challenge';
+  if (data.challengeOtherRunOmitted) {
+    return [
+      `Challenge:     not included (${CHALLENGE_OTHER_RUN_NOTE})`,
+      ...(data.challengeNote ? [`               ${data.challengeNote}`] : []),
+      `               Run \`${cmd}\` to challenge this run.`,
+    ];
+  }
+  return [
+    'Challenge:     not included (no challenge run found for this app)',
+    `               Run the Stakeholder Challenge (\`${cmd}\`) for this app to include its findings.`,
+  ];
+}
+
+export function formatText(data: AppReportData): string {
   const title = `SWAO Assessment Report: ${data.appId}`;
   const header = formatEngagementHeader(data);
   const lines: string[] = [
@@ -618,10 +670,7 @@ export function formatText(data: ReportData): string {
     ...(data.challengeStatus === 'not-available'
       ? [`Challenge:     not included (${CHALLENGE_NOT_LICENSED_NOTE})`]
       : data.challengeStatus === 'not-run'
-        ? [data.challengeOtherRunOmitted
-            ? `Challenge:     not included (${CHALLENGE_OTHER_RUN_NOTE})`
-            : 'Challenge:     not included (no challenge run found for this app)',
-          ...(data.challengeOtherRunOmitted ? [] : ['               Run the Stakeholder Challenge (swao challenge) for this app to include its findings.'])]
+        ? challengeNotRunLines(data)
         : data.challengeSource ? [`Challenge:     included (${data.challengeSource})`] : []),
     '',
     'Signal Summary',
@@ -931,7 +980,8 @@ export function formatViewExec(data: ReportData, wspDir: string, runDir?: string
   const spine = loadSpine(wspDir, runDir);
   const plain = SEVEN_R_PLAIN[data.sevenRLabel] ?? `${data.sevenRLabel} disposition.`;
   const confidence = spine.overall?.confidence ?? spine.assessment_scores?.seven_r?.confidence ?? '-';
-  const portability = spine.overall?.portability_score !== undefined
+  // #3431: '' when the deterministic score could not be computed.
+  const portability = typeof spine.overall?.portability_score === 'number'
     ? `${Math.round(spine.overall.portability_score * 100)}%`
     : '-';
 
@@ -1068,7 +1118,8 @@ export function formatViewCompliance(data: ReportData, wspDir: string, runDir?: 
 export function formatViewFinops(data: ReportData, wspDir: string, runDir?: string): string {
   const spine = loadSpine(wspDir, runDir);
   const lzCats = loadLzCatalogueFits(wspDir, runDir);
-  const portability = spine.overall?.portability_score !== undefined
+  // #3431: '' when the deterministic score could not be computed.
+  const portability = typeof spine.overall?.portability_score === 'number'
     ? `${Math.round(spine.overall.portability_score * 100)}%`
     : '-';
 

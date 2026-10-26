@@ -58,7 +58,8 @@ export function resolveControlsFile(fileName: string): string | null {
 
 export type CatalogueLoad<T> = { ok: true; data: T; path: string } | { ok: false; reason: string };
 
-function loadCatalogue<T>(fileName: string, schema: z.ZodType<T>, pathOverride?: string): CatalogueLoad<T> {
+// #3430: exported for the service footprint catalogue (service-footprint-catalogue.ts).
+export function loadCatalogue<T>(fileName: string, schema: z.ZodType<T>, pathOverride?: string): CatalogueLoad<T> {
   const path = pathOverride ?? resolveControlsFile(fileName);
   if (!path || !existsSync(path)) return { ok: false, reason: `${fileName} not found` };
   let raw: unknown;

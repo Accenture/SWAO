@@ -16,7 +16,8 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { load, dump } from 'js-yaml';
-import { resolveCatalogsDir, loadRegimeCatalogue, WspRiskImportOverlaySchema, WSP_SCHEMA_VERSION } from '@swao/core';
+import { computeMigrationScores } from '../scoring/migration-scores.js';
+import { resolveCatalogsDir, loadRegimeCatalogue, WspRiskImportOverlaySchema, WSP_SCHEMA_VERSION, isAbsenceEvidenceRef } from '@swao/core';
 
 // Derive a minimal wsp-plan.yaml (#0232) from the assessment's emitted
 // signals + the workspace's loaded regime catalogs.
@@ -96,6 +97,8 @@ interface SynthAssessment {
   coverage_score?: number;
   cloud_native_score?: number;
   portability_score?: number;
+  /** #3431: optional LLM remark on the computed portability score. */
+  portability_comment?: string;
   confidence?: string;
   landing_zone?: string;
   migration_rationale?: string;
@@ -109,18 +112,11 @@ function loadSynthAssessment(runDir: string): SynthAssessment | null {
   } catch { return null; }
 }
 
-// Derive cloud_native_score from the TF pass twelve_factor_pass_rate (#1503).
-// The synth pass does not emit this field; use the TF rate (0-1) as a proxy
-// when the synth assessment is absent or blank.
-function loadTfPassRate(runDir: string): number | null {
-  const tfFile = join(runDir, 'passes', '06-tf.yaml');
-  if (!existsSync(tfFile)) return null;
-  try {
-    const parsed = load(readFileSync(tfFile, 'utf-8')) as { assessment?: { twelve_factor_pass_rate?: unknown } } | null;
-    const rate = parsed?.assessment?.twelve_factor_pass_rate;
-    return typeof rate === 'number' ? rate : null;
-  } catch { return null; }
-}
+// #3431: cloud_native_score and portability_score are computed
+// deterministically (scoring/migration-scores.ts) from this run's pass
+// outputs. The former fallbacks (the LLM value, then the TF pass rate #1503)
+// are gone: when a score cannot be computed the field is '' and the reason
+// is recorded next to it, so a missing input is visible.
 
 // Read engagement block from the workspace-level .swao.yml. These fields
 // are captured by the TUI Setup wizard and should flow into the BI export
@@ -275,8 +271,9 @@ function buildComplianceBlock(workspaceDir: string, regimeIds: string[], runDir:
 // provided", etc.) are recognised here and dropped; they are not evidence,
 // they are a pass communicating "nothing to evidence" -- they should never
 // appear as a foreign key.
-
-const ABSENCE_SENTINEL_RE = /^(no [a-z]|0 source files|n\/a|none|missing|undetermined)/i;
+//
+// #3416: the absence predicate lives in @swao/core (isAbsenceEvidenceRef) so
+// the publication's unresolved-ref count uses exactly the same rule.
 
 interface EvidenceCatalogueEntry {
   type: string;
@@ -351,7 +348,7 @@ export function normaliseSourcePath(ref: string, type: string): string {
 }
 
 function slugEvidenceRef(ref: string): string | null {
-  if (ABSENCE_SENTINEL_RE.test(ref.trim())) return null;
+  if (isAbsenceEvidenceRef(ref)) return null;
   // Bound the input before the regex chain: evidence refs are short labels, but
   // they can carry LLM-/source-derived text. The `\([^)]*\)` parenthetical-drop
   // is O(n^2) over many failing start positions (a string of unmatched '('),
@@ -894,6 +891,7 @@ export function derivePlanForRun(
   // and the engagement metadata is available downstream (#0228 wiring
   // continues in star.ts).
   const synth = loadSynthAssessment(runDir);
+  const migrationScores = computeMigrationScores(join(runDir, 'passes'), { workspaceAppDir });
   const engagement = loadEngagement(workspaceRoot);
   const appMeta = loadAppMeta(workspaceAppDir);
   const spine: Record<string, unknown> = {
@@ -911,9 +909,17 @@ export function derivePlanForRun(
       seven_r_label: synth?.seven_r_label ?? '',
       modernization_position: synth?.modernization_position ?? '',
       coverage_score: synth?.coverage_score ?? '',
-      cloud_native_score: synth?.cloud_native_score ?? loadTfPassRate(runDir) ?? '',
-      portability_score: synth?.portability_score ?? '',
+      cloud_native_score: migrationScores.cloud_native?.score ?? '',
+      portability_score: migrationScores.portability?.score ?? '',
       confidence: synth?.confidence ?? '',
+      // #3431: additive breakdowns (ADR-0012 minor): components, factors_checked, reasons.
+      cloud_native: migrationScores.cloud_native
+        ?? { skipped_reason: migrationScores.cloud_native_skipped_reason ?? 'not computed' },
+      portability: migrationScores.portability ?? { skipped_reason: migrationScores.catalogue },
+      migration_scores_catalogue: migrationScores.catalogue,
+      ...(typeof synth?.portability_comment === 'string' && synth.portability_comment
+        ? { portability_comment: synth.portability_comment }
+        : {}),
     },
     landing_zone: {
       primary: null,

@@ -83,9 +83,11 @@ is resolving the AWS Comprehend Medical dependency before the migration window o
 
 **What it measures**
 
-The fraction of external egress services the application uses that have sovereign-cloud
-equivalents. A score of 1.0 means all services can be replaced with sovereign alternatives;
-0.0 means full dependency on hyperscaler-proprietary services with no sovereign equivalent.
+How easily the workload moves to a sovereign cloud. A score of 1.0 means every required
+backing service is offered by at least two sovereign providers, no proprietary SDK ties the
+code to one vendor, the workload is containerised and described as code, and its egress
+services have sovereign equivalents; 0.0 means the opposite on every component.
+SWAO computes the score in code (#3431); the LLM does not set it and may only comment.
 
 **Why it matters**
 
@@ -97,11 +99,23 @@ programme by 3-6 months and adds unplanned cost.
 **How it is scored**
 
 ```
-portability_score = (available_verdicts + 0.5 * partial_verdicts) / total_egress_signals
+portability_score = sum(weight_c * value_c) / sum(weight_c)   over the components with data
 ```
 
-Where `available` means a sovereign-cloud equivalent exists; `partial` means an EU presence
-exists but full sovereign certification is unconfirmed; `unavailable` means no sovereign option.
+| Component | Weight | Value |
+|---|---|---|
+| Service availability | 0.35 | Share of the required services (`service_dep:<capability>`) offered by 2 or more sovereign providers in the landing-zone catalogues |
+| Vendor lock-in | 0.25 | 1 minus 0.5 per blocking, 0.25 per partial and 0.1 per manageable proprietary SDK (INV-09), not below 0 |
+| Container | 0.15 | Kubernetes or Helm manifests 1.0; Dockerfile or Compose 0.75; none 0 |
+| Infrastructure as code | 0.10 | Terraform / OpenTofu, Pulumi state or a Helm chart present 1.0; absent 0 |
+| Egress | 0.15 | Sovereign service verdicts: `available` 1.0, `partial` 0.5, `unavailable` 0; without verdicts, hard-coded production hosts: private 0.5, public 0 |
+
+A sovereign provider has at least one catalogue region operated by an EU entity whose facts
+carry no US CLOUD Act or FISA 702 exposure. A component without input data (for example no
+egress destination, or a skipped vendor SDK scan) is dropped and the other weights are
+renormalised; `wsp.yaml` `overall.portability` lists every component with `used` and the
+reason, so missing data is visible rather than a default 0.5. Weights:
+`controls/migration-scores-catalogue.yaml`.
 
 **Score ranges**
 
@@ -114,8 +128,9 @@ exists but full sovereign certification is unconfirmed; `unavailable` means no s
 
 **Evidence sources**
 
-EGR pass signals cross-referenced against the sovereign service catalogue
-(`controls/sovereign-service-catalogue.yaml`).
+Pass 01 (service footprint, vendor SDKs, container files, Terraform and Pulumi state),
+Pass 06 (Terraform roots, Helm and Kubernetes stacks), Pass 07 (sovereign service verdicts,
+hard-coded endpoints) and the landing-zone catalogues (`lz-catalogues/`).
 
 **Common findings and remediation**
 

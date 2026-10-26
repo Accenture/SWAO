@@ -26,6 +26,8 @@ const PRIVATE_ROOT = resolve(__dirname, '../../../../../');
 // source-scan assertions follow the code to the module's new location; the
 // runtime imports below pull the tool surface from the module package.
 const MCP_SRC    = join(REPO_ROOT, 'packages/@swao/module-mcp/src/server.ts');
+// #3471: the stdio / HTTP lifecycle moved to lifecycle.ts (Design 116 REQ-07).
+const MCP_LIFECYCLE = join(REPO_ROOT, 'packages/@swao/module-mcp/src/lifecycle.ts');
 const MCP_CMD    = join(REPO_ROOT, 'packages/@swao/module-mcp/src/commands/mcp.ts');
 // #0583: the mcp command is registered in the shared bootstrap (Community wiring),
 // which every per-tier entry + index.ts uses; the registerMcp import + call moved
@@ -63,7 +65,7 @@ describe('MCP server module structure (#0131)', () => {
   it('server.ts exports startMcpServer function', () => {
     const src = readFileSync(MCP_SRC, 'utf-8');
     expect(src).toContain('startMcpServer');
-    expect(src).toContain('StdioServerTransport');
+    expect(readFileSync(MCP_LIFECYCLE, 'utf-8')).toContain('StdioServerTransport');
   });
 
   it('server.ts imports from @modelcontextprotocol/sdk', () => {

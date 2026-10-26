@@ -13,13 +13,51 @@
 pass_number: 21
 pass_name: "IAM Assessment"
 
+# Matching rules (#3410, shared catalogue matcher; see README.md):
+#   match_defaults applies to every token list in this file unless an entry
+#   or a single token overrides it.
+#   match: identifier   neighbours of a word-character edge must not be
+#                       [A-Za-z0-9_] (TDEA does not match istDeaktiviert)
+#   match: segment      identifier parts: _ - . and a lower-to-upper case
+#                       change are boundaries (kvnr matches kvnr_hash and
+#                       patientKvnr, eric does not match generic)
+#   match: substring    no boundary (opt-in only)
+#   case_sensitive      default false; set true for acronyms (DESede, TDEA)
+match_defaults:
+  match: segment
+  case_sensitive: false
+
 entries:
   - id: example-provider          # unique kebab-case slug
     name: "Example Identity Provider"
     detection:
-      imports: []                 # import path substrings matched in source
-      env_vars: []                # env var name patterns (regex)
-      config_keys: []             # config file key patterns (regex)
+      # Literal tokens matched in source code. A token is a string or an
+      # object that overrides the defaults for that token:
+      #   - "keycloak-js"
+      #   - { token: "ERiC", case_sensitive: true, match: identifier }
+      imports: []
+      env_vars: []                # env var name patterns (regex, identifier boundaries)
+      config_keys: []             # literal tokens matched in configuration files
+      # Regexes (case-insensitive) for call or assignment forms, e.g.
+      #   - 'Cipher\.getInstance\(\s*"DESede'
+      # A bare acronym belongs here, never in imports. Patterns with nested
+      # quantifiers, quantified alternations or backreferences are rejected
+      # (ReDoS guard) and reported in the pass YAML as catalogue_errors.
+      context: []
+      # match: identifier         # optional entry-level override
+      # case_sensitive: false     # optional entry-level override
+    # Context exceptions (#3412), checked on every hit of this entry. The
+    # first match sets the hit's severity and is named in the signal.
+    #   pattern: regex on the hit's own line
+    #   near:    regex within `window` lines either side (default 5, max 20)
+    #   at least one of pattern / near; with both, both must match
+    # exceptions:
+    #   - id: totp-rfc6238
+    #     pattern: 'algorithm\s*[:=]\s*[''"]?SHA-?1'
+    #     near: 'totp|hotp|otplib|authenticator'
+    #     severity: informational   # informational | low | medium
+    #     rationale: "RFC 6238 TOTP defaults to HMAC-SHA1"
+    exceptions: []
     posture:
       data_residency: []          # ISO country codes or region tags: [DE, EU, US]
       sovereignty: unknown        # de_sovereign | eu_sovereign | hyperscaler | unknown

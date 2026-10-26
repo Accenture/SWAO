@@ -287,6 +287,31 @@ Plain answer.`);
     expect(prompts).toHaveLength(2);
   });
 
+  // #3415: the model echoes a planted secret; display text shows the mask.
+  it('masks a secret the model echoes, on the tool-calling and the plain path (#3415)', async () => {
+    const planted = 'Zx9-fake-Pw42'; // gitleaks:allow (synthetic #3415 fixture)
+    const answer = `DATA-02 reports the hard-coded password '${planted}' in TestHelper.java.`;
+    const toolProvider: LlmProvider = {
+      name: 'stub', model: 'unit', complete: async () => 'unused',
+      completeWithTools: async () => 'unused',
+      completeWithToolsDetailed: async () => ({ text: answer, usage: { input_tokens: 1, output_tokens: 1, cost_usd: 0 } }),
+    };
+    const viaTools = await runChatCompletion(toolProvider, {
+      system: '', history: [], content: 'q',
+      tools: [{ name: 'swao_signals', description: 'd', input_schema: {} }],
+      onToolCall: async () => 'r',
+    });
+    expect(viaTools.text).not.toContain(planted);
+    expect(viaTools.text).toContain("'Zx***(13)'");
+    const plainProvider: LlmProvider = {
+      name: 'stub', model: 'unit', complete: async () => 'unused',
+      completeDetailed: async () => ({ text: JSON.stringify({ response: answer }), usage: { input_tokens: 1, output_tokens: 1, cost_usd: 0 } }),
+    };
+    const plain = await runChatCompletion(plainProvider, { system: '', history: [], content: 'q', tools: [] });
+    expect(plain.text).not.toContain(planted);
+    expect(plain.text).toContain("'Zx***(13)'");
+  });
+
   it('other tool-chat errors still fail the turn', async () => {
     const provider: LlmProvider = {
       name: 'stub',

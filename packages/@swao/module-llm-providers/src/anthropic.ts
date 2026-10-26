@@ -254,7 +254,7 @@ export class AnthropicLlmProvider implements LlmProvider {
       imageCount: req.imageCount,
       appId: this.appId,
       idleTimeoutMs: this.idleTimeoutMs,
-      attemptContext: { api_key_suffix: this.apiKey.slice(-4) },
+      // #3437: no api_key_suffix in the attempt event (key material in logs).
       isRetryableError: isAnthropicRetryable,
       run: async (wd) => {
         const response = await wd.race(fetch(this.messagesUrl, {

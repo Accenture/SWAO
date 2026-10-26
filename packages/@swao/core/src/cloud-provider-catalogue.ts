@@ -87,6 +87,10 @@ interface CatalogueRoot {
 export interface RequiredService {
   name: string;
   signalId: string;
+  /** #3430: confidence of the signal that demanded the service (low = documentation only). */
+  confidence?: 'high' | 'medium' | 'low';
+  /** #3430: evidence paths for this service (signal evidence; "<service>: <path>" entries of an aggregated signal are narrowed to this service). */
+  evidence?: string[];
 }
 
 export interface LandingZoneConstraints {
@@ -159,7 +163,16 @@ export function deriveConstraints(signals: Signal[]): LandingZoneConstraints {
         const svc = tag.slice('service_dep:'.length);
         if (!seenServices.has(svc)) {
           seenServices.add(svc);
-          requiredServices.push({ name: svc, signalId: signal.id });
+          // #3430: carry provenance into the landing-zone fit.
+          const prefix = `${svc}: `;
+          const own = (signal.evidence ?? []).filter((e) => e.startsWith(prefix)).map((e) => e.slice(prefix.length));
+          const evidence = own.length > 0 ? own : (signal.evidence ?? []);
+          requiredServices.push({
+            name: svc,
+            signalId: signal.id,
+            ...(signal.confidence ? { confidence: signal.confidence } : {}),
+            ...(evidence.length > 0 ? { evidence: evidence.slice(0, 10) } : {}),
+          });
         }
       }
     }

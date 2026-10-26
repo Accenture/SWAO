@@ -13,16 +13,20 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join, extname, resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { join, resolve } from 'path';
 import { load } from 'js-yaml';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
-import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio } from '@swao/core';
+import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio, listInputFiles } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 import { getFileCategory, selectContextChunks, PASS_WEIGHTS } from './context-file-weights.js';
 import type { ScoredChunk } from './context-file-weights.js';
+import {
+  readInfraRoleOverrides, resolveInfraRole, infraRoleLabel, stripInfraRoleTag, TARGET_CAPABILITY_GAP_TAG,
+} from './infra-input-role.js';
+import type { InfraRole, InfraRoleEntry } from './infra-input-role.js';
 
 function readFileSync_safe(filePath: string): string | null {
   if (!existsSync(filePath)) return null;
@@ -63,7 +67,8 @@ function isExcluded(relPath: string): boolean {
 const CTX_CHUNK_SIZE = 3_000;
 
 // Chunk is a ScoredChunk -- category replaces the old tier field (#2958).
-type Chunk = ScoredChunk;
+// #3429: infraRole marks infrastructure inputs as current platform or target LZ.
+type Chunk = ScoredChunk & { infraRole?: InfraRole };
 
 // #1236/#1500: Anthropic streaming timeout fires at ~60s; observed safe threshold
 // is ~25,800 chars (42s). Default 28,000 gives 25% headroom below the failing
@@ -75,70 +80,103 @@ const CTX_PROMPT_MAX_CHARS = Math.min(
   110_000,
 );
 
-/** Read context.allocations and context.categories from .swao.yml (#2968). */
+/** Read context.allocations, context.categories (#2968) and context.infra_roles (#3429) from .swao.yml. */
 function readContextConfig(workspacePath: string): {
   allocations: Record<string, number>;
   categories: Record<string, number>;
+  infraRoles: InfraRoleEntry[];
 } {
   const ymlPath = join(workspacePath, '.swao.yml');
-  if (!existsSync(ymlPath)) return { allocations: {}, categories: {} };
+  if (!existsSync(ymlPath)) return { allocations: {}, categories: {}, infraRoles: [] };
   try {
     const parsed = load(readFileSync(ymlPath, 'utf-8')) as { context?: { allocations?: Record<string, number>; categories?: Record<string, number> } } | null;
     const ctx = parsed?.context ?? {};
     return {
       allocations: ctx.allocations ?? {},
       categories: ctx.categories ?? {},
+      infraRoles: readInfraRoleOverrides(parsed),
     };
   } catch {
-    return { allocations: {}, categories: {} };
+    return { allocations: {}, categories: {}, infraRoles: [] };
   }
 }
 
 /** Walk wsp/inputs/, apply exclusions, split into CTX_CHUNK_SIZE chunks, return tiered chunks. */
-function collectChunks(importsDir: string): { chunks: Chunk[]; filesExcluded: string[] } {
+function collectChunks(importsDir: string, infraRoles: readonly InfraRoleEntry[] = []): { chunks: Chunk[]; filesExcluded: string[] } {
   if (!existsSync(importsDir)) return { chunks: [], filesExcluded: [] };
   const allowed = new Set(['.md', '.txt', '.yaml', '.yml', '.json', '.csv']);
   const chunks: Chunk[] = [];
   const filesExcluded: string[] = [];
 
-  function walk(dir: string, prefix: string): void {
-    const entries = readdirSync(dir).sort();
-    for (const entry of entries) {
-      if (prefix === '' && CTX_SKIP_TOP_DIRS.has(entry)) continue;
-      const full = join(dir, entry);
-      const rel = prefix ? `${prefix}/${entry}` : entry;
-      const stat = statSync(full);
-      if (stat.isDirectory()) {
-        walk(full, rel);
-        continue;
-      }
-      const ext = extname(entry).toLowerCase();
-      if (!allowed.has(ext)) continue;
-      if (isExcluded(rel)) {
-        filesExcluded.push(rel);
-        continue;
-      }
-      const content = readFileSync_safe(full);
-      if (!content) continue;
-      const category = getFileCategory(rel);
-      // Split into fixed-size chunks with part labels.
-      const totalParts = Math.max(1, Math.ceil(content.length / CTX_CHUNK_SIZE));
-      for (let p = 0; p < totalParts; p++) {
-        const sliceContent = content.slice(p * CTX_CHUNK_SIZE, (p + 1) * CTX_CHUNK_SIZE);
-        chunks.push({
-          relativePath: rel,
-          partNum: p + 1,
-          totalParts,
-          content: sliceContent,
-          charCount: sliceContent.length,
-          category,
-        });
-      }
+  // #3428: sibling input walker of the central source scope (sorted per
+  // directory as before; wsp/inputs/ is operator-curated, so no source skips).
+  for (const f of listInputFiles(importsDir, { skipTopLevelDirs: CTX_SKIP_TOP_DIRS })) {
+    const rel = f.rel;
+    if (!allowed.has(f.ext)) continue;
+    if (isExcluded(rel)) {
+      filesExcluded.push(rel);
+      continue;
+    }
+    const content = readFileSync_safe(f.abs);
+    if (!content) continue;
+    const category = getFileCategory(rel);
+    const infraRole = resolveInfraRole(rel, infraRoles);
+    // Split into fixed-size chunks with part labels.
+    const totalParts = Math.max(1, Math.ceil(content.length / CTX_CHUNK_SIZE));
+    for (let p = 0; p < totalParts; p++) {
+      const sliceContent = content.slice(p * CTX_CHUNK_SIZE, (p + 1) * CTX_CHUNK_SIZE);
+      chunks.push({
+        relativePath: rel,
+        partNum: p + 1,
+        totalParts,
+        content: sliceContent,
+        charCount: sliceContent.length,
+        category,
+        ...(infraRole ? { infraRole } : {}),
+      });
     }
   }
 
-  walk(importsDir, '');
   return { chunks, filesExcluded };
+}
+
+// #3429: infrastructure inputs carry a role. Target landing-zone snapshots are
+// where the application may move, not where it runs; a mismatch with the
+// documentation is a target-platform gap, not a contradiction.
+const INFRA_ROLE_PROMPT_LINES: readonly string[] = [
+  'Infrastructure inputs are labelled with a role: [CURRENT-INFRA] = the platform the application runs on today; [TARGET-LZ] = a candidate target landing zone (not deployed for this application).',
+  'Report contradictions only between documents/code and [CURRENT-INFRA] inputs. Never report a contradiction against a [TARGET-LZ] input.',
+  `When the documentation requires a capability a [TARGET-LZ] input does not provide, emit a target-platform gap signal with "implies": ["${TARGET_CAPABILITY_GAP_TAG}"].`,
+  'Cite evidence by file path without the role label.',
+];
+
+/** Chunk separator line; role-tagged for infrastructure inputs (#3429). */
+export function ctxChunkLabel(chunk: Pick<Chunk, 'relativePath' | 'partNum' | 'totalParts' | 'infraRole'>): string {
+  const tag = infraRoleLabel(chunk.infraRole);
+  const prefix = tag ? `${tag} ` : '';
+  return chunk.totalParts > 1
+    ? `--- ${prefix}${chunk.relativePath} [part ${chunk.partNum}/${chunk.totalParts}] ---`
+    : `--- ${prefix}${chunk.relativePath} ---`;
+}
+
+const SEVERITY_RANK: Record<string, number> = {
+  critical: 5, high: 4, medium: 3, low: 2, informational: 1, positive: 0,
+};
+
+/**
+ * #3429: a CTX signal whose file evidence cites at least one target-LZ input
+ * and no current-infrastructure input is a target-platform gap, whatever the
+ * LLM called it. Tag it, cap its severity at medium and make the derivation
+ * say so. Deterministic guard on top of the prompt guidance.
+ */
+function reclassifyTargetOnlySignal(signal: Signal, evidenceRoles: ReadonlySet<InfraRole>): boolean {
+  if (!evidenceRoles.has('target') || evidenceRoles.has('current')) return false;
+  const implies = signal.implies ?? [];
+  if (!implies.includes(TARGET_CAPABILITY_GAP_TAG)) signal.implies = [...implies, TARGET_CAPABILITY_GAP_TAG];
+  if (signal.severity && (SEVERITY_RANK[signal.severity] ?? 0) > SEVERITY_RANK['medium']) signal.severity = 'medium';
+  const prefix = 'Target platform gap (target landing zone, not current infrastructure): ';
+  if (!signal.derivation.startsWith(prefix)) signal.derivation = prefix + signal.derivation;
+  return true;
 }
 
 function buildCtxPrompt(
@@ -162,6 +200,9 @@ function buildCtxPrompt(
     'Ingest all context inputs. Detect contradictions between documents and code evidence. Identify data gaps.',
     'Return JSON: { "signals": [...], "assessment": { "context_inputs_found": number, "contradictions_detected": number }, "context_overrides": [] }',
     'Signal IDs must use prefix CTX-NN.',
+    // #3429: role guidance only when infrastructure inputs are present, so the
+    // prompt (and its cassette hash) is unchanged for document-only workspaces.
+    ...(chunks.some((c) => c.infraRole !== undefined) ? INFRA_ROLE_PROMPT_LINES : []),
     '',
     SIGNAL_SCHEMA_HINT,
     '',
@@ -186,10 +227,7 @@ function buildCtxPrompt(
 
   const parts: string[] = [header];
   for (const chunk of included) {
-    const label = chunk.totalParts > 1
-      ? `--- ${chunk.relativePath} [part ${chunk.partNum}/${chunk.totalParts}] ---`
-      : `--- ${chunk.relativePath} ---`;
-    parts.push(label);
+    parts.push(ctxChunkLabel(chunk));
     parts.push(chunk.content);
     parts.push('');
   }
@@ -236,8 +274,8 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
   // (T1 prose > T2 YAML > T3 CSV > T4 JSON) and filled greedily into the
   // prompt budget. SBOM exports and lock files are excluded by pattern (#1349).
   const importsDir = join(workspacePath, 'wsp', 'inputs');
-  const { chunks, filesExcluded } = collectChunks(importsDir);
   const ctxConfig = readContextConfig(workspacePath);
+  const { chunks, filesExcluded } = collectChunks(importsDir, ctxConfig.infraRoles);
   // Priority: explicit .swao.yml allocation > connector-derived budget (#2959) > env/default constant
   const budgetOverride = ctxConfig.allocations['ctx'] ?? ctx.ctxPromptBudget;
   const userCategories = Object.keys(ctxConfig.categories).length > 0 ? ctxConfig.categories : undefined;
@@ -356,12 +394,19 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
 
   const resolvedImportsDir = resolve(importsDir);
   const WSP_INPUTS_PREFIX = 'wsp/inputs/';
+  let targetCapabilityGaps = 0;
+  // #3429: signals the LLM did not tag itself but the guard reclassified; the
+  // LLM most likely counted them in contradictions_detected.
+  let reclassifiedContradictions = 0;
   for (const signal of signals) {
     const unresolvable: string[] = [];
+    // #3429: infrastructure roles of the files this signal cites.
+    const evidenceRoles = new Set<InfraRole>();
     for (const evidenceRef of signal.evidence ?? []) {
       // Evidence refs may include a row qualifier after ':' (e.g. 'cmdb/file.csv:row 3').
       // Strip the qualifier before resolving so the file-existence check uses only the path.
-      const colonStripped = evidenceRef.split(':')[0].trim();
+      // #3429: the LLM may echo the chunk-label role tag ('[TARGET-LZ] terraform/x.json').
+      const colonStripped = stripInfraRoleTag(evidenceRef).split(':')[0].trim();
       // Negative-evidence observations describe absence of data, not a missing file (#0998).
       // Log at INFO and skip file resolution to avoid spurious WARN noise.
       if (NEGATIVE_EVIDENCE_RE.test(colonStripped) && !matchKnownExt(colonStripped)) {
@@ -386,6 +431,10 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
         ? evidencePath.slice(WSP_INPUTS_PREFIX.length)
         : evidencePath;
       const isBudgetExcluded = budgetExcludedFiles.has(relEvidencePath) || budgetExcludedFiles.has(evidencePath);
+      if (resolved.startsWith(resolvedImportsDir)) {
+        const role = resolveInfraRole(relEvidencePath, ctxConfig.infraRoles);
+        if (role) evidenceRoles.add(role);
+      }
 
       if (!resolved.startsWith(resolvedImportsDir)) {
         // Path traversal attempt -- flag without following
@@ -416,6 +465,15 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
         console.warn(`[warn] CTX ${signal.id}: ${missingRefs.length} evidence reference(s) could not be resolved: ${missingRefs.map((r) => `'${r}'`).join(', ')}`);
       }
     }
+    const alreadyTagged = signal.implies?.includes(TARGET_CAPABILITY_GAP_TAG) === true;
+    if (reclassifyTargetOnlySignal(signal, evidenceRoles) && !alreadyTagged) reclassifiedContradictions++;
+    if (signal.implies?.includes(TARGET_CAPABILITY_GAP_TAG)) targetCapabilityGaps++;
+  }
+
+  // #3429: which infrastructure inputs were read, per role (report + Wave 4 #3430).
+  const infraInputs: Record<InfraRole, string[]> = { current: [], target: [] };
+  for (const c of chunks) {
+    if (c.infraRole && !infraInputs[c.infraRole].includes(c.relativePath)) infraInputs[c.infraRole].push(c.relativePath);
   }
 
   const uniqueFiles = new Set(chunks.map((c) => c.relativePath)).size;
@@ -426,7 +484,14 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
     chunks_excluded: chunksExcluded,
     files_excluded_by_pattern: filesExcluded,
     placeholder_inputs: placeholderFiles,
+    // #3429: computed, not taken from the LLM.
+    infra_inputs: infraInputs,
+    target_capability_gaps: targetCapabilityGaps,
   };
+  const llmContradictions = parsed.assessment?.['contradictions_detected'];
+  if (typeof llmContradictions === 'number' && reclassifiedContradictions > 0) {
+    assessment.contradictions_detected = Math.max(0, llmContradictions - reclassifiedContradictions);
+  }
 
   if (parsed.context_overrides && parsed.context_overrides.length > 0) {
     assessment.context_overrides = parsed.context_overrides;

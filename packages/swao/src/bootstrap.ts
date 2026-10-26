@@ -56,6 +56,7 @@ import { registerSetup } from './commands/setup.js';
 // the correct entry after the module's extraction; module-mcp must not import
 // host code, so the host mediates.
 import { registerMcp, type McpHostDeps, type McpInstallDeps } from '@swao/module-mcp';
+import { mainMenuEntries } from './tui/screens/main-menu-items.js';
 import { buildMcpInstallDeps } from './tui/mcp-config.js';
 import { registerInstallPlaywright } from './commands/install-playwright.js';
 import { registerRegimeSelect } from './commands/regime-select.js';
@@ -204,7 +205,8 @@ export function buildProgram(deps: BootstrapDeps): Command {
   // #3217: plus the same stable-copy binary resolver as the wizard and
   // `swao init --mcp`, so every entry point registers the same `command`.
   const mcpInstallDeps: McpInstallDeps = buildMcpInstallDeps();
-  registerMcp(program, deps.cliSpawnDescriptor, SWAO_VERSION, mcpInstallDeps);
+  // #3476: the main menu for the MCP start prompt (Design 116 REQ-12.3).
+  registerMcp(program, { ...deps.cliSpawnDescriptor, mainMenu: mainMenuEntries }, SWAO_VERSION, mcpInstallDeps);
   registerInstallPlaywright(program);
   registerRegimeSelect(program);
   registerExport(program);

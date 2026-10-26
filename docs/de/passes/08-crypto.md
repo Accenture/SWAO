@@ -21,7 +21,7 @@ Im Application-Modus untersucht er Quellcode und Konfiguration. Im Service-Modus
 
 **Application-Modus**
 
-- Den Quellcode der Anwendung (gescannt werden JavaScript- und TypeScript-Dateien) mit `package.json` sowie optional `.env.example`, `prisma/schema.prisma` und `docker-compose.yml` (im Wurzelverzeichnis oder in `docker/`).
+- Den Quellcode der Anwendung (JavaScript- und TypeScript-Dateien für die eingebauten Muster; Java-, Python-, C#-, Go- und Kotlin-Code sowie Konfigurationsdateien für den Algorithmenkatalog) mit `package.json` sowie optional `.env.example`, `prisma/schema.prisma` und `docker-compose.yml` (im Wurzelverzeichnis oder in `docker/`).
 
 **Service-Modus** (siehe [Service Portfolio Assessment](/de/service-assessment/))
 
@@ -43,9 +43,13 @@ In beiden Modi werden weder Zugangsdaten noch ein LLM benötigt.
    | Authentifizierte Verschlüsselung | AES-GCM | `createCipheriv('aes-128-gcm'`, `'aes-192-gcm'` oder `'aes-256-gcm'` |
    | Schwach (CWE-327) | MD5, SHA-1, DES | `createHash('md5')`, `createHash('sha1')`, `createCipheriv('des')` |
 
-2. **JWT-Signaturverfahren.** Ist `@nestjs/jwt`, `jsonwebtoken` oder `jose` eine Abhängigkeit oder existiert eine `.env.example`, liest der Pass `.env.example`: `JWT_PRIVATE_KEY`, `RSA_PRIVATE_KEY`, `EC_PRIVATE_KEY` oder `JWT_PUBLIC_KEY` bedeutet asymmetrische Signatur (RS256 oder ES256); `JWT_SECRET_KEY`, `JWT_SECRET` oder `NEXTAUTH_SECRET` bedeutet ein symmetrisches HMAC-Geheimnis.
-3. **HTTP-Sicherheitsheader.** `helmet` oder `@fastify/helmet` in den Abhängigkeiten.
-4. **Verschlüsselung ruhender Daten.** Eine Verschlüsselungsannotation im Prisma-Schema (`encrypt`, `@encrypted`, `@cipher`, `cipher_`), eine Abhängigkeit mit `kms` oder `vault` im Namen oder `kms`, `vault` bzw. `luks` in der Compose-Datei.
+2. **Algorithmenkatalog-Scan** (`pass-catalogs/pass-08-crypto-algorithms.yaml`, Workspace-Überschreibungen in `wsp/inputs/pass-catalogs/`). Codedateien (`.ts`, `.js`, `.mjs`, `.cjs`, `.java`, `.py`, `.cs`, `.go`, `.kt`) werden mit den `imports`-Token jedes Eintrags abgeglichen, Konfigurationsdateien (`.yaml`, `.yml`, `.properties`, `.conf`, `.ini`, `.toml`, `.xml`, `.env`; ohne Lock-Dateien) mit seinen `config_keys` und beide mit seinen `context`-Ausdrücken. Der Abgleich nutzt den gemeinsamen Katalog-Matcher: nur ganze Bezeichner (`TDEA` trifft nicht `istDeaktiviert`), nackte Akronyme wie `3DES`, `RC4` oder `SHA1` nur innerhalb eines Cipher-Aufrufs oder einer Algorithmus-Zuweisung (`Cipher.getInstance("DESede/...")`, `createCipheriv('rc4', ...)`, `algorithm: '3DES'`); generierte oder minifizierte Dateien, Dateien über 512 KB, Zeilen über 1.000 Zeichen, Base64-Folgen und `data:`-URIs werden nie abgeglichen. Jedes Vorkommen wird gezählt (bis zu 50 je Eintrag gespeichert) und als Produktiv- oder Testcode eingeordnet. Kontext-Ausnahmen im Katalog senken den Schweregrad einzelner Treffer: SHA-1 in einer TOTP/HOTP-Konfiguration (RFC 6238) ist informational, HMAC-SHA1 low, ein SHA-1-Digest neben einem Git-Objektheader, `sha1sum` oder ETag-Merkmal informational. Beschreiben ein eingebautes Muster und ein Katalogeintrag denselben Algorithmus, gehört das Signal dem Katalogeintrag. Siehe `pass-catalogs/README.md`.
+
+   Java (#3422): Der Katalog bewertet JCA-Algorithmus-Strings in Aufrufen von `Cipher`, `MessageDigest`, `Mac`, `KeyGenerator`, `SecretKeyFactory` und `Signature` (etwa `Cipher.getInstance("DESede/CBC/PKCS5Padding")`, `KeyGenerator.getInstance("DES")`, `Mac.getInstance("HmacMD5")`, `Signature.getInstance("SHA1withRSA")`, `SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")`, `MessageDigest.getInstance("SHA-256")`), BouncyCastle-Lightweight-Klassen (`DESEngine`, `DESedeEngine`, `RC4Engine`, `MD5Digest`, `SHA1Digest`, `SHA256Digest`, `GCMBlockCipher`) und Spring-Security-Passwort-Encoder: `BCryptPasswordEncoder`, `Pbkdf2PasswordEncoder`, `SCryptPasswordEncoder` und `Argon2PasswordEncoder` sind zugelassen; `NoOpPasswordEncoder`, `StandardPasswordEncoder`, `MessageDigestPasswordEncoder`, `LdapShaPasswordEncoder` und `Md4PasswordEncoder` sind schwach (Eintrag `spring-legacy-password-encoder`). Die zugelassenen Java-Einträge `pbkdf2-sha2`, `scrypt` und `hmac-sha2` sind mit den eingebauten JavaScript-Mustern gepaart; ein Repository mit beidem meldet die KDF bzw. den MAC einmal.
+3. **Inventar der Java Cryptography Architecture (#3422).** Im selben Lesedurchgang wird jeder JCA-Engine-Aufruf mit literalem Algorithmus-String (`Cipher`, `MessageDigest`, `Mac`, `KeyGenerator`, `KeyPairGenerator`, `SecretKeyFactory`, `KeyFactory`, `Signature`, `KeyAgreement`, `KeyStore`, `SecureRandom`, `AlgorithmParameters`, `CertificateFactory`, `TrustManagerFactory`, `KeyManagerFactory`, `SSLContext`) und jede Registrierung eines BouncyCastle-Providers in Java-, Kotlin-, Groovy- oder Scala-Dateien mit Datei und Zeile aufgeführt, gleich ob der Katalog den Algorithmus bewertet (etwa `AES/CBC/PKCS5Padding`, `SHA1PRNG`, `PKCS12`). Gespeichert werden bis zu 50 Aufrufe, Produktivcode zuerst; die Gesamtzahl zählt jeden Aufruf, die Zählung je Algorithmus deckt die gespeicherten Aufrufe ab, und `truncated` kennzeichnet eine längere Liste.
+4. **JWT-Signaturverfahren.** Ist `@nestjs/jwt`, `jsonwebtoken` oder `jose` eine Abhängigkeit oder existiert eine `.env.example`, liest der Pass `.env.example`: `JWT_PRIVATE_KEY`, `RSA_PRIVATE_KEY`, `EC_PRIVATE_KEY` oder `JWT_PUBLIC_KEY` bedeutet asymmetrische Signatur (RS256 oder ES256); `JWT_SECRET_KEY`, `JWT_SECRET` oder `NEXTAUTH_SECRET` bedeutet ein symmetrisches HMAC-Geheimnis.
+5. **HTTP-Sicherheitsheader.** `helmet` oder `@fastify/helmet` in den Abhängigkeiten.
+6. **Verschlüsselung ruhender Daten.** Eine Verschlüsselungsannotation im Prisma-Schema (`encrypt`, `@encrypted`, `@cipher`, `cipher_`), eine Abhängigkeit mit `kms` oder `vault` im Namen oder `kms`, `vault` bzw. `luks` in der Compose-Datei.
 
 ### Service-Modus
 
@@ -69,16 +73,22 @@ Die Signalnummern werden in der folgenden Reihenfolge vergeben; `CRYPTO-01` steh
 | 3 | AES-GCM wird an `createCipheriv` übergeben | positive | Authentifizierte symmetrische Verschlüsselung (NIST SP 800-38D) |
 | 4 | JWT-Abhängigkeit oder JWT-Schlüsselvariable in `.env.example` | positive (asymmetrisch), medium (symmetrisches Geheimnis), low (Verfahren unbestimmt) | Token-Signaturverfahren; bei symmetrischen Geheimnissen empfiehlt der Pass RS256 oder ES256 mit KMS-gestütztem Schlüssel für souveräne Bereitstellungen mit mehreren Diensten |
 | 5 | Helmet vorhanden | positive | HTTP-Sicherheitsheader aktiv (OWASP A05:2021) |
-| 6 | Weder starkes noch schwaches Primitiv im Quellcode-Scan und keines der obigen Signale | informational (Konfidenz low) | Keine kryptografischen Primitive erkannt; manuelle Prüfung empfohlen |
+| 6 | Kein Treffer der eingebauten Muster oder des Katalogs und keines der obigen Signale | informational (Konfidenz low) | "No cryptographic primitives detected by pattern scan (languages scanned: ...; files: N)"; manuelle Prüfung empfohlen |
 | 7 | Immer | positive (Verschlüsselung ruhender Daten gefunden) oder medium | Ohne Nachweis hängt die Volume-Verschlüsselung vom Host ab und muss im Bereitstellungs-Runbook geprüft werden (der Pass verweist auf DORA Artikel 9 und BSI C5) |
-| 8 und folgende | Je gefundenem schwachem Primitiv | high | Gebrochener oder riskanter Algorithmus (CWE-327); vor dem Produktivbetrieb ersetzen |
+| 8 und folgende | Je gefundenem schwachem Primitiv | high, wenn ein Vorkommen im Produktivcode von keiner Kontext-Ausnahme erfasst ist; der stärkste Ausnahme-Schweregrad, wenn alle Produktiv-Vorkommen erfasst sind (Konfidenz medium); unverändert, aber Konfidenz low bei Vorkommen nur im Testcode; mit `assessment.test_code.mode: tag` senkt der Testcode-Marker es danach um eine Stufe | Gebrochener oder riskanter Algorithmus (CWE-327): "N occurrences (P production, T test)", die angewandten Ausnahmen mit Begründung, bis zu 10 Fundstellen mit Produktivcode zuerst |
+| Folgende Nummern | Je gefundenem zugelassenem Katalog-Algorithmus, dessen eingebautes Gegenstück nicht bereits oben ein positives Signal erzeugt hat | positive (informational bei Vorkommen nur im Testcode) | Zugelassenes Primitiv mit Status nach BSI TR-02102 und NIST und Anzahl der Vorkommen |
+| Zuletzt | Mindestens ein JCA-Aufruf mit literalem Algorithmus (Schritt 3) | informational, Konfidenz hoch | „Java Cryptography Architecture usage“: Engine und Algorithmus mit Anzahl, registrierte Provider, „N occurrences (P production, T test)“, bis zu 10 Fundstellen mit Produktivcode zuerst; unterdrückt den Rückfall in Zeile 6, ändert aber nie `overall_posture`, `nist_compliant` oder `blocks_migration` |
 
 Der `assessment`-Block enthält:
 
 - `primitives`: `api_key_hash`, `access_token`, `symmetric_encryption`, `jwt_signing`, `tls`, `at_rest_encryption`
-- `overall_posture`: `weak_primitives_detected`, `good_with_infrastructure_gap` (starke KDF, starker MAC oder AES-GCM, kein schwaches Primitiv) oder `unknown`
-- `nist_compliant`: `true`, wenn eine starke KDF, ein starker MAC oder AES-GCM gefunden wird und kein schwaches Primitiv
-- `blocks_migration`: `true`, sobald ein schwaches Primitiv gefunden wird
+- `overall_posture`: `weak_primitives_detected`, `weak_primitives_context_excepted` (alle Produktiv-Vorkommen von einer Kontext-Ausnahme erfasst), `weak_primitives_in_test_code_only`, `good_with_infrastructure_gap` (starke KDF, starker MAC, AES-GCM oder zugelassener Katalog-Algorithmus im Produktivcode, kein schwaches Primitiv) oder `unknown`
+- `nist_compliant`: `true`, wenn ein starkes Primitiv im Produktivcode gefunden wird und kein schwaches Primitiv
+- `blocks_migration`: `true`, wenn ein schwaches Primitiv ein Vorkommen im Produktivcode hat, das keine Kontext-Ausnahme erfasst, oder (nur im Standard-Testcode-Modus `include`) ein Vorkommen mit Schweregrad high im Testcode
+- `hits`: je Katalogeintrag `total`, `production`, `test`, `unclassified`, `truncated` und die gespeicherten `locations` (Datei, Zeile, Pfadklasse, Regel, Ausnahme)
+- `jca_inventory` (wenn ein JCA-Aufruf gefunden wurde): `total`, `production`, `test`, `unclassified`, `truncated`, `algorithms` (Engine, Algorithmus, Anzahl), `providers` und die gespeicherten `locations`
+- `pattern_scan`: `languages`, `configuration_files` und `files`, die die Musterscans gelesen haben
+- `catalogue_errors` (falls vorhanden): Katalogeinträge, Kontext-Ausdrücke oder Ausnahmen, die die Validierung oder den ReDoS-Schutz nicht bestanden haben und übersprungen wurden
 
 ### Service-Modus
 
@@ -94,7 +104,7 @@ Der Service-`assessment`-Block enthält `mode: service`, `files_scanned`, `findi
 
 ## Drittanbieter-Module und Werkzeuge
 
-Keine. Der Musterabgleich nutzt eingebaute reguläre Ausdrücke; es wird weder ein externer Scanner noch eine Bibliothek aufgerufen. Die Zertifikatsdaten im Service-Modus stammen aus Pass 25 (BINARY).
+Keine. Der Musterabgleich nutzt eingebaute reguläre Ausdrücke und den gemeinsamen Katalog-Matcher (`catalogue-matcher.ts`); es wird weder ein externer Scanner noch eine Bibliothek aufgerufen. Die Zertifikatsdaten im Service-Modus stammen aus Pass 25 (BINARY).
 
 ## Ausgaben
 
@@ -109,7 +119,10 @@ Keine. Der Musterabgleich nutzt eingebaute reguläre Ausdrücke; es wird weder e
 
 **Einschränkungen und bekannte Lücken**
 
-- Der Application-Modus scannt nur JavaScript- und TypeScript-Quellcode und die Benennung der Node.js-`crypto`-API. Kryptografie in Java, .NET, Go, Python oder Rust wird nicht erkannt.
+- Die eingebauten Muster decken nur JavaScript und TypeScript und die Benennung der Node.js-`crypto`-API ab. Kryptografie in Java, .NET, Go, Python und Kotlin wird über die Einträge des Algorithmenkatalogs erkannt, JCA-Aufrufe in Java und Kotlin werden zusätzlich inventarisiert; Rust wird nicht gescannt.
+- Das JCA-Inventar braucht einen literalen Algorithmus-String: `Cipher.getInstance(ALGORITHM)` mit einer Konstanten oder einem Wert aus der Konfiguration wird nicht aufgeführt. Schlüssellängen (`KeyGenerator.init(1024)`, RSA-Moduluslänge) werden nicht bewertet.
+- Das JCA-Inventar speichert höchstens 50 Aufrufe, Produktivcode zuerst. Die Gesamtzahl zählt jeden Aufruf, die Zählung je Algorithmus deckt aber nur die gespeicherten Aufrufe ab: In einer großen Codebasis kann ein Algorithmus, der erst jenseits der ersten 50 Aufrufe vorkommt, in `algorithms` fehlen (`truncated` kennzeichnet diesen Fall).
+- Testcode wird am Pfad erkannt (`test/`, `tests/`, `__tests__/`, `systemtest/`, `src/test/java`, `*.test.ts`, `*Test.java` und ähnliche); ein schwaches Primitiv, das nur dort vorkommt, blockiert die Migration nur im Standard-Testcode-Modus `include`, nicht unter `tag` oder `exclude`.
 - Die TLS-Konfiguration wird nicht untersucht; das Primitiv `tls` spiegelt nur das Vorhandensein von Helmet wider.
 - `.env.example`, Prisma-Schema und Compose-Datei werden nur an festen Orten im Wurzelverzeichnis gelesen (Compose zusätzlich in `docker/`).
 - Im Application-Modus wird nicht nach Geheimnissen im Quellcode gesucht; nutzen Sie dafür den optionalen Malware-Pass ([Malware-Scan](/de/malware-scanning)).

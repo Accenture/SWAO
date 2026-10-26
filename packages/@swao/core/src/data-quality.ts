@@ -14,6 +14,7 @@
 // ================================================================
 
 import type { RunManifest } from './run-manifest.js';
+import { passCoverageReasonLabel } from './pass-coverage.js';
 
 // Data-quality conditions derived from a run manifest. Relocated to @swao/core
 // (ADR-0048 modular architecture, Phase 5, #0577) so that both the publication
@@ -83,6 +84,33 @@ export function evaluateDataQuality(manifest: RunManifest | null): DataQualityCo
         message: `LLM passes skipped: ${prov.llm_skipped_passes.join(', ')} -- no LLM provider configured (no_llm_provider)`,
       });
     }
+  }
+
+  // #3436: a pass ran but is not fully evaluated (Pass 11 controls without a
+  // model verdict). Same wording as the compliance blocks' banner.
+  for (const d of manifest.passes_degraded ?? []) {
+    const regimes = (d.regimes ?? []).map((r) => `${r.id} (${r.controls_without_verdict})`).join(', ');
+    conditions.push({
+      severity: 'warn',
+      message: d.pass === 'comp'
+        ? `Compliance not fully evaluated: ${regimes || 'see Compliance'} -- control(s) have no verdict because the LLM evaluation failed (${d.reason}); re-run the assessment when the LLM provider is reachable`
+        : `Not fully evaluated: ${d.name ?? d.pass} -- ${d.reason}; re-run the assessment`,
+    });
+  }
+
+  // #3419: passes that did not execute for a reason the reader must know
+  // about: the secret scan (any reason), a missing tool or a failed LLM call.
+  // Profile choices such as an excluded crawl, --skip-llm and no-provider skips
+  // (own condition above) are listed in the "Passes not executed" block only,
+  // and so is a pass with no input (`not_applicable`, e.g. a service run
+  // without config or binary files to scan).
+  const notable = (manifest.passes_not_run ?? []).filter((p) => p.reason !== 'not_applicable'
+    && (p.pass === 'secrets' || p.reason === 'tool_missing' || p.reason === 'llm_failed'));
+  if (notable.length > 0) {
+    conditions.push({
+      severity: 'warn',
+      message: `Passes not executed: ${notable.map((p) => `${p.name ?? p.pass} (${passCoverageReasonLabel(p.reason)})`).join(', ')} -- see "Passes not executed" under Assessment Scope`,
+    });
   }
 
   return conditions;

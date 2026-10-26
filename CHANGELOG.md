@@ -9,6 +9,394 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-25
+
+Minor release. It improves the quality of existing assessments (Java and Spring Boot
+coverage, test-code handling, secret masking, compliance evidence, deterministic
+portability and cloud-native scores, landing-zone verdicts) and adds Pass 26 code
+health and `swao mcp install` for AI clients. It also carries the work merged after
+1.4.2 (LLM gateway single source, Portfolio Engagement Hub, field-test fixes) and a
+landing-zone catalogue refresh.
+
+### Added
+
+- Pass 26 code health (key `quality`, prefix QUAL) in the default profile: a local,
+  deterministic pass with no LLM and, by default, no external tool. It measures lines of code,
+  decision points, nesting, duplication (6-line window) and TODO markers over production
+  code, lists hard-coded IPs and URLs, and ranks a top-25 file worklist by a composite
+  score with owners from CODEOWNERS (last matching rule wins). Output: four application
+  KPIs, QUAL-01 to QUAL-07 signals (at most medium), `passes/26-quality.yaml`, optional
+  `code_health` KPIs in `portfolio-summary.json`, a publication code-health block (KPI
+  tiles, worklist with CSV export, endpoint table) and a hub table column. The composite
+  score weights are provisional and may change. Skipped for service apps (#3405)
+- Shared hard-coded endpoint scanner (IPv4 and URLs) used by passes 06, 07 and 26: each
+  hit is classified (public, private, loopback, documentation, templated, ...);
+  documentation ranges and names (RFC 5737, RFC 3849, RFC 2606), XML namespaces, licence
+  hosts and version numbers are not reported; comment-only lines are skipped and URL
+  credentials are masked (#3405)
+- `assessment.code_health` in `.swao.yml`: `top_n` (worklist length, 1 to 500, default
+  25), `endpoint_allowlist` (hosts, `.suffix`, IPv4 or IPv6 left out of the Pass 26
+  endpoint list), and opt-in `tools: [lizard, jscpd]` with `tool_timeout_seconds`.
+  Requested tools run with pinned versions (lizard 1.17.x, jscpd 4.x) and their results
+  go to `code_health.tools`; the built-in scores stay byte-identical. QUAL-08
+  (informational) names a requested tool that is missing, unsupported or failed, and
+  `swao health-check` lists both tools. The blocks pass uses the code health result as
+  evidence for architecture and testing maturity (#3487)
+- Supported languages page (EN and DE) with the language by pass coverage table and the
+  package ecosystem table, generated from the same code as the coverage matrix and
+  checked by a test (#3486)
+- Pass 02 detects databases in Java and Kotlin services from JDBC URLs, Spring datasource
+  settings, JPA entities, `persistence.xml` and Spring Data JPA repositories (STATE-01,
+  new `database_engines`), and Kotlin `object` state (STATE-05) (#3485)
+- `assessment.test_code` in `.swao.yml` (`mode: include | tag | exclude`, optional
+  `extra_patterns` and `keep_patterns`; shorthand `assessment.exclude_test_code: true`;
+  a contradicting pair is a schema error). The app file wins over the workspace file;
+  the default `include` keeps the previous behaviour. `tag` lowers signals whose
+  evidence is test code only by one severity step and keeps the original in
+  `severity_original` (MAL-03 is never lowered); `exclude` leaves test files out of
+  every pass except the secret scan. Test folders come from built-in rules plus
+  `pom.xml`, Gradle source sets and vitest / jest configuration. The Setup Wizard has a
+  new Test Code step, `swao init` documents the key, and the publication Assessment
+  Scope block shows the mode, its source and the test-file counts (#3403)
+- Assessment Scope block shows "Source files scanned", "Test files" and "Excluded
+  folders" with a per-folder count, read from the new optional run-manifest block
+  `files_assessed.source_scope` (#3428)
+- Language census and coverage in Pass 01: files and non-blank lines of code per
+  language (production and test), build manifests at any depth up to 4 (Maven, Gradle,
+  sbt, npm, Python, Go, .NET, Cargo, Gemfile, Composer) and a language x pass coverage
+  matrix (deterministic, LLM or none). INV-01 names the language with the most
+  production code, INV-90 carries the census and INV-91 (medium) warns when more than
+  half of the production code has no deterministic analysis. New publication block
+  "Language coverage" (#3423)
+- Java SBOM in Pass 05: Maven (parent POMs, `dependencyManagement`, BOM imports) and
+  Gradle (Groovy and Kotlin DSL, `gradle.properties`, `libs.versions.toml`,
+  `gradle.lockfile`) with batched OSV queries; an offline OSV database via
+  `SWAO_OSV_DB_PATH` or `wsp/inputs/osv/`; supplied CycloneDX or SPDX JSON in
+  `wsp/inputs/compliance/` feeds the lookup; the Java runtime end-of-life status is read
+  from compiler and toolchain settings (Java 21 and 25 added). OSV lookups honour
+  `HTTPS_PROXY` and `NO_PROXY` (#3420)
+- Java twelve-factor evidence: TF-04 recognises structured logging (Logback and Log4j2
+  JSON encoders and layouts, Spring Boot `logging.structured.format`, logging
+  libraries); TF-05 recognises Actuator health, health exposure, probe groups,
+  `server.shutdown` and Kubernetes liveness / readiness / startup probes for any stack.
+  TF-05 fails only for Spring Boot without health evidence; Quarkus, Micronaut, Helidon
+  and Dropwizard health artefacts count, and other JVM services without one stay
+  unknown (#3421)
+- Java crypto, egress and state (#3422):
+  - Pass 08 catalogue: JCA algorithm strings (DES, RC4, HmacMD5, MD5withRSA,
+    SHA1with...), BouncyCastle classes, approved PBKDF2-SHA2, scrypt, SHA-2 / SHA-3 and
+    HMAC-SHA2 entries, and the weak Spring legacy password encoders. A JCA inventory
+    (`assessment.jca_inventory`, informational, at most 50 calls) lists every
+    `getInstance` call and BouncyCastle registration without changing the posture
+  - Pass 07 scans JVM sources and Spring configuration for hard-coded endpoints (URLs,
+    IPv4, Kafka bootstrap lists, Oracle JDBC URLs) and names the HTTP client; one EGR
+    signal per host class (public medium, private low, test-only informational) with
+    `assessment.hardcoded_endpoints`
+  - Pass 02 recognises the JVM session model, Spring Data Redis, in-process state
+    (STATE-05) and session affinity (STATE-06); configuration hits record the key, never
+    the value. Node-only sources keep the previous output
+- Landing-zone readiness service footprint from Pass 01: dependencies (Maven, Gradle,
+  npm, pip), compose images, Kubernetes kinds, Helm charts, PVCs, LoadBalancer
+  Services, configuration and document mentions, mapped through
+  `controls/service-footprint-catalogue.yaml`. The fit uses it with confidence and
+  provenance; the publication shows the footprint, a partial-assessment banner and the
+  services missing from each target catalogue. Kafka is mapped on MSK, Event Hubs, GCP
+  Managed Kafka, OCI Streaming and OTC DMS; AWS EBS provides block storage (#3430)
+- Infrastructure inputs carry a role, current or target: `context.infra_roles` in
+  `.swao.yml`, the folder convention `wsp/inputs/infra/{current,target}/`, then file-name
+  defaults. Pass 04 reports a signal that cites only target inputs as a target-platform
+  gap (at most medium) instead of a contradiction, and target state files produce no
+  service dependencies (#3429)
+- `source.vcs.clone_timeout_minutes` (1 to 240) overrides the 10-minute clone deadline
+  per app (#3439)
+- Compliance: a not-applicable RAG status. Pass 11 decides controls whose `applies_when`
+  does not match as N/A, and controls outside the assessment-type scope as not
+  evaluated, before any LLM call; a framework entirely out of scope renders "Not in
+  scope"; the hub compliance chart gains an N/A segment; KRITIS_DE sector controls carry
+  `applies_when.kritis_sector` (#3425)
+- Passes not run are reported with a reason (`passes_not_run`: not in profile, skipped
+  by flag, LLM unavailable or failed, tool missing, disabled, not applicable) in the run
+  status, manifest, logs and a publication block, with a data-quality banner for the
+  material cases (#3419). Degraded passes are recorded as `passes_degraded` (run
+  manifest 1.6) and `degraded_passes` (run-status 1.1) with a publication banner (#3436)
+- Stakeholder challenge: `swao challenge --app <app> --run <run_id>` challenges a given
+  run; `swao report` and the publication empty states name the challenge of another run
+  with the exact command; `swao publish` warns when only another run's challenge exists;
+  assess offers a challenge for the new run; the hub shows a current / stale / none
+  challenge badge per app (#3427, #3446)
+- Chat: `swao_signals` and `swao_signal_detail` state the evidence kind (test code,
+  mixed, production, document) and the detection method; the TUI chat checks every
+  answer and appends a restating note when it escalates severity or leaves out test
+  code or low confidence; the signal index takes at most 60 % of the context (#3418)
+- Analyst 7R override (`disposition.seven_r`) and its source in every portfolio view:
+  MCP portfolio tools gain a 7R source column and filter, the hub 7R chart is split by
+  source, and the Power BI star gains `seven_r_source` in `dim_app` and
+  `fact_app_summary` (bundle schema 1.5.0, additive; refresh the `.pbit` template to
+  show it) (#3443); the portfolio workbook exports `seven_r_source` (#3442)
+- Risk register and compliance control evidence references link to the Evidence Gallery
+  (#3445, #3448)
+- MCP server `--host`: the default `localhost` binds 127.0.0.1 and ::1; another
+  loopback address binds only itself; a non-loopback host exits 2 unless
+  `--allow-remote` is given, which warns that there is no authentication. The banner
+  lists the bound addresses (#3468)
+- MCP server request log: JSON lines (time, session, client, method, tool, duration,
+  status, error; never arguments or results) in `<workspace>/wsp/logs/mcp-server.log`,
+  or in `wsp/logs` next to the SWAO executable when no workspace resolves; `--log-file`
+  and `--log-level`; rotation at 10 MB, five files. SIGINT and SIGTERM drain requests
+  for up to 5 seconds, stop CLI children and remove the pid file (#3471)
+- MCP tool calls honour cancellation (the CLI child process tree is stopped) and
+  `swao_challenge`, `swao_publish` and `swao_service_research_run` send progress
+  notifications (#3463)
+- MCP tool profiles (Design 116): `swao mcp --profile starter|assess|full` (5, 14 or
+  53 tools; `full` stays the default) or `--tools <list>`, also via `SWAO_MCP_PROFILE` /
+  `SWAO_MCP_TOOLS` or an `mcp:` block in the workspace `.swao.yml`; calls outside the
+  profile fail with `isError`, and resources and prompts follow the profile. New
+  `swao mcp profiles` lists them. SWAO Chat starts its server with `--profile full`
+  (#3474). Server instructions, the welcome tool list and a new `start` prompt with the
+  main menu are generated from the active profile (#3475, #3476)
+- MCP tools carry annotations (read-only, destructive, idempotent) in `tools/list`, and the
+  server reports the title `SWAO` (#3469, #3473)
+- `swao mcp install --client kilo|claude-code|cursor|vscode|claude-desktop` registers the
+  SWAO MCP server in an AI client's config with a safe writer: strict JSON or refuse (files
+  with comments are never rewritten), only the SWAO entry is changed, a timestamped backup
+  is taken first, the write is atomic, `--dry-run` shows the change without writing, and
+  `--uninstall` removes only the SWAO entry (with a backup). Claude Code uses HTTP on
+  localhost. For VS Code the installer writes the project file `.vscode/mcp.json`. `--agent` writes a lean SWAO agent for Kilo and Claude Code. The Setup Wizard
+  offers the same client choice, and a new page "Using SWAO from an AI client" (EN and DE)
+  describes the setup (#3478, #3479, #3480, #3481, #3482)
+- Portability and cloud-native scores are computed deterministically from pass outputs,
+  with weights in `controls/migration-scores-catalogue.yaml`; the LLM no longer sets
+  `portability_score` and may only add a short `portability_comment`. Cloud-native is
+  the weighted twelve-factor coverage (unknown counts 0.5) with `factors_checked` and a
+  confidence. Portability combines service availability at two or more sovereign
+  providers in the landing-zone catalogues, vendor SDK lock-in, container, IaC and
+  egress; components without data are dropped and the weights renormalised, and a score
+  with no data is left blank instead of a default. The coverage tiles show the factor
+  count and the portability components, and the Methodology section documents both
+  formulas (#3431)
+- Portfolio Engagement Hub: `swao publish --portfolio` builds
+  `wsp/publications/engagement-hub.html` over every application and service app, with
+  a 7R badge and its source on every tile, a KPI summary, a sortable table with a
+  type-first filter, charts and a landing-zone fit section. It is the first entry in
+  Portfolio Operations and has its own Publish HTML entry; MCP `swao_publish` builds it
+  without an app; a single-app publish rebuilds it best-effort (Enterprise).
+  `portfolio-summary.json` gains optional hub fields (#3393, #3402)
+- Service apps carry a 7R label derived from TIME (Eliminate to Retire, Tolerate and
+  Invest to Retain, Migrate and Migrate-Critical to Rehost) with
+  `seven_r_source: derived_from_time`; an analyst override wins (#3402)
+- `swao llm-gateway update [--dry-run]` and Tools > Update LLM Gateway: refreshes
+  unchanged seeded connectors to the packaged version, keeps edited ones and adds new
+  ones; the health check reports when a newer packaged connector exists (#3388)
+- `swao assess --no-lz-fit` runs no inline landing-zone fit even when
+  `assessment.landing_zone.targets` is set (#3378)
+- Run without LLM is offered when the gateway check fails (App Assessment and LZ
+  Catalog screens); deterministic-only runs are labelled on the complete screen and in
+  the publication, and the stakeholder challenge is not offered for them (#3383)
+- The publication shows a "Sample data" warning when a landing-zone readiness run used a
+  fabricated snapshot (#3391)
+- Publish HTML app picker: type to filter, scrolling window, and Tab publishes all apps
+  in sequence with a summary (#3401)
+- LZ pickers show full provider names with per-cloud guidance and region labels grouped
+  under country headers (#3399, #3380)
+
+### Changed
+
+- MCP server workspace precedence (behaviour change, Design 116 REQ-02, owner decision D-3):
+  `swao mcp --workspace <path>` now beats the working directory. The order is
+  `--workspace`, then the new env variable `SWAO_WORKSPACE` (same meaning as the flag), then
+  the workspace found from the working directory, then the saved default workspace. Before,
+  a server started inside one workspace ignored `--workspace` for another. When the
+  workspace is pinned by the flag or the env, `tools/list` no longer offers the
+  `workspace_path` parameter, and a call that still passes one must name the pinned root
+  (otherwise the call fails with `isError`). Prompts, completions and resources use the
+  same resolver (#3467)
+- MCP tool failures (validation errors, path guard, unknown tool, missing workspace or
+  artefacts, licence blocks, non-zero CLI exit) now set `isError` on the result instead of
+  returning plain text (#3472)
+- MCP tool descriptions are shorter (at most two sentences) and neutral, without example
+  questions or demo IDs; a size budget per profile is enforced in tests (#3465, #3466,
+  #3477). Deprecated tools are no longer listed in `tools/list`; direct calls still work
+  in the `full` profile and start with a deprecation notice (#3470)
+- The MCP request log is hidden from the `swao_list_directory` and `swao_read_file` tools
+  (#3471)
+- **Exit code:** `swao assess` exits 1 when a mandatory pass, `compliance_evaluation`
+  (pass 11) or `block_assessments` (pass 12), fails on LLM connectivity. Before, a pass
+  11 failure exited 0 because the check looked for the wrong pass name. A degraded pass
+  11 (some LLM batches exhausted inside the pass) closes the run `partial` and leaves
+  the exit code unchanged. Scripts that treat exit 0 as success now see these runs fail
+  (#3449)
+- **Exit code:** `swao challenge` exits 4 on a gateway 401 or 403 and keeps the agent
+  reports already completed, marked degraded, with the credential key and the exact
+  re-run command; before, it aborted with exit 1 and lost every report (#3444)
+- **Default profile:** 15 passes. The secret scan (key `secrets`, pass 14, Gitleaks
+  only) and Pass 26 code health join the default profile; the full malware scan stays
+  opt-in and supersedes `secrets` when both are requested. The health check warns when
+  Gitleaks is missing (#3419, #3405)
+- **MAL-00** (a Pass 14 tool is missing) is informational instead of high and carries
+  an install hint (#3419)
+- **`source_files_total`** in the run manifest (`files_assessed`) is the number of
+  in-scope source files the passes scanned, not a raw recursive count. Dot-directories,
+  dependency folders, build output and fixtures are no longer counted, and in
+  `test_code` mode `exclude` the test files are left out too. Counts, including the
+  Power BI "files scanned" tiles, drop against earlier runs (#3428, #3403)
+- **Source scope:** every pass lists files through one walker. Passes no longer scan
+  `.git/` and other dot-directories, `target/`, `build/`, `dist/`, `coverage/`,
+  `fixtures/` or .NET build-output `bin/`, and the INV and TF searches no longer match
+  inside `node_modules/`; test files are tagged, not dropped, unless `exclude` is set.
+  Signals can differ from earlier runs (#3428)
+- **TF-01 is stack-aware:** it recognises the configuration idiom per stack (Spring
+  placeholders, `spring.config.import`, `@Value`, `@ConfigurationProperties`, Helm
+  `.Values`, Kubernetes ConfigMap / Secret references, Node `.env.example` and
+  `process.env`, Python `os.environ` and `BaseSettings`, .NET environment variables)
+  instead of scoring a missing `.env.example` High for every stack. Hard-coded hosts
+  or literal credentials in packaged configuration fail with file:line (values are not
+  echoed); a literal host in the chart default `values.yaml` or a ConfigMap lowers
+  TF-01 to partial and is counted in `deployment_default_literal_count`, while
+  per-environment `values-<env>.yaml` overlays stay informational; Kubernetes Secret
+  name keys and cluster service names are not findings; nothing recognisable is
+  unknown and excluded from the pass rate. Node with `.env.example` keeps the same
+  signal (#3424)
+- Compliance evidence quality: a GAP that cites only scope or `*-00` signals, or a
+  control that expects a missing context input, becomes UNKNOWN (insufficient evidence)
+  (#3426); a GAP is capped at PARTIAL when no cited signal is verified production
+  evidence (test code only, low confidence, or LLM-inferred without a file), and every
+  verdict rationale ends with its evidence basis (#3414); failed LLM batches leave their
+  controls UNKNOWN and mark the pass degraded instead of complete (#3436)
+- Publication `contract_version` 1.2 (adds the not-applicable RAG status; readers
+  accept 1.0 to 1.2) (#3425)
+- Crypto and IAM catalogue matching uses word boundaries and case rules, skips
+  generated, minified and large files and base64 runs, and counts bare acronyms only in
+  call or assignment context (#3410). All hits are kept with a production / test split
+  (signals cite up to 10 locations); weak crypto found only in test code is Low and no
+  longer blocks migration, and an IAM provider referenced only from tests is
+  informational (#3411). SHA-1 in TOTP (RFC 6238), HMAC-SHA1 and content checksums is
+  rated by context exceptions (#3412). The "no cryptographic primitives" fallback fires
+  only when nothing was found and states the languages and files scanned; approved
+  catalogue entries emit positive signals (#3413)
+- Pass 01 coverage matrix claims LLM coverage only where a prompt includes source files
+  (#3423)
+- LLM connectors have one source: the packaged connectors are seeded into the workspace
+  `wsp/inputs/llm-gateway/` (setup, `swao init`, TUI start) and are read from there
+  only; the runtime fallback to the bundled copies is removed. An empty folder is
+  re-seeded, and the health check re-seeds or warns. Every screen reads the same list
+  (#3388)
+- The portfolio hub moved from `apps/engagement-hub.html` to
+  `wsp/publications/engagement-hub.html`; the old path keeps a redirect page (#3393)
+- Geography `europe` means the 27 EU member states; `eu` is a deprecated alias that
+  prints a note; Switzerland, the United Kingdom, Norway, Iceland and Liechtenstein are
+  geographies of their own (#3379)
+- The Setup Wizard no longer has an LZ Targets step; the LZ pickers prefill from the
+  last run and no longer write `assessment.landing_zone.targets` to the app `.swao.yml`;
+  an App Assessment with no targets selected runs no fit (#3378)
+- Portfolio Operations leads with the Engagement Hub and names Landing Zone Readiness in
+  full (#3391); its guidance follows the highlighted item (#3390)
+- Azure non-customer regions (canary, staging, internal) are excluded from the LZ
+  catalogue and pickers (#3380)
+- The Tools menu is renumbered: LLM Gateway is key 4 (#3388)
+- Health check logs every check result to its NDJSON log and writes nothing into a
+  directory that is not a workspace (#3388, #3406)
+- MCP server: `swao mcp --http` no longer kills whatever process holds the port. A busy
+  port exits 1; when a SWAO server already runs there the message names its pid and
+  suggests `--replace`, which stops only a verified SWAO server from the pid file
+  (servers from 1.4.2 included); SWAO Chat attaches to the running server (#3461)
+- MCP tool calls run asynchronously, so a long assessment no longer blocks other
+  requests (#3463)
+
+### Fixed
+
+- Landing zone fit: when the only missing services are requirements evidenced by
+  documentation alone (low confidence, from the service footprint), the overall verdict
+  is NEEDS_VERIFICATION instead of BLOCKED; each service keeps its own verdict and the
+  confirm note (#3497)
+- `swao mcp install --client`: the atomic config rename is retried briefly on Windows
+  while an antivirus scanner or the search indexer holds the file open (#3491)
+- Pass 02 no longer treats Java or Kotlin files of a React Native or Android app as a
+  JVM service (#3485)
+- Pass 07 reports every host of multi-host MySQL, MariaDB and PostgreSQL JDBC URLs,
+  including replication and load-balance URLs (#3485)
+- Claude Desktop config patching (the `swao mcp install` path without `--client` and the
+  Setup Wizard) no longer replaces a config file it cannot parse with a fresh one; it
+  reports an error and leaves the file, including other servers and settings, untouched
+  (#3478)
+- `source.vcs.subdir`, `token_scheme`, `git_proxy` and `ssl_verify` were dropped when
+  `.swao.yml` was parsed; passes scanned the whole clone (#3404)
+- A `--type` override now reaches the Pass 11 applicability check (#3425)
+- APP-REG-01 counts compliance controls (it read a field the runtime does not write);
+  `COMPLIANT` / `NON_COMPLIANT` are recognised outcomes (#3407)
+- APP-TCH-01 reads the Java runtime end-of-life status, so Java services get a runtime
+  score (#3458)
+- Signal evidence links resolve to the Evidence Gallery; unresolved references render
+  unlinked, and absence statements are plain text and not counted as unresolved
+  (#3416)
+- VAT identifiers use one shape per country, so German words are no longer redacted as
+  business identifiers, and evidence ids stay intact in the post-run scrub (#3417)
+- Post-run scrub: a redacted bare IP in a YAML file stays a quoted string instead of
+  turning into a list (#3484)
+- Setup Wizard keeps an existing connector with a TLS block when an endpoint is entered
+  again (#3438)
+- Windows clones: long paths, no interactive credential dialog, a fast authentication
+  failure with token guidance, and a path-too-long diagnosis (#3439)
+- Licence counter: a failed post-run step is logged as `.failed` and warns once that
+  the run was not counted; state writes are atomic; a corrupt state file is kept and
+  reported instead of reset (#3440)
+- Support bundle pass summary counts LLM-pass signals by outcome instead of "unknown"
+  (#3441)
+- MCP HTTP transport: a failing request no longer affects the server, unhandled
+  rejections are logged without exiting, idle sessions close after 30 minutes and an
+  unknown session answers 404 (#3462)
+- `swao install-playwright` fails fast with an offline route when Node.js or npx is
+  missing (#3376)
+- `swao support-bundle` falls back to the saved workspace, else writes a reduced bundle
+  (#3374)
+- LLM assessment: legs without pricing are left out of the cost ranking instead of
+  ranking cheapest (#3389)
+- Setup Wizard names LLM connectors it skipped (#3372)
+- Service research feeds use the proxy-aware fetch (`HTTPS_PROXY`, `NO_PROXY`) (#3369)
+- Service assessment complete screen no longer glues lines together or spills past the
+  header (#3400)
+
+### Security
+
+- Detected secret values are masked at the source and in every output channel (WSP
+  signals, risk register, publication, chat, MCP output, Power BI exports); the masked
+  form keeps at most the first two characters and the length (#3415)
+- Hard-coded credentials are masked before any LLM call and in report output (new
+  redaction class `credential`); references such as `${VAR}` are left alone; values in
+  JSON-escaped quotes are covered (#3415, #3456)
+- LLM traces are masked when written, including traces outside the run directory
+  (#3447)
+- Support bundle 2.4 replaces client hosts, URLs, absolute paths and file names with
+  per-bundle placeholders, drops key-suffix and authorisation fields, keeps only the
+  length of chat messages, and states what it redacts; LLM attempt events no longer log
+  an API key suffix (#3437)
+- MCP HTTP transport validates the Host and Origin headers (403 otherwise) against DNS
+  rebinding (#3464)
+- Dependencies: zod 4.6.7 across the tree (CVE-2023-54404; `module-framework` moved from
+  zod 3), ip-address 10.7.4, fast-uri 4.2.3, fastify 5.12.7 and vitest 4.1.12 (dev),
+  each pinned below the next major; the Black Duck scan exclusions cover the example
+  workspace at its current location (#3494)
+- undici 8.12.3 and body-parser 2.4.0 (HIGH GHSA-xjj6-f33q-929c and GHSA-27r3-jxmh-p828);
+  the release audit gate runs a real HIGH-level audit again: under pnpm 11 the
+  `--ignore` form audited nothing, accepted advisories now live only in
+  `auditConfig.ignoreGhsas` and a new audit gate rejects the flag (#3500, #3501)
+- The undici range declared by the LLM providers module and the undici override of the
+  documentation scripts now start at 8.12.2, so no manifest or lockfile allows a version
+  affected by GHSA-xjj6-f33q-929c (#3534)
+
+### Known issues
+
+- The Power BI templates (`swao-report.pbit`, `swao-portfolio.pbit`) do not yet show the
+  data added in this release (code health, compliance N/A, deterministic portability and
+  cloud-native scores, test-code tagging, the 7R label source). They still refresh, but
+  read a fixed column count and drop the new columns. The portfolio template may fail to
+  refresh on a multi-app bundle because dimension rows repeat per app. The refresh is
+  specified in Design 118 and tracked as #3495
+- Landing-zone catalogues (refreshed 2026-10-25): eight Azure regions have no
+  documented location on any Microsoft page and keep residency UNKNOWN
+  (israelnorthwest, malaysiasouth, portland, southcentralus2, southeastus,
+  southeastus3, southeastus5, southwestus); the curated Delos catalogue could not be
+  re-verified and reaches the 90-day age threshold on 2026-11-09
+
 ---
 
 ## [1.4.2] - 2026-10-21

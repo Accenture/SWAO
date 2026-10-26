@@ -19,7 +19,8 @@ import { spawn } from 'child_process';
 import { appendFileSync, existsSync, readdirSync, writeFileSync, mkdirSync, readFileSync, renameSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
 import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
-import { CredentialStore, LicenseGuard, writeCrawlSection } from '@swao/core';
+import { CredentialStore, LicenseGuard, writeCrawlSection, readRunStatus } from '@swao/core';
+import { listLocalConnectors as sharedListLocalConnectors } from '@swao/module-llm-providers';
 import { HeaderView, isAllowed, type LicenseStateView, type LicenseTier } from '@swao/tui-kit';
 
 // SWAO_TUI_DEBUG=1 enables file-based TUI tracing to wsp/logs/tui-debug.log.
@@ -53,9 +54,104 @@ export interface AppYamlOptions {
   passProfile?: string[];
 }
 
-export interface LzCatalogueRegion { id: string; display: string; country?: string; area?: string; }
-export interface LzCatalogueEntry  { provider: string; name: string; regions: LzCatalogueRegion[]; }
+export interface LzCatalogueRegion { id: string; display: string; country?: string; area?: string; label?: string; }
+export interface LzCatalogueEntry  {
+  provider: string;
+  name: string;
+  regions: LzCatalogueRegion[];
+  /** #3399: pre-computed picker label `<id> - <name>` (host uses the shared lzProviderLabel helper). */
+  label?: string;
+  /** #3399: catalogue confidence + source, shown in the provider guidance box. */
+  confidence?: string;
+  source?: string;
+}
 export interface LzCatalogueHint   { entries: LzCatalogueEntry[]; }
+
+/**
+ * #3399: per-provider guidance text for the LZ provider picker, derived from
+ * the catalogue hint the host injects (no module-landing-zone import -- this
+ * module stays isolated). Summarises the residency countries and region count
+ * so the operator sees what each cloud is while the cursor hovers it.
+ */
+export function buildLzProviderGuidance(entry: LzCatalogueEntry | undefined): { what: string; details: { label: string; value: string }[] } {
+  if (!entry) {
+    return {
+      what: 'The CSP whose service catalogue SWAO matches the app\'s assessed requirements. Select multiple CSPs to run a side-by-side comparison.',
+      details: [],
+    };
+  }
+  const countries = [...new Set(entry.regions.map(r => r.country).filter((c): c is string => !!c && c.trim() !== ''))].sort();
+  const name = entry.label ? entry.label.replace(/^.*?\s-\s/, '') : entry.name;
+  const details: { label: string; value: string }[] = [
+    { label: 'Provider', value: entry.label ?? `${entry.provider} - ${entry.name}` },
+    { label: 'Regions', value: `${entry.regions.length} in catalogue${countries.length ? ` across ${countries.join(', ')}` : ''}` },
+  ];
+  if (entry.confidence) details.push({ label: 'Catalogue confidence', value: entry.confidence });
+  if (entry.source)     details.push({ label: 'Source', value: entry.source });
+  return {
+    what: `${name}: SWAO matches this provider's service catalogue against the app's assessed requirements and sovereignty frameworks. Select multiple CSPs to compare side by side.`,
+    details,
+  };
+}
+
+/**
+ * #3378 Part B (ADR-0067): the LZ targets of this app's last landing-zone run,
+ * as `provider:region` labels, read from the run record (run-status.json of
+ * the run `latest-landing-zone-catalog.txt` points at). The picker pre-selects
+ * these so a re-run defaults to the previous choice without persisting
+ * anything to the app .swao.yml. Empty when the app has never had an LZ run.
+ */
+/**
+ * #3380 (decision 1b): insert a non-selectable country header row before each
+ * country group in a (country-sorted) region option list. Options are grouped by
+ * `country` in incoming order; a missing country falls under "Other". Returns
+ * MultiSelectOption rows (header rows carry `header: true`).
+ */
+export function insertCountryHeaders(
+  opts: ReadonlyArray<{ label: string; value: string; country?: string }>,
+): Array<{ label: string; value: string; header?: boolean }> {
+  const sorted = [...opts].sort((a, b) => (a.country ?? '~').localeCompare(b.country ?? '~') || a.label.localeCompare(b.label));
+  const out: Array<{ label: string; value: string; header?: boolean }> = [];
+  let lastCountry: string | undefined;
+  for (const o of sorted) {
+    const c = o.country && o.country.trim() ? o.country : 'Other';
+    if (c !== lastCountry) { out.push({ label: c, value: `__hdr:${c}`, header: true }); lastCountry = c; }
+    out.push({ label: o.label, value: o.value });
+  }
+  return out;
+}
+
+export function readLastRunLzTargets(workspace: string | null, appId: string): string[] {
+  if (!workspace || !appId) return [];
+  try {
+    const wspDir = join(workspace, 'apps', appId, 'wsp');
+    const pointer = join(wspDir, 'latest-landing-zone-catalog.txt');
+    if (!existsSync(pointer)) return [];
+    const rel = readFileSync(pointer, 'utf-8').trim();
+    if (!rel) return [];
+    return readRunStatus(join(wspDir, rel))?.targets ?? [];
+  } catch { return []; }
+}
+
+/**
+ * #3378 Part B: the LZ targets of this app's last APPLICATION run, read from
+ * that run's run-status.json (an app run records its inline-fit targets there).
+ * There is no latest-application pointer, so scan the newest run dir whose
+ * marker is an application run. Empty when the app has no application run.
+ */
+export function readLastRunAppLzTargets(workspace: string | null, appId: string): string[] {
+  if (!workspace || !appId) return [];
+  try {
+    const runsDir = join(workspace, 'apps', appId, 'wsp', 'runs');
+    if (!existsSync(runsDir)) return [];
+    const runs = readdirSync(runsDir).filter(n => /^\d{4}-\d{2}-\d{2}/.test(n)).sort().reverse();
+    for (const r of runs) {
+      const s = readRunStatus(join(runsDir, r));
+      if (s?.assessment_type === 'application') return s.targets ?? [];
+    }
+    return [];
+  } catch { return []; }
+}
 
 // #0985 Design 074: lens definition shape (mirrors LensDef in commands/lenses.ts).
 // Inlined here so this guest module does not import from the host.
@@ -115,6 +211,7 @@ import { logApp } from '@swao/core';
 import { openWithDefaultApp, copyToClipboard } from '@swao/core';
 import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
 import { PASS_DESCRIPTIONS } from './assess/shared/passDescriptions.js';
+import { TUI_DEFAULT_PASS_KEYS, DEFAULT_PASS_KEYS as ORCHESTRATOR_DEFAULT_PASS_KEYS, TUI_OPT_IN_PASS_KEYS } from '../orchestrator.js';
 import { ChallengePromptPhase } from './assess/shared/ChallengePromptPhase.js';
 import { RunningPhase } from './assess/shared/RunningPhase.js';
 import { PreflightLlmPhase } from './assess/shared/PreflightLlmPhase.js';
@@ -126,14 +223,17 @@ const SELF = process.argv[1] as string;
 
 // Core passes used as the first-run default selection (#0901).
 // dynamic and malware are opt-in: they require external tooling (Playwright / malware
-// scanners) and add significant run time. Only pre-select the core 12 passes.
-const DEFAULT_PASS_KEYS = 'inv,state,data,ctx,sbom,tf,egr,crypto,synth,comp,blocks,scope'.split(',');
+// scanners) and add significant run time.
+// #3419: derived from the one default list (@swao/core DEFAULT_PASS_PROFILE via
+// the orchestrator), so the secret scan (`secrets`) is pre-selected and the
+// TUI cannot drift from the CLI default.
+const DEFAULT_PASS_KEYS: string[] = [...TUI_DEFAULT_PASS_KEYS];
 
 // All-passes string (includes dynamic) used for spawn args when "All passes" is chosen.
-// Keep in sync with the --passes default in src/commands/assess.ts.
+// #3419: the CLI `--passes` default itself, not a copy.
 // The spawn logic conditionally omits --no-crawl when dynamic is in the selection (#0692).
-const ALL_PASSES = 'inv,state,data,ctx,sbom,tf,egr,crypto,synth,dynamic,comp,blocks,scope';
-const ALL_PASS_COUNT = ALL_PASSES.split(',').length;
+const ALL_PASSES = ORCHESTRATOR_DEFAULT_PASS_KEYS.join(',');
+const ALL_PASS_COUNT = ORCHESTRATOR_DEFAULT_PASS_KEYS.length;
 
 type Phase =
   | 'input-app'
@@ -209,7 +309,10 @@ const PASS_OPTIONS = [
   { label: '11-comp    -- Compliance evaluation (LLM)', value: 'comp'    },
   { label: '12-blocks  -- Block assessments (LLM)',     value: 'blocks'  },
   { label: '13-scope   -- Scope analysis',              value: 'scope'   },
-  { label: '14-malware -- Malware scan',                 value: 'malware' },
+  { label: '26-quality -- Code health worklist',         value: 'quality' }, // #3405
+  // #3419: default secret scan (Gitleaks); the full malware scan supersedes it.
+  { label: '14-secrets -- Secret scan (Gitleaks)',       value: 'secrets' },
+  { label: '14-malware -- Malware scan (full)',          value: 'malware' },
 ];
 
 // #0383: maps short pass keys (PASS_OPTIONS) to the long names used in
@@ -230,6 +333,8 @@ const PASS_SHORT_TO_LONG: Record<string, string> = {
   comp:    'compliance_evaluation',
   blocks:  'block_assessments',
   scope:   'scope_analysis',
+  secrets: 'secret_scan',
+  quality: 'code_health',
   malware: 'malware_scanning',
 };
 
@@ -471,46 +576,11 @@ export function filterRegimesAgainstInstalled(
   return filtered.length > 0 ? filtered : ['all'];
 }
 
-// LocalConnectorInfo moved to assess/shared/types.ts (#2371).
-
-function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
-  if (!workspaceRoot) return [];
-  const wsDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
-  if (!existsSync(wsDir)) return [];
-  const out: LocalConnectorInfo[] = [];
-  const seen = new Set<string>();
-  let entries: string[];
-  try {
-    entries = readdirSync(wsDir).filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && !f.startsWith('_'));
-  } catch { return []; }
-  for (const entry of entries.sort()) {
-    try {
-      const raw = loadYaml(readFileSync(join(wsDir, entry), 'utf-8')) as {
-        connector?: {
-          id?: string; name?: string; base_url?: string; protocol?: string;
-          models?: { default?: string };
-          auth?: { credential_key?: string; env_var?: string };
-          tls?: { reject_unauthorized?: boolean };
-        };
-      } | null;
-      const c = raw?.connector;
-      const id = c?.id;
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      out.push({
-        id,
-        name: c?.name ?? id,
-        credentialKey: c?.auth?.credential_key,
-        envVar: c?.auth?.env_var,
-        baseUrl: c?.base_url ?? '',
-        protocol: c?.protocol ?? '',
-        defaultModel: c?.models?.default ?? '',
-        rejectUnauthorized: c?.tls?.reject_unauthorized,
-      });
-    } catch { /* skip invalid connector files */ }
-  }
-  return out;
-}
+// #3388 (Design 112): the private listLocalConnectors copy was removed; the
+// one reader now lives in @swao/module-llm-providers (imported below as
+// sharedListLocalConnectors) and seeds the workspace folder when empty
+// (single source, D-3).
+const listLocalConnectors = sharedListLocalConnectors;
 
 // #2351: built-in LLM connectors always shown in the credential hub API tokens section.
 // Derived from bundled seed YAMLs; only connectors with a credential_key or env_var are listed.
@@ -722,6 +792,7 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
   const API_TOKEN_PAGE_SIZE = 9;
   // #2328: resolved connector + apiKey passed as props into PreflightLlmPhase (#2371).
   const [preflightConnector, setPreflightConnector] = useState<LocalConnectorInfo | null>(null);
+  const [skipLlm, setSkipLlm] = useState(false); // #3383
   const [preflightApiKey, setPreflightApiKey] = useState<string | undefined>(undefined);
 
   const detectedProvider = (() => {
@@ -796,6 +867,7 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
         ? ALL_PASSES.split(',').includes('dynamic')
         : passes.includes('dynamic');
       args = ['assess', '--app', app, '--passes', passArg];
+      if (skipLlm) args.push('--skip-llm'); // #3383
       if (!includeDynamic) args.push('--no-crawl');
       if (showStats) args.push('--stats');
       if (!useCassette) args.push('--no-cache');
@@ -1470,7 +1542,8 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
   // #1018: normalize stored entries -- lowercase + dedup + restrict to known PASS_OPTIONS
   // values so stale uppercase entries (INV, LZR, MAL) or duplicates are silently dropped.
   const readAppPassProfile = (appId: string): string[] => {
-    const OPT_IN = new Set(['dynamic', 'malware', 'all']);
+    // #3419: TUI opt-in passes come from the orchestrator (dynamic); malware stays opt-in.
+    const OPT_IN = new Set([...TUI_OPT_IN_PASS_KEYS, 'malware', 'all']);
     const VALID_KEYS = new Set(PASS_OPTIONS.map(o => o.value));
     if (!workspace) return DEFAULT_PASS_KEYS;
     const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
@@ -1631,9 +1704,10 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
   // denominator when individual passes are selected.
   const totalPasses = assessmentType === 'landing-zone'
     ? (appLzCatTargets.length || 1)
+    // #3419: malware supersedes the default secret scan (same Pass 14).
     : passes.includes('all')
-      ? ALL_PASS_COUNT + (passes.includes('malware') ? 1 : 0)
-      : passes.filter(p => p !== 'all').length;
+      ? ALL_PASS_COUNT + (passes.includes('malware') && !ALL_PASSES.split(',').includes('secrets') ? 1 : 0)
+      : passes.filter(p => p !== 'all' && !(p === 'secrets' && passes.includes('malware'))).length;
   // Effective work-done. #0396 (sprint-040): on FAILURE keep the bar at
   // the last actual progress instead of snapping to 100 percent. The bar
   // turns red so the failure is unmistakable; jumping to 100 percent on
@@ -3171,7 +3245,7 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
             return (
               <GuidanceBox
                 title="All passes"
-                what={`Runs all ${ALL_PASS_COUNT} passes (inv through scope, including dynamic crawl). Static: ~30 s. LLM passes: 3-8 min. Malware (14) excluded -- opt-in only.`}
+                what={`Runs all ${ALL_PASS_COUNT} passes (inv through scope, including dynamic crawl). Static: ~30 s. LLM passes: 3-8 min. Includes the Pass 14 secret scan (Gitleaks); the full malware scan stays opt-in.`}
                 details={[
                   { label: 'Static',    value: 'inv, state, sbom, tf, egr, crypto, scope' },
                   { label: 'Dynamic',   value: 'dynamic (Playwright crawl -- requires Chromium)' },
@@ -3328,8 +3402,9 @@ export function AssessScreen({ onBack, version, scaffold, assessmentType = 'appl
         apiKey={preflightApiKey}
         app={app}
         typeLabel={typeLabel}
-        onPass={() => setPhase('running')}
+        onPass={() => { setSkipLlm(false); setPhase('running'); }}
         onBack={() => setPhase('input-app-credentials')}
+        onRunWithoutLlm={() => { setSkipLlm(true); setPhase('running'); }}
         Header={Header}
       />
     );

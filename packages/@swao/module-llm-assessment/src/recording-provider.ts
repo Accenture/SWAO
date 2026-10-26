@@ -32,6 +32,7 @@
 // before records are persisted.
 
 import { createHash } from 'node:crypto';
+import { guardSecretText } from '@swao/core';
 import type { CallRecord, SizeBucket } from './call-record.js';
 import { sizeBucket } from './call-record.js';
 import { detectPiiReproduction } from './security-pii-redaction.js';
@@ -109,6 +110,15 @@ const REDACTION_MARKER_RE = /\[REDACTED[^\]\n]{0,512}\]/g;
  *  Uses a bounded character class that excludes '.' so there is no overlap
  *  with the adjacent '\.' literal -- no backtracking is possible. */
 const PATH_RE = /(?:\.\/|\/|[A-Za-z]:\\|src\/|app\/)[\w/\\-]{2,200}\.\w{1,8}/g;
+
+/** #3447: provider errors can echo response or request bodies; the leg sink
+ *  (NDJSON, often outside the run dir) must never carry a raw credential.
+ *  Mask first, then truncate, so a cut never exposes a partial value. */
+export function safeErrorMessage(err: unknown): string | undefined {
+  const msg = (err as Error | undefined)?.message;
+  if (typeof msg !== 'string') return undefined;
+  return guardSecretText(msg).text.slice(0, 300);
+}
 
 export function looksParseable(response: string): boolean {
   // Use indexOf instead of a backtracking regex to extract fenced code blocks.
@@ -313,7 +323,7 @@ export function createRecordingProvider(
           reliability: {
             retries: Math.max(0, after.call_count - before.call_count - 1),
             rate_limited: /429|rate.?limit/i.test((err as Error).message ?? ''),
-            error: (err as Error).message?.slice(0, 300),
+            error: safeErrorMessage(err),
             dnf: true,
           },
           security: { redaction_marker_altered: false, foreign_path_count: 0, pii_reproduction_detected: false, prompt_injection_detected: false },
@@ -443,7 +453,7 @@ export function createRecordingProvider(
           reliability: {
             retries: Math.max(0, after.call_count - before.call_count - 1),
             rate_limited: /429|rate.?limit/i.test((err as Error).message ?? ''),
-            error: (err as Error).message?.slice(0, 300),
+            error: safeErrorMessage(err),
             dnf: true,
           },
           security: { redaction_marker_altered: false, foreign_path_count: 0, pii_reproduction_detected: false, prompt_injection_detected: false },

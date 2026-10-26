@@ -61,7 +61,7 @@ Warning raised for this plan: `app-old-01 is eliminated in wave 1 but app-crm-04
 ## Where to see it
 
 - **Report**: `wsp/reports/migration-waves-YYYYMMDD.md` with a summary table per wave and a CSV for spreadsheets
-- **Engagement hub**: the Migration Roadmap, Integration Hubs, and Vendor Landscape blocks appear on `apps/engagement-hub.html` when the workspace has service apps
+- **Engagement hub**: the Migration Roadmap, Integration Hubs, and Vendor Landscape blocks appear on `wsp/publications/engagement-hub.html` when the workspace has service apps
 - **Enterprise workbook**: the Migration Waves and Migration Candidates sheets of `swao-portfolio-YYYYMMDD.xlsx` (see [Command reference](/service-assessment/commands#swao-service-export-enterprise))
 - **Delta tracking**: wave changes between runs show up in `wsp/reports/portfolio-delta-YYYYMMDD.md` as TIME, end-of-life, and risk changes
 

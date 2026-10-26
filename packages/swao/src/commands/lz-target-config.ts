@@ -38,7 +38,7 @@ import {
   type LzTargetSource,
   type ResolveLzTargetsInput,
 } from '@swao/core';
-import { resolveProviderCatalogue, resolveLzGeography, type LzGeographyRegion } from '@swao/module-landing-zone';
+import { resolveProviderCatalogue, resolveLzGeography, lzDeprecatedGeographyAlias, type LzGeographyRegion } from '@swao/module-landing-zone';
 
 /** A geography resolved to its default region (recorded in run-status.json). */
 export interface LzResolvedTarget {
@@ -104,6 +104,11 @@ export function resolveRunLzTargets(opts: ResolveRunLzTargetsOptions): RunLzTarg
   const out: LzTargetSpec[] = [];
   const seen = new Set<string>();
   for (const t of configured) {
+    // ADR-0068 (#3379): `eu` is a deprecated spelling of `europe` (same EU-27 set).
+    const dep = lzDeprecatedGeographyAlias(t.region);
+    if (dep) {
+      info(`[info] LZ target ${t.provider}:${t.region} uses the deprecated geography '${dep.alias}'; it now means '${dep.replacement}' (the 27 EU member states). Use '${dep.replacement}' in assessment.landing_zone.targets.`);
+    }
     const r = resolveLzGeography(t.region, regionsOf(t.provider));
     const target = r.kind === 'geography' ? { provider: t.provider, region: r.region } : t;
     if (r.kind === 'geography') {

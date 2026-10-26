@@ -1,0 +1,12 @@
+{
+  "$schema": "https://example.invalid/kilo-config.json",
+  "model": "ollama/qwen3:8b",
+  "mcp": {
+    "github": {
+      "type": "remote",
+      "url": "https://example.invalid/mcp",
+      "enabled": false
+    }
+  },
+  "theme": "dark"
+}

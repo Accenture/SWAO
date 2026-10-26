@@ -13,14 +13,14 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join, extname, relative } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { join, relative } from 'path';
 import { load } from 'js-yaml';
-import { loadPassCatalog } from './pass-catalog-loader.js';
+import { loadPassCatalog, compileRegexMatcher, scanCatalogueRules, MatchModeSchema, type ScanRule } from './pass-catalog-loader.js';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
-import { SIGNAL_SCHEMA_HINT, normalizeSignal } from '@swao/core';
+import { SIGNAL_SCHEMA_HINT, normalizeSignal, maskKnownSecret, guardSecretsDeep, guardSecretText, extractCredentialValues, listSourceFiles, getSourceScope } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 
 // ---- #1144 Saudi CCC tier helpers ----
@@ -69,6 +69,8 @@ function readSafe(filePath: string): string | null {
 }
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.js', '.rs', '.go', '.py', '.java', '.kt', '.cs', '.rb']);
+// #3423: source files the LLM data-classification prompt may include (language coverage matrix).
+export const DATA_LLM_SOURCE_EXTENSIONS: ReadonlySet<string> = SOURCE_EXTENSIONS;
 const SCHEMA_EXTENSIONS = new Set(['.prisma', '.sql', '.graphql']);
 
 // Keywords that indicate a file is relevant to data privacy / GDPR
@@ -116,74 +118,52 @@ function collectDataFiles(
   }
 
   // ---- 3. Walk tree: schemas + privacy-relevant source files ----
-  function walk(dir: string, depth: number): void {
-    if (depth > 7) return;
-    let entries: string[];
-    try { entries = readdirSync(dir); } catch { return; }
-    for (const entry of entries) {
-      if (entry === 'node_modules' || entry === 'target' || entry === '.git' || entry.startsWith('.')) continue;
-      const full = join(dir, entry);
+  // #3428: central source scope (canonical skips; same depth guard as the
+  // old walk(sourcePath, 0) with `depth > 7` return).
+  for (const f of listSourceFiles(sourcePath, { purpose: 'code', maxDepth: 7 })) {
+    const full = f.abs;
+    const entry = f.name;
+    if (seen.has(full)) continue;
+    try {
+      const ext = f.ext;
+      const rel = relative(sourcePath, full).replace(/\\/g, '/');
+      const isSchemaFile = SCHEMA_EXTENSIONS.has(ext);
+      const alreadyHasEnoughSchemas = results.filter(r => r.kind === 'schema').length >= 4;
+      if (isSchemaFile && !seen.has(full) && !alreadyHasEnoughSchemas) {
+        const c = readSafe(full);
+        if (c) { results.push({ relativePath: rel, content: c.slice(0, 2500), kind: 'schema', priority: 0 }); seen.add(full); }
+      } else if (SOURCE_EXTENSIONS.has(ext)) {
+        // Check filename for privacy signals first (cheap)
+        const namePrivate = PRIVACY_KEYWORDS.some(k => entry.toLowerCase().includes(k.replace('.', '')));
+        if (namePrivate) {
+          const c = readSafe(full);
+          if (c) { results.push({ relativePath: rel, content: c.slice(0, 3000), kind: 'source:privacy', priority: 2 }); seen.add(full); }
+        }
+      }
+    } catch { /* skip */ }
+  }
+
+  // ---- 4. If still sparse, add auth / user handler files by name pattern ----
+  if (results.filter(r => r.kind === 'source:privacy').length < 3) {
+    const authPatterns = ['auth', 'user', 'account', 'profile', 'settings', 'delete', 'export', 'consent'];
+    // #3428: central source scope (same depth guard as the old walkForHandlers).
+    for (const f of listSourceFiles(sourcePath, { purpose: 'code', maxDepth: 7 })) {
+      const full = f.abs;
       if (seen.has(full)) continue;
       try {
-        const st = statSync(full);
-        if (st.isDirectory()) {
-          walk(full, depth + 1);
-        } else {
-          const ext = extname(entry).toLowerCase();
-          const rel = relative(sourcePath, full).replace(/\\/g, '/');
-          const isSchemaFile = SCHEMA_EXTENSIONS.has(ext);
-          const alreadyHasEnoughSchemas = results.filter(r => r.kind === 'schema').length >= 4;
-          if (isSchemaFile && !seen.has(full) && !alreadyHasEnoughSchemas) {
+        if (SOURCE_EXTENSIONS.has(f.ext)) {
+          const nameLower = f.name.toLowerCase();
+          if (authPatterns.some(p => nameLower.includes(p))) {
             const c = readSafe(full);
-            if (c) { results.push({ relativePath: rel, content: c.slice(0, 2500), kind: 'schema', priority: 0 }); seen.add(full); }
-          } else if (SOURCE_EXTENSIONS.has(ext)) {
-            // Check filename for privacy signals first (cheap)
-            const namePrivate = PRIVACY_KEYWORDS.some(k => entry.toLowerCase().includes(k.replace('.', '')));
-            if (namePrivate) {
-              const c = readSafe(full);
-              if (c) { results.push({ relativePath: rel, content: c.slice(0, 3000), kind: 'source:privacy', priority: 2 }); seen.add(full); }
+            if (c && hasPrivacyKeyword(c)) {
+              const rel = relative(sourcePath, full).replace(/\\/g, '/');
+              results.push({ relativePath: rel, content: c.slice(0, 2500), kind: 'source:handler', priority: 3 });
+              seen.add(full);
             }
           }
         }
       } catch { /* skip */ }
     }
-  }
-  walk(sourcePath, 0);
-
-  // ---- 4. If still sparse, add auth / user handler files by name pattern ----
-  if (results.filter(r => r.kind === 'source:privacy').length < 3) {
-    const authPatterns = ['auth', 'user', 'account', 'profile', 'settings', 'delete', 'export', 'consent'];
-    // eslint-disable-next-line no-inner-declarations
-    function walkForHandlers(dir: string, depth: number): void {
-      if (depth > 7) return;
-      let entries: string[];
-      try { entries = readdirSync(dir); } catch { return; }
-      for (const entry of entries) {
-        if (entry === 'node_modules' || entry === 'target' || entry.startsWith('.')) continue;
-        const full = join(dir, entry);
-        if (seen.has(full)) continue;
-        try {
-          const st = statSync(full);
-          if (st.isDirectory()) {
-            walkForHandlers(full, depth + 1);
-          } else {
-            const ext = extname(entry).toLowerCase();
-            if (SOURCE_EXTENSIONS.has(ext)) {
-              const nameLower = entry.toLowerCase();
-              if (authPatterns.some(p => nameLower.includes(p))) {
-                const c = readSafe(full);
-                if (c && hasPrivacyKeyword(c)) {
-                  const rel = relative(sourcePath, full).replace(/\\/g, '/');
-                  results.push({ relativePath: rel, content: c.slice(0, 2500), kind: 'source:handler', priority: 3 });
-                  seen.add(full);
-                }
-              }
-            }
-          }
-        } catch { /* skip */ }
-      }
-    }
-    walkForHandlers(sourcePath, 0);
   }
 
   // Sort by priority, cap total
@@ -191,9 +171,17 @@ function collectDataFiles(
   return results.slice(0, cap);
 }
 
-function buildDataPrompt(
+/** #3403: label suffix and prompt rule for test files (assessment.test_code: tag only). */
+export const TEST_CODE_KIND_SUFFIX = ', test code';
+export const TEST_CODE_PROMPT_RULE =
+  'Files labelled "test code" are test code (test sources, fixtures, test data), not production code. ' +
+  'A finding that rests only on test code must say "in test code" in its derivation and must not claim ' +
+  'that production processes or stores that data.';
+
+export function buildDataPrompt(
   files: Array<{ relativePath: string; content: string; kind: string }>,
   saudiCccActive: boolean,
+  testCodeMarked = false,
 ): string {
   const baseAssessmentShape = saudiCccActive
     ? '{ "signals": [...], "assessment": { "data_classes": ["string"], "gdpr_art17_implemented": bool, "secrets_in_env": bool, "saudi_data_tier": { "level": "...", "label": "...", "cst_class_required": "..." } } }'
@@ -210,6 +198,11 @@ function buildDataPrompt(
     '',
     SIGNAL_SCHEMA_HINT,
     '',
+    SECRET_VALUE_PROMPT_RULE,
+    '',
+    // #3403: only when a listed file carries the test-code label (tag mode),
+    // so the default prompt (and its cassette hash) is unchanged.
+    ...(testCodeMarked ? [TEST_CODE_PROMPT_RULE, ''] : []),
     `Source files scanned (${files.length} files):`,
     files.map(f => `  ${f.kind}: ${f.relativePath}`).join('\n'),
     '',
@@ -233,6 +226,11 @@ function buildDataPrompt(
   return parts.join('\n');
 }
 
+// #3064 / #3423: extensions the deterministic PII scan reads (exported for the
+// language coverage matrix).
+export const PII_SCAN_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.java', '.py', '.cs', '.go', '.kt', '.rs',
+  '.prisma', '.graphql', '.sql', '.yaml', '.yml', '.json', '.env', '.example']);
+
 // #3064: Deterministic PII field-name scanner backed by pass-03-pii-patterns.yaml.
 // Runs before the LLM pass. Provides coverage when LLM is not configured and
 // supplements LLM findings with exact-match pattern evidence.
@@ -244,56 +242,38 @@ function runDeterministicPiiScan(
   if (!catalogue) return [];
 
   const hits: Array<{ id: string; name: string; file: string; line?: number; data_category: string; severity: string }> = [];
-  const seenIds = new Set<string>();
 
-  const scanExtensions = new Set(['.ts', '.js', '.java', '.py', '.cs', '.go', '.kt', '.rs',
-    '.prisma', '.graphql', '.sql', '.yaml', '.yml', '.json', '.env', '.example']);
+  // #3428: central source scope (same depth guard as the old walkFiles).
+  const allFiles = listSourceFiles(sourcePath, { purpose: 'code', maxDepth: 6, extensions: PII_SCAN_EXTENSIONS });
 
-  function walkFiles(dir: string, depth = 0): string[] {
-    if (depth > 6) return [];
-    const paths: string[] = [];
-    let entries: string[];
-    try { entries = readdirSync(dir); } catch { return []; }
-    for (const e of entries) {
-      if (e === 'node_modules' || e === 'dist' || e.startsWith('.')) continue;
-      const full = join(dir, e);
-      try {
-        const st = statSync(full);
-        if (st.isDirectory()) paths.push(...walkFiles(full, depth + 1));
-        else if (scanExtensions.has(extname(e).toLowerCase())) paths.push(full);
-      } catch { /* skip */ }
-    }
-    return paths;
-  }
-
-  const allFiles = walkFiles(sourcePath);
-
+  // #3410: shared catalogue matcher. PII patterns are field-name fragments,
+  // so the catalogue default is `segment` matching: `kvnr` still matches
+  // `kvnr_hash` and `patientPid` contains `pid`, but `rapid` no longer does.
+  // Patterns are case-folded (no `i` flag) and pass the ReDoS guard.
+  const defaultMode = catalogue.match_defaults?.match ?? 'segment';
+  const rules: ScanRule<string>[] = [];
   for (const entry of catalogue.entries) {
-    if (seenIds.has(String(entry.id))) continue;
     const pattern = entry.pattern as string | undefined;
     if (!pattern) continue;
-    let regex: RegExp;
-    try { regex = new RegExp(pattern, 'i'); } catch { continue; }
+    const mode = MatchModeSchema.safeParse(entry.match);
+    const c = compileRegexMatcher(pattern, { match: mode.success ? mode.data : defaultMode });
+    if (!c.ok) continue;
+    rules.push({ key: String(entry.id), matcher: c.matcher, via: 'pattern' });
+  }
+  // One signal per PII pattern id, first file (walk order) and first line win.
+  const scan = scanCatalogueRules(allFiles, rules, { maxHitsPerKey: 1 });
 
-    for (const file of allFiles) {
-      try {
-        const content = readFileSync(file, 'utf-8');
-        if (regex.test(content)) {
-          const rel = relative(sourcePath, file).replace(/\\/g, '/');
-          const lineIdx = content.split('\n').findIndex((l) => regex.test(l));
-          hits.push({
-            id: String(entry.id),
-            name: String(entry.name),
-            file: rel,
-            line: lineIdx >= 0 ? lineIdx + 1 : undefined,
-            data_category: String(entry.data_category ?? 'pii'),
-            severity: String(entry.severity ?? 'medium'),
-          });
-          seenIds.add(String(entry.id));
-          break; // one signal per PII pattern id, first file wins
-        }
-      } catch { /* skip */ }
-    }
+  for (const entry of catalogue.entries) {
+    const first = scan.hits.get(String(entry.id))?.[0];
+    if (!first || hits.some((h) => h.id === String(entry.id))) continue;
+    hits.push({
+      id: String(entry.id),
+      name: String(entry.name),
+      file: first.file,
+      line: first.line,
+      data_category: String(entry.data_category ?? 'pii'),
+      severity: String(entry.severity ?? 'medium'),
+    });
   }
 
   return hits;
@@ -338,8 +318,19 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
   const activeRegimes = readRegimesActive(workspacePath);
   const saudiCccActive = activeRegimes.some(r => SAUDI_CCC_REGIMES.has(r));
 
-  const files = collectDataFiles(sourcePath);
-  const prompt = buildDataPrompt(files, saudiCccActive);
+  // #3403: in tag mode the model is told which files are test code (exclude
+  // mode never lists them; include mode leaves the prompt as it was).
+  const collected = collectDataFiles(sourcePath);
+  const files = ctx.testCode === 'tag'
+    ? collected.map((f) => (getSourceScope(sourcePath).isTestRel(f.relativePath)
+      ? { ...f, kind: `${f.kind}${TEST_CODE_KIND_SUFFIX}` }
+      : f))
+    : collected;
+  const testCodeMarked = files.some((f) => f.kind.endsWith(TEST_CODE_KIND_SUFFIX));
+  // #3415: credential literals in the files sent to the model; masked wherever
+  // the model repeats them (quoted or not, with or without secret_value).
+  const sourceSecrets = files.flatMap((f) => extractCredentialValues(f.content));
+  const prompt = buildDataPrompt(files, saudiCccActive, testCodeMarked);
   const raw = await llm.complete(prompt);
 
   // #1096: strip leading/trailing garbage (stray `=`, markdown fences) before
@@ -360,7 +351,8 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
     parsed = tryParseDataResponse(raw + ']}');
   }
   if (!parsed) {
-    console.warn(`[warn] DATA pass: LLM response truncated or non-JSON -- signals skipped.\n${raw.slice(0, 200)}`);
+    // #3415: the raw response may echo a secret; the console line is guarded.
+    console.warn(`[warn] DATA pass: LLM response truncated or non-JSON -- signals skipped.\n${guardSecretText(maskKnownSecretsDeep(raw, sourceSecrets) as string).text.slice(0, 200)}`);
     // #3158: follow the llmSkipResult convention (not_applicable + DATA-00)
     // instead of a 0-signal `stub`, which read as stub data downstream.
     return llmInvalidResponseResult({
@@ -370,7 +362,16 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
     });
   }
 
-  const signals: Signal[] = parsed.signals.map(normalizeSignal);
+  // #3415: mask detected secret values before the signals leave the pass.
+  // Every reported secret_value is also masked in the assessment block. The
+  // credential literals in the files sent to the model are added, so a value
+  // the model repeats unquoted and without secret_value is still masked.
+  const allSecrets = [...new Set([
+    ...collectSecretValues(parsed.signals),
+    ...sourceSecrets,
+  ])].sort((a, b) => b.length - a.length);
+  const signals: Signal[] = parsed.signals.map((s) => normalizeSignal(maskDataSignalSecrets(s, allSecrets)));
+  const assessment = guardSecretsDeep(maskKnownSecretsDeep(parsed.assessment, allSecrets) as typeof parsed.assessment).value;
 
   return {
     pass: {
@@ -382,6 +383,61 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
       assessed_at: assessedAt,
     },
     signals,
-    assessment: parsed.assessment,
+    assessment,
   };
+}
+
+// ---------------------------------------------------------------------------
+// #3415: secret masking at source (Design 032 section 11.6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Prompt rule: the model returns any detected secret literal in a separate
+ * `secret_value` field (never in derivation / evidence), so masking is
+ * deterministic. The field is stripped before the signal is stored.
+ */
+export const SECRET_VALUE_PROMPT_RULE = [
+  'SECRETS: if a file contains a hard-coded password, token, API key or other credential,',
+  'NEVER write the secret value into "derivation", "evidence" or any other field.',
+  'Describe it by type and location only (e.g. "hard-coded password in src/test/TestHelper.java:42").',
+  'Put the literal value ONLY in an extra field "secret_value": "<value>" on that signal; SWAO masks it.',
+].join('\n');
+
+/** The `secret_value` entries (string or string array) of raw LLM signals, longest first. */
+export function collectSecretValues(rawSignals: readonly unknown[]): string[] {
+  const out = new Set<string>();
+  for (const raw of rawSignals) {
+    if (raw === null || typeof raw !== 'object') continue;
+    const sv = (raw as Record<string, unknown>)['secret_value'];
+    for (const v of Array.isArray(sv) ? sv : [sv]) {
+      if (typeof v === 'string' && v.length >= 3) out.add(v);
+    }
+  }
+  // Longest first, so a value that contains another is masked whole.
+  return [...out].sort((a, b) => b.length - a.length);
+}
+
+/** Replace every literal occurrence of the known secrets in any nested string. */
+function maskKnownSecretsDeep(v: unknown, secrets: readonly string[]): unknown {
+  if (secrets.length === 0) return v;
+  if (typeof v === 'string') return secrets.reduce((acc, sec) => maskKnownSecret(acc, sec), v);
+  if (Array.isArray(v)) return v.map((x) => maskKnownSecretsDeep(x, secrets));
+  if (v !== null && typeof v === 'object') {
+    return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, maskKnownSecretsDeep(x, secrets)]));
+  }
+  return v;
+}
+
+/**
+ * Mask a raw LLM signal: every occurrence of a reported `secret_value` (its
+ * own plus `extraSecrets`) in any string field is replaced by
+ * maskSecretValue(), the `secret_value` field is removed, and the output
+ * guard then masks any credential-shaped value the model wrote despite the
+ * prompt rule. Exported for tests.
+ */
+export function maskDataSignalSecrets<T>(raw: T, extraSecrets: readonly string[] = []): T {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const secrets = [...new Set([...collectSecretValues([raw]), ...extraSecrets])].sort((a, b) => b.length - a.length);
+  const { secret_value: _secretValue, ...rest } = raw as Record<string, unknown>;
+  return guardSecretsDeep(maskKnownSecretsDeep(rest, secrets)).value as T;
 }

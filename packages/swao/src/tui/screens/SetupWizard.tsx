@@ -21,7 +21,7 @@ import { getConnector, copyConnectorToWorkspace } from '@swao/module-llm-provide
 import { Header } from '../components/Header.js';
 import { StepBar } from '@swao/tui-kit';
 import { type SetupState, _wizardGuidanceOpen, setWizardGuidanceOpen } from './wizard/shared.js';
-import { writeLlmToYaml, writeSecondaryLlmToYaml, writeVisionMaxScreensToYaml } from './wizard/yaml-helpers.js';
+import { writeLlmToYaml, writeSecondaryLlmToYaml, writeVisionMaxScreensToYaml, readTestCodeModeFromYaml, writeTestCodeModeToYaml } from './wizard/yaml-helpers.js';
 import { InitStep } from './wizard/steps/InitStep.js';
 import { LlmStep } from './wizard/steps/LlmStep.js';
 import { LlmSecondaryStep } from './wizard/steps/LlmSecondaryStep.js';
@@ -29,13 +29,15 @@ import { CredentialsStep } from './wizard/steps/CredentialsStep.js';
 import { HealthCheckStep } from './wizard/steps/HealthCheckStep.js';
 import { ClaudeDesktopStep, PlaywrightStep } from './wizard/steps/IntegrationsStep.js';
 import { ReadyStep } from './wizard/steps/ReadyStep.js';
-import { LzTargetsStep } from './wizard/steps/LzTargetsStep.js';
+import { TestCodeStep } from './wizard/steps/TestCodeStep.js';
 
-type Step = 'init' | 'llm' | 'llm-secondary' | 'credentials' | 'credentials-secondary' | 'lz-targets' | 'health-check' | 'claude-desktop' | 'playwright' | 'ready';
+type Step = 'init' | 'llm' | 'llm-secondary' | 'credentials' | 'credentials-secondary' | 'health-check' | 'claude-desktop' | 'playwright' | 'test-code' | 'ready';
 // 'llm-secondary' and 'credentials-secondary' are sub-steps -- not in STEP_LABELS so StepBar still shows 8 steps.
-// #3306: 'lz-targets' sits before the health check so probe 15 checks the chosen targets.
-const STEP_LABELS: Exclude<Step, 'llm-secondary' | 'credentials-secondary'>[] = ['init', 'llm', 'credentials', 'lz-targets', 'health-check', 'claude-desktop', 'playwright', 'ready'];
-const STEP_NAMES = ['Init', 'LLM', 'Credentials', 'LZ Targets', 'Health Check', 'MCP Client', 'Playwright', 'Ready'];
+// #3378 (ADR-0067): LZ targets are chosen per assessment, not in the setup wizard.
+// #3403: 'test-code' (assessment.test_code.mode) before 'ready'; STEP_NAMES realigned with
+// STEP_LABELS (the stale 'LZ Targets' name shifted every later label by one).
+const STEP_LABELS: Exclude<Step, 'llm-secondary' | 'credentials-secondary'>[] = ['init', 'llm', 'credentials', 'health-check', 'claude-desktop', 'playwright', 'test-code', 'ready'];
+const STEP_NAMES = ['Init', 'LLM', 'Credentials', 'Health Check', 'MCP Client', 'Playwright', 'Test Code', 'Ready'];
 
 interface SetupWizardProps {
   onBack: () => void;
@@ -236,7 +238,7 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
             }
             // #2355: if secondary LLM is configured, show its credential step (auto-skips for Ollama/env-var).
             const hasSecondary = !!state.llmSecondaryProvider && state.llmSecondaryProvider !== 'skip';
-            setStep(hasSecondary ? 'credentials-secondary' : 'lz-targets');
+            setStep(hasSecondary ? 'credentials-secondary' : 'health-check');
           }}
         />
       )}
@@ -250,31 +252,14 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
           stepNumber={stepIdx + 1}
           onNext={() => {
             try { logPortfolio('info', 'wizard.step.complete', 'Secondary credentials step completed', { context: { step: 'credentials-secondary', provider: state.llmSecondaryProvider } }); } catch { /* best-effort */ }
-            setStep('lz-targets');
-          }}
-        />
-      )}
-
-      {/* #3306: LZ catalogue targets (TUI parity with --lz-cat-targets / assessment.landing_zone.targets). */}
-      {step === 'lz-targets' && (
-        <LzTargetsStep
-          workDir={state.workDir}
-          stepNumber={stepIdx + 1}
-          onNext={(targets) => {
-            setState(s => ({ ...s, lzTargets: targets }));
-            if (!loggedSteps.current.has('lz-targets')) {
-              loggedSteps.current.add('lz-targets');
-              try { setWorkspaceRoot(state.workDir); } catch { /* best-effort */ }
-              try { logPortfolio('info', 'wizard.step.complete', 'LZ targets step completed', { context: { step: 'lz-targets', target_count: targets.length } }); } catch { /* best-effort */ }
-              try {
-                if (targets.length > 0) logPortfolio('info', 'wizard.lz.targets.configured', 'LZ catalogue targets configured', { context: { targets } });
-                else logPortfolio('info', 'wizard.lz.targets.skipped', 'LZ catalogue targets step skipped', { context: {} });
-              } catch { /* best-effort */ }
-            }
             setStep('health-check');
           }}
         />
       )}
+
+      {/* #3378 (ADR-0067): the LZ targets step was removed from the wizard; LZ
+          targets are chosen in each assessment type. assessment.landing_zone.targets
+          in .swao.yml still works for the CLI and batch runs. */}
 
       {step === 'health-check' && (
         <HealthCheckStep stepNumber={stepIdx + 1} onNext={() => setStep('claude-desktop')} />
@@ -310,6 +295,21 @@ export function SetupWizard({ onBack }: SetupWizardProps) {
             try { logPortfolio('info', 'playwright.check.complete', 'Playwright step completed', { context: { chromium_found: chromiumPath !== null, path: chromiumPath ?? undefined, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ }
             // #2714: step-specific event for Design 098 observability.
             try { logPortfolio('info', 'wizard.integrations.playwright.complete', 'Playwright integration step complete', { context: { chromium_found: chromiumPath !== null, vision_max_screens: visionMaxScreens ?? null } }); } catch { /* best-effort */ }
+          }
+          setStep('test-code');
+        }} />
+      )}
+
+      {step === 'test-code' && (
+        <TestCodeStep initial={readTestCodeModeFromYaml(state.workDir)} onNext={(testCodeMode) => {
+          // #3403: persist assessment.test_code.mode; Esc keeps the current value.
+          if (testCodeMode !== undefined) {
+            setState(s => ({ ...s, testCodeMode }));
+            writeTestCodeModeToYaml(state.workDir, testCodeMode);
+          }
+          if (!loggedSteps.current.has('test-code')) {
+            loggedSteps.current.add('test-code');
+            try { logPortfolio('info', 'wizard.test_code.complete', 'Test-code step complete', { context: { test_code_mode: testCodeMode ?? null } }); } catch { /* best-effort */ }
           }
           if (!loggedSteps.current.has('ready')) {
             loggedSteps.current.add('ready');

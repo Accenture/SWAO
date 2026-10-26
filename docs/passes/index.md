@@ -35,15 +35,16 @@ This page gives an overview. Every pass has its own detail page with purpose, in
 | [23 LZR](/passes/23-lzr) | `--lzr` | Deterministic | With `--lzr` | Not used | Is the target landing zone ready, judged from Terraform state or a JSON plan? | none |
 | [24 RESEARCH](/passes/24-research) | `swao service research` | External API | Not used | Separate command | What do public sources report: CVEs, known exploits, advisories, end of life, malware verdicts? | NVD, CISA KEV, BSI CERT-Bund, OSV.dev, endoflife.date, VirusTotal (optional key) |
 | [25 BINARY](/passes/25-binary) | (automatic) | Deterministic, offline | Not used | When installers are supplied | Are the supplied installers signed, with valid certificates, current runtimes, and modern architecture? | none (SWAO parsers) |
+| [26 QUALITY](/passes/26-quality) | `quality` | Deterministic | Default | Skipped | Which files should developers fix first (size, complexity, duplication, hard-coded IPs and URLs, TODO markers), and how healthy is the code overall? | none (SWAO built-in metrics) |
 
-"Default" means the pass is in the default `--passes` list of `swao assess` (13 passes); "Opt-in" passes run only when requested. Dynamic analysis needs a configured crawl target and does nothing useful without one. Numbers 15 to 22 are not passes of their own: they were the former numbers of the eight blocks that Pass 12 now evaluates together.
+"Default" means the pass is in the default `--passes` list of `swao assess` (15 passes, including `secrets` and `quality`); "Opt-in" passes run only when requested. Dynamic analysis needs a configured crawl target and does nothing useful without one. Numbers 15 to 22 are not passes of their own: they were the former numbers of the eight blocks that Pass 12 now evaluates together.
 
 ## Run order
 
 The pass numbers are identifiers, not the execution order. `swao assess` always runs the selected passes in one fixed sequence, whatever order you give in `--passes` or in a lens:
 
 1. Pass 00 INGEST (before the pass loop)
-2. `inv`, `state`, `data`, `ctx`, `sbom`, `tf`, `egr`, `crypto` (Passes 01 to 08)
+2. `inv`, `state`, `data`, `ctx`, `sbom`, `tf`, `egr`, `crypto` (Passes 01 to 08), `quality` (Pass 26)
 3. `dynamic` (Pass 10), `scope` (Pass 13), `malware` (Pass 14, only when requested)
 4. Pass 23 LZR (only with `--lzr <landingZoneId>`)
 5. `comp` (Pass 11)

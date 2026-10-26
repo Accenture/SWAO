@@ -27,7 +27,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
-import { PortfolioSummarySchema, TIME_QUADRANTS, type PortfolioApp, type PortfolioAssessmentType, type PortfolioSummary, type TimeQuadrant } from '@swao/core';
+import { PortfolioSummarySchema, TIME_QUADRANTS, countSignalsBySeverity, countBlockerSignals, sortSignalsBySeverity, summariseRegimeCompliance, summariseRiskRegister, countLzFitBlockers, type PortfolioApp, type PortfolioAssessmentType, type PortfolioSummary, type SevenRSource, type TimeQuadrant } from '@swao/core';
 import { readStub } from '../research/stub-file.js';
 import { discoverServiceApps } from '../research/research.js';
 import { APM_DOMAINS, loadApmFramework, type ApmDomain, type ApmFramework } from './framework.js';
@@ -37,6 +37,151 @@ import { applicationEvidenceGaps, classifyApplicationTime, discoverApplicationAp
 import { blastRadius, buildIntegrationGraph, canonicalVendor, eolSignal, planWaves, renderWaveReport, vendorConsolidation } from '../portfolio/analytics.js';
 
 export interface ControlScore { id: string; rule: string | null; score: number | null }
+
+/** Design 113 section 8 (ADR-0065): TIME -> 7R for service apps, which have no
+ *  application synthesis pass to produce a 7R verdict. Application apps carry the
+ *  synthesis verdict directly. */
+const TIME_TO_SEVEN_R: Record<TimeQuadrant, string> = {
+  Eliminate: 'Retire',
+  Tolerate: 'Retain',
+  Invest: 'Retain',
+  Migrate: 'Rehost',
+  'Migrate-Critical': 'Rehost',
+};
+
+/**
+ * Design 113 section 8: resolve an app's 7R label and its provenance. The analyst
+ * override (`disposition.seven_r` in the app `.swao.yml`) wins for either type;
+ * otherwise application apps use the synthesis verdict (`synthesis`) and service
+ * apps map from TIME (`derived_from_time`). The hub renders the source beside the
+ * badge so a derived label is never read as an assessed one.
+ */
+/** Design 113 section 6.2: run provenance (last_assessed_at, swao_version,
+ *  llm_model) from the run's manifest. `run` is the wsp-relative run path
+ *  (`runs/<id>`) used by both assessment types. Best-effort: a missing or
+ *  unreadable manifest yields nulls. */
+export function readRunProvenance(
+  workspacePath: string,
+  appId: string,
+  run: string | null,
+): { last_assessed_at: string | null; swao_version: string | null; llm_model: string | null } {
+  const empty = { last_assessed_at: null, swao_version: null, llm_model: null };
+  if (!run) return empty;
+  try {
+    const m = JSON.parse(readFileSync(join(workspacePath, 'apps', appId, 'wsp', run, 'run-manifest.json'), 'utf-8')) as Record<string, unknown>;
+    const s = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null);
+    const prov = m['provenance'] as Record<string, unknown> | undefined;
+    const llm = m['llm'] as Record<string, unknown> | undefined;
+    return {
+      last_assessed_at: s(m['assessed_at']) ?? s(m['finished_at']),
+      swao_version: prov ? s(prov['swao_version']) : null,
+      llm_model: llm ? s(llm['model']) : null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** Design 113 section 6.2: the fields derived from the run's `wsp-plan.yaml` --
+ *  per-framework compliance (compliance.regimes) and risk_counts (risk_register) --
+ *  via the shared @swao/core summarisers so the hub matches the publication. Read
+ *  once per app. `run` is the wsp-relative run path. */
+function readPlanDerivedFields(
+  workspacePath: string,
+  appId: string,
+  run: string | null,
+): Pick<PortfolioApp, 'compliance' | 'risk_counts'> {
+  if (!run) return {};
+  try {
+    const plan = load(readFileSync(join(workspacePath, 'apps', appId, 'wsp', run, 'wsp-plan.yaml'), 'utf-8')) as Record<string, any> | null;
+    return {
+      compliance: summariseRegimeCompliance(plan?.['compliance']?.['regimes']),
+      risk_counts: summariseRiskRegister(plan?.['risk_register']),
+    };
+  } catch {
+    return {};
+  }
+}
+
+/** Design 113 section 6.2: per-target landing-zone fit (application apps). Reads
+ *  the app's latest landing-zone catalogue run (pointed to by
+ *  `wsp/latest-landing-zone-catalog.txt`) and projects each
+ *  `lz-catalogue-fit-<provider>-<region>.yaml` into {provider, region, verdict,
+ *  blockers}, counting blockers with the shared @swao/core classifier so the hub
+ *  matches the publication. Best-effort; undefined when no LZR run is present. */
+function readLzFit(workspacePath: string, appId: string): PortfolioApp['lz_fit'] {
+  try {
+    const wspDir = join(workspacePath, 'apps', appId, 'wsp');
+    const pointer = join(wspDir, 'latest-landing-zone-catalog.txt');
+    if (!existsSync(pointer)) return undefined;
+    const lzrRun = readFileSync(pointer, 'utf-8').trim();
+    const runDir = join(wspDir, lzrRun);
+    if (!existsSync(runDir)) return undefined;
+    const out: NonNullable<PortfolioApp['lz_fit']> = [];
+    for (const f of readdirSync(runDir).filter((n) => n.startsWith('lz-catalogue-fit-') && n.endsWith('.yaml')).sort()) {
+      const doc = load(readFileSync(join(runDir, f), 'utf-8')) as Record<string, any> | null;
+      if (!doc) continue;
+      out.push({
+        provider: String(doc['provider'] ?? ''),
+        region: String(doc['region'] ?? ''),
+        verdict: String(doc['overall'] ?? ''),
+        blockers: countLzFitBlockers(doc['items']),
+      });
+    }
+    return out.length > 0 ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Design 113 section 6.2: project run signals (any shape carrying id/severity)
+ *  into the findings fields, using the shared @swao/core counters so the hub
+ *  matches the publication. Returns undefined fields when there are no signals. */
+function signalFindings(
+  signals: ReadonlyArray<{ id: string; severity?: string; derivation?: string }> | null,
+): Pick<PortfolioApp, 'findings_by_severity' | 'blocker_count' | 'top_findings'> {
+  if (!signals) return {};
+  const shaped = signals
+    .filter((s) => typeof s.id === 'string' && s.id.length > 0)
+    .map((s) => {
+      const title = (s.derivation ?? s.id);
+      return { id: s.id, severity: s.severity ?? 'unknown', title: title.length > 120 ? `${title.slice(0, 117)}...` : title };
+    });
+  const bySeverity = countSignalsBySeverity(shaped);
+  const top = sortSignalsBySeverity(shaped).slice(0, 3).map((s) => ({ id: s.id, severity: s.severity, title: s.title }));
+  return {
+    findings_by_severity: Object.keys(bySeverity).length > 0 ? bySeverity : undefined,
+    blocker_count: countBlockerSignals(shaped),
+    top_findings: top.length > 0 ? top : undefined,
+  };
+}
+
+/** Design 113 section 6.2: free-form tags from the app `.swao.yml` (`tags`),
+ *  carried onto the summary entry. Returns undefined when none are set so the
+ *  field stays absent rather than an empty array. */
+export function readAppTags(app: Record<string, unknown>): string[] | undefined {
+  const raw = app['tags'];
+  if (!Array.isArray(raw)) return undefined;
+  const tags = raw.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+  return tags.length > 0 ? tags : undefined;
+}
+
+export function resolveSevenR(
+  type: PortfolioAssessmentType,
+  time: TimeQuadrant,
+  app: Record<string, unknown>,
+  synthesisLabel: string | null,
+): { label: string | null; source: SevenRSource | undefined } {
+  const disp = app['disposition'];
+  const override = disp && typeof disp === 'object' ? (disp as Record<string, unknown>)['seven_r'] : undefined;
+  if (typeof override === 'string' && override.trim().length > 0) {
+    return { label: override.trim(), source: 'analyst' };
+  }
+  if (type === 'application') {
+    return synthesisLabel ? { label: synthesisLabel, source: 'synthesis' } : { label: null, source: undefined };
+  }
+  return { label: TIME_TO_SEVEN_R[time], source: 'derived_from_time' };
+}
 
 export interface AppScore {
   domainScores: Record<ApmDomain, number | null>;
@@ -238,6 +383,13 @@ export function buildPortfolioSummary(workspacePath: string, opts: { now?: Date;
         evidence: run === null ? 'not_assessed' : insufficient ? 'insufficient' : 'sufficient',
         evidence_missing: gaps,
         assessment_type: 'service',
+        // Design 113 section 8: service apps derive 7R from TIME (no synthesis pass).
+        ...(() => { const sr = resolveSevenR('service', time.quadrant, app, null); return { seven_r_label: sr.label, seven_r_source: sr.source }; })(),
+        // Design 113 section 6.2: tags, findings from the service run signals, run provenance.
+        tags: readAppTags(app),
+        ...signalFindings(evidence.runSignals),
+        ...readRunProvenance(workspacePath, a.appId, run),
+        ...readPlanDerivedFields(workspacePath, a.appId, run),
       },
     });
   }
@@ -286,7 +438,29 @@ export function buildPortfolioSummary(workspacePath: string, opts: { now?: Date;
         evidence: !assessed ? 'not_assessed' : insufficient ? 'insufficient' : 'sufficient',
         evidence_missing: gaps,
         assessment_type: 'application',
-        seven_r_label: ae.sevenR,
+        // Design 113 section 8: application apps carry the synthesis 7R verdict;
+        // the analyst override (disposition.seven_r) wins for either type.
+        ...(() => { const sr = resolveSevenR('application', time.quadrant, app, ae.sevenR); return { seven_r_label: sr.label, seven_r_source: sr.source }; })(),
+        // Design 113 section 6.2: application-only readiness scores (0..1) and tags.
+        coverage_score: ae.coverageScore,
+        cloud_native_score: ae.cloudNativeScore,
+        portability_score: ae.portability,
+        confidence: ae.confidence,
+        tags: readAppTags(app),
+        // Design 113 section 6.2: findings mirror the publication summary.
+        // blocker_count = critical + high by severity (same as the extractor's
+        // countBlockerSignals, derived from the shared signal_counts).
+        findings_by_severity: ae.findingsBySeverity ?? undefined,
+        blocker_count: ae.findingsBySeverity
+          ? (ae.findingsBySeverity['critical'] ?? 0) + (ae.findingsBySeverity['high'] ?? 0)
+          : undefined,
+        top_findings: ae.topFindings.length > 0 ? ae.topFindings : undefined,
+        // Design 113 section 6.2: run provenance + per-framework compliance + risk + LZ fit.
+        ...readRunProvenance(workspacePath, a.appId, run),
+        ...readPlanDerivedFields(workspacePath, a.appId, run),
+        lz_fit: readLzFit(workspacePath, a.appId),
+        // #3405: Pass 26 code-health KPIs (Design 117 section 7).
+        ...(ae.codeHealth ? { code_health: ae.codeHealth } : {}),
       },
     });
   }

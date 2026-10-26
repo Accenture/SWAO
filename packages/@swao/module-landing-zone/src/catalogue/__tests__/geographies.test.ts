@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import {
   LZ_GEOGRAPHIES,
   lzGeographyKey,
+  lzDeprecatedGeographyAlias,
   lzRegionGeographies,
   lzGeographyDefaultRegion,
   resolveLzGeography,
@@ -39,12 +40,12 @@ describe('shared LZ geography model (#3281)', () => {
   it('vocabulary: unique ids and aliases', () => {
     const aliases = LZ_GEOGRAPHIES.flatMap((g) => g.aliases);
     expect(new Set(aliases).size).toBe(aliases.length);
-    expect(LZ_GEOGRAPHIES.map((g) => g.id)).toEqual(['germany', 'eu', 'europe', 'north-america', 'south-america', 'asia-pacific', 'middle-east', 'africa']);
+    expect(LZ_GEOGRAPHIES.map((g) => g.id)).toEqual(['germany', 'europe', 'switzerland', 'united-kingdom', 'norway', 'iceland', 'liechtenstein', 'north-america', 'south-america', 'asia-pacific', 'middle-east', 'africa']);
   });
 
   it('matches spellings case- and punctuation-insensitively', () => {
     expect(lzGeographyKey('Europe')).toBe('europe');
-    expect(lzGeographyKey('EU')).toBe('eu');
+    expect(lzGeographyKey('EU')).toBe('europe'); // ADR-0068: eu is a deprecated alias of europe
     expect(lzGeographyKey('Germany')).toBe('germany');
     expect(lzGeographyKey('DE')).toBe('germany');
     expect(lzGeographyKey('North America')).toBe('north-america');
@@ -53,9 +54,9 @@ describe('shared LZ geography model (#3281)', () => {
   });
 
   it('tags regions from the residency country, never per provider', () => {
-    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'DE' } })).toEqual(['germany', 'eu', 'europe']);
-    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'CH' } })).toEqual(['europe']);
-    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'EU' } })).toEqual(['eu', 'europe']);
+    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'DE' } })).toEqual(['germany', 'europe']);
+    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'CH' } })).toEqual(['switzerland']);
+    expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'EU' } })).toEqual(['europe']);
     expect(lzRegionGeographies({ id: 'x', country: 'US' })).toEqual(['north-america']);
     expect(lzRegionGeographies({ id: 'x', sovereignty: { residency_country: 'UNKNOWN' } })).toEqual([]);
     expect(lzRegionGeographies({ id: 'x' })).toEqual([]);
@@ -95,5 +96,26 @@ describe('shared LZ geography model (#3281)', () => {
     expect(germany['aws-iso-e']).toBe('unknown'); // EU-wide residency is not Germany
     expect(germany['azure-local']).toBe('unknown');
     expect(PROVIDERS.filter((p) => germany[p] === 'geography')).toHaveLength(8);
+  });
+});
+
+describe('ADR-0068 geography changes (#3379)', () => {
+  it('europe is the 27 EU member states plus the EU-wide marker, not CH/GB', () => {
+    const europe = LZ_GEOGRAPHIES.find((g) => g.id === 'europe')!;
+    expect(europe.countries).toContain('DE');
+    expect(europe.countries).toContain('EU');
+    expect(europe.countries).not.toContain('CH');
+    expect(europe.countries).not.toContain('GB');
+  });
+  it('Switzerland and the UK resolve to their own geographies', () => {
+    expect(lzGeographyKey('Switzerland')).toBe('switzerland');
+    expect(lzGeographyKey('CH')).toBe('switzerland');
+    expect(lzGeographyKey('UK')).toBe('united-kingdom');
+    expect(lzGeographyKey('GB')).toBe('united-kingdom');
+  });
+  it('eu is a deprecated alias of europe', () => {
+    expect(lzGeographyKey('eu')).toBe('europe');
+    expect(lzDeprecatedGeographyAlias('eu')).toEqual({ alias: 'eu', replacement: 'europe' });
+    expect(lzDeprecatedGeographyAlias('europe')).toBeNull();
   });
 });

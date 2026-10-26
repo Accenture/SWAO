@@ -241,7 +241,9 @@ swao assess --portfolio
    in the credential vault).
 3. Optionally choose a **Target Landing Zone**: pick a cloud provider, filter and select
    one or more target regions. SWAO then runs the inline landing zone fit together with
-   the passes.
+   the passes. The pickers are pre-selected from this app's last run (ADR-0067: targets
+   are chosen per run, not stored in `.swao.yml` by the wizard); change them for this run,
+   or leave the selection empty to run with no landing zone fit (`--no-lz-fit`).
 4. Confirm. A live progress view shows each pass as it completes.
 5. When the run finishes, continue to **4 Generate Report**, **5 Publish HTML** or
    **6 Export BI** from the main menu.
@@ -278,6 +280,7 @@ fictitious patient-management application.
 ## Further reading
 
 - [Assessment overview](/assessment/) and the [pass reference](/passes/)
+- [Supported languages](/assessment/supported-languages): which pass analyses which language
 - [Landing Zone Catalog Assessment](/assessment/landing-zone)
 - [LLM Assessment for SWAO](/assessment/llm)
 - [Service Portfolio Assessment](/service-assessment/), for applications without source code

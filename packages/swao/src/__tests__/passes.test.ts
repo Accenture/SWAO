@@ -641,12 +641,21 @@ describe('Pass 9 -- SYNTH (ghostfolio fixture)', () => {
     expect((pos as string).length).toBeGreaterThan(0);
   });
 
-  it('#0249: portability_score is a number in [0, 1]', async () => {
+  // #3431: the score is code-set from prior pass outputs. This fixture has no
+  // prior pass files, so no component has data: the score is absent (not a
+  // silent 0.5) and the breakdown says why. A number, when present, is in [0, 1].
+  it('#0249 / #3431: portability_score is code-set; absent with a breakdown when no input exists', async () => {
     const result = await runSynthPass({ ...sourceCtx('ghostfolio'), ...withStub('ghostfolio', 'synth') });
     const score = result.assessment['portability_score'];
-    expect(typeof score).toBe('number');
-    expect(score as number).toBeGreaterThanOrEqual(0);
-    expect(score as number).toBeLessThanOrEqual(1);
+    const breakdown = result.assessment['portability'] as { score: number | null; components: unknown[] };
+    expect(breakdown.components).toHaveLength(5);
+    if (breakdown.score === null) {
+      expect(score).toBeUndefined();
+    } else {
+      expect(score).toBe(breakdown.score);
+      expect(score as number).toBeGreaterThanOrEqual(0);
+      expect(score as number).toBeLessThanOrEqual(1);
+    }
   });
 });
 
@@ -685,12 +694,14 @@ describe('Pass 9 -- SYNTH (#0249 validation rejection)', () => {
     await expectDegraded(ctx, /modernization_position/);
   });
 
-  it('degrades when portability_score is missing', async () => {
-    const ctx = buildSynthCtx('ghostfolio', baseResponseWithout('portability_score'));
-    await expectDegraded(ctx, /portability_score/);
+  // #3431: portability_score is computed in code; the LLM is no longer asked
+  // for it, so a missing or out-of-range model value is not a degrade reason.
+  it('#3431: accepts an answer without portability_score', async () => {
+    const result = await runSynthPass(buildSynthCtx('ghostfolio', baseResponseWithout('portability_score')));
+    expect(result.pass.status).toBe('complete');
   });
 
-  it('degrades when portability_score is out of [0, 1] range', async () => {
+  it('#3431: discards an out-of-range LLM portability_score', async () => {
     const response = JSON.stringify({
       signals: [],
       assessment: {
@@ -704,8 +715,9 @@ describe('Pass 9 -- SYNTH (#0249 validation rejection)', () => {
         migration_enablers: [],
       },
     });
-    const ctx = buildSynthCtx('ghostfolio', response);
-    await expectDegraded(ctx, /portability_score.*1\.5/);
+    const result = await runSynthPass(buildSynthCtx('ghostfolio', response));
+    expect(result.pass.status).toBe('complete');
+    expect(result.assessment['portability_score']).not.toBe(1.5);
   });
 });
 

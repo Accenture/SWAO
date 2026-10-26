@@ -16,7 +16,7 @@
 import { z } from 'zod';
 
 export const SIGNAL_ID_REGEX =
-  /^(INV|STATE|DATA|EGR|CRYPTO|SBOM|TF|SYNTH|CTX|PP|OBS|LIC|QA|PAT|DBA|INT|IAM|DR|DYN|LZR|LZ|COMP|SCOPE|AUD|MAL)-\d{2}$/;
+  /^(INV|STATE|DATA|EGR|CRYPTO|SBOM|TF|SYNTH|CTX|PP|OBS|LIC|QA|PAT|DBA|INT|IAM|DR|DYN|LZR|LZ|COMP|SCOPE|AUD|MAL|QUAL)-\d{2}$/;
 
 export const SignalIdSchema = z.string().regex(SIGNAL_ID_REGEX);
 
@@ -105,6 +105,16 @@ export const SignalSchema = z.object({
   // in Pass 04. Distinct from false_positive_flag (which is for path-traversal or
   // genuinely missing files). Rendered as a footnote in the report.
   context_gaps: z.array(z.string()).optional(),
+
+  // #3403: test-code marker, set by assess.ts (applyTestCodeMarker) when
+  // assessment.test_code is `tag` or `exclude` and every file the signal cites
+  // is test code. In `tag` mode the severity is one step lower and the
+  // assessed severity is kept in severity_original (secret findings keep
+  // theirs). Absent in the default `include` mode.
+  test_code: z.boolean().optional(),
+  severity_original: z
+    .enum(['critical', 'high', 'medium', 'low', 'informational', 'positive'])
+    .optional(),
 
   // v0.12 (#0478 C-22): per-signal provenance, injected by assess.ts loop.
   // source = "<provider>/<model>" for LLM passes or "rule_engine" for static passes.

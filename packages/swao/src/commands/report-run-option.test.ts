@@ -271,7 +271,8 @@ describe('challenge header note depends on the licence (#3345)', () => {
     expect(data.challengeStatus).toBe('not-run');
     const text = formatText(data);
     expect(text).toContain('Challenge:     not included (no challenge run found for this app)');
-    expect(text).toContain('Run the Stakeholder Challenge (swao challenge) for this app');
+    // #3446: the exact command (from @swao/core challengeCommand).
+    expect(text).toContain('Run the Stakeholder Challenge (`swao challenge --all-agents --app demo');
     expect(text).not.toContain('Community Edition');
   });
 

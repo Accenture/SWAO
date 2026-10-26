@@ -18,6 +18,7 @@
   "references": [
     { "path": "../../@swao/core" },
     { "path": "../../@swao/module-iac" },
+    { "path": "../../@swao/module-llm-providers" },
     { "path": "../../@swao/tui-kit" }
   ],
   "include": ["src/**/*"],

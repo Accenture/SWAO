@@ -19,9 +19,7 @@
 // exits; this registry bridges that gap.
 
 import type { ChildProcess } from 'node:child_process';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { readFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 const _registry = new Set<ChildProcess>();
 
@@ -40,16 +38,33 @@ export function killAllChildren(): void {
 }
 
 /**
- * Kill the SWAO MCP HTTP server by reading the PID file it writes on startup.
- * The MCP server runs as a sibling process (not a TUI child), so it is not
- * tracked by the registry above. Without this, the server holds the .exe open
- * on Windows and blocks rebuilds.
+ * #3461: the MCP HTTP server SWAO Chat started for this TUI, if any. Only this
+ * child is stopped on TUI exit. The pid file `swao-mcp-<port>.pid` is never
+ * used to find a process to kill: once SWAO Chat attaches to a server another
+ * client started (Design 116 REQ-03.6), that server must keep running.
  */
-export function killMcpServer(port = 3737): void {
-  const pidFile = join(tmpdir(), `swao-mcp-${port}.pid`);
-  if (!existsSync(pidFile)) return;
+let _mcpServerChild: ChildProcess | null = null;
+
+/** Record the MCP server child the TUI spawned (SWAO Chat auto-start). */
+export function registerMcpServerChild(child: ChildProcess): void {
+  _mcpServerChild = child;
+  child.once('exit', () => { if (_mcpServerChild === child) _mcpServerChild = null; });
+}
+
+/**
+ * Stop the MCP server the TUI spawned (tree-kill by its PID, so the server's
+ * own tool subprocesses go too; it holds the .exe open on Windows and would
+ * block rebuilds). Does nothing when the TUI did not start one.
+ */
+export function killMcpServer(): void {
+  const child = _mcpServerChild;
+  _mcpServerChild = null;
+  if (!child?.pid || child.exitCode !== null || child.signalCode !== null) return;
   try {
-    const pid = parseInt(readFileSync(pidFile, 'utf-8').trim(), 10);
-    if (!isNaN(pid) && pid > 0) process.kill(pid, 'SIGTERM');
+    if (process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    } else {
+      child.kill('SIGTERM');
+    }
   } catch { /* process already gone -- non-fatal */ }
 }

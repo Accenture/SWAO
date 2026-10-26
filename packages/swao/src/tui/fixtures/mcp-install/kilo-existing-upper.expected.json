@@ -1,0 +1,20 @@
+{
+  "mcp": {
+    "other": { "type": "local", "command": ["other-server"], "enabled": true },
+    "SWAO": {
+      "type": "local",
+      "command": [
+        "<BIN>",
+        "mcp",
+        "--workspace",
+        "<WS>",
+        "--profile",
+        "starter"
+      ],
+      "enabled": true,
+      "environment": {
+        "SWAO_LOG": "debug"
+      }
+    }
+  }
+}

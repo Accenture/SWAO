@@ -11,6 +11,7 @@ Das Werkzeuge-Menü (Option 9 im Hauptmenü) gruppiert Hilfsbefehle zur Verwaltu
 | Zugangsdaten | `swao credential set` / `swao credential list` | API-Schlüssel und Vault-Referenzen speichern und verwalten |
 | Rahmenwerk | `swao framework list` / `swao framework install <id>` | Zusätzliche mitgelieferte Community-Rahmenwerke in den Workspace kopieren (`wsp/inputs/catalogs/community/<ordner>/`); oder [von GitHub herunterladen](https://github.com/Accenture/SWAO/tree/main/community-frameworks) und den Ordner dorthin kopieren |
 | Katalog aktualisieren | `swao lz catalogue update` | LZ-Dienstekataloge der Anbieter aus deren öffentlichen Quellen aktualisieren, dazu die VM-Preise des Kostenmodells der Service-Bewertung aus den Preis-APIs von Azure und AWS (ab Consultant) |
+| LLM-Gateway aktualisieren | `swao llm-gateway update` | Die LLM-Gateway-Connectoren des Workspace (`wsp/inputs/llm-gateway/`, die alleinige Quelle) aus den mitgelieferten Vorlagen auffrischen: unveränderte Vorlagen werden aktualisiert, selbst bearbeitete Connectoren bleiben erhalten, neue werden ergänzt. Nach einem Binary-Upgrade ausführen. `--dry-run` zeigt die Änderungen vorab |
 | SWAO Chat | `swao chat` | Mehrstufige LLM-Unterhaltung über Ergebnisse des Portfolio-Assessments (Enterprise) |
 | Hilfe | `swao --help` / `swao <befehl> --help` | Vollständige CLI-Referenz |
 

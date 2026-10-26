@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "swao": {
+      "type": "local",
+      "command": ["/old/swao", "mcp"],
+      "enabled": false
+    },
+    "other": { "type": "local", "command": ["other-server"], "enabled": true }
+  }
+}

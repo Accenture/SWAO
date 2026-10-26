@@ -75,7 +75,8 @@ export const DEFAULT_WEIGHTS: Record<string, number> = {
  */
 export function getFileCategory(relativePath: string): string {
   const first = relativePath.split(/[/\\]/)[0].toLowerCase();
-  if (first === 'terraform') return 'terraform';
+  // #3429: infra/current/** and infra/target/** are infrastructure inputs too.
+  if (first === 'terraform' || first === 'infra') return 'terraform';
   if (['architecture', 'design', 'adr'].includes(first)) return 'architecture';
   if (first === 'compliance') return 'compliance';
   if (['workshops', 'workshop'].includes(first)) return 'workshops';
@@ -98,12 +99,12 @@ export function getFileCategory(relativePath: string): string {
  * multiplicative factors on top of the per-pass code defaults and clamped
  * to [0.0, 1.0].
  */
-export function selectContextChunks(
-  chunks: ScoredChunk[],
+export function selectContextChunks<T extends ScoredChunk>(
+  chunks: T[],
   budgetChars: number,
   passId: string,
   userMultipliers?: Record<string, number>,
-): { included: ScoredChunk[]; excluded: ScoredChunk[] } {
+): { included: T[]; excluded: T[] } {
   const baseWeights = PASS_WEIGHTS[passId] ?? DEFAULT_WEIGHTS;
   const weights: Record<string, number> = { ...baseWeights };
 
@@ -124,8 +125,9 @@ export function selectContextChunks(
   );
 
   let remaining = budgetChars;
-  const included: ScoredChunk[] = [];
-  const excluded: ScoredChunk[] = [];
+  // #3429: generic so callers keep extra chunk fields (e.g. infraRole).
+  const included: T[] = [];
+  const excluded: T[] = [];
 
   for (const c of scored) {
     if (c.weight === 0) {

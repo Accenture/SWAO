@@ -35,10 +35,36 @@ swao publish --app my-app
 # Output: wsp/publications/latest/index.html
 ```
 
+## Engagement Hub
+
+The workspace **Engagement Hub** is a portfolio view across every assessed app,
+published to `wsp/publications/engagement-hub.html`. It gives an engagement a
+single entry point with:
+
+- **Portfolio KPIs** per assessment type: apps, assessed, portfolio risk, end of
+  life, blockers and critical findings.
+- **Per-app tiles** showing the 7R migration strategy and its source (assessed,
+  derived from TIME, or analyst), the TIME quadrant, risk and health, coverage
+  and end-of-life status, each linking to the app's publications.
+- **Charts** (CSS only): TIME, 7R, end of life, risk distribution, findings by
+  severity and compliance per framework.
+- **Landing-zone fit** per target, and estimated monthly cloud cost for services.
+- A **sortable, filterable table**: filter by assessment type first, then TIME,
+  7R, end of life and wave, plus a free-text search.
+
+The hub is rebuilt automatically after every publication. Rebuild it on demand
+with `swao publish --portfolio`, or from the Publish HTML screen entry
+"Portfolio Engagement Hub (Enterprise)".
+
+```bash
+swao publish --portfolio
+# Output: wsp/publications/engagement-hub.html
+```
+
 ## Edition
 
 <Badge type="tip" text="Consultant"/> <Badge type="warning" text="Enterprise"/>
 
-Available in **Consultant** and **Enterprise** editions. The HTML Editor (`swao publish --edit`) is Enterprise only.
+Available in **Consultant** and **Enterprise** editions. The HTML Editor (`swao publish --edit`) and the Engagement Hub (`swao publish --portfolio`) are Enterprise only.
 
 See also: [Generate Report](/generate-report) | [Export BI](/export-bi)

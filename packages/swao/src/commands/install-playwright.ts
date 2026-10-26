@@ -42,6 +42,40 @@ function isPlaywrightGloballyInstalled(): boolean {
   );
 }
 
+// #3376: with shell:true a missing npx.cmd exits 1 rather than raising an
+// ENOENT, so the "install Node.js" hint under result.error never printed.
+// Probe the command up front so the message is clear when Node.js is absent.
+export function isCommandAvailable(cmd: string): boolean {
+  try {
+    const r = spawnSync(cmd, ['--version'], { stdio: 'ignore', shell: SHELL });
+    return !r.error && r.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+// #3376: the crawler download needs Node.js/npx on the host. On an air-gapped
+// client machine there is none, so document a prepare-and-copy route and the
+// opt-out, instead of failing with a bare non-zero exit code.
+export function printOfflinePlaywrightGuidance(): void {
+  console.error('[error] Node.js / npx was not found on PATH.');
+  console.error('        The dynamic UI crawler (Pass 10) downloads Chromium with npx, which needs Node.js.');
+  console.error('');
+  console.error('  The crawler is optional. Application assessments run without it, and service and');
+  console.error('  landing-zone assessments do not use it at all. To assess without it, add --no-crawl:');
+  console.error('      swao assess --app <id> --no-crawl');
+  console.error('');
+  console.error('  To enable it on a machine without internet or Node.js, prepare it elsewhere and copy:');
+  console.error(`    1. On a connected machine with Node.js:`);
+  console.error(`         npx playwright@${PLAYWRIGHT_VERSION} install chromium`);
+  console.error(`         npm install -g playwright-core@${PLAYWRIGHT_VERSION}`);
+  console.error(WIN
+    ? '    2. Copy %LOCALAPPDATA%\\ms-playwright and %APPDATA%\\npm\\node_modules\\playwright-core to the client,'
+    : '    2. Copy ~/.cache/ms-playwright and the global playwright-core to the client,');
+  console.error('       keeping the same paths, or point PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH at a Chromium binary.');
+  console.error('    3. Run swao health-check to confirm it is detected.');
+}
+
 export function registerInstallPlaywright(program: Command): void {
   program
     .command('install-playwright')
@@ -57,6 +91,13 @@ export function registerInstallPlaywright(program: Command): void {
         console.log('[ok]  playwright-core already installed globally.');
         console.log('      Run swao health-check to confirm everything is detected correctly.');
         process.exit(0);
+      }
+
+      // #3376: fail fast with a clear message when the host has no Node.js/npx,
+      // which both the Chromium download and the playwright-core install need.
+      if ((!chromiumPath || !pkgGlobalInstalled) && !isCommandAvailable(NPX)) {
+        printOfflinePlaywrightGuidance();
+        process.exit(1);
       }
 
       if (!chromiumPath) {

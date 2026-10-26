@@ -34,11 +34,14 @@
 // The allowlist file format is stable across the regex / NER switchover.
 
 import { redactPiiString, type RedactionCounts } from './redact-pii.js';
+import { maskCredentials } from './secret-mask.js';
 
 export interface PreLlmRedactionCounts extends RedactionCounts {
   business_id: number;
   api_key_shape: number;
   person_name: number;
+  // #3415: credential values after password/secret/token-style keys.
+  credential: number;
 }
 
 export function emptyPreLlmCounts(): PreLlmRedactionCounts {
@@ -53,6 +56,7 @@ export function emptyPreLlmCounts(): PreLlmRedactionCounts {
     business_id: 0,
     api_key_shape: 0,
     person_name: 0,
+    credential: 0,
   };
 }
 
@@ -60,9 +64,46 @@ export function emptyPreLlmCounts(): PreLlmRedactionCounts {
 // 9-digit runs which catch ZIP+4 codes, phone numbers, etc.).
 const SSN_RE = /\b(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b/g;
 
-// EU VAT IDs: ISO 2-letter country code + 8-12 alphanumeric. Tightened to
-// the common shapes so it does not match arbitrary uppercase strings.
-const VAT_RE = /\b(?:AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|GB|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)[0-9A-Z]{8,12}\b/g;
+// EU VAT IDs: one fixed shape per member state (VIES formats) plus GB.
+// #3417: the previous `<cc>[0-9A-Z]{8,12}` required no digit, so uppercase
+// German identifiers such as BESTELLSTATUS (BE + 11), FREIGABELISTE (FR + 11)
+// and SENDUNGSART (SE + 9) matched and corrupted EVD keys and LLM context.
+// Every branch now needs a run of digits. Flat alternation of bounded
+// quantifiers, no nesting, so matching stays linear (no ReDoS).
+const VAT_RE = new RegExp(
+  '\\b(?:' + [
+    'ATU\\d{8}',
+    'BE[01]\\d{9}',
+    'BG\\d{9,10}',
+    'CY\\d{8}[A-Z]',
+    'CZ\\d{8,10}',
+    'DE\\d{9}',
+    'DK\\d{8}',
+    'EE\\d{9}',
+    'EL\\d{9}',
+    'ES[A-Z0-9]\\d{7}[A-Z0-9]',
+    'FI\\d{8}',
+    'FR[A-HJ-NP-Z0-9]{2}\\d{9}',
+    'GB(?:\\d{9}|\\d{12}|GD\\d{3}|HA\\d{3})',
+    'HR\\d{11}',
+    'HU\\d{8}',
+    'IE\\d{7}[A-W][A-I]?',
+    'IE\\d[A-Z]\\d{5}[A-W]',
+    'IT\\d{11}',
+    'LT(?:\\d{9}|\\d{12})',
+    'LU\\d{8}',
+    'LV\\d{11}',
+    'MT\\d{8}',
+    'NL\\d{9}B\\d{2}',
+    'PL\\d{10}',
+    'PT\\d{9}',
+    'RO\\d{2,10}',
+    'SE\\d{10}01',
+    'SI\\d{8}',
+    'SK\\d{10}',
+  ].join('|') + ')\\b',
+  'g',
+);
 
 // UK National Insurance number: 2 letters + 6 digits + 1 letter (the
 // terminal letter is A/B/C/D in the canonical form).
@@ -181,6 +222,14 @@ function scrubAllClasses(input: string): {
   if (scrubPersonName) {
     text = redactClass(text, PERSON_NAME_RE, '[REDACTED-NAME]', counts, 'person_name');
   }
+
+  // #3415: mask credential values (password = "...", token: ...) so a
+  // hard-coded secret never reaches the LLM provider or a report file. The
+  // masked form keeps the key and a short fingerprint (secret-mask.ts), so
+  // pass 03 still sees that a credential is hard-coded.
+  const cred = maskCredentials(text);
+  text = cred.text;
+  counts.credential += cred.count;
 
   return { text, counts };
 }

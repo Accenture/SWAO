@@ -163,8 +163,13 @@ export const RegimeControlSchema = z.object({
   csp_inherited: z.boolean().default(false),
   csp_evidence_required: z.array(z.string()).default([]),
   // applies_when: YAML key-value map evaluated against framework_context in
-  // .swao.yml (Q-CODE-7 decision). Missing keys -> not_assessed/not_applicable.
+  // .swao.yml (Q-CODE-7 decision). Missing or mismatched keys -> N_A (#3425);
+  // a value may list alternatives separated by `|`.
   applies_when: z.record(z.string(), z.string()).optional(),
+  // #3425: per-control assessment-type scope (`app`, `aud`, `lz`, `llm`,
+  // `service`). Pass 11 skips controls outside the running assessment type.
+  // Previously stripped by this schema although 300+ catalogue controls set it.
+  assessment_type_scope: z.array(z.string()).default([]),
   maturity_required: z.number().int().min(0).max(5).optional(),
   score_threshold: z.number().int().min(0).max(10).optional(),
   regulatory_basis: z.string().optional(),

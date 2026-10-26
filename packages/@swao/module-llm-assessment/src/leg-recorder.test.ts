@@ -99,4 +99,32 @@ describe('createLegRecorderFromEnv (#1421)', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  // #3447: a provider error that echoes a credential must not reach the leg
+  // sink, which lives outside the run dir and is never swept.
+  it('masks a credential echoed in a provider error before it reaches the sink (#3447)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-legrec3-'));
+    try {
+      const planted = 'Zx9-fake-Pw42'; // gitleaks:allow (synthetic #3447 fixture)
+      const sink = join(dir, 'legs', 'or--x.ndjson');
+      const recorder = createLegRecorderFromEnv({ [LEG_ENV.RECORD]: sink })!;
+      recorder.setPass('03-data', 'data_classification');
+      const wrapped = recorder.wrap(
+        {
+          async complete(): Promise<string> {
+            throw new Error(`400 Bad Request: body echoed password = "${planted}"`);
+          },
+        },
+        () => ({ input_tokens: 0, output_tokens: 0, cost_usd: 0, call_count: 1 }),
+      );
+      await expect(wrapped.complete('x')).rejects.toThrow();
+      const raw = readFileSync(sink, 'utf-8');
+      expect(raw).not.toContain(planted);
+      const record = CallRecordSchema.parse(JSON.parse(raw.trim()));
+      expect(record.reliability.dnf).toBe(true);
+      expect(record.reliability.error).toContain('password');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

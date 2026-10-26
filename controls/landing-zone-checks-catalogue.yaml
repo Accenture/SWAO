@@ -58,7 +58,7 @@ checks:
       - azure-native:dbforpostgresql:FlexibleServer
       - gcp:sql/databaseInstance:DatabaseInstance
     service_dep_codes: [postgresql]
-    rationale: "Workload signals DBA-01 or STATE-02 (PostgreSQL dependency detected)."
+    rationale: "Workload depends on PostgreSQL (service_dep:postgresql from Pass 01 service detection or the source Terraform state); Pass 02 STATE-01 names the primary database."
     remediation: "Create a PostgreSQL Flex instance in the target STACKIT project."
 
   - id: LZC-STACKIT-03
@@ -75,7 +75,7 @@ checks:
       - azure-native:cache:Redis
       - gcp:redis/instance:Instance
     service_dep_codes: [redis]
-    rationale: "Workload signals DBA-03 or STATE-04 (Redis dependency detected)."
+    rationale: "Workload depends on Redis (service_dep:redis from Pass 01 service detection or the source Terraform state); Pass 02 STATE-02 reports the Redis cache or queue."
     remediation: "Create a STACKIT Object Cache instance or evaluate in-cluster Redis."
 
   - id: LZC-STACKIT-04
@@ -106,7 +106,7 @@ checks:
       - gcp:storage/bucket:Bucket
       - azure-native:storage:StorageAccount
     service_dep_codes: [object_storage, s3]
-    rationale: "Workload signals STATE-05 (object storage dependency detected)."
+    rationale: "Workload depends on object storage (service_dep:object_storage or service_dep:s3 from Pass 01 service detection or the source Terraform state); no STATE signal covers object storage."
     remediation: "Create an Object Storage bucket in the target STACKIT project."
 
   # ---- Generic cross-provider checks ----

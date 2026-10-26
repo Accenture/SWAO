@@ -738,6 +738,9 @@ controls:
       communications. The scope and certification shall be declared to BNetzA.
     severity_default: critical
     assessment_type_scope: [aud]
+    # #3425: sector-specific; N/A unless framework_context.kritis_sector matches.
+    applies_when:
+      kritis_sector: "energy|water"
     evidence_basis:
       - context_input: solution_arch
     maps_to:
@@ -759,6 +762,9 @@ controls:
       cybersecurity incident response procedures for patient-safety-relevant systems.
     severity_default: critical
     assessment_type_scope: [aud]
+    # #3425: sector-specific; N/A unless framework_context.kritis_sector matches.
+    applies_when:
+      kritis_sector: "health"
     evidence_basis:
       - context_input: solution_arch
       - context_input: ops_runbooks
@@ -781,6 +787,9 @@ controls:
       Both must be evidenced in the compliance programme.
     severity_default: critical
     assessment_type_scope: [aud]
+    # #3425: sector-specific; N/A unless framework_context.kritis_sector matches.
+    applies_when:
+      kritis_sector: "finance"
     evidence_basis:
       - context_input: solution_arch
     maps_to:
@@ -802,6 +811,9 @@ controls:
       documented evidence of sector authority engagement and compliance.
     severity_default: high
     assessment_type_scope: [aud]
+    # #3425: sector-specific; N/A unless framework_context.kritis_sector matches.
+    applies_when:
+      kritis_sector: "transport"
     evidence_basis:
       - context_input: ops_runbooks
     maps_to:
@@ -823,6 +835,9 @@ controls:
       review per BSI §9c TKG.
     severity_default: high
     assessment_type_scope: [aud]
+    # #3425: sector-specific; N/A unless framework_context.kritis_sector matches.
+    applies_when:
+      kritis_sector: "ict"
     evidence_basis:
       - context_input: solution_arch
     maps_to:

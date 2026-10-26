@@ -1,0 +1,11 @@
+{
+  "mcp": {
+    "other": { "type": "local", "command": ["other-server"], "enabled": true },
+    "SWAO": {
+      "type": "remote",
+      "url": "http://127.0.0.1:3737/mcp",
+      "enabled": true,
+      "environment": { "SWAO_LOG": "debug" }
+    }
+  }
+}

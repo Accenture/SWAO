@@ -30,6 +30,7 @@ const passes: Entry[] = [
   { en: '23 LZR: Landing zone readiness', de: '23 LZR: Landing-Zone-Eignung', link: '/passes/23-lzr' },
   { en: '24 RESEARCH: Public research', de: '24 RESEARCH: Öffentliche Recherche', link: '/passes/24-research' },
   { en: '25 BINARY: Installer analysis', de: '25 BINARY: Analyse von Installationspaketen', link: '/passes/25-binary' },
+  { en: '26 QUALITY: Code health', de: '26 QUALITY: Code Health', link: '/passes/26-quality' },
 ]
 
 const frameworks: Entry[] = [
@@ -98,7 +99,13 @@ const sidebar: Entry[] = [
     items: [
       { en: 'Run an assessment', de: 'Bewertung durchführen', link: '/assessment/' },
       // Numbered like the TUI assessment type menu.
-      { en: '1. Application Assessment', de: '1. Anwendungsbewertung', link: '/assessment/application' },
+      {
+        en: '1. Application Assessment', de: '1. Anwendungsbewertung', link: '/assessment/application', collapsed: true,
+        items: [
+          // #3486: the coverage tables are generated from language-coverage.ts.
+          { en: 'Supported languages', de: 'Unterstützte Sprachen', link: '/assessment/supported-languages' },
+        ],
+      },
       {
         en: '2. Service Portfolio Assessment', de: '2. Service-Portfolio-Bewertung', link: '/service-assessment/', collapsed: true,
         items: [
@@ -163,6 +170,7 @@ const sidebar: Entry[] = [
         en: 'Integration', de: 'Integration', collapsed: true,
         items: [
           { en: 'MCP server', de: 'MCP-Server', link: '/runbooks/mcp-integration' },
+          { en: 'Using SWAO from an AI client', de: 'SWAO aus einem KI-Client nutzen', link: '/runbooks/mcp-ai-clients' },
           { en: 'CI/CD pipeline', de: 'CI/CD-Pipeline', link: '/runbooks/cicd-pipeline' },
           { en: 'CI/CD sovereignty gate', de: 'CI/CD-Souveränitäts-Gate', link: '/runbooks/ci-cd-sovereignty-gate' },
         ],

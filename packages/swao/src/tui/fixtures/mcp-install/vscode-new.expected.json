@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "swao": {
+      "type": "stdio",
+      "command": "<BIN>",
+      "args": [
+        "mcp",
+        "--workspace",
+        "<WS>",
+        "--profile",
+        "full"
+      ]
+    }
+  }
+}

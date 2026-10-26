@@ -38,18 +38,28 @@ Ersetzen Sie Beispiel- oder Vorlagentexte vor einem Assessment: Dateien mit Plat
    | `intake/`, `discovery/`, `kickoff/` | intake | 1.0 |
    | `workshops/`, `workshop/` | workshops | 0.9 |
    | jeder andere Ordner oder Dateien in der obersten Ebene | docs | 0.8 |
-   | `terraform/` | terraform | 0.7 |
+   | `terraform/`, `infra/` | terraform | 0.7 |
    | `operations/`, `ops/` | operations | 0.7 |
    | `structured/`, `data/`, `exports/` | structured | 0.6 |
 
+   **Infrastrukturrollen: Ist vs. Ziel.** Infrastrukturdateien erhalten zusätzlich eine Rolle, die im Abschnittslabel erscheint (`--- [TARGET-LZ] terraform/lz-aws-snapshot.json ---`, `--- [CURRENT-INFRA] terraform/prod-state.json ---`). CURRENT ist die Plattform, auf der die Anwendung heute läuft; TARGET ist eine mögliche Ziel-Landing-Zone. Die Rolle wird in dieser Reihenfolge bestimmt:
+
+   1. `context.infra_roles` in der App-`.swao.yml` (siehe Konfiguration); der erste passende Eintrag gilt.
+   2. Ordner: Dateien unter `wsp/inputs/infra/current/` sind Ist-Infrastruktur, Dateien unter `wsp/inputs/infra/target/` Ziel-Infrastruktur.
+   3. Dateiname: `lz-*-snapshot.json` (die Landing-Zone-Snapshots, die der LZ-Fit liest) ist Ziel; `*.tfstate` und jede andere Datei unter `terraform/` oder `pulumi/` ist Ist.
+   4. Alle anderen Dateien (Dokumente, CSV-Exporte) haben keine Infrastrukturrolle.
+
+   Lassen Sie `lz-<provider>-snapshot.json` in `wsp/inputs/terraform/`: Der Landing-Zone-Fit liest die Datei dort. Die `infra/`-Ordner sind für weitere Exporte gedacht, deren Rolle Sie ausdrücklich festlegen wollen.
+
 4. **Prompt-Budget füllen.** Die Abschnitte werden nach Gewicht (höchstes zuerst), dann nach Größe (kleinste zuerst, damit mehr unterschiedliche Dateien hineinpassen) und dann nach Pfad sortiert. Sie werden hinzugefügt, bis das Zeichenbudget ausgeschöpft ist. Ein Gewicht von 0 schließt eine Kategorie vollständig aus. Ausgeschlossene Abschnitte werden in einer Konsolenwarnung gemeldet, die die erste ausgeschlossene Datei nennt und erklärt, wie Sie das Budget erhöhen.
 5. **Platzhalter prüfen.** Dateien, die `Sample / placeholder`, `replace-with-` oder `Replace before the assessment` enthalten, werden gemeldet und in `placeholder_inputs` aufgeführt.
-6. **LLM aufrufen.** Der Prompt bittet das Modell, alle Eingaben aufzunehmen, Widersprüche zwischen Dokumenten und Code-Evidenz zu erkennen, Datenlücken zu benennen und Signale mit den IDs `CTX-NN` sowie `context_inputs_found`, `contradictions_detected` und optional `context_overrides` zurückzugeben. In den Treibern für Anthropic, OpenAI, Amazon Bedrock und OpenAI-kompatible Endpunkte durchläuft der Prompt den SWAO-Redactor vor dem LLM-Aufruf.
+6. **LLM aufrufen.** Der Prompt bittet das Modell, alle Eingaben aufzunehmen, Widersprüche zwischen Dokumenten und Code-Evidenz zu erkennen, Datenlücken zu benennen und Signale mit den IDs `CTX-NN` sowie `context_inputs_found`, `contradictions_detected` und optional `context_overrides` zurückzugeben. Sind Infrastrukturdateien vorhanden, ergänzt der Prompt, dass Widersprüche nur gegenüber der Ist-Infrastruktur (CURRENT) gemeldet werden und dass eine Fähigkeit, die die Dokumentation verlangt, eine Ziel-Landing-Zone (TARGET) aber nicht bietet, eine Lücke der Zielplattform ist. In den Treibern für Anthropic, OpenAI, Amazon Bedrock und OpenAI-kompatible Endpunkte durchläuft der Prompt den SWAO-Redactor vor dem LLM-Aufruf.
 7. **Evidenz prüfen.** Jeder vom Modell zurückgegebene Evidenzverweis wird gegen `wsp/inputs/` aufgelöst:
    - Ein Verweis, der den Workspace verlässt, wird mit `false_positive_flag` markiert (Schutz vor Path Traversal).
    - Eine vorhandene, aber durch das Budget abgeschnittene Datei wird unter `context_gaps` vermerkt, statt als falsch zu gelten.
    - Eine nicht vorhandene Datei wird mit `false_positive_flag` und einer Notiz markiert.
    - Aussagen über Abwesenheit („no ...“, „missing ...“) werden als Beobachtung ohne Dateiprüfung akzeptiert.
+8. **Ziellücken von Widersprüchen trennen.** Ein Signal, dessen Evidenz eine TARGET-Datei und keine CURRENT-Datei zitiert, ist eine Lücke der Zielplattform, unabhängig davon, wie das Modell es genannt hat: SWAO ergänzt `gap_type:target_capability` in der Liste `implies`, begrenzt den Schweregrad auf `medium` und beginnt die Herleitung mit „Target platform gap“. Beispiel: Die Dokumentation verlangt MariaDB, und nur der Ziel-Snapshot zeigt PostgreSQL; das ist eine Lücke des Ziels, kein Widerspruch. Dieselbe Abweichung gegenüber einer Ist-State-Datei bleibt ein Widerspruch.
 
 ## Wie gemessen wird
 
@@ -64,6 +74,9 @@ Signal-IDs (`CTX-01`, `CTX-02` usw.), Schweregrade und Outcomes wählt das Model
 | `assessment.files_excluded_by_pattern` | Übersprungene SBOM-Exporte und Lock-Dateien |
 | `assessment.placeholder_inputs` | Dateien, die noch Vorlagentext enthalten |
 | `assessment.contradictions_detected`, `context_overrides` | Wie vom Modell gemeldet |
+| `implies: gap_type:target_capability` an einem Signal | Lücke der Zielplattform: Der Ziel-Landing-Zone fehlt etwas, das die Dokumentation verlangt |
+| `assessment.infra_inputs` | Gelesene Infrastrukturdateien, gruppiert nach `current` und `target` |
+| `assessment.target_capability_gaps` | Anzahl der Ziellücken-Signale (von SWAO berechnet) |
 
 Sonderfälle:
 
@@ -80,7 +93,7 @@ Sonderfälle:
 
 | Name | Zweck in diesem Pass | Lizenz (Paket-Metadaten) | Gebündelt oder extern | Verhalten bei Fehlen |
 |---|---|---|---|---|
-| js-yaml | Lesen von `context.allocations` und `context.categories` | MIT | Gebündelt | Entfällt |
+| js-yaml | Lesen von `context.allocations`, `context.categories` und `context.infra_roles` | MIT | Gebündelt | Entfällt |
 | LLM-Provider oder LLM-Gateway-Connector | Kontextanalyse | Externer Dienst; Lizenz im Repository nicht erfasst | Extern, von Ihnen konfiguriert | Skip-Signal `CTX-00` |
 
 Die Textextraktion aus PDF- und Office-Dateien erfolgt vorher in [Pass 00](/de/passes/00-ingest).
@@ -106,7 +119,14 @@ context:
   categories:
     terraform: 0.5      # Faktor auf das Standardgewicht (Ergebnis auf 0.0..1.0 begrenzt)
     structured: 0       # CSV- und JSON-Exporte aus dem Prompt ausschließen
+  infra_roles:          # optional; Pfad relativ zu wsp/inputs/ (Datei, Ordner oder Glob mit * und **)
+    - path: terraform/ocp-export.json
+      role: current     # current | target
+    - path: terraform/candidate-*.json
+      role: target
 ```
+
+`infra_roles` gilt auch für [Pass 01](/de/passes/01-inv): Eine als `target` deklarierte State-Datei erzeugt kein `service_dep`-Signal und fließt nur in die Landing-Zone-Readiness ein.
 
 **Weitere Einstellungen**
 

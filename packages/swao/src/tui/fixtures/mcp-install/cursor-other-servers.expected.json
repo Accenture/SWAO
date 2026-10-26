@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "SWAO": {
+      "type": "stdio",
+      "command": "<BIN>",
+      "args": [
+        "mcp",
+        "--workspace",
+        "<WS>",
+        "--profile",
+        "full"
+      ],
+      "env": {
+        "SWAO_LOG": "debug"
+      }
+    },
+    "docs": {
+      "url": "https://example.invalid/mcp"
+    }
+  }
+}

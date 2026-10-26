@@ -74,7 +74,7 @@ export { normalizeAzureSnapshot } from './scan/scan-azure.js';
 export type { AzureScanOptions } from './scan/scan-azure.js';
 
 // Layer C fit/gap engine (#0567): the headline LZ deliverable.
-export { computeLzFit, sovereigntyFailures, certificationKey, holdsCertification } from './fit/lz-fit.js';
+export { computeLzFit, sovereigntyFailures, certificationKey, holdsCertification, toLzRequiredServices } from './fit/lz-fit.js';
 export { orchestrateLandingZone, deriveSovereigntyRequirements } from './fit/orchestrate-lz.js';
 export type { OrchestrateLzInput, FrameworkSovereigntyDecl } from './fit/orchestrate-lz.js';
 export { assembleLandingZoneWsp, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, discoverGateCapableFrameworks } from './fit/run-lz.js';
@@ -161,8 +161,12 @@ export {
   lzRegionGeographies,
   lzGeographyDefaultRegion,
   resolveLzGeography,
+  lzDeprecatedGeographyAlias,
+  LZ_DEPRECATED_GEOGRAPHY_ALIASES,
 } from './catalogue/geographies.js';
 export type { LzGeography, LzGeographyRegion, LzGeographyResolution } from './catalogue/geographies.js';
+export { lzProviderDisplayName, lzProviderLabel, lzRegionDisplayLabel } from './catalogue/labels.js';
+export type { LzLabelRegion } from './catalogue/labels.js';
 export { LZ_SOVEREIGNTY_PINS, AWS_SOVEREIGNTY_PINS, AZURE_SOVEREIGNTY_PINS, GCP_SOVEREIGNTY_PINS } from './catalogue/sovereignty-pins.js';
 export type { LzSovereigntyPin, GcpSovereigntyPin } from './catalogue/sovereignty-pins.js';
 export { registerLz } from './commands/lz.js';

@@ -74,6 +74,19 @@ describe('createRunLifecycle (#3283)', () => {
       expect(marker()).toMatchObject({ status: 'partial', exit_code: 1, failed_passes: ['compliance'] });
     });
 
+    it(`${type}: #3436 a degraded compliance pass closes the run partial with degraded_passes, exit code unchanged`, () => {
+      const { lc } = make(type);
+      lc.markStarted();
+      lc.complete({
+        degradedPasses: [{ pass: 'comp', num: '11', name: 'compliance_evaluation', reason: 'llm_unavailable', regimes: [{ id: 'gdpr', controls_without_verdict: 6 }] }],
+        exitCode: 0,
+      });
+      const m = marker();
+      expect(m).toMatchObject({ schema_version: '1.1', status: 'partial', exit_code: 0 });
+      expect(m.degraded_passes).toEqual([{ pass: 'comp', num: '11', name: 'compliance_evaluation', reason: 'llm_unavailable', regimes: [{ id: 'gdpr', controls_without_verdict: 6 }] }]);
+      expect(m.failed_passes).toBeUndefined();
+    });
+
     it(`${type}: injected process.exit(6) before completion closes the run as failed`, () => {
       const { lc, handlers, onFail } = make(type);
       lc.markStarted();

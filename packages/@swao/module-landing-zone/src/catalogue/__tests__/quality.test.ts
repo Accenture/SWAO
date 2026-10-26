@@ -385,7 +385,7 @@ describe('shipped swao/lz-catalogues (#3282 gate parity)', () => {
 
   it('#3287: every documented pin source names an existing pin, an https URL and a retrieval date', () => {
     const keys = Object.keys(LZ_SOVEREIGNTY_PIN_SOURCES);
-    expect(keys).toHaveLength(15);
+    expect(keys).toHaveLength(18);
     for (const k of keys) {
       const [table, id] = k.split('/') as [string, string];
       expect(LZ_SOVEREIGNTY_PINS[table]?.[id], k).toBeDefined();

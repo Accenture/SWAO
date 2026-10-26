@@ -195,7 +195,7 @@ export function SupportBundleScreen({ onBack }: SupportBundleScreenProps) {
                 <Box marginTop={1}>
                   <GuidanceBox
                     title="Bundle location"
-                    what="Send this file to your SWAO support contact. No user data or credentials are included."
+                    what="Send this file to your SWAO support contact. No document content or credentials are included; client hosts, paths and chat text are redacted (#3437)."
                     details={[{ label: 'Path', value: bundlePath }]}
                     affordances={['Press Enter, Esc, or Q to return to Tools menu']}
                     initiallyCollapsed={false}

@@ -1,0 +1,18 @@
+{
+	"$schema": "https://example.invalid/kilo-config.json",
+	"theme": "dark",
+	"mcp": {
+		"swao": {
+			"type": "local",
+			"command": [
+				"<BIN>",
+				"mcp",
+				"--workspace",
+				"<WS>",
+				"--profile",
+				"starter"
+			],
+			"enabled": true
+		}
+	}
+}

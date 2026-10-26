@@ -33,7 +33,7 @@ import { LlmModelPicker, formatLlmCurrentLabel } from '@swao/tui-kit';
 import { PasswordInput } from '@swao/tui-kit';
 import { filterList, FILTER_THRESHOLD, SHOW_ALL } from '../list-filter.js';
 import { AppPickerPhase } from './shared/AppPickerPhase.js';
-import { ChallengePromptPhase } from './shared/ChallengePromptPhase.js';
+import { ChallengePromptPhase, challengeOfferForApp } from './shared/ChallengePromptPhase.js';
 import { RunningPhase } from './shared/RunningPhase.js';
 import { PreflightLlmPhase } from './shared/PreflightLlmPhase.js';
 import type { LocalConnectorInfo } from './shared/types.js';
@@ -41,9 +41,13 @@ import {
   buildChildEnv,
   listApiTokenConnectors,
   BUILTIN_API_CONNECTORS,
+  buildLzProviderGuidance,
+  readLastRunLzTargets,
+  insertCountryHeaders,
   type AssessScaffold,
   type LzCatalogueHint,
 } from '../AssessScreen.js';
+import { listLocalConnectors as sharedListLocalConnectors } from '@swao/module-llm-providers';
 
 const BIN  = process.execPath;
 const SELF = process.argv[1] as string;
@@ -153,30 +157,10 @@ function readAppLlmConfig(workspace: string | null, appId: string): WorkspaceLlm
   } catch { return {}; }
 }
 
-function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
-  if (!workspaceRoot) return [];
-  const wsDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
-  if (!existsSync(wsDir)) return [];
-  const out: LocalConnectorInfo[] = [];
-  const seen = new Set<string>();
-  let entries: string[];
-  try {
-    entries = readdirSync(wsDir).filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && !f.startsWith('_'));
-  } catch { return []; }
-  for (const entry of entries.sort()) {
-    try {
-      const raw = loadYaml(readFileSync(join(wsDir, entry), 'utf-8')) as {
-        connector?: { id?: string; name?: string; base_url?: string; protocol?: string; models?: { default?: string }; auth?: { credential_key?: string; env_var?: string }; tls?: { reject_unauthorized?: boolean } };
-      } | null;
-      const c = raw?.connector;
-      const id = c?.id;
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      out.push({ id, name: c?.name ?? id, credentialKey: c?.auth?.credential_key, envVar: c?.auth?.env_var, baseUrl: c?.base_url ?? '', protocol: c?.protocol ?? '', defaultModel: c?.models?.default ?? '', rejectUnauthorized: c?.tls?.reject_unauthorized });
-    } catch { /* skip */ }
-  }
-  return out;
-}
+// #3388 (Design 112): the private listLocalConnectors copy was removed; the one
+// reader now lives in @swao/module-llm-providers (imported below) and seeds the
+// workspace folder when empty (single source, D-3).
+const listLocalConnectors = sharedListLocalConnectors;
 
 // LZ-only phase set. Shared credential-hub sub-phases + running/done phases are included.
 // Playwright phases are absent -- LZ is a static catalogue comparison, no crawler.
@@ -230,6 +214,11 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   const [vcsUrl, setVcsUrl] = useState('');
   const [editOnlyMode, setEditOnlyMode] = useState(false);
   const [appLzCatProviders, setAppLzCatProviders] = useState<string[]>([]);
+  // #3399: provider under the cursor, so the guidance box describes each cloud.
+  const [activeLzProvider, setActiveLzProvider] = useState<string>('');
+  // #3383: run the LZ assessment deterministically (adds --skip-llm) when the
+  // operator chooses "run without LLM" at the preflight check.
+  const [skipLlm, setSkipLlm] = useState(false);
   const [appLzCatTargets, setAppLzCatTargets] = useState<string[]>([]);
   const [appLzCatFrameworks, setAppLzCatFrameworks] = useState<string[]>([]);
   const [appLzRegionFilter, setAppLzRegionFilter] = useState<string>('');
@@ -282,6 +271,14 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
 
   const lzProviderName = (id: string): string =>
     scaffold.lzCatalogueHint?.entries.find(e => e.provider === id)?.name ?? id;
+
+  // #3378 Part B (ADR-0067): pre-select the targets of this app's last LZ run
+  // (from the run record), falling back to the .swao.yml targets a CLI/batch
+  // user may have set. The screen no longer writes the app .swao.yml itself.
+  const prefillLzTargets = (): string[] => {
+    const last = readLastRunLzTargets(workspace, app);
+    return last.length > 0 ? last : readConfiguredLzTargets(workspace, app);
+  };
 
   const truncateLabel = (s: string, reservedChars = 0): string => {
     const cols = (process.stdout.columns ?? 80) - 2 - reservedChars;
@@ -371,6 +368,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     if (appLzCatFrameworks.length > 0) {
       args.push('--lz-frameworks', appLzCatFrameworks.join(','));
     }
+    if (skipLlm) args.push('--skip-llm'); // #3383: deterministic-only LZ run (no LLM narrative)
 
     const child = spawn(BIN, [SELF, ...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -509,7 +507,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     if (phase === 'done' && (key.return || key.escape)) onBack();
     if (phase === 'assess-done' && key.escape) onBack();
     if (phase === 'assess-done' && key.return) {
-      if (onLzChallenge && isEnterprise) { setPhase('challenge-prompt'); }
+      // #3383: no LZ Sovereignty Challenge (LLM-driven) for a deterministic-only run.
+      if (onLzChallenge && isEnterprise && !skipLlm) { setPhase('challenge-prompt'); }
       else { onBack(); }
     }
     if (phase === 'assess-done' && (input === 'l' || input === 'L') && logFilePathRef.current) {
@@ -517,6 +516,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     }
     if (phase === 'assess-done' && (input === 'c' || input === 'C')) {
       if (!isEnterprise) return;
+      if (skipLlm) return; // #3383: challenge is LLM-driven; not for a deterministic-only run
       onLzChallenge?.(app);
     }
     if (phase === 'input-app-credentials' && key.escape) { setEditOnlyMode(false); setPhase('input-app'); }
@@ -774,7 +774,10 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
 
   if (phase === 'input-lz-provider') {
     const hint = scaffold.lzCatalogueHint;
-    const providerOptions = hint?.entries.map(e => ({ label: `${e.name}  (${e.provider})`, value: e.provider })) ?? [];
+    // #3399: `<id> - <name>` from the shared helper (host pre-computes e.label).
+    const providerOptions = hint?.entries.map(e => ({ label: e.label ?? `${e.name}  (${e.provider})`, value: e.provider })) ?? [];
+    const guidedProvider = activeLzProvider || providerOptions[0]?.value || '';
+    const guidance = buildLzProviderGuidance(hint?.entries.find(e => e.provider === guidedProvider));
     return (
       <Box flexDirection="column" padding={1}>
         <Header subtitle="Landing Zone Catalog Assessment" />
@@ -785,9 +788,11 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
             <MultiSelect
               label="Cloud provider(s)"
               options={providerOptions}
-              // #3281: pre-select the providers of the configured targets.
-              initialSelected={[...new Set(readConfiguredLzTargets(workspace, app).map(t => t.split(':')[0]!))]
+              // #3378 Part B: pre-select the providers of the last run (else configured).
+              initialSelected={[...new Set(prefillLzTargets().map(t => t.split(':')[0]!))]
                 .filter(p => providerOptions.some(o => o.value === p))}
+              // #3399: track the highlighted provider for the guidance box.
+              onCursorChange={(v) => setActiveLzProvider(v)}
               onConfirm={(selected) => {
                 if (selected.length === 0) return;
                 setAppLzCatProviders(selected);
@@ -818,9 +823,10 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
           )}
         </Box>
         <GuidanceBox
-          title="Cloud Service Provider"
-          what="The CSP whose service catalogue SWAO fetches and matches the app's assessed requirements. Select multiple CSPs to run a side-by-side comparison."
+          title={guidedProvider ? `Cloud Service Provider: ${guidedProvider}` : 'Cloud Service Provider'}
+          what={guidance.what}
           details={[
+            ...guidance.details,
             { label: 'Edit catalogues', value: 'Place a lz-catalogues/ folder in the workspace root to override or extend the bundled provider JSON files.' },
             { label: 'aws vs aws-esc', value: 'Standard aws (eu-central-1) is SOVEREIGNTY_BLOCKED under BSI_C5/Cloud Act frameworks. Select aws-esc (AWS European Sovereign Cloud) for EU-entity sovereignty evaluation.' },
           ]}
@@ -860,12 +866,12 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const allTargetOptions = appLzCatProviders.flatMap(pid => {
       const entry = hint?.entries.find(e => e.provider === pid);
       if (!entry) return [];
-      return [...entry.regions]
-        .sort((a, b) => a.id.localeCompare(b.id))
-        .map(r => ({
-          label: `${pid.toUpperCase()} / ${r.id} - ${r.display}${r.country ? ` [${r.country}]` : ''}${r.area ? ` (${r.area})` : ''}`,
-          value: `${pid}:${r.id}`,
-        }));
+      // #3380: render the shared label; carry country so the picker can group with headers.
+      return entry.regions.map(r => ({
+        label: `${pid.toUpperCase()} / ${r.label ?? `${r.id} - ${r.display}`}`,
+        value: `${pid}:${r.id}`,
+        country: r.country,
+      }));
     });
     const providerLabel = truncateLabel(appLzCatProviders.map(pid => lzProviderName(pid)).join(', '), 30 + app.length);
 
@@ -920,13 +926,14 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
               <MultiSelect
                 key={`lz-region-${appLzCatProviders.join('-')}-${appLzRegionFilter}`}
                 label="Target region(s) -- Space to toggle, Enter to confirm"
-                options={filteredTargetOptions}
-                // #3281: pre-select the configured targets (assessment.landing_zone.targets).
-                initialSelected={readConfiguredLzTargets(workspace, app).filter(t => filteredTargetOptions.some(o => o.value === t))}
+                // #3380: group the filtered regions by country with header rows.
+                options={insertCountryHeaders(filteredTargetOptions)}
+                // #3378 Part B: pre-select the last run's targets (else configured).
+                initialSelected={prefillLzTargets().filter(t => filteredTargetOptions.some(o => o.value === t))}
                 visibleCount={12}
                 onConfirm={(selected) => {
                   if (selected.length === 0) return;
-                  persistLzCatTargets(workspace, app, selected); // #2755
+                  // #3378 Part B (ADR-0067): no .swao.yml write; the run record is the memory.
                   setAppLzCatTargets(selected);
                   // #2716: emit assess.lz.region.selected for Design 098 observability.
                   try { logApp(app, 'info', 'assess.lz.region.selected', 'LZ target region(s) selected', { context: { app_id: app, targets: selected, count: selected.length } }); } catch { /* best-effort */ }
@@ -965,7 +972,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
               const target = appLzCatProviders.length > 0
                 ? `${appLzCatProviders[0]}:${v}`
                 : v;
-              persistLzCatTargets(workspace, app, [target]); // #2755
+              // #3378 Part B (ADR-0067): no .swao.yml write; the run record is the memory.
               setAppLzCatTargets([target]);
               beginRun();
             }}
@@ -989,8 +996,9 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
         apiKey={preflightApiKey}
         app={app}
         typeLabel={typeLabel}
-        onPass={() => setPhase('running')}
+        onPass={() => { setSkipLlm(false); setPhase('running'); }}
         onBack={() => setPhase('input-app-credentials')}
+        onRunWithoutLlm={() => { setSkipLlm(true); setPhase('running'); }}
         Header={Header}
       />
     );
@@ -1050,7 +1058,9 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
           )}
         </Box>
         <Box marginTop={1}>
-          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onLzChallenge ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- LZ Sovereignty Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
+          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onLzChallenge && !skipLlm ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- LZ Sovereignty Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
+          {/* #3383: the LZ Sovereignty Challenge is LLM-driven; not offered for a deterministic-only run. */}
+          {onLzChallenge && skipLlm && <Text dimColor>  LZ Sovereignty Challenge is unavailable for a deterministic-only run (no LLM).</Text>}
         </Box>
         <GuidanceBox
           title="Assessment complete"
@@ -1095,6 +1105,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
         onConfirm={() => { onLzChallenge?.(app); }}
         onBack={onBack}
         Header={Header}
+        offer={challengeOfferForApp(workspace, app, 'landing-zone')} /* #3427 */
       />
     );
   }

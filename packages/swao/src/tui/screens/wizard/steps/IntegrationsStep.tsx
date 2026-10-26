@@ -20,7 +20,60 @@ import { existsSync } from 'fs';
 import { findInstalledChromium, PLAYWRIGHT_VERSION, resolveClaudeDesktopConfigs, selectClaudeDesktopPatchTargets, type ClaudeDesktopConfigCandidate } from '@swao/core';
 import { GuidanceBox } from '@swao/tui-kit';
 import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
+import { resolve } from 'path';
+import {
+  DEFAULT_MCP_HTTP_URL,
+  defaultTransport,
+  profileToolNames,
+  type McpClientInstallRequest,
+  type McpClientInstallResult,
+} from '@swao/module-mcp';
 import { formatMcpRegistrationRefusal, mcpRegistrationRefusal, patchAllClaudeDesktopConfigs, resolveStableBinary, stableCopyWarning, type ClaudeDesktopPatchOutcome, type StableBinaryResolution } from '../../../mcp-config.js';
+import { installMcpClient } from '../../../mcp-client-install.js';
+import { SWAO_VERSION } from '../../../../branding.js';
+
+/**
+ * #3479 (Design 116 REQ-13.3): MCP clients the wizard offers, the same
+ * targets as `swao mcp install --client`. Claude Desktop stays first and
+ * preselected, so Enter keeps the existing flow.
+ */
+export const WIZARD_MCP_CLIENTS = [
+  { id: 'claude-desktop', label: 'Claude Desktop', hint: 'stdio, Claude Desktop config' },
+  { id: 'claude-code', label: 'Claude Code', hint: 'HTTP on localhost (start swao mcp --http), lean agent, starter profile' },
+  { id: 'kilo', label: 'Kilo', hint: 'stdio, lean agent, starter profile' },
+] as const;
+export type WizardMcpClient = (typeof WIZARD_MCP_CLIENTS)[number]['id'];
+
+/**
+ * #3479: the request the wizard sends to the shared writer for Claude Code or
+ * Kilo: the `swao mcp install --client <id>` defaults (scope user, client
+ * transport, lean agent with the starter profile), the workspace being set up
+ * as workspace and project folder.
+ */
+export function wizardInstallRequest(
+  client: Exclude<WizardMcpClient, 'claude-desktop'>,
+  workDir: string,
+  binary: StableBinaryResolution,
+  version: string = SWAO_VERSION,
+): McpClientInstallRequest {
+  const ws = resolve(workDir);
+  return {
+    client,
+    scope: 'user',
+    profile: 'starter',
+    profileExplicit: false,
+    tools: profileToolNames('starter'),
+    transport: defaultTransport(client),
+    url: DEFAULT_MCP_HTTP_URL,
+    agent: true,
+    dryRun: false,
+    uninstall: false,
+    workspace: ws,
+    binary: { path: binary.path, args: binary.args },
+    projectDir: ws,
+    version,
+  };
+}
 
 // #3217: the stable binary path (a stable copy next to the running SWAO
 // binary, #2908; node plus the script path on a source run, #3286) comes from
@@ -61,6 +114,26 @@ export interface ClaudeDesktopStepProps {
    * text when registration is refused, undefined when allowed. Injectable for tests.
    */
   checkLicence?: () => string | undefined;
+  /**
+   * #3479: the per-client safe writer shared with `swao mcp install --client`
+   * (Claude Code, Kilo). Injectable for tests; defaults to installMcpClient.
+   */
+  installClient?: (request: McpClientInstallRequest) => McpClientInstallResult;
+}
+
+/** #3479: the client list of the MCP step; Up/Down or 1 to 3 choose. */
+function ClientChoice({ choice, desktopInstalled }: { choice: number; desktopInstalled: boolean }) {
+  return (
+    <Box marginTop={1} flexDirection="column">
+      <Text>MCP client (Up/Down or 1-{WIZARD_MCP_CLIENTS.length}):</Text>
+      {WIZARD_MCP_CLIENTS.map((c, i) => (
+        <Text key={c.id} color={i === choice ? 'cyanBright' : undefined}>
+          {i === choice ? '> ' : '  '}{i + 1}  {c.label}
+          <Text dimColor>{`  ${c.id === 'claude-desktop' && !desktopInstalled ? 'not detected' : c.hint}`}</Text>
+        </Text>
+      ))}
+    </Box>
+  );
 }
 
 /** #3341: default wizard gate, same decision as the CLI entry points. */
@@ -75,7 +148,11 @@ export function ClaudeDesktopStep({
   resolveConfigs = resolveClaudeDesktopConfigs,
   resolveBinary = () => resolveStableBinary(),
   checkLicence = defaultMcpWizardLicenceCheck,
+  installClient = (request) => installMcpClient(request),
 }: ClaudeDesktopStepProps) {
+  // #3479: index into WIZARD_MCP_CLIENTS; 0 (Claude Desktop) keeps the existing flow.
+  const [choice, setChoice] = useState(0);
+  const [clientResult, setClientResult] = useState<McpClientInstallResult | undefined>(undefined);
   // #3341: evaluated once per mount, before any copy or config write.
   const [licenceRefusal] = useState<string | undefined>(() => checkLicence());
   // #3216: resolve and read the configs once per step mount (lazy initial
@@ -100,10 +177,19 @@ export function ClaudeDesktopStep({
     setOutcomes(patchAllClaudeDesktopConfigs(resolved.path, candidates, resolved.args));
     setStatus('done');
   };
+  // #3479: Claude Code or Kilo through the writer `swao mcp install --client` uses.
+  const doClientInstall = (client: Exclude<WizardMcpClient, 'claude-desktop'>) => {
+    if (licenceRefusal !== undefined) return;
+    const resolved = resolveBinary();
+    setCopyWarning(stableCopyWarning(resolved, `swao mcp install --client ${client}`));
+    setClientResult(installClient(wizardInstallRequest(client, workDir, resolved)));
+    setStatus('done');
+  };
   const anyPatched = outcomes.some((o) => o.result === 'patched');
   const anyError = outcomes.some((o) => o.result === 'error');
+  const chosen = WIZARD_MCP_CLIENTS[choice]?.id ?? 'claude-desktop';
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
     if (status === 'skipped') return;
     if (status === 'done' && key.return) { onNext(); return; }
     if (status !== 'idle') return;
@@ -112,17 +198,39 @@ export function ClaudeDesktopStep({
       if ((key.return || key.escape) && !_wizardGuidanceOpen) doSkip();
       return;
     }
-    // #2320: when Claude Desktop is not installed, Enter and Esc both skip --
-    // never call doPatch() against a non-existent config file.
-    if (!installed) {
-      if ((key.return || key.escape) && !_wizardGuidanceOpen) doSkip();
-      return;
-    }
-    if (key.return && !_wizardGuidanceOpen) doPatch();
-    if (key.escape && !_wizardGuidanceOpen) doSkip();
+    if (_wizardGuidanceOpen) return;
+    // #3479: client choice.
+    if (key.upArrow) { setChoice((c) => (c + WIZARD_MCP_CLIENTS.length - 1) % WIZARD_MCP_CLIENTS.length); return; }
+    if (key.downArrow) { setChoice((c) => (c + 1) % WIZARD_MCP_CLIENTS.length); return; }
+    const digit = /^[1-9]$/.test(input) ? parseInt(input, 10) - 1 : -1;
+    if (digit >= 0 && digit < WIZARD_MCP_CLIENTS.length) { setChoice(digit); return; }
+    if (key.escape) { doSkip(); return; }
+    if (!key.return) return;
+    if (chosen !== 'claude-desktop') { doClientInstall(chosen); return; }
+    // #2320: when Claude Desktop is not installed, Enter skips -- never call
+    // doPatch() against a non-existent config file.
+    if (!installed) { doSkip(); return; }
+    doPatch();
   });
 
-  void workDir;
+  if (status === 'done' && clientResult !== undefined) {
+    const label = WIZARD_MCP_CLIENTS[choice]?.label ?? '';
+    return (
+      <Box flexDirection="column">
+        <Text bold color="cyanBright">MCP Client Setup: {label}</Text>
+        <Box marginTop={1} flexDirection="column">
+          {[...clientResult.out, ...clientResult.err].map((line, i) => (
+            <Text key={`res-${i}`} color={clientResult.exitCode !== 0 ? 'red' : undefined}>{line}</Text>
+          ))}
+          {copyWarning && copyWarning.map((line, i) => (
+            <Text key={`copy-warn-${i}`} color="yellow">{i === 0 ? `Warning: ${line}` : `  ${line}`}</Text>
+          ))}
+          {clientResult.exitCode !== 0 && <Text color="red">The MCP client setup did not finish (see above). Fix the cause, then run swao mcp install --client {chosen}.</Text>}
+        </Box>
+        <Box marginTop={1}><Text dimColor>Press Enter to continue...</Text></Box>
+      </Box>
+    );
+  }
 
   if (status === 'done') {
     return (
@@ -180,19 +288,23 @@ export function ClaudeDesktopStep({
         </Box>
         <Text dimColor>SWAO could not find a Claude Desktop config at:</Text>
         <Text dimColor>  {configPath}</Text>
-        {/* #3386: column layout; Ink rows put both hint lines side by side. */}
+        {/* #3386: column layout (Ink rows put hint lines side by side) + name the
+            other supported MCP clients and the HTTP transport for clients with no
+            config file to patch. */}
+        <ClientChoice choice={choice} desktopInstalled={false} />
         <Box marginTop={1} flexDirection="column">
-          <Text dimColor>If you do not use Claude Desktop, you can skip this step.</Text>
-          <Text dimColor>To add SWAO as an MCP server manually later, run: <Text bold>swao mcp --help</Text></Text>
+          <Text dimColor>Choose Claude Code or Kilo above to configure them (same as swao mcp install --client).</Text>
+          <Text dimColor>For other clients such as VS Code or Cursor, run <Text bold>swao mcp install --client</Text> or <Text bold>swao mcp --http</Text> and point the client at the local SWAO server.</Text>
+          <Text dimColor>If you do not use an MCP client, skip this step. See <Text bold>swao mcp --help</Text> for all transports.</Text>
         </Box>
         <Box marginTop={1}>
-          <Text dimColor>Enter / Esc -- skip this step</Text>
+          <Text dimColor>{chosen === 'claude-desktop' ? 'Enter / Esc -- skip this step' : 'Enter -- configure the chosen client  |  Esc -- skip this step'}</Text>
         </Box>
         <GuidanceBox
-          title="MCP Client Setup (skipped)"
-          what="No supported MCP client detected. Install Claude Desktop to enable AI-assisted analysis of findings."
-          details={[{ label: 'Manual setup', value: 'Run `swao mcp --help` for instructions on adding SWAO as an MCP server.' }]}
-          affordances={['Enter -- skip this step  |  Esc -- skip this step']}
+          title="MCP Client Setup"
+          what="No Claude Desktop config detected. Claude Code and Kilo can be configured here; other clients connect with `swao mcp install --client` or over HTTP via `swao mcp --http`."
+          details={[{ label: 'Manual setup', value: 'Run `swao mcp install --client <name>` (claude-code, kilo, cursor, vscode) or `swao mcp --http`; `swao mcp --help` lists every transport.' }]}
+          affordances={['Up/Down -- choose client  |  Enter -- configure or skip  |  Esc -- skip this step']}
           onOpenChange={setWizardGuidanceOpen}
         />
       </Box>
@@ -203,7 +315,10 @@ export function ClaudeDesktopStep({
     <Box flexDirection="column">
       <Text bold color="cyanBright">MCP Client Setup</Text>
       <Text>Detected Claude Desktop config at: <Text bold color="whiteBright">{configPath}</Text></Text>
-      <Text dimColor>(SWAO probes only Claude Desktop today -- it is the only MCP host currently shipped. Path is Claude\ because that is the host detected.)</Text>
+      <ClientChoice choice={choice} desktopInstalled />
+      {chosen !== 'claude-desktop' && (
+        <Box marginTop={1}><Text dimColor>Enter writes the {WIZARD_MCP_CLIENTS[choice]?.label} config and lean agent (same as swao mcp install --client {chosen}).</Text></Box>
+      )}
       {/* #3163: list every file Enter will write, not only the effective one. */}
       {targets.length > 1 && (
         <Box marginTop={1} flexDirection="column">

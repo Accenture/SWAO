@@ -41,6 +41,11 @@ describe('buildChildEnv gateway wiring (#1409)', () => {
     expect(env['SWAO_ANTHROPIC_API_KEY']).toBeUndefined();
   });
 
+  it('sets NODE_NO_WARNINGS so spawned children do not flood the TUI with Node process warnings (#3387)', () => {
+    const env = buildChildEnv(null, creds, { connector: 'openrouter', model: 'a' }, {});
+    expect(env['NODE_NO_WARNINGS']).toBe('1');
+  });
+
   it('per-app connector overrides the workspace connector (#0800 precedence)', () => {
     const env = buildChildEnv(null, creds, { connector: 'openrouter', model: 'a' }, { connector: 'ollama' });
     expect(env['SWAO_LLM_CONNECTOR']).toBe('ollama');

@@ -52,6 +52,22 @@ export interface LzRequiredService {
   label?: string;
   /** Signal id that demanded it (provenance back to the app WSP). */
   signalId?: string;
+  /** #3430: confidence of the demanding signal; low = documentation only (service footprint). */
+  confidence?: 'high' | 'medium' | 'low';
+  /** #3430: evidence paths behind the requirement (build file, manifest, document). */
+  evidence?: string[];
+}
+
+/** #3430: app required services (core deriveConstraints) to fit inputs, provenance included. */
+export function toLzRequiredServices(
+  required: ReadonlyArray<{ name: string; signalId: string; confidence?: 'high' | 'medium' | 'low'; evidence?: string[] }>,
+): LzRequiredService[] {
+  return required.map((s) => ({
+    code: s.name,
+    signalId: s.signalId,
+    ...(s.confidence ? { confidence: s.confidence } : {}),
+    ...(s.evidence && s.evidence.length > 0 ? { evidence: s.evidence } : {}),
+  }));
 }
 
 /** Framework-derived sovereignty requirements (NOT hardcoded; from active frameworks). */
@@ -77,6 +93,9 @@ export interface LzFitItem {
   service_code: string;
   label?: string;
   signalId?: string;
+  /** #3430: provenance of the requirement (copied from LzRequiredService). */
+  confidence?: 'high' | 'medium' | 'low';
+  evidence?: string[];
   verdict: LzFitVerdict;
   detail: string;
   remediation?: string;
@@ -104,6 +123,9 @@ export interface LzFitReport {
   /** #1591: framework IDs that contributed sovereignty requirements (derived_from on
    *  SovereigntyRequirements). Used to filter compliance_regime_coverage in the HTML report. */
   selected_frameworks?: string[];
+  /** #3430: required services the region does not offer (NOT_AVAILABLE_IN_REGION,
+   *  CAPABILITY_MISSING, VERSION_MISMATCH), in item order. Present when non-empty. */
+  services_not_in_catalogue?: string[];
 }
 
 export interface LzFitInput {
@@ -125,7 +147,8 @@ export interface LzFitInput {
 // A service code matches a category if any pattern is a substring of the code (case-insensitive).
 const BASELINE_CATEGORIES: Array<{ name: string; patterns: string[] }> = [
   { name: 'compute', patterns: ['compute', 'kubernetes', 'k8s', 'vm', 'container', 'function', 'lambda', 'serverless', 'ecs', 'aks', 'gke', 'app-service', 'cloud-run', 'worker'] },
-  { name: 'network', patterns: ['network', 'vpc', 'vnet', 'transit', 'vpn', 'load-balancer', 'firewall', 'cdn', 'dns', 'routing', 'peering'] },
+  // #3430: 'load_balancer' and 'ingress' added; the catalogue code is load_balancer (underscore), which 'load-balancer' never matched.
+  { name: 'network', patterns: ['network', 'vpc', 'vnet', 'transit', 'vpn', 'load-balancer', 'load_balancer', 'ingress', 'firewall', 'cdn', 'dns', 'routing', 'peering'] },
   { name: 'kms', patterns: ['kms', 'key-management', 'key_management', 'hsm', 'vault', 'secrets', 'key-vault', 'secret-manager', 'keyvault', 'crypto'] },
   { name: 'storage', patterns: ['storage', 'object-storage', 'object_storage', 's3', 'blob', 'gcs', 'backup', 'filesystem', 'disk', 'volume'] },
 ];
@@ -140,7 +163,8 @@ export function detectCoverageGap(services: LzRequiredService[]): string | undef
 
   if (missing.length === 0) return undefined;
   return (
-    `service footprint incomplete -- ${services.length} service(s) assessed, ` +
+    // #3430: comma instead of a double dash (report output convention, CLAUDE.md 5.1).
+    `service footprint incomplete, ${services.length} service(s) assessed, ` +
     `baseline requires compute/network/kms/storage (missing: ${missing.join(', ')})`
   );
 }
@@ -202,6 +226,10 @@ export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequireme
   return fails;
 }
 
+function isHardBlocking(i: LzFitItem): boolean {
+  return i.verdict === 'NOT_AVAILABLE_IN_REGION' || i.verdict === 'VERSION_MISMATCH' || i.verdict === 'CAPABILITY_MISSING';
+}
+
 export function computeLzFit(input: LzFitInput): LzFitReport {
   const { region, scan, sovereigntyRequirements: sov, catalogueMode = false } = input;
   const sovFails = sovereigntyFailures(region, sov);
@@ -210,7 +238,15 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
   for (const req of input.requiredServices) {
     const available = regionFulfills(region, req.code);
     const enabled   = scanFulfills(scan, req.code);
-    const base = { service_code: req.code, label: req.label, signalId: req.signalId };
+    const base = {
+      service_code: req.code, label: req.label, signalId: req.signalId,
+      ...(req.confidence ? { confidence: req.confidence } : {}),
+      ...(req.evidence && req.evidence.length > 0 ? { evidence: req.evidence } : {}),
+    };
+    // #3430: a requirement evidenced by documents only is reported, but flagged for confirmation.
+    const docNote = req.confidence === 'low'
+      ? ' The requirement is evidenced by documentation only (low confidence); confirm it before treating this as a blocker.'
+      : '';
 
     if (!available) {
       // Distinguish qualifier mismatch (base service present, qualifier fails) from true absence.
@@ -233,7 +269,7 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
         });
       } else {
         items.push({ ...base, verdict: 'NOT_AVAILABLE_IN_REGION',
-          detail: `${req.code} is not offered in ${region.id}.`,
+          detail: `${req.code} is not offered in ${region.id}.${docNote}`,
           remediation: `Choose an alternative service, a region that offers ${req.code}, or accept a sovereignty trade-off.` });
       }
     } else if (sovFails.length > 0) {
@@ -266,7 +302,11 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
   let overall: LzOverallVerdict = 'READY';
   if (items.some((i) => i.verdict === 'SOVEREIGNTY_GAP')) overall = 'SOVEREIGNTY_BLOCKED';
   else if (sov && sovFails.length > 0) overall = 'SOVEREIGNTY_BLOCKED';
-  else if (items.some((i) => i.verdict === 'NOT_AVAILABLE_IN_REGION' || i.verdict === 'VERSION_MISMATCH' || i.verdict === 'CAPABILITY_MISSING')) overall = 'BLOCKED';
+  else if (items.some((i) => isHardBlocking(i) && i.confidence !== 'low')) overall = 'BLOCKED';
+  // #3497: when every hard blocker is evidenced by documentation only (low
+  // confidence), the requirement is unconfirmed: the overall verdict asks for
+  // verification instead of blocking. Each item keeps its own verdict.
+  else if (items.some(isHardBlocking)) overall = 'NEEDS_VERIFICATION';
   else if (items.some((i) => i.verdict === 'AVAILABLE_NOT_ENABLED' || i.verdict === 'MISCONFIGURED')) overall = 'READY_WITH_CHANGES';
 
   // #1506/#1511: a READY verdict without positive service evidence is misleading.
@@ -304,6 +344,10 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
     blocker_category = hasStruct && hasCert ? 'mixed' : hasCert ? 'certification' : 'structural';
   }
 
+  const notInCatalogue = items
+    .filter((i) => i.verdict === 'NOT_AVAILABLE_IN_REGION' || i.verdict === 'CAPABILITY_MISSING' || i.verdict === 'VERSION_MISMATCH')
+    .map((i) => i.service_code);
+
   return {
     provider: scan.provider,
     region: region.id,
@@ -316,5 +360,6 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
     generated_at: input.generatedAt ?? new Date().toISOString().slice(0, 10),
     ...(coverageWarning ? { coverage_warning: coverageWarning } : {}),
     ...(sov?.derived_from?.length ? { selected_frameworks: sov.derived_from } : {}),
+    ...(notInCatalogue.length > 0 ? { services_not_in_catalogue: notInCatalogue } : {}),
   };
 }

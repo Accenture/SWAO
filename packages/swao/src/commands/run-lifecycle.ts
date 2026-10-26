@@ -37,7 +37,7 @@
 
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { RUN_STATUS_FILE, type RunStatus, type RunStatusValue } from '@swao/core';
+import { RUN_STATUS_FILE, RUN_STATUS_SCHEMA_VERSION, type RunStatus, type RunStatusValue, type PassDegradedEntry } from '@swao/core';
 
 /** A target skipped by the run (run-status.json failed_targets). */
 export interface RunFailedTarget { provider: string; region: string; reason: string }
@@ -69,6 +69,12 @@ export interface RunCompletion {
   failedTargets?: RunFailedTarget[];
   /** Passes that failed (application / service); non-empty makes the run `partial`. */
   failedPasses?: string[];
+  /**
+   * #3436: passes that ran but are not fully evaluated (Pass 11 with controls
+   * without a model verdict); non-empty makes the run `partial`. The exit code
+   * is unchanged: the result is usable, the marker says it is incomplete.
+   */
+  degradedPasses?: PassDegradedEntry[];
   exitCode?: number;
 }
 
@@ -79,6 +85,7 @@ interface MarkerPatch {
   reason?: string;
   failed_targets?: RunFailedTarget[];
   failed_passes?: string[];
+  degraded_passes?: PassDegradedEntry[];
 }
 
 export interface RunLifecycleOptions {
@@ -127,7 +134,7 @@ export function createRunLifecycle(opts: RunLifecycleOptions): RunLifecycle {
 
   const writeMarker = (patch: MarkerPatch): void => {
     const marker = {
-      schema_version: '1.0' as const,
+      schema_version: RUN_STATUS_SCHEMA_VERSION, // #3436: 1.1 adds degraded_passes
       assessment_type: opts.assessmentType,
       app: opts.app,
       run_id: runId,
@@ -192,13 +199,15 @@ export function createRunLifecycle(opts: RunLifecycleOptions): RunLifecycle {
       disposeGuards?.();
       const targets = [...recordedFailedTargets, ...(completion.failedTargets ?? [])];
       const passes = completion.failedPasses ?? [];
-      const partial = targets.length > 0 || passes.length > 0;
+      const degraded = completion.degradedPasses ?? [];
+      const partial = targets.length > 0 || passes.length > 0 || degraded.length > 0;
       writeMarker({
         status: partial ? 'partial' : 'complete',
         finished_at: new Date().toISOString(),
         exit_code: completion.exitCode ?? 0,
         ...(targets.length > 0 ? { failed_targets: targets } : {}),
         ...(passes.length > 0 ? { failed_passes: passes } : {}),
+        ...(degraded.length > 0 ? { degraded_passes: degraded } : {}),
       });
     },
 

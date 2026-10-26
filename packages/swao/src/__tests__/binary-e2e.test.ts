@@ -126,11 +126,17 @@ afterAll(() => {
   if (SANDBOX_HOME) rmSync(SANDBOX_HOME, { recursive: true, force: true });
 }, 60_000);
 
+// #3496: the first `assess` in this file clones the source, and Pass 01 then
+// reads every file (the #3423 language census). On Windows the packaged exe
+// pays a one-time cost when it first opens freshly written files (measured 37
+// to 63 s; the same files already opened once: 1 s; the source build on a fresh
+// clone: 6 s). Whichever assess test runs first pays it, so every assess call
+// gets a 180 s ceiling; other commands keep 60 s.
 function run(args: string[], cwd: string = WORKSPACE): { stdout: string; stderr: string; status: number } {
   return runBinary(BIN_WIN, args, cwd, {
     ...process.env, HOME: SANDBOX_HOME, USERPROFILE: SANDBOX_HOME, HOMEDRIVE: '', HOMEPATH: '',
     LOCALAPPDATA: SANDBOX_HOME, APPDATA: SANDBOX_HOME,
-  });
+  }, args[0] === 'assess' ? 180_000 : 60_000);
 }
 
 describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
@@ -185,7 +191,7 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     expect(status).toBe(0);
     expect(combined).toContain('Pass 01');
     expect(combined).toContain('inventory');
-  });
+  }, 200_000);
 
   // ── framework subcommand (sprint-037 #0344) ──────────────────────────────
 
@@ -388,8 +394,12 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     expect(content).toContain('LZ Comparison');
     expect(content).toContain('Verdict Summary');
     expect(content).toContain('Sovereignty Gate Analysis');
-    // The preceding assess test evaluates stackit:eu01 only (GDPR → READY).
-    expect(content).toContain('READY');
+    // The preceding assess test evaluates stackit:eu01 only (GDPR). Every
+    // service is offered there except mysql and identity_management, which the
+    // #3430 service footprint takes from the fixture documentation only (low
+    // confidence), so the verdict asks for verification (#3497) instead of READY.
+    expect(content).toContain('NEEDS_VERIFICATION');
+    expect(content).not.toMatch(/\[BLOCKED\s*\]/);
   });
 
   it('report --type landing-zone-catalog yaml format saves .yaml file (#1120)', () => {

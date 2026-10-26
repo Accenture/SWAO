@@ -291,6 +291,15 @@ export function assembleLandingZoneWsp(input: AssembleLzInput): AssembleLzResult
   const frameworkMandatedServices = sovereigntyRequirements?.required_services ?? [];
   const augmentedRequired = [...input.requiredServices];
   for (const code of frameworkMandatedServices) {
+    // #3430: a documentation-only footprint entry for a mandated service is
+    // no longer low confidence: the framework requires the service regardless.
+    const docOnly = augmentedRequired.findIndex((s) => s.code === code && s.confidence === 'low');
+    if (docOnly >= 0) {
+      const { confidence: _dropped, ...rest } = augmentedRequired[docOnly]!;
+      void _dropped;
+      augmentedRequired[docOnly] = { ...rest, label: `${code} (framework-mandated)` };
+      continue;
+    }
     if (!augmentedRequired.some((s) => s.code === code)) {
       // #2403: set signalId to 'FW' so LzFitItem.signalId is present for all
       // items -- framework-mandated services have no INV-xx signal provenance.

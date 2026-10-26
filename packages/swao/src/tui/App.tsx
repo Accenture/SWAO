@@ -21,9 +21,10 @@ import { join } from 'path';
 // host injects the SWAO version + the `swao init` scaffolding functions
 // (branding + workspace-setup are host-only) into the module screens.
 import { AssessmentTypeScreen, AppAssessmentScreen, LzAssessmentScreen, type LzCatalogueHint } from '@swao/module-app-assessment';
-import { resolveProviderCatalogue, discoverGateCapableFrameworks, listLzCatalogueProviders } from '@swao/module-landing-zone';
+import { resolveProviderCatalogue, discoverGateCapableFrameworks, listLzCatalogueProviders, isAzurePseudoRegion, lzProviderLabel, lzRegionDisplayLabel } from '@swao/module-landing-zone';
+import { seedBundledConnectors } from '@swao/module-llm-providers';
 import { communityFrameworksDir } from '@swao/community-frameworks';
-import { resolveCatalogsDir } from '@swao/core';
+import { resolveCatalogsDir, findWorkspace } from '@swao/core';
 // DoctorScreen relocated to @swao/module-doctor (#0573); the host injects the
 // SWAO version (branding is host-only), mirroring the AssessScreen wiring.
 import { HealthCheckScreen } from '@swao/module-health-check';
@@ -47,6 +48,7 @@ import { HelpScreen }       from './screens/HelpScreen.js';
 // ChallengeScreen: see premiumScreens registry above (#0580, sprint-128 #2132).
 import { LensesScreen }    from './screens/LensesScreen.js';
 import { LzCatalogueUpdateScreen } from './screens/LzCatalogueUpdateScreen.js';
+import { LlmGatewayUpdateScreen } from './screens/LlmGatewayUpdateScreen.js';
 import { IngestScreen } from './screens/IngestScreen.js';
 import { SupportBundleScreen } from './screens/SupportBundleScreen.js';
 // Publish + Serve screens relocated to @swao/module-html-report (#0575); the
@@ -72,15 +74,31 @@ function buildLzCatalogueHint(): LzCatalogueHint | null {
     const entries = listLzCatalogueProviders(process.cwd()).flatMap((provider) => {
       try {
         const { catalogue } = resolveProviderCatalogue(provider, process.cwd());
+        // #3380 decision 3b: never offer Azure non-customer regions (canary /
+        // staging / partner / internal) even from a committed catalogue.
+        const dropRegion = provider === 'azure' ? isAzurePseudoRegion : () => false;
+        const meta = catalogue.meta as { name: string; confidence?: unknown; source?: unknown };
+        const asText = (v: unknown): string | undefined =>
+          typeof v === 'string' ? v : (v && typeof v === 'object' && 'mode' in v ? String((v as { mode: unknown }).mode) : undefined);
         return [{
           provider,
-          name: catalogue.meta.name,
-          regions: (catalogue.regions as Array<{ id: string; display?: string; country?: string; area?: string }>).map(r => ({
-            id: r.id,
-            display: r.display ?? r.id,
-            country: r.country,
-            area: r.area,
-          })),
+          name: meta.name,
+          // #3399: consistent `<id> - <name>` label via the shared helper (decision 1b).
+          label: lzProviderLabel(provider, meta.name),
+          confidence: asText(meta.confidence),
+          source: asText(meta.source),
+          regions: (catalogue.regions as Array<{ id: string; display?: string; country?: string; area?: string }>)
+            .filter(r => !dropRegion(r.id))
+            .map(r => ({
+              id: r.id,
+              display: r.display ?? r.id,
+              country: r.country,
+              area: r.area,
+              // #3380 (decision 1b): one consistent region label via the shared helper.
+              label: lzRegionDisplayLabel({ id: r.id, display: r.display, country: r.country, area: r.area }),
+            }))
+            // #3380: group same-country regions together (country, then id).
+            .sort((a, b) => (a.country ?? '~').localeCompare(b.country ?? '~') || a.id.localeCompare(b.id)),
         }];
       } catch { return []; }
     });
@@ -124,6 +142,17 @@ export function App({ initialScreen = 'main' }: AppProps) {
   // visible above the new header (ghost text). Setting height=rows forces
   // Ink to always paint the same number of rows; shorter screens pad with
   // blank space at the bottom instead of shrinking the render region.
+  // #3388 (Design 112, D-3): the LLM gateway folder is the single source (no
+  // runtime bundled fallback), so seed the packaged connectors into the
+  // workspace once at TUI startup. Idempotent, respects the .seeded marker, and
+  // best-effort -- every screen then reads a populated workspace folder.
+  useEffect(() => {
+    try {
+      const ws = findWorkspace(process.cwd());
+      if (ws) seedBundledConnectors(ws);
+    } catch { /* best-effort */ }
+  }, []);
+
   const { stdout } = useStdout();
   const [termRows, setTermRows] = useState(stdout?.rows ?? 30);
   useEffect(() => {
@@ -204,6 +233,8 @@ export function App({ initialScreen = 'main' }: AppProps) {
       {screen === 'lenses'      && <LensesScreen     onBack={() => setToolsScreen('tools')} onRunAssessment={() => { setAssessmentType('application'); setToolsScreen('assess'); }} />}
       {/* #0872 -- LZ catalogue update; Consultant+ gated; reached via Tools submenu. */}
       {screen === 'lz-catalogue-update' && <LzCatalogueUpdateScreen onBack={() => setToolsScreen('tools')} onOpenLicense={() => setToolsScreen('license')} />}
+      {/* #3388 -- LLM gateway connector refresh; reached via Tools submenu. */}
+      {screen === 'llm-gateway-update' && <LlmGatewayUpdateScreen onBack={() => setToolsScreen('tools')} />}
       {/* #0967 -- Ingest Files pre-processor; reached via Tools submenu. */}
       {screen === 'ingest' && <IngestScreen onBack={() => setToolsScreen('tools')} />}
       {/* #1515 -- Support diagnostic bundle; reached via Tools submenu. */}

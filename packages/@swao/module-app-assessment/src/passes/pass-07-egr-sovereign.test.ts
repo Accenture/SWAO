@@ -227,3 +227,22 @@ describe('runEgrPass with the sovereign service catalogue', () => {
     expect(result.assessment.sovereign_service_check).toBe('no_match');
   });
 });
+
+describe('#3410 egress domain scan through the shared catalogue matcher', () => {
+  let dir: string;
+  beforeAll(() => { dir = mkdtempSync(join(tmpdir(), 'swao-3410-egr-')); });
+  afterAll(() => { rmSync(dir, { recursive: true, force: true }); });
+
+  const domainsOf = (r: Awaited<ReturnType<typeof runEgrPass>>): string[] =>
+    (r.assessment.egress_destinations as Array<{ domain?: string }>).map((d) => d.domain ?? '');
+
+  it('a domain glued to a longer host name is not a hit; a subdomain is', async () => {
+    writeFixture(dir, {
+      'package.json': JSON.stringify({ name: 'egr-3410' }),
+      'src/a.ts': "export const A = 'https://mys3.amazonaws.com/x';\n",
+    });
+    expect(domainsOf(await runEgrPass(ctx(dir)))).not.toContain('s3.amazonaws.com');
+    writeFixture(dir, { 'src/b.ts': "export const B = 'https://bucket.s3.amazonaws.com/x';\n" });
+    expect(domainsOf(await runEgrPass(ctx(dir)))).toContain('s3.amazonaws.com');
+  });
+});

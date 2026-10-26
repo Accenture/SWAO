@@ -191,3 +191,22 @@ describe('buildChallengePassGroups', () => {
     expect(groups.map((g) => g.pass_id)).toEqual(['C1-app-architect', 'C1-security']);
   });
 });
+
+describe('unpriced legs excluded from cost (#3389)', () => {
+  it('a billed leg whose calls all cost 0 reports cost_usd null, not 0', () => {
+    const recs = [
+      record({ leg: 'gw--gemma', pass: '03-data', cost: 0 }),
+      record({ leg: 'gw--gemma', pass: '03-data', cost: 0, index: 1 }),
+    ];
+    const groups = buildPassGroups(recs, ['gw--gemma']);
+    const g = groups.find((x) => x.pass_id === '03-data')!;
+    expect(g.legs['gw--gemma']!.cost_usd).toBeNull();
+  });
+
+  it('a billed leg with a real nonzero cost still reports the total', () => {
+    const recs = [record({ leg: 'or--fast', pass: '03-data', cost: 0.002 })];
+    const groups = buildPassGroups(recs, ['or--fast']);
+    const g = groups.find((x) => x.pass_id === '03-data')!;
+    expect(g.legs['or--fast']!.cost_usd).toBeCloseTo(0.002, 6);
+  });
+});

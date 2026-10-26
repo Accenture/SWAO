@@ -9,6 +9,14 @@
 pass_number: 21
 pass_name: "IAM Assessment"
 
+# #3410: imports and config_keys are literal tokens matched through the shared
+# catalogue matcher with `segment` boundaries (case-insensitive): `eric`
+# matches `ericClient` or `ELSTER_ERIC`, never `generic` or `numeric`.
+# env_vars are regexes with identifier boundaries. See README.md.
+match_defaults:
+  match: segment
+  case_sensitive: false
+
 entries:
 
   # ---------- German eGov identity providers ----------

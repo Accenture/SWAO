@@ -85,15 +85,17 @@ Place documents in `apps/<app-id>/wsp/inputs/` so that [Pass 04 (CTX)](/passes/0
 
 ### Conditional and inherited controls
 
-- `KRITIS_DE_AST_3` (IT/OT boundary management) declares `applies_when: has_ot_systems: "true"`. Pass 11 does not read this condition. The HTML publication evaluates it for controls that have no Pass 11 result, against the `framework_context` block of the app's `.swao.yml`:
+- `KRITIS_DE_AST_3` (IT/OT boundary management) declares `applies_when: has_ot_systems: "true"`. Pass 11 matches `applies_when` against the `framework_context` block of the app's `.swao.yml` before any LLM call; a missing or different value makes the control N/A (not applicable), shown as "N/A" and never counted as Fail or in the compliance score:
 
   ```yaml
   framework_context:
     has_ot_systems: "true"
+    kritis_sector: health   # energy, water, health, finance, transport or ict
   ```
 
 - `KRITIS_DE_AST_5` (physical security perimeters) is marked `csp_inherited`.
-- The six sector controls (`KRITIS_DE_SEC_ENE`, `_HLT`, `_FIN`, `_TRN`, `_ICT`, `_DACHG`) cover sector-specific obligations; mark the ones that do not apply to the operator's sector as not applicable in your review.
+- The five sector controls `KRITIS_DE_SEC_ENE` (`kritis_sector: energy` or `water`), `_HLT` (`health`), `_FIN` (`finance`), `_TRN` (`transport`) and `_ICT` (`ict`) declare `applies_when: kritis_sector`; without a matching `framework_context.kritis_sector` they are N/A. `KRITIS_DE_SEC_DACHG` applies to every operator in KRITIS-DachG scope.
+- Controls scoped `assessment_type_scope: [aud]` (including all sector controls) are not evaluated in an application run; they appear as not assessed and need an audit assessment.
 
 ## Control structure
 

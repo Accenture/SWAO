@@ -23,9 +23,9 @@
  * CRYPTO read whatever directory they are given.
  */
 
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { PassRunner } from '@swao/core';
+import { listInputFiles, type PassRunner } from '@swao/core';
 import { GENERATED_BINARY_FILES } from '../binary/analyse.js';
 import { hasDeclaredDataFields, runServiceCryptoPass, runServiceDataPass } from './service-passes.js';
 
@@ -56,7 +56,13 @@ export const SERVICE_PASS_PROFILE: readonly ServicePassDef[] = [
   { num: '11', key: 'comp', name: 'COMP', mode: 'always', reason: 'framework compliance' },
   { num: '12', key: 'blocks', name: 'BLOCKS', mode: 'always', reason: 'blocked-finding aggregation' },
   { num: '13', key: 'scope', name: 'SCOPE', mode: 'always', reason: 'coverage report' },
+  // #3419: the default secret scan (Gitleaks) needs files to scan; without
+  // supplied config or binary inputs it would scan the empty base source path
+  // and report a false "no secrets detected".
+  { num: '14', key: 'secrets', name: 'SECRETS', mode: 'conditional', reason: 'runs when config or binary inputs are supplied' },
   { num: '14', key: 'malware', name: 'MALWARE', mode: 'conditional', reason: 'runs when binary files are supplied and the pass is requested' },
+  // #3405: Pass 26 code health measures source code only.
+  { num: '26', key: 'quality', name: 'QUALITY', mode: 'skipped', reason: 'no source code to measure for code health in a service assessment' },
   { num: '24', key: 'research', name: 'RESEARCH', mode: 'external', reason: 'runs as swao service research (Pass 24); stubs are read by CTX' },
   { num: '25', key: 'binary', name: 'BINARY', mode: 'external', reason: 'static binary analysis; runs before the pass loop and before research (binary-analysis.json)' },
 ];
@@ -78,17 +84,10 @@ export interface ServicePassPlan {
   runners: Record<string, PassRunner>;
 }
 
+// #3428: input-folder checks through the central source scope's sibling walker.
 function hasFiles(dir: string): boolean {
   if (!existsSync(dir)) return false;
-  try {
-    return readdirSync(dir).some((n) => {
-      const p = join(dir, n);
-      const st = statSync(p);
-      return st.isDirectory() ? hasFiles(p) : n.toLowerCase() !== '.gitkeep' && !GENERATED_BINARY_FILES.has(n);
-    });
-  } catch {
-    return false;
-  }
+  return listInputFiles(dir).some((f) => f.name.toLowerCase() !== '.gitkeep' && !GENERATED_BINARY_FILES.has(f.name));
 }
 
 /** Files Pass 00 itself skips in ingestion/ (its manifest and housekeeping files). */
@@ -96,14 +95,7 @@ const INGEST_HOUSEKEEPING = new Set(['.gitkeep', 'readme.md', 'ingestion-manifes
 
 function hasMatching(dir: string, re: RegExp): boolean {
   if (!existsSync(dir)) return false;
-  try {
-    return readdirSync(dir).some((n) => {
-      const p = join(dir, n);
-      return statSync(p).isDirectory() ? hasMatching(p, re) : !INGEST_HOUSEKEEPING.has(n.toLowerCase()) && re.test(n.toLowerCase());
-    });
-  } catch {
-    return false;
-  }
+  return listInputFiles(dir).some((f) => !INGEST_HOUSEKEEPING.has(f.name.toLowerCase()) && re.test(f.name.toLowerCase()));
 }
 
 /**
@@ -173,6 +165,9 @@ export function planServicePasses(appDir: string, requested: readonly string[], 
           if (binaryDir) { run.push(key); sourceOverrides[key] = binaryDir; } else skip(d, 'no config or binary inputs (ingestion/binary/ or wsp/inputs/binary/)');
         } else if (key === 'sbom') {
           if (binaryDir && hasMatching(binaryDir, SBOM_FILE)) { run.push(key); sourceOverrides[key] = binaryDir; } else skip(d, 'no CycloneDX or SPDX SBOM supplied');
+        } else if (key === 'secrets') {
+          // #3419: same inputs as CRYPTO (config files or binary content).
+          if (binaryDir) { run.push(key); sourceOverrides[key] = binaryDir; } else skip(d, 'no config or binary inputs to scan for secrets (ingestion/binary/ or wsp/inputs/binary/)');
         } else if (key === 'malware') {
           if (binaryDir && hasMatching(binaryDir, MALWARE_SCANNABLE_FILE)) { run.push(key); sourceOverrides[key] = binaryDir; } else skip(d, 'no binary files supplied');
         } else if (key === 'dynamic') {
@@ -186,7 +181,7 @@ export function planServicePasses(appDir: string, requested: readonly string[], 
     }
   }
 
-  // The four source-only passes are always reported, even when not requested.
+  // The source-only passes are always reported, even when not requested.
   for (const d of SERVICE_PASS_PROFILE.filter((p) => p.mode === 'skipped')) {
     if (!skipped.some((s) => s.key === d.key)) skip(d);
   }
@@ -214,7 +209,8 @@ export function buildServiceScopeCoverage(plan: ServicePassPlan, statuses: Recor
 
 /** One-line summary for the console and the TUI assess screen. */
 export function formatSkippedSummary(plan: ServicePassPlan): string {
-  const sourceOnly = plan.skipped.filter((s) => ['inv', 'state', 'tf', 'egr'].includes(s.key)).map((s) => s.num);
-  const conditional = plan.skipped.filter((s) => !['inv', 'state', 'tf', 'egr'].includes(s.key)).map((s) => `${s.num} ${s.name}`);
+  const sourceOnlyKeys = new Set(SERVICE_PASS_PROFILE.filter((p) => p.mode === 'skipped').map((p) => p.key));
+  const sourceOnly = plan.skipped.filter((s) => sourceOnlyKeys.has(s.key)).map((s) => s.num);
+  const conditional = plan.skipped.filter((s) => !sourceOnlyKeys.has(s.key)).map((s) => `${s.num} ${s.name}`);
   return `Service passes skipped: ${plan.skipped.length} (${sourceOnly.join(', ')}: no source code${conditional.length > 0 ? `; ${conditional.join(', ')}: inputs not supplied` : ''})`;
 }

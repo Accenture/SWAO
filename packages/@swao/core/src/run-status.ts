@@ -21,7 +21,8 @@
 //
 //   complete  the run finished normally
 //   partial   the run finished, but some LZ targets were skipped
-//             (`failed_targets`) or some passes failed (`failed_passes`)
+//             (`failed_targets`), some passes failed (`failed_passes`) or
+//             some passes are not fully evaluated (`degraded_passes`, #3436)
 //   failed    the run stopped before completion (error, gate exit, every LZ
 //             target failed); no run-manifest.json is written
 //   aborted   SIGINT / SIGTERM
@@ -34,6 +35,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
+import { PassDegradedEntrySchema } from './pass-coverage.js';
 
 export const RUN_STATUS_FILE = 'run-status.json';
 
@@ -56,8 +58,11 @@ export const RunStatusResolvedTargetSchema = z.object({
 }).passthrough();
 export type RunStatusResolvedTarget = z.infer<typeof RunStatusResolvedTargetSchema>;
 
+/** #3436: schema_version the writer emits; 1.1 adds degraded_passes (additive). */
+export const RUN_STATUS_SCHEMA_VERSION = '1.1' as const;
+
 export const RunStatusSchema = z.object({
-  schema_version: z.literal('1.0'),
+  schema_version: z.union([z.literal('1.0'), z.literal('1.1')]),
   assessment_type: z.enum(['application', 'service', 'landing-zone-catalog']),
   app: z.string(),
   run_id: z.string(),
@@ -71,6 +76,12 @@ export const RunStatusSchema = z.object({
   resolved_targets: z.array(RunStatusResolvedTargetSchema).optional(),
   /** #3283: passes that failed in a `partial` application or service run. */
   failed_passes: z.array(z.string()).optional(),
+  /**
+   * #3436 (1.1): passes that ran but are not fully evaluated (Pass 11 with
+   * controls that have no model verdict). Non-empty makes the run `partial`:
+   * the result is usable, but compliance was not fully evaluated.
+   */
+  degraded_passes: z.array(PassDegradedEntrySchema).optional(),
   swao_version: z.string(),
 }).passthrough();
 export type RunStatus = z.infer<typeof RunStatusSchema>;

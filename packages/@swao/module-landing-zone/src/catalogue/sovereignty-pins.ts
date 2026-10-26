@@ -166,6 +166,12 @@ export const AZURE_SOVEREIGNTY_PINS: Record<string, LzSovereigntyPin> = {
   'usgovvirginia':       { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
   'usgoviowa':           { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
   'usdodeast':           { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  // #3287 (2026-10-25, v1.5.0 Gate 14): residency from Microsoft geography and
+  // news pages (LZ_SOVEREIGNTY_PIN_SOURCES); the other facts are the refresh
+  // defaults the catalogue already carried. perth is an Azure Extended Zone.
+  'saudiarabiaeast':     { residency_country: 'SA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southeastasia3':      { residency_country: 'MY', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'perth':               { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -269,5 +275,8 @@ export const LZ_SOVEREIGNTY_PIN_SOURCES: Record<string, LzSovereigntyPinSource> 
   'azure/usgovvirginia': { url: 'https://learn.microsoft.com/en-us/azure/azure-government/documentation-government-welcome', retrieved: '2026-10-17', note: 'Azure Government region US Gov Virginia; Azure Government datacenters are located in the US only' },
   'azure/usgoviowa': { url: 'https://devblogs.microsoft.com/azuregov/?p=7346', retrieved: '2026-10-17', note: 'Azure Government blog (2017-08-01) lists US Gov Iowa among all Azure Government regions; Azure Government datacenters are located in the US only (https://learn.microsoft.com/en-us/azure/azure-government/documentation-government-welcome)' },
   'azure/usdodeast': { url: 'https://learn.microsoft.com/en-us/azure/azure-government/documentation-government-overview-dod', retrieved: '2026-10-17', note: 'US DoD East is an Azure Government region; Azure Government datacenters are located in the US only (https://learn.microsoft.com/en-us/azure/azure-government/documentation-government-welcome)' },
+  'azure/saudiarabiaeast': { url: 'https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/', retrieved: '2026-10-25', note: 'Saudi Arabia East listed under the Saudi Arabia geography (regions footnote: available or coming soon)' },
+  'azure/southeastasia3': { url: 'https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/', retrieved: '2026-10-25', note: 'Southeast Asia 3 card: intent to deliver a second datacenter region in Malaysia, called Southeast Asia 3' },
+  'azure/perth': { url: 'https://news.microsoft.com/en-au/2024/12/11/microsoft-extends-azure-cloud-infrastructure-to-western-australia/', retrieved: '2026-10-25', note: 'Microsoft Australia news (2024-12-11): Azure Extended Zone deployed to Perth, Western Australia; an extended zone, not a full region' },
   'gcp/europe-north2': { url: 'https://docs.cloud.google.com/compute/docs/regions-zones', retrieved: '2026-10-17', note: 'Zones europe-north2-a/b/c: Stockholm, Sweden, Europe' },
 };

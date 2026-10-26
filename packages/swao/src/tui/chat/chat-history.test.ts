@@ -78,6 +78,23 @@ describe('appendTurn + parseTurnLine (#2782)', () => {
     expect(parsed.tokens_in).toBe(100);
   });
 
+  // #3415: the NDJSON history never stores a clear-text secret.
+  it('writes the masked form when a turn carries a secret value (#3415)', () => {
+    const planted = 'Zx9-fake-Pw42'; // gitleaks:allow (synthetic #3415 fixture)
+    const turn: ChatTurn = {
+      ts: '2026-10-23T12:00:02.000Z',
+      role: 'assistant',
+      content: `The test helper sets password = "${planted}".`,
+    };
+    appendTurn(histPath, turn);
+    const body = readFileSync(histPath, 'utf-8');
+    expect(body).not.toContain(planted);
+    const last = JSON.parse(body.trim().split('\n').pop() ?? '{}') as ChatTurn;
+    expect(last.content).toBe('The test helper sets password = "Zx***(13)".');
+    // The caller's turn object is not mutated.
+    expect(turn.content).toContain(planted);
+  });
+
   it('parseTurnLine validates against ChatTurnSchema', () => {
     const valid = '{"ts":"2026-09-17T12:00:00.000Z","role":"user","content":"hello"}';
     const result = parseTurnLine(valid);

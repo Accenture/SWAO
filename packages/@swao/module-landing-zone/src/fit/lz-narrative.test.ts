@@ -379,3 +379,20 @@ describe('generateLzNarrative', () => {
     });
   });
 });
+
+describe('NEEDS_VERIFICATION with documentation-only blockers (#3497)', () => {
+  it('headline names the unconfirmed services instead of a coverage gap', () => {
+    const fit: LzFitReport = {
+      ...makeReadyReport(),
+      overall: 'NEEDS_VERIFICATION',
+      items: [
+        ...makeReadyReport().items,
+        { service_code: 'mysql', verdict: 'NOT_AVAILABLE_IN_REGION', confidence: 'low', detail: 'mysql is not offered in eu-central-1.' },
+      ],
+    };
+    const n = generateLzNarrative({ lz_id: 'aws', region_id: 'eu-central-1', display: 'AWS eu-central-1', fit });
+    expect(n.summary_headline).toContain('evidenced only by documentation are not offered: mysql');
+    expect(n.summary_headline).toContain('Confirm these requirements before treating them as blockers.');
+    expect(n.summary_headline).not.toContain('baseline coverage incomplete');
+  });
+});

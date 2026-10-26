@@ -125,8 +125,19 @@ describe('deriveConstraints', () => {
     ];
     const constraints = deriveConstraints(signals);
     expect(constraints.requiredServices).toHaveLength(2);
-    expect(constraints.requiredServices[0]).toEqual({ name: 'postgresql', signalId: 'INV-02' });
-    expect(constraints.requiredServices[1]).toEqual({ name: 'redis', signalId: 'INV-03' });
+    // #3430: the signal confidence travels with the requirement.
+    expect(constraints.requiredServices[0]).toEqual({ name: 'postgresql', signalId: 'INV-02', confidence: 'high' });
+    expect(constraints.requiredServices[1]).toEqual({ name: 'redis', signalId: 'INV-03', confidence: 'high' });
+  });
+
+  it('#3430: narrows "<service>: <path>" evidence of an aggregated signal to the service', () => {
+    const signals: Signal[] = [
+      { id: 'INV-14', source: 'static_analysis', category: 'infrastructure_platform', severity: 'informational', derivation: 'docs', evidence: ['key_vault: docs/a.md', 'kafka: docs/b.md'], confidence: 'low', implies: ['service_dep:key_vault', 'service_dep:kafka'] },
+      { id: 'INV-15', source: 'static_analysis', category: 'infrastructure_platform', severity: 'informational', derivation: 'pom', evidence: ['pom.xml'], confidence: 'high', implies: ['service_dep:mariadb'] },
+    ];
+    const r = deriveConstraints(signals).requiredServices;
+    expect(r.find((s) => s.name === 'kafka')).toEqual({ name: 'kafka', signalId: 'INV-14', confidence: 'low', evidence: ['docs/b.md'] });
+    expect(r.find((s) => s.name === 'mariadb')?.evidence).toEqual(['pom.xml']);
   });
 
   it('deduplicates service_dep tags from multiple signals', () => {

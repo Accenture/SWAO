@@ -134,6 +134,57 @@ Globale Ausschlüsse (für alle Apps geltend) werden derzeit nicht unterstützt.
 
 ---
 
+## MCP-Tool-Profil
+
+Die Workspace-`.swao.yml` kann festlegen, welche Tools `swao mcp` externen KI-Clients anbietet (#3474):
+
+```yaml
+mcp:
+  profile: starter        # starter | assess | full (Standard full)
+  # tools: [swao, swao_health_check]   # Alternative zum Profil: exakte Tool-Namen
+```
+
+`profile` und `tools` schließen sich gegenseitig aus. Das Flag `swao mcp --profile` / `--tools` und die
+Umgebungsvariablen `SWAO_MCP_PROFILE` / `SWAO_MCP_TOOLS` haben Vorrang vor diesem Block. Was jedes Profil
+enthält, beschreibt das Runbook zur MCP-Integration.
+
+---
+
+## Code Health (Pass 26)
+
+Der optionale Block `assessment.code_health` steuert den Code-Health-Pass (#3487). Alle Schlüssel sind
+optional; ohne den Block bleibt ein Lauf unverändert.
+
+```yaml
+assessment:
+  code_health:
+    top_n: 25                     # Länge der Arbeitsliste, 1 bis 500 (Standard 25)
+    endpoint_allowlist:           # Hosts, die Pass 26 nicht als fest codiert zählt
+      - api.partner.example       # exakter Host
+      - .corp.example             # die Domain und alle Subdomains
+      - 10.20.30.40               # IPv4- oder IPv6-Literal
+    tools: [lizard, jscpd]        # optionale Tool-Anreicherung (Standard: keine)
+    tool_timeout_seconds: 300     # Obergrenze je Tool-Lauf, 10 bis 3600 (Standard 300)
+```
+
+- **Vorrang:** Jeder Schlüssel wird zuerst aus der App-`.swao.yml` gelesen, danach aus der
+  Workspace-`.swao.yml`. Eine Liste wird vollständig aus der Datei übernommen, die sie angibt; ein
+  `tools: []` in der App-Datei schaltet die Tools ab.
+- **Allowlist:** Einträge sind Hostnamen, `.suffix`-Einträge, IPv4- oder IPv6-Literale; ein Schema, ein
+  Port, ein Pfad oder ein Platzhalter wird beim Einlesen abgelehnt. Die Allowlist gilt nur für Pass 26:
+  Pass 07 (Egress) und die TF-01-Konfigurationsevidenz melden Hosts auf der Allowlist weiterhin. Der Lauf
+  speichert die Liste und die Zahl der ausgenommenen Literale unter
+  `assessment.code_health.endpoint_allowlist`.
+- **Tools:** lizard (zyklomatische Komplexität je Funktion, unterstützt 1.17.x) und jscpd
+  (Klonerkennung, unterstützt 4.x) laufen nur, wenn sie aufgeführt sind. Installation mit
+  `pip install "lizard>=1.17,<1.18"` und `npm install -g jscpd@4`. Ihre Ergebnisse stehen unter
+  `assessment.code_health.tools` und werden im Signal `QUAL-08` zusammengefasst; die eingebauten Scores,
+  KPIs und die Arbeitsliste ändern sich nie. Ein fehlendes Tool, eine nicht unterstützte Version, ein
+  Fehler oder eine Zeitüberschreitung wird in `QUAL-08` (informativ) gemeldet, und der Lauf geht weiter.
+  `swao health-check` führt beide Tools unter Prerequisites mit Version oder "not found" auf.
+
+---
+
 ## Konfiguration validieren
 
 ```bash

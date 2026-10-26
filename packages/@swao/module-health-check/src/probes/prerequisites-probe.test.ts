@@ -173,3 +173,52 @@ describe('buildPrerequisitesProbe -- git rule (#3375)', () => {
     expect(['ok', 'info']).toContain(probe.status);
   });
 });
+
+describe('buildPrerequisitesProbe -- default secret scan (#3419)', () => {
+  it('warns that the default secret scan needs gitleaks when it is missing', () => {
+    const probe = buildPrerequisitesProbe(undefined, { detect: (cmd) => (cmd === 'gitleaks' ? null : `${cmd} 1.0.0`) });
+    expect(probe.status).toBe('warn');
+    expect(probe.message).toContain('`gitleaks`');
+    expect(probe.message).toMatch(/default secret scan/);
+    expect(probe.message).toMatch(/Passes not executed/);
+  });
+
+  it('keeps the opt-in wording when only the full-scan tools are missing', () => {
+    const probe = buildPrerequisitesProbe(undefined, { detect: (cmd) => (cmd === 'clamscan' ? null : `${cmd} 1.0.0`) });
+    expect(probe.status).toBe('warn');
+    expect(probe.message).not.toMatch(/default secret scan/);
+  });
+});
+
+describe('buildPrerequisitesProbe -- optional code health tools (#3487)', () => {
+  const allFound = (cmd: string): string => `${cmd} 1.0.0`;
+  const tool = (name: 'lizard' | 'jscpd', status: 'present' | 'absent' | 'unsupported_version', version: string | null) => ({
+    name, status, version, supported_range: name === 'lizard' ? '>=1.17.0 <1.18.0' : '>=4.0.0 <5.0.0', invocation: null,
+  });
+
+  it('lists lizard and jscpd as present / version / absent without changing the status', () => {
+    const base = buildPrerequisitesProbe(undefined, { detect: allFound });
+    const probe = buildPrerequisitesProbe(undefined, {
+      detect: allFound,
+      codeHealthTools: [tool('jscpd', 'absent', null), tool('lizard', 'present', '1.17.13')],
+    });
+    expect(probe.status).toBe(base.status);
+    expect(probe.tools.slice(7)).toEqual([
+      { name: 'jscpd', available: false, version: null, required: false },
+      { name: 'lizard', available: true, version: '1.17.13', required: false },
+    ]);
+    expect(probe.message).toContain('Optional code health tools (Pass 26, opt-in via assessment.code_health.tools): jscpd not found, lizard 1.17.13.');
+  });
+
+  it('names an unsupported version with the supported range', () => {
+    const probe = buildPrerequisitesProbe(undefined, { detect: allFound, codeHealthTools: [tool('jscpd', 'unsupported_version', '3.5.10')] });
+    expect(probe.message).toContain('jscpd 3.5.10 (unsupported, needs >=4.0.0 <5.0.0)');
+    expect(probe.tools[7]).toMatchObject({ name: 'jscpd', available: true, version: '3.5.10' });
+  });
+
+  it('absent code health tools are never read as missing malware tools', () => {
+    const probe = buildPrerequisitesProbe(undefined, { detect: allFound, codeHealthTools: [tool('lizard', 'absent', null), tool('jscpd', 'absent', null)] });
+    expect(probe.message).not.toMatch(/malware/);
+    expect(probe.status).not.toBe('warn');
+  });
+});

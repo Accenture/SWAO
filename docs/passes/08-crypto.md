@@ -21,7 +21,7 @@ In application mode it inspects source code and configuration. In service mode, 
 
 **Application mode**
 
-- The application source tree (JavaScript and TypeScript files are scanned), with `package.json`, and optionally `.env.example`, `prisma/schema.prisma` and `docker-compose.yml` (root or `docker/`).
+- The application source tree (JavaScript and TypeScript files for the built-in patterns; Java, Python, C#, Go and Kotlin code plus configuration files for the algorithm catalogue), with `package.json`, and optionally `.env.example`, `prisma/schema.prisma` and `docker-compose.yml` (root or `docker/`).
 
 **Service mode** (see [Service Portfolio Assessment](/service-assessment/))
 
@@ -43,9 +43,13 @@ No credentials or LLM are needed in either mode.
    | Authenticated encryption | AES-GCM | `createCipheriv('aes-128-gcm'`, `'aes-192-gcm'` or `'aes-256-gcm'` |
    | Weak (CWE-327) | MD5, SHA-1, DES | `createHash('md5')`, `createHash('sha1')`, `createCipheriv('des')` |
 
-2. **JWT signing mode.** With `@nestjs/jwt`, `jsonwebtoken` or `jose` as a dependency, or with a `.env.example` file, the pass reads `.env.example`: `JWT_PRIVATE_KEY`, `RSA_PRIVATE_KEY`, `EC_PRIVATE_KEY` or `JWT_PUBLIC_KEY` means asymmetric signing (RS256 or ES256); `JWT_SECRET_KEY`, `JWT_SECRET` or `NEXTAUTH_SECRET` means a symmetric HMAC secret.
-3. **HTTP security headers.** `helmet` or `@fastify/helmet` in the dependencies.
-4. **Encryption at rest.** An encryption annotation in the Prisma schema (`encrypt`, `@encrypted`, `@cipher`, `cipher_`), a dependency whose name contains `kms` or `vault`, or `kms`, `vault` or `luks` in the Compose file.
+2. **Algorithm catalogue scan** (`pass-catalogs/pass-08-crypto-algorithms.yaml`, workspace overrides in `wsp/inputs/pass-catalogs/`). Code files (`.ts`, `.js`, `.mjs`, `.cjs`, `.java`, `.py`, `.cs`, `.go`, `.kt`) are matched against each entry's `imports` tokens, configuration files (`.yaml`, `.yml`, `.properties`, `.conf`, `.ini`, `.toml`, `.xml`, `.env`; lock files excluded) against its `config_keys`, and both against its `context` regexes. Matching uses the shared catalogue matcher: whole identifiers only (`TDEA` does not match `istDeaktiviert`), bare acronyms such as `3DES`, `RC4` or `SHA1` only inside a cipher call or an algorithm assignment (`Cipher.getInstance("DESede/...")`, `createCipheriv('rc4', ...)`, `algorithm: '3DES'`), and generated or minified files, files over 512 KB, lines over 1,000 characters, base64 runs and `data:` URIs are never matched. Every occurrence is counted (up to 50 stored per entry) and classified as production or test code. Context exceptions in the catalogue lower the severity of individual hits: SHA-1 in a TOTP/HOTP configuration (RFC 6238) is informational, HMAC-SHA1 is low, a SHA-1 digest next to a git object header, `sha1sum` or ETag marker is informational. Where a built-in pattern and a catalogue entry describe the same algorithm, the catalogue entry owns the signal. See `pass-catalogs/README.md`.
+
+   Java (#3422): the catalogue rates JCA algorithm strings in `Cipher`, `MessageDigest`, `Mac`, `KeyGenerator`, `SecretKeyFactory` and `Signature` calls (for example `Cipher.getInstance("DESede/CBC/PKCS5Padding")`, `KeyGenerator.getInstance("DES")`, `Mac.getInstance("HmacMD5")`, `Signature.getInstance("SHA1withRSA")`, `SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")`, `MessageDigest.getInstance("SHA-256")`), BouncyCastle lightweight classes (`DESEngine`, `DESedeEngine`, `RC4Engine`, `MD5Digest`, `SHA1Digest`, `SHA256Digest`, `GCMBlockCipher`) and Spring Security password encoders: `BCryptPasswordEncoder`, `Pbkdf2PasswordEncoder`, `SCryptPasswordEncoder` and `Argon2PasswordEncoder` are approved; `NoOpPasswordEncoder`, `StandardPasswordEncoder`, `MessageDigestPasswordEncoder`, `LdapShaPasswordEncoder` and `Md4PasswordEncoder` are weak (entry `spring-legacy-password-encoder`). The approved Java entries `pbkdf2-sha2`, `scrypt` and `hmac-sha2` are paired with the built-in JavaScript patterns, so a repository with both reports the KDF or MAC once.
+3. **Java Cryptography Architecture inventory (#3422).** In the same single read, every JCA engine call with a literal algorithm string (`Cipher`, `MessageDigest`, `Mac`, `KeyGenerator`, `KeyPairGenerator`, `SecretKeyFactory`, `KeyFactory`, `Signature`, `KeyAgreement`, `KeyStore`, `SecureRandom`, `AlgorithmParameters`, `CertificateFactory`, `TrustManagerFactory`, `KeyManagerFactory`, `SSLContext`) and every BouncyCastle provider registration in Java, Kotlin, Groovy or Scala files is listed with file and line, whether the catalogue rates the algorithm or not (for example `AES/CBC/PKCS5Padding`, `SHA1PRNG`, `PKCS12`). Up to 50 calls are stored, production first; the total counts every call, the per-algorithm counts cover the stored calls, and `truncated` marks a longer list.
+4. **JWT signing mode.** With `@nestjs/jwt`, `jsonwebtoken` or `jose` as a dependency, or with a `.env.example` file, the pass reads `.env.example`: `JWT_PRIVATE_KEY`, `RSA_PRIVATE_KEY`, `EC_PRIVATE_KEY` or `JWT_PUBLIC_KEY` means asymmetric signing (RS256 or ES256); `JWT_SECRET_KEY`, `JWT_SECRET` or `NEXTAUTH_SECRET` means a symmetric HMAC secret.
+5. **HTTP security headers.** `helmet` or `@fastify/helmet` in the dependencies.
+6. **Encryption at rest.** An encryption annotation in the Prisma schema (`encrypt`, `@encrypted`, `@cipher`, `cipher_`), a dependency whose name contains `kms` or `vault`, or `kms`, `vault` or `luks` in the Compose file.
 
 ### Service mode
 
@@ -69,16 +73,22 @@ Signal numbers are assigned in the order below, so `CRYPTO-01` is not always the
 | 3 | AES-GCM passed to `createCipheriv` | positive | Authenticated symmetric encryption (NIST SP 800-38D) |
 | 4 | JWT dependency, or a JWT key variable in `.env.example` | positive (asymmetric), medium (symmetric secret), low (mode undetermined) | Token signing mode; for symmetric secrets the pass recommends RS256 or ES256 with a KMS-backed key for multi-service sovereign deployment |
 | 5 | Helmet present | positive | HTTP security headers enabled (OWASP A05:2021) |
-| 6 | No strong or weak primitive in the source scan and none of the signals above | informational (confidence low) | No cryptographic primitives detected; manual review recommended |
+| 6 | No built-in or catalogue hit and none of the signals above | informational (confidence low) | "No cryptographic primitives detected by pattern scan (languages scanned: ...; files: N)"; manual review recommended |
 | 7 | Always | positive (at-rest encryption found) or medium | Without evidence, volume encryption depends on the host and must be verified in the deployment runbook (the pass cites DORA Article 9 and BSI C5) |
-| 8 onwards | One per weak primitive found | high | Broken or risky algorithm (CWE-327); replace before production |
+| 8 onwards | One per weak primitive found | high when a production occurrence is not covered by a context exception; the strongest exception severity when every production occurrence is covered (confidence medium); unchanged but confidence low when seen in test code only; with `assessment.test_code.mode: tag` the test-code marker then lowers it one step | Broken or risky algorithm (CWE-327): "N occurrences (P production, T test)", the exceptions applied with their rationale, up to 10 locations with production code first |
+| Next numbers | One per approved catalogue algorithm found whose built-in twin did not already produce a positive signal above | positive (informational when seen in test code only) | Approved primitive with its BSI TR-02102 and NIST status and the occurrence count |
+| Last | At least one JCA call with a literal algorithm (step 3) | informational, confidence high | "Java Cryptography Architecture usage": engine and algorithm with counts, registered providers, "N occurrences (P production, T test)", up to 10 locations with production first; suppresses the row 6 fallback but never changes `overall_posture`, `nist_compliant` or `blocks_migration` |
 
 The `assessment` block records:
 
 - `primitives`: `api_key_hash`, `access_token`, `symmetric_encryption`, `jwt_signing`, `tls`, `at_rest_encryption`
-- `overall_posture`: `weak_primitives_detected`, `good_with_infrastructure_gap` (strong KDF, MAC or AES-GCM, no weak primitive) or `unknown`
-- `nist_compliant`: `true` when a strong KDF, MAC or AES-GCM is found and no weak primitive
-- `blocks_migration`: `true` when any weak primitive is found
+- `overall_posture`: `weak_primitives_detected`, `weak_primitives_context_excepted` (every production occurrence covered by a context exception), `weak_primitives_in_test_code_only`, `good_with_infrastructure_gap` (strong KDF, MAC, AES-GCM or approved catalogue algorithm in production code, no weak primitive) or `unknown`
+- `nist_compliant`: `true` when a strong primitive is found in production code and no weak primitive
+- `blocks_migration`: `true` when a weak primitive has a production occurrence that no context exception covers, or (default `include` test-code mode only) a High occurrence in test code
+- `hits`: per catalogue entry `total`, `production`, `test`, `unclassified`, `truncated` and the stored `locations` (file, line, path class, rule, exception)
+- `jca_inventory` (when a JCA call was found): `total`, `production`, `test`, `unclassified`, `truncated`, `algorithms` (engine, algorithm, count), `providers` and the stored `locations`
+- `pattern_scan`: `languages`, `configuration_files` and `files` read by the pattern scans
+- `catalogue_errors` (when present): catalogue entries, context regexes or exceptions that failed validation or the ReDoS guard and were skipped
 
 ### Service mode
 
@@ -94,7 +104,7 @@ The service `assessment` block records `mode: service`, `files_scanned`, `findin
 
 ## Third-party modules and tools
 
-None. Pattern matching uses built-in regular expressions; no external scanner or library is invoked. The certificate data in service mode comes from Pass 25 (BINARY).
+None. Pattern matching uses built-in regular expressions and the shared catalogue matcher (`catalogue-matcher.ts`); no external scanner or library is invoked. The certificate data in service mode comes from Pass 25 (BINARY).
 
 ## Outputs
 
@@ -109,7 +119,10 @@ None. Pattern matching uses built-in regular expressions; no external scanner or
 
 **Limitations and known gaps**
 
-- Application mode scans only JavaScript and TypeScript source and the Node.js `crypto` API naming. Java, .NET, Go, Python or Rust cryptography is not recognised.
+- The built-in patterns cover only JavaScript and TypeScript and the Node.js `crypto` API naming. Java, .NET, Go, Python and Kotlin cryptography is recognised through the algorithm catalogue entries, and Java/Kotlin JCA calls are inventoried; Rust is not scanned.
+- The JCA inventory needs a literal algorithm string: `Cipher.getInstance(ALGORITHM)` with a constant or a value from configuration is not listed. Key sizes (`KeyGenerator.init(1024)`, RSA modulus length) are not evaluated.
+- The JCA inventory stores at most 50 calls, production first. The total counts every call, but the per-algorithm counts cover the stored calls only: in a large code base an algorithm that appears only beyond the first 50 calls is missing from `algorithms` (`truncated` marks this case).
+- Test code is recognised by path (`test/`, `tests/`, `__tests__/`, `systemtest/`, `src/test/java`, `*.test.ts`, `*Test.java` and similar); a weak primitive used only there blocks migration only in the default `include` test-code mode, not under `tag` or `exclude`.
 - TLS configuration is not inspected; the `tls` primitive only reflects the presence of Helmet.
 - `.env.example`, Prisma schema and Compose file are read only from fixed locations at the root (Compose also in `docker/`).
 - Secrets in source code are not searched in application mode; use the opt-in malware pass ([Malware scanning](/malware-scanning)) for secret detection.

@@ -26,9 +26,9 @@
 // vendor_sdks); reference_catalogue_checks records whether each catalogue
 // loaded, so a skipped check is visible in the WSP.
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
-import type { Signal } from '@swao/core';
+import { existsSync, readFileSync } from 'fs';
+import { listSourceFiles, type Signal } from '@swao/core';
+import { collectJvmProject, type JvmProject, type JvmScope, type JvmVersionSource } from './jvm-build-files.js';
 import {
   loadDbCompatibilityCatalogue,
   loadLegacyIndicatorsCatalogue,
@@ -56,6 +56,10 @@ export interface DependencyRef {
   version?: string;
   /** Manifest path relative to the source root. */
   file: string;
+  /** #3420: Maven / Gradle scope (compile, runtime, provided, test, ...). */
+  scope?: JvmScope;
+  /** #3420: how a Maven / Gradle version was resolved (declared, property, managed, catalog, lockfile, unresolved). */
+  versionSource?: JvmVersionSource;
 }
 
 export interface ImageRef {
@@ -70,9 +74,6 @@ export interface DependencyInventory {
   files: string[];
 }
 
-const SKIP_DIRS = new Set([
-  'node_modules', 'dist', 'build', 'target', 'vendor', 'venv', '.venv', '__pycache__', 'bin', 'obj', 'out',
-]);
 const MAX_FILES = 20_000;
 
 function readText(path: string): string | null {
@@ -192,29 +193,24 @@ function parseCargoToml(content: string, file: string): DependencyRef[] {
   return out;
 }
 
-function xmlTag(block: string, tag: string): string | undefined {
-  const m = block.match(new RegExp(`<${tag}>\\s*([^<]+?)\\s*</${tag}>`));
-  return m ? m[1] : undefined;
-}
-
-function parsePomXml(content: string, file: string): DependencyRef[] {
-  const out: DependencyRef[] = [];
-  for (const m of content.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
-    const group = xmlTag(m[1]!, 'groupId');
-    const name = xmlTag(m[1]!, 'artifactId');
-    if (group && name) out.push({ ecosystem: 'maven', group, name, version: xmlTag(m[1]!, 'version'), file });
-  }
-  return out;
-}
-
-function parseGradle(content: string, file: string): DependencyRef[] {
-  const out: DependencyRef[] = [];
-  for (const m of content.matchAll(/["']([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+)(?::([A-Za-z0-9_.+-]+))?["']/g)) {
-    // group must look like a reverse-DNS or plain identifier, not a URL scheme
-    if (m[1]!.includes('//')) continue;
-    out.push({ ecosystem: 'maven', group: m[1]!, name: m[2]!, version: m[3], file });
-  }
-  return out;
+/**
+ * #3420: Maven and Gradle dependencies come from the shared JVM build-file
+ * reader (jvm-build-files.ts), which resolves properties, parents, managed
+ * versions, version catalogs and lockfiles and ignores <dependencyManagement>
+ * and plugin dependencies. Only direct declarations are listed here.
+ */
+function jvmDependencyRefs(jvm: JvmProject, file: string): DependencyRef[] {
+  return jvm.dependencies
+    .filter((d) => d.direct && d.manifest === file)
+    .map((d) => ({
+      ecosystem: 'maven' as const,
+      group: d.group,
+      name: d.artifact,
+      ...(d.version !== null ? { version: d.version } : {}),
+      file,
+      scope: d.scope,
+      versionSource: d.versionSource,
+    }));
 }
 
 function parseNuget(content: string, file: string): DependencyRef[] {
@@ -243,8 +239,8 @@ function parseDockerfileImages(content: string, file: string): ImageRef[] {
 }
 
 /**
- * Walk the source tree (depth-limited, skipping dependency and build output
- * folders) and parse every recognised manifest. Covered: package.json,
+ * Walk the source tree through the central source scope (#3428; depth-limited,
+ * canonical dependency / build-output skips) and parse every recognised manifest. Covered: package.json,
  * requirements*.txt, pyproject.toml, Pipfile, Cargo.toml, pom.xml,
  * build.gradle(.kts), *.csproj, packages.config, docker-compose / compose
  * files and Dockerfiles.
@@ -253,54 +249,35 @@ export function collectDependencyInventory(sourcePath: string, maxDepth = 4): De
   const inv: DependencyInventory = { deps: [], images: [], files: [] };
   if (!sourcePath || !existsSync(sourcePath)) return inv;
 
-  const walk = (dir: string, rel: string, depth: number): void => {
-    if (depth > maxDepth || inv.files.length >= MAX_FILES) return;
-    let entries: string[];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
+  // #3428: the central source scope replaces the private walker and its
+  // SKIP_DIRS set (canonical skips, dot-entries hidden, same depth guard).
+  let jvm: JvmProject | null = null;
+  for (const f of listSourceFiles(sourcePath, { purpose: 'manifest', maxDepth, maxFiles: MAX_FILES })) {
+    const { abs: full, rel: relPath } = f;
+    inv.files.push(relPath);
+    const lower = f.name.toLowerCase();
+    const parse = (fn: (c: string, f: string) => DependencyRef[]): void => {
+      const c = readText(full);
+      if (c !== null) inv.deps.push(...fn(c, relPath));
+    };
+    if (lower === 'package.json') parse(parsePackageJson);
+    else if (/^requirements.*\.txt$/.test(lower)) parse(parseRequirementsTxt);
+    else if (lower === 'pyproject.toml') parse(parsePyproject);
+    else if (lower === 'pipfile') parse(parsePipfile);
+    else if (lower === 'cargo.toml') parse(parseCargoToml);
+    else if (lower === 'pom.xml' || lower === 'build.gradle' || lower === 'build.gradle.kts') {
+      jvm ??= collectJvmProject(sourcePath, { maxDepth });
+      inv.deps.push(...jvmDependencyRefs(jvm, relPath));
     }
-    for (const entry of entries) {
-      if (inv.files.length >= MAX_FILES) return;
-      if (entry.startsWith('.')) continue;
-      const full = join(dir, entry);
-      const relPath = rel ? `${rel}/${entry}` : entry;
-      let isDir = false;
-      try {
-        isDir = statSync(full).isDirectory();
-      } catch {
-        continue;
-      }
-      if (isDir) {
-        if (!SKIP_DIRS.has(entry)) walk(full, relPath, depth + 1);
-        continue;
-      }
-      inv.files.push(relPath);
-      const lower = entry.toLowerCase();
-      const parse = (fn: (c: string, f: string) => DependencyRef[]): void => {
-        const c = readText(full);
-        if (c !== null) inv.deps.push(...fn(c, relPath));
-      };
-      if (lower === 'package.json') parse(parsePackageJson);
-      else if (/^requirements.*\.txt$/.test(lower)) parse(parseRequirementsTxt);
-      else if (lower === 'pyproject.toml') parse(parsePyproject);
-      else if (lower === 'pipfile') parse(parsePipfile);
-      else if (lower === 'cargo.toml') parse(parseCargoToml);
-      else if (lower === 'pom.xml') parse(parsePomXml);
-      else if (lower === 'build.gradle' || lower === 'build.gradle.kts') parse(parseGradle);
-      else if (lower.endsWith('.csproj') || lower === 'packages.config') parse(parseNuget);
-      else if (/^(docker-)?compose.*\.ya?ml$/.test(lower)) {
-        const c = readText(full);
-        if (c !== null) inv.images.push(...parseComposeImages(c, relPath));
-      } else if (lower === 'dockerfile' || lower.startsWith('dockerfile.')) {
-        const c = readText(full);
-        if (c !== null) inv.images.push(...parseDockerfileImages(c, relPath));
-      }
+    else if (lower.endsWith('.csproj') || lower === 'packages.config') parse(parseNuget);
+    else if (/^(docker-)?compose.*\.ya?ml$/.test(lower)) {
+      const c = readText(full);
+      if (c !== null) inv.images.push(...parseComposeImages(c, relPath));
+    } else if (lower === 'dockerfile' || lower.startsWith('dockerfile.')) {
+      const c = readText(full);
+      if (c !== null) inv.images.push(...parseDockerfileImages(c, relPath));
     }
-  };
-
-  walk(sourcePath, '', 0);
+  }
   return inv;
 }
 
@@ -738,6 +715,8 @@ export interface InvReferenceScanInput {
   priorSignals: Signal[];
   /** assessment.database_engine from INV-02, when set. */
   databaseEngine?: string;
+  /** #3430: inventory already collected by Pass 01 (shared with the service footprint); collected here when absent. */
+  inventory?: DependencyInventory;
   /** Catalogue path overrides for tests. */
   cataloguePaths?: { vendorSdk?: string; legacyIndicators?: string; dbCompatibility?: string };
 }
@@ -755,7 +734,7 @@ export function runInvReferenceScans(input: InvReferenceScanInput): InvReference
   const signals: Signal[] = [];
   const assessment: Record<string, unknown> = {};
   const checks: Record<string, string> = {};
-  const inv = collectDependencyInventory(input.sourcePath);
+  const inv = input.inventory ?? collectDependencyInventory(input.sourcePath);
 
   // INV-09: vendor SDKs (computed first; INV-07 reuses database client hits)
   let vendorHits: VendorSdkHit[] = [];

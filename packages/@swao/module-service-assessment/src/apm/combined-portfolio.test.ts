@@ -19,9 +19,10 @@
 // #3353: the Enterprise workbook and star schema assertions moved with the
 // export to the private premium module @swao/module-service-export.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PortfolioSummarySchema } from '@swao/core';
+import { PortfolioSummarySchema, PortfolioAppSchema } from '@swao/core';
 import { MIXED_APP, MIXED_APP_RUN, MIXED_LZ_APP, MIXED_SVC_ASSESSED, MIXED_SVC_UNASSESSED, makeMixedWorkspace } from '../__tests__/fixtures/mixed-workspace.js';
 import { buildPortfolioSummary } from './score.js';
 import { loadApmFramework } from './framework.js';
@@ -138,7 +139,10 @@ describe('service-only workspaces are unchanged apart from the type column (#328
     const s = buildPortfolioSummary(ws, { now: NOW });
     expect(s.by_assessment_type).toBeUndefined();
     expect(s.apps.map((a) => a.assessment_type)).toEqual(['service', 'service']);
-    expect(s.apps.every((a) => a.seven_r_label === undefined)).toBe(true);
+    // Design 113 section 8 (#3402): service apps now carry a 7R label derived
+    // from their TIME quadrant, sourced as derived_from_time (never synthesis).
+    expect(s.apps.every((a) => typeof a.seven_r_label === 'string')).toBe(true);
+    expect(s.apps.every((a) => a.seven_r_source === 'derived_from_time')).toBe(true);
     const csv = readFileSync(join(ws, 'wsp', 'reports', 'migration-waves-20261018.csv'), 'utf-8').split('\n');
     expect(csv[0]).toBe('app,wave,wave_label,order,effort_days,dependents,evidence');
     expect(readFileSync(join(ws, 'wsp', 'reports', 'migration-waves-20261018.md'), 'utf-8')).not.toContain('| Type |');
@@ -148,8 +152,10 @@ describe('service-only workspaces are unchanged apart from the type column (#328
 describe('application evidence rules (#3280, Design 103 §22.2-§22.3)', () => {
   const fw = loadApmFramework();
   const base = (over: Partial<ApplicationEvidence>): ApplicationEvidence => ({
-    app: {}, sevenR: null, modernizationPosition: null, portability: null, runtimeEol: null, dependencyCveLookup: false,
-    vulnerablePackages: null, findings: null, compliance: null, lzVerdict: null, ...over,
+    app: {}, sevenR: null, modernizationPosition: null, portability: null,
+    coverageScore: null, cloudNativeScore: null, confidence: null, runtimeEol: null, dependencyCveLookup: false,
+    vulnerablePackages: null, findings: null, findingsBySeverity: null, topFindings: [],
+    compliance: null, lzVerdict: null, ...over,
   });
 
   it('7R to TIME rule table', () => {
@@ -183,5 +189,164 @@ describe('application evidence rules (#3280, Design 103 §22.2-§22.3)', () => {
     expect(gatherApplicationEvidence(ws, MIXED_APP).run).toBe(`runs/${MIXED_APP_RUN}`);
     const entry = buildPortfolioSummary(ws, { now: NOW, write: false }).apps.find((a) => a.id === 'demo-app')!;
     expect(entry).toMatchObject({ assessment_type: 'application', assessed: false, evidence: 'not_assessed', run: null, risk_score: null, time_quadrant: 'Tolerate' });
+  });
+});
+
+// Design 113 section 6.2 (#3402): the application-only readiness scores, tags and
+// findings projection the engagement hub tiles read, straight from wsp.yaml.
+describe('application engagement-hub fields (#3402, Design 113 section 6.2)', () => {
+  function appRun(): string {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-hub-fields-'));
+    dirs.push(ws);
+    const appDir = join(ws, 'apps', 'hub-app');
+    const runDir = join(appDir, 'wsp', 'runs', '2026-10-20T09-00-00');
+    mkdirSync(join(runDir, 'passes'), { recursive: true });
+    writeFileSync(join(appDir, '.swao.yml'), 'app_id: hub-app\ntags:\n  - tier-1\n  - regulated\nassessment:\n  type: application\n');
+    writeFileSync(join(appDir, 'wsp', 'latest.txt'), 'runs/2026-10-20T09-00-00');
+    // Landing-zone catalogue run (same dir for the test) + one per-region fit file.
+    writeFileSync(join(appDir, 'wsp', 'latest-landing-zone-catalog.txt'), 'runs/2026-10-20T09-00-00');
+    writeFileSync(join(runDir, 'lz-catalogue-fit-otc-eu-de.yaml'), [
+      'provider: otc',
+      'region: eu-de',
+      'overall: READY',
+      'items:',
+      '  - { verdict: SUPPORTED }',
+      '  - { verdict: NEEDS_VERIFICATION }',
+    ].join('\n') + '\n');
+    // overall spine: the same keys the publication extractor reads.
+    writeFileSync(join(runDir, 'wsp.yaml'), [
+      'overall:',
+      '  seven_r_label: Replatform',
+      '  coverage_score: 0.8',
+      '  cloud_native_score: 0.45',
+      '  portability_score: 0.6',
+      '  confidence: high',
+    ].join('\n') + '\n');
+    writeFileSync(join(runDir, 'run-manifest.json'), JSON.stringify({
+      schema_version: '1.4', run_id: '2026-10-20T09-00-00', app: 'hub-app', iter: 1,
+      assessed_at: '2026-10-20T09:05:00Z', started_at: '2026-10-20T09:00:00Z', finished_at: '2026-10-20T09:05:00Z',
+      duration_ms: 1, passes_executed: [], total_signals_emitted: 4, pass_stats: [],
+      provenance: { temperature: 0, swao_version: '1.4.2' }, llm: { model: 'claude-opus-4-8' },
+    }));
+    // Negative signals across severities; positives and non-negatives ignored.
+    writeFileSync(join(runDir, 'wsp-plan.yaml'), [
+      'compliance:',
+      '  regimes:',
+      '    - id: gdpr',
+      '      name: GDPR',
+      '      controls:',
+      '        - { id: Art-6, status: SATISFIED }',
+      '        - { id: Art-44, status: GAP }',
+      '        - { id: Art-2, status: N_A }',
+      'risk_register:',
+      '  - { risk_id: RR-01, likelihood: high, impact: critical }',
+      '  - { risk_id: RR-02, likelihood: medium, impact: low }',
+    ].join('\n') + '\n');
+    writeFileSync(join(runDir, 'passes', 'pass-08-crypto.yaml'), [
+      'signals:',
+      '  - { id: CRYPTO-01, severity: critical, outcome: negative, derivation: No encryption at rest }',
+      '  - { id: SEC-02, severity: high, outcome: negative, derivation: Weak TLS configuration }',
+      '  - { id: OPS-03, severity: medium, outcome: negative, derivation: No backup policy }',
+      '  - { id: GOOD-04, severity: low, outcome: positive, derivation: Good logging }',
+    ].join('\n') + '\n');
+    return ws;
+  }
+
+  it('gatherApplicationEvidence reads the overall scores, confidence and per-severity findings', () => {
+    const { evidence } = gatherApplicationEvidence(appRun(), 'hub-app');
+    expect(evidence.coverageScore).toBe(0.8);
+    expect(evidence.cloudNativeScore).toBe(0.45);
+    expect(evidence.portability).toBe(0.6);
+    expect(evidence.confidence).toBe('high');
+    // Mirrors the publication signal_counts: every signal by severity, including
+    // the positive one (low). Parity with the report is why this is not negative-only.
+    expect(evidence.findingsBySeverity).toEqual({ critical: 1, high: 1, medium: 1, low: 1 });
+    // Highest severity first; the positive low signal is outside the top 3.
+    expect(evidence.topFindings.map((f) => f.id)).toEqual(['CRYPTO-01', 'SEC-02', 'OPS-03']);
+    expect(evidence.topFindings[0]).toEqual({ id: 'CRYPTO-01', severity: 'critical', title: 'No encryption at rest' });
+  });
+
+  it('buildPortfolioSummary carries the section 6.2 fields onto the app entry', () => {
+    const entry = buildPortfolioSummary(appRun(), { now: NOW, write: false }).apps.find((a) => a.id === 'hub-app')!;
+    expect(entry.coverage_score).toBe(0.8);
+    expect(entry.cloud_native_score).toBe(0.45);
+    expect(entry.portability_score).toBe(0.6);
+    expect(entry.confidence).toBe('high');
+    expect(entry.tags).toEqual(['tier-1', 'regulated']);
+    expect(entry.findings_by_severity).toEqual({ critical: 1, high: 1, medium: 1, low: 1 });
+    expect(entry.blocker_count).toBe(2); // critical + high by severity
+    expect(entry.top_findings).toHaveLength(3);
+    expect(entry.seven_r_label).toBe('Replatform');
+    expect(entry.seven_r_source).toBe('synthesis');
+    // Run provenance from the manifest.
+    expect(entry.last_assessed_at).toBe('2026-10-20T09:05:00Z');
+    expect(entry.swao_version).toBe('1.4.2');
+    expect(entry.llm_model).toBe('claude-opus-4-8');
+    // Per-framework compliance mirrors the publication (SATISFIED -> pass, GAP -> fail).
+    // #3425: N_A is not-applicable, not fail.
+    expect(entry.compliance).toEqual([{ id: 'GDPR', name: 'GDPR', pass: 1, partial: 0, fail: 1, not_assessed: 0, not_applicable: 1 }]);
+    // risk_counts keyed {likelihood}_{impact}; critical folds into high.
+    expect(entry.risk_counts).toEqual({ high_high: 1, medium_low: 1 });
+    // lz_fit per target; NEEDS_VERIFICATION is a blocker, SUPPORTED is not.
+    expect(entry.lz_fit).toEqual([{ provider: 'otc', region: 'eu-de', verdict: 'READY', blockers: 1 }]);
+    // #3405: no Pass 26 in this run -> no code_health key.
+    expect(entry.code_health).toBeUndefined();
+  });
+
+  it('#3405: carries the Pass 26 code-health KPIs onto the app entry; malformed KPIs are ignored', () => {
+    const ws = appRun();
+    const passes = join(ws, 'apps', 'hub-app', 'wsp', 'runs', '2026-10-20T09-00-00', 'passes');
+    writeFileSync(join(passes, '26-quality.yaml'), [
+      'pass: { id: 26, name: code_health, status: complete, iter: 1 }',
+      'signals: []',
+      'assessment:',
+      '  code_health:',
+      '    kpis: { complexity: 80, maintainability: 74, duplication: 90, configuration_hygiene: 70, overall: 79 }',
+    ].join('\n') + '\n');
+    const entry = buildPortfolioSummary(ws, { now: NOW, write: false }).apps.find((a) => a.id === 'hub-app')!;
+    expect(entry.code_health).toEqual({ complexity: 80, maintainability: 74, duplication: 90, configuration_hygiene: 70, overall: 79 });
+    expect(PortfolioAppSchema.safeParse(entry).success).toBe(true);
+
+    writeFileSync(join(passes, '26-quality.yaml'), 'assessment:\n  code_health:\n    kpis: { overall: 500 }\n');
+    expect(gatherApplicationEvidence(ws, 'hub-app').evidence.codeHealth).toBeNull();
+  });
+});
+
+// Design 113 section 12: the section 6.2 fields must be filled for a SERVICE run
+// too. Service apps carry findings from the run signals and the same provenance.
+describe('service engagement-hub fields (#3402, Design 113 section 6.2 + 12)', () => {
+  function serviceRun(): string {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-hub-svc-'));
+    dirs.push(ws);
+    const appDir = join(ws, 'apps', 'svc-app');
+    const runDir = join(appDir, 'wsp', 'runs', '2026-10-21T09-00-00');
+    mkdirSync(join(runDir, 'passes'), { recursive: true });
+    writeFileSync(join(appDir, '.swao.yml'), 'app_id: svc-app\ntags:\n  - intake\nassessment:\n  type: service\n');
+    writeFileSync(join(appDir, 'wsp', 'latest-service.txt'), 'runs/2026-10-21T09-00-00');
+    writeFileSync(join(runDir, 'run-manifest.json'), JSON.stringify({
+      schema_version: '1.4', run_id: '2026-10-21T09-00-00', app: 'svc-app', iter: 1,
+      assessed_at: '2026-10-21T09:10:00Z', started_at: '2026-10-21T09:00:00Z', finished_at: '2026-10-21T09:10:00Z',
+      duration_ms: 1, passes_executed: [], total_signals_emitted: 2, pass_stats: [],
+      provenance: { temperature: 0, swao_version: '1.4.2' },
+    }));
+    writeFileSync(join(runDir, 'passes', '03-data.yaml'), [
+      'signals:',
+      '  - { id: DATA-01, severity: high, outcome: negative, derivation: Personal data without DPA }',
+      '  - { id: DATA-02, severity: medium, outcome: negative, derivation: No data residency control }',
+    ].join('\n') + '\n');
+    return ws;
+  }
+
+  it('fills findings, tags, provenance and derived 7R for a service run', () => {
+    const entry = buildPortfolioSummary(serviceRun(), { now: NOW, write: false }).apps.find((a) => a.id === 'svc-app')!;
+    expect(entry.assessment_type).toBe('service');
+    expect(entry.tags).toEqual(['intake']);
+    expect(entry.findings_by_severity).toEqual({ high: 1, medium: 1 });
+    expect(entry.blocker_count).toBe(1); // high only
+    expect(entry.top_findings?.map((f) => f.id)).toEqual(['DATA-01', 'DATA-02']);
+    expect(entry.seven_r_source).toBe('derived_from_time'); // never synthesis
+    expect(entry.last_assessed_at).toBe('2026-10-21T09:10:00Z');
+    expect(entry.swao_version).toBe('1.4.2');
+    expect(entry.llm_model).toBeNull(); // no llm block in the manifest
   });
 });

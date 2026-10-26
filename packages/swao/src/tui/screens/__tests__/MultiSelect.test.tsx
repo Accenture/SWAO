@@ -220,3 +220,45 @@ describe('MultiSelect -- TU-MS-05: Space key toggles selection', () => {
     expect(alphaLine).toContain('[ ]');
   });
 });
+
+// #3380: non-selectable header rows (country grouping).
+describe('MultiSelect header rows (#3380)', () => {
+  const HEADERED: MultiSelectOption[] = [
+    { label: 'Germany', value: '__hdr:Germany', header: true },
+    { label: 'otc / eu-de', value: 'otc:eu-de' },
+    { label: 'Netherlands', value: '__hdr:Netherlands', header: true },
+    { label: 'otc / eu-nl', value: 'otc:eu-nl' },
+  ];
+
+  it('renders a header row without a checkbox and starts the cursor on the first selectable row', async () => {
+    const { lastFrame } = render(<MultiSelect label="Pick" options={HEADERED} onConfirm={vi.fn()} />);
+    await settle();
+    const lines = (lastFrame() ?? '').split('\n');
+    const gerLine = lines.find((l) => l.includes('Germany'));
+    expect(gerLine).not.toContain('['); // header: no checkbox
+    const euDe = lines.find((l) => l.includes('eu-de'));
+    expect(euDe).toContain('> ');       // cursor started on the first selectable, not the header
+    expect(euDe).toContain('[ ]');
+  });
+
+  it('skips the header row when moving the cursor down', async () => {
+    const { lastFrame, stdin } = render(<MultiSelect label="Pick" options={HEADERED} onConfirm={vi.fn()} />);
+    await settle();
+    stdin.write('\x1B[B'); // down: eu-de -> eu-nl, skipping the Netherlands header
+    await settle();
+    const lines = (lastFrame() ?? '').split('\n');
+    expect(lines.find((l) => l.includes('eu-nl'))).toContain('> ');
+    expect(lines.find((l) => l.includes('Netherlands'))).not.toContain('> ');
+  });
+
+  it('A (toggle all) selects only non-header rows', async () => {
+    const onConfirm = vi.fn();
+    const { stdin } = render(<MultiSelect label="Pick" options={HEADERED} onConfirm={onConfirm} />);
+    await settle();
+    stdin.write('a');       // select all
+    await settle();
+    stdin.write('\r');      // confirm
+    await settle();
+    expect(onConfirm).toHaveBeenCalledWith(['otc:eu-de', 'otc:eu-nl']);
+  });
+});

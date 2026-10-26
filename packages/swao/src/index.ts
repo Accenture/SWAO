@@ -60,7 +60,7 @@ process.on('uncaughtException', (err) => {
 // registerChallenge (mirrors the #0573 doctor probe-builder DI pattern).
 import { registerChallenge, ChallengeScreen } from '@swao/module-challenge';
 import { registerUnipipe } from './commands/unipipe.js';
-import { createLlmProvider as _baseLlmProvider, UsageTrackingLlmProvider } from '@swao/module-llm-providers';
+import { createLlmProvider as _baseLlmProvider, UsageTrackingLlmProvider, getConnector } from '@swao/module-llm-providers';
 import type { LlmProvider } from '@swao/module-llm-providers';
 // #1819: when spawned as a challenge subprocess inside an LLM Assessment leg,
 // wrap createLlmProvider so every challenge LLM call is recorded to the leg sink.
@@ -71,6 +71,7 @@ import { registerGenerateTf, GenerateTfScreen } from '@swao/module-terraform';
 // #0872: lz catalogue update command (Consultant+). Must be called after
 // registerLz (via buildProgram) since it attaches to the existing lz catalogue group.
 import { registerLzCatalogueUpdate } from '@swao/module-landing-zone';
+import { registerLlmGateway } from './commands/llm-gateway.js';
 // #0579: portfolio orchestration (Enterprise). The module spawns the swao CLI
 // per app and must not import host code, so the host resolves the CLI invocation
 // once (PortfolioHostDeps, identical to McpHostDeps) and builds the production
@@ -139,6 +140,8 @@ const program = buildProgram({
 registerGenerateTf(program);
 // Consultant command: lz catalogue update (Design 065 §5.6).
 registerLzCatalogueUpdate(program);
+// #3388 (Design 112 D-2): llm-gateway update -- refresh workspace connectors from packaged seeds.
+registerLlmGateway(program);
 // Enterprise roadmap command: unipipe (meshcloud UniPipe stub, #1652; FEATURE_GATES['unipipe']).
 registerUnipipe(program);
 // Enterprise command: challenge (LLM-driven assessment challenge personas).
@@ -154,7 +157,15 @@ const createLlmProvider: typeof _baseLlmProvider = _legRecorder
       return _legRecorder.wrap(tracking, () => tracking.snapshot()) as LlmProvider;
     }
   : _baseLlmProvider;
-registerChallenge(program, { createLlmProvider });
+// #3444: the challenge names the credential of a rejected gateway connector
+// (key names only, never values) in its re-authentication guidance.
+registerChallenge(program, {
+  createLlmProvider,
+  describeCredential: (connectorId, workspaceRoot) => {
+    const auth = getConnector(connectorId, { workspaceRoot })?.file.connector.auth;
+    return auth ? { credentialKey: auth.credential_key, envVar: auth.env_var } : undefined;
+  },
+});
 
 // Normalise --no-llm to --skip-llm; Commander reserves --no-<option> for boolean negation (#1715).
 const _noLlmIdx = process.argv.indexOf('--no-llm');

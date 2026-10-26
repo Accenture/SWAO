@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -22,7 +22,9 @@ import {
   scaffoldCatalogs,
   scaffoldImports,
   ensureGitignore,
+  scaffoldAndSeedGateway,
 } from '../commands/init.js';
+import { resolveBundledConnectorsDir, isPrivateSeedConnector } from '@swao/module-llm-providers';
 import { RegimeIndexSchema } from '../schema/regime-catalogue.js';
 
 let tmp: string;
@@ -133,6 +135,34 @@ regimes:
 
 // #1064: scaffoldImports no longer creates a CMDB sample file. Operators supply
 // their own CMDB / ServiceNow export and wire it in context_inputs:.
+// #3388: the CLI `swao init` action and the Setup Wizard both seed the gateway
+// through this one helper, so they cannot drift (the CLI action used to omit the
+// seed entirely, leaving `swao init` workspaces with an empty llm-gateway folder).
+describe('scaffoldAndSeedGateway (#3388, Design 112 D-3)', () => {
+  const hasBundle = !!resolveBundledConnectorsDir();
+
+  it('scaffolds the llm-gateway folder (template + README) regardless of bundle', () => {
+    scaffoldAndSeedGateway(tmp);
+    const gw = join(tmp, 'wsp', 'inputs', 'llm-gateway');
+    expect(existsSync(join(gw, '_template.yaml'))).toBe(true);
+  });
+
+  it.skipIf(!hasBundle)('seeds public connectors and never a private-distribution seed', () => {
+    const copied = scaffoldAndSeedGateway(tmp);
+    const gw = join(tmp, 'wsp', 'inputs', 'llm-gateway');
+    const yaml = readdirSync(gw).filter((f) => (f.endsWith('.yaml') || f.endsWith('.yml')) && !f.startsWith('_'));
+    expect(yaml.length).toBeGreaterThan(0);
+    expect(yaml).toContain('anthropic.yaml');
+    expect(copied.length).toBeGreaterThan(0);
+    for (const f of yaml) expect(isPrivateSeedConnector(readFileSync(join(gw, f), 'utf-8')), f).toBe(false);
+  });
+
+  it.skipIf(!hasBundle)('is idempotent -- a second call copies nothing', () => {
+    expect(scaffoldAndSeedGateway(tmp).length).toBeGreaterThan(0);
+    expect(scaffoldAndSeedGateway(tmp)).toEqual([]);
+  });
+});
+
 describe('scaffoldImports (#1064 -- creates wsp/inputs/, no stub files)', () => {
   it('creates the wsp/inputs/ directory', () => {
     scaffoldImports(tmp);

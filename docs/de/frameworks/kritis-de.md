@@ -85,15 +85,17 @@ Dokumente legen Sie im Ordner `apps/<app-id>/wsp/inputs/` ab, damit [Pass 04 (CT
 
 ### Bedingte und geerbte Controls
 
-- `KRITIS_DE_AST_3` (Management der IT/OT-Grenze) deklariert `applies_when: has_ot_systems: "true"`. Pass 11 liest diese Bedingung nicht aus. Die HTML-Veröffentlichung wertet sie für Controls ohne Ergebnis aus Pass 11 gegen den Block `framework_context` in der `.swao.yml` der App aus:
+- `KRITIS_DE_AST_3` (Management der IT/OT-Grenze) deklariert `applies_when: has_ot_systems: "true"`. Pass 11 gleicht `applies_when` vor jedem LLM-Aufruf mit dem Block `framework_context` in der `.swao.yml` der App ab; fehlt der Wert oder weicht er ab, ist das Control N/A (nicht zutreffend), wird als "Nicht zutreffend" angezeigt und weder als Nicht bestanden noch im Compliance-Score gezählt:
 
   ```yaml
   framework_context:
     has_ot_systems: "true"
+    kritis_sector: health   # energy, water, health, finance, transport oder ict
   ```
 
 - `KRITIS_DE_AST_5` (physische Sicherheitsperimeter) ist als `csp_inherited` gekennzeichnet.
-- Die sechs Sektor-Controls (`KRITIS_DE_SEC_ENE`, `_HLT`, `_FIN`, `_TRN`, `_ICT`, `_DACHG`) decken sektorspezifische Pflichten ab; kennzeichnen Sie diejenigen, die nicht für den Sektor des Betreibers gelten, in Ihrer Prüfung als nicht anwendbar.
+- Die fünf Sektor-Controls `KRITIS_DE_SEC_ENE` (`kritis_sector: energy` oder `water`), `_HLT` (`health`), `_FIN` (`finance`), `_TRN` (`transport`) und `_ICT` (`ict`) deklarieren `applies_when: kritis_sector`; ohne passendes `framework_context.kritis_sector` sind sie N/A. `KRITIS_DE_SEC_DACHG` gilt für jeden Betreiber im Geltungsbereich des KRITIS-DachG.
+- Controls mit `assessment_type_scope: [aud]` (darunter alle Sektor-Controls) werden in einem Application-Lauf nicht bewertet; sie erscheinen als nicht bewertet und erfordern ein Audit-Assessment.
 
 ## Aufbau der Controls
 

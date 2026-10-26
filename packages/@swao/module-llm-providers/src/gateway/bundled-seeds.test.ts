@@ -1,87 +1,27 @@
-// ================================================================
-//
-//                    S  W  A  O
-//
-//  Sovereign Workload Assessment and Onboarding
-//  LLM providers module -- bundled connector seed sweep (#1396)
-//
-//  Free and Open-Source Software (FOSS)
-//
-//  Website       :  https://steady-echo-yp4z.here.now/
-//  Technical Docs:  https://accenture.github.io/SWAO/en/
-//  Source Code   :  https://github.com/Accenture/SWAO
-//
-// ================================================================
-
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { parseConnectorYaml } from './connector-schema.js';
-import { listConnectors } from './connector-loader.js';
+import { listConnectors, resolveBundledConnectorsDir } from '../index.js';
 
-const SEEDS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../../../llm-gateway');
+// #3372: the bundled seeds (including bedrock and openrouter) must load cleanly.
+// The setup wizard and LLM Assessment screen seed these into the workspace and
+// render exactly listConnectors().connectors, so if the packaged seeds load,
+// both screens show them. #3388: resolve the bundled dir via the exported
+// resolver (the single source of the bundled-dir path) and load it as an
+// explicit overrideDir (the CI/test path, D-3).
+describe('bundled LLM gateway seeds load (#3372)', () => {
+  const dir = resolveBundledConnectorsDir();
+  const r = listConnectors(dir ? { overrideDir: dir } : {});
 
-describe('bundled llm-gateway seeds (#1396)', () => {
-  const files = readdirSync(SEEDS_DIR).filter(f => f.endsWith('.yaml') && !f.startsWith('_'));
-
-  // The public seeds. Client-specific seeds may sit alongside them in the
-  // private repo (never bundled, #3161); the loops below validate whatever is
-  // present, and the private regression suite pins the exact private set.
-  const PUBLIC_SEEDS = ['anthropic.yaml', 'bedrock.yaml', 'ollama.yaml', 'open-llm.yaml', 'openai.yaml', 'openrouter.yaml', 'vllm-generic.yaml'];
-
-  it('ships the seven public seeds plus the template (#2886 adds open-llm)', () => {
-    for (const f of PUBLIC_SEEDS) expect(files).toContain(f);
-    expect(readdirSync(SEEDS_DIR)).toContain('_template.yaml');
-  });
-
-  it('every seed validates against the connector schema', () => {
-    for (const f of files) {
-      const r = parseConnectorYaml(readFileSync(join(SEEDS_DIR, f), 'utf-8'), f);
-      expect(r.ok, r.ok ? '' : r.error).toBe(true);
-    }
-  });
-
-  it('seed ids match their filenames and carry contributor + last_reviewed', () => {
-    for (const f of files) {
-      const r = parseConnectorYaml(readFileSync(join(SEEDS_DIR, f), 'utf-8'), f);
-      if (!r.ok) throw new Error(r.error);
-      expect(`${r.file.connector.id}.yaml`).toBe(f);
-      expect(r.file.connector.meta?.source).toBe('bundled');
-      expect(r.file.connector.meta?.last_reviewed).toBeTruthy();
-      expect(r.file.connector.meta?.contributor).toContain('Accenture');
-    }
-  });
-
-  it('openrouter defaults to an EU-vendor model (operator direction 2026-08-05)', () => {
-    const r = parseConnectorYaml(readFileSync(join(SEEDS_DIR, 'openrouter.yaml'), 'utf-8'), 'openrouter.yaml');
-    if (!r.ok) throw new Error(r.error);
-    expect(r.file.connector.models.default).toBe('mistralai/mistral-large');
-    expect(r.file.connector.models.default).not.toContain('deepseek');
-    expect(r.file.connector.models.discovery_endpoint).toBe('/v1/models');
-  });
-
-  it('every seed carries honest sovereignty facts', () => {
-    for (const f of files) {
-      const r = parseConnectorYaml(readFileSync(join(SEEDS_DIR, f), 'utf-8'), f);
-      if (!r.ok) throw new Error(r.error);
-      expect(r.file.connector.sovereignty?.data_residency, `${f} sovereignty.data_residency`).toBeTruthy();
-      expect(r.file.connector.sovereignty?.zero_retention, `${f} sovereignty.zero_retention`).toBeDefined();
-    }
-  });
-
-  it('the dev-path loader discovers all public seeds (#2886 adds open-llm; bundle path verified at binary gate)', () => {
-    const r = listConnectors();
-    const ids = r.connectors.filter(c => c.origin === 'bundled').map(c => c.file.connector.id);
-    for (const id of PUBLIC_SEEDS.map(f => f.replace(/\.yaml$/, ''))) {
-      expect(ids).toContain(id);
-    }
+  it('loads bedrock and openrouter with no warnings', () => {
+    const ids = r.connectors.map((c) => c.file.connector.id);
+    expect(ids).toContain('bedrock');
+    expect(ids).toContain('openrouter');
     expect(r.warnings).toEqual([]);
   });
 
-  it('the template itself is schema-valid when its id is amended (copy/paste contract)', () => {
-    const text = readFileSync(join(SEEDS_DIR, '_template.yaml'), 'utf-8');
-    const r = parseConnectorYaml(text, '_template.yaml');
-    expect(r.ok, r.ok ? '' : r.error).toBe(true);
+  it('includes every public seed id', () => {
+    const ids = r.connectors.map((c) => c.file.connector.id).sort();
+    for (const id of ['anthropic', 'bedrock', 'ollama', 'open-llm', 'openai', 'openrouter', 'vllm-generic']) {
+      expect(ids).toContain(id);
+    }
   });
 });

@@ -18,7 +18,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { inferOpenLlmConnectorId, writeLlmToYaml, writeSecondaryLlmToYaml } from './yaml-helpers.js';
+import { getConnector } from '@swao/module-llm-providers';
+import { inferOpenLlmConnectorId, resolveOpenLlmConnectorId, writeLlmToYaml, writeSecondaryLlmToYaml } from './yaml-helpers.js';
 
 // ---------------------------------------------------------------------------
 // inferOpenLlmConnectorId (#2886)
@@ -163,5 +164,124 @@ providers:
     const out = readYaml();
     expect(out).toContain('secondary:');
     expect(out).toContain('connector: vllm-generic');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3438: an aborted or TLS-untouched wizard re-run must not lose the active
+// connector's tls block (support bundle 2026-10-23: tlsSkip true -> false
+// after wizard.abort, then SELF_SIGNED_CERT_IN_CHAIN on every LLM call).
+// The wizard persists .swao.yml eagerly at the LLM step (SetupWizard.tsx), so
+// whatever the LLM step writes is what survives an abort at any later step.
+// ---------------------------------------------------------------------------
+
+describe('wizard LLM writes preserve the connector tls block (#3438)', () => {
+  const CORP_URL = 'https://genai-hub.corp.example';
+  const CORP_CONNECTOR = [
+    'schema_version: "1.0"',
+    'connector:',
+    '  id: corp-hub',
+    '  name: Corporate GenAI Hub',
+    '  protocol: openai-chat',
+    `  base_url: ${CORP_URL}`,
+    '  auth:',
+    '    env_var: SWAO_CORP_HUB_KEY',
+    '  models:',
+    '    default: corp-model',
+    '  tls:',
+    '    reject_unauthorized: false',
+    '    ca_bundle: /etc/ssl/corp-ca.pem',
+    '',
+  ].join('\n');
+
+  const CONFIGURED_YAML = `\
+workspace:
+  name: test-ws
+
+providers:
+  llm:
+    primary:
+      connector: corp-hub
+      model: corp-model
+      temperature: 0
+  redactor:
+    type: pattern
+`;
+
+  function connectorPath(): string {
+    return join(tmpDir, 'wsp', 'inputs', 'llm-gateway', 'corp-hub.yaml');
+  }
+
+  function seedCorpConnector(content = CORP_CONNECTOR): void {
+    mkdirSync(join(tmpDir, 'wsp', 'inputs', 'llm-gateway'), { recursive: true });
+    writeFileSync(connectorPath(), content, 'utf-8');
+  }
+
+  /** The connector the next assessment run resolves, as assess.ts does it. */
+  function effectivePrimaryTls(): { id: string | undefined; reject: boolean | undefined; ca: string | undefined } {
+    const id = /primary:\n\s+connector: (\S+)/.exec(readYaml())?.[1];
+    const loaded = id ? getConnector(id, { workspaceRoot: tmpDir }) : undefined;
+    return { id, reject: loaded?.file.connector.tls?.reject_unauthorized, ca: loaded?.file.connector.tls?.ca_bundle };
+  }
+
+  it('abort after the LLM step: re-entering the same URL keeps the tls connector active', () => {
+    seedCorpConnector();
+    writeYaml(CONFIGURED_YAML);
+    const before = readFileSync(connectorPath(), 'utf-8');
+    // LLM step completes with the custom-endpoint choice; the wizard is then
+    // aborted (Escape) before ReadyStep, so no further write happens.
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'corp-model', '', `${CORP_URL}/v1/`);
+    expect(effectivePrimaryTls()).toEqual({ id: 'corp-hub', reject: false, ca: '/etc/ssl/corp-ca.pem' });
+    expect(readFileSync(connectorPath(), 'utf-8')).toBe(before);
+  });
+
+  it('completed re-run that does not touch TLS: selecting the gateway connector keeps tls intact', () => {
+    seedCorpConnector();
+    writeYaml(CONFIGURED_YAML);
+    const before = readFileSync(connectorPath(), 'utf-8');
+    writeLlmToYaml(tmpDir, 'gw:corp-hub', 'corp-model', '', '');
+    // SetupWizard only materialises BUNDLED connectors; a workspace one is left alone.
+    const loaded = getConnector('corp-hub', { workspaceRoot: tmpDir });
+    expect(loaded?.origin).toBe('workspace');
+    expect(effectivePrimaryTls()).toEqual({ id: 'corp-hub', reject: false, ca: '/etc/ssl/corp-ca.pem' });
+    expect(readFileSync(connectorPath(), 'utf-8')).toBe(before);
+  });
+
+  it('reuses a matching workspace connector that declares tls even when the slot pointed elsewhere', () => {
+    seedCorpConnector();
+    writeYaml(VIRGIN_YAML);
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'corp-model', '', CORP_URL);
+    const out = readYaml();
+    expect(out).toContain('connector: corp-hub');
+    expect(out).toContain(`baseUrl: "${CORP_URL}"`);
+    expect(effectivePrimaryTls().reject).toBe(false);
+  });
+
+  it('secondary slot: same URL keeps the tls connector', () => {
+    seedCorpConnector();
+    writeYaml(CONFIGURED_YAML);
+    writeSecondaryLlmToYaml(tmpDir, 'open-llm-provider', 'corp-model', '', CORP_URL);
+    const out = readYaml();
+    expect(out).toMatch(/secondary:\n\s+connector: corp-hub/);
+    expect(out).not.toContain('connector: open-llm');
+  });
+
+  it('falls back to the #2886 inference when no workspace connector serves the URL', () => {
+    seedCorpConnector();
+    writeYaml(CONFIGURED_YAML);
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'gemma-4', '', 'https://other-hub.example.com');
+    expect(readYaml()).toContain('connector: open-llm');
+  });
+
+  it('falls back to the #2886 inference for a matching connector without tls that is not configured', () => {
+    seedCorpConnector(CORP_CONNECTOR.replace(/ {2}tls:\n(?: {4}.*\n)+/, ''));
+    writeYaml(VIRGIN_YAML);
+    writeLlmToYaml(tmpDir, 'open-llm-provider', 'corp-model', '', CORP_URL);
+    expect(readYaml()).toContain('connector: open-llm');
+  });
+
+  it('resolveOpenLlmConnectorId never throws for a workspace without connectors or .swao.yml', () => {
+    expect(resolveOpenLlmConnectorId(tmpDir, CORP_URL, 'primary')).toBe('open-llm');
+    expect(resolveOpenLlmConnectorId(join(tmpDir, 'missing'), 'http://localhost:8000', 'primary')).toBe('vllm-generic');
   });
 });

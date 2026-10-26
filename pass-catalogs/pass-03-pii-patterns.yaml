@@ -5,12 +5,20 @@
 #
 # Pattern is matched case-insensitively against: field names, column names,
 # variable names, API parameter names, and DTO property names found in source.
-# The loader applies the 'i' (case-insensitive) flag; patterns are plain alternation groups.
+# Patterns are plain alternation groups, matched line by line through the
+# shared catalogue matcher (#3410): case-folded, ReDoS-guarded, and with
+# `segment` boundaries by default, so a pattern matches a whole identifier
+# part (`kvnr` in `kvnr_hash` or `patientKvnr`, `pid` in `patientPid`) but not
+# the inside of a word (`pid` in `rapid`). Override per entry with
+# `match: identifier | segment | substring`.
 # Entry ID collision: workspace entry wins over built-in on matching id.
 # Contribute additions: https://github.com/Accenture/SWAO
 
 pass_number: 3
 pass_name: "Data Classification"
+
+match_defaults:
+  match: segment
 
 entries:
 

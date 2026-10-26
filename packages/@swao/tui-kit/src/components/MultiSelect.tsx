@@ -20,6 +20,9 @@ import { classifyMouseInput, acquireMouseReporting } from '../input/mouse.js';
 export interface MultiSelectOption {
   label: string;
   value: string;
+  /** #3380: a non-selectable section header row (e.g. a country group). The
+   *  cursor skips it, Space/A never toggle it, and it renders without a box. */
+  header?: boolean;
 }
 
 interface MultiSelectProps {
@@ -64,15 +67,22 @@ export function MultiSelect({
   // picker opens with every individual row pre-checked when the caller
   // passes initialSelected: [allValue].
   const allRegularValues = allValue
-    ? options.filter(o => o.value !== allValue).map(o => o.value)
+    ? options.filter(o => o.value !== allValue && !o.header).map(o => o.value)
     : [];
 
-  // #1086: start cursor on the first pre-selected item so operators can see
-  // immediately which option is checked without scrolling. Falls back to 0.
+  // #3380: the cursor only ever rests on a selectable (non-header) row.
+  const firstSelectableIdx = (): number => {
+    const i = options.findIndex(o => !o.header);
+    return i >= 0 ? i : 0;
+  };
+
+  // #1086: start cursor on the first pre-selected (non-header) item so operators
+  // see immediately which option is checked. Falls back to the first selectable.
   const [idx, setIdx] = useState(() => {
-    if (initialSelected.length === 0) return 0;
-    const first = options.findIndex(o => initialSelected.includes(o.value));
-    return first >= 0 ? first : 0;
+    const first = initialSelected.length > 0
+      ? options.findIndex(o => !o.header && initialSelected.includes(o.value))
+      : -1;
+    return first >= 0 ? first : firstSelectableIdx();
   });
 
   // #0805: Ink re-registers the useInput listener on every render (inputHandler
@@ -154,19 +164,25 @@ export function MultiSelect({
     // #1082/#1378: terminal mouse reports arrive through stdin as escape
     // sequences with no key flags set. Swallow them entirely so they cannot
     // jitter cursor or toggle state; synthesise wheel ticks as navigation.
-    const mouse = classifyMouseInput(input);
-    if (mouse) {
-      if (mouse === 'wheel-up')   setIdx(i => Math.max(0, i - 1));
-      if (mouse === 'wheel-down') setIdx(i => Math.min(optionsRef.current.length - 1, i + 1));
-      return;
-    }
     const opts = optionsRef.current;
     const cur  = idxRef.current;
-    if (key.upArrow)   setIdx(i => Math.max(0, i - 1));
-    if (key.downArrow) setIdx(i => Math.min(opts.length - 1, i + 1));
+    // #3380: step over header rows so the cursor only lands on selectable options.
+    const step = (i: number, dir: 1 | -1): number => {
+      let n = i;
+      do { n += dir; } while (n >= 0 && n < opts.length && opts[n]?.header);
+      return (n >= 0 && n < opts.length) ? n : i;
+    };
+    const mouse = classifyMouseInput(input);
+    if (mouse) {
+      if (mouse === 'wheel-up')   setIdx(i => step(i, -1));
+      if (mouse === 'wheel-down') setIdx(i => step(i, 1));
+      return;
+    }
+    if (key.upArrow)   setIdx(i => step(i, -1));
+    if (key.downArrow) setIdx(i => step(i, 1));
     if (input === ' ') {
       const opt = opts[cur];
-      if (opt) toggle(opt.value);
+      if (opt && !opt.header) toggle(opt.value);
     }
     if (input === 'a' || input === 'A') {
       if (allValue) {
@@ -183,7 +199,7 @@ export function MultiSelect({
         });
       } else {
         // Toggle all: if every option is selected, deselect all; otherwise select all
-        const allValues = opts.map(o => o.value);
+        const allValues = opts.filter(o => !o.header).map(o => o.value);
         const allSelected = allValues.every(v => selected.has(v));
         setSelected(allSelected ? new Set() : new Set(allValues));
       }
@@ -198,6 +214,7 @@ export function MultiSelect({
   useInput(useCallback((input: string, key: Key) => processInputRef.current(input, key), []));
 
   const isOptionSelected = (opt: MultiSelectOption): boolean => {
+    if (opt.header) return false;
     if (allValue && opt.value === allValue) return allRegularSelected(selected);
     return selected.has(opt.value);
   };
@@ -223,6 +240,14 @@ export function MultiSelect({
         </Box>
       )}
       {visibleOpts.map((opt, i) => {
+        // #3380: a header row is a dim section label, no cursor caret, no checkbox.
+        if (opt.header) {
+          return (
+            <Box key={opt.value} marginLeft={2}>
+              <Text dimColor bold wrap="truncate">{opt.label.padEnd(maxLabelLen)}</Text>
+            </Box>
+          );
+        }
         const isSelected = isOptionSelected(opt);
         const isCursor   = (scrollTop + i) === idx;
         return (

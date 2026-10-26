@@ -311,7 +311,7 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
   });
 
   const spawnChild = (args: string[], onText: (text: string) => void): Promise<number> => runChild
-    ? runChild(args, (text) => { onText(text); setLines((prev) => [...prev, ...text.split('\n').map((l) => l.trimEnd()).filter(Boolean)].slice(-200)); })
+    ? runChild(args, (text) => { onText(text); setLines((prev) => [...prev, ...text.split(/\r\n|\r|\n/).map((l) => l.trimEnd()).filter(Boolean)].slice(-200)); })
     : new Promise((resolve) => {
     const isPkg = Boolean((process as { pkg?: unknown }).pkg);
     const base = isPkg ? [] : [process.argv[1] ?? ''];
@@ -324,7 +324,9 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
     const append = (chunk: Buffer): void => {
       const text = chunk.toString();
       onText(text);
-      const next = text.split('\n').map((l) => l.trimEnd()).filter(Boolean);
+      // #3400: split on CR too, so a child's \r-updated progress line does not
+      // glue to the next output (the "234o Assessment complete" artifact).
+      const next = text.split(/\r\n|\r|\n/).map((l) => l.trimEnd()).filter(Boolean);
       setLines((prev) => [...prev, ...next].slice(-200));
     };
     child.stdout?.on('data', append);
@@ -518,16 +520,16 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
 
         {phase === 'finished' && result && (
           <>
-            <Text bold color={result.ok ? 'green' : 'yellow'}>{result.ok ? '[ok]' : '[warn]'}  {result.text}</Text>
-            {appCount !== null && <Text>  Apps scaffolded: {appCount}</Text>}
+            <Text bold color={result.ok ? 'green' : 'yellow'} wrap="truncate-end">{result.ok ? '[ok]' : '[warn]'}  {result.text}</Text>
+            {appCount !== null && <Text wrap="truncate-end">  Apps scaffolded: {appCount}</Text>}
             {researchSummary.slice(0, 6).map((l, i) => <Text key={i} wrap="truncate-end">  {l.trim()}</Text>)}
             {selected.length > 0 && <ServiceAssessSummary outcomes={outcomes} total={selected.length} />}
-            {exportNote && <Text>  {exportNote}</Text>}
+            {exportNote && <Text wrap="truncate-end">  {exportNote}</Text>}
             {!result.ok && <LiveOutput lines={lines} maxLines={OUTPUT_LINES} maxWidth={width} label="Last output" />}
             <Box marginTop={1} flexDirection="column">
               {/* #3220: the re-run keys stay visible with the guidance panel collapsed. */}
               <Text color="cyan" wrap="truncate-end">Keys: {rerunAffordances({ assessApps: selected.length, export: exportOk() }).join(' | ')}</Text>
-              <Text dimColor>Next: swao publish --app &lt;id&gt; (HTML), swao service rank (priority list), swao service export (Enterprise workbook)</Text>
+              <Text dimColor wrap="truncate-end">Next: swao publish --app &lt;id&gt; (HTML), swao service rank (priority list), swao service export (Enterprise workbook)</Text>
             </Box>
           </>
         )}

@@ -45,8 +45,10 @@ export interface SetupState {
   llmSecondaryModel?: string;
   // #2815: vision screen count (set when Playwright step completes with Playwright installed)
   visionMaxScreens?: number;
+  // #3403: assessment.test_code.mode chosen in the test-code step (undefined = kept as is)
+  testCodeMode?: 'include' | 'tag' | 'exclude';
   // #3306: LZ catalogue targets written by the LZ targets step ([] = skipped)
-  lzTargets?: string[];
+  /** #3378: removed from the setup wizard (LZ targets are chosen per assessment). */
 }
 
 // #0760: module-level flag tracks whether any GuidanceBox in the wizard is

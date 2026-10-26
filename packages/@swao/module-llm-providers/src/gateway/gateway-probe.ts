@@ -169,9 +169,9 @@ async function pingActiveConnector(
   workspaceRoot: string | null | undefined,
   active: { connector: string; model?: string },
 ): Promise<GatewayProbeContribution> {
-  const loaded = getConnector(active.connector, { workspaceRoot: workspaceRoot ?? undefined });
+  const loaded = getConnector(active.connector, { workspaceRoot: workspaceRoot ?? undefined, seedIfEmpty: true });
   if (!loaded) {
-    const available = listConnectors({ workspaceRoot: workspaceRoot ?? undefined })
+    const available = listConnectors({ workspaceRoot: workspaceRoot ?? undefined, seedIfEmpty: true })
       .connectors.map(c => c.file.connector.id);
     return {
       ok: false,
@@ -266,16 +266,22 @@ async function pingActiveConnector(
 }
 
 export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promise<GatewayProbeContribution> {
+  // #3388: only a real workspace (a `.swao.yml` present) is scaffolded or seeded.
+  // health-check resolves workspaceRoot from `process.cwd()` when no `--workspace`
+  // is given, so without this guard a run from any directory would write
+  // wsp/inputs/llm-gateway/ there (both the scaffold below and the seedIfEmpty
+  // self-heal in listConnectors). A non-workspace directory is read-only here.
+  const isRealWorkspace = !!workspaceRoot && existsSync(join(workspaceRoot, '.swao.yml'));
   // #2953: on pre-Design-090 workspaces, wsp/inputs/llm-gateway/ is not seeded
   // automatically. Scaffold the directory (README + template) on health-check so
   // subsequent `swao assess` commands can discover workspace connector files.
-  if (workspaceRoot) {
+  if (isRealWorkspace && workspaceRoot) {
     const gatewayDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
     if (!existsSync(gatewayDir)) {
       scaffoldWorkspaceGateway(workspaceRoot);
     }
   }
-  const { connectors, warnings } = listConnectors({ workspaceRoot: workspaceRoot ?? undefined });
+  const { connectors, warnings } = listConnectors({ workspaceRoot: workspaceRoot ?? undefined, seedIfEmpty: isRealWorkspace });
   const bundled = connectors.filter(c => c.origin === 'bundled').length;
   const workspace = connectors.length - bundled;
 

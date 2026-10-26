@@ -22,6 +22,7 @@
 // right one.
 
 import { logPortfolio } from '@swao/core';
+import { parseVcsUrlScheme, redactVcsUrl } from './clone.js';
 
 export type VcsTokenScheme =
   | 'x-access-token'      // GitHub: actions/checkout convention
@@ -174,6 +175,16 @@ export function diagnoseCloneFailure(
   appId?: string,
 ): { hint: string; logCode: string } {
   const norm = stderr.toLowerCase();
+  // #3439: `scheme` is the URL transport (https / ssh / scp / ...), not the
+  // token scheme; the token scheme is logged separately as `token_scheme`.
+  // The URL is credential-stripped before it reaches any log context.
+  const safeUrl = redactVcsUrl(vcsUrl);
+  const telemetry = {
+    vcs_url: safeUrl,
+    scheme: parseVcsUrlScheme(vcsUrl),
+    token_scheme: schemeUsed,
+    app_id: appId,
+  };
 
   // Sprint-034 PR #341 follow-up (#0334): tightened from `norm.includes('403')`
   // to `\b403\b` so the matcher doesn't false-positive on e.g. a port number
@@ -181,10 +192,8 @@ export function diagnoseCloneFailure(
   // repository not granted' literal is GitHub-specific and not regex-prone.
   if (norm.includes('write access to repository not granted') || /\b403\b/.test(norm)) {
     const code = 'provider.vcs.auth-failed';
-    const message = `GitHub returned 403 for ${vcsUrl} using scheme '${schemeUsed}'`;
-    logPortfolio('error', code, message, {
-      context: { vcs_url: vcsUrl, scheme: schemeUsed, app_id: appId },
-    });
+    const message = `GitHub returned 403 for ${safeUrl} using scheme '${schemeUsed}'`;
+    logPortfolio('error', code, message, { context: telemetry });
     return {
       logCode: code,
       hint:
@@ -200,7 +209,7 @@ export function diagnoseCloneFailure(
   if (norm.includes('permission denied (publickey)')) {
     const code = 'provider.vcs.ssh-key-missing';
     const message = 'SSH-key clone failed: no key loaded';
-    logPortfolio('error', code, message, { context: { vcs_url: vcsUrl, app_id: appId } });
+    logPortfolio('error', code, message, { context: telemetry });
     return {
       logCode: code,
       hint:
@@ -211,10 +220,71 @@ export function diagnoseCloneFailure(
     };
   }
 
+  // #3439: credential prompt suppressed (GIT_TERMINAL_PROMPT=0 /
+  // GCM_INTERACTIVE=never) or rejected. Git Credential Manager and git's own
+  // terminal fallback produce these lines when no usable credential exists.
+  if (
+    norm.includes('terminal prompts disabled') ||
+    norm.includes('could not read username') ||
+    norm.includes('could not read password') ||
+    norm.includes('user cancelled dialog') ||
+    norm.includes('/dev/tty') ||
+    norm.includes('missing oauth configuration') ||
+    norm.includes('cannot prompt because user interactivity has been disabled') ||
+    norm.includes('authentication failed for') ||
+    /\b401\b/.test(norm)
+  ) {
+    const code = 'provider.vcs.auth-required';
+    const key = vcsTokenKey(vcsUrl);
+    const noToken = schemeUsed === 'none';
+    const message = noToken
+      ? `git clone needs credentials for ${safeUrl}; none configured and interactive prompts are disabled`
+      : `git clone credentials rejected for ${safeUrl} (token scheme '${schemeUsed}')`;
+    logPortfolio('error', code, message, { context: telemetry });
+    return {
+      logCode: code,
+      hint:
+        (noToken
+          ? 'The repository requires authentication and no access token is configured.\n'
+          : `The configured access token was rejected (token scheme '${schemeUsed}').\n`) +
+        '  SWAO runs git non-interactively (no Git Credential Manager dialog,\n' +
+        '  no terminal prompt), so the credential must be stored up front:\n' +
+        `    swao credential set ${key} <personal-access-token>\n` +
+        '  The token needs read access to the repository (e.g. GitHub: Contents read /\n' +
+        "  classic 'repo'; GitLab: read_repository; Azure DevOps: Code (Read)).\n" +
+        '  Alternatively switch source.vcs.url to an SSH URL with a loaded key (ssh-add).' +
+        (noToken ? '' : '\n  Override the token scheme via .swao.yml providers.vcs.token_scheme if needed.'),
+    };
+  }
+
+  // #3439: Windows MAX_PATH checkout failure. The clone already runs with
+  // `-c core.longpaths=true`; this branch covers a git build that ignores it
+  // or a filesystem that still rejects the path.
+  // Keyed on "filename too long" only: a bare "Clone succeeded, but checkout
+  // failed" also covers reserved names, locks and a full disk, which fall
+  // through to the generic branch with the stderr excerpt.
+  if (norm.includes('filename too long')) {
+    const code = 'provider.vcs.checkout-path-too-long';
+    const message = `git checkout failed for ${safeUrl}: path too long`;
+    logPortfolio('error', code, message, {
+      context: { ...telemetry, stderr_excerpt: stderr.slice(0, 500) },
+    });
+    return {
+      logCode: code,
+      hint:
+        'The clone succeeded but checkout failed because a file path exceeds the\n' +
+        '  Windows path limit. Options:\n' +
+        '    (a) enable long paths for git: `git config --global core.longpaths true`\n' +
+        '        (and, with admin rights, the Windows LongPathsEnabled policy);\n' +
+        '    (b) move the workspace to a shorter root (e.g. C:\\swao\\<engagement>);\n' +
+        '    (c) clone manually and point source.path at the working tree.',
+    };
+  }
+
   if (norm.includes('could not resolve host') || norm.includes('connection refused')) {
     const code = 'provider.vcs.network-unreachable';
-    const message = `Network error reaching ${vcsUrl}`;
-    logPortfolio('error', code, message, { context: { vcs_url: vcsUrl, app_id: appId } });
+    const message = `Network error reaching ${safeUrl}`;
+    logPortfolio('error', code, message, { context: telemetry });
     return {
       logCode: code,
       hint:
@@ -235,9 +305,9 @@ export function diagnoseCloneFailure(
   // contract need to be re-evaluated together. Do not bypass the
   // redactor by writing this entry through a different sink.
   const code = 'provider.vcs.clone-failed';
-  const message = `git clone failed for ${vcsUrl}`;
+  const message = `git clone failed for ${safeUrl}`;
   logPortfolio('error', code, message, {
-    context: { vcs_url: vcsUrl, scheme: schemeUsed, app_id: appId, stderr_excerpt: stderr.slice(0, 500) },
+    context: { ...telemetry, stderr_excerpt: stderr.slice(0, 500) },
   });
   return {
     logCode: code,

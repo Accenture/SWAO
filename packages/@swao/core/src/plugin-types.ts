@@ -23,6 +23,9 @@
  * are defined here; @swao/swao's Zod schemas validate against this shape.
  */
 
+import type { TestCodeSetting } from './test-code.js';
+import type { ResolvedCodeHealthSetting } from './code-health-config.js';
+
 // ---------------------------------------------------------------------------
 // Vocabulary
 // ---------------------------------------------------------------------------
@@ -115,6 +118,10 @@ export interface Signal {
   false_positive_flag?: boolean;
   false_positive_note?: string;
   context_gaps?: string[];
+  /** #3403: every cited file is test code (assessment.test_code tag / exclude). */
+  test_code?: boolean;
+  /** #3403: assessed severity before the tag-mode step down. */
+  severity_original?: SignalSeverity;
   provenance?: {
     source: string;
     run_id: string;
@@ -174,6 +181,26 @@ export interface PassContext {
    *  connector's declared context window. Injected by assess.ts (#2959).
    *  When absent, pass-04-ctx falls back to the env-var / hard-coded ceiling. */
   ctxPromptBudget?: number;
+  /** #3425: effective assessment type of the run, as routed by
+   *  AssessmentTypeRouter (the `--type` CLI override, else `assessment.type`
+   *  in .swao.yml, else the default, with alias normalisation applied).
+   *  Passes that scope work by assessment type (pass 11
+   *  `assessment_type_scope`) read this instead of the raw .swao.yml value,
+   *  so a `--type` override is honoured. Injected by assess.ts; absent in
+   *  callers that do not route, which fall back to `assessment.type` in
+   *  .swao.yml, then `application`. */
+  assessmentType?: AssessmentType;
+  /** #3403: effective test-code setting of the run (assessment.test_code /
+   *  assessment.exclude_test_code, app .swao.yml first, then workspace).
+   *  The source scope already applies the listing (beginSourceScopeRun);
+   *  passes read this only to mark test files in an LLM prompt (`tag`).
+   *  Injected by assess.ts; absent means `include`. */
+  testCode?: TestCodeSetting;
+  /** #3487: effective `assessment.code_health` settings of the run (top_n,
+   *  endpoint allowlist, opt-in tools; app .swao.yml first per key, then
+   *  workspace). Injected by assess.ts; absent means the defaults (top 25,
+   *  no allowlist, no external tool). Read by Pass 26. */
+  codeHealth?: ResolvedCodeHealthSetting;
 }
 
 export interface PassHeader {

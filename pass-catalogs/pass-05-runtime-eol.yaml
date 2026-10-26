@@ -70,6 +70,41 @@ entries:
     upgrade_path: "Java 17 LTS is fully supported. Consider Java 21 LTS for longer runway."
     cross_reference_frameworks: [BSI_C5, ISO_27001]
 
+  # #3420: Pass 05 resolves the Java release from pom.xml / Gradle build files
+  # and looks up entry java-<major>; 21 and 25 added so current LTS releases
+  # get a dated verdict instead of "unknown".
+  - id: java-21
+    name: "Java SE 21 (JDK 21 / OpenJDK 21)"
+    category: jvm_runtime
+    detection:
+      config_keys:
+        - "java.version=21"
+        - "sourceCompatibility.*21"
+        - "targetCompatibility.*21"
+        - "JavaVersion\\.VERSION_21"
+      imports: []
+    eol_date: "2030-10-31"
+    eol_notes: "LTS. Amazon Corretto 21 through 2030-10; Adoptium / Temurin at least 2029-12."
+    severity: positive
+    upgrade_path: "Java 21 LTS is fully supported."
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
+  - id: java-25
+    name: "Java SE 25 (JDK 25 / OpenJDK 25)"
+    category: jvm_runtime
+    detection:
+      config_keys:
+        - "java.version=25"
+        - "sourceCompatibility.*25"
+        - "targetCompatibility.*25"
+        - "JavaVersion\\.VERSION_25"
+      imports: []
+    eol_date: "2032-10-31"
+    eol_notes: "LTS (GA 2025-09). Amazon Corretto 25 through 2032-10."
+    severity: positive
+    upgrade_path: "Java 25 LTS is fully supported."
+    cross_reference_frameworks: [BSI_C5, ISO_27001]
+
   # ---------- Node.js runtimes ----------
 
   - id: nodejs-16

@@ -1,0 +1,99 @@
+# Migration Scores Catalogue
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-10
+# Schema: Zod MigrationScoresCatalogueSchema
+#   (swao/packages/@swao/module-app-assessment/src/catalogue/migration-scores-catalogue.ts)
+#
+# Used by: the deterministic cloud-native and portability scores (#3431,
+#   src/scoring/migration-scores.ts), computed by derive-plan for wsp.yaml
+#   `overall` and shown to Pass 09 (SYNTH) as context. The LLM does not set
+#   either score. Formulas: docs/design/037 section 6.4 and
+#   docs/design/passes/079 section 4.7.
+# Purpose: generic runtime asset. It must not contain engagement-specific
+#   content and must not name or favour one particular provider: sovereign
+#   providers are derived from the landing-zone catalogue facts per region.
+#
+# Cloud-native score
+#   score = sum(weight_f * value(status_f)) / sum(weight_f)
+#   over the twelve-factor results Pass 06 reports (`factor_scores`, keyed by
+#   the Roman numeral prefix, e.g. "III (Config)" -> III). A factor without a
+#   weight here gets `default_factor_weight`. `unknown` counts as
+#   `status_values.unknown` (0.5) instead of being excluded, so a stack with
+#   few recognised checks no longer jumps to 2/3 or 2/4. factors_checked =
+#   factors that are not unknown; confidence follows the checked share.
+#
+# Portability score
+#   score = sum(weight_c * value_c) / sum(weight_c) over the components that
+#   have input data. A component without input is dropped and the remaining
+#   weights are renormalised; the output lists every component with
+#   `used: false` and the reason, so missing data stays visible.
+
+version: "2026-10"
+last_reviewed: '2026-10-24'
+
+cloud_native:
+  status_values:
+    pass: 1.0
+    partial: 0.5
+    unknown: 0.5
+    fail: 0.0
+  # Factors Pass 06 evaluates today (Design 079 section 4.7). Equal weights.
+  factor_weights:
+    II: 1.0
+    III: 1.0
+    VIII: 1.0
+    IX: 1.0
+    XI: 1.0
+  default_factor_weight: 1.0
+  # Confidence from the share of factors with a determinate status.
+  confidence:
+    high_min_checked_share: 0.8
+    medium_min_checked_share: 0.5
+
+portability:
+  weights:
+    # Share of the required services (service_dep:<capability>) offered by at
+    # least `min_sovereign_providers` sovereign providers in lz-catalogues.
+    service_availability: 0.35
+    # Proprietary SDK lock-in (vendor-sdk-catalogue.yaml, INV-09).
+    vendor_lock: 0.25
+    # Containerised runtime (Dockerfile, Compose, Kubernetes manifests).
+    container: 0.15
+    # Infrastructure as code (Terraform / OpenTofu, Pulumi state, Helm charts).
+    iac: 0.10
+    # Egress destinations with a sovereign-cloud equivalent (Pass 07).
+    egress: 0.15
+  service_availability:
+    min_sovereign_providers: 2
+    # A landing-zone catalogue region counts as sovereign when its
+    # sovereignty facts carry none of these exposures and its operator
+    # jurisdiction is listed. A provider is sovereign for a capability when
+    # one of its sovereign regions offers a GA or preview service that
+    # fulfils it.
+    forbid_exposure: [us_cloud_act, fisa_702]
+    require_operator_jurisdiction: [EU-entity]
+  vendor_lock:
+    # value = max(0, 1 - sum of penalties over the matched SDKs).
+    impact_penalty:
+      blocks_migration: 0.5
+      partial: 0.25
+      manageable: 0.1
+      none: 0.0
+  container:
+    kubernetes: 1.0
+    container: 0.75
+    none: 0.0
+  iac:
+    present: 1.0
+    absent: 0.0
+  egress:
+    # Sovereign service catalogue verdicts of the detected egress services.
+    verdict_values:
+      available: 1.0
+      partial: 0.5
+      unavailable: 0.0
+    # Fallback when no egress destination has a verdict: hard-coded endpoint
+    # hosts in production code (Pass 07, #3422). Test-only hosts are ignored.
+    hardcoded_host_values:
+      public: 0.0
+      private: 0.5

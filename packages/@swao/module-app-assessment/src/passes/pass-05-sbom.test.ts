@@ -288,11 +288,12 @@ describe('runSbomPass -- external SBOM inputs', () => {
         workspacePath: TMP_WS,
       });
 
-      // SBOM-01 derivation should show 0 runtime deps in spot check
-      // (because mergedRuntime is empty without a package.json)
+      // SBOM-01 derivation should show 0 queried deps (a CSV row has no
+      // package URL, so its ecosystem is unknown and it is not sent to OSV).
+      // #3420: wording changed from "Spot check of N runtime dependencies".
       const sbom01 = result.signals.find(s => s.id === 'SBOM-01');
       expect(sbom01).toBeDefined();
-      expect(sbom01?.derivation).toContain('Spot check of 0 runtime dependencies');
+      expect(sbom01?.derivation).toContain('OSV batch query of 0 dependencies');
     } finally {
       rmSync(join(COMPLIANCE_DIR, csvFile), { force: true });
     }
@@ -320,19 +321,15 @@ targetCompatibility = '11'
       workspacePath: TMP_WS,
     });
 
-    // Graceful skip: if EOL catalogue not available in this environment, the test
-    // cannot assert catalogue-specific signals; check for base SBOM pass instead.
-    const catalogueSignals = result.signals.filter(
+    // #3420: the Java release is read from the build file deterministically
+    // (one Java runtime signal, no duplicate from the catalogue regexes).
+    const javaSignals = result.signals.filter(
       (s) => s.id.startsWith('SBOM-') && s.derivation.toLowerCase().includes('java'),
     );
-
-    if (catalogueSignals.length === 0) {
-      // Catalogue absent or no Java EOL entry matched -- pass is still complete
-      expect(result.pass.name).toBe('sbom_cve');
-    } else {
-      expect(catalogueSignals[0]!.severity).toMatch(/medium|high/);
-      expect(catalogueSignals[0]!.evidence.some((e) => e.includes('build.gradle'))).toBe(true);
-    }
+    expect(javaSignals).toHaveLength(1);
+    expect(javaSignals[0]!.derivation).toContain('sourceCompatibility');
+    expect(javaSignals[0]!.evidence.some((e) => e.includes('build.gradle'))).toBe(true);
+    expect((result.assessment['java_runtime'] as { major: number }).major).toBe(11);
 
     rmSync(join(TMP_SRC, 'build.gradle'), { force: true });
   });

@@ -56,11 +56,20 @@ const EU27 = [
   'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
 ] as const;
 
-/** The shared geography vocabulary. Order matters only for documentation. */
+/** The shared geography vocabulary. Order matters only for documentation.
+ *  ADR-0068 (#3379): `europe` means the 27 EU member states (the EU-wide `EU`
+ *  residency marker is kept so EU-scoped regions stay covered). The separate
+ *  `eu` geography is removed; `eu` is a deprecated alias of `europe` (same set).
+ *  Switzerland, the United Kingdom, Norway, Iceland and Liechtenstein are their
+ *  own countries, not part of `europe`. */
 export const LZ_GEOGRAPHIES: readonly LzGeography[] = [
   { id: 'germany', aliases: ['germany', 'de', 'deutschland'], countries: ['DE'] },
-  { id: 'eu', aliases: ['eu', 'europeanunion'], countries: [...EU27, 'EU'] },
-  { id: 'europe', aliases: ['europe'], countries: [...EU27, 'EU', 'IS', 'LI', 'NO', 'CH', 'GB'] },
+  { id: 'europe', aliases: ['europe', 'eu', 'europeanunion'], countries: [...EU27, 'EU'] },
+  { id: 'switzerland', aliases: ['switzerland', 'ch', 'schweiz', 'suisse'], countries: ['CH'] },
+  { id: 'united-kingdom', aliases: ['unitedkingdom', 'uk', 'gb', 'greatbritain'], countries: ['GB'] },
+  { id: 'norway', aliases: ['norway', 'no', 'norge'], countries: ['NO'] },
+  { id: 'iceland', aliases: ['iceland', 'is'], countries: ['IS'] },
+  { id: 'liechtenstein', aliases: ['liechtenstein', 'li'], countries: ['LI'] },
   { id: 'north-america', aliases: ['northamerica'], countries: ['US', 'CA', 'MX'] },
   { id: 'south-america', aliases: ['southamerica', 'latam', 'latinamerica'], countries: ['BR', 'CL', 'AR', 'CO', 'PE', 'UY'] },
   { id: 'asia-pacific', aliases: ['asiapacific', 'apac'], countries: ['AU', 'NZ', 'JP', 'KR', 'CN', 'HK', 'TW', 'SG', 'MY', 'ID', 'IN', 'TH', 'PH', 'VN'] },
@@ -105,6 +114,16 @@ export function lzGeographyKey(value: string): string | undefined {
   const n = norm(value);
   if (!n) return undefined;
   return LZ_GEOGRAPHIES.find((g) => g.aliases.includes(n))?.id;
+}
+
+/** ADR-0068 (#3379): deprecated geography spellings mapped to their replacement. */
+export const LZ_DEPRECATED_GEOGRAPHY_ALIASES: Readonly<Record<string, string>> = { eu: 'europe', europeanunion: 'europe' };
+
+/** When `value` is a deprecated geography alias, the alias and its replacement id; else null. */
+export function lzDeprecatedGeographyAlias(value: string): { alias: string; replacement: string } | null {
+  const n = norm(value);
+  const replacement = LZ_DEPRECATED_GEOGRAPHY_ALIASES[n];
+  return replacement ? { alias: n, replacement } : null;
 }
 
 /** Default region of a geography among `regions` (rule 4), or undefined when none is tagged. */

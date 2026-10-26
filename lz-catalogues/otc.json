@@ -3,7 +3,7 @@
     "schema_version": "0.1",
     "name": "Open Telekom Cloud / T Cloud Public service catalogue",
     "provider": "otc",
-    "last_updated": "2026-08-11",
+    "last_updated": "2026-10-25",
     "source": {
       "mode": "curated",
       "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
@@ -623,7 +623,8 @@
           "status": "ga",
           "fulfills": [
             "queue",
-            "messaging"
+            "messaging",
+            "kafka"
           ],
           "capabilities": [],
           "key_custody": [
@@ -1248,7 +1249,8 @@
           "status": "ga",
           "fulfills": [
             "queue",
-            "messaging"
+            "messaging",
+            "kafka"
           ],
           "capabilities": [],
           "key_custody": [

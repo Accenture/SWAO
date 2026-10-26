@@ -14,6 +14,7 @@
 // ================================================================
 
 import { describe, it, expect } from 'vitest';
+import { TOTAL_DEFAULT_PASSES } from '@swao/core';
 import {
   parseAssessProgress,
   buildAssessAcknowledgement,
@@ -49,7 +50,7 @@ describe('parseAssessProgress (#0155)', () => {
     const { events, passCountAfter } = parseAssessProgress(chunk, 0);
     expect(events).toHaveLength(1);
     expect(events[0]?.message).toMatch(/Pass 01 \(inventory_scan\) complete/);
-    expect(events[0]?.progress).toBeCloseTo(1 / 11, 6);
+    expect(events[0]?.progress).toBeCloseTo(1 / TOTAL_DEFAULT_PASSES, 6);
     expect(passCountAfter).toBe(1);
   });
 
@@ -58,7 +59,7 @@ describe('parseAssessProgress (#0155)', () => {
     const { events, passCountAfter } = parseAssessProgress(chunk, 5);
     expect(events).toHaveLength(1);
     expect(events[0]?.message).toMatch(/Pass 09 \(synthesis\) FAILED/);
-    expect(events[0]?.progress).toBeCloseTo(5 / 11, 6);
+    expect(events[0]?.progress).toBeCloseTo(5 / TOTAL_DEFAULT_PASSES, 6);
     expect(passCountAfter).toBe(5);
   });
 
@@ -99,7 +100,7 @@ describe('parseAssessProgress (#0155)', () => {
     const chunk = '[ok] Pass 05 -- sbom_cve  12 signals\n';
     const { events, passCountAfter } = parseAssessProgress(chunk, 4);
     expect(events).toHaveLength(1);
-    expect(events[0]?.progress).toBeCloseTo(5 / 11, 6);
+    expect(events[0]?.progress).toBeCloseTo(5 / TOTAL_DEFAULT_PASSES, 6);
     expect(passCountAfter).toBe(5);
   });
 });
@@ -111,7 +112,7 @@ describe('buildAssessAcknowledgement (#0155)', () => {
     expect(ack).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 
-  it('lists all 11 default passes when none specified', () => {
+  it('lists all default passes (TOTAL_DEFAULT_PASSES) when none specified', () => {
     const ack = buildAssessAcknowledgement('demo', undefined);
     expect(ack).toMatch(/inventory/);
     expect(ack).toMatch(/synthesis/);

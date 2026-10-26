@@ -68,6 +68,10 @@ export interface ChallengeSelection {
   match: ChallengeMatch;
   /** True when at least one challenge of another run was skipped. */
   otherRunOmitted: boolean;
+  /** #3427: run the newest skipped challenge belongs to (absent when unknown). */
+  otherRunId?: string;
+  /** #3427: timestamp (folder form) of the newest skipped challenge. */
+  otherChallengeTs?: string;
 }
 
 const TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/;
@@ -214,23 +218,77 @@ export function selectChallengeForRun(wspDir: string, kind: ChallengeKind, runDi
 
   let runIds: string[] | undefined;
   let otherRunOmitted = false;
+  // #3427: the newest skipped challenge (candidates are newest first), so
+  // readers can name the run the existing challenge belongs to.
+  let other: { otherRunId?: string; otherChallengeTs?: string } = {};
+  const skip = (ts: string, runId: string | undefined): void => {
+    if (!otherRunOmitted) {
+      other = { ...(runId ? { otherRunId: runId } : {}), ...(ts ? { otherChallengeTs: ts } : {}) };
+    }
+    otherRunOmitted = true;
+  };
   for (const c of candidates) {
     const ref = refOf(c);
     if (ref) {
       if (ref.run_id === reportedRunId) {
-        return { dir: c.dir, challengeTs: c.ts || undefined, runId: ref.run_id, match: 'run-id', otherRunOmitted };
+        return { dir: c.dir, challengeTs: c.ts || undefined, runId: ref.run_id, match: 'run-id', otherRunOmitted, ...other };
       }
-      otherRunOmitted = true;
+      skip(c.ts, ref.run_id);
       continue;
     }
     runIds ??= runIdsOfKind(wspDir, kind, reportedRunId);
     const owner = c.ts ? pairByTimestamp(c.ts, runIds) : undefined;
     if (owner === reportedRunId) {
-      return { dir: c.dir, challengeTs: c.ts, runId: reportedRunId, match: 'timestamp', otherRunOmitted };
+      return { dir: c.dir, challengeTs: c.ts, runId: reportedRunId, match: 'timestamp', otherRunOmitted, ...other };
     }
-    otherRunOmitted = true;
+    skip(c.ts, owner);
   }
-  return { dir: null, match: 'none', otherRunOmitted };
+  return { dir: null, match: 'none', otherRunOmitted, ...other };
+}
+
+/**
+ * #3427: freshness of the challenge for a reported run. `current` when a
+ * challenge of this run exists, `stale` when only challenges of other runs
+ * exist, `none` when there is no challenge at all.
+ */
+export type ChallengeFreshness = 'current' | 'stale' | 'none';
+
+export function challengeFreshness(sel: Pick<ChallengeSelection, 'dir' | 'otherRunOmitted'>): ChallengeFreshness {
+  if (sel.dir) return 'current';
+  return sel.otherRunOmitted ? 'stale' : 'none';
+}
+
+/**
+ * #3427: CLI command that runs the challenge for an app. Both kinds pin a run
+ * with `--run` when `runId` is given (LZ #3342, application #3446); without
+ * it the latest run of the kind is challenged (latest-application.txt /
+ * latest-landing-zone-catalog.txt).
+ */
+export function challengeCommand(appId: string, kind: ChallengeKind, runId?: string): string {
+  const run = runId ? ` --run ${runId}` : '';
+  return kind === 'lz'
+    ? `swao challenge --type lz --all-agents --app ${appId}${run}`
+    : `swao challenge --all-agents --app ${appId}${run}`;
+}
+
+/**
+ * #3427: names the skipped challenge, e.g.
+ * "challenge 2026-10-22T17-04-39 of run 2026-10-22T16-58-00".
+ */
+export function otherChallengeLabel(other: { otherRunId?: string; otherChallengeTs?: string }): string {
+  const ts = other.otherChallengeTs ?? 'undated';
+  const run = other.otherRunId ? `run ${other.otherRunId}` : 'an unrecorded run';
+  return `challenge ${ts} of ${run}`;
+}
+
+/**
+ * #3427: one-line note when the reported run has no challenge of its own but
+ * another run's challenge exists; undefined otherwise. Shared by `swao
+ * publish`, the `swao assess` end-of-run hint and the TUI challenge offer.
+ */
+export function staleChallengeNote(sel: ChallengeSelection): string | undefined {
+  if (challengeFreshness(sel) !== 'stale') return undefined;
+  return `No stakeholder challenge for this run; the newest challenge on disk (${otherChallengeLabel(sel)}) belongs to another run and is not included.`;
 }
 
 /**
@@ -246,4 +304,33 @@ export function challengeSourceLabel(sel: ChallengeSelection): string | undefine
     ? ' (paired by timestamp)'
     : sel.match === 'unscoped' ? ' (no run to pair with; newest challenge shown)' : '';
   return `challenge ${ts} of ${run}${how}`;
+}
+
+/** #3427: what the assess flow offers after a run (TUI prompt and CLI hint). */
+export interface ChallengeOffer {
+  freshness: ChallengeFreshness;
+  /** Exact command that challenges the just-assessed run. */
+  command: string;
+  /** Stale-challenge note (another run's challenge exists); absent otherwise. */
+  note?: string;
+}
+
+/**
+ * #3427: challenge offer for the run that just finished. Shared by the TUI
+ * challenge prompt (AppAssessmentScreen / LzAssessmentScreen) and the
+ * `swao assess` end-of-run hint so both surfaces say the same.
+ *
+ * @param wspDir  apps/<app>/wsp
+ * @param runDir  the just-finished run dir (apps/<app>/wsp/runs/<ts>)
+ */
+export function challengeOfferForRun(wspDir: string, kind: ChallengeKind, runDir: string | undefined): ChallengeOffer {
+  const sel = selectChallengeForRun(wspDir, kind, runDir);
+  const appId = basename(join(wspDir, '..'));
+  const runId = runDir && TS_RE.test(basename(runDir)) ? basename(runDir) : undefined;
+  const note = staleChallengeNote(sel);
+  return {
+    freshness: challengeFreshness(sel),
+    command: challengeCommand(appId, kind, kind === 'lz' ? runId : undefined),
+    ...(note ? { note } : {}),
+  };
 }

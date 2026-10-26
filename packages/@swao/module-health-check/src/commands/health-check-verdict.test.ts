@@ -101,6 +101,35 @@ describe('computeFailedProbes (#3170)', () => {
   it('prints "All probes passed." when nothing failed', () => {
     expect(formatHealthCheckSummaryLine([])).toBe('All probes passed.');
   });
+
+  // #3388: every supplied string[] check is logged under `checks`, including the
+  // clean ones (empty array = "ran, nothing to report"), so the log documents
+  // all health checks and not only the failing ones.
+  it('log context records all supplied check results, clean ones included', () => {
+    const ctx = baseHealthCheckCtx();
+    const withChecks = buildHealthCheckLogContext(ctx, [], {
+      seeded_asset_warnings: ['[WARN] No LLM gateway connectors'],
+      source_accessibility_warnings: [],
+      llm_provider_errors: ['[WARN] No LLM provider configured'],
+    });
+    const checks = withChecks['checks'] as Record<string, string[]>;
+    expect(checks['seeded_asset_warnings']).toEqual(['[WARN] No LLM gateway connectors']);
+    expect(checks['llm_provider_errors']).toEqual(['[WARN] No LLM provider configured']);
+    // A clean check is documented as an empty array, not dropped.
+    expect(checks['source_accessibility_warnings']).toEqual([]);
+  });
+
+  it('documents a clean seed check (empty array present in the log)', () => {
+    const ctx = baseHealthCheckCtx();
+    const checks = buildHealthCheckLogContext(ctx, [], { seeded_asset_warnings: [] })['checks'] as Record<string, string[]>;
+    expect(checks).toHaveProperty('seeded_asset_warnings');
+    expect(checks['seeded_asset_warnings']).toEqual([]);
+  });
+
+  it('omits the checks key entirely only when no checks are supplied (verdict-only context)', () => {
+    const ctx = baseHealthCheckCtx();
+    expect(buildHealthCheckLogContext(ctx, [])).not.toHaveProperty('checks');
+  });
 });
 
 // #3344: a fresh workspace (no credential vault, no LLM configured) must not

@@ -25,20 +25,22 @@ describe('module-app-assessment manifest', () => {
     expect(manifest.tier).toBe('community');
   });
 
-  it('registers all 14 application-assessment passes', () => {
+  it('registers all 16 application-assessment passes', () => {
     // 'comp' (Pass 11 / COMP) moved to @swao/module-framework (#0570).
     // 'malware' (Pass 14) is opt-in (not in passKeys() default profile) but
     // registered in passContributions for module discovery. (#0681 Phase 1)
-    expect(manifest.contributions.passes).toHaveLength(14);
-    expect(passContributions).toHaveLength(14);
+    // #3419: 'secrets' (Pass 14 secret scan, Gitleaks only) is a default pass.
+    // #3405: 'quality' (Pass 26 code health) is a default pass.
+    expect(manifest.contributions.passes).toHaveLength(16);
+    expect(passContributions).toHaveLength(16);
   });
 
   it('exposes the expected pass ids in order', () => {
     // 'comp' is absent here; the host dispatches it from @swao/module-framework.
-    // 'malware' is last: opt-in pass registered for discovery but not in default profile.
+    // 'malware' is opt-in; 'secrets' (#3419) is its default Gitleaks-only subset.
     expect(passContributions.map((p) => p.id)).toEqual([
       'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
-      'synth', 'dynamic', 'blocks', 'scope', 'lzr', 'malware',
+      'synth', 'dynamic', 'blocks', 'scope', 'quality', 'lzr', 'malware', 'secrets',
     ]);
   });
 

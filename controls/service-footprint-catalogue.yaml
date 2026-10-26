@@ -1,0 +1,201 @@
+# Service Footprint Catalogue
+# SWAO Compliance Ruleset Library -- runtime asset
+# Version: 2026-10
+# Schema: Zod ServiceFootprintCatalogueSchema
+#   (swao/packages/@swao/module-app-assessment/src/catalogue/service-footprint-catalogue.ts)
+#
+# Used by: Pass 01 (INV), service footprint (passes/service-footprint.ts, #3430).
+#   Deterministic mapping from what the source tree and the context documents
+#   show to the backing services (capabilities) a landing zone must provide.
+#   Each capability id is a landing-zone catalogue `fulfills` token
+#   (swao/lz-catalogues/*.json), so the footprint feeds the landing-zone fit
+#   unchanged as `service_dep:<id>` implies tags.
+# Purpose: generic runtime asset. It must not contain engagement-specific
+#   content (client names or pseudonyms, one application's configuration,
+#   costs or volumes) and must not recommend one particular provider.
+#
+# Detection keys (all optional; matching is case-insensitive and linear, no
+# regular expressions):
+#   maven        "groupId:artifactId" (Maven and Gradle); a trailing `*` on the
+#                artifactId (or "groupId:*") is a prefix match
+#   npm, pip     package names; a trailing `*` is a prefix match
+#   images       container image repositories (registry host, docker.io/library
+#                and tag removed) in compose files and Kubernetes pod specs;
+#                `*` matches any run of characters
+#   helm_charts  Chart.yaml dependency names
+#   k8s_kinds    Kubernetes manifest kinds: "Kind" (any API group) or
+#                "Kind@api.group" (custom resources)
+#   config       substrings in application*/bootstrap* configuration files,
+#                Helm values files and Kubernetes ConfigMaps
+#   db_dialects  Liquibase `dbms` values in changelog files
+#   docs         whole words or phrases in prose documents (README, CHANGELOG,
+#                docs/, wsp/inputs/); documentation-only evidence is reported
+#                with low confidence
+#
+# A virtual network is not derived: every landing zone provides one, and the
+# catalogues record it under different tokens (networking, vpc_networking, or
+# not at all), so a derived requirement would report false gaps.
+
+version: "2026-10"
+last_reviewed: '2026-10-24'
+capabilities:
+  - id: kubernetes
+    label: Kubernetes
+    category: compute
+    detect:
+      k8s_kinds: [Deployment, StatefulSet, DaemonSet, ReplicaSet, Job, CronJob, Pod, HorizontalPodAutoscaler, Kustomization@kustomize.config.k8s.io]
+      docs: [Kubernetes, OpenShift, Helm chart]
+
+  - id: load_balancer
+    label: Load balancer / ingress
+    category: network
+    detect:
+      k8s_kinds: [Ingress, Gateway@gateway.networking.k8s.io, HTTPRoute@gateway.networking.k8s.io, Route@route.openshift.io]
+      docs: [load balancer]
+
+  - id: block_storage
+    label: Block storage (persistent volumes)
+    category: storage
+    detect:
+      k8s_kinds: [PersistentVolumeClaim, PersistentVolume]
+
+  - id: object_storage
+    label: Object storage (S3-compatible)
+    category: storage
+    detect:
+      maven: ["software.amazon.awssdk:s3", "com.amazonaws:aws-java-sdk-s3", "io.minio:minio", "com.google.cloud:google-cloud-storage", "com.azure:azure-storage-blob", "io.awspring.cloud:spring-cloud-aws-starter-s3"]
+      npm: ["@aws-sdk/client-s3", "minio", "@google-cloud/storage", "@azure/storage-blob"]
+      pip: [boto3, minio, google-cloud-storage, azure-storage-blob]
+      images: [minio/minio, bitnami/minio, quay.io/minio/minio]
+      helm_charts: [minio]
+      docs: [object storage, S3, MinIO]
+
+  - id: key_vault
+    label: KMS (key management)
+    category: security
+    detect:
+      maven: ["software.amazon.awssdk:kms", "com.amazonaws:aws-java-sdk-kms", "com.google.cloud:google-cloud-kms", "com.azure:azure-security-keyvault-keys"]
+      npm: ["@aws-sdk/client-kms", "@google-cloud/kms", "@azure/keyvault-keys"]
+      pip: [google-cloud-kms, azure-keyvault-keys]
+      docs: [KMS, key management, HSM]
+
+  - id: secrets_management
+    label: Secrets management
+    category: security
+    detect:
+      maven: ["org.springframework.cloud:spring-cloud-starter-vault-config", "org.springframework.vault:spring-vault-core", "io.github.jopenlibs:vault-java-driver", "software.amazon.awssdk:secretsmanager", "com.azure:azure-security-keyvault-secrets"]
+      npm: ["node-vault", "@aws-sdk/client-secrets-manager", "@azure/keyvault-secrets"]
+      pip: [hvac]
+      images: [hashicorp/vault, vault]
+      helm_charts: [vault]
+      docs: [HashiCorp Vault, secrets manager]
+
+  - id: identity_management
+    label: Identity provider (OIDC / SAML)
+    category: security
+    detect:
+      maven: ["org.keycloak:*"]
+      npm: ["keycloak-connect", "keycloak-js"]
+      images: [keycloak/keycloak, quay.io/keycloak/keycloak, jboss/keycloak, bitnami/keycloak]
+      helm_charts: [keycloak, keycloakx]
+      config: ["issuer-uri", "jwk-set-uri", "spring.security.oauth2.client"]
+      docs: [Keycloak, identity provider, OpenID Connect]
+
+  - id: mariadb
+    label: MariaDB
+    category: database
+    detect:
+      maven: ["org.mariadb.jdbc:mariadb-java-client"]
+      npm: [mariadb]
+      pip: [mariadb]
+      images: [mariadb, bitnami/mariadb, bitnami/mariadb-galera]
+      helm_charts: [mariadb, mariadb-galera]
+      config: ["jdbc:mariadb:"]
+      db_dialects: [mariadb]
+      docs: [MariaDB, Galera]
+
+  - id: mysql
+    label: MySQL
+    category: database
+    detect:
+      maven: ["com.mysql:mysql-connector-j", "mysql:mysql-connector-java"]
+      npm: [mysql, mysql2]
+      pip: [pymysql, mysqlclient]
+      images: [mysql, bitnami/mysql]
+      helm_charts: [mysql]
+      config: ["jdbc:mysql:"]
+      db_dialects: [mysql]
+      docs: [MySQL]
+
+  - id: postgresql
+    label: PostgreSQL
+    category: database
+    detect:
+      maven: ["org.postgresql:postgresql"]
+      npm: [pg, postgres]
+      pip: [psycopg2, psycopg2-binary, psycopg, asyncpg]
+      images: [postgres, bitnami/postgresql]
+      helm_charts: [postgresql, postgresql-ha]
+      config: ["jdbc:postgresql:", "postgresql://", "postgres://"]
+      db_dialects: [postgresql]
+      docs: [PostgreSQL]
+
+  - id: sql_server
+    label: Microsoft SQL Server
+    category: database
+    detect:
+      maven: ["com.microsoft.sqlserver:mssql-jdbc"]
+      npm: [mssql, tedious]
+      pip: [pymssql]
+      images: [mcr.microsoft.com/mssql/*]
+      config: ["jdbc:sqlserver:"]
+      db_dialects: [mssql]
+      docs: [SQL Server]
+
+  - id: redis
+    label: Redis-compatible cache
+    category: cache
+    detect:
+      maven: ["redis.clients:jedis", "io.lettuce:lettuce-core", "org.springframework.boot:spring-boot-starter-data-redis", "org.redisson:redisson"]
+      npm: [redis, ioredis]
+      pip: [redis]
+      images: [redis, bitnami/redis, valkey/valkey]
+      helm_charts: [redis, redis-cluster, valkey]
+      config: ["spring.data.redis", "spring.redis", "redis://"]
+      docs: [Redis, Valkey]
+
+  - id: kafka
+    label: Apache Kafka
+    category: messaging
+    detect:
+      maven: ["org.apache.kafka:kafka-clients", "org.apache.kafka:kafka-streams", "org.springframework.kafka:*", "io.confluent:*", "org.springframework.cloud:spring-cloud-stream-binder-kafka*", "io.smallrye.reactive:smallrye-reactive-messaging-kafka"]
+      npm: [kafkajs, node-rdkafka, "@confluentinc/kafka-javascript"]
+      pip: [kafka-python, confluent-kafka, aiokafka]
+      images: [confluentinc/cp-kafka, confluentinc/cp-server, bitnami/kafka, apache/kafka, "*/kafka", "quay.io/strimzi/kafka"]
+      helm_charts: [kafka, strimzi-kafka-operator]
+      k8s_kinds: [Kafka@kafka.strimzi.io, KafkaTopic@kafka.strimzi.io]
+      config: ["bootstrap.servers", "bootstrap-servers", "spring.kafka."]
+      docs: [Kafka]
+
+  - id: messaging
+    label: Message broker (AMQP / RabbitMQ)
+    category: messaging
+    detect:
+      maven: ["com.rabbitmq:amqp-client", "org.springframework.boot:spring-boot-starter-amqp", "org.springframework.amqp:*"]
+      npm: [amqplib]
+      pip: [pika, aio-pika]
+      images: [rabbitmq, bitnami/rabbitmq]
+      helm_charts: [rabbitmq]
+      config: ["spring.rabbitmq", "amqp://", "amqps://"]
+      docs: [RabbitMQ, AMQP]
+
+  - id: search
+    label: Search engine (Elasticsearch / OpenSearch)
+    category: database
+    detect:
+      maven: ["org.elasticsearch.client:*", "co.elastic.clients:*", "org.opensearch.client:*", "org.springframework.boot:spring-boot-starter-data-elasticsearch"]
+      npm: ["@elastic/elasticsearch", "@opensearch-project/opensearch"]
+      pip: [elasticsearch, opensearch-py]
+      images: [elasticsearch, elasticsearch/elasticsearch, docker.elastic.co/elasticsearch/elasticsearch, opensearchproject/opensearch]
+      helm_charts: [elasticsearch, opensearch]
+      docs: [Elasticsearch, OpenSearch]

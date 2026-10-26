@@ -22,7 +22,7 @@ import { logPortfolio } from '@swao/core';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load as loadYaml } from 'js-yaml';
-import { getConnector, listConnectors } from './gateway/connector-loader.js';
+import { getConnector, listConnectors, resolveBundledConnectorsDir } from './gateway/connector-loader.js';
 import { createProviderFromConnector, type ConnectorProvenance } from './gateway/resolve.js';
 import { applyLlmConcurrency, normaliseMaxConcurrency, MAX_LLM_MAX_CONCURRENCY } from './concurrency.js';
 
@@ -152,9 +152,15 @@ export function createLlmProvider(
   // v0.9.9; migration to connector files is opt-in.
   const connectorId = config?.connector ?? process.env['SWAO_LLM_CONNECTOR'];
   if (connectorId) {
-    const loaded = getConnector(connectorId, { workspaceRoot: config?.workspaceRoot });
+    // #3388 (D-3): within a workspace, the workspace folder is the single source
+    // (seedIfEmpty self-heals). With NO workspace (env-var-only invocation, e.g. a
+    // spawned child), read the packaged connectors directly as the explicit source.
+    const wsRoot = config?.workspaceRoot;
+    const overrideDir = wsRoot ? undefined : (resolveBundledConnectorsDir() ?? undefined);
+    const loaderOpts = { workspaceRoot: wsRoot, overrideDir, seedIfEmpty: true };
+    const loaded = getConnector(connectorId, loaderOpts);
     if (!loaded) {
-      const available = listConnectors({ workspaceRoot: config?.workspaceRoot })
+      const available = listConnectors(loaderOpts)
         .connectors.map(c => c.file.connector.id);
       throw new Error(
         `Unknown LLM connector '${connectorId}'. Available connectors: ${available.join(', ') || '(none discovered)'}. ` +

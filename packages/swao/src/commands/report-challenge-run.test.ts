@@ -21,7 +21,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { generateLzReport, formatLzText, formatLzYaml, buildLzReportDataStub } from './report-lz.js';
-import { generateReport, formatText } from './report.js';
+import { generateReport, formatText, applyChallengeLicence } from './report.js';
+import { challengeCommand } from '@swao/core';
 
 const R1 = '2026-10-11T17-43-36';
 const R2 = '2026-10-18T12-37-09';
@@ -166,5 +167,50 @@ describe('application report: challenge of the reported run only (#3330)', () =>
     expect(data.challengeFindings).toBeUndefined();
     expect(data.challengeStatus).toBe('not-run');
     expect(formatText(data)).toContain('Challenge:     not included (challenge from another run not shown)');
+  });
+});
+
+// #3446: report and report-lz name the other run's challenge and the exact
+// command (staleChallengeNote / challengeCommand from @swao/core).
+describe('challenge notes name the other run and the exact command (#3446)', () => {
+  it('application report: names the older run and the command for the reported run', () => {
+    const appDir = appDirTmp();
+    appRun(appDir, R1);
+    appChallenge(appDir, '2026-10-11T18-00-00', 'old app concern', R1);
+    appRun(appDir, R2);
+    const text = formatText(generateReport(appDir, 'demo'));
+    expect(text).toContain(`challenge 2026-10-11T18-00-00 of run ${R1}`);
+    expect(text).toContain(`Run \`${challengeCommand('demo', 'app', R2)}\` to challenge this run.`);
+  });
+
+  it('application report, below Enterprise: no note and no command', () => {
+    const appDir = appDirTmp();
+    appRun(appDir, R1);
+    appChallenge(appDir, '2026-10-11T18-00-00', 'old app concern', R1);
+    appRun(appDir, R2);
+    const text = formatText(applyChallengeLicence(generateReport(appDir, 'demo'), false));
+    expect(text).not.toContain(`of run ${R1}`);
+    expect(text).not.toContain('swao challenge');
+  });
+
+  it('LZ report: names the older run and the command for the reported run (text and YAML)', () => {
+    const appDir = appDirTmp();
+    lzRun(appDir, R1, 'otc');
+    lzChallenge(appDir, '2026-10-11T17-43-39', 'old concern', R1);
+    lzRun(appDir, R2, 'aws');
+    const data = generateLzReport(appDir, 'demo');
+    const text = formatLzText(data);
+    expect(text).toContain(`challenge 2026-10-11T17-43-39 of run ${R1}`);
+    expect(text).toContain(`Command: ${challengeCommand('demo', 'lz', R2)}`);
+    const yaml = formatLzYaml(data);
+    expect(yaml).toContain('challenge_other_run:');
+    expect(yaml.replace(/\s+/g, ' ')).toContain(`of run ${R1}`);
+    expect(yaml).toContain(`challenge_command: ${challengeCommand('demo', 'lz', R2)}`);
+  });
+
+  it('LZ report without any challenge still gives the exact command', () => {
+    const appDir = appDirTmp();
+    lzRun(appDir, R2, 'aws');
+    expect(formatLzText(generateLzReport(appDir, 'demo'))).toContain(`Command: ${challengeCommand('demo', 'lz', R2)}`);
   });
 });

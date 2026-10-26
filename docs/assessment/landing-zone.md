@@ -338,9 +338,9 @@ is critical; `NOT_AVAILABLE_IN_REGION` and `MISCONFIGURED` are high;
 | Overall verdict | When |
 |---|---|
 | `SOVEREIGNTY_BLOCKED` <span class="swao-badge fail">FAIL</span> | Any sovereignty failure. `blocker_category` says whether it is structural (jurisdiction, exposure), a certification gap, or mixed |
-| `BLOCKED` <span class="swao-badge fail">FAIL</span> | A required service is not available, or is available only in the wrong version or without a required capability |
+| `BLOCKED` <span class="swao-badge fail">FAIL</span> | A required service is not available, or is available only in the wrong version or without a required capability, and the requirement has evidence beyond documentation (build files, compose, Kubernetes, configuration or an earlier signal) |
 | `READY_WITH_CHANGES` <span class="swao-badge partial">PARTIAL</span> | Everything is available, but services must be enabled or fixed in the deployed landing zone |
-| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Would be READY, but no required services were found or a baseline category (compute, network, key management, storage) was not covered |
+| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Would be READY, but no required services were found or a baseline category (compute, network, key management, storage) was not covered; or the only missing services are requirements evidenced by documentation alone (low confidence), which need confirming before they count as blockers |
 | `READY` <span class="swao-badge pass">PASS</span> | All required services are supported and all sovereignty gates pass |
 
 When at least one target in a multi-target run is READY, the remediation text of every

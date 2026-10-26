@@ -14,6 +14,7 @@
 // ================================================================
 
 import { z } from 'zod';
+import { PassNotRunEntrySchema, PassDegradedEntrySchema } from './pass-coverage.js';
 
 // Relocated to @swao/core (#0591) so the app-assessment module's `diff` command
 // can validate run manifests without importing from @swao/swao. @swao/swao's
@@ -68,10 +69,37 @@ const LlmRunStatsSchema = z.object({
   }).optional(),
 });
 
+// #3428: what the central source scope walked for this run (Design 070
+// section 2.5). Additive-optional; absent on runs predating the scope.
+const SourceScopeCountsSchema = z.object({
+  files_scanned: z.number().int().nonnegative(),
+  files_test: z.number().int().nonnegative(),
+  files_generated: z.number().int().nonnegative(),
+  files_hidden: z.number().int().nonnegative(),
+  dirs_excluded: z.number().int().nonnegative(),
+  excluded_dir_names: z.record(z.string(), z.number().int().nonnegative()),
+  symlinks_skipped: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+  // #3403: test-code handling of the run (Design 115 provenance). All
+  // additive-optional; absent on runs predating the setting.
+  test_rules: z.array(z.string()).optional(),
+  test_code_mode: z.enum(['include', 'tag', 'exclude']).optional(),
+  test_code_source: z.enum(['app', 'workspace', 'default']).optional(),
+  /** Test files no pass except the secret scan read (exclude mode). */
+  files_test_excluded: z.number().int().nonnegative().optional(),
+  /** Signals marked test_code (tag / exclude mode). */
+  signals_test_tagged: z.number().int().nonnegative().optional(),
+  /** Of signals_test_tagged: severity stepped down (tag mode). */
+  signals_test_lowered: z.number().int().nonnegative().optional(),
+});
+
 const FilesAssessedSchema = z.object({
   inventory_count: z.number().int().nonnegative().optional(),
+  // #3428: since the central source scope, the in-scope count (canonical
+  // dependency / build-output / VCS folders excluded).
   source_files_total: z.number().int().nonnegative().optional(),
   imports_files_total: z.number().int().nonnegative().optional(),
+  source_scope: SourceScopeCountsSchema.optional(),
 });
 
 // v1.3 (Sprint 022): record the four landing-zone fit-score weights used
@@ -120,9 +148,10 @@ const PassFailedSchema = z.object({
 export const RunManifestSchema = z.object({
   // schema_version 1.1 retained for back-compat; 1.2 adds llm +
   // files_assessed; 1.3 adds landing_zone_weights; 1.4 adds provenance;
-  // 1.5 adds passes_failed (additive, no existing manifests break).
+  // 1.5 adds passes_failed (additive, no existing manifests break);
+  // 1.6 adds passes_not_run + passes_degraded (#3419 / #3436, additive).
   schema_version: z.union([
-    z.literal('1.1'), z.literal('1.2'), z.literal('1.3'), z.literal('1.4'), z.literal('1.5'),
+    z.literal('1.1'), z.literal('1.2'), z.literal('1.3'), z.literal('1.4'), z.literal('1.5'), z.literal('1.6'),
   ]),
   run_id: z.string(),
   app: z.string(),
@@ -158,6 +187,17 @@ export const RunManifestSchema = z.object({
   // #1702: passes that degraded during the run (connectivity or provider error).
   // Empty / absent = all passes completed normally. Non-empty = partial assessment.
   passes_failed: z.array(PassFailedSchema).optional(),
+
+  // #3419 (v1.6): default-profile passes that produced no result, with the
+  // reason (not_in_profile, skipped_by_flag, tool_missing, ...). Absent = every
+  // default pass ran. A pass listed here is not in passes_executed unless it
+  // ran and skipped itself (e.g. Pass 14 with Gitleaks missing).
+  passes_not_run: z.array(PassNotRunEntrySchema).optional(),
+  // #3436 (v1.6): passes that ran (and are in passes_executed) but are not
+  // fully evaluated, e.g. Pass 11 with controls that have no model verdict
+  // because the LLM evaluation failed. Kept apart from passes_not_run so a
+  // coverage count does not see the pass twice.
+  passes_degraded: z.array(PassDegradedEntrySchema).optional(),
 });
 
 export type PassStat = z.infer<typeof PassStatSchema>;

@@ -23,11 +23,18 @@
 // ones. Missing `git` is `fail` only when an app declares a VCS source;
 // otherwise `warn` (#3375, ADR-0069: FAIL only when an assessment cannot run).
 // Codifies what the sprint-034 Dockerfile fix (#0326 Part B) made implicit.
+//
+// #3487: also lists the optional Pass 26 code health tools (lizard, jscpd) as
+// present / version / absent. They are opt-in (`assessment.code_health.tools`),
+// so they never change the probe status; the message names them. Detection
+// runs through the Windows-safe async runner in @swao/core (no spawnSync with
+// pipes: pip and npm launchers start grandchildren) and is passed in.
 
 import { spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
+import type { DetectedCodeHealthTool } from '@swao/core';
 
 export type PrerequisitesProbeStatus = 'ok' | 'info' | 'warn' | 'fail';
 
@@ -35,7 +42,7 @@ export interface PrerequisitesProbeResult {
   status: PrerequisitesProbeStatus;
   /** Per-tool detection result. `null` version means the tool is not on PATH. */
   tools: Array<{
-    name: 'git' | 'ssh' | 'node' | 'gitleaks' | 'osv-scanner' | 'clamav' | 'yara';
+    name: 'git' | 'ssh' | 'node' | 'gitleaks' | 'osv-scanner' | 'clamav' | 'yara' | 'lizard' | 'jscpd';
     available: boolean;
     version: string | null;
     required: boolean;
@@ -99,9 +106,42 @@ export function findVcsSourcedApps(workspacePath?: string): string[] {
 
 export function buildPrerequisitesProbe(
   workspacePath?: string,
-  opts: { detect?: (cmd: string, versionArg: string, linePattern?: RegExp) => string | null } = {},
+  opts: {
+    detect?: (cmd: string, versionArg: string, linePattern?: RegExp) => string | null;
+    /** #3487: detected Pass 26 code health tools (detectCodeHealthTools); listed, never status-relevant. */
+    codeHealthTools?: readonly DetectedCodeHealthTool[];
+  } = {},
 ): PrerequisitesProbeResult {
-  const detect = opts.detect ?? detectTool;
+  const result = buildCorePrerequisites(workspacePath, opts.detect ?? detectTool);
+  const ch = opts.codeHealthTools ?? [];
+  if (ch.length === 0) return result;
+  return {
+    ...result,
+    tools: [...result.tools, ...ch.map((t) => ({ name: t.name, available: t.status !== 'absent', version: t.version, required: false }))],
+    message: `${result.message} ${codeHealthToolsMessage(ch)}`,
+  };
+}
+
+/** #3487: one sentence naming each code health tool: version, unsupported version, or not found. */
+export function codeHealthToolsMessage(tools: readonly DetectedCodeHealthTool[]): string {
+  const parts = tools.map((t) => {
+    switch (t.status) {
+      case 'present': return `${t.name} ${t.version ?? ''}`.trim();
+      case 'unsupported_version': return `${t.name} ${t.version ?? '(version unknown)'} (unsupported, needs ${t.supported_range})`;
+      case 'absent': return `${t.name} not found`;
+      default: {
+        const never: never = t.status;
+        throw new Error(`unknown tool status: ${String(never)}`);
+      }
+    }
+  });
+  return `Optional code health tools (Pass 26, opt-in via assessment.code_health.tools): ${parts.join(', ')}.`;
+}
+
+function buildCorePrerequisites(
+  workspacePath: string | undefined,
+  detect: (cmd: string, versionArg: string, linePattern?: RegExp) => string | null,
+): PrerequisitesProbeResult {
   // #2964 Part C: when running as a pkg binary, Node is embedded -- it will
   // never appear on PATH. Skip the `node` PATH check to avoid a false-positive
   // 'not on PATH' result that confuses operators into thinking something is wrong.
@@ -153,13 +193,21 @@ export function buildPrerequisitesProbe(
 
   // Malware tools are optional but surfaced as WARN so the TUI shows yellow and
   // the operator knows which tools to install before running `--passes malware`.
-  const missingMalware = tools.slice(3).filter((t) => !t.available);
+  // #3487: selected by name, so tools appended later are never read as malware tools.
+  const MALWARE_TOOLS = new Set(['gitleaks', 'osv-scanner', 'clamav', 'yara']);
+  const missingMalware = tools.filter((t) => MALWARE_TOOLS.has(t.name) && !t.available);
   if (missingMalware.length > 0) {
     const names = missingMalware.map((t) => `\`${t.name}\``).join(', ');
+    // #3419: Gitleaks drives the default secret scan (pass key `secrets`, in
+    // every default pass profile), so its absence affects every assessment,
+    // not only an opt-in `--passes malware` run.
+    const gitleaksMissing = !tools[3].available;
     return {
       status: 'warn',
       tools,
-      message: `${names} not found on PATH. Install to enable Pass 14 malware scan.`,
+      message: gitleaksMissing
+        ? `${names} not found on PATH. \`gitleaks\` is needed by the default secret scan (Pass 14 \`secrets\`): without it assessments record MAL-00 and list the secret scan under "Passes not executed". The other tools enable the opt-in full Pass 14 malware scan.`
+        : `${names} not found on PATH. Install to enable Pass 14 malware scan.`,
     };
   }
 

@@ -76,8 +76,14 @@ export {
 export type { ScaffoldSignal, ScaffoldSignalCode, ScaffoldSignalsFile } from './scaffold-signals.js';
 export { BINARY_SIGNALS, BINARY_SIGNAL_CODES, BinarySignalSchema, BinarySignalsFileSchema, binarySignal } from './binary-signals.js';
 export type { BinarySignal, BinarySignalCode, BinarySignalsFile } from './binary-signals.js';
-export { TIME_QUADRANTS, TimeQuadrantSchema, PortfolioAppSchema, PortfolioSummarySchema, PORTFOLIO_ASSESSMENT_TYPES, PortfolioAssessmentTypeSchema, portfolioAppType } from './portfolio-summary.js';
-export type { TimeQuadrant, PortfolioApp, PortfolioSummary, PortfolioAssessmentType } from './portfolio-summary.js';
+export { TIME_QUADRANTS, TimeQuadrantSchema, PortfolioAppSchema, PortfolioSummarySchema, PORTFOLIO_ASSESSMENT_TYPES, PortfolioAssessmentTypeSchema, portfolioAppType, SEVEN_R_SOURCES, SevenRSourceSchema, CodeHealthKpisSchema } from './portfolio-summary.js';
+export { SIGNAL_SEVERITY_RANK, countSignalsBySeverity, countBlockerSignals, sortSignalsBySeverity } from './signal-summary.js';
+export { complianceRagStatus, summariseRegimeCompliance, normaliseComplianceOutcome, complianceOutcomeRag, tallyComplianceRag, addRag, complianceScore, COMPLIANCE_OUTCOME_ALIASES, COMPLIANCE_RAG_VALUES, type ComplianceRag, type ComplianceOutcome, type ComplianceRagTally, type ComplianceFrameworkSummary, type RawComplianceRegime } from './compliance-summary.js';
+// #3425 follow-up: shared applies_when matcher (Pass 11 + publication extractor).
+export { appliesWhenMatches, complianceNotEvaluatedReason, COMPLIANCE_NOT_EVALUATED_REASONS, NOT_EVALUATED_RATIONALE_PREFIX, type ComplianceNotEvaluatedReason, UNVERIFIED_EVIDENCE_RATIONALE_PREFIX, EVIDENCE_BASIS_MARKER, formatEvidenceBasis, splitEvidenceBasis } from './compliance-applicability.js';
+export { normalizeRiskLikelihood, normalizeRiskImpact, summariseRiskRegister, type RiskLevel } from './risk-summary.js';
+export { lzCatCheckResult, countLzFitBlockers } from './lz-fit-summary.js';
+export type { TimeQuadrant, PortfolioApp, PortfolioSummary, PortfolioAssessmentType, SevenRSource, CodeHealthKpis } from './portfolio-summary.js';
 export { PassFileSchema, DataSourceSchema } from './wsp-pass.js';
 export type { PassFile } from './wsp-pass.js';
 export {
@@ -85,13 +91,18 @@ export {
   SwaoYmlCrawlSchema,
   SwaoYmlVcsSchema,
   SwaoYmlAssessmentSchema,
+  SwaoYmlTestCodeSchema,
+  SwaoYmlCodeHealthSchema,
   SwaoYmlPublicationSchema,
   SwaoYmlLlmAssessmentSchema,
   SwaoYmlLlmAssessmentLegSchema,
   SwaoYmlContextSchema,
+  InfraRoleEntrySchema, // #3429
   SwaoYmlLandingZoneSchema,
   SwaoYmlLzTargetSchema,
   LZ_TARGET_PATTERN,
+  SwaoYmlMcpSchema, // #3474
+  SWAO_MCP_PROFILE_NAMES, // #3474
 } from './swao-yml.js';
 export type {
   SwaoYml,
@@ -101,7 +112,9 @@ export type {
   SwaoYmlLlmAssessment,
   SwaoYmlLlmAssessmentLeg,
   SwaoYmlContext,
+  InfraRoleEntry, // #3429
   SwaoYmlLandingZone,
+  SwaoYmlMcp, // #3474
 } from './swao-yml.js';
 // #3281: LZ catalogue target selection shared by the CLI, run-context and the TUI.
 export {
@@ -124,6 +137,175 @@ export type { RedactionCounts } from './redact-pii.js';
 // Report-output dash normalisation (CLAUDE.md section 5.1; #3291, Design 110 D-28):
 // one implementation shared by the CLI text report and the publication renderer.
 export { normalizeDashes } from './normalize-dashes.js';
+// #3428: central source scope -- the one walker every assessment pass reads
+// the source tree through (canonical skip set, caps, test classification).
+export {
+  SourceScope,
+  SOURCE_SCOPE_SKIP_DIRS,
+  SOURCE_SCOPE_MAX_FILES,
+  SOURCE_SCOPE_MAX_DEPTH,
+  isTestPath,
+  isGeneratedPath,
+  listSourceFiles,
+  findShallowestSourceFile,
+  getSourceScope,
+  beginSourceScopeRun,
+  endSourceScopeRun,
+  sourceScopeWalkCount,
+  sourceScopeRunTestCode,
+  sourceTreeHasFiles,
+  listInputFiles,
+} from './source-scope.js';
+export type {
+  SourcePurpose,
+  TestCodeMode,
+  SourceFile,
+  ListSourceFilesOptions,
+  SourceScopeSummary,
+  InputFile,
+  ListInputFilesOptions,
+  SourceScopeOptions,
+  SourceScopeRunOptions,
+} from './source-scope.js';
+// #3423: language census, recursive build manifests, coverage contract.
+export {
+  SOURCE_LANGUAGES,
+  SourceLanguageSchema,
+  LANGUAGE_BY_EXTENSION,
+  languagesForExtensions,
+  PACKAGE_ECOSYSTEMS,
+  ecosystemLanguages,
+  BUILD_MANIFEST_KINDS,
+  buildManifestKind,
+  manifestKindInfo,
+  manifestDetectableLanguages,
+  BuildManifestSchema,
+  BUILD_MANIFEST_MAX_DEPTH,
+  detectBuildManifests,
+  LanguageCensusRowSchema,
+  LanguageCensusSchema,
+  CENSUS_MAX_FILE_BYTES,
+  CENSUS_MAX_MANIFESTS,
+  countNonBlankLines,
+  computeLanguageCensus,
+  productionLoc,
+  COVERAGE_LEVELS,
+  LanguageCoverageSchema,
+} from './language-census.js';
+export type {
+  SourceLanguage,
+  PackageEcosystem,
+  BuildManifestKind,
+  BuildManifest,
+  LanguageCensusRow,
+  LanguageCensus,
+  CoverageLevel,
+  LanguageCoverage,
+} from './language-census.js';
+// #3403: configurable test-code handling (assessment.exclude_test_code /
+// assessment.test_code) on top of the source scope's classification.
+export {
+  TEST_CODE_SETTINGS,
+  DEFAULT_TEST_CODE_SETTING,
+  SECRET_SIGNAL_IDS,
+  readTestCodeSetting,
+  resolveTestCodeSetting,
+  scopeTestCodeMode,
+  globToRegExp,
+  testRulesFromBuildFile,
+  evidencePaths,
+  classifyEvidenceOrigin,
+  lowerSeverity,
+  applyTestCodeMarker,
+} from './test-code.js';
+export type {
+  TestCodeSetting,
+  TestCodeSettingSource,
+  ResolvedTestCodeSetting,
+  TestCodeRule,
+  EvidenceOrigin,
+  TestCodeMarkerResult,
+} from './test-code.js';
+// #3418: chat findings integrity (evidence kind, detection method, compact
+// signal index lines, answer post-check), shared by module-mcp and the TUI chat.
+export {
+  EVIDENCE_KINDS,
+  DETECTION_METHODS,
+  PATTERN_MATCH_PREFIXES,
+  SIGNAL_INDEX_PREFIX,
+  SignalIndexEntrySchema,
+  signalEvidenceKind,
+  signalDetectionMethod,
+  signalConfidenceLabel,
+  signalSeverityLabel,
+  signalIndexEntry,
+  formatSignalIndexLine,
+  isSignalIndexLine,
+  parseSignalIndexLines,
+  mergeSignalIndex,
+  checkFindingsIntegrity,
+  applyFindingsIntegrity,
+} from './finding-integrity.js';
+export type {
+  EvidenceKind,
+  DetectionMethod,
+  IntegritySeverity,
+  IntegritySignalInput,
+  SignalIndexEntry,
+  IntegrityIssueKind,
+  IntegrityIssue,
+} from './finding-integrity.js';
+// #3405: shared hard-coded endpoint scanner (consumers: Pass 26 code health, #3422, #3424).
+export {
+  scanEndpoints,
+  scanReportableEndpoints,
+  isCommentOnlyLine,
+  maskUserinfo,
+  classifyEndpointHost,
+  isEndpointScanCandidate,
+  endpointEvidence,
+  ENDPOINT_SCAN_EXTENSIONS,
+  REPORTABLE_ENDPOINT_CLASSES,
+  MAX_SCANNED_LINE_LENGTH,
+} from './endpoint-scanner.js';
+export type { EndpointKind, EndpointClass, EndpointHit, ScanEndpointsOptions } from './endpoint-scanner.js';
+// #3487: endpoint allowlist, Pass 26 settings, optional code health tools and the Windows-safe tool runner.
+export { isValidEndpointAllowEntry, normaliseEndpointAllowlist, MAX_ENDPOINT_ALLOW_ENTRY_LENGTH } from './endpoint-scanner.js';
+export {
+  CODE_HEALTH_DEFAULT_TOP_N,
+  CODE_HEALTH_TOP_N_MIN,
+  CODE_HEALTH_TOP_N_MAX,
+  CODE_HEALTH_ALLOWLIST_MAX,
+  CODE_HEALTH_DEFAULT_TOOL_TIMEOUT_S,
+  CODE_HEALTH_TOOL_TIMEOUT_MIN_S,
+  CODE_HEALTH_TOOL_TIMEOUT_MAX_S,
+  DEFAULT_CODE_HEALTH_SETTING,
+  resolveCodeHealthSetting,
+} from './code-health-config.js';
+export type { ResolvedCodeHealthSetting, CodeHealthSettingSource } from './code-health-config.js';
+export {
+  CODE_HEALTH_TOOL_NAMES,
+  CODE_HEALTH_TOOL_VERSIONS,
+  TOOL_VERSION_TIMEOUT_MS,
+  PROBE_DETECT_OPTIONS,
+  formatVersionRange,
+  isVersionSupported,
+  parseToolVersionNumber,
+  resolveJscpdShimEntry,
+  toolInvocationCandidates,
+  detectCodeHealthTool,
+  detectCodeHealthTools,
+} from './code-health-tools.js';
+export type {
+  CodeHealthToolName,
+  ToolVersionRange,
+  ToolInvocation,
+  CodeHealthToolStatus,
+  DetectedCodeHealthTool,
+  DetectOptions,
+} from './code-health-tools.js';
+export { fileBackedToolRunner, treeKillPid, TOOL_OUTPUT_MAX_BYTES } from './tool-runner.js';
+export type { ToolRunRequest, ToolRunResult, ToolRunner } from './tool-runner.js';
 export {
   emptyPreLlmCounts,
   setAllowlist,
@@ -133,6 +315,9 @@ export {
   redactForReport,
 } from './redact-pre-llm.js';
 export type { PreLlmRedactionCounts } from './redact-pre-llm.js';
+// #3415: secret-value masking (mask at source + output guard), Design 032 section 11.6.
+export { maskSecretValue, maskKnownSecret, maskCredentials, extractCredentialValues, maskSecretShapes, guardSecretText, guardSecretsDeep } from './secret-mask.js';
+export type { SecretMaskResult } from './secret-mask.js';
 // Redaction provenance report (#0568): relocated from @swao/swao so the
 // LLM-provider module (anthropic/openai egress) and the host both record
 // redaction calls into the single shared in-core report. `_resetForTests` is
@@ -154,6 +339,8 @@ export type { LogLevel, LogScope, LogEntry, PortfolioLogOpts, AppLogOpts } from 
 export { openWithDefaultApp, copyToClipboard } from './shell-actions.js';
 export { CredentialStore, credentialStore } from './credential-store.js';
 export { SIGNAL_SCHEMA_HINT, normalizeSignal } from './signal-normalizer.js';
+// #3416: absence statements in signal evidence (derive-plan + publication).
+export { isAbsenceEvidenceRef } from './evidence-absence.js';
 export { inferOutcomeFromSeverity, enrichSignal, enrichSignals } from './auditor-enricher.js';
 export type { EnrichOptions } from './auditor-enricher.js';
 // #0776-C / #0751: shared crawl-section writer for AssessScreen + round-trip tests.
@@ -360,6 +547,7 @@ export { RunContextSchema } from './run-context.js';
 // #3245 / #3281: run-status.json lifecycle marker (skipped targets of a partial run).
 export {
   RUN_STATUS_FILE,
+  RUN_STATUS_SCHEMA_VERSION,
   RunStatusSchema,
   RunStatusValueSchema,
   RunStatusFailedTargetSchema,
@@ -380,8 +568,14 @@ export {
   readChallengedRun,
   challengeSourceLabel,
   toFolderTs,
+  // #3427: freshness, command and stale-challenge note.
+  challengeFreshness,
+  challengeCommand,
+  otherChallengeLabel,
+  staleChallengeNote,
+  challengeOfferForRun,
 } from './challenge-run.js';
-export type { ChallengedRunRef, ChallengeKind, ChallengeMatch, ChallengeSelection } from './challenge-run.js';
+export type { ChallengedRunRef, ChallengeKind, ChallengeMatch, ChallengeSelection, ChallengeFreshness, ChallengeOffer } from './challenge-run.js';
 export type { RunContext } from './run-context.js';
 // Filesystem-based Chromium detection (#0799): shared by SetupWizard, health-check
 // Playwright probe, and swao install-playwright. Safe in PKG binaries (no require).
@@ -428,7 +622,18 @@ export type {
 } from './wsp-feedback.js';
 // Default pass profile constants (Design 080 §7.1, #1173): shared between
 // @swao/module-mcp and @swao/module-app-assessment without a circular dep.
-export { DEFAULT_PASS_NAMES, TOTAL_DEFAULT_PASSES } from './wsp-pass-profile.js';
+export { DEFAULT_PASS_NAMES, TOTAL_DEFAULT_PASSES, DEFAULT_PASS_PROFILE, CANONICAL_DEFAULT_PASS_KEYS } from './wsp-pass-profile.js';
+// #3419 / #3436: pass coverage vocabulary (passes_not_run, passes_degraded).
+export {
+  PassNotRunReasonSchema,
+  PassNotRunEntrySchema,
+  PassDegradedReasonSchema,
+  PassDegradedRegimeSchema,
+  PassDegradedEntrySchema,
+  PassCoverageReasonSchema,
+  passCoverageReasonLabel,
+} from './pass-coverage.js';
+export type { PassNotRunReason, PassNotRunEntry, PassDegradedReason, PassDegradedEntry, PassCoverageReason } from './pass-coverage.js';
 // WSP spine schema version (#1496): single source of truth so it tracks the
 // product major.minor automatically. Update this string whenever the schema
 // gains or removes fields (additive = minor bump per ADR-0012).

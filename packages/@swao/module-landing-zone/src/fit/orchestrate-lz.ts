@@ -121,8 +121,9 @@ function gapSignals(items: LzFitItem[], assessedAt: string): Signal[] {
       category: 'infrastructure_platform',
       severity: SEVERITY_BY_VERDICT[item.verdict] ?? 'medium',
       derivation: `${item.service_code}: ${item.verdict} -- ${item.detail}`,
-      evidence: [],
-      confidence: 'high',
+      // #3430: provenance of the requirement (service footprint); documentation-only stays low.
+      evidence: item.evidence ?? [],
+      confidence: item.confidence === 'low' ? 'low' : 'high',
       outcome: 'negative',
       assessor: 'rule_engine',
       assessed_at: assessedAt,

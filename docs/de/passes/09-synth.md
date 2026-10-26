@@ -15,7 +15,7 @@
 
 Die vorangehenden Passes liefern viele Einzelbeobachtungen. Pass 09 beantwortet die Frage, die ein Lenkungsausschuss stellt: **„Was sollen wir also mit dieser Anwendung tun?“**
 
-Er führt alle Signale des Laufs zu einem 7R-Migrationsurteil zusammen (Retire, Retain, Rehost, Replatform, Repurchase, Refactor, Re-architect), mit Begründung, strategischer Modernisierungsposition, Portabilitätswert, den wichtigsten Hindernissen und Treibern, empfohlenen nächsten Schritten und einer empfohlenen souveränen Landing Zone aus dem Cloud-Provider-Katalog von SWAO.
+Er führt alle Signale des Laufs zu einem 7R-Migrationsurteil zusammen (Retire, Retain, Rehost, Replatform, Repurchase, Refactor, Re-architect), mit Begründung, strategischer Modernisierungsposition, einem optionalen Kommentar zum berechneten Portabilitätswert, den wichtigsten Hindernissen und Treibern, empfohlenen nächsten Schritten und einer empfohlenen souveränen Landing Zone aus dem Cloud-Provider-Katalog von SWAO.
 
 ## Was Sie bereitstellen müssen
 
@@ -34,12 +34,12 @@ Er führt alle Signale des Laufs zu einem 7R-Migrationsurteil zusammen (Retire, 
    - Eignungswert je verbleibendem Provider: 0,50 × Souveränitätswert + 0,35 × Anteil verfügbarer benötigter Dienste + 0,10 × Portabilitätswert des Providers laut Katalog (eine Eigenschaft des Providers, nicht der `portability_score` der Anwendung) + 0,05 × (1 minus Kostenstufe, mit low = 0, medium = 0,5, high = 1), begrenzt auf 1,0.
    - Die Provider werden gereiht; der beste nicht ausgeschlossene Provider wird `recommended_landing_zone`. Benötigte Dienste, die kein verbleibender Provider anbietet, erscheinen als `landing_zone_blockers`.
    - Konfidenz der Empfehlung: high bei einer Abdeckung von mindestens 0,9 und einer DE-only-, BSI-C5- oder HIPAA-Bedingung; medium bei einer Abdeckung von mindestens 0,7; sonst low (ebenfalls low, wenn kein Provider verbleibt).
-5. **Prompt aufbauen.** Er enthält die Signalanzahl nach Präfix und nach Schweregrad, bis zu zehn Signale mit hohem Schweregrad, alle EGR-Signale (jeweils auf 120 Zeichen gekürzt) und die empfohlene Landing Zone. Das Modell muss `seven_r_label`, `migration_rationale`, `modernization_position`, `portability_score`, `confidence`, `landing_zone`, `recommended_next_steps`, `migration_blockers` und `migration_enablers` liefern und `SYNTH-01` (7R-Urteil), `SYNTH-02` (Begründung, warum andere Rs verworfen wurden) und `SYNTH-03` (zentrale Rahmenbedingung) erzeugen.
+5. **Prompt aufbauen.** Er enthält die Signalanzahl nach Präfix und nach Schweregrad, bis zu zehn Signale mit hohem Schweregrad, alle EGR-Signale (jeweils auf 120 Zeichen gekürzt), die deterministischen Cloud-Native- und Portabilitätswerte mit ihren Komponenten und die empfohlene Landing Zone. Das Modell muss `seven_r_label`, `migration_rationale`, `modernization_position`, `confidence`, `landing_zone`, `recommended_next_steps`, `migration_blockers` und `migration_enablers` (dazu optional `portability_comment` mit bis zu 300 Zeichen) liefern und `SYNTH-01` (7R-Urteil), `SYNTH-02` (Begründung, warum andere Rs verworfen wurden) und `SYNTH-03` (zentrale Rahmenbedingung) erzeugen.
 6. **Antwort prüfen.**
    - Die Antwort muss gültiges JSON sein.
    - `seven_r_label` wird normalisiert (zum Beispiel werden `refactor`, `re_architect` und `rearchitect` akzeptiert) und muss eines der sieben Rs sein.
    - `modernization_position` muss eine nicht leere Zeichenkette sein. Kanonische Werte sind `invest_modernize_now`, `migrate_stabilize`, `tolerate_contain` und `retire_replace`; Verfeinerungen wie `invest_modernize_with_remediation` werden akzeptiert.
-   - `portability_score` muss eine Zahl zwischen 0,0 und 1,0 sein.
+   - Ein `portability_score` oder `cloud_native_score` in der Antwort wird verworfen; stattdessen werden die berechneten Werte geschrieben (#3431).
 7. **Anpassung nach Landing-Zone-Bereitschaft.** Liegt in `23-lzr.yaml` des aktuellen Laufs ein Urteil von Pass 23 (LZR) vor:
 
    | LZR-Urteil | 7R des Modells | Anpassung |
@@ -64,9 +64,14 @@ Er führt alle Signale des Laufs zu einem 7R-Migrationsurteil zusammen (Retire, 
 
 Alle SYNTH-Signale tragen `synthesis: true`. Schweregrade und Outcomes legt das Modell im Rahmen des SWAO-Signalschemas fest.
 
-**Portabilitätswert.** Der Prompt definiert `portability_score` als Anteil der Egress-Signale mit souveränem Cloud-Äquivalent: (verfügbar + 0,5 × teilweise) / Egress gesamt, mit 0,70 als Schwelle für Souveränitätsreife. Ohne EGR-Signale schätzt das Modell den Wert aus TF- und CTX-Signalen: containerisiert mit vollständiger IaC-Abdeckung 0,8 bis 1,0, ohne IaC auf Bare Metal 0,1 bis 0,3, jedes CTX-Signal mit Hinweis auf Vendor-Lock-in (proprietäres SDK, Managed PaaS, reine SaaS-API) minus 0,1 bis 0,2, ganz ohne Signale 0,5.
+**Cloud-Native- und Portabilitätswert (#3431).** Beide Werte werden im Code berechnet, nicht vom Modell; dieselbe Eingabe ergibt daher immer denselben Wert. Der Pass schreibt sie auch dann, wenn kein LLM konfiguriert oder die Antwort unbrauchbar ist. Die Gewichte stehen in `controls/migration-scores-catalogue.yaml`.
 
-Der `assessment`-Block enthält die Felder des Modells (`seven_r_label` nach Anpassung, `migration_rationale`, `modernization_position`, `portability_score`, `confidence`, `landing_zone`, `recommended_next_steps`, `migration_blockers`, `migration_enablers`) sowie `lzr_adjustment`, `coverage_score`, `prior_signals_analysed`, `landing_zone_candidates` (je Provider: Eignungswert, Begründung, Ausschluss, Dienstlücken, passende Zertifizierungen, Lock-in-Hinweise, meshStack-Integration), `recommended_landing_zone`, `landing_zone_recommendation_confidence` und `landing_zone_blockers`.
+- `cloud_native_score`: gewichteter Mittelwert über die Twelve-Factor-Prüfungen von [Pass 06](/de/passes/06-tf) (Faktoren II, III, VIII, IX, XI, gleiche Gewichte) mit pass 1, partial 0,5, fail 0 und unknown 0,5. `cloud_native` ergänzt `factors_checked` (bestimmte Prüfungen), `factors_total` und `confidence` (high ab 80 % geprüft, medium ab 50 %, sonst low).
+- `portability_score`: gewichteter Mittelwert aus Dienstverfügbarkeit 0,35 (Anteil der benötigten Dienste, die mindestens 2 souveräne Provider in den Landing-Zone-Katalogen anbieten), Vendor Lock-in 0,25 (1 minus 0,5 je blockierendem, 0,25 je teilweisem, 0,1 je beherrschbarem proprietären SDK), Container 0,15 (Kubernetes 1, Container 0,75, keiner 0), Infrastructure as Code 0,10 und Egress 0,15 (Urteile zu souveränen Diensten available 1, partial 0,5, unavailable 0; ohne Urteile fest codierte Produktions-Hosts privat 0,5, öffentlich 0). Eine Komponente ohne Eingangsdaten entfällt, und die übrigen Gewichte werden neu normiert; `portability` führt jede Komponente mit `used`, `value` und Grund. Ein souveräner Provider hat eine Katalogregion, die eine EU-Gesellschaft ohne Exposition gegenüber US CLOUD Act oder FISA 702 betreibt.
+
+Die Werte in `wsp.yaml` `overall` berechnet derive-plan erneut aus allen Pass-Ergebnissen des Laufs; diese zeigen Bericht, Publikation und BI-Export.
+
+Der `assessment`-Block enthält die Felder des Modells (`seven_r_label` nach Anpassung, `migration_rationale`, `modernization_position`, `portability_comment` falls vorhanden, `confidence`, `landing_zone`, `recommended_next_steps`, `migration_blockers`, `migration_enablers`) sowie `lzr_adjustment`, `coverage_score`, `prior_signals_analysed`, `landing_zone_candidates` (je Provider: Eignungswert, Begründung, Ausschluss, Dienstlücken, passende Zertifizierungen, Lock-in-Hinweise, meshStack-Integration), `recommended_landing_zone`, `landing_zone_recommendation_confidence`, `landing_zone_blockers` sowie die berechneten Felder `cloud_native_score`, `cloud_native`, `portability_score`, `portability` und `migration_scores_catalogue`.
 
 **Wie die Ergebnisse genutzt werden.** 7R-Label, Abdeckungswert und Portabilitätswert erscheinen im [Bericht](/de/generate-report), in der [HTML-Publikation](/de/publish-html), im [BI-Export](/de/export-bi) (Anwendungsdimension) und im SWAO-MCP-Server. In einem [LLM-Assessment](/de/assessment/llm) führt jedes Leg diesen Pass mit seinem eigenen Modell aus, sodass sich die Urteile über Modelle hinweg vergleichen lassen.
 
@@ -95,6 +100,6 @@ Der `assessment`-Block enthält die Felder des Modells (`seven_r_label` nach Anp
 
 **Einschränkungen und bekannte Lücken**
 
-- **Unbrauchbare Antworten schränken den Pass ein.** Ist die Antwort kein gültiges JSON, fehlt das `assessment`-Objekt, hat sie ein ungültiges 7R-Label, fehlt `modernization_position` oder liegt `portability_score` außerhalb von 0 bis 1, erzeugt der Pass nur `SYNTH-00` mit `skipped_reason: invalid_llm_response`, und der Lauf geht ohne 7R-Urteil weiter. Wiederholen Sie den Lauf oder wählen Sie ein Modell, das JSON-Vorgaben zuverlässig einhält.
+- **Unbrauchbare Antworten schränken den Pass ein.** Ist die Antwort kein gültiges JSON, fehlt das `assessment`-Objekt, hat sie ein ungültiges 7R-Label oder fehlt `modernization_position`, erzeugt der Pass nur `SYNTH-00` mit `skipped_reason: invalid_llm_response`, und der Lauf geht ohne 7R-Urteil weiter. Wiederholen Sie den Lauf oder wählen Sie ein Modell, das JSON-Vorgaben zuverlässig einhält.
 - Kann der Cloud-Anbieterkatalog nicht gefunden oder gelesen werden, entfällt der Landing-Zone-Abgleich, die Landing-Zone-Felder fehlen, und `landing_zone_match_skipped_reason` im `assessment`-Block nennt den Grund.
 - Im Prompt werden nur bis zu zehn Signale mit hohem Schweregrad und die EGR-Signale zitiert; alle anderen Signale sieht das Modell nur als Anzahl.

@@ -42,8 +42,10 @@ const keysByMode = (mode: string) => SERVICE_PASS_PROFILE.filter((p) => p.mode =
 
 describe('ServicePassProfile (#3093, #3098)', () => {
   it('encodes the Design 103 §5 table', () => {
-    expect(keysByMode('skipped')).toEqual(['01', '02', '06', '07']);
-    expect(keysByMode('conditional')).toEqual(['03', '05', '08', '10', '14']);
+    // #3405: Pass 26 code health is source-only as well.
+    expect(keysByMode('skipped')).toEqual(['01', '02', '06', '07', '26']);
+    // #3419: Pass 14 twice: the default secret scan and the opt-in full malware scan.
+    expect(keysByMode('conditional')).toEqual(['03', '05', '08', '10', '14', '14']);
     expect(keysByMode('always')).toEqual(['00', '04', '09', '11', '12', '13']);
     expect(keysByMode('external')).toEqual(['24', '25']);
     for (const p of SERVICE_PASS_PROFILE) expect(p.reason.length).toBeGreaterThan(10);
@@ -52,14 +54,14 @@ describe('ServicePassProfile (#3093, #3098)', () => {
   it('keeps the host order, drops source-only passes, and skips conditional passes without inputs', () => {
     const plan = planServicePasses(appDir(), DEFAULT_PASSES);
     expect(plan.run).toEqual(['ctx', 'comp', 'blocks', 'synth', 'scope']);
-    expect(plan.skipped.map((s) => s.key)).toEqual(['inv', 'state', 'data', 'sbom', 'tf', 'egr', 'crypto', 'dynamic']);
+    expect(plan.skipped.map((s) => s.key)).toEqual(['inv', 'state', 'data', 'sbom', 'tf', 'egr', 'crypto', 'dynamic', 'quality']);
     expect(plan.external.map((e) => e.num)).toEqual(['24', '25']);
-    expect(formatSkippedSummary(plan)).toBe('Service passes skipped: 8 (01, 02, 06, 07: no source code; 03 DATA, 05 SBOM, 08 CRYPTO, 10 DYNAMIC: inputs not supplied)');
+    expect(formatSkippedSummary(plan)).toBe('Service passes skipped: 9 (01, 02, 06, 07, 26: no source code; 03 DATA, 05 SBOM, 08 CRYPTO, 10 DYNAMIC: inputs not supplied)');
   });
 
-  it('reports the four source-only passes even when the selection did not request them', () => {
+  it('reports the source-only passes even when the selection did not request them', () => {
     const plan = planServicePasses(appDir(), ['ctx', 'synth']);
-    expect(plan.skipped.map((s) => s.num)).toEqual(['01', '02', '06', '07']);
+    expect(plan.skipped.map((s) => s.num)).toEqual(['01', '02', '06', '07', '26']);
   });
 
   it('runs DATA on data-flow inputs or declared data fields (Pass 03 guard, #3095)', () => {
@@ -95,6 +97,16 @@ describe('ServicePassProfile (#3093, #3098)', () => {
     expect(Object.keys(plan.runners).sort()).toEqual(['crypto', 'data']);
   });
 
+  it('#3419: the default secret scan runs on supplied config or binary inputs and is skipped (never a false all-clear) without them', () => {
+    const none = planServicePasses(appDir(), ['ctx', 'secrets']);
+    expect(none.run).toEqual(['ctx']);
+    expect(none.skipped.find((s) => s.key === 'secrets')?.reason).toMatch(/no config or binary inputs/);
+    const d = appDir({ 'wsp/inputs/binary/config/app.ini': 'password=x' });
+    const plan = planServicePasses(d, ['secrets']);
+    expect(plan.run).toEqual(['secrets']);
+    expect(plan.sourceOverrides['secrets']).toBe(join(d, 'wsp', 'inputs', 'binary'));
+  });
+
   it('runs DYNAMIC only for an analyst-configured crawl of a saas or hybrid portal (G-08)', () => {
     const saas = 'assessment:\n  type: service\nvendor_type: saas\n';
     expect(planServicePasses(appDir({}, saas), ['dynamic'], { vendor_type: 'saas' }).run).toEqual([]);
@@ -106,7 +118,7 @@ describe('ServicePassProfile (#3093, #3098)', () => {
     const plan = planServicePasses(appDir(), ['ctx', 'synth', 'scope']);
     const report = buildServiceScopeCoverage(plan, { ctx: 'complete', synth: 'complete' });
     expect(report.assessment_type).toBe('service');
-    expect(report.skipped_passes).toHaveLength(4);
+    expect(report.skipped_passes).toHaveLength(5); // #3405: + Pass 26
     expect(report.run_passes).toEqual([{ key: 'ctx', status: 'complete' }, { key: 'synth', status: 'complete' }, { key: 'scope', status: 'not_run' }]);
     expect(report.external_passes.map((e) => e.key)).toEqual(['research', 'binary']);
   });

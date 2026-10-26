@@ -13,16 +13,21 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join, extname } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
+import { listSourceFiles, type SourceFile } from '@swao/core';
+import { compileTokenMatcher, scanCatalogueRules, type ScanRule } from './pass-catalog-loader.js';
 import {
   loadSovereignServiceCatalogue,
   type SovereignServiceCatalogue,
   type SovereignServiceEntry,
 } from '../catalogue/reference-catalogues.js';
 import { collectDependencyInventory, matchesPattern, type DependencyRef } from './inv-reference-scans.js';
+import { isPropertiesFile, isSpringConfigFile } from './jvm-source-patterns.js';
+import { collectEgressEndpoints, hostMatchesCatalogueDomain, type EndpointHostRecord } from './egress-endpoints.js';
+import { MAX_EVIDENCE_HITS } from './catalogue-matcher.js';
 
 interface DomainEntry {
   jurisdiction: string;
@@ -214,36 +219,117 @@ interface EgressFinding {
   blocksForResidency: string[];
 }
 
-function scanSourceFiles(dir: string, domains: string[] = Object.keys(EGRESS_CATALOGUE)): Map<string, string> {
+// #3423: extensions the deterministic egress source scan reads (exported for
+// the language coverage matrix).
+// #3422: JVM sources (Java, Kotlin, Groovy, Scala) added; Spring
+// configuration (`application*.yml`, `*.properties`) is read too
+// (isDomainScanFile), so a catalogued host in `application.yml` counts.
+export const EGR_SOURCE_SCAN_EXTENSIONS: ReadonlySet<string> = new Set(['.ts', '.js', '.mjs', '.cjs', '.java', '.kt', '.kts', '.groovy', '.scala']);
+
+/** #3422: files the catalogue domain scan reads (source extensions plus Spring configuration). */
+function isDomainScanFile(f: SourceFile): boolean {
+  return EGR_SOURCE_SCAN_EXTENSIONS.has(f.ext) || isSpringConfigFile(f) || isPropertiesFile(f);
+}
+
+function scanSourceFiles(dir: string, scope: readonly SourceFile[], domains: string[] = Object.keys(EGRESS_CATALOGUE)): Map<string, string> {
   const hits = new Map<string, string>();
-  const allowed = new Set(['.ts', '.js', '.mjs', '.cjs']);
 
-  function walk(d: string): void {
-    if (!existsSync(d)) return;
-    const entries = readdirSync(d);
-    for (const entry of entries) {
-      if (entry === 'node_modules' || entry === 'dist' || entry === 'fixtures') continue;
-      const full = join(d, entry);
-      const stat = statSync(full);
-      if (stat.isDirectory()) {
-        walk(full);
-      } else if (allowed.has(extname(entry))) {
-        try {
-          const content = readFileSync(full, 'utf-8');
-          for (const domain of domains) {
-            if (content.includes(domain)) {
-              hits.set(domain, full.replace(dir + '/', '').replace(dir + '\\', ''));
-            }
-          }
-        } catch {
-          // skip unreadable files
-        }
-      }
-    }
+  if (!existsSync(dir) || domains.length === 0) return hits;
+  // #3428: central source scope (canonical skips: .git/, target/ and the other
+  // build-output folders are no longer scanned). Dot-files stay in, as before.
+  const files = scope.filter(isDomainScanFile);
+  // #3410: shared catalogue matcher. Domains are literal tokens with
+  // identifier boundaries (case-insensitive, as host names are):
+  // `bucket.s3.amazonaws.com` still matches `s3.amazonaws.com`,
+  // `mys3.amazonaws.com` does not. Generated/minified files, base64 runs and
+  // data: URIs are skipped. One rule per domain; the last file in walk order
+  // is the evidence, as before.
+  const rules: ScanRule<string>[] = [];
+  for (const domain of domains) {
+    const matcher = compileTokenMatcher([domain], { match: 'identifier' });
+    if (matcher) rules.push({ key: domain, matcher, via: 'domain' });
   }
-
-  walk(dir);
+  const scan = scanCatalogueRules(files, rules, { maxHitsPerKey: Number.POSITIVE_INFINITY, firstHitPerFile: true });
+  const absByRel = new Map(files.map((f) => [f.rel, f.abs]));
+  for (const domain of domains) {
+    const list = scan.hits.get(domain);
+    const last = list?.[list.length - 1];
+    if (!last) continue;
+    const full = absByRel.get(last.file) ?? last.file;
+    hits.set(domain, full.replace(dir + '/', '').replace(dir + '\\', ''));
+  }
   return hits;
+}
+
+function testCodeTagged(ctx: PassContext): boolean {
+  return ctx.testCode === 'tag' || ctx.testCode === 'exclude';
+}
+
+function hasProduction(h: EndpointHostRecord): boolean {
+  return h.byClass.prod + h.byClass.unknown > 0;
+}
+
+function hostLabel(h: EndpointHostRecord): string {
+  const via = h.via.length > 0 ? `, ${h.via.slice(0, 3).join(', ')}` : '';
+  return `${h.host} (${h.channels.join('/')}${via})`;
+}
+
+/**
+ * #3422: one signal per host class. Public hosts outside the catalogues have
+ * an unknown jurisdiction (medium); private hosts are internal dependencies
+ * the target landing zone must reach (low). Hosts seen only in test code are
+ * listed separately; a class with test-only hosts is informational with low
+ * confidence. Evidence: the first location of each host, production first.
+ */
+function endpointSignal(id: string, cls: 'public' | 'private', hosts: EndpointHostRecord[], tagged: boolean): Signal {
+  const prod = hosts.filter(hasProduction);
+  const testOnly = hosts.filter((h) => !hasProduction(h));
+  const locations = hosts.reduce((n, h) => n + h.total, 0);
+  const listed = (list: EndpointHostRecord[]): string => {
+    const shown = list.slice(0, 10).map(hostLabel).join('; ');
+    return list.length > 10 ? `${shown}; and ${list.length - 10} more` : shown;
+  };
+  const what = cls === 'public'
+    ? 'external host(s) outside the egress and sovereign service catalogues'
+    : 'internal host(s) (private address or internal name)';
+  const meaning = cls === 'public'
+    ? 'Jurisdiction and contract are unknown: confirm where each service is hosted before relying on a residency claim, and move the literal into externalised configuration.'
+    : 'Internal dependencies the target landing zone must reach or migrate together; hard-coded addresses break on re-platforming, so move them into externalised configuration.';
+  const parts: string[] = [];
+  if (prod.length > 0) parts.push(`${prod.length} in production code or configuration: ${listed(prod)}.`);
+  if (testOnly.length > 0) {
+    parts.push(`${testOnly.length} seen in test code only: ${listed(testOnly)}.${tagged ? ' Down-weighted by the test-code setting (mode tag).' : ''}`);
+  }
+  const ordered = [...prod, ...testOnly];
+  const evidence = [...new Set(ordered
+    .map((h) => h.locations[0])
+    .filter((l): l is NonNullable<typeof l> => l !== undefined)
+    .map((l) => `${l.file}:${l.line}`))]
+    .slice(0, MAX_EVIDENCE_HITS);
+  const severity: NonNullable<Signal['severity']> = prod.length === 0 ? 'informational' : cls === 'public' ? 'medium' : 'low';
+  return {
+    id,
+    source: 'static_analysis',
+    category: 'application',
+    severity,
+    derivation: `Hard-coded endpoints in JVM source or Spring configuration: ${hosts.length} ${what}, ${locations} ${locations === 1 ? 'occurrence' : 'occurrences'}. ${parts.join(' ')} ${meaning} Detected via: source_scan.`,
+    evidence,
+    confidence: prod.length === 0 ? 'low' : 'medium',
+  };
+}
+
+function endpointHostYaml(h: EndpointHostRecord): Record<string, unknown> {
+  return {
+    host: h.host,
+    classification: h.classification,
+    channels: h.channels,
+    via: h.via,
+    total: h.total,
+    production: h.byClass.prod,
+    test: h.byClass.test,
+    unclassified: h.byClass.unknown,
+    locations: h.locations,
+  };
 }
 
 export async function runEgrPass(ctx: PassContext): Promise<PassResult> {
@@ -273,7 +359,10 @@ export async function runEgrPass(ctx: PassContext): Promise<PassResult> {
   // Detect egress from source file scan (one walk covers the egress domains
   // and the sovereign service host names, #3160)
   const sovereignDomains = Object.values(SOVEREIGN_SERVICE_DETECTION).flatMap((r) => r.domains ?? []);
-  const sourceDomains = scanSourceFiles(sourcePath, [...new Set([...Object.keys(EGRESS_CATALOGUE), ...sovereignDomains])]);
+  // #3422: one source-scope listing feeds the domain scan and the endpoint scan.
+  const scope = existsSync(sourcePath) ? listSourceFiles(sourcePath, { purpose: 'code', includeHidden: true }) : [];
+  const catalogueDomains = [...new Set([...Object.keys(EGRESS_CATALOGUE), ...sovereignDomains])];
+  const sourceDomains = scanSourceFiles(sourcePath, scope, catalogueDomains);
   for (const [domain, filePath] of sourceDomains) {
     const alreadyFound = findings.some((f) => f.domain === domain);
     if (!alreadyFound) {
@@ -424,6 +513,19 @@ export async function runEgrPass(ctx: PassContext): Promise<PassResult> {
     sigNum++;
   }
 
+  // --- #3422: hard-coded endpoints in JVM source and Spring configuration ---
+  // URLs and IPv4 literals from the shared endpoint scanner (#3405), plus
+  // Kafka bootstrap lists and Oracle thin URLs. Hosts the catalogues above
+  // already report are skipped. Appended after the existing signals so the
+  // established EGR numbering does not shift.
+  const endpointScan = collectEgressEndpoints(scope, (host) => hostMatchesCatalogueDomain(host, catalogueDomains));
+  for (const cls of ['public', 'private'] as const) {
+    const hosts = endpointScan.hosts.filter((h) => h.classification === cls);
+    if (hosts.length === 0) continue;
+    signals.push(endpointSignal(`EGR-${String(sigNum).padStart(2, '0')}`, cls, hosts, testCodeTagged(ctx)));
+    sigNum++;
+  }
+
   // Ensure at least one signal even if no egress found
   if (signals.length === 0) {
     signals.push({
@@ -458,6 +560,10 @@ export async function runEgrPass(ctx: PassContext): Promise<PassResult> {
       sovereign_service_blockers: sovereignServices.filter((s) => s.blocks_migration === true).length,
       sovereign_services_merged_with_egress: sovereignServices.filter((s) => s.merged_with_egress_destination !== undefined).length,
       sovereign_service_check: sovereignServiceCheck,
+      // #3422: present only when the JVM endpoint scan found a reportable host.
+      ...(endpointScan.hosts.length > 0
+        ? { hardcoded_endpoints: { files_scanned: endpointScan.filesScanned, hosts: endpointScan.hosts.map(endpointHostYaml) } }
+        : {}),
     },
   };
 }

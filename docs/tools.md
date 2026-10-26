@@ -11,6 +11,7 @@ The Tools menu (option 9 in the main menu) groups utility commands that manage y
 | Credentials | `swao credential set` / `swao credential list` | Store and manage API keys and vault references |
 | Framework | `swao framework list` / `swao framework install <id>` | Copy additional bundled community frameworks into the workspace (`wsp/inputs/catalogs/community/<folder>/`); or [download from GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) and copy the folder there |
 | Catalogue update | `swao lz catalogue update` | Refresh the LZ provider service catalogues from the providers' public sources, and the VM prices of the service cost model from the Azure and AWS price APIs (Consultant and above) |
+| LLM gateway update | `swao llm-gateway update` | Refresh the workspace LLM gateway connectors (`wsp/inputs/llm-gateway/`, the single source) from the packaged seeds: unchanged seeds are updated, connectors you edited are kept, new connectors are added. Run after upgrading the binary. `--dry-run` previews the changes |
 | SWAO Chat | `swao chat` | Multi-turn LLM conversation about portfolio assessment results (Enterprise) |
 | Help | `swao --help` / `swao <command> --help` | Full CLI reference |
 

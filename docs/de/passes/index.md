@@ -35,15 +35,16 @@ Diese Seite gibt einen Überblick. Jeder Pass hat eine eigene Detailseite mit Zw
 | [23 LZR](/de/passes/23-lzr) | `--lzr` | Deterministisch | Mit `--lzr` | Nicht verwendet | Ist die Ziel-Landing-Zone bereit, beurteilt anhand des Terraform-States oder eines JSON-Plans? | keine |
 | [24 RESEARCH](/de/passes/24-research) | `swao service research` | Externe API | Nicht verwendet | Eigener Befehl | Was melden öffentliche Quellen: CVEs, aktiv ausgenutzte Schwachstellen, Warnmeldungen, Supportende, Malware-Befunde? | NVD, CISA KEV, BSI CERT-Bund, OSV.dev, endoflife.date, VirusTotal (optionaler Schlüssel) |
 | [25 BINARY](/de/passes/25-binary) | (automatisch) | Deterministisch, offline | Nicht verwendet | Wenn Installationspakete vorliegen | Sind die bereitgestellten Installationspakete signiert, mit gültigen Zertifikaten, aktuellen Laufzeitumgebungen und moderner Architektur? | keine (SWAO-Parser) |
+| [26 QUALITY](/de/passes/26-quality) | `quality` | Deterministisch | Standard | Übersprungen | Welche Dateien sollten Entwickler zuerst überarbeiten (Größe, Komplexität, Duplikate, fest codierte IP-Adressen und URLs, TODO-Marker), und wie gesund ist der Code insgesamt? | keine (in SWAO eingebaute Metriken) |
 
-"Standard" bedeutet, dass der Pass in der Standardliste `--passes` von `swao assess` enthalten ist (13 Passes); "Opt-in"-Passes laufen nur auf Anforderung. Die dynamische Analyse benötigt ein konfiguriertes Crawl-Ziel und liefert ohne dieses keine sinnvollen Ergebnisse. Die Nummern 15 bis 22 sind keine eigenen Passes: Es waren die früheren Nummern der acht Bausteine, die Pass 12 heute gemeinsam bewertet.
+"Standard" bedeutet, dass der Pass in der Standardliste `--passes` von `swao assess` enthalten ist (15 Passes, einschließlich `secrets` und `quality`); "Opt-in"-Passes laufen nur auf Anforderung. Die dynamische Analyse benötigt ein konfiguriertes Crawl-Ziel und liefert ohne dieses keine sinnvollen Ergebnisse. Die Nummern 15 bis 22 sind keine eigenen Passes: Es waren die früheren Nummern der acht Bausteine, die Pass 12 heute gemeinsam bewertet.
 
 ## Ausführungsreihenfolge
 
 Die Pass-Nummern sind Kennungen, nicht die Ausführungsreihenfolge. `swao assess` führt die gewählten Passes immer in einer festen Abfolge aus, unabhängig von der Reihenfolge in `--passes` oder in einer Linse:
 
 1. Pass 00 INGEST (vor der Pass-Schleife)
-2. `inv`, `state`, `data`, `ctx`, `sbom`, `tf`, `egr`, `crypto` (Passes 01 bis 08)
+2. `inv`, `state`, `data`, `ctx`, `sbom`, `tf`, `egr`, `crypto` (Passes 01 bis 08), `quality` (Pass 26)
 3. `dynamic` (Pass 10), `scope` (Pass 13), `malware` (Pass 14, nur auf Anforderung)
 4. Pass 23 LZR (nur mit `--lzr <landingZoneId>`)
 5. `comp` (Pass 11)

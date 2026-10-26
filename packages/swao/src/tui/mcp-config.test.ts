@@ -176,6 +176,23 @@ describe('patchClaudeDesktopConfig', () => {
     expect(result).toBe('error');
   });
 
+  it('leaves an unparsable config untouched and returns error (F-14)', () => {
+    mkdirSync(dirname(CONFIG), { recursive: true });
+    const original = '{\n  // operator comment\n  "mcpServers": { "other": { "command": "x" } },\n}\n';
+    writeFileSync(CONFIG, original, 'utf-8');
+
+    expect(patchClaudeDesktopConfig(CONFIG, BINARY)).toBe('error');
+    expect(readFileSync(CONFIG, 'utf-8')).toBe(original);
+  });
+
+  it('leaves a config whose root is not an object untouched and returns error (F-14)', () => {
+    mkdirSync(dirname(CONFIG), { recursive: true });
+    writeFileSync(CONFIG, '[1, 2]\n', 'utf-8');
+
+    expect(patchClaudeDesktopConfig(CONFIG, BINARY)).toBe('error');
+    expect(readFileSync(CONFIG, 'utf-8')).toBe('[1, 2]\n');
+  });
+
   it('patches exactly the path it is given, even when an MSIX config folder exists (#3163)', () => {
     mkdirSync(join(root, 'Local', 'Packages', 'Claude_pzs8sxrjxfjjc', 'LocalCache', 'Roaming', 'Claude'), { recursive: true });
 

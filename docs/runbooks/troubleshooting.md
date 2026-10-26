@@ -299,6 +299,8 @@ If you cannot resolve an issue using the guidance above, generate a support bund
 
 The bundle does **not** include API keys, credential vault contents, assessment finding details, application source code, or any data from `portfolio/apps/`.
 
+Since bundle v2.4 (#3437), internal host names, URLs, absolute paths and file names in log messages and tool output are replaced by per-bundle placeholders, chat turns carry only their length (no prompt or reply text), and key suffixes are dropped. `manifest.json` records the attestation and the redaction counts (never the values).
+
 ### Generate the bundle
 
 ```bash

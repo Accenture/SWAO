@@ -144,7 +144,7 @@ jobs:
           build-args: BINARY_NAME=${{ matrix.binary }}
           push: true
           platforms: ${{ matrix.platform }}
-          tags: ghcr.io/accenture/swao:${{ github.ref_name }}-${{ matrix.arch }}
+          tags: ghcr.io/accenture/swao:${{ steps.version.outputs.VERSION }}-${{ matrix.arch }}
           cache-from: type=gha,scope=community-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=community-${{ matrix.arch }}
 
@@ -164,10 +164,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # #3396: resolve the version the same way the binary and build jobs do, so a
+      # workflow_dispatch re-run (github.ref_name = "main") tags the release version,
+      # not ":main", and does not repoint ":latest" to a branch build.
+      - name: Set version
+        id: version
+        run: echo "VERSION=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
       - name: Detect pre-release
         id: prerelease
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ steps.version.outputs.VERSION }}"
           if [[ "$TAG" == *-* ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -177,7 +184,7 @@ jobs:
 
       - name: Compose multi-arch Community manifest
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ steps.version.outputs.VERSION }}"
           docker buildx imagetools create \
             -t "ghcr.io/accenture/swao:${TAG}" \
             -t "ghcr.io/accenture/swao:community-${TAG}" \
@@ -188,7 +195,7 @@ jobs:
       - name: Tag `latest` (production tags only)
         if: steps.prerelease.outputs.is_prerelease == 'false'
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ steps.version.outputs.VERSION }}"
           docker buildx imagetools create \
             -t "ghcr.io/accenture/swao:latest" \
             "ghcr.io/accenture/swao:${TAG}-amd64" \

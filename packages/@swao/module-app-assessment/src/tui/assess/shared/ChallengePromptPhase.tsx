@@ -15,8 +15,36 @@
 
 import { useRef } from 'react';
 import type { ComponentType } from 'react';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
 import { Box, Text, useInput } from 'ink';
 import { GuidanceBox } from '@swao/tui-kit';
+import { challengeOfferForRun, type ChallengeOffer } from '@swao/core';
+
+/**
+ * #3427: challenge offer for the app's just-finished run (same helper as the
+ * `swao assess` end-of-run hint). Application: newest runs/<ts> with a
+ * wsp.yaml; LZ: the latest-landing-zone-catalog.txt run. Undefined when the
+ * run cannot be resolved.
+ */
+export function challengeOfferForApp(workspace: string | null, app: string, type: 'application' | 'landing-zone'): ChallengeOffer | undefined {
+  if (!workspace || !app) return undefined;
+  try {
+    const wspDir = join(workspace, 'apps', app, 'wsp');
+    if (type === 'landing-zone') {
+      const ptr = join(wspDir, 'latest-landing-zone-catalog.txt');
+      const rel = existsSync(ptr) ? readFileSync(ptr, 'utf-8').trim() : '';
+      return rel ? challengeOfferForRun(wspDir, 'lz', join(wspDir, rel)) : undefined;
+    }
+    const runsDir = join(wspDir, 'runs');
+    const newest = existsSync(runsDir)
+      ? readdirSync(runsDir).filter(r => existsSync(join(runsDir, r, 'wsp.yaml'))).sort().pop()
+      : undefined;
+    return newest ? challengeOfferForRun(wspDir, 'app', join(runsDir, newest)) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export interface ChallengePromptPhaseProps {
   app: string;
@@ -25,11 +53,13 @@ export interface ChallengePromptPhaseProps {
   onConfirm: () => void;
   onBack: () => void;
   Header: ComponentType<{ subtitle?: string }>;
+  /** #3427: freshness note and exact command for the just-finished run. */
+  offer?: ChallengeOffer;
 }
 
 // #0988 Design 074 Step 8: post-assessment challenge prompt (#1109: also for LZ).
 // Shared by AppAssessmentScreen and LzAssessmentScreen (#2371).
-export function ChallengePromptPhase({ app, type, isEnterprise: _isEnterprise, onConfirm, onBack, Header }: ChallengePromptPhaseProps): JSX.Element {
+export function ChallengePromptPhase({ app, type, isEnterprise: _isEnterprise, onConfirm, onBack, Header, offer }: ChallengePromptPhaseProps): JSX.Element {
   const guidanceOpenRef = useRef(false);
   const isLzPrompt = type === 'landing-zone';
 
@@ -59,6 +89,9 @@ export function ChallengePromptPhase({ app, type, isEnterprise: _isEnterprise, o
             <Text dimColor>Results are saved to wsp/challenge-app/ alongside the HTML report.</Text>
           </>
         )}
+        {/* #3427: say when the challenge on disk belongs to another run; name the CLI equivalent. */}
+        {offer?.note ? <Box marginTop={1}><Text color="yellow">{offer.note}</Text></Box> : null}
+        {offer ? <Text dimColor>CLI equivalent: {offer.command}</Text> : null}
       </Box>
       <Box marginTop={2} flexDirection="column">
         <Text>  <Text color="green" bold>Enter</Text>  Run {isLzPrompt ? 'LZ Sovereignty' : 'Stakeholder'} Challenge</Text>

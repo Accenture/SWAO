@@ -26,7 +26,8 @@ import type {
   ComplianceEvaluatorContribution,
   SwaoModuleManifest,
 } from '@swao/core';
-import { loadRegimeRegistry, loadRegimeCatalogue } from '@swao/core';
+import { loadRegimeRegistry, loadRegimeCatalogue, appliesWhenMatches, NOT_EVALUATED_RATIONALE_PREFIX, type ComplianceNotEvaluatedReason } from '@swao/core';
+import { signalEvidenceKind, signalDetectionMethod, evidencePaths, isTestPath, UNVERIFIED_EVIDENCE_RATIONALE_PREFIX, formatEvidenceBasis, type EvidenceKind } from '@swao/core';
 import { communityCatalogueContribution } from './community-catalogue.js';
 
 // Cross-cutting "no LLM provider" marker. The same literal is the de-facto
@@ -53,6 +54,12 @@ const NO_LLM_REASON = 'no_llm_provider';
 // GAP / UNKNOWN / N_A) + rationale + signal_refs + evidence_ids per
 // control. Output is Zod-validated; malformed batches fall back to
 // UNKNOWN with rationale "evaluation failed".
+//
+// #3425: before batching, each control passes a deterministic pre-filter
+// (controlApplicability): an `applies_when` that does not match the app's
+// `.swao.yml` framework_context yields N_A, and a control whose
+// `assessment_type_scope` excludes the run's type yields UNKNOWN ("not
+// evaluated"); both are `assessor: rule_engine` and never reach the LLM.
 //
 // Output structure consumed by derive-plan.ts -> star.ts:
 //   assessment.regimes: [
@@ -129,6 +136,12 @@ interface CatalogControl {
   // through Pass 11 into wsp-plan.yaml so the auditor view can render
   // them inline.
   tags?: string[];
+  // #3425: Design 104 Q-CODE-7 condition matched against .swao.yml
+  // framework_context, and the assessment types the control is scoped to.
+  applies_when?: Record<string, string>;
+  assessment_type_scope?: string[];
+  // #3426: catalogue evidence basis (context_input names the expected input).
+  evidence_basis?: Array<Record<string, unknown>>;
 }
 
 interface RegimeCatalog {
@@ -152,6 +165,216 @@ interface EvaluatedControl {
   // #0360 -- tags copied from catalogue; LLM does not generate them.
   // Always present (empty array if catalogue carries none).
   tags: string[];
+  // #3425 follow-up / #3426 / #3436: why an UNKNOWN control has no model verdict.
+  not_evaluated_reason?: ComplianceNotEvaluatedReason;
+  // #3426: inputs the catalogue expects (evidence_basis.context_input) when a
+  // GAP was downgraded for insufficient evidence.
+  missing_input?: string[];
+  // #3414: present when the evidence-quality guard capped a model GAP.
+  verdict_guard?: VerdictGuard;
+}
+
+// ---------------------------------------------------------------------------
+// #3414: evidence-quality guard (deterministic post-check after #3426)
+// ---------------------------------------------------------------------------
+
+/**
+ * Why a cited signal does not verify a GAP:
+ *   - `test_code`: its evidence is test code only (#3403 marker, or every cited
+ *     code path is a test path by the built-in rules);
+ *   - `low_confidence`: the signal carries confidence low (Pass 08 / 21 bare
+ *     tokens and test-only catalogue hits, #3410 / #3411);
+ *   - `llm_inferred`: an LLM-derived signal that cites no file at all.
+ */
+export type EvidenceQualityIssue = 'test_code' | 'low_confidence' | 'llm_inferred';
+
+/** Guard record written on a capped control (`verdict_guard`) and in `assessment.evidence_guard`. */
+export interface VerdictGuard {
+  original_outcome: 'GAP';
+  outcome: 'PARTIAL';
+  reason: 'unverified_evidence';
+  /** Cited signals (insufficient-input signals excluded) with their issues. */
+  cited: Array<{ id: string; issues: EvidenceQualityIssue[] }>;
+}
+
+/** Legacy numeric confidence (0-1) below 0.5 counts as low; a missing confidence never does. */
+function isLowConfidence(c: unknown): boolean {
+  if (typeof c === 'number') return c < 0.5;
+  return c === 'low';
+}
+
+/**
+ * #3414: evidence kind for the compliance guard. Like `signalEvidenceKind`,
+ * except that documents inside test folders (fixtures such as
+ * `src/test/resources/users.csv`) count as test code: fake personal data in
+ * test resources must not verify a GAP. Kept local so the #3418 chat
+ * classification is unchanged.
+ */
+export function complianceEvidenceKind(s: Signal, sourceRoot?: string): EvidenceKind {
+  const kind = signalEvidenceKind(s, sourceRoot);
+  if (kind !== 'document') return kind;
+  const paths = (Array.isArray(s.evidence) ? s.evidence : []).flatMap((e) => evidencePaths(String(e), sourceRoot));
+  return paths.length > 0 && paths.every((p) => isTestPath(p)) ? 'test-code' : kind;
+}
+
+/** Evidence-quality issues of one signal; empty = verified evidence (#3414). */
+export function signalEvidenceIssues(s: Signal, sourceRoot?: string): EvidenceQualityIssue[] {
+  const issues: EvidenceQualityIssue[] = [];
+  const kind: EvidenceKind = complianceEvidenceKind(s, sourceRoot);
+  switch (kind) {
+    case 'test-code':
+      issues.push('test_code');
+      break;
+    case 'none':
+      if (signalDetectionMethod(s) === 'llm') issues.push('llm_inferred');
+      break;
+    case 'production':
+    case 'mixed':
+    case 'document':
+      break;
+    default: {
+      const unreachable: never = kind;
+      return unreachable;
+    }
+  }
+  if (isLowConfidence(s.confidence)) issues.push('low_confidence');
+  return issues;
+}
+
+const ISSUE_LABEL: Readonly<Record<EvidenceQualityIssue, string>> = {
+  test_code: 'test code only',
+  low_confidence: 'low confidence',
+  llm_inferred: 'LLM-inferred without file evidence',
+};
+
+/**
+ * #3414 post-check over a model GAP (after downgradeUnsupportedGap). The GAP is
+ * capped at PARTIAL when no cited signal (insufficient-input signals aside) is
+ * verified evidence, i.e. every cited signal is test code only, low confidence
+ * or LLM-inferred without file evidence, or the GAP cites no signal at all.
+ * A GAP backed by at least one verified signal (production, mixed or document
+ * evidence, confidence not low) stays GAP. Rule-decided controls and every
+ * other outcome are returned unchanged.
+ */
+export function guardUnverifiedGap(
+  control: EvaluatedControl,
+  signalsById: ReadonlyMap<string, Signal>,
+  sourceRoot?: string,
+): EvaluatedControl {
+  if (control.outcome !== 'GAP' || control.assessor !== 'llm') return control;
+  const cited = control.signal_refs
+    .filter((id) => !isInsufficientInputSignal(id))
+    .map((id) => {
+      const s = signalsById.get(id);
+      return { id, issues: s ? signalEvidenceIssues(s, sourceRoot) : (['llm_inferred'] as EvidenceQualityIssue[]) };
+    });
+  if (cited.some((c) => c.issues.length === 0)) return control;
+  const why = cited.length > 0
+    ? `no cited signal is verified evidence (${cited.map((c) => `${c.id}: ${c.issues.map((i) => ISSUE_LABEL[i]).join(', ')}`).join('; ')})`
+    : 'it cites no signal';
+  return {
+    ...control,
+    outcome: 'PARTIAL',
+    status: 'PARTIAL',
+    rationale: `${UNVERIFIED_EVIDENCE_RATIONALE_PREFIX}: the model proposed GAP, but ${why}. Test code, low-confidence pattern matches and inference without file evidence do not demonstrate that the control is unmet. Model rationale: ${control.rationale}`,
+    remediation: `Verify the cited finding in production code and re-run the assessment.${control.remediation ? ` ${control.remediation}` : ''}`,
+    assessor: 'rule_engine',
+    verdict_guard: { original_outcome: 'GAP', outcome: 'PARTIAL', reason: 'unverified_evidence', cited },
+  };
+}
+
+/**
+ * #3414: append "Evidence basis: based on N signals, M in test code, K low
+ * confidence." to a model verdict (SATISFIED / PARTIAL / GAP, or any outcome
+ * that cites signals). Rule-decided controls without citations stay unchanged.
+ */
+export function withEvidenceBasis(
+  control: EvaluatedControl,
+  signalsById: ReadonlyMap<string, Signal>,
+  sourceRoot?: string,
+): EvaluatedControl {
+  const refs = control.signal_refs;
+  const resolved = control.outcome === 'SATISFIED' || control.outcome === 'PARTIAL' || control.outcome === 'GAP';
+  if (refs.length === 0 && !resolved) return control;
+  let testCode = 0;
+  let low = 0;
+  for (const id of refs) {
+    const s = signalsById.get(id);
+    if (!s) continue;
+    const issues = signalEvidenceIssues(s, sourceRoot);
+    if (issues.includes('test_code')) testCode += 1;
+    if (issues.includes('low_confidence')) low += 1;
+  }
+  return { ...control, rationale: `${control.rationale} ${formatEvidenceBasis(refs.length, testCode, low)}` };
+}
+
+// ---------------------------------------------------------------------------
+// #3426: GAP vs insufficient evidence (deterministic post-check after the LLM)
+// ---------------------------------------------------------------------------
+
+/**
+ * A signal that reports missing input rather than a finding: a scope signal
+ * (`SCOPE-*`, e.g. SCOPE-10 "data processing agreements not supplied") or a
+ * skipped-pass marker (`<PREFIX>-00`, see llmSkipResult). Citing it proves
+ * that evidence is absent, not that a control is unmet. #3414: the
+ * evidence-quality guard (guardUnverifiedGap) leaves these signals to this check.
+ * #3426: distinct from @swao/core isAbsenceEvidenceRef, which classifies an
+ * entry of `signal.evidence[]` ("0 source files scanned"); this classifies a
+ * cited signal id.
+ */
+export function isInsufficientInputSignal(id: string): boolean {
+  return /^SCOPE-/i.test(id) || /-00$/.test(id);
+}
+
+/** A cited signal that demonstrates a shortcoming (negative outcome or a finding severity). */
+function isRealNegativeSignal(s: Signal | undefined): boolean {
+  if (!s || isInsufficientInputSignal(s.id)) return false;
+  if (s.outcome !== undefined) return s.outcome === 'negative';
+  return s.severity === 'critical' || s.severity === 'high' || s.severity === 'medium' || s.severity === 'low';
+}
+
+/** `evidence_basis` entries of kind `context_input` (the catalogue's expected inputs). */
+export function contextInputsOf(c: Pick<CatalogControl, 'evidence_basis'>): string[] {
+  return (c.evidence_basis ?? [])
+    .map((e) => (typeof e?.['context_input'] === 'string' ? e['context_input'] : ''))
+    .filter((x) => x !== '');
+}
+
+/**
+ * #3426 post-check over an LLM verdict (signal_refs already validated). A GAP
+ * becomes UNKNOWN with `not_evaluated_reason: insufficient_evidence` when
+ *   1. every cited signal is an insufficient-input signal (SCOPE-* / *-00), or
+ *   2. the control expects a `context_input` and no cited signal is a real
+ *      negative finding (missing input is not non-compliance).
+ * A GAP backed by at least one real negative signal (CRYPTO-*, DATA-*, ...)
+ * stays GAP. Other outcomes are returned unchanged.
+ */
+export function downgradeUnsupportedGap(
+  control: EvaluatedControl,
+  catalogControl: Pick<CatalogControl, 'evidence_basis'>,
+  signalsById: ReadonlyMap<string, Signal>,
+): EvaluatedControl {
+  if (control.outcome !== 'GAP') return control;
+  const refs = control.signal_refs;
+  const onlyInsufficient = refs.length > 0 && refs.every(isInsufficientInputSignal);
+  const expected = contextInputsOf(catalogControl);
+  const anyRealNegative = refs.some((id) => isRealNegativeSignal(signalsById.get(id)));
+  if (!onlyInsufficient && (expected.length === 0 || anyRealNegative)) return control;
+  const missing = expected.length > 0 ? `; missing input: ${expected.join(', ')}` : '';
+  const cited = refs.length > 0 ? ` citing only ${refs.join(', ')}` : ' without a cited negative finding';
+  return {
+    ...control,
+    outcome: 'UNKNOWN',
+    status: 'UNKNOWN',
+    not_evaluated_reason: 'insufficient_evidence',
+    ...(expected.length > 0 ? { missing_input: expected } : {}),
+    rationale: `${NOT_EVALUATED_RATIONALE_PREFIX.insufficient_evidence}${missing}). The model proposed GAP${cited}; missing or out-of-scope input is not evidence of non-compliance. Model rationale: ${control.rationale}`,
+    evidence_ids: [],
+    remediation: expected.length > 0
+      ? `Supply ${expected.join(', ')} (or the artefact named by the cited signal) and re-run the assessment.`
+      : 'Supply the missing input named by the cited signal and re-run the assessment.',
+    assessor: 'rule_engine',
+  };
 }
 
 // Resolve the current run's passes/ dir via latest.txt. Falls back to
@@ -243,15 +466,190 @@ function loadRegimeCatalog(workspaceRoot: string, regimeId: string): RegimeCatal
   }
 }
 
-function summariseSignals(signals: Signal[]): string {
+// ---------------------------------------------------------------------------
+// #3425: deterministic applicability pre-filter (no LLM call)
+// ---------------------------------------------------------------------------
+
+/** Short tokens used by catalogue `assessment_type_scope` lists. */
+export type AssessmentScopeToken = 'app' | 'aud' | 'lz' | 'llm' | 'service';
+
+/**
+ * Map an assessment type (`assessment.type` in .swao.yml, router vocabulary
+ * incl. deprecated aliases) to the scope tokens a control must list to be
+ * evaluated. Absent type = the router default (application). An unrecognised
+ * type returns null: no scope filter is applied.
+ */
+export function assessmentScopeTokens(assessmentType: string | undefined): AssessmentScopeToken[] | null {
+  switch ((assessmentType ?? 'application').trim().toLowerCase()) {
+    case 'application':
+    case 'source-code':
+      return ['app'];
+    case 'audit':
+    case 'human':
+      return ['aud'];
+    case 'hybrid':
+      return ['app', 'aud'];
+    case 'landing-zone':
+    case 'landing-zone-catalog':
+    case 'landing-zone-customer':
+      return ['lz'];
+    case 'llm':
+      return ['llm'];
+    case 'service':
+      return ['service'];
+    default:
+      return null;
+  }
+}
+
+// #3425 follow-up: the Design 104 Q-CODE-7 matcher lives in @swao/core
+// (compliance-applicability.ts), shared with the publication extractor.
+// Re-exported so this module's public surface is unchanged.
+export { appliesWhenMatches };
+
+/** Pass 11 applicability decision for one catalogue control. */
+export type ControlApplicability =
+  | { kind: 'evaluate' }
+  | { kind: 'not_applicable'; rationale: string }
+  | { kind: 'out_of_scope'; rationale: string };
+
+export interface ApplicabilityContext {
+  frameworkContext?: Readonly<Record<string, string>>;
+  /** From assessmentScopeTokens(); null = no scope filter. */
+  scopeTokens: readonly AssessmentScopeToken[] | null;
+}
+
+/**
+ * Decide whether Pass 11 sends a control to the LLM. Order matters: an
+ * applies_when mismatch is definitive (N_A) and wins over the scope check, so
+ * a sector control scoped `[aud]` is N/A, not merely out of scope.
+ */
+export function controlApplicability(
+  c: Pick<CatalogControl, 'applies_when' | 'assessment_type_scope'>,
+  ctx: ApplicabilityContext,
+): ControlApplicability {
+  if (!appliesWhenMatches(c.applies_when, ctx.frameworkContext)) {
+    const keys = Object.keys(c.applies_when ?? {});
+    const cond = keys.map((k) => `${k}: ${c.applies_when![k]}`).join(', ');
+    const actual = keys.map((k) => `${k}: ${ctx.frameworkContext?.[k] ?? 'not set'}`).join(', ');
+    return {
+      kind: 'not_applicable',
+      rationale: `Not applicable: the control applies when ${cond}; framework_context in .swao.yml has ${actual}. Decided by rule, no LLM evaluation.`,
+    };
+  }
+  const scope = c.assessment_type_scope ?? [];
+  const tokens = ctx.scopeTokens;
+  if (tokens && scope.length > 0 && !scope.some((t) => (tokens as readonly string[]).includes(t))) {
+    return {
+      kind: 'out_of_scope',
+      // #3425 follow-up: shared prefix so the publication recognises out-of-scope controls.
+      rationale: `${NOT_EVALUATED_RATIONALE_PREFIX.out_of_scope} [${scope.join(', ')}] and this run is [${tokens.join(', ')}]. Assess it in a matching assessment.`,
+    };
+  }
+  return { kind: 'evaluate' };
+}
+
+const SwaoYmlApplicabilitySchema = z.object({
+  framework_context: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  assessment: z.object({ type: z.string().optional() }).passthrough().optional(),
+}).passthrough();
+
+/**
+ * Read the applicability context from the app's own .swao.yml (the file the
+ * publication extractor reads). Scalars are stringified so an unquoted
+ * `has_ot_systems: true` matches the catalogue's "true". The run type comes
+ * from `routedType` (PassContext.assessmentType: the routed decision incl. a
+ * CLI `--type` override) when given, else `.swao.yml` assessment.type, else the
+ * application default.
+ */
+export function loadApplicabilityContext(workspacePath: string, routedType?: string): ApplicabilityContext {
+  const ymlPath = join(workspacePath, '.swao.yml');
+  let parsed: z.infer<typeof SwaoYmlApplicabilitySchema> | null = null;
+  if (existsSync(ymlPath)) {
+    try {
+      const r = SwaoYmlApplicabilitySchema.safeParse(load(readFileSync(ymlPath, 'utf-8')));
+      if (r.success) parsed = r.data;
+    } catch { /* unreadable: no context */ }
+  }
+  const fc = parsed?.framework_context;
+  return {
+    frameworkContext: fc ? Object.fromEntries(Object.entries(fc).map(([k, v]) => [k, String(v)])) : undefined,
+    // #3425 follow-up: the routed type (CLI override aware) wins over .swao.yml.
+    scopeTokens: assessmentScopeTokens(routedType ?? parsed?.assessment?.type),
+  };
+}
+
+/** A control decided by rule (#3425): N_A for applies_when, UNKNOWN when out of scope. */
+function ruleControl(c: CatalogControl, assessedAt: string, decision: Exclude<ControlApplicability, { kind: 'evaluate' }>): EvaluatedControl {
+  const outcome = decision.kind === 'not_applicable' ? 'N_A' : 'UNKNOWN';
+  const base = { ...fallbackControl(c, assessedAt, decision.rationale), outcome, status: outcome };
+  // #3425 follow-up: structured marker so consumers can tell out-of-scope UNKNOWN
+  // from an ordinary or failed-LLM UNKNOWN.
+  return decision.kind === 'out_of_scope' ? { ...base, not_evaluated_reason: 'out_of_scope' } : base;
+}
+
+/** Regime-level Pass 11 status written to `assessment.regimes[].status`. */
+export type RegimeEvaluationStatus = 'evaluated' | 'insufficient_evidence' | 'pending-llm' | 'out_of_scope' | 'degraded';
+
+/**
+ * #3425 follow-up: a regime none of whose controls is in scope for this
+ * assessment type (every control out of scope or N/A, at least one out of
+ * scope) is `out_of_scope`, not `insufficient_evidence` / `pending-llm`.
+ * #3436: a regime with any control that has no model verdict because the LLM
+ * evaluation failed is `degraded` (not fully evaluated). Rule-engine decisions
+ * (N_A, out of scope) stay valid verdicts and never make a regime degraded.
+ */
+export function regimeEvaluationStatus(
+  controls: ReadonlyArray<Pick<EvaluatedControl, 'outcome' | 'not_evaluated_reason'>>,
+  llmPresent: boolean,
+): RegimeEvaluationStatus {
+  const anyOutOfScope = controls.some((c) => c.not_evaluated_reason === 'out_of_scope');
+  if (anyOutOfScope && controls.every((c) => c.not_evaluated_reason === 'out_of_scope' || c.outcome === 'N_A')) {
+    return 'out_of_scope';
+  }
+  if (!llmPresent) return 'pending-llm';
+  if (controls.some((c) => c.not_evaluated_reason === 'llm_unavailable')) return 'degraded';
+  const anyResolved = controls.some((c) => c.outcome === 'SATISFIED' || c.outcome === 'PARTIAL' || c.outcome === 'GAP');
+  return anyResolved ? 'evaluated' : 'insufficient_evidence';
+}
+
+/** #3414: evidence path class as the prompt names it (never "test code" for production evidence). */
+function evidenceClassLabel(kind: EvidenceKind): string {
+  switch (kind) {
+    case 'test-code': return 'test code';
+    case 'production': return 'production';
+    case 'mixed': return 'production and tests';
+    case 'document': return 'document';
+    case 'none': return 'no file';
+    default: {
+      const unreachable: never = kind;
+      return unreachable;
+    }
+  }
+}
+
+function summariseSignals(signals: Signal[], sourceRoot?: string): string {
   if (signals.length === 0) return '(no signals emitted in this run)';
   const lines: string[] = [];
   for (const s of signals) {
     const sev = s.severity ?? 'informational';
     const derivation = (s.derivation ?? '').replace(/\s+/g, ' ').slice(0, 280);
-    lines.push(`  - ${s.id} [${sev}]: ${derivation}`);
+    // #3403 / #3414: confidence, evidence path class (test_code marker or test
+    // paths count as test code) and evidence count per signal.
+    const conf = typeof s.confidence === 'string' || typeof s.confidence === 'number' ? `, confidence ${String(s.confidence)}` : '';
+    const n = Array.isArray(s.evidence) ? s.evidence.length : 0;
+    const evidence = `, evidence: ${evidenceClassLabel(complianceEvidenceKind(s, sourceRoot))}${n > 0 ? ` (${n})` : ''}`;
+    lines.push(`  - ${s.id} [${sev}${conf}${evidence}]: ${derivation}`);
   }
   return lines.join('\n');
+}
+
+/** #3414: the run has a signal a GAP must not rest on alone (test code or low confidence). */
+function hasWeakSignals(signals: Signal[], sourceRoot?: string): boolean {
+  return signals.some((s) => {
+    const issues = signalEvidenceIssues(s, sourceRoot);
+    return issues.includes('test_code') || issues.includes('low_confidence');
+  });
 }
 
 function summariseControls(controls: CatalogControl[]): string {
@@ -290,6 +688,7 @@ function buildCompliancePrompt(
   regime: { id: string; name: string; version: string },
   controls: CatalogControl[],
   signals: Signal[],
+  sourceRoot?: string,
 ): string {
   return [
     'COMPLIANCE_EVALUATION_PASS',
@@ -307,6 +706,21 @@ function buildCompliancePrompt(
     '  - N_A:       control is not applicable to this workload (justify).',
     '  - UNKNOWN:   no signals address this control either way.',
     '',
+    // #3426: missing input is not non-compliance.
+    'Signals stating that an artefact is out of scope, missing or not supplied',
+    '(e.g. SCOPE-* signals) and skipped-pass markers (IDs ending in -00) mean',
+    'UNKNOWN, never GAP: they show that evidence is absent, not that the control',
+    'is unmet. Return GAP only when a signal demonstrates a shortcoming.',
+    '',
+    // #3403 / #3414: only when a signal rests on test code or has low
+    // confidence, so prompts of runs without such signals carry no extra rule.
+    ...(hasWeakSignals(signals, sourceRoot)
+      ? ['Signals with "evidence: test code" rest on test code only (tests, fixtures,',
+        'test data); they do not show how production code behaves. Signals with',
+        '"confidence low" are unverified pattern matches. Never return GAP on such',
+        'signals alone: use PARTIAL or UNKNOWN and name the limitation in the',
+        'rationale. GAP needs at least one production signal that is not low confidence.', '']
+      : []),
     'Cite signal IDs in signal_refs (only IDs that appear in ASSESSMENT_SIGNALS;',
     'do not invent). Provide a 2-3 sentence rationale. For PARTIAL or GAP,',
     'add a 1-sentence remediation.',
@@ -321,7 +735,7 @@ function buildCompliancePrompt(
     '    ] }',
     '',
     'ASSESSMENT_SIGNALS:',
-    summariseSignals(signals),
+    summariseSignals(signals, sourceRoot),
     '',
     'CONTROLS_BATCH:',
     summariseControls(controls),
@@ -367,6 +781,27 @@ function fallbackControl(c: CatalogControl, assessedAt: string, reason: string):
   };
 }
 
+/**
+ * #3436: rationale for a control whose LLM evaluation did not happen. Starts
+ * with the shared `llm_unavailable` prefix so the publication can say
+ * "compliance not fully evaluated" from the rationale alone.
+ */
+export function llmUnavailableRationale(callError: string | undefined, raw: string | null, batchParsed: boolean): string {
+  const p = NOT_EVALUATED_RATIONALE_PREFIX.llm_unavailable;
+  if (callError !== undefined) {
+    return `${p} failed: the model call did not succeed after its retries (${callError}). No verdict for this control; re-run the assessment when the LLM provider is reachable.`;
+  }
+  if (raw === null || !batchParsed) {
+    return `${p} returned no usable answer for this control's batch (empty or invalid JSON). No verdict for this control; re-run the assessment.`;
+  }
+  return `${p} returned no verdict for this control. No verdict recorded; re-run the assessment.`;
+}
+
+/** #3436: UNKNOWN without a model verdict (llm_unavailable); never a confident outcome. */
+function llmUnavailableControl(c: CatalogControl, assessedAt: string, rationale: string): EvaluatedControl {
+  return { ...fallbackControl(c, assessedAt, rationale), not_evaluated_reason: 'llm_unavailable' };
+}
+
 function safeJsonParse(raw: string): unknown {
   // Tolerate leading prose or code-fence wrappers.
   const fenced = raw.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
@@ -391,9 +826,16 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
 
   const signals = loadAllSignals(workspacePath, passesDir);
   const regimeIds = loadSelectedRegimes(workspacePath);
+  const applicabilityCtx = loadApplicabilityContext(workspacePath, ctx.assessmentType);
   const workspaceRoot = resolveWorkspaceRoot(workspacePath);
 
   const validSignalIds = new Set(signals.map((s) => s.id));
+  // #3426: cited-signal lookup for the GAP post-check.
+  const signalsById = new Map<string, Signal>(signals.map((s) => [s.id, s]));
+  // #3414: absolute evidence paths under the source root are classified relative to it.
+  const sourceRoot = ctx.sourcePath;
+  // #3414: GAP verdicts the evidence-quality guard capped (logged in the pass output).
+  const evidenceGuard: Array<{ regime: string; control: string } & VerdictGuard> = [];
   // #1507: build a map of signal ID -> source file evidence paths so that
   // evidence_ids can be populated from signal_refs rather than from the LLM.
   const signalEvidenceMap = new Map<string, readonly string[]>(
@@ -410,6 +852,8 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
   }> = [];
   const summarySignals: Signal[] = [];
   let signalCounter = 0;
+  // #3436: regimes with controls that never got a model verdict.
+  const degradedRegimes: Array<{ id: string; controls_without_verdict: number }> = [];
 
   if (regimeIds.length === 0) {
     return {
@@ -442,6 +886,12 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
     console.log(`[progress] Pass 11 -- ${regimeId} (${regimeProgress}/${regimeIds.length})`);
   };
   const catalogs = regimeIds.map((regimeId) => loadRegimeCatalog(workspaceRoot, regimeId));
+  // #3425: decide applicability once per control; only `evaluate` controls are
+  // batched for the LLM (phase A) and consumed in the same order (phase B).
+  const decisions = catalogs.map((catalog) =>
+    (catalog?.controls ?? []).map((c) => controlApplicability(c, applicabilityCtx)));
+  const evaluable = catalogs.map((catalog, r) =>
+    (catalog?.controls ?? []).filter((_, i) => decisions[r]![i]!.kind === 'evaluate'));
 
   // #3222 phase A: send every regime's batch prompts concurrently (bounded by
   // the provider's limit, #3284: complianceLlmConcurrency). Prompts are built exactly as before; a
@@ -450,22 +900,29 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
   // regime and batch order, so signal numbering and output are unchanged.
   const rawResponses: Array<Array<string | null>> = regimeIds.map(() => []);
   const regimeHasBatches: boolean[] = regimeIds.map(() => false);
+  // #3436: per-batch call failure (error name), undefined when the call returned.
+  const batchErrors: Array<Array<string | undefined>> = regimeIds.map(() => []);
   if (llm) {
     const jobs: Array<{ r: number; b: number; prompt: string }> = [];
     regimeIds.forEach((regimeId, r) => {
       const catalog = catalogs[r];
       if (!catalog) return;
-      const controls = catalog.controls ?? [];
+      const controls = evaluable[r]!;
       const meta = regimeMetaOf(catalog, regimeId);
       for (let i = 0, b = 0; i < controls.length; i += BATCH_SIZE, b += 1) {
-        jobs.push({ r, b, prompt: buildCompliancePrompt(meta, controls.slice(i, i + BATCH_SIZE), signals) });
+        jobs.push({ r, b, prompt: buildCompliancePrompt(meta, controls.slice(i, i + BATCH_SIZE), signals, sourceRoot) });
       }
     });
     const pending = regimeIds.map((_, r) => jobs.filter((j) => j.r === r).length);
     pending.forEach((n, r) => { regimeHasBatches[r] = n > 0; });
     await mapWithConcurrency(jobs, complianceLlmConcurrency(llm), async (job) => {
       let raw: string | null = null;
-      try { raw = await llm.complete(job.prompt); } catch { raw = null; /* UNKNOWN fallback in phase B */ }
+      try { raw = await llm.complete(job.prompt); } catch (e) {
+        raw = null; /* UNKNOWN fallback in phase B */
+        // #3436: remember that this batch never got a model response (retries
+        // exhausted / provider error); its controls are marked llm_unavailable.
+        batchErrors[job.r]![job.b] = e instanceof Error && e.name ? e.name : 'Error';
+      }
       rawResponses[job.r]![job.b] = raw;
       pending[job.r]! -= 1;
       if (pending[job.r] === 0) reportProgress(regimeIds[job.r]!);
@@ -516,10 +973,10 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       }
     }
 
-    const controls = catalog.controls ?? [];
+    const controls = evaluable[r]!;
     const regimeMeta = regimeMetaOf(catalog, regimeId);
 
-    const evaluated: EvaluatedControl[] = [];
+    const llmEvaluated = new Map<string, EvaluatedControl>();
 
     for (let i = 0, b = 0; i < controls.length; i += BATCH_SIZE, b += 1) {
       const batch = controls.slice(i, i + BATCH_SIZE);
@@ -539,9 +996,12 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       for (const c of batch) {
         const llmEval = batchResults?.controls.find((ec) => ec.id === c.id);
         if (!llmEval) {
-          evaluated.push(fallbackControl(c, assessedAt, llm
-            ? 'LLM returned no evaluation for this control; falling back to UNKNOWN.'
-            : 'No LLM provider configured; control marked UNKNOWN. Re-run with a real LLM for evaluation.'));
+          // #3436: with a provider configured, a missing verdict means the
+          // evaluation did not happen (call failed after its retries, unusable
+          // or incomplete answer): UNKNOWN + llm_unavailable, never a verdict.
+          llmEvaluated.set(c.id, llm
+            ? llmUnavailableControl(c, assessedAt, llmUnavailableRationale(batchErrors[r]![b], rawResponses[r]![b] ?? null, batchResults !== null))
+            : fallbackControl(c, assessedAt, 'No LLM provider configured; control marked UNKNOWN. Re-run with a real LLM for evaluation.'));
           continue;
         }
         // B-02 (#0604): validate the LLM-cited signal_refs against the real signal set.
@@ -551,7 +1011,9 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
         // #1507: derive evidence_ids from the source-file evidence of each cited signal
         // rather than trusting the LLM to populate them (LLM was told to leave them empty).
         const derivedEvidenceIds = resolveEvidenceIds(cleanRefs, llmEval.outcome, signalEvidenceMap);
-        evaluated.push({
+        // #3426: post-check the verdict; a GAP backed only by missing-input
+        // signals becomes UNKNOWN (insufficient evidence).
+        const checked = downgradeUnsupportedGap({
           id: c.id,
           title: c.title ?? c.id,
           description: c.description ?? '',
@@ -565,14 +1027,46 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
           assessor: 'llm',
           assessed_at: assessedAt,
           tags: c.tags ?? [],
-        });
+        }, c, signalsById);
+        // #3414: then the evidence-quality guard (a surviving GAP needs one
+        // verified signal), then the evidence-basis line on the rationale.
+        const guarded = guardUnverifiedGap(checked, signalsById, sourceRoot);
+        if (guarded.verdict_guard) {
+          evidenceGuard.push({ regime: regimeMeta.id, control: c.id, ...guarded.verdict_guard });
+          console.warn(
+            `[warn] COMP: ${regimeMeta.id}/${c.id} GAP capped at PARTIAL (unverified evidence): ` +
+            (guarded.verdict_guard.cited.map((x) => `${x.id} [${x.issues.join(', ')}]`).join(', ') || 'no cited signal'),
+          );
+        }
+        llmEvaluated.set(c.id, withEvidenceBasis(guarded, signalsById, sourceRoot));
       }
     }
 
-    const anyResolved = evaluated.some(c => c.outcome === 'SATISFIED' || c.outcome === 'PARTIAL' || c.outcome === 'GAP');
+    // #3425: emit every catalogue control in catalogue order; rule-decided
+    // controls (N_A / out of scope) never reached the LLM.
+    let outOfScope = 0;
+    const evaluated: EvaluatedControl[] = (catalog.controls ?? []).map((c, i) => {
+      const decision = decisions[r]![i]!;
+      switch (decision.kind) {
+        case 'evaluate':
+          return llmEvaluated.get(c.id) ?? (llm
+            ? llmUnavailableControl(c, assessedAt, llmUnavailableRationale(undefined, null, true))
+            : fallbackControl(c, assessedAt, 'No LLM provider configured; control marked UNKNOWN. Re-run with a real LLM for evaluation.'));
+        case 'out_of_scope':
+          outOfScope += 1;
+          return ruleControl(c, assessedAt, decision);
+        case 'not_applicable':
+          return ruleControl(c, assessedAt, decision);
+        default: {
+          const unreachable: never = decision;
+          return unreachable;
+        }
+      }
+    });
+
     regimesOut.push({
       ...regimeMeta,
-      status: llm ? (anyResolved ? 'evaluated' : 'insufficient_evidence') : 'pending-llm',
+      status: regimeEvaluationStatus(evaluated, Boolean(llm)),
       controls: evaluated,
     });
 
@@ -583,8 +1077,13 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       unknown:   evaluated.filter((c) => c.outcome === 'UNKNOWN').length,
       na:        evaluated.filter((c) => c.outcome === 'N_A').length,
     };
-    const summaryDerivation = `${regimeId}: ${counts.satisfied} SATISFIED, ${counts.partial} PARTIAL, ${counts.gap} GAP, ${counts.unknown} UNKNOWN, ${counts.na} N/A out of ${evaluated.length} controls.`;
-    const sev = counts.gap > 0 ? 'high' : counts.partial > 0 ? 'medium' : 'informational';
+    // #3436: name the controls without a model verdict in the roll-up.
+    const unavailable = evaluated.filter((c) => c.not_evaluated_reason === 'llm_unavailable').length;
+    if (unavailable > 0) degradedRegimes.push({ id: regimeMeta.id, controls_without_verdict: unavailable });
+    // #3414: name the GAP verdicts the evidence-quality guard capped.
+    const capped = evaluated.filter((c) => c.verdict_guard !== undefined).length;
+    const summaryDerivation = `${regimeId}: ${counts.satisfied} SATISFIED, ${counts.partial} PARTIAL, ${counts.gap} GAP, ${counts.unknown} UNKNOWN, ${counts.na} N/A out of ${evaluated.length} controls.${outOfScope > 0 ? ` ${outOfScope} UNKNOWN are outside the assessment type scope.` : ''}${unavailable > 0 ? ` Compliance not fully evaluated: ${unavailable} UNKNOWN have no model verdict because the LLM evaluation failed; re-run the assessment.` : ''}${capped > 0 ? ` ${capped} PARTIAL were proposed as GAP and capped for unverified evidence (test code only, low confidence or no file evidence).` : ''}`;
+    const sev = counts.gap > 0 ? 'high' : (counts.partial > 0 || unavailable > 0) ? 'medium' : 'informational';
     signalCounter += 1;
     summarySignals.push({
       id: `COMP-${String(signalCounter).padStart(2, '0')}`,
@@ -616,6 +1115,15 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       // LLM-optional alignment (#0550): uniform marker so doctor + HTML can
       // detect that controls degraded to UNKNOWN for want of an LLM.
       ...(llm ? {} : { skipped_reason: NO_LLM_REASON }),
+      // #3436: the pass header status vocabulary (complete | stub |
+      // not_applicable) has no degraded value, so the degradation is carried
+      // here: `degraded: true`, the reason and the affected regimes. Pass
+      // header status stays `complete` until the WSP pass schema gains one.
+      ...(degradedRegimes.length > 0
+        ? { degraded: true, degraded_reason: 'llm_unavailable', degraded_regimes: degradedRegimes }
+        : {}),
+      // #3414: guard decisions (absent when the guard changed nothing).
+      ...(evidenceGuard.length > 0 ? { evidence_guard: evidenceGuard } : {}),
     },
   };
 }
@@ -658,6 +1166,16 @@ function loadRegimeCatalogByDir(catalogsDir: string, regimeId: string): RegimeCa
  * reach compliance via CoreContext.complianceEvaluator.
  *
  * `opts` extras honoured: `llm?: LlmProvider`, `catalogsDir?: string`.
+ *
+ * #3425 follow-up: this path does NOT apply the applicability pre-filter
+ * (controlApplicability). It is unreachable from `swao assess` and the MCP
+ * server: assess runs runCompliancePass (packages/swao assess.ts and
+ * passes/index.ts), module-mcp does not import this module, and no host
+ * code constructs a CoreContext or resolves
+ * `complianceEvaluators` from this manifest (repo-wide grep, 2026-10-23). It
+ * also has no app directory, so no `.swao.yml` framework_context or
+ * assessment type to filter with. A caller that wires it up must pass that
+ * context and reuse controlApplicability before batching.
  */
 export async function evaluate(
   signals: Signal[],

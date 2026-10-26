@@ -39,8 +39,10 @@ controls/
 -- landing-zone-checks-catalogue.yaml     Landing-zone gate checks
 -- legacy-indicators-catalogue.yaml       Legacy technology signals
 -- licence-risk-catalogue.yaml            Licence risk classifications
+-- migration-scores-catalogue.yaml        Cloud-native and portability score weights (#3431)
 -- observability-components-catalogue.yaml  Observability component patterns
 -- pipeline-security-rules.yaml           CI/CD pipeline security rules
+-- service-footprint-catalogue.yaml       Backing services an application needs (#3430)
 -- sovereign-service-catalogue.yaml       Sovereign-eligible service list
 -- testing-maturity-catalogue.yaml        Testing maturity indicators
 -- vendor-sdk-catalogue.yaml              Vendor SDK signal catalogue

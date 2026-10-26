@@ -22,7 +22,9 @@ import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
+import { TARGET_CAPABILITY_GAP_TAG } from './infra-input-role.js';
 import type { LandingZoneResult } from '@swao/core';
+import { computeMigrationScores, type MigrationScores } from '../scoring/migration-scores.js';
 import {
   resolveDefaultCataloguePath,
   loadCatalogue,
@@ -271,7 +273,16 @@ function computeCoverageScore(priorSignals: Signal[]): number {
   return Math.round(Math.max(0.0, Math.min(1.0, score)) * 100) / 100;
 }
 
-function buildSynthPrompt(priorSignals: Signal[], appId: string, recommendedProvider?: string): string {
+// #3430: exported for the target-capability prompt section test.
+// #3431: `scores` are the deterministic cloud-native and portability scores
+// (scoring/migration-scores.ts). The LLM no longer sets portability_score; it
+// sees the computed values as context and may comment on them.
+export function buildSynthPrompt(
+  priorSignals: Signal[],
+  appId: string,
+  recommendedProvider?: string,
+  scores?: MigrationScores,
+): string {
   const bySeverity: Record<string, string[]> = {};
   for (const s of priorSignals) {
     const sev = s.severity ?? 'informational';
@@ -294,7 +305,7 @@ function buildSynthPrompt(priorSignals: Signal[], appId: string, recommendedProv
     '',
     'Task: Apply the 7R migration framework. Return JSON matching:',
     '{ "signals": [...], "assessment": { "seven_r_label": "string", "migration_rationale": "string",',
-    '  "modernization_position": "string", "portability_score": number, "confidence": "string",',
+    '  "modernization_position": "string", "portability_comment": "string", "confidence": "string",',
     '  "landing_zone": "string", "recommended_next_steps": ["string"], "migration_blockers": number,',
     '  "migration_enablers": ["string"] } }',
     '',
@@ -304,19 +315,32 @@ function buildSynthPrompt(priorSignals: Signal[], appId: string, recommendedProv
     'modernization_position is a strategic disposition; canonical values are invest_modernize_now,',
     '  migrate_stabilize, tolerate_contain, retire_replace.',
     '  Refinement variants are acceptable (e.g. invest_modernize_with_remediation).',
-    'portability_score is a decimal 0.0-1.0. Definition: fraction of egress signals that have',
-    '  sovereign-cloud equivalents, using formula (available + 0.5 * partial) / total_egress.',
-    '  Sovereign-ready threshold is 0.70.',
-    '  If no EGR signals exist: estimate from TF-* (twelve-factor) and CTX-* (IaC) signals.',
-    '  Containerised + full IaC coverage => 0.8-1.0. No IaC + bare-metal deployment => 0.1-0.3.',
-    '  Each CTX signal indicating vendor lock-in (proprietary SDK, managed PaaS, SaaS-only API)',
-    '  reduces the score by 0.1-0.2. Absence of any signals => 0.5 (unknown).',
+    'Do not emit portability_score or cloud_native_score: SWAO computes both deterministically',
+    '  (see DETERMINISTIC SCORES below). portability_comment is an optional short remark (max 300',
+    '  characters) on the computed portability score, e.g. which lock-in or gap matters most.',
     'confidence is your confidence in the overall 7R verdict; one of: high, medium, low.',
     '  Reflect uncertainty when prior signals are sparse or contradictory.',
     'migration_blockers is an integer count.',
     '',
     SIGNAL_SCHEMA_HINT,
   ];
+
+  if (scores) {
+    lines.push('', '--- DETERMINISTIC SCORES (computed by SWAO, not to be re-estimated) ---');
+    const cn = scores.cloud_native;
+    lines.push(cn
+      ? `cloud_native_score: ${cn.score.toFixed(2)} (${cn.factors_checked} of ${cn.factors_total} twelve-factor checks determinate, confidence ${cn.confidence})`
+      : `cloud_native_score: not computed (${scores.cloud_native_skipped_reason ?? 'no input'})`);
+    const pt = scores.portability;
+    if (pt && pt.score !== null) {
+      lines.push(`portability_score: ${pt.score.toFixed(2)} from ${pt.components_used.join(', ')}`);
+      for (const c of pt.components) {
+        lines.push(`  ${c.id}: ${c.used && c.value !== null ? c.value.toFixed(2) : 'not used'} (${c.reason})`);
+      }
+    } else {
+      lines.push('portability_score: not computed (no input data)');
+    }
+  }
 
   if (recommendedProvider) {
     lines.push('', `Recommended landing zone from catalogue matching: ${recommendedProvider}`);
@@ -330,6 +354,24 @@ function buildSynthPrompt(priorSignals: Signal[], appId: string, recommendedProv
     }
     lines.push('', '--- EGR SIGNALS ---');
     for (const s of priorSignals.filter(x => x.id.startsWith('EGR-'))) {
+      lines.push(`${s.id}: ${s.derivation.slice(0, 120)}`);
+    }
+  }
+
+  // #3430 (decision on the #3429 follow-up): CTX signals tagged
+  // gap_type:target_capability describe what a candidate landing zone lacks,
+  // not a defect of the application. SYNTH sees them in a section of their own
+  // and must not count them as migration blockers or 7R evidence. The section
+  // is added only when such signals exist, so other prompts stay byte-identical.
+  const targetGaps = priorSignals.filter(s => s.implies?.includes(TARGET_CAPABILITY_GAP_TAG));
+  if (targetGaps.length > 0) {
+    lines.push(
+      '',
+      '--- TARGET-PLATFORM GAPS (gap_type:target_capability) ---',
+      'These signals describe capabilities a candidate landing zone does not offer; they are not defects of the application today.',
+      'Do not count them in migration_blockers and do not use them as evidence for the 7R verdict; use them only for the landing_zone choice and next steps.',
+    );
+    for (const s of targetGaps.slice(0, 10)) {
       lines.push(`${s.id}: ${s.derivation.slice(0, 120)}`);
     }
   }
@@ -405,12 +447,19 @@ export function extractJsonObject(raw: string): unknown {
 export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
   const { workspacePath, appId, iter, assessedAt, llm } = ctx;
 
+  // #3431: deterministic scores, independent of the LLM. Every outcome of the
+  // pass carries them; derive-plan computes the same values for wsp.yaml.
+  const priorSignals = loadPriorSignals(workspacePath, ctx.passesDir);
+  const migrationScores = computeMigrationScores(ctx.passesDir ?? resolvePassesDir(workspacePath), {
+    signals: priorSignals,
+    workspaceAppDir: workspacePath,
+  });
+  const scoreFields = migrationScoreFields(migrationScores);
+
   if (!llm) {
     // LLM-optional alignment (#0550): no provider configured -> graceful skip.
-    return llmSkipResult({ id: 9, name: 'synthesis', signalPrefix: 'SYNTH', iter, assessedAt });
+    return llmSkipResult({ id: 9, name: 'synthesis', signalPrefix: 'SYNTH', iter, assessedAt, assessment: scoreFields });
   }
-
-  const priorSignals = loadPriorSignals(workspacePath, ctx.passesDir);
 
   // Landing zone matching sub-pass: runs before LLM call to inform the prompt
   let landingZoneResult: LandingZoneResult | undefined;
@@ -436,7 +485,7 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
   // Read the LZR verdict from 23-lzr.yaml of THIS run (Pass 23 runs before SYNTH, #3152).
   const lzrVerdictInfo = readLzrVerdict(workspacePath, ctx.passesDir);
 
-  const prompt = buildSynthPrompt(priorSignals, appId, landingZoneResult?.recommended_landing_zone);
+  const prompt = buildSynthPrompt(priorSignals, appId, landingZoneResult?.recommended_landing_zone, migrationScores);
   const raw = await llm.complete(prompt);
 
   // #3158: an unusable answer degrades this pass (SYNTH-00, not_applicable)
@@ -445,7 +494,7 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
     console.warn(`[warn] SYNTH pass: ${detail}; pass degraded.\n${raw.slice(0, 200)}`);
     return llmInvalidResponseResult({
       id: 9, name: 'synthesis', signalPrefix: 'SYNTH', iter, assessedAt, detail,
-      assessment: { prior_signals_analysed: priorSignals.length, coverage_score: computeCoverageScore(priorSignals), ...lzContext },
+      assessment: { prior_signals_analysed: priorSignals.length, coverage_score: computeCoverageScore(priorSignals), ...lzContext, ...scoreFields },
     });
   };
 
@@ -481,11 +530,16 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
     );
   }
 
-  const portabilityScore = parsed.assessment['portability_score'];
-  if (typeof portabilityScore !== 'number' || !Number.isFinite(portabilityScore) ||
-      portabilityScore < 0 || portabilityScore > 1) {
-    return degrade(`portability_score must be a decimal 0.0-1.0, got ${String(portabilityScore)}`);
-  }
+  // #3431: portability_score / cloud_native_score are code-set. A value the
+  // model still returns (older prompt habits, stubs) is discarded below; the
+  // optional portability_comment is kept when it is a short string.
+  const comment = parsed.assessment['portability_comment'];
+  delete parsed.assessment['portability_comment'];
+  delete parsed.assessment['portability_score'];
+  delete parsed.assessment['cloud_native_score'];
+  const portabilityComment = typeof comment === 'string' && comment.trim().length > 0
+    ? comment.trim().slice(0, 300)
+    : undefined;
 
   // Apply LZR adjustment to the 7R label and emit lzr_adjustment block
   const { adjustedLabel, lzrAdjustment } = applyLzrAdjustment(sevenR, lzrVerdictInfo);
@@ -514,6 +568,28 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
       coverage_score: coverageScore,
       prior_signals_analysed: priorSignals.length,
       ...lzContext,
+      ...(portabilityComment ? { portability_comment: portabilityComment } : {}),
+      ...scoreFields,
     },
   };
+}
+
+/**
+ * #3431: the synth assessment fields for the deterministic scores. The
+ * legacy keys portability_score / cloud_native_score stay (now code-set);
+ * the breakdowns are additive. A score that could not be computed is absent.
+ */
+export function migrationScoreFields(scores: MigrationScores): Record<string, unknown> {
+  const out: Record<string, unknown> = { migration_scores_catalogue: scores.catalogue };
+  if (scores.cloud_native) {
+    out['cloud_native_score'] = scores.cloud_native.score;
+    out['cloud_native'] = scores.cloud_native;
+  } else if (scores.cloud_native_skipped_reason) {
+    out['cloud_native_skipped_reason'] = scores.cloud_native_skipped_reason;
+  }
+  if (scores.portability) {
+    if (scores.portability.score !== null) out['portability_score'] = scores.portability.score;
+    out['portability'] = scores.portability;
+  }
+  return out;
 }

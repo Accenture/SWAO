@@ -31,7 +31,7 @@ interface EntryBase {
 
 interface CryptoEntry extends EntryBase {
   category: string;
-  detection: { imports?: string[]; config_keys?: string[] };
+  detection: { imports?: unknown[]; config_keys?: unknown[]; context?: string[] };
   posture: {
     severity: string;
     bsi_tr02102_status?: string;
@@ -131,12 +131,25 @@ describe('pass-08-crypto-algorithms.yaml (#3063)', () => {
     expect(entry!.posture.severity).toBe('deprecated');
   });
 
-  it('all entries have at least one detection signal (imports or config_keys)', () => {
+  it('all entries have at least one detection signal (imports, config_keys or context)', () => {
     const cat = loadCatalog<CryptoEntry>('pass-08-crypto-algorithms.yaml');
     for (const entry of cat.entries) {
       const hasImports = Array.isArray(entry.detection.imports) && entry.detection.imports.length > 0;
       const hasConfigKeys = Array.isArray(entry.detection.config_keys) && entry.detection.config_keys.length > 0;
-      expect(hasImports || hasConfigKeys, `entry "${entry.id}" has no detection signals`).toBe(true);
+      // #3410: bare acronyms (RC4, 3DES, TDEA, SHA1) live only in context regexes.
+      const hasContext = Array.isArray(entry.detection.context) && entry.detection.context.length > 0;
+      expect(hasImports || hasConfigKeys || hasContext, `entry "${entry.id}" has no detection signals`).toBe(true);
+    }
+  });
+
+  it('#3410: no bare short acronym is a plain import token (context form only)', () => {
+    const BARE = new Set(['3DES', 'TDEA', 'RC4', 'ARCFOUR', 'SHA1', 'SHA-1', 'MD5', 'EC', 'DES']);
+    const cat = loadCatalog<CryptoEntry>('pass-08-crypto-algorithms.yaml');
+    for (const entry of cat.entries) {
+      for (const t of entry.detection.imports ?? []) {
+        const tok = typeof t === 'string' ? t : (t as { token: string }).token;
+        expect(BARE.has(tok), `entry "${entry.id}" lists bare acronym "${tok}" in imports`).toBe(false);
+      }
     }
   });
 });

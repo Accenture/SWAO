@@ -22,7 +22,7 @@
 
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { ChatTurnSchema, type ChatTurn } from '@swao/core';
+import { ChatTurnSchema, guardSecretText, type ChatTurn } from '@swao/core';
 
 export type { ChatTurn };
 
@@ -31,10 +31,15 @@ export function chatHistoryPath(workspace: string, sessionTs: string): string {
   return join(workspace, 'wsp', 'chat', `${sessionTs}.ndjson`);
 }
 
-/** Append one ChatTurn as a JSON line. Creates directories on first call. */
+/**
+ * Append one ChatTurn as a JSON line. Creates directories on first call.
+ * #3415: every turn (user, assistant, system, tool error) passes the secret
+ * output guard first, so wsp/chat/*.ndjson never stores a clear-text secret.
+ */
 export function appendTurn(historyPath: string, turn: ChatTurn): void {
   mkdirSync(dirname(historyPath), { recursive: true });
-  appendFileSync(historyPath, JSON.stringify(turn) + '\n', 'utf-8');
+  const guarded: ChatTurn = { ...turn, content: guardSecretText(turn.content).text };
+  appendFileSync(historyPath, JSON.stringify(guarded) + '\n', 'utf-8');
 }
 
 /** Parse and validate one NDJSON line; returns null if invalid (skip). */

@@ -80,9 +80,13 @@ function aggregateLeg(records: CallRecord[]): PassLegAggregate {
     latency_p50_ms: median(done.map((r) => r.timing.total_ms)),
     prompt_tokens_median: median(records.map((r) => r.tokens.prompt)),
     completion_tokens_median: median(done.map((r) => r.tokens.completion)),
-    cost_usd: priced.length === 0
-      ? null
-      : Math.round(priced.reduce((a, r) => a + (r.cost_usd.computed as number), 0) * 1e6) / 1e6,
+    // #3389: a billed leg whose total is exactly 0 is unpriced (no cost row),
+    // not free; report null so it is excluded from cost ranking.
+    cost_usd: (() => {
+      if (priced.length === 0) return null;
+      const sum = Math.round(priced.reduce((a, r) => a + (r.cost_usd.computed as number), 0) * 1e6) / 1e6;
+      return sum === 0 ? null : sum;
+    })(),
     parse_valid_rate: rate(done.filter((r) => r.quality.parse_valid).length, done.length),
     schema_conform_rate: rate(done.filter((r) => r.quality.schema_conform).length, done.length),
     size_bucket: bucketMedian,

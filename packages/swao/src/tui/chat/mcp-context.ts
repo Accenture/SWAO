@@ -27,6 +27,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import type { LlmTool } from '@swao/module-llm-providers';
+import { isSignalIndexLine } from '@swao/core';
 
 /**
  * #3315: transport and parse failures are reported as `[MCP error: ...]`, the
@@ -350,6 +351,12 @@ export function mcpExitReason(stderr: string, code: number | null, signal: NodeJ
   return detail ? `swao mcp exited (${exit}): ${detail.slice(0, 300)}` : `swao mcp exited (${exit})`;
 }
 
+/**
+ * #3461: stderr of a `swao mcp --http` that found a SWAO MCP server already on
+ * its port (module-mcp http-transport.ts alreadyRunningMessage).
+ */
+export const MCP_ALREADY_RUNNING_RE = /a SWAO MCP server is already running on port \d+/;
+
 export interface McpAutoStartOptions {
   /** Executable (the SWAO binary, or node on a source run). */
   command: string;
@@ -406,6 +413,18 @@ export async function autoStartMcpServer(opts: McpAutoStartOptions): Promise<Mcp
     child.once('error', err => resolve({ kind: 'ended', reason: `swao mcp could not be started: ${err.message}` }));
     child.once('close', (code, signal) => resolve({ kind: 'ended', reason: mcpExitReason(stderr, code, signal) }));
   });
+  // #3461 (Design 116 REQ-03.6): a busy port no longer kills its holder; the
+  // child exits 1 with "a SWAO MCP server is already running". That is
+  // success: attach to the running server. The TUI does not own it (child null),
+  // so closing the TUI leaves it running for the client that started it.
+  const attachIfAlreadyRunning = async (reason: string): Promise<McpAutoStartResult> => {
+    if (!MCP_ALREADY_RUNNING_RE.test(stderr)) return { session: null, child: null, error: reason };
+    try {
+      return { session: await initMcpSession(opts.port, 5000), child: null };
+    } catch (err) {
+      return { session: null, child: null, error: `${reason} (attach failed: ${err instanceof Error ? err.message : String(err)})` };
+    }
+  };
 
   const deadline = Date.now() + timeoutMs;
   let lastProbe = '';
@@ -419,13 +438,13 @@ export async function autoStartMcpServer(opts: McpAutoStartOptions): Promise<Mcp
       },
     );
     const outcome = await Promise.race([probe, ended]);
-    if (outcome.kind === 'ended') return { session: null, child: null, error: outcome.reason };
+    if (outcome.kind === 'ended') return attachIfAlreadyRunning(outcome.reason);
     if (outcome.session) return { session: outcome.session, child };
     const waited = await Promise.race([
       new Promise<{ kind: 'wait' }>(resolve => setTimeout(() => resolve({ kind: 'wait' }), pollMs)),
       ended,
     ]);
-    if (waited.kind === 'ended') return { session: null, child: null, error: waited.reason };
+    if (waited.kind === 'ended') return attachIfAlreadyRunning(waited.reason);
   }
 
   treeKillChild(child);
@@ -488,6 +507,7 @@ export async function fetchPortfolioContext(
   ];
 
   const parts: string[] = [];
+  const indexLines: string[] = [];
   for (const { label, toolName, args } of globalSections) {
     try {
       const text = await callMcpTool(session, toolName, args, 15_000);
@@ -522,20 +542,91 @@ export async function fetchPortfolioContext(
         try {
           const text = await callMcpTool(session, toolName, args, 15_000);
           if (isMcpError(text)) onError?.(label, text);
-          else if (text.trim()) parts.push(`## ${label}\n${text.trim()}`);
+          else if (toolName === 'swao_signals' && text.trim()) {
+            // #3418: the compact per-signal lines move to the protected index.
+            const split = splitSignalIndex(text);
+            indexLines.push(...split.index);
+            if (split.rest.trim()) parts.push(`## ${label}\n${split.rest.trim()}`);
+          } else if (text.trim()) parts.push(`## ${label}\n${text.trim()}`);
         } catch { /* graceful skip */ }
       }
     }
   }
 
-  // #2828: cap context size so the system prompt stays within the model's input window.
-  const MAX_CONTEXT_CHARS = 80_000;
-  const joined = parts.join('\n\n');
-  if (joined.length > MAX_CONTEXT_CHARS) {
-    return joined.slice(0, MAX_CONTEXT_CHARS) +
-      '\n\n[Context truncated to fit chat session limits. Use specific questions to query individual data.]';
+  return assembleContext(parts, indexLines);
+}
+
+/** #2828: cap context size so the system prompt stays within the model's input window. */
+export const MAX_CONTEXT_CHARS = 80_000;
+
+const CONTEXT_TRUNCATED_NOTE =
+  '\n\n[Context truncated to fit chat session limits. Use specific questions to query individual data.]';
+
+const SIGNAL_INDEX_HEADING = 'Signal index (one line per signal)';
+
+/** #3418: split swao_signals output into its compact index lines and the rest. */
+export function splitSignalIndex(text: string): { index: string[]; rest: string } {
+  const index: string[] = [];
+  const rest: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (isSignalIndexLine(line)) index.push(line.trim());
+    else if (line.trim() !== SIGNAL_INDEX_HEADING) rest.push(line);
   }
-  return joined;
+  return { index, rest: rest.join('\n') };
+}
+
+/**
+ * #3418: share of the context the signal index may take (about 250 signals at
+ * 80,000 characters). Below it every line is kept whole; above it whole lines
+ * of the lowest severities are left out, with a note, so a large portfolio
+ * cannot push the prompt past the model's window (#2828).
+ */
+export const SIGNAL_INDEX_SHARE = 0.6;
+
+const INDEX_SEVERITY_ORDER = ['critical', 'high', 'medium', 'low', 'informational', 'positive'];
+
+function indexLineRank(line: string): number {
+  const sev = /\| severity: (\S+)/.exec(line)?.[1] ?? '';
+  const i = INDEX_SEVERITY_ORDER.indexOf(sev);
+  return i >= 0 ? i : INDEX_SEVERITY_ORDER.length;
+}
+
+/** #3418: the index lines that fit `maxChars`, strongest severity first kept; original order preserved. */
+export function capSignalIndex(lines: string[], maxChars: number): { lines: string[]; omitted: number } {
+  const total = lines.reduce((n, l) => n + l.length + 1, 0);
+  if (total <= maxChars) return { lines, omitted: 0 };
+  const order = lines.map((l, i) => ({ i, r: indexLineRank(l) })).sort((a, b) => a.r - b.r || a.i - b.i);
+  const keep = new Set<number>();
+  let used = 0;
+  for (const { i } of order) {
+    const len = (lines[i] ?? '').length + 1;
+    if (used + len > maxChars) break;
+    keep.add(i);
+    used += len;
+  }
+  return { lines: lines.filter((_, i) => keep.has(i)), omitted: lines.length - keep.size };
+}
+
+/**
+ * #3418: the pre-fetched context. The signal index (one compact line per
+ * signal: severity, confidence, evidence kind, detection, first evidence)
+ * comes first and is never cut by the section truncation; only the remaining
+ * sections are cut to the budget left after the index, so a truncated context
+ * still carries the facts of every signal of every app (up to
+ * SIGNAL_INDEX_SHARE of the budget, see capSignalIndex).
+ */
+export function assembleContext(parts: string[], indexLines: string[], maxChars = MAX_CONTEXT_CHARS): string {
+  const kept = capSignalIndex(indexLines, Math.floor(maxChars * SIGNAL_INDEX_SHARE));
+  const index = kept.lines.length > 0
+    ? `## Signal Index (severity, confidence, evidence kind and detection as assessed)\n${kept.lines.join('\n')}` +
+      (kept.omitted > 0
+        ? `\n[${kept.omitted} lower-severity signal(s) omitted from this index to fit the chat context; call swao_signals with a prefix filter for them.]`
+        : '')
+    : '';
+  const joined = parts.join('\n\n');
+  const budget = Math.max(0, maxChars - (index ? index.length + 2 : 0));
+  const rest = joined.length > budget ? joined.slice(0, budget) + CONTEXT_TRUNCATED_NOTE : joined;
+  return [index, rest].filter((x) => x.length > 0).join('\n\n');
 }
 
 /**
@@ -574,6 +665,26 @@ export function buildSystemPrompt(context: string): string {
     '- One to three short paragraphs per answer is the target length.',
   ].join('\n');
 
+  // #3418: findings integrity. The chat states findings exactly as SWAO
+  // assessed them; the answer post-check (applyFindingsIntegrity) appends a
+  // deterministic note when an answer breaks these rules anyway.
+  const findingsIntegrity = [
+    'FINDINGS INTEGRITY (follow strictly)',
+    '====================================',
+    '- State every finding with the severity SWAO assessed. NEVER upgrade it: no stronger',
+    '  severity word, no "critical" or "must be replaced" for a finding SWAO rated lower.',
+    '- Name the signal ID and its evidence as file:line (the "first evidence" of the',
+    '  Signal Index, or the Evidence lines of swao_signals / swao_signal_detail).',
+    '- When the evidence kind is test-code, say that the finding is in test code; when it',
+    '  is mixed, say that part of the evidence is test code. A severity shown as',
+    '  "medium (assessed high)" was lowered because the evidence is test code only.',
+    '- Mention the confidence of every finding you cite. For pattern-match detections and',
+    '  for low or medium confidence, say the finding should be verified before acting.',
+    '- A secret found in test code is still a finding. NEVER repeat a secret, password,',
+    '  token or key value, even if it appears in the context; name only the file and line.',
+    '- Do not add claims, impacts or deadlines that the signal does not state.',
+  ].join('\n');
+
   const languageRules = [
     'LANGUAGE',
     '=========',
@@ -591,7 +702,7 @@ export function buildSystemPrompt(context: string): string {
   // before generating a reply (#2786 follow-up: history poisoning prevention).
   const finalReminder = 'REMEMBER: plain text prose only. Never output JSON.';
 
-  const sections = `${intro}\n\n${guidelines}\n\n${responseFormat}\n\n${languageRules}`;
+  const sections = `${intro}\n\n${guidelines}\n\n${findingsIntegrity}\n\n${responseFormat}\n\n${languageRules}`;
 
   if (context.trim()) {
     return `${sections}\n\nPORTFOLIO CONTEXT\n=================\n${context.trim()}\n\n${finalReminder}`;

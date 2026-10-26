@@ -341,10 +341,8 @@ export class OpenLlmProvider implements LlmProvider {
       // #1896: HTTP errors from LLM providers are configuration or provider
       // issues, not SWAO defects; warn so monitors do not report crashes.
       httpErrorLevel: 'warn',
-      attemptContext: {
-        api_key_suffix: this.apiKey ? this.apiKey.slice(-4) : '(none)',
-        ...(opts.attemptContext ?? {}),
-      },
+      // #3437: no api_key_suffix in the attempt event (key material in logs).
+      attemptContext: { ...(opts.attemptContext ?? {}) },
       exhaustedError: (lastError, attempts) => this.exhausted(lastError, attempts),
       run: async (wd: AttemptWatchdog) => {
         // Gateway auth parameterisation (#1397): connector-defined header name

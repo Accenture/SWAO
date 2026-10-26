@@ -29,5 +29,13 @@ export {
   evaluate,
   complianceEvaluator,
   frameworkModuleManifest,
+  // #3425: deterministic Pass 11 applicability pre-filter.
+  appliesWhenMatches,
+  assessmentScopeTokens,
+  controlApplicability,
+  loadApplicabilityContext,
+  type AssessmentScopeToken,
+  type ApplicabilityContext,
+  type ControlApplicability,
 } from './compliance-evaluator.js';
 export { communityCatalogueContribution, communityFrameworksDir } from './community-catalogue.js';

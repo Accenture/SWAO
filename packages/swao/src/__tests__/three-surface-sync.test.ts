@@ -50,7 +50,7 @@ const EXPECTED: Record<string, { tool: string; params: string[]; required: strin
   // swao_doctor renamed to swao_health_check for CLI/MCP parity (#0673).
   doctor:    { tool: 'swao_health_check',       params: ['format', 'workspace_path'],                                         required: [] },
   challenge: { tool: 'swao_challenge',          params: ['agent', 'app_id', 'workspace_path'],                                required: ['app_id'] },
-  publish:   { tool: 'swao_publish',            params: ['app_id', 'block_profile', 'lang', 'mode', 'workspace_path'],    required: ['app_id'] },
+  publish:   { tool: 'swao_publish',            params: ['app_id', 'block_profile', 'lang', 'mode', 'portfolio', 'workspace_path'], required: [] },
   lenses:    { tool: 'swao_lenses',             params: ['action', 'lens_ids', 'workspace_path'],                             required: [] },
   normalize: { tool: 'swao_normalize',          params: ['app_id', 'workspace_path'],                                        required: [] },
   lz:        { tool: 'swao_lz_catalogue',       params: ['action', 'provider', 'workspace_path'],                            required: [] },

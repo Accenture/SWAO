@@ -211,8 +211,8 @@ describe('ToolsMenu', () => {
     expect(onSelect).toHaveBeenCalledWith('license');
   });
 
-  // #0872 -- lz-catalogue-update is key 3; ingest is key 4.
-  // #1515 -- support-bundle is key 5; Help shifted to key 6.
+  // #0872 -- lz-catalogue-update is key 3.
+  // #3388 -- llm-gateway-update inserted at key 4; ingest/support/chat/help shift +1.
   // lz-catalogue-manage removed (#1522): LZ catalogs auto-seeded during init.
   it('calls onSelect with lz-catalogue-update target when key 3 pressed', async () => {
     const onSelect = vi.fn();
@@ -221,32 +221,39 @@ describe('ToolsMenu', () => {
     expect(onSelect).toHaveBeenCalledWith('lz-catalogue-update');
   });
 
-  it('calls onSelect with ingest target when key 4 pressed', async () => {
+  it('calls onSelect with llm-gateway-update target when key 4 pressed (#3388)', async () => {
     const onSelect = vi.fn();
     const { stdin } = render(<ToolsMenu onSelect={onSelect} onBack={noop} />);
     await pressKey(stdin, '4');
-    expect(onSelect).toHaveBeenCalledWith('ingest');
+    expect(onSelect).toHaveBeenCalledWith('llm-gateway-update');
   });
 
-  it('calls onSelect with support-bundle target when key 5 pressed', async () => {
+  it('calls onSelect with ingest target when key 5 pressed', async () => {
     const onSelect = vi.fn();
     const { stdin } = render(<ToolsMenu onSelect={onSelect} onBack={noop} />);
     await pressKey(stdin, '5');
-    expect(onSelect).toHaveBeenCalledWith('support-bundle');
+    expect(onSelect).toHaveBeenCalledWith('ingest');
   });
 
-  // #2778: key 6 is now Chat with Portfolio (Enterprise); Help moved to key 7.
-  it('calls onSelect with chat target when key 6 pressed (#2778)', async () => {
+  it('calls onSelect with support-bundle target when key 6 pressed', async () => {
     const onSelect = vi.fn();
     const { stdin } = render(<ToolsMenu onSelect={onSelect} onBack={noop} />);
     await pressKey(stdin, '6');
-    expect(onSelect).toHaveBeenCalledWith('chat');
+    expect(onSelect).toHaveBeenCalledWith('support-bundle');
   });
 
-  it('calls onSelect with help target when key 7 pressed (#2778)', async () => {
+  // #2778: Chat with Portfolio (Enterprise); #3388 shifted to key 7.
+  it('calls onSelect with chat target when key 7 pressed (#2778)', async () => {
     const onSelect = vi.fn();
     const { stdin } = render(<ToolsMenu onSelect={onSelect} onBack={noop} />);
     await pressKey(stdin, '7');
+    expect(onSelect).toHaveBeenCalledWith('chat');
+  });
+
+  it('calls onSelect with help target when key 8 pressed (#3388)', async () => {
+    const onSelect = vi.fn();
+    const { stdin } = render(<ToolsMenu onSelect={onSelect} onBack={noop} />);
+    await pressKey(stdin, '8');
     expect(onSelect).toHaveBeenCalledWith('help');
   });
 });

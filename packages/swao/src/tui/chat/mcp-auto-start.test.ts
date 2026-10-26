@@ -32,6 +32,9 @@ import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { autoStartMcpServer, treeKillChild } from './mcp-context.js';
+import { killMcpServer, registerMcpServerChild } from '../child-process-registry.js';
+import { createServer as createHttpServer, type Server as HttpServer } from 'node:http';
+import { readFileSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, '../../..');
@@ -216,4 +219,92 @@ describe.skipIf(!HAS_CLI)('swao mcp without an Enterprise licence (#3314, spawne
     expect(r.error).toBe('swao mcp exited (exit code 1): [LICENSE] swao mcp requires an Enterprise licence. Your current tier: community');
     expect(isAlive(pid)).toBe(false);
   }, EXIT_WAIT_MS + 10_000);
+});
+
+// ---------------------------------------------------------------------------
+// #3461: attach to an already running server; TUI exit stops only its own child
+// ---------------------------------------------------------------------------
+
+describe('autoStartMcpServer attaches to a running SWAO MCP server (#3461)', () => {
+  let fake: HttpServer | undefined;
+  afterEach(async () => {
+    if (fake) {
+      fake.closeAllConnections();
+      await new Promise<void>(res => fake!.close(() => res()));
+    }
+    fake = undefined;
+  });
+
+  it('an "already running" exit (code 1) yields an attached session, not an error notice', async () => {
+    const port = await freePort();
+    // The server another client started. It answers 503 until the spawned
+    // child has exited, so the session must come from the exit path.
+    let childExited = false;
+    fake = createHttpServer((req, res) => {
+      req.resume();
+      req.on('end', () => {
+        if (!childExited) { res.writeHead(503).end(); return; }
+        res.writeHead(200, { 'Content-Type': 'application/json', 'mcp-session-id': 'existing-1' });
+        res.end('{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"swao","version":"t"}}}');
+      });
+    });
+    await new Promise<void>(res => fake!.listen(port, '127.0.0.1', () => res()));
+    const msg = `[error] swao mcp: a SWAO MCP server is already running on port ${port} (pid 4242); use --replace to restart it`;
+    const r = await autoStartMcpServer({
+      command: process.execPath,
+      // The message is passed as an argument, not spliced into the script source.
+      args: ['-e', 'setTimeout(() => { process.stderr.write(process.argv[1] + "\\n"); process.exit(1); }, 300)', msg],
+      port,
+      timeoutMs: 60_000,
+      pollMs: 100,
+      env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' },
+      onSpawn: c => { spawned.push(c); c.once('exit', () => { childExited = true; }); },
+    });
+    expect(r.error).toBeUndefined();
+    expect(r.session).toEqual({ sessionId: 'existing-1', port });
+    // The TUI does not own the attached server.
+    expect(r.child).toBeNull();
+  }, 30_000);
+
+  it('any other exit code 1 is still reported as an error', async () => {
+    const port = await freePort();
+    const r = await autoStartMcpServer({
+      command: process.execPath,
+      args: ['-e', `process.stderr.write('[error] swao mcp: port ${port} is in use; stop the other process or start with --port <n>\\n'); process.exit(1)`],
+      port,
+      timeoutMs: 60_000,
+      onSpawn: c => { spawned.push(c); },
+    });
+    expect(r.session).toBeNull();
+    expect(r.error).toContain(`port ${port} is in use`);
+  }, 30_000);
+});
+
+describe('TUI cleanup stops only the MCP server it spawned (#3461)', () => {
+  function sleeper(): ChildProcess {
+    const c = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', windowsHide: true });
+    spawned.push(c);
+    return c;
+  }
+
+  it('does not signal a server the TUI did not spawn (no registered child)', async () => {
+    const foreign = sleeper();
+    killMcpServer();
+    await new Promise(res => setTimeout(res, 500));
+    expect(isAlive(foreign.pid)).toBe(true);
+  }, 30_000);
+
+  it('never reads the pid file to find a process to kill', () => {
+    const src = readFileSync(join(__dirname, '..', 'child-process-registry.ts'), 'utf-8');
+    expect(src).not.toMatch(/readFileSync|tmpdir\(/);
+  });
+
+  it('tree-kills the registered MCP child on cleanup', async () => {
+    const own = sleeper();
+    registerMcpServerChild(own);
+    killMcpServer();
+    const deadline = Date.now() + 10_000;
+    while (isAlive(own.pid) && Date.now() < deadline) await new Promise(res => setTimeout(res, 100));
+    expect(isAlive(own.pid)).toBe(false);
+  }, 30_000);
 });

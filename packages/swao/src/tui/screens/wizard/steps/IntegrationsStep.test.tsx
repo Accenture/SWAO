@@ -28,6 +28,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { ClaudeDesktopConfigCandidate } from '@swao/core';
+import type { McpClientInstallRequest } from '@swao/module-mcp';
 
 vi.mock('../shared.js', () => ({
   _wizardGuidanceOpen: false,
@@ -223,5 +224,112 @@ describe('ClaudeDesktopStep -- Enterprise gate (#3341)', () => {
       if (saved === undefined) delete process.env['SWAO_BINARY_TIER'];
       else process.env['SWAO_BINARY_TIER'] = saved;
     }
+  });
+});
+
+describe('ClaudeDesktopStep -- no MCP client detected branch (#3386)', () => {
+  it('names the other MCP clients and the HTTP transport, not only Claude Desktop', () => {
+    const { lastFrame, unmount } = render(
+      <ClaudeDesktopStep checkLicence={allowLicence} workDir="w" onNext={() => {}} resolveConfigs={() => []} resolveBinary={() => resolution()} />,
+    );
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('No MCP client detected.');
+    // #3386: the hint must name the other supported clients + the HTTP transport,
+    // not just Claude Desktop, so an operator on Claude Code / VS Code / Kilo knows
+    // how to connect.
+    expect(frame).toContain('swao mcp --http');
+    expect(frame).toMatch(/Claude Code/);
+    unmount();
+  });
+});
+
+// #3479 (Design 116 REQ-13.3): the MCP step offers the `swao mcp install --client`
+// choice and calls the same writer. The writer is a spy here, so nothing is written.
+describe('ClaudeDesktopStep -- client choice (#3479)', () => {
+  // Defence in depth: the writer is a spy, and the home, profile and PATH
+  // variables point into the temp sandbox, so no real client config is reachable.
+  const KEYS = ['HOME', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'PATH'] as const;
+  let saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
+    for (const k of KEYS) process.env[k] = join(root, 'sandbox-env', k);
+  });
+  afterEach(() => {
+    for (const k of KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  function setup(resolveConfigs: () => ClaudeDesktopConfigCandidate[]) {
+    const installClient = vi.fn((_r: McpClientInstallRequest) => ({ exitCode: 0 as const, out: ['Configuring SWAO for Claude Code'], err: [] }));
+    const resolveBinary = vi.fn(() => resolution());
+    const view = render(
+      <ClaudeDesktopStep checkLicence={allowLicence} workDir={root} onNext={() => {}} resolveConfigs={resolveConfigs} resolveBinary={resolveBinary} installClient={installClient} />,
+    );
+    return { ...view, installClient, resolveBinary };
+  }
+
+  it('lists Claude Desktop, Claude Code and Kilo with Claude Desktop preselected', () => {
+    const { lastFrame, unmount } = setup(() => candidates);
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('> 1  Claude Desktop');
+    expect(frame).toContain('2  Claude Code');
+    expect(frame).toContain('3  Kilo');
+    unmount();
+  });
+
+  it('choosing Claude Code calls the Claude Code writer with the install defaults; Claude Desktop is untouched', async () => {
+    const before = readFileSync(configPath, 'utf-8');
+    const { stdin, lastFrame, installClient, unmount } = setup(() => candidates);
+    await tick();
+    stdin.write('\u001B[B'); // Down
+    await tick();
+    stdin.write('\r');
+    await tick();
+    expect(installClient).toHaveBeenCalledTimes(1);
+    expect(installClient.mock.calls[0]?.[0]).toMatchObject({
+      client: 'claude-code', scope: 'user', transport: 'http', url: 'http://localhost:3737/mcp',
+      agent: true, profile: 'starter', workspace: root, projectDir: root, dryRun: false, uninstall: false,
+      binary: { path: STABLE, args: ['mcp'] },
+    });
+    expect(readFileSync(configPath, 'utf-8')).toBe(before);
+    expect(lastFrame() ?? '').toContain('Configuring SWAO for Claude Code');
+    unmount();
+  });
+
+  it('key 3 chooses Kilo (stdio) even when Claude Desktop is not installed', async () => {
+    const { stdin, installClient, unmount } = setup(() => []);
+    await tick();
+    stdin.write('3');
+    await tick();
+    stdin.write('\r');
+    await tick();
+    expect(installClient.mock.calls[0]?.[0]).toMatchObject({ client: 'kilo', transport: 'stdio' });
+    unmount();
+  });
+
+  it('Enter on Claude Desktop keeps the existing patcher and never calls the client writer', async () => {
+    const { stdin, installClient, unmount } = setup(() => candidates);
+    await tick();
+    stdin.write('\r');
+    await tick();
+    expect(installClient).not.toHaveBeenCalled();
+    expect(registeredCommand()).toBe(STABLE);
+    unmount();
+  });
+
+  it('a refused licence never calls the client writer', async () => {
+    const installClient = vi.fn();
+    const { stdin, unmount } = render(
+      <ClaudeDesktopStep checkLicence={() => '[LICENSE] refused'} workDir={root} onNext={() => {}} resolveConfigs={() => candidates} resolveBinary={() => resolution()} installClient={installClient} />,
+    );
+    await tick();
+    stdin.write('2');
+    await tick();
+    stdin.write('\r');
+    await tick();
+    expect(installClient).not.toHaveBeenCalled();
+    unmount();
   });
 });

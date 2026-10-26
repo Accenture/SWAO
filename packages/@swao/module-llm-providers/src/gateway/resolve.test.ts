@@ -33,7 +33,8 @@ vi.mock('undici', async (importOriginal) => {
     },
   };
 });
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs';
+import { setWorkspaceRoot } from '@swao/core';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 // #2743: intercept execSync so token_command tests are deterministic and cross-platform.
@@ -104,6 +105,31 @@ function load(id = 'test-hub') {
   if (!c) throw new Error(`connector ${id} not found in test workspace`);
   return c;
 }
+
+describe('TLS-disabled warning dedup (#3387)', () => {
+  afterEach(() => setWorkspaceRoot(null));
+
+  it('warns once per connector per process, not on every provider construction', () => {
+    // A connector with a unique id so the module-level dedup Set is first-seen
+    // here; reject_unauthorized: false triggers the warning path.
+    const id = 'tls-dedup-hub-3387';
+    writeConnector(`${id}.yaml`, BASE_LINES
+      .map((l) => (l === '  id: test-hub' ? `  id: ${id}` : l))
+      .concat(['  tls:', '    reject_unauthorized: false']));
+    setWorkspaceRoot(workspaceRoot); // route logPortfolio to this workspace's sink
+
+    createProviderFromConnector(load(id), {});
+    createProviderFromConnector(load(id), {});
+
+    const logsDir = join(workspaceRoot, 'wsp', 'logs');
+    const lines = existsSync(logsDir)
+      ? readdirSync(logsDir).filter((f) => f.startsWith('portfolio-events-'))
+          .flatMap((f) => readFileSync(join(logsDir, f), 'utf-8').trim().split('\n'))
+      : [];
+    const warns = lines.filter((l) => l.includes('tls-reject-unauthorized-disabled') && l.includes(id));
+    expect(warns).toHaveLength(1);
+  });
+});
 
 describe('createProviderFromConnector (#1397-#1399)', () => {
   it('builds an openai-chat provider with provenance', () => {

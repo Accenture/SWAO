@@ -17,15 +17,16 @@ import type { Command } from 'commander';
 import { resolve, join, extname, isAbsolute } from 'path';
 import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { load } from 'js-yaml';
-import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot, readRunStatus, isRunStale } from '@swao/core';
+import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot, readRunStatus, isRunStale, detectCodeHealthTools, fileBackedToolRunner, PROBE_DETECT_OPTIONS } from '@swao/core';
 import { createHash } from 'crypto';
 import { resolveProviderCatalogue, LzCatalogueSchemaError, LzCatalogueDuplicateIdError, listLzCatalogueProviders } from '@swao/module-landing-zone';
+import { seedBundledConnectors, resolveBundledConnectorsDir, updateBundledConnectors } from '@swao/module-llm-providers';
 import type { LicenseState } from '@swao/core';
 // Result types for the two host-coupled, injected probes (#0573). Their
 // builders stay host-side (see HealthCheckHostDeps below); module-health-check needs
 // only the result types, which live in @swao/core as the single source of
 // truth.
-import type { VcsAuthProbeResult, ImportsProbeResult, ProbeContribution } from '@swao/core';
+import type { VcsAuthProbeResult, ImportsProbeResult, ProbeContribution, DetectedCodeHealthTool } from '@swao/core';
 import { buildMcpProbe, formatStaleEntry, VERSION_CHECK_TIMEOUT_MS } from '../probes/claude-desktop.js';
 import type { McpProbeResult } from '../probes/claude-desktop.js';
 import { buildCommunityFrameworksProbe } from '../probes/compliance-catalogues-probe.js';
@@ -508,6 +509,69 @@ export function checkSourceAccessibility(workspacePath: string): string[] {
   return warnings;
 }
 
+/**
+ * #3388 (Design 112, D-3): the LLM gateway connector folder is the single
+ * source of truth (the runtime bundled fallback is being dropped), so a
+ * workspace with no seeded connectors would have none at all. This check
+ * detects a missing/empty `wsp/inputs/llm-gateway/`, best-effort re-seeds the
+ * packaged connectors into it (idempotent: never overwrites, `.seeded` marker),
+ * and WARNs only when it still ends up empty.
+ *
+ * Community frameworks and LZ catalogues are NOT re-seeded here: they keep a
+ * bundled fallback and already have their own probes (buildCommunityFrameworks-
+ * Probe, buildLzCatalogueCoverageProbe), which report their presence.
+ */
+export function checkSeededAssets(workspacePath: string | null): string[] {
+  const out: string[] = [];
+  if (!workspacePath) return out;
+  // #3388: self-heal seeding only ever runs in a real workspace (a `.swao.yml`
+  // present). health-check resolves workspacePath from `process.cwd()` when no
+  // `--workspace` is given (health-check.ts), so without this guard a run from
+  // any directory would create wsp/inputs/llm-gateway/ there. A non-workspace
+  // directory reports nothing here; the workspace-resolution output already
+  // tells the operator no workspace was found. Mirrors readLzrMaxAgeDays below.
+  if (!existsSync(join(workspacePath, '.swao.yml'))) return out;
+  const dir = join(workspacePath, 'wsp', 'inputs', 'llm-gateway');
+  const countYaml = (d: string): number => {
+    try { return existsSync(d) ? readdirSync(d).filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && !f.startsWith('_')).length : 0; }
+    catch { return 0; }
+  };
+
+  let present = countYaml(dir);
+  if (present === 0) {
+    // Nothing seeded yet: try to seed from the packaged connectors.
+    if (resolveBundledConnectorsDir()) {
+      try {
+        const { copied } = seedBundledConnectors(workspacePath);
+        if (copied.length > 0) {
+          out.push(`[INFO] Seeded ${copied.length} LLM gateway connector(s) into wsp/inputs/llm-gateway/ (single source, Design 112).`);
+        }
+      } catch { /* best-effort */ }
+      present = countYaml(dir);
+    }
+    if (present === 0) {
+      out.push(
+        '[WARN] No LLM gateway connectors in wsp/inputs/llm-gateway/ and none could be seeded. ' +
+        'LLM-dependent passes have no gateway to call. Run `swao init` in this workspace, ' +
+        'or copy a connector YAML into wsp/inputs/llm-gateway/.',
+      );
+    }
+  }
+  // #3388 (D-2): INFO when an unchanged seed has a newer packaged version. A
+  // dry-run update reports exactly those (unchanged seeds that differ from the
+  // packaged copy); user-edited connectors are not listed. No files are written.
+  try {
+    const stale = updateBundledConnectors(workspacePath, { dryRun: true }).updated;
+    if (stale.length > 0) {
+      out.push(
+        `[INFO] ${stale.length} packaged LLM gateway connector(s) have a newer version ` +
+        `(${stale.join(', ')}). Run \`swao llm-gateway update\` to refresh them; your edited connectors are kept.`,
+      );
+    }
+  } catch { /* best-effort */ }
+  return out;
+}
+
 function readLzrMaxAgeDays(workspacePath: string | null): number {
   if (!workspacePath) return LZR_STALENESS_DAYS_DEFAULT;
   const ymlPath = join(workspacePath, '.swao.yml');
@@ -573,6 +637,8 @@ export interface HealthCheckHostDeps {
   // #1434: the audit-remote-ingestion probe (formerly host-injected the same
   // way) was removed with the audit assessment surface.
   llmGatewayProbe: ProbeContribution;
+  /** #3487: optional override of the Pass 26 code health tool detection (tests). */
+  detectCodeHealthTools?: () => Promise<DetectedCodeHealthTool[]>;
 }
 
 export function buildLicenseProbe(state: LicenseState): LicenseProbeResult {
@@ -1061,6 +1127,8 @@ export interface HealthCheckPayload {
   lzr_coverage_info: string[];
   source_accessibility_warnings: string[];
   run_accumulation_warnings: string[];
+  /** #3388 (Design 112): missing/empty seeded LLM gateway connector folder; auto-seeds best-effort. */
+  seeded_asset_warnings: string[];
   /** #3283: failed, aborted or stale started runs among the latest N per app (run-status.json). */
   run_status_warnings: string[];
   /** #2968: .swao.yml context block validation messages. */
@@ -1180,7 +1248,9 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
 
   t0 = Date.now();
   logPortfolio('info', 'health-check.probe.start', 'probe: prerequisites', { context: { probe: 'prerequisites' } });
-  const prerequisitesProbe = buildPrerequisitesProbe(workspacePath);  // #0326 sprint-036; #3375 VCS-aware git rule
+  // #3487: optional Pass 26 code health tools, detected with the Windows-safe async runner.
+  const codeHealthTools = await (host.detectCodeHealthTools ?? (() => detectCodeHealthTools(fileBackedToolRunner, undefined, PROBE_DETECT_OPTIONS)))();
+  const prerequisitesProbe = buildPrerequisitesProbe(workspacePath, { codeHealthTools });  // #0326 sprint-036; #3375 VCS-aware git rule
   logPortfolio('info', 'health-check.probe.complete', `probe: prerequisites status=${prerequisitesProbe.status}`, { context: { probe: 'prerequisites', status: prerequisitesProbe.status, elapsed_ms: Date.now() - t0 } });
   onProbeLine?.(formatPrerequisitesProbeLine(prerequisitesProbe));
 
@@ -1312,6 +1382,7 @@ export async function buildHealthCheckPayload(workspacePath: string, host: Healt
     placeholder_input_warnings: checkPlaceholderInputs(workspacePath),
     lzr_coverage_info: checkLzrCoveragePerApp(workspacePath),
     source_accessibility_warnings: checkSourceAccessibility(workspacePath),
+    seeded_asset_warnings: checkSeededAssets(workspacePath),
     run_accumulation_warnings: checkRunAccumulation(workspacePath),
     run_status_warnings: checkRunStatusMarkers(workspacePath),
     context_config_messages: checkContextConfig(workspacePath),
@@ -1369,7 +1440,18 @@ export function formatHealthCheckSummaryLine(failedProbes: readonly string[]): s
 export function buildHealthCheckLogContext(
   ctx: BuildHealthCheckContext,
   failedProbes: string[],
+  checks?: Record<string, string[]>,
 ): Record<string, unknown> {
+  // #3388: the string[] check results (warnings / info / seed detection) are
+  // logged alongside the 25 probes so health-check.complete is a complete record.
+  // Every supplied check is logged, including the ones that came back clean (an
+  // empty array documents "this check ran and found nothing to report") -- the
+  // operator asked that all health checks be documented in the log, not only the
+  // ones that failed. The `checks` key is omitted only when no checks are
+  // supplied at all (the verdict-only log context).
+  const checkResults = checks
+    ? Object.fromEntries(Object.entries(checks).filter(([, v]) => Array.isArray(v)))
+    : undefined;
   // #1683: include message field for warn/info probes so support bundle captures the reason.
   function probeEntry(probe: { status: string; message?: string | null; warning?: string | null }): Record<string, unknown> {
     const entry: Record<string, unknown> = { status: probe.status };
@@ -1381,6 +1463,7 @@ export function buildHealthCheckLogContext(
     fail_count: failedProbes.length,
     failed_probes: failedProbes,
     probe_count: PROBE_TOTAL,
+    ...(checkResults && Object.keys(checkResults).length > 0 ? { checks: checkResults } : {}),
     probes: {
       license: probeEntry(ctx.licenseProbe),
       playwright: probeEntry(ctx.playwrightProbe),
@@ -1429,8 +1512,17 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
       }
 
       const workspacePath = opts.workspace ? resolve(opts.workspace) : process.cwd();
-      setWorkspaceRoot(workspacePath);
-      seedIngestionSidecarExample(workspacePath); // #2956: seed sidecar template into wsp/inputs/
+      // #3388 / #3406: only a directory with a `.swao.yml` is a real workspace.
+      // health-check resolves the path from process.cwd() when no `--workspace` is
+      // given, so without this guard a run from any directory writes a wsp/ tree
+      // there (seeds, scaffolds and NDJSON logs). The read-only environment probes
+      // still run. Passing null to setWorkspaceRoot makes emit() fall back to
+      // resolveWorkspaceRoot(), which drops file writes outside a workspace.
+      const isRealWorkspace = existsSync(join(workspacePath, '.swao.yml'));
+      setWorkspaceRoot(isRealWorkspace ? workspacePath : null);
+      if (isRealWorkspace) {
+        seedIngestionSidecarExample(workspacePath); // #2956: seed sidecar template into wsp/inputs/
+      }
       // #1685: include environment context in health-check.start for support bundle diagnostics.
       let startTier = 'unknown';
       try { startTier = LicenseGuard.load().state.tier ?? 'unknown'; } catch { /* best-effort */ }
@@ -1479,18 +1571,37 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
       const okMessage = hcAbsentProbes.length > 0
         ? `Health-check passed -- workspace only, no apps to assess (${hcAbsentProbes.join(', ')} skipped)`
         : 'Health-check passed -- all probes ok';
+      // #3388: capture every string[] check result so health-check.complete (log
+      // + NDJSON) records the full outcome, not only the 25 probes.
+      const loggedChecks: Record<string, string[]> = {
+        llm_provider_errors:         checkLlmProviderConfig(workspacePath),
+        lzr_snapshot_warnings:       checkLzrSnapshots(workspacePath, readLzrMaxAgeDays(workspacePath)),
+        llm_temperature_warnings:    checkLlmTemperature(workspacePath),
+        llm_context_window_warnings: checkLlmContextWindow(workspacePath),
+        placeholder_input_warnings:  checkPlaceholderInputs(workspacePath),
+        lzr_coverage_info:           checkLzrCoveragePerApp(workspacePath),
+        source_accessibility_warnings: checkSourceAccessibility(workspacePath),
+        seeded_asset_warnings:       checkSeededAssets(workspacePath),
+        run_accumulation_warnings:   checkRunAccumulation(workspacePath),
+        run_status_warnings:         checkRunStatusMarkers(workspacePath),
+        context_config_messages:     checkContextConfig(workspacePath),
+        image_sidecar_warnings:      checkImageSidecars(workspacePath),
+        lz_catalogue_provenance:     ctx.lzCatalogueProvenance ?? [],
+      };
       logPortfolio(
         hcFailedProbes.length > 0 ? 'warn' : 'info',
         'health-check.complete',
         hcFailedProbes.length > 0
           ? `Health-check found ${hcFailedProbes.length} failure(s): ${hcFailedProbes.join(', ')}`
           : okMessage,
-        { context: buildHealthCheckLogContext(ctx, hcFailedProbes) },
+        { context: buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks) },
       );
 
       // #1277: persist results to wsp/logs/health-check-YYYY-MM.ndjson so
       // operators can review history without parsing the full portfolio log.
-      try {
+      // #3388 / #3406: only inside a real workspace, so a non-workspace run (cwd)
+      // writes no log tree.
+      if (isRealWorkspace) try {
         const logsDir = join(workspacePath, 'wsp', 'logs');
         const month   = new Date().toISOString().slice(0, 7);
         mkdirSync(logsDir, { recursive: true });
@@ -1501,7 +1612,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           event:     'health-check.complete',
           level:     hcFailedProbes.length > 0 ? 'warn' : 'info',
           workspace: workspacePath,
-          ...buildHealthCheckLogContext(ctx, hcFailedProbes),
+          ...buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks),
         });
         appendFileSync(join(logsDir, `health-check-${month}.ndjson`), entry + '\n', 'utf-8');
       } catch {
@@ -1546,6 +1657,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           placeholder_input_warnings: placeholderWarnings,
           lzr_coverage_info: lzrCoverageInfo,
           source_accessibility_warnings: checkSourceAccessibility(workspacePath),
+          seeded_asset_warnings: checkSeededAssets(workspacePath),
           run_accumulation_warnings: checkRunAccumulation(workspacePath),
           run_status_warnings: checkRunStatusMarkers(workspacePath),
           context_config_messages: checkContextConfig(workspacePath),
@@ -1653,6 +1765,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         for (const msg of checkLzrCoveragePerApp(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of ctx.lzCatalogueProvenance ?? []) { console.log(`  ${msg}`); }
         for (const msg of checkSourceAccessibility(workspacePath)) { console.log(`  ${msg}`); }
+        for (const msg of checkSeededAssets(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkRunAccumulation(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkRunStatusMarkers(workspacePath)) { console.log(`  ${msg}`); }
         for (const msg of checkContextConfig(workspacePath)) { console.log(`  ${msg}`); }

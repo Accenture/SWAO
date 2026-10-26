@@ -25,7 +25,7 @@ import {
 import { dirname, resolve, join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { communityFrameworksDir } from '@swao/community-frameworks';
-import { scaffoldWorkspaceGateway } from '@swao/module-llm-providers';
+import { scaffoldWorkspaceGateway, seedBundledConnectors } from '@swao/module-llm-providers';
 import { resolveBundledLzCataloguesDir } from '@swao/module-landing-zone';
 import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '../license/license-guard.js';
 import { printLicenseGateError, printLicenseLimitError, printLicenseInvalidError } from '../lib/license-gate-error.js';
@@ -783,6 +783,26 @@ based on which snapshot file exists, in priority order:
 
 Delete the snapshots you don't want and keep one of the providers you're
 actually targeting.
+
+## Current vs target infrastructure (#3429)
+
+\`lz-*-snapshot.json\` files describe a TARGET landing zone (where the
+application may move), not the platform it runs on today. The context pass
+reports documentation that needs a capability the target lacks as a target
+platform gap, never as a contradiction. \`*.tfstate\` files and other files in
+this folder are treated as CURRENT infrastructure.
+
+To be explicit, place other infrastructure exports under
+\`wsp/inputs/infra/current/\` or \`wsp/inputs/infra/target/\`, or declare roles
+in \`.swao.yml\`. Keep the \`lz-*-snapshot.json\` files in this folder: the
+landing-zone fit reads them from here.
+
+\`\`\`yaml
+context:
+  infra_roles:
+    - path: terraform/ocp-export.json
+      role: current
+\`\`\`
 `;
 
 // PowerBI template scaffolder (#0231). Copies the bundled .pbit files
@@ -960,6 +980,8 @@ export function buildWorkspaceSwaoYml(params: WorkspaceSwaoYmlParams): string {
     `\n` +
     `# assessment:\n` +
     `#   vision_max_screens: 2  # screenshots sent to LLM vision pass per assessment run\n` +
+    `#   test_code:             # #3403: include (default) | tag | exclude; an app .swao.yml overrides\n` +
+    `#     mode: include\n` +
     `\n` +
     `# LZ catalogue targets for every app (#3281); nest under assessment: (an app .swao.yml overrides):\n` +
     `#   landing_zone:\n` +
@@ -984,12 +1006,25 @@ export function ensureWorkspaceSwaoYml(workspaceDir: string): boolean {
   return true;
 }
 
+/**
+ * #3388 (Design 112, D-3): scaffold the LLM gateway connector folder (template +
+ * README) and seed the packaged connectors into it so `wsp/inputs/llm-gateway/`
+ * is the single source of truth. Shared by `runWorkspaceScaffolders` (Setup
+ * Wizard / `swao service`) and the `swao init` CLI action so neither path can
+ * drift from the other. Best-effort and idempotent: private-distribution seeds are
+ * skipped and the `.seeded` marker prevents re-copying. Returns the connectors
+ * copied on this call (empty when already seeded or no bundled source present).
+ */
+export function scaffoldAndSeedGateway(workspaceDir: string): string[] {
+  try { scaffoldWorkspaceGateway(workspaceDir); } catch { /* best-effort */ }
+  try { return seedBundledConnectors(workspaceDir).copied; } catch { return []; }
+}
+
 export function runWorkspaceScaffolders(workspaceDir: string): void {
   scaffoldCatalogs(workspaceDir);
   scaffoldPowerBiTemplates(workspaceDir);
-  // #1403 sprint-113: LLM-Gateway connector drop folder (template + README);
-  // runs for CLI init AND the SetupWizard, which both route through here.
-  try { scaffoldWorkspaceGateway(workspaceDir); } catch { /* best-effort */ }
+  // #1403 sprint-113 + #3388: LLM gateway connector folder, scaffolded and seeded.
+  scaffoldAndSeedGateway(workspaceDir);
   ensureGitignore(workspaceDir);
   const appsDir = join(workspaceDir, 'apps');
   if (existsSync(appsDir)) {
@@ -1147,6 +1182,11 @@ export function registerInit(program: Command): void {
 
       const scaffold = scaffoldCatalogs(workspaceDir);
       const pbi = scaffoldPowerBiTemplates(workspaceDir);
+      // #3388 (Design 112, D-3): scaffold + seed the LLM gateway connector folder
+      // so wsp/inputs/llm-gateway/ is the single source. CLI parity with the Setup
+      // Wizard / `swao service` path; the CLI init action open-codes its scaffolders
+      // and previously skipped this, so `swao init` left the folder unseeded.
+      const seededGateway = scaffoldAndSeedGateway(workspaceDir);
       scaffoldImports(appDir);
       scaffoldIngestion(appDir);
       scaffoldSource(appDir);
@@ -1171,6 +1211,9 @@ export function registerInit(program: Command): void {
       }
       if (lz.copiedFiles.length > 0) {
         console.log(`[ok]  Landing-zone stubs scaffolded -> ${lz.importsDir} (${lz.copiedFiles.length} samples)`);
+      }
+      if (seededGateway.length > 0) {
+        console.log(`[ok]  LLM gateway connectors seeded (${seededGateway.length}) -> ${join(workspaceDir, 'wsp', 'inputs', 'llm-gateway')}`);
       }
       console.log(`[ok]  Ingestion drop folder scaffolded -> ${join(appDir, 'ingestion')}`);
       console.log(appDir);

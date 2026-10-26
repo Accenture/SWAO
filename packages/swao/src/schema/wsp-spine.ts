@@ -135,6 +135,11 @@ const SpineBaseSchema = z.object({
       coverage_score: z.number().optional(),
       confidence: z.union([z.number(), z.string()]).optional(),
       portability_score: z.number().optional(),
+      // #3431: deterministic score breakdowns (additive; ADR-0012 minor, no version bump
+      // needed because `overall` is passthrough and every field is optional).
+      cloud_native: z.object({}).passthrough().optional(),
+      portability: z.object({}).passthrough().optional(),
+      portability_comment: z.string().optional(),
       categories: z.array(z.string()),
     })
     .passthrough(),

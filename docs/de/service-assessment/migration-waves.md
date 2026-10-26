@@ -61,7 +61,7 @@ Für diesen Plan ausgegebene Warnung: `app-old-01 is eliminated in wave 1 but ap
 ## Wo Sie den Plan sehen
 
 - **Bericht**: `wsp/reports/migration-waves-YYYYMMDD.md` mit einer Übersichtstabelle pro Welle und eine CSV-Datei für Tabellenkalkulationen
-- **Engagement-Hub**: Die Bausteine Migration Roadmap, Integration Hubs und Vendor Landscape erscheinen in `apps/engagement-hub.html`, wenn der Workspace Service-Apps enthält
+- **Engagement-Hub**: Die Bausteine Migration Roadmap, Integration Hubs und Vendor Landscape erscheinen in `wsp/publications/engagement-hub.html`, wenn der Workspace Service-Apps enthält
 - **Enterprise-Arbeitsmappe**: die Blätter Migration Waves und Migration Candidates in `swao-portfolio-YYYYMMDD.xlsx` (siehe [Befehlsreferenz](/de/service-assessment/commands#swao-service-export-enterprise))
 - **Delta-Verfolgung**: Veränderungen zwischen Läufen erscheinen in `wsp/reports/portfolio-delta-YYYYMMDD.md` als Änderungen bei TIME, Supportende und Risiko
 

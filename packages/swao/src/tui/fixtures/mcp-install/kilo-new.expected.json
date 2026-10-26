@@ -1,0 +1,16 @@
+{
+  "mcp": {
+    "swao": {
+      "type": "local",
+      "command": [
+        "<BIN>",
+        "mcp",
+        "--workspace",
+        "<WS>",
+        "--profile",
+        "starter"
+      ],
+      "enabled": true
+    }
+  }
+}

@@ -49,10 +49,10 @@ if (CHALLENGE_SRC_ABSENT) console.warn(`[call-site-registry] skipped: ${SKIP_REA
 // Each entry: { line, label }.
 // Label is for human readability in test output only; not a semantic key.
 const EXPECTED_CALL_SITES: Array<{ line: number; label: string }> = [
-  { line: 193, label: 'generateChallengeReport - report generation' },
-  { line: 238, label: 'runChallenge - opening turn' },
-  { line: 260, label: 'runChallenge - dialogue turns loop' },
-  { line: 454, label: 'runChallenge - LZ challenge generate report' },
+  { line: 219, label: 'generateChallengeReport - report generation' },
+  { line: 287, label: 'runChallenge - opening turn' },
+  { line: 309, label: 'runChallenge - dialogue turns loop' },
+  { line: 549, label: 'runChallenge - LZ challenge generate report' },
 ];
 
 describe('challenge.ts .complete( call-site registry (Design 092 s3.4, #1708 Q5)', () => {

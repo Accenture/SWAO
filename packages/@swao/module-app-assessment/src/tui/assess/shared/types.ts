@@ -16,16 +16,7 @@
 // Shared types for assess phase components (#2371).
 // Moved from AssessScreen.tsx to allow import by extracted phase components.
 
-export interface LocalConnectorInfo {
-  id: string;
-  name: string;
-  credentialKey: string | undefined;
-  envVar: string | undefined;
-  baseUrl: string;
-  protocol: string;
-  defaultModel: string;
-  /** #3385: false when the connector sets tls.reject_unauthorized: false. */
-  rejectUnauthorized?: boolean;
-  /** #3385: model of this run (app or workspace .swao.yml); the preflight pings it, not defaultModel. */
-  model?: string;
-}
+// #3388 (Design 112): one connector reader + one LocalConnectorInfo type for
+// every screen. Re-exported from @swao/module-llm-providers so the type stays
+// identical across the TUI and the loader (the four private copies are gone).
+export type { LocalConnectorInfo } from '@swao/module-llm-providers';

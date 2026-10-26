@@ -189,3 +189,33 @@ describe('writeWorkspaceConnector (#1405)', () => {
     expect(reparsed.ok, reparsed.ok ? '' : reparsed.error).toBe(true);
   });
 });
+
+describe('writeWorkspaceConnector -- tls block preservation (#3438)', () => {
+  const TLS_LINES = '  tls:\n    reject_unauthorized: false\n    ca_bundle: /etc/ssl/corp-ca.pem\n';
+
+  it('round-trips tls.reject_unauthorized: false and tls.ca_bundle through a discovery refresh', () => {
+    writeFileSync(join(gwDir, 'agg.yaml'), CONNECTOR + TLS_LINES);
+    const loaded = load();
+    const outPath = writeWorkspaceConnector(workspaceRoot, mergeDiscoveredModels(loaded.file, []));
+    const reparsed = parseConnectorYaml(readFileSync(outPath, 'utf-8'), 'agg.yaml');
+    expect(reparsed.ok, reparsed.ok ? '' : reparsed.error).toBe(true);
+    if (reparsed.ok) {
+      expect(reparsed.file.connector.tls?.reject_unauthorized).toBe(false);
+      expect(reparsed.file.connector.tls?.ca_bundle).toBe('/etc/ssl/corp-ca.pem');
+    }
+  });
+
+  it('keeps an existing destination tls block when the refreshed file carries none', () => {
+    // Source loaded BEFORE the operator added tls (e.g. a stale in-memory copy
+    // held by a wizard step); the late discovery write must not drop it.
+    const stale = load();
+    writeFileSync(join(gwDir, 'agg.yaml'), CONNECTOR + TLS_LINES);
+    const outPath = writeWorkspaceConnector(workspaceRoot, mergeDiscoveredModels(stale.file, []));
+    const reparsed = parseConnectorYaml(readFileSync(outPath, 'utf-8'), 'agg.yaml');
+    expect(reparsed.ok, reparsed.ok ? '' : reparsed.error).toBe(true);
+    if (reparsed.ok) {
+      expect(reparsed.file.connector.tls?.reject_unauthorized).toBe(false);
+      expect(reparsed.file.connector.tls?.ca_bundle).toBe('/etc/ssl/corp-ca.pem');
+    }
+  });
+});

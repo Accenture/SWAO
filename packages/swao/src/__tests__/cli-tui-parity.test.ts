@@ -143,6 +143,7 @@ const EXPECTED_CLI_COMMANDS = new Set([
   'unipipe',                      // #1652 sprint-121 -- meshcloud UniPipe integration stub; CLI-only (TUI deferred)
   'machine-id',                   // #2128 sprint-128 -- print machine fingerprint; CLI-only
   'llm',                          // #1558 -- LLM workload assessment command group; TUI path goes through AssessScreen (--type llm)
+  'llm-gateway',                  // #3388 sprint-152 -- llm-gateway update; TUI: LlmGatewayUpdateScreen (Tools submenu)
   'chat',                         // #2779 sprint-135 -- multi-turn portfolio chat (Enterprise); TUI: ChatScreen (Tools submenu)
   'service',                      // #3075 sprint-150 -- Service Portfolio Assessment; TUI: ServiceInitScreen via AssessmentTypeScreen [2]
 ]);
@@ -168,6 +169,7 @@ const EXPECTED_TUI_SCREENS = new Set([
   'PublishScreen',            // #0432 -- swao publish; item 5 on main menu
   'LensesScreen',             // #0455 -- swao lenses; Tools submenu
   'LzCatalogueUpdateScreen',  // #0872 -- swao lz catalogue update; Tools submenu
+  'LlmGatewayUpdateScreen',   // #3388 -- swao llm-gateway update; Tools submenu
   'LzCatalogueManageScreen',  // #1436 -- swao lz catalogue copy/new/list; Tools submenu (Community+)
   'ServeScreen',              // #0438 -- swao publish --serve; launched from PublishScreen
   'IngestScreen',             // #0967 -- swao ingest; Tools submenu (key 5)
@@ -281,6 +283,7 @@ describe('CLI/TUI parity gate (#0261)', () => {
       'support-bundle': 'SupportBundleScreen', // #1477 sprint-116 -- PII-free diagnostic archive
       'chat':           'ChatScreen',           // #2779 sprint-135 -- multi-turn portfolio chat
       service:          'ServiceInitScreen',    // #3075 sprint-150 -- Service Portfolio Assessment intake
+      'llm-gateway':    'LlmGatewayUpdateScreen', // #3388 sprint-152 -- llm-gateway update; Tools submenu
     };
     for (const cmd of EXPECTED_CLI_COMMANDS) {
       if (CLI_ONLY.has(cmd)) continue;
@@ -315,12 +318,17 @@ describe('CLI/TUI parity gate (#0261)', () => {
 
 function listMcpTools(): Set<string> {
   const src = readFileSync(MCP_SERVER_SRC, 'utf-8');
-  // Match `name: 'swao_xxx'` lines in the SWAO_MCP_TOOLS array definition.
-  // The regex also picks up the switch cases -- deduplicated via Set.
+  // #3470: match `name: 'swao_xxx'` lines inside the SWAO_MCP_TOOLS array
+  // definition only (not switch cases, prompts or prompt arguments), the same
+  // block the mcp-tool-list audit gate reads. Unlisted (deprecated) tools are
+  // still defined there, so they stay in this set.
+  const start = src.indexOf('export const SWAO_MCP_TOOLS = [');
+  const end = src.indexOf('] as const;', start);
+  const block = start >= 0 && end > start ? src.slice(start, end) : '';
   const re = /name:\s*['"]([a-z][a-z0-9_]+)['"]/g;
   const found = new Set<string>();
   let m: RegExpExecArray | null;
-  while ((m = re.exec(src)) !== null) found.add(m[1]);
+  while ((m = re.exec(block)) !== null) found.add(m[1]);
   return found;
 }
 
@@ -333,7 +341,7 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_health_check',
   'swao_hub',
   'swao_challenge',
-  'swao_import',
+  'swao_import', // #3470: defined (handler kept until 1.6.0) but unlisted
   'swao_signal_detail',
   'swao_signals',
   'swao_explain_landing_zone',
@@ -348,7 +356,7 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_lenses',
   'swao_normalize',
   'swao_portal_query',
-  'swao_lz_catalogue',
+  'swao_lz_catalogue', // #3470: defined (handler kept until 1.6.0) but unlisted
   // #0596 (sprint-073) -- separate list/show/fit tools for CLI/MCP parity.
   'swao_lz_catalogue_list',
   'swao_lz_catalogue_show',
@@ -388,13 +396,8 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_service_init',
   'swao_service_research_run',
   'swao_service_export',
-  // Sprint-104 prompt name + argument names (picked up by the name-regex scanner
-  // from the swao_evidence_interview prompt definition in server.ts).
-  'swao_evidence_interview',
-  'app_id',
-  'control_filter',
-  'min_severity',
-  'signal_filter',
+  // #3470: prompt and prompt argument names are no longer scanned (the scanner
+  // reads the SWAO_MCP_TOOLS block only).
 ]);
 
 // CLI commands that have a direct MCP tool counterpart.

@@ -16,9 +16,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { spawn } from 'child_process';
-import { readdirSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { load as yamlLoad } from 'js-yaml';
+import { listLocalConnectors } from '@swao/module-llm-providers';
 import { Header } from '../components/Header.js';
 import { TextInput } from '@swao/tui-kit';
 import { PasswordInput } from '@swao/tui-kit';
@@ -78,24 +76,19 @@ function credentialValueLabel(slug: string): string {
 }
 
 // the pick list without requiring a code change.
+// #3388 (Design 112): read connectors through the one shared loader
+// (listLocalConnectors) instead of a private YAML scan, so this list matches
+// every other screen. The loader seeds the workspace folder when empty.
 function discoverConnectorCredOptions(): CredOption[] {
   try {
-    const gatewayDir = join(process.cwd(), 'wsp', 'inputs', 'llm-gateway');
     const knownValues = new Set(KNOWN_CRED_OPTIONS.map(o => o.value));
     const discovered: CredOption[] = [];
-    let files: string[] = [];
-    try { files = readdirSync(gatewayDir).filter(f => f.endsWith('.yaml')); } catch { return []; }
-    for (const f of files) {
-      try {
-        const parsed = yamlLoad(readFileSync(join(gatewayDir, f), 'utf-8'));
-        const key = (parsed as Record<string, unknown> | null)?.['connector'] as Record<string, unknown> | undefined;
-        const credKey = key?.['auth'] as Record<string, unknown> | undefined;
-        const keyStr = credKey?.['credential_key'];
-        if (typeof keyStr === 'string' && keyStr.length > 0 && !knownValues.has(keyStr)) {
-          discovered.push({ label: `${keyStr}  -- connector credential key (${f})`, value: keyStr });
-          knownValues.add(keyStr);
-        }
-      } catch { /* skip malformed YAML */ }
+    for (const c of listLocalConnectors(process.cwd())) {
+      const keyStr = c.credentialKey;
+      if (typeof keyStr === 'string' && keyStr.length > 0 && !knownValues.has(keyStr)) {
+        discovered.push({ label: `${keyStr}  -- connector credential key (${c.id})`, value: keyStr });
+        knownValues.add(keyStr);
+      }
     }
     return discovered;
   } catch {

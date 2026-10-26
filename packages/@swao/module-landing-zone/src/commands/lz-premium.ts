@@ -337,6 +337,7 @@ async function fetchGcpProducts(override?: string): Promise<EndpointsResult> {
 // ---------------------------------------------------------------------------
 const SERVICE_FULFILLS: Record<string, string[]> = {
   'ec2':                   ['vm_compute'],
+  'ebs':                   ['block_storage'], // #3430: persistent volumes
   'eks':                   ['kubernetes'],
   'eks-auth':              ['kubernetes'],
   'ecs':                   ['container_orchestration'],
@@ -354,7 +355,7 @@ const SERVICE_FULFILLS: Record<string, string[]> = {
   'cloudfront':            ['cdn'],
   'sqs':                   ['queue'],
   'sns':                   ['messaging'],
-  'kafka':                 ['event_streaming'],
+  'kafka':                 ['event_streaming', 'kafka'], // #3430: MSK is Kafka
   'kinesis':               ['event_streaming'],
   'firehose':              ['event_streaming'],
   'kinesisanalytics':      ['event_streaming'],
@@ -460,7 +461,7 @@ const AZURE_SERVICE_FULFILLS: Record<string, string[]> = {
   'Azure Static Web Apps':                      ['paas_compute'],
   'Azure Batch':                                ['batch_compute'],
   'Service Bus':                                ['queue', 'messaging'],
-  'Event Hubs':                                 ['event_streaming'],
+  'Event Hubs':                                 ['event_streaming', 'kafka'], // #3430: Kafka endpoint
   'Event Grid':                                 ['messaging'],
   'Azure SignalR Service':                      ['messaging'],
   'Azure Notification Hubs':                    ['messaging'],

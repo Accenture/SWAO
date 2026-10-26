@@ -19,7 +19,7 @@ export { completeWithUsage, completeVisionWithUsage, completeWithToolsWithUsage 
 export { anthropicCostUsd } from './types.js';
 export { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 // #3381 / #3385: connectivity checks with the connector's TLS and proxy rules.
-export { connectorPostJson, openAiChatCompletionsUrl, type ConnectorFetchResult } from './gateway/connector-fetch.js';
+export { connectorPostJson, openAiChatCompletionsUrl, createProxyAwareFetch, type ConnectorFetchResult, type ProxyAwareResponse } from './gateway/connector-fetch.js';
 export { FixedLlmProvider } from './fixed.js';
 export { OllamaLlmProvider } from './ollama.js';
 export { AnthropicLlmProvider, LlmConnectivityError } from './anthropic.js';
@@ -75,7 +75,10 @@ export type {
   ConnectorProtocol,
   ParseConnectorResult,
 } from './gateway/connector-schema.js';
-export { listConnectors, getConnector } from './gateway/connector-loader.js';
+export { listConnectors, getConnector, seedBundledConnectors, resolveBundledConnectorsDir, updateBundledConnectors, PRIVATE_SEED_MARKER, isPrivateSeedConnector } from './gateway/connector-loader.js';
+export type { ConnectorUpdateResult } from './gateway/connector-loader.js';
+export { listLocalConnectors } from './gateway/local-connectors.js';
+export type { LocalConnectorInfo } from './gateway/local-connectors.js';
 export type { LoadedConnector, ListConnectorsResult } from './gateway/connector-loader.js';
 export { createProviderFromConnector } from './gateway/resolve.js';
 export { buildLlmGatewayProbe, llmGatewayProbeContribution, classifyPingFailure } from './gateway/gateway-probe.js';

@@ -43,15 +43,34 @@ export interface AzureRegionOverlay {
 }
 
 /**
- * True for Azure Retail Prices billing zones that are not deployable regions
- * (#3155): "Global", "Europe", "Intercontinental", "US Gov", "Zone 1",
- * "Azure Stack", and similar. ARM region names (`armRegionName`) are always
- * lower-case alphanumeric (`westeurope`, `germanywestcentral`), so anything
- * with an upper-case letter, a space, or punctuation is dropped from the
- * catalogue rather than offered as a fit target.
+ * ARM region names that are lower-case alphanumeric but are NOT customer-
+ * deployable regions (#3380 decision 3b): internal canary / Early Updates
+ * Access Program (`*euap`), staging zones (`*stg`, `eastusslv`), AT&T partner
+ * edge zones (`att*`), and Microsoft-internal zones (`microsoftvancouver1`,
+ * `sgxsingapore1`). Listed as patterns so a future `swao lz catalogue update`
+ * keeps excluding them instead of re-admitting them. Genuine commercial
+ * regions that merely lack a sovereignty pin stay in the catalogue (they are
+ * reported UNKNOWN, a warning, not dropped).
+ */
+const AZURE_NON_CUSTOMER_REGION = [
+  /euap$/,              // centraluseuap, eastus2euap -- canary / EUAP
+  /stg$/,               // *stg -- staging
+  /^eastusslv$/,        // Silverlining staging
+  /^att/,               // att* -- AT&T partner edge zones
+  /^microsoftvancouver1$/,
+  /^sgxsingapore1$/,
+];
+
+/**
+ * True for Azure region ids that must not be offered as a fit target: billing
+ * pseudo-zones (#3155, "Global", "Europe", "US Gov", "Azure Stack", ...) and
+ * non-customer ARM regions (#3380, canary / staging / partner / internal).
+ * ARM region names are lower-case alphanumeric, so anything with an upper-case
+ * letter, a space or punctuation is dropped, as is any non-customer pattern.
  */
 export function isAzurePseudoRegion(id: string): boolean {
-  return !/^[a-z][a-z0-9]*$/.test(id);
+  if (!/^[a-z][a-z0-9]*$/.test(id)) return true;
+  return AZURE_NON_CUSTOMER_REGION.some((re) => re.test(id));
 }
 
 export function normalizeAzureProducts(

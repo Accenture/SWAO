@@ -28,8 +28,10 @@ import { runSynthPass } from './passes/pass-09-synth.js';
 // the host dispatches it directly from @swao/module-framework.
 import { runBlocksPass } from './passes/pass-12-blocks.js';
 import { runScopePass } from './passes/pass-13-scope.js';
-import { runMalwarePass } from './passes/pass-14-malware.js';
+import { runMalwarePass, runSecretScanPass } from './passes/pass-14-malware.js';
+import { CANONICAL_DEFAULT_PASS_KEYS } from '@swao/core';
 import { runIamPass } from './passes/pass-21-iam.js';
+import { runQualityPass } from './passes/pass-26-quality.js';
 
 /**
  * AssessOrchestrator (#0549) -- owns the ordered application-assessment pass
@@ -45,6 +47,8 @@ import { runIamPass } from './passes/pass-21-iam.js';
  * It requires external tools (Gitleaks, OSV-Scanner) that are not guaranteed to
  * be installed. Users opt in via --passes malware; getPass('malware') resolves it
  * through OPT_IN_PASSES. (#0681)
+ * #3419: the Gitleaks part of Pass 14 runs by default as `secrets`
+ * (getPass('secrets'), DEFAULT_PASS_KEYS); a missing Gitleaks yields MAL-00.
  */
 
 export type AppAssessmentPassKey =
@@ -58,7 +62,8 @@ export type AppAssessmentPassKey =
   | 'crypto'
   | 'synth'
   | 'blocks'
-  | 'scope';
+  | 'scope'
+  | 'quality';
 
 export interface AppAssessmentPassDescriptor {
   /** Two-digit pass number used in the WSP filename and progress output. */
@@ -89,12 +94,18 @@ const PASS_PROFILE: Record<AppAssessmentPassKey, AppAssessmentPassDescriptor> = 
   // @swao/module-framework (#0570), like Pass 10 (DYNAMIC) and Pass 23 (LZR).
   blocks: { num: '12', name: 'block_assessments', runner: runBlocksPass, llmPassName: 'blocks' },
   scope: { num: '13', name: 'scope_coverage', runner: runScopePass, llmPassName: null },
+  // #3405: Pass 26 code health (15 to 22 are former block numbers, 21 is iam, 23 to 25 are in use).
+  quality: { num: '26', name: 'code_health', runner: runQualityPass, llmPassName: null },
 };
 
 // Opt-in passes: recognized by getPass() but excluded from passKeys() so they
 // do not run as part of the default pass profile. Users must request them
 // explicitly via --passes <key>.
+// #3419: `secrets` is the Pass 14 secret scan (Gitleaks only) and IS in the
+// default `--passes` list (DEFAULT_PASS_KEYS); it is registered here because
+// the AppAssessmentPassKey union lists only the original uniform passes.
 const OPT_IN_PASSES: Record<string, AppAssessmentPassDescriptor> = {
+  secrets: { num: '14', name: 'secret_scan', runner: runSecretScanPass, llmPassName: null },
   malware: { num: '14', name: 'malware_scanning', runner: runMalwarePass, llmPassName: null },
   iam: { num: '21', name: 'iam_assessment', runner: runIamPass, llmPassName: null },
 };
@@ -153,15 +164,33 @@ export const assessOrchestrator = new AssessOrchestrator();
  *   signals, so SYNTH loses nothing by running first.
  */
 export const CANONICAL_PASS_ORDER: readonly string[] = [
-  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
-  'dynamic', 'scope', 'malware', 'lzr', 'comp', 'synth', 'blocks',
+  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto', 'quality',
+  'dynamic', 'scope', 'secrets', 'malware', 'lzr', 'comp', 'synth', 'blocks',
 ];
 
-/** Default `--passes` list (every default-profile pass; malware is opt-in, lzr is driven by `--lzr`). */
-export const DEFAULT_PASS_KEYS: readonly string[] = [
-  'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
-  'dynamic', 'scope', 'comp', 'synth', 'blocks',
-];
+/**
+ * Default `--passes` list (every default-profile pass; malware is opt-in, lzr is
+ * driven by `--lzr`). #3419: the one list lives in @swao/core
+ * (DEFAULT_PASS_PROFILE) and now includes `secrets`, the Gitleaks secret scan.
+ */
+export const DEFAULT_PASS_KEYS: readonly string[] = CANONICAL_DEFAULT_PASS_KEYS;
+
+/**
+ * #3419: passes the TUI does not pre-select although the CLI default runs
+ * them: `dynamic` needs Playwright and an analyst-configured crawl. Derived,
+ * not a second literal, so the TUI cannot drift from DEFAULT_PASS_KEYS.
+ */
+export const TUI_OPT_IN_PASS_KEYS: ReadonlySet<string> = new Set(['dynamic']);
+
+/** #3419: the TUI first-run pre-selection (DEFAULT_PASS_KEYS without TUI_OPT_IN_PASS_KEYS). */
+export const TUI_DEFAULT_PASS_KEYS: readonly string[] = DEFAULT_PASS_KEYS.filter((k) => !TUI_OPT_IN_PASS_KEYS.has(k));
+
+/**
+ * #3419: a requested pass that makes another one redundant. The full malware
+ * scan runs Gitleaks itself, so `secrets` is dropped when `malware` is in the
+ * run (never reported as "not executed").
+ */
+export const SUPERSEDED_PASS_KEYS: Readonly<Record<string, string>> = { secrets: 'malware' };
 
 /** Passes removed from the run by `--skip-llm`: their result is meaningless
  *  without an LLM (#1625, #2441). DATA and SYNTH stay and emit their
@@ -183,7 +212,7 @@ export const PASS_ALIASES: Readonly<Record<string, string | null>> = {
 /** Every key accepted in `--passes` or pass_profile, aliases included. */
 export const INDIVIDUAL_PASS_KEYS: ReadonlySet<string> = new Set([
   'inv', 'state', 'data', 'ctx', 'sbom', 'tf', 'egr', 'crypto',
-  'synth', 'dynamic', 'comp', 'blocks', 'scope', 'malware',
+  'synth', 'dynamic', 'comp', 'blocks', 'scope', 'secrets', 'malware', 'quality',
   ...Object.keys(PASS_ALIASES),
 ]);
 
@@ -202,9 +231,17 @@ export function resolvePassAlias(key: string): string | null | undefined {
   return INDIVIDUAL_PASS_KEYS.has(lc) ? lc : undefined;
 }
 
-/** Deduplicate (case-insensitive) and sort into CANONICAL_PASS_ORDER. Unknown keys keep their relative order at the end. */
+/**
+ * Deduplicate (case-insensitive) and sort into CANONICAL_PASS_ORDER. Unknown keys keep their relative order at the end.
+ * #3419: a superseded pass is dropped when the pass that supersedes it is in
+ * the list (`secrets` with `malware`), so every path (CLI, profile, TUI) agrees.
+ */
 export function sortPassesCanonical(keys: readonly string[]): string[] {
-  const unique = Array.from(new Set(keys.map((k) => k.trim().toLowerCase()).filter((k) => k.length > 0)));
+  const lowered = Array.from(new Set(keys.map((k) => k.trim().toLowerCase()).filter((k) => k.length > 0)));
+  const unique = lowered.filter((k) => {
+    const by = SUPERSEDED_PASS_KEYS[k];
+    return by === undefined || !lowered.includes(by);
+  });
   const rank = (k: string): number => {
     const i = CANONICAL_PASS_ORDER.indexOf(k);
     return i === -1 ? CANONICAL_PASS_ORDER.length : i;

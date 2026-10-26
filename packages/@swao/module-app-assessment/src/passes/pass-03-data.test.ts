@@ -147,3 +147,22 @@ const rentenversicherungsnummer = req.body.rvnr; // PII field
     expect(assessment.note).toMatch(/LLM/i);
   });
 });
+
+describe('pass-03-data -- #3410 shared catalogue matcher (segment boundaries)', () => {
+  it('a PII fragment inside a word is not a hit: pid in rapid, kvnr in ekvnrx', async () => {
+    writeFileSync(join(src, 'speed.ts'), `const rapid = true;\nconst ekvnrx = 1;\n`, 'utf-8');
+    const result = await runDataPass(makeCtx({ llm: undefined } as Partial<PassContext>));
+    expect(result.pass.status).toBe('not_applicable');
+  });
+
+  it('identifier parts still match: kvnr_hash, patientPid, KVNR', async () => {
+    writeFileSync(join(src, 'patient.ts'), `const kvnr_hash = h;\nconst patientPid = 1;\n`, 'utf-8');
+    const result = await runDataPass(makeCtx({ llm: undefined } as Partial<PassContext>));
+    expect(result.pass.status).toBe('complete');
+    const derivations = result.signals.map((s) => s.derivation).join('\n');
+    expect(derivations).toContain('Krankenversicherungsnummer');
+    expect(derivations).toContain('Patientennummer');
+    const kv = result.signals.find((s) => s.derivation.includes('Krankenversicherungsnummer'));
+    expect(kv!.evidence[0]).toBe('patient.ts:1');
+  });
+});

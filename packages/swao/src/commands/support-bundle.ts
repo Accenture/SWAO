@@ -16,7 +16,7 @@
 // `swao support-bundle` -- collect a PII-free diagnostic bundle of SWAO event
 // logs and environment info for support hand-off (#1515, #1599).
 //
-// Bundle v2.3 contents (#2965):
+// Bundle v2.4 contents (#2965, #3437):
 //   manifest.json            -- SWAO version, OS, Node, license tier, pii_attestation, prior_bundles
 //   execution-trace.ndjson   -- event codes + timestamps + PII-redacted message and context (#2421)
 //   environment.json         -- platform, arch, node_version, swao_env_vars, runtime_mode,
@@ -35,7 +35,8 @@
 //   llm-legs-summary.json    -- (v2.1) LLM leg/pass status + latency; score_complete flag (#2965)
 //   frameworks-used.json     -- (v2.1) community framework IDs configured per app
 //   challenge-agents.json    -- (v2.1) challenge agent inventory + last-run presence per app
-//   chat-transcripts.ndjson  -- (v2.2) merged + redacted chat turns from wsp/chat/*.ndjson (#2771)
+//   chat-transcripts.ndjson  -- (v2.2) chat turn metadata from wsp/chat/*.ndjson (#2771); since
+//                               v2.4 (#3437) content is dropped, content_chars kept
 //   agent-runs-index.json    -- (v2.2) index of wsp/agent-runs/ entries (#2771)
 //   chat-session-stats.json  -- (v2.2) session count, turn counts, model usage, per-session
 //                               breakdown with suspicious flag (#2965)
@@ -43,7 +44,9 @@
 //
 // Explicitly excluded from every file: prompt content, document text, API keys,
 // engagement name, email addresses, absolute filesystem paths, username, hostname,
-// base_url (partner-identifying endpoint). #3331: a final pass (redactUserIdentity)
+// base_url (partner-identifying endpoint). #3437: log messages, log context and
+// error excerpts pass support-bundle-redact.ts (hosts, URLs, absolute paths,
+// tool-output file names, key suffixes); every file gets the host pass. #3331: a final pass (redactUserIdentity)
 // replaces the home directory / any user-profile path with <home> and the OS
 // user / host name with <user> / <host> anywhere in every file's text.
 
@@ -56,14 +59,25 @@ import { basename, join, relative, resolve as resolvePath, sep } from 'node:path
 import { spawnSync } from 'node:child_process';
 import { load as loadYaml } from 'js-yaml';
 import type { LogEntry } from '@swao/core';
-import { LicenseGuard, logPortfolio, resolveWorkspaceRoot, _paths as licencePaths, readChallengedRun } from '@swao/core';
+import { LicenseGuard, logPortfolio, resolveWorkspaceRoot, readDefaultWorkspace, _paths as licencePaths, readChallengedRun } from '@swao/core';
 import { listLzCatalogueProviders, loadLzComingSoon, resolveProviderCatalogue } from '@swao/module-landing-zone';
 import { SWAO_VERSION } from '../branding.js';
 import { buildTar } from '../util/tar-write.js';
 import { emptyCounts, redactPiiValue } from '../util/redact-pii.js';
 import { collectServiceArtefacts } from './support-bundle-service.js';
+import { summariseLlmPassForBundle } from './support-bundle-pass-summary.js'; // #3441
+import { createBundleRedactor, redactWorkspaceRoot, type BundleRedactor } from './support-bundle-redact.js';
 
-export const BUNDLE_VERSION = '2.3';
+export const BUNDLE_VERSION = '2.4';
+
+/** #3437: manifest attestation; describes what the redaction passes guarantee. */
+export const PII_ATTESTATION = 'diagnostics-only-client-identifiers-redacted';
+export const PII_ATTESTATION_SCOPE =
+  'Event codes, redacted log messages, workspace metadata and counts. No document content, credentials, '
+  + 'e-mail, phone or user identity. Host names and URLs are replaced by per-bundle placeholders in every file; '
+  + 'absolute paths and tool-output file names are replaced in log messages, log context and error excerpts; '
+  + 'the workspace root and user profile are replaced everywhere; chat turn text is dropped (length only). '
+  + 'App ids, workspace-relative file names and SWAO install paths in health-check.json may remain.';
 
 function listLogFiles(workspaceRoot: string): string[] {
   const out: string[] = [];
@@ -319,7 +333,8 @@ interface PassInventoryResult {
   ctx_diagnostics: Record<string, Record<string, unknown>>;
 }
 
-function buildPassInventory(workspaceRoot: string): PassInventoryResult {
+/** Exported for tests (#3436: degraded marker per pass). */
+export function buildPassInventory(workspaceRoot: string): PassInventoryResult {
   const result: Record<string, unknown> = {};
   const fpDetail: Record<string, Array<{ signal_id: string; reason: string }>> = {};
   const ctxDiag: Record<string, Record<string, unknown>> = {};
@@ -383,6 +398,8 @@ function buildPassInventory(workspaceRoot: string): PassInventoryResult {
       duration_ms?: number;
       signals_emitted?: number;
       exit_status?: string;
+      degraded?: boolean;
+      degraded_reason?: string;
       size_bytes: number;
       pass_summary?: Record<string, unknown>;
     }> = [];
@@ -399,6 +416,8 @@ function buildPassInventory(workspaceRoot: string): PassInventoryResult {
         let duration_ms: number | undefined = wallClockByPass.get(passId);
         let signals_emitted: number | undefined;
         let exit_status: string | undefined;
+        let degraded = false;
+        let degradedReason: string | undefined;
         let pass_summary: Record<string, unknown> | undefined;
         try {
           const passData = loadYaml(readFileSync(join(passesDir, f), 'utf-8')) as Record<string, unknown>;
@@ -406,6 +425,12 @@ function buildPassInventory(workspaceRoot: string): PassInventoryResult {
           if (Array.isArray(signals)) signals_emitted = signals.length;
           const passHeader = passData['pass'] as Record<string, unknown> | undefined;
           if (passHeader && typeof passHeader['status'] === 'string') exit_status = passHeader['status'];
+          // #3436: the header stays `complete` for a degraded pass; carry the marker.
+          const assessmentBlock = passData['assessment'] as Record<string, unknown> | undefined;
+          if (assessmentBlock?.['degraded'] === true) {
+            degraded = true;
+            if (typeof assessmentBlock['degraded_reason'] === 'string') degradedReason = assessmentBlock['degraded_reason'];
+          }
           if (duration_ms === undefined && typeof passData['duration_ms'] === 'number') {
             duration_ms = passData['duration_ms'];
           }
@@ -428,24 +453,10 @@ function buildPassInventory(workspaceRoot: string): PassInventoryResult {
               }
             }
             // Gap 3: pass_summary for LLM-driven passes 03, 04, 11
+            // #3441: bucket by signal outcome (Signal has no `status`) and, for
+            // Pass 11, by control verdict through the shared classifier.
             if (LLM_PASS_PREFIXES.some(p => passId.startsWith(p))) {
-              const byStatus: Record<string, number> = {};
-              const regimes = new Set<string>();
-              const topGaps: string[] = [];
-              for (const sig of signals as Array<Record<string, unknown>>) {
-                const status = typeof sig['status'] === 'string' ? sig['status'] : 'unknown';
-                byStatus[status] = (byStatus[status] ?? 0) + 1;
-                const fw = typeof sig['framework_id'] === 'string' ? sig['framework_id']
-                  : (typeof sig['regime'] === 'string' ? sig['regime'] : null);
-                if (fw) regimes.add(fw);
-                if ((status === 'gap' || status === 'non-compliant' || status === 'partial')
-                  && typeof sig['id'] === 'string' && topGaps.length < 5) {
-                  topGaps.push(sig['id'] as string);
-                }
-              }
-              pass_summary = { signals_by_status: byStatus };
-              if (regimes.size > 0) pass_summary['regimes_evaluated'] = [...regimes].sort();
-              if (topGaps.length > 0) pass_summary['top_gaps'] = topGaps;
+              pass_summary = summariseLlmPassForBundle(passData);
             }
           }
         } catch { /* enrichment failed -- include size_bytes only */ }
@@ -454,12 +465,15 @@ function buildPassInventory(workspaceRoot: string): PassInventoryResult {
           duration_ms?: number;
           signals_emitted?: number;
           exit_status?: string;
+          degraded?: boolean;
+          degraded_reason?: string;
           size_bytes: number;
           pass_summary?: Record<string, unknown>;
         } = { pass_id: passId, size_bytes: st.size };
         if (duration_ms !== undefined) entry.duration_ms = duration_ms;
         if (signals_emitted !== undefined) entry.signals_emitted = signals_emitted;
         if (exit_status !== undefined) entry.exit_status = exit_status;
+        if (degraded) { entry.degraded = true; if (degradedReason) entry.degraded_reason = degradedReason; }
         if (pass_summary !== undefined) entry.pass_summary = pass_summary;
         passes.push(entry);
       } catch { /* skip */ }
@@ -793,7 +807,10 @@ interface ChatTurnRaw {
   [key: string]: unknown;
 }
 
-function buildChatTranscripts(workspaceRoot: string, counts: ReturnType<typeof emptyCounts>): string {
+// #3437: chat turn text (user prompts AND assistant replies, which echo
+// findings and client data) is never copied into the bundle; only its length
+// is kept so support can see empty or truncated turns.
+function buildChatTranscripts(workspaceRoot: string, redactor: BundleRedactor): string {
   const chatDir = join(workspaceRoot, 'wsp', 'chat');
   if (!existsSync(chatDir)) return '';
   let files: string[];
@@ -807,13 +824,14 @@ function buildChatTranscripts(workspaceRoot: string, counts: ReturnType<typeof e
       if (!line.trim()) continue;
       let parsed: ChatTurnRaw;
       try { parsed = JSON.parse(line) as ChatTurnRaw; } catch { continue; }
-      // Redact content; drop system turns (may contain full portfolio context)
+      // Drop system turns (may contain full portfolio context); drop content of every other turn.
       if (parsed.role === 'system') continue;
+      redactor.counts.chat_turns++;
       const safe: Record<string, unknown> = {
         ts: parsed.ts,
         role: parsed.role,
-        content: redactPiiValue(typeof parsed.content === 'string' ? parsed.content : '', counts),
-        session: f.replace('.ndjson', ''),
+        content_chars: typeof parsed.content === 'string' ? parsed.content.length : 0,
+        session: redactor.scrubText(f.replace('.ndjson', '')),
       };
       if (typeof parsed.model === 'string') safe['model'] = parsed.model;
       if (typeof parsed.tokens_in === 'number') safe['tokens_in'] = parsed.tokens_in;
@@ -1028,17 +1046,46 @@ function buildConnectorMeta(workspaceRoot: string): Array<Record<string, unknown
   return result;
 }
 
+// #3374: resolve the workspace in three steps so a bundle is still produced when
+// the current directory is not inside a workspace (the common case right after
+// setup, when the TUI stayed in the exe folder, #3373):
+//   1. explicit --workspace, or walk up from cwd;
+//   2. the saved default workspace (written by the setup wizard);
+//   3. fall back to cwd and build a reduced bundle (environment, licence, health
+//      check, logs) instead of failing, so the operator can still send diagnostics.
+export interface BundleWorkspaceDeps {
+  resolveWorkspaceRoot?: () => string | null;
+  readDefaultWorkspace?: () => string | null;
+  existsSync?: (p: string) => boolean;
+  cwd?: () => string;
+}
+export function resolveBundleWorkspace(
+  opts: { workspace?: string },
+  deps: BundleWorkspaceDeps = {},
+): { root: string; reduced: boolean; source: 'explicit' | 'cwd-walk' | 'saved' | 'reduced' } {
+  const resolveWs = deps.resolveWorkspaceRoot ?? resolveWorkspaceRoot;
+  const readSaved = deps.readDefaultWorkspace ?? readDefaultWorkspace;
+  const exists = deps.existsSync ?? existsSync;
+  const cwd = deps.cwd ?? (() => resolvePath('.'));
+  if (opts.workspace) return { root: resolvePath(opts.workspace), reduced: false, source: 'explicit' };
+  const walked = resolveWs();
+  if (walked) return { root: walked, reduced: false, source: 'cwd-walk' };
+  const saved = readSaved();
+  if (saved && exists(saved)) return { root: saved, reduced: false, source: 'saved' };
+  return { root: cwd(), reduced: true, source: 'reduced' };
+}
+
 export function cmdSupportBundle(opts: { workspace?: string; out?: string }): void {
-  const workspaceRoot = opts.workspace
-    ? resolvePath(opts.workspace)
-    : resolveWorkspaceRoot();
-  // #2644: emit support.bundle.start event so the operator can trace when a bundle was created.
-  try { logPortfolio('info', 'support.bundle.start', 'Support bundle creation started', { context: { bundle_version: BUNDLE_VERSION } }); } catch { /* best-effort */ }
-  if (!workspaceRoot) {
-    console.error('[swao support-bundle] not in a workspace (no `apps/` or `.swao.yml` found walking up from cwd)');
-    process.exitCode = 1;
-    return;
+  const resolved = resolveBundleWorkspace(opts);
+  const workspaceRoot = resolved.root;
+  const reduced = resolved.reduced;
+  if (resolved.source === 'saved') {
+    console.error(`[swao support-bundle] no workspace at the current directory; using the saved workspace ${workspaceRoot}.`);
+  } else if (reduced) {
+    console.error('[swao support-bundle] no workspace found; building a reduced bundle (environment, licence, health check, logs) rooted at the current directory.');
   }
+  // #2644: emit support.bundle.start event so the operator can trace when a bundle was created.
+  try { logPortfolio('info', 'support.bundle.start', 'Support bundle creation started', { context: { bundle_version: BUNDLE_VERSION, reduced } }); } catch { /* best-effort */ }
 
   // Compute diagDir early so we can scan prior bundles before writing
   const diagDir = opts.out ? resolvePath(opts.out) : join(workspaceRoot, 'wsp', 'support-diag');
@@ -1064,6 +1111,12 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   allEntries.sort((a, b) => a.ts.localeCompare(b.ts));
 
   const counts = emptyCounts();
+  // #3437: client-identifier pass (hosts, absolute paths, tool-output file
+  // names, key suffixes) on top of the PII redactor, keyed per bundle.
+  const clientRedactor = createBundleRedactor();
+  const scrubMessage = (m: string): string => clientRedactor.scrubText(redactPiiValue(m, counts) as string);
+  const scrubContext = (c: Record<string, unknown>): Record<string, unknown> =>
+    clientRedactor.scrubValue(redactPiiValue(c, counts)) as Record<string, unknown>;
 
   // execution-trace.ndjson: core fields + PII-redacted message and context.
   // LLM Assessment log entries lack scope/app_id -- fall back gracefully (#2398).
@@ -1075,8 +1128,8 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     scope: e.scope ?? 'llm-assessment',
     ...(e.app_id !== undefined ? { app_id: e.app_id } : {}),
     ...(e.run_id !== undefined ? { run_id: e.run_id } : {}),
-    ...(typeof e.message === 'string' ? { message: redactPiiValue(e.message, counts) as string } : {}),
-    ...(e.context !== undefined ? { context: redactPiiValue(e.context, counts) as Record<string, unknown> } : {}),
+    ...(typeof e.message === 'string' ? { message: scrubMessage(e.message) } : {}),
+    ...(e.context !== undefined ? { context: scrubContext(e.context) } : {}),
   }));
   const traceNdjson = traceEntries.map((e) => JSON.stringify(e)).join('\n') + (traceEntries.length > 0 ? '\n' : '');
 
@@ -1088,12 +1141,8 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const olderErrorCount = allEntries.filter((e) => e.level === 'error' && new Date(e.ts) < retentionCutoff).length;
   const errorEntries: SafeErrorEntry[] = recentErrors
     .map((e) => {
-      const safeCtx = e.context
-        ? (redactPiiValue(e.context, counts) as Record<string, unknown>)
-        : undefined;
-      const safeMsg = typeof e.message === 'string'
-        ? (redactPiiValue(e.message, counts) as string)
-        : undefined;
+      const safeCtx = e.context ? scrubContext(e.context) : undefined;
+      const safeMsg = typeof e.message === 'string' ? scrubMessage(e.message) : undefined;
       return {
         ts: e.ts,
         level: e.level,
@@ -1143,7 +1192,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const binarySig = computeBinarySignature();
 
   // v2.2 artefacts (#2771)
-  const chatTranscriptsNdjson = buildChatTranscripts(workspaceRoot, counts);
+  const chatTranscriptsNdjson = buildChatTranscripts(workspaceRoot, clientRedactor);
   const agentRunsIndex = buildAgentRunsIndex(workspaceRoot);
   const chatSessionStats = buildChatSessionStats(workspaceRoot);
 
@@ -1215,7 +1264,13 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     log_files_included: files.length,
     bundle_contents: bundleContents,
     prior_bundles: priorBundles,
-    pii_attestation: 'no-user-data-collected',
+    reduced_bundle: reduced,
+    // #3437: the former 'no-user-data-collected' claim was not true (logs carried
+    // client hosts, paths and chat prompts). The value now states what is done;
+    // pii_redaction carries counts only, never values.
+    pii_attestation: PII_ATTESTATION,
+    pii_attestation_scope: PII_ATTESTATION_SCOPE,
+    pii_redaction: clientRedactor.counts,
     ...(service ? { service_pii_redactions: service.redactions.length } : {}),
   };
 
@@ -1234,7 +1289,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   };
 
   const tarEntries: Array<{ name: string; content: Buffer }> = [
-    { name: 'manifest.json',            content: Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf-8') },
+    { name: 'manifest.json',            content: Buffer.alloc(0) }, // serialised after the redaction passes (counts)
     { name: 'execution-trace.ndjson',   content: Buffer.from(traceNdjson, 'utf-8') },
     { name: 'environment.json',         content: Buffer.from(JSON.stringify(environment, null, 2) + '\n', 'utf-8') },
     { name: 'workspace-config.json',    content: Buffer.from(JSON.stringify({ workspace_config: workspaceConfig }, null, 2) + '\n', 'utf-8') },
@@ -1282,6 +1337,16 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   // #3331: final user-identity scrub over every file the bundle writes (all
   // entries are UTF-8 text), so a path or name embedded mid-string in any
   // artefact (health-check probe messages, log text, env values) is removed.
+  // #3437: workspace-root replacement and host / URL pseudonymisation over
+  // every other file's text (replacements contain no quote or backslash, so
+  // JSON stays valid), then the manifest with the final redaction counts.
+  for (const entry of tarEntries) {
+    if (entry.name === 'manifest.json') continue;
+    const text = redactWorkspaceRoot(entry.content.toString('utf-8'), workspaceRoot);
+    entry.content = Buffer.from(clientRedactor.scrubHosts(text), 'utf-8');
+  }
+  tarEntries[0]!.content = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+
   const identity = currentBundleIdentity();
   for (const entry of tarEntries) {
     entry.content = Buffer.from(redactUserIdentity(entry.content.toString('utf-8'), identity), 'utf-8');
@@ -1305,7 +1370,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     if (service.redactions.length > 0) console.log(`[warn] PII redacted (${service.redactions.length} field(s)) - check redaction-log.txt`);
   }
   console.log(`[ok]  Extract with: tar -xzf "${outPath}"`);
-  console.log(`[ok]  No user data, document content, or credentials included.`);
+  console.log('[ok]  Diagnostics only: no document content or credentials; client hosts, paths and chat text redacted.');
   // #2644: emit support.bundle.created so log monitors can confirm successful completion.
   try {
     logPortfolio('info', 'support.bundle.created', `Support bundle created: ${outPath}`, {
@@ -1323,7 +1388,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
 export function registerSupportBundle(program: Command): void {
   program
     .command('support-bundle')
-    .description('Create a PII-free diagnostic bundle v2.3 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents + connector meta + per-session chat stats) for SWAO support hand-off (#1515 #1599 #1776 #2965)')
+    .description('Create a redacted diagnostic bundle v2.4 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents + connector meta + per-session chat stats) for SWAO support hand-off (#1515 #1599 #1776 #2965)')
     .option('--workspace <path>', 'workspace root (default: resolve from cwd)')
     .option('--out <dir>', 'output directory (default: <workspace>/wsp/support-diag/)')
     .action((opts: { workspace?: string; out?: string }) => cmdSupportBundle(opts));

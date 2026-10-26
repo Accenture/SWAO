@@ -23,3 +23,21 @@ describe('bundled community framework catalogues (#3150)', () => {
     expect(() => loadRegimeCatalogue(join(FRAMEWORKS, folder, 'controls.yaml'))).not.toThrow();
   });
 });
+
+// #3425: control-level assessment_type_scope was stripped by the schema, so
+// Pass 11 could not honour it; the KRITIS sector controls carry applies_when.
+describe('KRITIS_DE sector controls (#3425)', () => {
+  it('keeps assessment_type_scope and applies_when.kritis_sector after parsing', () => {
+    const cat = loadRegimeCatalogue(join(FRAMEWORKS, 'kritis-de', 'controls.yaml'));
+    const byId = new Map(cat.controls.map((c) => [c.id, c]));
+    const sectors: Record<string, string> = {
+      KRITIS_DE_SEC_ENE: 'energy|water', KRITIS_DE_SEC_HLT: 'health', KRITIS_DE_SEC_FIN: 'finance',
+      KRITIS_DE_SEC_TRN: 'transport', KRITIS_DE_SEC_ICT: 'ict',
+    };
+    for (const [id, sector] of Object.entries(sectors)) {
+      expect(byId.get(id)?.applies_when).toEqual({ kritis_sector: sector });
+      expect(byId.get(id)?.assessment_type_scope).toEqual(['aud']);
+    }
+    expect(byId.get('KRITIS_DE_SEC_DACHG')?.applies_when).toBeUndefined();
+  });
+});

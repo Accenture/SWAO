@@ -51,7 +51,8 @@ import { runDynamicPass, runLzrPass, findLzrInputFiles } from '../passes/index.j
 import { computeContextBudget } from '../passes/context-budget.js';
 import { assessOrchestrator, appAssessmentType, runIngestPrePass, derivePlanForRun, loadAcceptedRun, loadPriorSignals } from '@swao/module-app-assessment';
 // #3152 / #3158: pass order, aliases, lens expansion and --skip-llm live in the module (unit-tested there).
-import { DEFAULT_PASS_KEYS, INDIVIDUAL_PASS_KEYS, sortPassesCanonical, normaliseRequestedPasses, applySkipLlm, expandPassProfile, filterByPassProfile, markSkippedByFlag, INVALID_LLM_RESPONSE_REASON } from '@swao/module-app-assessment';
+import { DEFAULT_PASS_KEYS, INDIVIDUAL_PASS_KEYS, sortPassesCanonical, normaliseRequestedPasses, applySkipLlm, expandPassProfile, filterByPassProfile, markSkippedByFlag, INVALID_LLM_RESPONSE_REASON, passesNotScheduled, classifyPassOutcome, passDegradedLogEvent } from '@swao/module-app-assessment';
+import type { PassNotRunEntry, PassDegradedEntry } from '@swao/core';
 // #1434: the audit assessment surface (its module included) was removed;
 // `--type audit` stays in KNOWN_ASSESSMENT_TYPES and routes to the router's
 // coming-soon path so historical manifests keep loading gracefully.
@@ -62,12 +63,13 @@ import { llmAssessmentType, runLlmAssessment, LlmAssessmentGateError, EnginePend
 import type { ResolvedLeg, ChallengePassResult } from '@swao/module-llm-assessment';
 import { serviceAssessmentType, planServicePasses, buildServiceScopeCoverage, formatSkippedSummary, buildPortfolioSummary, discoverApplicationApps, runBinaryAnalysis, type ServicePassPlan } from '@swao/module-service-assessment';
 import { SwaoYmlLlmAssessmentSchema } from '@swao/core';
-import { landingZoneAssessmentType, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, generateLzNarrative, resolveProviderCatalogue } from '@swao/module-landing-zone';
+import { landingZoneAssessmentType, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, generateLzNarrative, resolveProviderCatalogue, toLzRequiredServices } from '@swao/module-landing-zone';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import type { LzFitReport, LzVerdictNarrative } from '@swao/module-landing-zone';
 import { createLzRunLifecycle, runLzProviderFits } from './lz-run-lifecycle.js';
 import { createRunLifecycle } from './run-lifecycle.js';
 import { readLegChallengeAgents, type LegChallengeAgent } from './llm-leg-challenge.js';
+import { assessChallengeOfferLines } from './assess-challenge-offer.js'; // #3427
 import { applyRunRetention } from './run-retention.js';
 import { resolveRunLzTargets, readWorkspaceAssessment } from './lz-target-config.js';
 import { RunContextSchema, lzTargetLabel, type WspResult } from '@swao/core';
@@ -81,10 +83,15 @@ import type { LlmProviderConfig } from '@swao/module-llm-providers';
 import { preflightLlmProvider, llmUnavailableWarning } from './assess-llm-preflight.js';
 import { setAllowlist, setScrubPersonName } from '../util/redact-pre-llm.js';
 import { beginRun as beginRedactionRun, flushRedactionReport } from '@swao/core';
+import { beginSourceScopeRun, endSourceScopeRun, getSourceScope, listInputFiles, sourceTreeHasFiles } from '@swao/core'; // #3428
+import { scopeTestCodeMode, applyTestCodeMarker } from '@swao/core'; // #3403
+import { readRunCodeHealthSetting, readRunTestCodeSetting, testCodeFilesAssessed } from './assess-test-code.js'; // #3403, #3487
 import { scrubRunDirectory } from '../util/report-scrub.js';
+import { writeMaskedLlmTrace } from '../util/llm-trace-writer.js';
 import { buildAuthenticatedCloneUrl, diagnoseCloneFailure, type VcsTokenScheme } from '../providers/vcs/auth.js';
+import { buildCloneArgs, buildCloneEnv, runGitClone, redactVcsUrl, cloneTimeoutMsFromVcs } from '../providers/vcs/clone.js';
 import { logApp, logPortfolio } from '@swao/core';
-import { createPostRunTimer, rebuildPortfolioSummaryStep } from './post-run-timing.js';
+import { createPostRunTimer, rebuildPortfolioSummaryStep, incrementAssessmentCounterStep } from './post-run-timing.js';
 import { findInstalledChromium, isPlaywrightPackageInstalled } from '@swao/core';
 import type { AccumulatedUsage } from '@swao/module-llm-providers';
 import type { PassContext, PassResult } from '@swao/core';
@@ -343,7 +350,7 @@ async function cloneIfNeeded(
   if (existsSync(targetPath)) {
     // Directory has real source files -- a previous clone or manual placement.
     // Skip the clone entirely so we do not overwrite existing work.
-    if (checkSourceNonEmpty(targetPath)) return;
+    if (checkSourceHasAnyFile(targetPath)) return;
     // Directory exists but contains only scaffold files (README, .gitkeep).
     // Only proceed if a vcs.url is actually configured; otherwise leave it.
     const vcsCheck = source?.vcs as Record<string, unknown> | undefined;
@@ -414,8 +421,10 @@ async function cloneIfNeeded(
   // `.swao.yml providers.vcs.token_scheme: <x-access-token|oauth2|...>`.
   const schemeOverride = (vcs?.token_scheme as VcsTokenScheme | undefined) ?? undefined;
   const { cloneUrl, schemeUsed } = buildAuthenticatedCloneUrl(vcsUrl, token ?? undefined, schemeOverride);
+  // #3439: credentials typed into source.vcs.url never reach console or logs.
+  const safeUrl = redactVcsUrl(vcsUrl);
 
-  console.log(`[info] Cloning ${vcsUrl} (ref: ${refLabel}) into ${targetPath}...`);
+  console.log(`[info] Cloning ${safeUrl} (ref: ${refLabel}) into ${targetPath}...`);
 
   // #0398 (sprint-040): structured clone-start log so debug bundles
   // capture the full clone context BEFORE git runs -- previously only
@@ -426,7 +435,7 @@ async function cloneIfNeeded(
       logApp(appId, 'info', 'provider.vcs.clone-start', `git clone starting`, {
         context: {
           app_id: appId,
-          vcs_url: vcsUrl,
+          vcs_url: safeUrl,
           ref: ref ?? null,
           target_path: targetPath,
           token_scheme: schemeUsed,
@@ -470,16 +479,15 @@ async function cloneIfNeeded(
   }
   const gitConfigEnv = buildGitConfigEnv(gitProxy, sslVerify);
 
-  // --quiet suppresses the per-tick "Updating files: N%" progress flood
-  // that git writes to stderr (#0619). Errors still surface on stderr
-  // (--quiet only silences progress, not error output).
-  const args = ['clone', '--depth', '1', '--quiet'];
-  if (ref) args.push('--branch', ref);
-  args.push(cloneUrl, targetPath);
-
-  // Capture stderr so we can pattern-match it for a structured diagnosis
-  // (#0326 Part C) instead of just dumping a generic error.
-  const result = spawnSync('git', args, { encoding: 'utf-8', env: { ...process.env, ...gitConfigEnv } });
+  // #3439: shallow, quiet (#0619), long-path and non-interactive clone. Async
+  // spawn with a deadline, so a credential dialog or a lingering Git Credential
+  // Manager grandchild cannot hang the run. stderr is captured for the
+  // structured diagnosis (#0326 Part C).
+  const args = buildCloneArgs({ cloneUrl, targetPath, ref });
+  // #3439: optional source.vcs.clone_timeout_minutes (1 to 240, validated by
+  // SwaoYmlVcsSchema at load); absent means the 10-minute default.
+  const cloneTimeoutMs = cloneTimeoutMsFromVcs(vcs?.clone_timeout_minutes);
+  const result = await runGitClone(args, buildCloneEnv(process.env, gitConfigEnv), cloneTimeoutMs);
   if (result.stdout) process.stdout.write(result.stdout);
   // Only mirror stderr on failure: --quiet already suppresses progress lines,
   // but error output (auth failures, unreachable host) still lands in stderr
@@ -490,11 +498,13 @@ async function cloneIfNeeded(
     const stderr = result.stderr ?? '';
     const diagnosis = diagnoseCloneFailure(stderr, vcsUrl, schemeUsed, appId);
     console.error(
-      `[error] git clone failed (exit ${result.status ?? 'unknown'}).\n` +
-      `  URL: ${vcsUrl}\n` +
+      `[error] git clone failed (${result.timedOut ? 'timed out' : `exit ${result.status ?? 'unknown'}`}).\n` +
+      `  URL: ${safeUrl}\n` +
       (ref ? `  Ref: ${ref}\n` : '') +
       `  Target: ${targetPath}\n` +
       `  Token scheme used: ${schemeUsed}\n` +
+      // #3439: name the knob when the deadline, not git, ended the clone.
+      (result.timedOut ? `  Deadline: ${Math.round(cloneTimeoutMs / 60_000)} min; raise source.vcs.clone_timeout_minutes (1 to 240) in apps/${appId ?? '<id>'}/.swao.yml for large repositories.\n` : '') +
       `\n${diagnosis.hint}\n` +
       `\nStructured event logged as ${diagnosis.logCode} -- see\n` +
       `  swao log tail --level error\n`,
@@ -511,13 +521,15 @@ async function cloneIfNeeded(
   if (appId) {
     try {
       logApp(appId, 'info', 'provider.vcs.clone-ok', `git clone complete`, {
-        context: { app_id: appId, vcs_url: vcsUrl, ref: ref ?? null, target_path: targetPath },
+        context: { app_id: appId, vcs_url: safeUrl, ref: ref ?? null, target_path: targetPath },
       });
     } catch { /* logging best-effort */ }
   }
 }
 
-function resolveSourcePath(
+// #3404: exported for the regression test (assess-resolve-source-path.test.ts),
+// which feeds it a .swao.yml parsed through SwaoYmlSchema, as the action does.
+export function resolveSourcePath(
   workspaceAppDir: string,
   swaoYml: Record<string, unknown>,
   cliSourcePath: string | undefined,
@@ -540,43 +552,29 @@ function resolveSourcePath(
 // #0516: returns true when dir contains at least one non-README source file.
 // An all-README directory means the source was never cloned -- passes would
 // silently run with no evidence and emit all-UNKNOWN signals.
+// #3428: same skip rules as the central source scope (a tree holding only
+// node_modules/ or .git/ is empty for every pass, so it is empty here too).
+const SOURCE_PLACEHOLDER_NAMES: ReadonlySet<string> = new Set(['readme.md', 'readme.txt', 'readme', '.gitkeep']);
 function checkSourceNonEmpty(dir: string): boolean {
   if (!existsSync(dir)) return false;
-  const ignoredNames = new Set(['readme.md', 'readme.txt', 'readme', '.gitkeep']);
-  const stack: string[] = [dir];
-  while (stack.length > 0) {
-    const current = stack.pop() as string;
-    let entries;
-    try { entries = readdirSync(current, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      if (e.isDirectory()) { stack.push(join(current, e.name)); continue; }
-      if (e.isFile() && !ignoredNames.has(e.name.toLowerCase())) return true;
-    }
-  }
-  return false;
+  return sourceTreeHasFiles(dir, SOURCE_PLACEHOLDER_NAMES);
 }
 
-// #0264: recursive file count for run-manifest.files_assessed.
-// Counts every file (no extension filter -- matches operator intuition that
-// "files scanned" = everything under that dir, including markdown / yaml /
-// images). Skips dot-dirs (.git, .swao) so VCS noise stays out. Returns 0
-// for missing or unreadable directories.
-function countFilesRecursive(rootDir: string): number {
+// #3428: clone guard. Any non-placeholder file anywhere (including
+// node_modules/ or target/) is existing operator work: never rm + re-clone it.
+function checkSourceHasAnyFile(dir: string): boolean {
+  if (!existsSync(dir)) return false;
+  return sourceTreeHasFiles(dir, SOURCE_PLACEHOLDER_NAMES, { respectSkipSet: false });
+}
+
+// #0264: recursive file count of an input folder for run-manifest.files_assessed
+// (imports_files_total). Skips dot-entries (.gitkeep, .swao) so housekeeping
+// stays out. Returns 0 for missing or unreadable directories.
+// #3428: source_files_total and the source_scope block come from the central
+// source scope instead (getSourceScope(sourcePath).summary()).
+function countInputFiles(rootDir: string): number {
   if (!existsSync(rootDir)) return 0;
-  let total = 0;
-  const stack: string[] = [rootDir];
-  while (stack.length > 0) {
-    const dir = stack.pop() as string;
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      if (e.isDirectory()) stack.push(join(dir, e.name));
-      else if (e.isFile()) total++;
-    }
-  }
-  return total;
+  return listInputFiles(rootDir).filter((f) => !f.rel.split('/').some((seg) => seg.startsWith('.'))).length;
 }
 
 function msToHuman(ms: number): string {
@@ -649,7 +647,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
     .option('--workspace <path>', 'Portfolio workspace directory (default: cwd)')
     .option(
       '--passes <list>',
-      `Comma-separated pass list: ${DEFAULT_PASS_KEYS.join(',')} (default: all ${DEFAULT_PASS_KEYS.length}). The list is a set; passes always run in canonical order. Pass \`dynamic\` to opt into the Playwright crawl; exclude it for fast static-only runs. Opt-in extras (not in default): malware (Gitleaks + OSV-Scanner + ClamAV + YARA -- install tools to PATH first). Pass 23 (LZR) runs via --lzr.`,
+      `Comma-separated pass list: ${DEFAULT_PASS_KEYS.join(',')} (default: all ${DEFAULT_PASS_KEYS.length}). The list is a set; passes always run in canonical order. Pass \`dynamic\` to opt into the Playwright crawl; exclude it for fast static-only runs. \`secrets\` is the default Pass 14 secret scan (Gitleaks on PATH). Opt-in extras (not in default): malware (full Pass 14: Gitleaks + OSV-Scanner + ClamAV + YARA -- install tools to PATH first; replaces \`secrets\`). Pass 23 (LZR) runs via --lzr.`,
       DEFAULT_PASS_KEYS.join(','),
     )
     .option('--source-path <path>', 'Override source code path (overrides .swao.yml source.path)')
@@ -666,6 +664,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
     .option('--lz-cat-provider <provider>', 'For app assessment: run inline LZ catalogue fit against this CSP provider. Overrides assessment.landing_zone.provider in .swao.yml.')
     .option('--lz-cat-region <regionId>', 'For app assessment: run inline LZ catalogue fit against this region. Overrides assessment.landing_zone.region in .swao.yml.')
     .option('--lz-cat-targets <pairs>', 'For app assessment: comma-separated provider:region pairs for multiple LZ catalogue fits (e.g. aws-esc:eusc-de-east-1,azure:westeurope). Supersedes --lz-cat-provider/--lz-cat-region.')
+    .option('--no-lz-fit', 'For app assessment: run NO inline LZ catalogue fit for this run, even if assessment.landing_zone.targets is set in .swao.yml (#3378, ADR-0067). The TUI passes this when the operator selects no LZ targets.')
     .option('--lz-frameworks <ids>', 'Comma-separated community framework IDs to activate sovereignty gate for LZ assessment (e.g. BSI_C5,GDPR). Falls back to frameworks in .swao.yml.')
     .option('--portfolio', 'Assess all apps in the workspace (Enterprise feature)', false)
     .option('--malware-fail-on-detection', 'Exit 5 when a MAL-01 or MAL-03 detection is present in the malware pass', false)
@@ -705,6 +704,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         lzCatProvider?: string;
         lzCatRegion?: string;
         lzCatTargets?: string;
+        lzFit?: boolean; // #3378: commander maps --no-lz-fit to lzFit=false
         lzFrameworks?: string;
         portfolio: boolean;
         malwareFailOnDetection: boolean;
@@ -737,6 +737,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // #3158: --skip-llm also withholds the provider from every remaining pass
         // (llmConfigured is forced to false below), so DATA and SYNTH no longer call
         // a configured LLM; they record their skip marker instead.
+        // #3419: the request before --skip-llm, so the passes the flag removed are
+        // reported as skipped_by_flag in run-manifest.passes_not_run.
+        const passesBeforeSkipLlm = opts.passes;
         if (opts.skipLlm) {
           opts.passes = applySkipLlm(opts.passes);
         }
@@ -928,7 +931,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             const legs: ResolvedLeg[] = await Promise.all(llmCfg.legs.map(async (l, i) => {
               let model = l.model ?? 'default';
               if (model.startsWith('~')) {
-                const loaded = getConnector(l.connector, { workspaceRoot });
+                const loaded = getConnector(l.connector, { workspaceRoot, seedIfEmpty: true });
                 if (loaded) {
                   const credKey = loaded.file.connector.auth?.credential_key;
                   let apiKey: string | undefined;
@@ -1007,7 +1010,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                     // does not re-read an expired vault entry. The parent's token (loaded
                     // at session start) is valid; the vault copy may be expired by the time
                     // challenge passes run (ADFS TTL = 60 min, 4-leg runs can exceed this).
-                    const challengeLoaded = getConnector(leg.connector, { workspaceRoot });
+                    const challengeLoaded = getConnector(leg.connector, { workspaceRoot, seedIfEmpty: true });
                     const challengeTokenEnv: Record<string, string> = {};
                     if (challengeLoaded) {
                       const cAuth = challengeLoaded.file.connector.auth;
@@ -1149,7 +1152,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                       ...(leg.model !== 'default' ? ['--model', leg.model] : []),
                     ];
                     // #2901: same live-token injection as spawnChallenge.
-                    const lzLoaded = getConnector(leg.connector, { workspaceRoot });
+                    const lzLoaded = getConnector(leg.connector, { workspaceRoot, seedIfEmpty: true });
                     const lzTokenEnv: Record<string, string> = {};
                     if (lzLoaded) {
                       const lzAuth = lzLoaded.file.connector.auth;
@@ -1272,7 +1275,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             void result;
             // #2399: LLM Assessment runs are always counted; the
             // inputs_changed_since_last_app_assessment guard must not gate this.
-            try { LicenseGuard.load().incrementAssessmentCount(); } catch { /* best-effort */ }
+            // #3440: one write attempt; a failure logs
+            // assess.post_run.assessment_counter.failed and prints one warning.
+            incrementAssessmentCounterStep(undefined, () => LicenseGuard.load().incrementAssessmentCount(), undefined, { app: llmAppId, assessmentType: 'llm' });
             process.exit(0);
           } catch (err) {
             const e = err as Error;
@@ -1304,7 +1309,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // are the abstract capability keys the catalogue/scan fulfils.
           const priorSignals = loadPriorSignals(workspaceAppDir);
           const constraints = deriveConstraints(priorSignals);
-          const lzRequired = constraints.requiredServices.map((s) => ({ code: s.name, signalId: s.signalId }));
+          // #3430: provenance (confidence, evidence) of each requirement travels into the fit.
+          const lzRequired = toLzRequiredServices(constraints.requiredServices);
           if (lzRequired.length === 0) {
             console.warn('[warn] No app required-services found (no service_dep signals in the latest WSP). Run `swao assess --app ' + opts.app + '` first for a fit against the app\'s assessed needs; reporting catalogue/scan availability only.');
           }
@@ -1589,7 +1595,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             }
           }
 
-          try { LicenseGuard.load().incrementAssessmentCount(); } catch { /* best-effort */ }
+          // #3440: one write attempt; a failure logs
+          // assess.post_run.assessment_counter.failed and prints one warning.
+          incrementAssessmentCounterStep(undefined, () => LicenseGuard.load().incrementAssessmentCount(), undefined, { app: opts.app!, assessmentType: 'landing-zone-catalog' });
 
           // Multi-target console summary table.
           const lzVerdictRank: Record<string, number> = { READY: 0, ADVISORY: 1, NEEDS_VERIFICATION: 1, BLOCKED: 2, SOVEREIGNTY_BLOCKED: 3 };
@@ -1682,6 +1690,10 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           } catch { /* best-effort */ }
 
           lzLifecycle.complete(lzFailedTargets);
+          // #3427: offer the LZ Sovereignty Challenge for this run (TUI parity); best effort.
+          try {
+            for (const line of assessChallengeOfferLines({ wspDir: lzWspDir, runDir: lzRunDir, kind: 'lz', tier: LicenseGuard.load().state.tier, skipLlm: !!opts.skipLlm })) console.log(line);
+          } catch { /* the offer never changes the run outcome */ }
           process.exit(0);
           } catch (lzErr) {
             // #3223: any throw after the run dir exists (scan JSON parse, schema parse,
@@ -1701,6 +1713,10 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           );
           process.exit(1);
         }
+        // #3425: the routed type (--type override, else assessment.type, else the
+        // default; aliases normalised) reaches the passes as PassContext.assessmentType,
+        // so pass 11 scoping honours a --type override.
+        const effectiveAssessmentType = routeDecision.type;
 
         // Auto-clone from vcs.url when source/ is absent and no CLI override
         if (!opts.sourcePath && !isService) {
@@ -1719,7 +1735,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // #0516: abort before any pass when source is empty or README-only.
         if (!isService && !checkSourceNonEmpty(sourcePath)) {
           console.error(
-            `[error] Source directory is empty or contains only README files.\n` +
+            `[error] Source directory has no file to assess: it is empty, holds only README files,\n` +
+            `[error] or its files sit only in excluded folders (node_modules/, target/, dist/, .git/, ...).\n` +
             `[error]   Path: ${sourcePath}\n` +
             `[error] Configure source.vcs.url in .swao.yml with a git repository URL,\n` +
             `[error] or set source.path to the local folder containing your application code.`,
@@ -1832,6 +1849,20 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         if (opts.lzr) {
           requestedPasses = sortPassesCanonical([...requestedPasses, 'lzr']) as PassKey[];
         }
+
+        // #3419: default passes this run will not execute, with the reason
+        // (pass_profile / lenses, --skip-llm, an explicit --passes list, the
+        // service plan). Passes that run and skip themselves (no LLM, tool
+        // missing) are added from the pass loop; degraded passes (#3436) go to
+        // their own list. Both land in run-manifest.json and the publication.
+        const passesNotRun: PassNotRunEntry[] = passesNotScheduled({
+          requested: normaliseRequestedPasses(passesBeforeSkipLlm.split(',')).passes,
+          scheduled: requestedPasses,
+          skipLlm: !!opts.skipLlm,
+          ...(servicePlan ? { serviceSkipped: servicePlan.skipped.map((s) => ({ key: s.key, reason: s.reason })) } : {}),
+        });
+        const notScheduledKeys = passesNotRun.map((e) => e.pass);
+        const passesDegraded: PassDegradedEntry[] = [];
 
         const wspDir = join(workspaceAppDir, 'wsp');
         const runDir = join(wspDir, 'runs', runTs);
@@ -2120,10 +2151,33 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             `(${countStr})  ->  wsp/inputs/ + ingestion-manifest.json`,
           );
         }
+        // #3403: effective test-code setting (app .swao.yml first, then the
+        // workspace .swao.yml the Setup Wizard writes, then include).
+        const testCodeSetting = readRunTestCodeSetting(assessmentCfg, workspaceRoot, swaoYmlPath);
+        // #3487: Pass 26 settings (assessment.code_health: top_n, endpoint
+        // allowlist, opt-in tools), app .swao.yml first per key, then workspace.
+        const codeHealthSetting = readRunCodeHealthSetting(assessmentCfg, workspaceRoot, swaoYmlPath);
+        if (codeHealthSetting.tools.length > 0) {
+          console.log(`[info] Code health tools requested: ${codeHealthSetting.tools.join(', ')} (assessment.code_health.tools, ${codeHealthSetting.source.tools} .swao.yml)`);
+        }
+        if (testCodeSetting.mode !== 'include') {
+          console.log(`[info] Test code: ${testCodeSetting.mode} (assessment.test_code, ${testCodeSetting.source} .swao.yml)`);
+        }
+        let signalsTestTagged = 0;
+        let signalsTestLowered = 0;
+        // #3428: from here every pass shares one memoised walk per source root.
+        // Started after Pass 00, which may route files into wsp/inputs/source.
+        // #3403: the test-code setting rides on the run, so every pass and every
+        // service-plan source root inherits it without a per-call option.
+        beginSourceScopeRun({
+          testCode: scopeTestCodeMode(testCodeSetting.mode),
+          extraTestPatterns: testCodeSetting.extraPatterns,
+          keepPatterns: testCodeSetting.keepPatterns,
+        });
 
         // #2959: pre-compute CTX prompt budget from active connector's context window.
         const connectorForBudget = llmProviderConfig?.connector
-          ? getConnector(llmProviderConfig.connector, { workspaceRoot })
+          ? getConnector(llmProviderConfig.connector, { workspaceRoot, seedIfEmpty: true })
           : undefined;
         const ctxPromptBudget = computeContextBudget({
           context_window_k: connectorForBudget?.file.connector.context_window_k,
@@ -2152,6 +2206,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             iter,
             assessedAt,
             passesDir,
+            assessmentType: effectiveAssessmentType, // #3425
           };
           const configuredLzProvider = (assessmentCfg?.['landing_zone'] as Record<string, unknown> | undefined)?.['provider'];
           const lzrResultRaw = await runLzrPass(lzrCtx, {
@@ -2318,6 +2373,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                   assessedAt,
                   passesDir,
                   llm: effectiveVisionLlm,
+                  assessmentType: effectiveAssessmentType, // #3425
                 };
                 const visionOpts = visionLlm ? { maxScreens: visionMaxScreens } : undefined;
                 let dynamicResult = await runDynamicPass(dynamicCtx, crawlResult, visionOpts);
@@ -2401,6 +2457,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                       const visionCtx: PassContext = {
                         appId: opts.app, sourcePath, workspacePath: workspaceAppDir,
                         iter, assessedAt, passesDir, llm: effectiveVisionLlm,
+                        assessmentType: effectiveAssessmentType, // #3425
                       };
                       const syntheticCrawl: import('@swao/core').CrawlResult = {
                         targetUrl: 'parity-baseline', screenCount: syntheticScreens.length,
@@ -2439,6 +2496,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             logPortfolio('info', 'assessment.pass.complete', 'Pass 10 dynamic_analysis complete', {
               context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', status: 'ok', duration_ms: Date.now() - dynamicPassStart, elapsed_ms: Date.now() - dynamicPassStart, app: opts.app, pass_id: `${runTs}-p10-dynamic` },
             });
+            // #3419: Pass 10 wrote no result (no crawl and no parity-baseline screenshots).
+            if (!existsSync(join(passesDir, '10-dynamic.yaml'))) {
+              passesNotRun.push({
+                pass: 'dynamic', num: '10', name: 'dynamic_analysis', reason: 'not_applicable',
+                detail: canLiveCrawl ? 'no crawl target configured and no parity-baseline screenshots' : 'live crawl disabled (--no-crawl or Playwright absent) and no parity-baseline screenshots',
+              });
+            }
             continue;
           }
 
@@ -2493,6 +2557,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             llm: recordedLlm ?? trackingLlm ?? baseLlm,
             passesDir, // #1055: lets synthesis read prior passes during an active run
             ctxPromptBudget, // #2959: connector-aware budget
+            assessmentType: effectiveAssessmentType, // #3425: routed type, honours --type
+            testCode: testCodeSetting.mode, // #3403: LLM prompt marker (tag mode)
+            codeHealth: codeHealthSetting, // #3487: Pass 26 top_n, allowlist, opt-in tools
           };
 
           console.log(`[info] Running Pass ${passDef.num} -- ${passDef.name}...`);
@@ -2659,6 +2726,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             });
           }
 
+          // #3419 / #3436: a pass that ran but skipped itself (no LLM, tool
+          // missing, ...) goes to passes_not_run; a pass that ran degraded (Pass 11
+          // with controls without a model verdict) goes to passes_degraded. The
+          // WSP pass header status stays as the pass wrote it (no `degraded` value).
+          const passOutcome = classifyPassOutcome(passKey, result, { skipLlm: !!opts.skipLlm });
+          if (passOutcome.notRun) passesNotRun.push(passOutcome.notRun);
+          if (passOutcome.degraded) passesDegraded.push(passOutcome.degraded);
+
           // v0.10 auditor enrichment (#0172). Default outcome / assessor /
           // assessed_at on every signal that did not set them. ADR-0025;
           // design 020. False-positive narrative is intentionally not
@@ -2710,6 +2785,23 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             };
           }
 
+          // #3403: test-code marker (tag / exclude). In include mode the
+          // signals are returned untouched, so the default run is unchanged.
+          {
+            const markRoot = ctx.sourcePath;
+            const marked = applyTestCodeMarker(
+              result.signals,
+              testCodeSetting.mode,
+              (rel) => getSourceScope(markRoot).isTestRel(rel),
+              markRoot,
+            );
+            if (marked.tagged > 0) {
+              signalsTestTagged += marked.tagged;
+              signalsTestLowered += marked.lowered;
+              result = { ...result, signals: marked.signals };
+            }
+          }
+
           const validation = PassFileSchema.safeParse(result);
           if (!validation.success) {
             console.error(
@@ -2731,37 +2823,23 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               const traceOutDir = legTracesDir
                 ? join(legTracesDir, 'traces')
                 : join(runDir, 'llm-traces');
-              mkdirSync(traceOutDir, { recursive: true });
-              const traceObj = {
+              // #3447: masked at write time (prompt + response); leg traces
+              // sit outside the run dir and are never reached by the sweep.
+              writeMaskedLlmTrace(traceOutDir, {
                 pass: `${passDef.num}-${passKey}`,
-                call_index: 1,
+                callIndex: 1,
                 leg: process.env['SWAO_LLM_ASSESSMENT_LEG_ID'] ?? undefined,
                 model: rawLlm.model,
                 connector: rawLlm.name,
-                timestamp: new Date().toISOString(),
-                prompt: {
-                  chars: firstTrace.scrubbedPrompt.length,
-                  tokens_est: Math.ceil(firstTrace.scrubbedPrompt.length / 4),
-                  redacted_placeholders: (firstTrace.scrubbedPrompt.match(/\[REDACTED/g) ?? []).length,
-                  note: 'post-redaction only -- [REDACTED...] markers in place',
-                  content: firstTrace.scrubbedPrompt,
-                },
-                response: {
-                  chars: firstTrace.response.length,
-                  tokens: trackingLlm?.snapshot().output_tokens,
-                  parse_valid: (() => { try { JSON.parse(firstTrace.response); return true; } catch { return false; } })(),
-                  content: firstTrace.response,
-                },
-              };
-              writeFileSync(
-                join(traceOutDir, `${passDef.num}-${passKey}-call-1.json`),
-                JSON.stringify(traceObj, null, 2),
-                'utf-8',
-              );
+                scrubbedPrompt: firstTrace.scrubbedPrompt,
+                response: firstTrace.response,
+                responseTokens: trackingLlm?.snapshot().output_tokens,
+              });
             }
           }
 
-          if (passKey === 'malware') malwarePassResult = result;
+          // #3419: the default secret scan also feeds --malware-fail-on-detection (MAL-03).
+          if (passKey === 'malware' || passKey === 'secrets') malwarePassResult = result;
 
           // #0389 (sprint-040): Pass 12 (blocks) emits its output under
           // `assessment.blocks` instead of `signals[]`, so a literal
@@ -2787,12 +2865,21 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // #2286: renamed to assessment.pass.complete for consistency with portfolio-events.
           // #2231: pass_id matches assessment.pass.start for cross-log correlation.
           logApp(opts.app!, 'info', 'assessment.pass.complete', `Pass ${passDef.num} ${passDef.name} complete`, {
-            context: { pass: passKey, num: passDef.num, name: passDef.name, signals: result.signals.length, items: itemsEmitted, wall_clock_ms: passMs, duration_ms: passMs, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}) },
+            context: { pass: passKey, num: passDef.num, name: passDef.name, signals: result.signals.length, items: itemsEmitted, wall_clock_ms: passMs, duration_ms: passMs, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
           });
           // #1769: unconditional portfolio-events for monitoring / audit trail.
+          // #3436: `status: 'ok'` stays (log monitors parse it); `degraded: true` is additive.
           logPortfolio('info', 'assessment.pass.complete', `Pass ${passDef.num} ${passDef.name} complete`, {
-            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, duration_ms: passMs, elapsed_ms: passMs, app: opts.app, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}) },
+            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, duration_ms: passMs, elapsed_ms: passMs, app: opts.app, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
           });
+          // #3436: structured event + console line when the pass ran but is not
+          // fully evaluated (Pass 11: controls without a model verdict).
+          if (passOutcome.degraded) {
+            const ev = passDegradedLogEvent(passOutcome.degraded, passId);
+            console.warn(`[warn] ${ev.message}. Re-run the assessment when the LLM provider is reachable.`);
+            logApp(opts.app!, ev.level, ev.event, ev.message, { context: ev.context });
+            logPortfolio(ev.level, ev.event, ev.message, { context: { ...ev.context, app: opts.app } });
+          }
           // #1695: per-pass portfolio-events for LLM Assessment legs.
           if (process.env['SWAO_LLM_ASSESSMENT_LEG_ID']) {
             logPortfolio('info', 'llm-assessment.pass.complete', `leg pass complete: ${passKey}`, {
@@ -2885,11 +2972,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             appAssessment: assessmentCfg,
             workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
           });
-          const lzCatTargets = lzCatTargetConfig.targets;
+          // #3378 (ADR-0067): --no-lz-fit forces no inline fit for this run, even
+          // when assessment.landing_zone.targets is set in .swao.yml.
+          const lzCatTargets = opts.lzFit === false ? [] : lzCatTargetConfig.targets;
           inlineLzTargets = lzCatTargets;
           const lzCatSignals = lzCatTargets.length > 0 ? loadPriorSignals(workspaceAppDir) : null;
           const lzCatRequired = lzCatSignals
-            ? deriveConstraints(lzCatSignals).requiredServices.map((s) => ({ code: s.name, signalId: s.signalId }))
+            ? toLzRequiredServices(deriveConstraints(lzCatSignals).requiredServices) // #3430
             : [];
           // D-LZ-07: load sovereignty declarations from the app's selected frameworks.
           // Falls back to regimes_active (#0924 -- compliance pass uses that key).
@@ -3032,7 +3121,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const inventoryCount = passStats.find((s) => s.num === '01')?.signals_emitted;
 
         const manifest: RunManifest = {
-          schema_version: '1.5',
+          schema_version: '1.6', // #3419 / #3436: passes_not_run + passes_degraded
           run_id: runId,
           app: opts.app,
           iter,
@@ -3071,10 +3160,21 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             // #0264: count source files under the resolved source path +
             // all imports files under wsp/inputs/. PowerBI "files scanned"
             // tiles need these to render non-empty.
-            ...postRun.step('file_counts', () => ({
-              source_files_total: countFilesRecursive(sourcePath),
-              imports_files_total: countFilesRecursive(join(workspaceAppDir, 'wsp', 'inputs')),
-            })),
+            // #3428: source counts come from the central source scope (the
+            // walk the passes used, memoised for this run): source_files_total
+            // is the in-scope count; source_scope adds test / excluded detail
+            // for the publication's #assessment-scope block.
+            ...postRun.step('file_counts', () => {
+              const { root: _root, ...scope } = getSourceScope(sourcePath).summary();
+              // #3403: test-code setting and counts recorded with the scope.
+              const { source_files_total, source_scope } = testCodeFilesAssessed(
+                scope, testCodeSetting, { tagged: signalsTestTagged, lowered: signalsTestLowered });
+              return {
+                source_files_total,
+                imports_files_total: countInputFiles(join(workspaceAppDir, 'wsp', 'inputs')),
+                source_scope,
+              };
+            }),
           },
           landing_zone_weights: { ...DEFAULT_WEIGHTS },
           // #0474 (C-17): provenance block -- aggregated from per-pass data_source blocks.
@@ -3098,6 +3198,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           },
           // #1702: record passes that degraded (connectivity / provider error).
           ...(llmConnectivityFailedPasses.length > 0 ? { passes_failed: [...llmConnectivityFailedPasses] } : {}),
+          // #3419: default passes without a result and why; #3436: passes that ran degraded.
+          ...(passesNotRun.length > 0 ? { passes_not_run: [...passesNotRun] } : {}),
+          ...(passesDegraded.length > 0 ? { passes_degraded: [...passesDegraded] } : {}),
         };
 
         postRun.step('run_manifest', () => {
@@ -3107,10 +3210,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           writeFileSync(join(wspDir, 'latest.txt'), `runs/${runTs}`, 'utf-8');
           writeFileSync(join(wspDir, isService ? 'latest-service.txt' : 'latest-application.txt'), `runs/${runTs}`, 'utf-8');
         });
+        // #3428: the run's memoised source walks are no longer needed.
+        endSourceScopeRun();
         // #0911: compute audit-trail fields for run-context.yaml.
-        const _defaultPassKeys = [...DEFAULT_PASS_KEYS];
+        // #3419: the same not-scheduled list as run-manifest.passes_not_run (now
+        // also passes removed by pass_profile / lenses), not a third derivation.
         const _excludedPasses = [...new Set([
-          ..._defaultPassKeys.filter(p => !allRequestedKeys.includes(p)),
+          ...notScheduledKeys,
           ...(servicePlan?.skipped.map(s => s.key) ?? []),
         ])];
         // #3281: the targets the inline fit actually used (after geography resolution).
@@ -3194,11 +3300,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // `guardAssessmentBudget()` for licensed users with a positive
         // `assessment_limit` and shown as an informational counter for
         // Community users.
-        try {
-          postRun.step('assessment_counter', () => LicenseGuard.load().incrementAssessmentCount());
-        } catch (e) {
-          console.warn(`[warn] Could not update lifetime assessment counter: ${(e as Error).message}`);
-        }
+        // #3440: one write attempt; a failure logs
+        // assess.post_run.assessment_counter.failed and prints one warning.
+        incrementAssessmentCounterStep(postRun, () => LicenseGuard.load().incrementAssessmentCount());
 
         // #1016: run retention cleanup -- remove oldest runs when keep_latest is set.
         try {
@@ -3227,8 +3331,12 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
         // #0921: emit swao.run.complete so log consumers can calculate duration and confirm normal exit.
         // #1702: warn when mandatory passes were dropped due to LLM connectivity failure.
-        // Mandatory = compliance (pass 11) and block_assessments (pass 12).
-        const mandatoryPassNames = ['compliance', 'block_assessments'];
+        // Mandatory = compliance_evaluation (pass 11) and block_assessments (pass 12).
+        // #3449: these are pass header names (passDef.name); 'compliance' never
+        // matched, so a pass-11 connectivity failure exited 0. A degraded pass 11
+        // (#3436, LLM batches exhausted inside the pass) is not a failure here:
+        // it closes the run partial with the exit code unchanged.
+        const mandatoryPassNames = ['compliance_evaluation', 'block_assessments'];
         const mandatoryFailed = llmConnectivityFailedPasses.filter(p =>
           mandatoryPassNames.includes(p.pass),
         );
@@ -3237,7 +3345,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const runCompleteExitCode = mandatoryFailed.length > 0 ? 1 : 0;
         // #3283: close run-status.json: `partial` when passes failed (LLM connectivity),
         // otherwise `complete`; exit_code mirrors the process exit code below.
-        runLifecycle.complete({ failedPasses: llmConnectivityFailedPasses.map(p => p.pass), exitCode: runCompleteExitCode });
+        // #3436: a degraded pass (compliance not fully evaluated) also closes the
+        // run `partial` (degraded_passes); the exit code is unchanged.
+        runLifecycle.complete({ failedPasses: llmConnectivityFailedPasses.map(p => p.pass), degradedPasses: passesDegraded, exitCode: runCompleteExitCode });
         // Design 103 §7.2, §22.1 (#3101, #3309): rebuild the combined workspace SWAO_APM
         // summary after every application or service run that closed complete or partial.
         // After the close because the summary reads usable runs only (#3283); best effort,
@@ -3266,9 +3376,17 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 failed_passes: failedCount,
                 failed_pass_names: llmConnectivityFailedPasses.map(p => p.pass),
               } : {}),
+              // #3436 / #3419: additive, so log consumers see an incomplete evaluation.
+              ...(passesDegraded.length > 0 ? { degraded_pass_names: passesDegraded.map(p => p.pass) } : {}),
+              ...(passesNotRun.length > 0 ? { passes_not_run: passesNotRun.map(p => ({ pass: p.pass, reason: p.reason })) } : {}),
             },
           });
         } catch { /* logging is best-effort */ }
+
+        // #3419: one console line naming the passes not executed and why.
+        if (passesNotRun.length > 0) {
+          console.log(`[info] Passes not executed: ${passesNotRun.map(p => `${p.pass} (${p.reason})`).join(', ')}  ->  run-manifest.json passes_not_run`);
+        }
 
         if (failedCount > 0) {
           const names = llmConnectivityFailedPasses.map(p => p.pass).join(', ');
@@ -3279,6 +3397,10 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         console.log(
           `[ok]  Assessment complete  ${totalSignals} signals total  duration: ${msToHuman(totalDurationMs)}  ->  wsp/runs/${runTs}/run-manifest.json`,
         );
+        // #3427: offer the Stakeholder Challenge for this run (TUI parity: ChallengePromptPhase); best effort.
+        try {
+          for (const line of assessChallengeOfferLines({ wspDir, runDir, kind: 'app', tier: LicenseGuard.load().state.tier, skipLlm: !!opts.skipLlm, isService })) console.log(line);
+        } catch { /* the offer never changes the run outcome */ }
 
         if (opts.stats) {
           printStatsTable(passStats, durationMs, totalSignals);

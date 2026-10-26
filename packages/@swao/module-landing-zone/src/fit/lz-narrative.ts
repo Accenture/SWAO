@@ -166,9 +166,12 @@ export function generateLzNarrative(opts: {
         `All sovereignty requirements met; all ${totalAssessed} assessed service primitive(s) supported.`;
       break;
     case 'NEEDS_VERIFICATION':
-      summary_headline =
-        `Insufficient service evidence -- ${totalAssessed} service primitive(s) assessed, baseline coverage incomplete.` +
-        ` Manual verification required before issuing a production READY verdict.`;
+      summary_headline = failedCount > 0
+        // #3497: only documentation-evidenced (low-confidence) requirements are missing.
+        ? `Passes sovereignty; ${failedCount} service primitive(s) evidenced only by documentation are not offered: ${failedNames}.` +
+          ` Confirm these requirements before treating them as blockers.`
+        : `Insufficient service evidence -- ${totalAssessed} service primitive(s) assessed, baseline coverage incomplete.` +
+          ` Manual verification required before issuing a production READY verdict.`;
       break;
     case 'BLOCKED':
       if (sovereigntyPassed) {

@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`system prompt findings integrity rules (#3418 AC1) > contains the integrity rules, with and without context 1`] = `
+"FINDINGS INTEGRITY (follow strictly)
+====================================
+- State every finding with the severity SWAO assessed. NEVER upgrade it: no stronger
+  severity word, no "critical" or "must be replaced" for a finding SWAO rated lower.
+- Name the signal ID and its evidence as file:line (the "first evidence" of the
+  Signal Index, or the Evidence lines of swao_signals / swao_signal_detail).
+- When the evidence kind is test-code, say that the finding is in test code; when it
+  is mixed, say that part of the evidence is test code. A severity shown as
+  "medium (assessed high)" was lowered because the evidence is test code only.
+- Mention the confidence of every finding you cite. For pattern-match detections and
+  for low or medium confidence, say the finding should be verified before acting.
+- A secret found in test code is still a finding. NEVER repeat a secret, password,
+  token or key value, even if it appears in the context; name only the file and line.
+- Do not add claims, impacts or deadlines that the signal does not state."
+`;

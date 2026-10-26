@@ -41,6 +41,9 @@ Workflows anzeigen.
 Dieses Runbook behandelt zwei Installationsmodi (Binary und Quellcode), die
 Client-Konfiguration je Plattform, die Verifikation und die Fehlerbehebung.
 
+Den kurzen Weg (ein Installationsbefehl je Client, Profile, kleine lokale Modelle und Fallstricke der
+Clients) beschreibt [SWAO aus einem KI-Client nutzen](./mcp-ai-clients.md).
+
 ---
 
 ## 1. Installationsmodi
@@ -155,7 +158,8 @@ Der Client startet den SWAO-Prozess als Unterprozess über die Standard-Ein- und
 der Client bei Bedarf Tools aufrufen. Der Serverprozess bleibt für die Dauer der
 Client-Sitzung aktiv.
 
-Der Server stellt fünf Tools bereit:
+Unten stehen die zentralen Workflow-Tools; die vollständige Liste hängt vom Profil ab (Abschnitt 4.3, `full` listet 53
+Tools), `swao mcp profiles` zeigt sie:
 
 | Tool | Zweck |
 |---|---|
@@ -168,7 +172,8 @@ Der Server stellt fünf Tools bereit:
 Die Tools `swao_assess` und `swao_report` benötigen zwei zentrale Parameter:
 
 - `app_id`: der Name des Anwendungsordners unter `portfolio/apps/`
-- `workspace_path`: absoluter Pfad zum Portfolio-Stammverzeichnis, das die `.swao.yml` enthält
+- `workspace_path`: absoluter Pfad zum Portfolio-Stammverzeichnis, das die `.swao.yml` enthält (optional;
+  bei fixiertem Server-Workspace nicht angeboten, Abschnitt 4.2)
 
 ### 4.1 Tools für das Service Portfolio Assessment
 
@@ -177,7 +182,7 @@ Server die Service-Ergebnisse direkt bereit. Die Lese-Tools folgen
 `FEATURE_GATES['service-assessment']` (Community, also keine Sperre über die
 Lizenz des MCP-Servers hinaus; `swao_service_export` erfordert zusätzlich
 Enterprise), liefern JSON,
-akzeptieren `workspace_path` und begrenzen lange Listen (`limit` / `offset`).
+akzeptieren `workspace_path` (außer bei Fixierung) und begrenzen lange Listen (`limit` / `offset`).
 Kontakt, Telefon und E-Mail aus der Intake-Datei werden nur als
 Vorhanden-Kennzeichen (Boolean) ausgegeben; Notiztexte aus der Intake-Datei
 und Analystentexte in Research-Stubs werden nie zurückgegeben. Fehlgeschlagene,
@@ -211,6 +216,59 @@ Beispielfragen:
 - "Zeige die Apps der Welle 1" (ruft `swao_service_waves` mit `wave: 1` auf)
 - "Was weiß SWAO über `<app>`?" (ruft `swao_service_app` und für Details
   `swao_service_research` auf)
+
+### 4.2 Workspace-Auflösung
+
+Jedes Tool, jeder Prompt, jede Vervollständigung und jede Ressource ermittelt den
+Workspace in dieser Reihenfolge (Design 116 REQ-02):
+
+1. `swao mcp --workspace <pfad>`
+2. die Umgebungsvariable `SWAO_WORKSPACE` (gleiche Bedeutung wie das Flag)
+3. der Workspace, der vom Arbeitsverzeichnis des Servers aus gefunden wird
+4. der von `swao setup` gespeicherte Standard-Workspace
+
+Ein Workspace aus dem Flag oder der Umgebungsvariable ist *fixiert*. Bei einem
+fixierten Server bietet `tools/list` den Parameter `workspace_path` nicht an, und
+ein Aufruf, der ihn trotzdem übergibt, muss den fixierten Ordner nennen; jeder
+andere Wert (auch `/`) schlägt mit `isError` fehl. Ohne Fixierung bleibt
+`workspace_path` optional: leer lassen, um den Workspace des Servers zu nutzen.
+Seit dem Release nach 1.4.2 hat `--workspace` Vorrang vor dem Arbeitsverzeichnis
+(vorher ignorierte ein Server, der in einem Workspace gestartet wurde,
+`--workspace` für einen anderen).
+
+Für kleine lokale Modelle den Server fixiert starten: Die Tool-Liste ist dann
+etwa 2.000 Tokens kürzer, und das Modell kann keinen falschen Pfad raten.
+
+### 4.3 Tool-Profile
+
+Jeder MCP-Client sendet die vollständige Tool-Liste mit jeder Modellanfrage. Kleine lokale Modelle
+(8k bis 32k Kontext) brauchen eine kürzere Liste, daher bietet der Server Profile an (Design 116 REQ-08):
+
+| Profil | Tools | Für |
+|---|---|---|
+| `starter` | `swao`, `swao_health_check`, `swao_workspace_inventory`, `swao_frameworks_list`, `swao_passes` | Erster Kontakt, Demos, lokale Modelle mit 8k bis 16k |
+| `assess` | `starter` plus `swao_assess`, `swao_report`, `swao_signals`, `swao_signal_detail`, `swao_control_detail`, `swao_risks`, `swao_publish`, `swao_explain_landing_zone`, `swao_costs` | Assessment einer Anwendung mit lokalen Modellen von 16k bis 32k |
+| `full` (Standard) | alle gelisteten Tools | Gehostete Modelle, Portfolio- und Service-Arbeit |
+
+Ein Profil mit `swao mcp --profile <name>` wählen oder exakte Tools mit
+`swao mcp --tools swao,swao_health_check` angeben (nicht beides). Ohne Flag liest der Server
+`SWAO_MCP_PROFILE` / `SWAO_MCP_TOOLS`, dann den `mcp:`-Block der Workspace-`.swao.yml`, sonst gilt `full`.
+Ein unbekanntes Profil oder ein unbekannter Tool-Name beendet den Server mit Exit-Code 2 und der Liste
+der gültigen Werte. `swao mcp profiles` zeigt jedes Profil mit Tools, gemessener Größe und Token-Budget.
+
+Ein Tool außerhalb des Profils wird nicht gelistet, und ein Aufruf schlägt mit `isError` fehl. Das Profil
+`starter` bietet die drei statischen Ressourcen, aber keine Ressourcen-Templates; der Prompt
+`swao_evidence_interview` wird nur angeboten, wenn `swao_evidence_capture` aktiv ist. SWAO Chat startet
+den Server immer mit `--profile full`.
+
+### 4.4 Der Start-Prompt
+
+Der Server bietet in jedem Profil den MCP-Prompt `start` (Titel "Start SWAO") an. Er liefert das
+SWAO-Hauptmenü mit einem Satz pro Eintrag, den typischen ersten Durchlauf und die Fragen, die als Nächstes
+möglich sind (nur für Tools des aktiven Profils), und weist das Modell an, ihn unverändert und ohne
+Tool-Aufruf auszugeben. Clients zeigen Prompts als Slash-Befehle: Claude Code `/mcp__swao__start` (oder
+`/mcp__SWAO__start`, wenn der Server als `SWAO` registriert ist), Kilo `/swao:start`; andere Clients
+führen ihn in ihrem Prompt-Menü.
 
 ---
 
@@ -400,6 +458,92 @@ Jeder Client, der den STDIO-Transport unterstützt, kann SWAO ausführen. Es gil
 Der Servername-Schlüssel (`"SWAO"`) ist nur eine Anzeigebezeichnung; einen
 Namen wählen, der in der Client-Oberfläche gut erkennbar ist.
 
+### 5.7 HTTP-Transport (`swao mcp --http`)
+
+Claude Code in der von Accenture verwalteten Umgebung akzeptiert nur
+`http://localhost*`-Server (ADR-0045); SWAO Chat nutzt denselben Transport.
+Den Server vor dem Client starten:
+
+```
+swao mcp --http [--port 3737] [--host localhost] [--allow-remote] [--workspace <path>] [--replace]
+```
+
+**Bind-Adresse (Design 116 REQ-03.1 bis REQ-03.3, #3468).** Der Standard
+`--host localhost` lauscht auf `127.0.0.1` und `::1` am selben Port, sodass
+`http://localhost:3737/mcp` funktioniert, egal ob der Client `localhost` zu
+IPv4 oder IPv6 auflöst. Ist `::1` nicht verfügbar, warnt der Server und
+bedient nur IPv4. Das Banner nennt die tatsächlich gebundenen Adressen, zum
+Beispiel `http://localhost:3737/mcp (127.0.0.1, ::1)`. Eine andere
+Loopback-Adresse (`--host 127.0.0.1`, `--host ::1`) bindet nur sich selbst.
+Eine Nicht-Loopback-Adresse (`0.0.0.0`, `::`, eine LAN-Adresse oder ein
+Hostname) endet mit Exit-Code 2, außer `--allow-remote` ist gesetzt; dann gibt
+der Server eine Warnung aus, weil er keine Authentifizierung hat. Das nur in
+einem vertrauenswürdigen Netz verwenden, zum Beispiel für einen Client im
+Container.
+
+**Port-Behandlung (Design 116 REQ-03.4 bis REQ-03.6, #3461).** Der Server
+beendet nie einen anderen Prozess, um seinen Port frei zu bekommen:
+
+- Port frei: Der Server startet und schreibt seine PID nach
+  `swao-mcp-<port>.pid` im temporären Systemordner.
+- Port von einem anderen SWAO-MCP-Server belegt: Exit-Code 1 mit
+  `a SWAO MCP server is already running on port 3737 (pid <n>); use --replace to restart it`.
+  SWAO Chat wertet das als Erfolg und verbindet sich mit dem laufenden Server;
+  beim Schließen der TUI läuft dieser Server weiter.
+- Port von einem beliebigen anderen Prozess belegt: Exit-Code 1 mit
+  `port 3737 is in use; stop the other process or start with --port <n>`.
+- `--replace` startet einen laufenden SWAO-Server neu. Es beendet nur die PID
+  aus der PID-Datei, und nur nachdem dieser Prozess eine `initialize`-Probe als
+  `swao` beantwortet und dieselbe PID im Antwort-Header `X-SWAO-MCP-PID`
+  genannt hat (ein Server bis SWAO 1.4.2 sendet diesen Header nicht; dann muss
+  die PID-Datei einen laufenden Prozess nennen). Andernfalls verweigert es,
+  beendet nichts und endet mit Exit-Code 1.
+
+**Sitzungen (REQ-07.4, REQ-07.5, #3462).** Eine Anfrage, die der Client
+mitten im Body abbricht, wird mit 400 beantwortet; ein Fehler im Transport
+mit 500. Beides beendet den Server nicht. Eine Sitzung ohne Anfrage seit
+30 Minuten wird geschlossen; der Client erhält dafür 404 und startet eine
+neue Sitzung.
+
+**Lange Tool-Aufrufe (REQ-18, #3463).** Tools, die die SWAO-CLI ausführen
+(zum Beispiel `swao_publish`, `swao_report`, `swao_health_check`,
+`swao_challenge`), blockieren den Server nicht mehr: Andere Sitzungen und die
+Probe von SWAO Chat werden währenddessen beantwortet. Jeder Aufruf behält das
+Limit von 5 Minuten. Bricht der Client den Aufruf ab, werden der CLI-Prozess
+und seine Unterprozesse beendet. `swao_challenge`, `swao_publish` und
+`swao_service_research_run` senden Fortschrittsmeldungen (Start, alle
+5 Sekunden, Ende), wenn der Client Fortschritt anfordert.
+
+**Host- und Origin-Prüfung (REQ-19, #3464).** Der Server beantwortet nur
+Anfragen an `localhost`, `127.0.0.1` oder `[::1]` auf seinem eigenen Port.
+Eine Anfrage mit einem anderen `Host`-Header oder mit einem `Origin`-Header,
+der eine andere Website nennt, erhält 403. Das verhindert, dass eine Webseite
+im Browser den Server über DNS-Rebinding erreicht. Native Clients senden kein
+`Origin` und sind nicht betroffen.
+
+**Anfrage-Log (REQ-07, #3471).** Beide Transporte schreiben ein Log im
+JSON-Lines-Format:
+
+- Ort: `<workspace>/wsp/logs/mcp-server.log`; ohne aufgelösten Workspace
+  `wsp/logs/mcp-server.log` im Ordner, der das SWAO-Binary enthält.
+  `--log-file <path>` schreibt an einen anderen Ort; `--log-file -` schreibt
+  nur nach stderr. Der stdio-Transport schreibt das Log nie nach stdout.
+- Rotation bei 10 MB; fünf Dateien bleiben erhalten (`mcp-server.log` und
+  `.1` bis `.4`).
+- `--log-level error|warn|info|debug` (Standard `info`).
+- Jede beantwortete Anfrage ist eine Zeile mit `ts`, `level`, `session`,
+  `client`, `method`, `tool`, `duration_ms`, `status` (`ok`, `error` oder
+  `cancelled`) und `error`. Tool-Argumente und Ergebnisse werden nie
+  protokolliert; Fehlertexte laufen durch den Secret-Guard. Start, Stopp,
+  abgebrochene und abgewiesene Anfragen, abgelaufene Sitzungen, unbehandelte
+  Rejections und nicht abgefangene Exceptions werden ebenfalls protokolliert.
+- Das `--http`-Banner nennt den Log-Pfad.
+
+**Server beenden (REQ-07.6, #3471).** `Strg+C` (SIGINT) oder SIGTERM nimmt
+keine neuen Verbindungen mehr an, lässt laufende Anfragen bis zu 5 Sekunden
+fertig werden, beendet laufende CLI-Unterprozesse, entfernt die PID-Datei und
+endet mit Exit-Code 0.
+
 ---
 
 ## 6. Verifikation
@@ -449,7 +593,7 @@ Ein erfolgreicher Start endet mit:
 Server started and connected successfully
 ```
 
-gefolgt von einem `tools/list`-Austausch, der alle fünf Tools auflistet.
+gefolgt von einem `tools/list`-Austausch, der die Tools des aktiven Profils auflistet.
 
 ### 7.2 „command not found“ oder Spawn-Fehler
 

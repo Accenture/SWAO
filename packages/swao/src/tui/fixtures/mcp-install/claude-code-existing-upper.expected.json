@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "SWAO": {
+      "type": "http",
+      "url": "http://localhost:3737/mcp"
+    },
+    "docs": {
+      "type": "http",
+      "url": "https://example.invalid/mcp"
+    }
+  }
+}

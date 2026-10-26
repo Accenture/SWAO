@@ -13,13 +13,16 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
-import { logPortfolio } from '@swao/core';
+import { logPortfolio, listSourceFiles, findShallowestSourceFile } from '@swao/core';
 import { TerraformOpenTofuProvider } from '@swao/module-iac-scan';
+import { collectJvmProject } from './jvm-build-files.js';
+import { collectJvmRuntimeEvidence, findKubernetesProbes, type Evidence } from './tf-runtime-evidence.js';
+import { collectConfigEvidence, scoreConfigEvidence, toConfigExternalisation, type ConfigEvidence, type Tf01Verdict } from './tf-config-evidence.js';
 
 function readFileSync_safe(filePath: string): string | null {
   if (!existsSync(filePath)) return null;
@@ -46,49 +49,39 @@ function allDeps(pkg: Record<string, unknown>): Record<string, string> {
   };
 }
 
-// #1501: search up to maxDepth levels for a file matching the predicate (BFS, shallowest wins).
+// #1501: search up to maxDepth levels for a file matching the predicate (shallowest wins).
+// #3428: served by the central source scope. Dot-files stay visible
+// (.env.example is a search target); dot-directories and the canonical
+// dependency / build-output folders are not searched.
 function findFileRecursive(
   root: string,
   maxDepth: number,
   test: (name: string) => boolean,
 ): string | null {
-  const queue: Array<[string, number]> = [[root, 0]];
-  while (queue.length > 0) {
-    const [dir, depth] = queue.shift()!;
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      if (e.isDirectory() && e.name.startsWith('.')) continue;
-      if (e.isFile() && test(e.name)) return join(dir, e.name);
-      if (e.isDirectory() && depth < maxDepth) queue.push([join(dir, e.name), depth + 1]);
-    }
-  }
-  return null;
+  if (!existsSync(root)) return null;
+  return findShallowestSourceFile(root, { purpose: 'config', maxDepth, includeHidden: true }, (f) => test(f.name))?.abs ?? null;
 }
-
-const TF_SKIP_DIRS = new Set(['node_modules', 'vendor', 'dist', 'build', 'target']);
 
 /**
  * #3158: top-most directories under `root` (depth <= maxDepth) that contain
  * `.tf` files. A folder below an already-found root is not listed again,
  * because the IaC scanners recurse. Hidden folders (.terraform, .git) and
  * dependency folders are skipped. Capped at `cap` roots.
+ * #3428: derived from the central source scope. Top-most roots are disjoint
+ * subtrees, which occupy contiguous ranges of the depth-first listing, so
+ * ordering by the first .tf file reproduces the old pre-order walk.
  */
 export function findTerraformRoots(root: string, maxDepth = 6, cap = 10): string[] {
-  const roots: string[] = [];
-  const walk = (dir: string, depth: number): void => {
-    if (roots.length >= cap) return;
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    if (entries.some((e) => e.isFile() && e.name.endsWith('.tf'))) { roots.push(dir); return; }
-    if (depth >= maxDepth) return;
-    for (const e of entries) {
-      if (!e.isDirectory() || e.name.startsWith('.') || TF_SKIP_DIRS.has(e.name)) continue;
-      walk(join(dir, e.name), depth + 1);
-    }
-  };
-  walk(root, 0);
-  return roots;
+  const dirs: string[] = [];
+  for (const f of listSourceFiles(root, { purpose: 'config', maxDepth, includeHidden: true })) {
+    if (!f.name.endsWith('.tf')) continue;
+    const relDir = f.rel.includes('/') ? f.rel.slice(0, f.rel.lastIndexOf('/')) : '';
+    if (!dirs.includes(relDir)) dirs.push(relDir);
+  }
+  const isUnder = (child: string, parent: string): boolean =>
+    parent === '' ? child !== '' : child.startsWith(`${parent}/`);
+  const topMost = dirs.filter((d) => !dirs.some((o) => o !== d && isUnder(d, o)));
+  return topMost.slice(0, cap).map((d) => (d === '' ? root : join(root, ...d.split('/'))));
 }
 
 // #1501: read INV-01 assessment.language from a prior run pass file.
@@ -117,6 +110,11 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
     ? ['node', 'typescript', 'javascript'].includes(invLanguage)
     : pkg !== null;
   const isRust = invLanguage === 'rust' || existsSync(join(sourcePath, 'Cargo.toml'));
+  // #3421: Java / Kotlin services (Maven or Gradle anywhere in the source scope).
+  const jvm = existsSync(sourcePath) ? collectJvmProject(sourcePath) : null;
+  const isJvm = jvm !== null && jvm.manifests.length > 0
+    && (invLanguage ? /^(java|kotlin|scala|groovy)/i.test(invLanguage) : pkg === null);
+  const jvmEvidence = isJvm && jvm ? collectJvmRuntimeEvidence(sourcePath, jvm) : null;
 
   // Search recursively for config/compose files so subdirectory layouts are found (#1499/#1501).
   const envExamplePath = findFileRecursive(sourcePath, 3, (n) => n === '.env.example');
@@ -128,21 +126,26 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
   const hasK8s = existsSync(join(sourcePath, 'k8s')) || existsSync(join(sourcePath, 'helm'));
 
   // --- TF-01: Factor III -- Config (env vars) ---
+  // #3424: stack-aware. The legacy `.env.example` check stays the Node path
+  // (unchanged signal when it is the evidence); Spring, Helm, Kubernetes,
+  // Python and .NET idioms count as well, literal endpoints / credentials in
+  // packaged config count against, and no recognisable evidence is
+  // "not determinable" (medium, factor unknown) instead of a false High.
   const hasEnvExample = envExample !== null && envExample.trim().length > 0;
   const envRelPath = envExamplePath ? envExamplePath.slice(sourcePath.length + 1).replace(/\\/g, '/') : '.env.example';
-  const factorIiiStatus = hasEnvExample ? 'pass' : 'fail';
-  factorScores.push({ factor: 'III (Config)', status: factorIiiStatus });
-
+  const configEvidence = existsSync(sourcePath)
+    ? collectConfigEvidence(sourcePath, { isNode, jvm: jvm && jvm.manifests.length > 0 ? jvm : null })
+    : null;
+  const tf01 = buildTf01(configEvidence, hasEnvExample, envRelPath);
+  factorScores.push({ factor: 'III (Config)', status: tf01.verdict.status, ...(tf01.note ? { note: tf01.note } : {}) });
   signals.push({
     id: 'TF-01',
     source: 'static_analysis',
     category: 'application',
-    severity: hasEnvExample ? 'positive' : 'high',
-    derivation: hasEnvExample
-      ? `.env.example present at ${envRelPath}. Runtime configuration externalised via environment variables. Factor III satisfied.`
-      : `.env.example not found. Cannot confirm Factor III (Config) compliance. Hard-coded config risk.`,
-    evidence: hasEnvExample ? [envRelPath] : [],
-    confidence: 'high',
+    severity: tf01.verdict.severity,
+    derivation: tf01.derivation,
+    evidence: tf01.evidence,
+    confidence: tf01.verdict.confidence,
   });
 
   // --- TF-02: Factor II -- Dependencies (registry sovereignty) ---
@@ -229,11 +232,36 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
     tf04Derivation = hasStructuredLogging
       ? `Rust structured logging crate detected (${foundRustLibs.join(', ')}). Factor XI satisfied.`
       : `No structured logging crate found in Cargo.toml (tracing, log, env_logger). Factor XI partially satisfied.`;
+  } else if (isJvm && jvm && jvmEvidence) {
+    // #3421: Java / Spring Boot. JSON output configured in logback / log4j2 or
+    // via Spring Boot structured logging = pass; an encoder library without a
+    // configuration that uses it = partial; nothing = partial with the files
+    // that were inspected as evidence (a definite result, not "not performed").
+    const configured = jvmEvidence.structuredLogging;
+    const libs = jvmEvidence.structuredLoggingLibraries;
+    const inspected = [...jvm.manifests.slice(0, 3), ...jvmEvidence.loggingConfigFiles, ...jvmEvidence.springConfigFiles].slice(0, 8);
+    hasStructuredLogging = configured.length > 0;
+    if (configured.length > 0) {
+      factorXiStatus = 'pass';
+      tf04Severity = 'positive';
+      tf04Evidence = [...new Set([...configured.map((e) => e.file), ...libs.map((e) => e.file)])];
+      tf04Derivation = `Structured (JSON) logging configured: ${configured.map((e) => `${e.detail} in ${e.file}`).join('; ')}${libs.length > 0 ? ` (library: ${libs.map((e) => e.detail).join(', ')})` : ''}. Factor XI satisfied.`;
+    } else if (libs.length > 0) {
+      factorXiStatus = 'partial';
+      tf04Severity = 'low';
+      tf04Evidence = [...new Set([...libs.map((e) => e.file), ...jvmEvidence.loggingConfigFiles])];
+      tf04Derivation = `Structured logging library declared (${libs.map((e) => `${e.detail} in ${e.file}`).join('; ')}) but no logback / log4j2 configuration or Spring Boot logging.structured.format setting uses a JSON encoder or layout${jvmEvidence.loggingConfigFiles.length > 0 ? ` (checked ${jvmEvidence.loggingConfigFiles.join(', ')})` : ''}. Factor XI partially satisfied.`;
+    } else {
+      factorXiStatus = 'partial';
+      tf04Severity = 'medium';
+      tf04Evidence = inspected;
+      tf04Derivation = `No structured (JSON) logging found for this Java service: no logstash-logback-encoder, ECS or log4j2 JSON layout dependency in ${jvm.manifests.slice(0, 3).join(', ')}, no JSON encoder or layout in ${jvmEvidence.loggingConfigFiles.length > 0 ? jvmEvidence.loggingConfigFiles.join(', ') : 'any logback / log4j2 configuration (none present)'}, and no Spring Boot logging.structured.format setting. Default plain-text pattern logging does not provide structured output for sovereign SIEM integration. Factor XI partially satisfied.`;
+    }
   } else {
     factorXiStatus = 'unknown';
     tf04Severity = 'informational';
     tf04Evidence = [];
-    tf04Derivation = `Language not Node.js or Rust -- structured logging check not performed for this stack. Factor XI status unknown.`;
+    tf04Derivation = `Language not Node.js, Rust or Java, structured logging check not performed for this stack. Factor XI status unknown.`;
   }
 
   factorScores.push({
@@ -263,34 +291,90 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
   const healthRelPath = healthEndpointPath
     ? healthEndpointPath.slice(sourcePath.length + 1).replace(/\\/g, '/')
     : null;
-  const factorIxStatus = hasHealthEndpoint ? 'partial' : 'unknown';
-  factorScores.push({
-    factor: 'IX (Disposability)',
-    status: factorIxStatus,
-    note: 'Health check present; shutdown hooks unconfirmed',
-  });
+  // #3421: Spring Boot Actuator health (starter, exposure, probe groups) and
+  // Kubernetes liveness / readiness / startup probes for any stack.
+  const k8sProbes = existsSync(sourcePath) ? findKubernetesProbes(sourcePath) : [];
+  const healthEvidence: Evidence[] = [
+    ...(healthRelPath ? [{ file: healthRelPath, detail: 'health handler' }] : []),
+    ...(jvmEvidence?.health ?? []),
+    ...k8sProbes,
+  ];
+  const healthFound = hasHealthEndpoint || healthEvidence.length > 0;
+  const graceful = jvmEvidence?.gracefulShutdown ?? null;
+  const healthText = healthEvidence.length > 0
+    ? healthEvidence.slice(0, 6).map((e) => `${e.detail} (${e.file})`).join('; ')
+    : '';
+
+  let factorIxStatus: string;
+  let tf05Severity: Signal['severity'];
+  let tf05Derivation: string;
+  let tf05Evidence: string[];
+  let tf05Confidence: Signal['confidence'];
+  let tf05Note: string | undefined;
+  if (healthFound && graceful) {
+    // Declarative graceful shutdown (server.shutdown=graceful, or the Spring
+    // Boot 3.4+ default) confirms the SIGTERM path the design otherwise
+    // leaves open, so Factor IX is satisfied.
+    factorIxStatus = 'pass';
+    tf05Severity = 'positive';
+    tf05Derivation = `Health endpoint detected: ${healthText}. Graceful shutdown configured: ${graceful.detail} (${graceful.file}). Disposability (Factor IX) satisfied.`;
+    tf05Evidence = [...new Set([...healthEvidence.map((e) => e.file), graceful.file])];
+    tf05Confidence = 'high';
+    tf05Note = undefined;
+  } else if (healthFound) {
+    factorIxStatus = 'partial';
+    tf05Severity = 'low';
+    const onlyLegacyHandler = (jvmEvidence?.health.length ?? 0) === 0 && k8sProbes.length === 0;
+    tf05Derivation = onlyLegacyHandler
+      // Pre-#3421 wording for the Node / Rust handler-file detection (unchanged).
+      ? `Health endpoint detected${healthRelPath ? ` at ${healthRelPath}` : ''}. Disposability (Factor IX) partially satisfied. Graceful SIGTERM shutdown hooks not confirmed from static analysis.`
+      : healthText
+      ? `Health endpoint detected: ${healthText}. Disposability (Factor IX) partially satisfied. Graceful SIGTERM shutdown not confirmed from static analysis${isJvm ? ' (no server.shutdown=graceful; Spring Boot before 3.4 shuts down immediately by default)' : ''}.`
+      : `Health endpoint detected. Disposability (Factor IX) partially satisfied. Graceful SIGTERM shutdown hooks not confirmed from static analysis.`;
+    tf05Evidence = healthEvidence.length > 0 ? [...new Set(healthEvidence.map((e) => e.file))] : ['src/health/'];
+    tf05Confidence = 'medium';
+    tf05Note = 'Health check present; shutdown hooks unconfirmed';
+  } else if (isJvm && jvm && jvmEvidence && jvm.usesSpringBoot) {
+    // #3421: a definite negative for Spring Boot services, with the inspected
+    // files. Other JVM frameworks (Quarkus, Micronaut, ...) without a
+    // recognised health artifact stay "unknown" rather than a false negative.
+    factorIxStatus = 'fail';
+    tf05Severity = 'medium';
+    tf05Derivation = `No health endpoint for this Java service: spring-boot-starter-actuator not declared in ${jvm.manifests.slice(0, 3).join(', ')}, no management.endpoints.web.exposure / health probe settings in ${jvmEvidence.springConfigFiles.length > 0 ? jvmEvidence.springConfigFiles.join(', ') : 'any application configuration (none present)'}, and no Kubernetes livenessProbe / readinessProbe in the source tree. Orchestrators cannot detect an unhealthy instance. Factor IX (Disposability) not met.`;
+    tf05Evidence = [...jvm.manifests.slice(0, 3), ...jvmEvidence.springConfigFiles].slice(0, 8);
+    tf05Confidence = 'medium';
+    tf05Note = 'No health endpoint or orchestrator probe';
+  } else {
+    factorIxStatus = 'unknown';
+    tf05Severity = 'low';
+    tf05Derivation = `No health endpoint detected from static analysis. Factor IX (Disposability) status unknown.`;
+    tf05Evidence = [];
+    tf05Confidence = 'low';
+    tf05Note = 'Health check present; shutdown hooks unconfirmed';
+  }
+  factorScores.push({ factor: 'IX (Disposability)', status: factorIxStatus, note: tf05Note });
 
   signals.push({
     id: 'TF-05',
     source: 'static_analysis',
     category: 'application',
-    severity: 'low',
-    derivation: hasHealthEndpoint
-      ? `Health endpoint detected${healthRelPath ? ` at ${healthRelPath}` : ''}. Disposability (Factor IX) partially satisfied. Graceful SIGTERM shutdown hooks not confirmed from static analysis.`
-      : `No health endpoint detected from static analysis. Factor IX (Disposability) status unknown.`,
-    evidence: healthRelPath ? [healthRelPath] : hasHealthEndpoint ? ['src/health/'] : [],
-    confidence: hasHealthEndpoint ? 'medium' : 'low',
+    severity: tf05Severity,
+    derivation: tf05Derivation,
+    evidence: tf05Evidence,
+    confidence: tf05Confidence,
   });
 
   // design 085 SS9, #1327: IaC security scanner stub.
   // runs checkov/kics when .tf source files exist in sourcePath.
   // findings emitted as informational signals; not yet scored (sprint-111 scope).
+  // #3158: Terraform usually lives in a subfolder (infra/, terraform/,
+  // deploy/...), not the source root, so the root-only check never ran the
+  // scanner for most repositories. Find the top-most folders holding .tf
+  // files and scan each (checkov and kics recurse below a folder).
+  // #3431: the root count is also IaC evidence for the portability score.
+  let tfRoots: string[] = [];
   try {
-    // #3158: Terraform usually lives in a subfolder (infra/, terraform/,
-    // deploy/...), not the source root, so the root-only check never ran the
-    // scanner for most repositories. Find the top-most folders holding .tf
-    // files and scan each (checkov and kics recurse below a folder).
-    const tfRoots = existsSync(sourcePath) ? findTerraformRoots(sourcePath) : [];
+    tfRoots = existsSync(sourcePath) ? findTerraformRoots(sourcePath) : [];
     if (tfRoots.length > 0) {
       const iacProvider = new TerraformOpenTofuProvider();
       logPortfolio('info', 'pass.iac.scanner.start', 'IaC static scan starting', {
@@ -345,6 +429,85 @@ export async function runTfPass(ctx: PassContext): Promise<PassResult> {
     assessment: {
       factor_scores: factorScores,
       twelve_factor_pass_rate: passRate,
+      // #3431: Terraform / OpenTofu roots in the source scope (IaC evidence, portability score).
+      iac_roots: tfRoots.length,
+      // #3424: TF-01 evidence for the deterministic cloud-native score (#3431).
+      ...(configEvidence ? { config_externalisation: toConfigExternalisation(configEvidence, tf01.verdict) } : {}),
     },
   };
+}
+
+const STACK_LABELS: Record<ConfigEvidence['stacks'][number], string> = {
+  spring: 'Spring Boot', jvm: 'JVM', helm: 'Helm', kubernetes: 'Kubernetes', node: 'Node.js',
+  python: 'Python', dotnet: '.NET', docker: 'Docker',
+};
+
+function listEvidence(items: Evidence[], max = 5): string {
+  return items.slice(0, max).map((e) => `${e.detail} (${e.file})`).join('; ');
+}
+
+/**
+ * #3424: TF-01 signal text, evidence and verdict from the collected config
+ * evidence. When `.env.example` is the evidence and nothing counts against
+ * it, the pre-#3424 signal is emitted unchanged (Node behaviour preserved).
+ */
+export function buildTf01(
+  ev: ConfigEvidence | null,
+  hasEnvExample: boolean,
+  envRelPath: string,
+): { verdict: Tf01Verdict; derivation: string; evidence: string[]; note?: string } {
+  if (!ev) {
+    return {
+      verdict: { status: 'unknown', severity: 'medium', confidence: 'low' },
+      derivation: 'Source tree not available. Factor III (Config) compliance not determinable.',
+      evidence: [],
+    };
+  }
+  const verdict = scoreConfigEvidence(ev);
+  const stacks = ev.stacks.length > 0 ? ev.stacks.map((s) => STACK_LABELS[s]).join(', ') : 'no recognised stack';
+  const files = (items: Evidence[]): string[] => [...new Set(items.map((e) => e.file))];
+
+  if (hasEnvExample && verdict.status === 'pass') {
+    return {
+      verdict,
+      derivation: `.env.example present at ${envRelPath}. Runtime configuration externalised via environment variables. Factor III satisfied.`,
+      evidence: [envRelPath],
+    };
+  }
+  switch (verdict.status) {
+    case 'fail':
+      return {
+        verdict,
+        derivation: `Hard-coded configuration in packaged or deployment config (${stacks}): ${ev.hardCodedCount} literal value(s), ${listEvidence(ev.hardCoded)}${ev.hardCodedCount > 5 ? '; ...' : ''}. Values are not shown.${ev.positiveCount > 0 ? ` Externalisation evidence is also present: ${listEvidence(ev.positive, 3)}.` : ''} Move endpoints and credentials to environment variables, a ConfigMap / Secret or a secret store. Factor III (Config) not met.`,
+        evidence: files(ev.hardCoded).slice(0, 10),
+        note: 'Hard-coded endpoints or credentials in configuration',
+      };
+    case 'partial':
+      return ev.positiveCount > 0
+        ? {
+          verdict,
+          derivation: `Configuration externalised (${stacks}): ${listEvidence(ev.positive, 3)}.${ev.placeholderDefaults.length > 0 ? ` Placeholders carry literal endpoint defaults: ${listEvidence(ev.placeholderDefaults, 3)}; a missing variable silently falls back to a fixed host.` : ''}${ev.deploymentDefaultLiterals.length > 0 ? ` The chart default values or a ConfigMap hold literal endpoints: ${listEvidence(ev.deploymentDefaultLiterals, 3)}; move environment-specific hosts to per-environment values files or variables.` : ''} Factor III (Config) partially satisfied.`,
+          evidence: files([...ev.positive.slice(0, 5), ...ev.placeholderDefaults.slice(0, 5), ...ev.deploymentDefaultLiterals.slice(0, 5)]),
+          note: ev.placeholderDefaults.length > 0 ? 'Literal endpoint defaults inside placeholders' : 'Literal endpoints in default deployment configuration',
+        }
+        : {
+          verdict,
+          derivation: `Only supporting configuration evidence found (${stacks}): ${listEvidence(ev.supporting)}. No placeholder, environment read or ConfigMap / Secret reference confirms that runtime values come from the environment. Factor III (Config) partially satisfied.`,
+          evidence: files(ev.supporting).slice(0, 8),
+          note: 'Per-environment files without environment references',
+        };
+    case 'pass':
+      return {
+        verdict,
+        derivation: `Configuration externalised (${stacks}): ${listEvidence(ev.positive)}${ev.positiveCount > 5 ? ` and ${ev.positiveCount - 5} more` : ''}.${ev.deploymentLiterals.length > 0 ? ` Deployment values hold environment-specific endpoints (${listEvidence(ev.deploymentLiterals, 3)}), which is where they belong.` : ''} No hard-coded endpoint or credential in packaged configuration. Factor III satisfied.`,
+        evidence: files(ev.positive).slice(0, 10),
+      };
+    case 'unknown':
+      return {
+        verdict,
+        derivation: `Factor III (Config) not determinable (${stacks}): no recognised externalisation evidence (.env.example, Spring placeholders or profiles, Helm .Values, Kubernetes ConfigMap / Secret references, environment reads in code) and no hard-coded endpoint or credential found in ${ev.filesChecked} file(s) checked.`,
+        evidence: [],
+        note: 'Config externalisation not determinable',
+      };
+  }
 }

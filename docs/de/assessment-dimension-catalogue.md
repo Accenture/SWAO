@@ -88,10 +88,12 @@ AWS Comprehend Medical, bevor das Migrationsfenster beginnt.“
 
 **Was gemessen wird**
 
-Der Anteil der externen Egress-Dienste der Anwendung, für die es Äquivalente in der
-souveränen Cloud gibt. Ein Score von 1,0 bedeutet, dass sich alle Dienste durch
-souveräne Alternativen ersetzen lassen; 0,0 bedeutet eine vollständige Abhängigkeit
-von proprietären Hyperscaler-Diensten ohne souveränes Äquivalent.
+Wie leicht sich der Workload in eine souveräne Cloud verlagern lässt. Ein Score von 1,0
+bedeutet, dass jeder benötigte Backing Service von mindestens zwei souveränen Providern
+angeboten wird, kein proprietäres SDK den Code an einen Anbieter bindet, der Workload
+containerisiert und als Code beschrieben ist und seine Egress-Dienste souveräne
+Äquivalente haben; 0,0 bedeutet das Gegenteil in jeder Komponente. SWAO berechnet den
+Score im Code (#3431); das LLM setzt ihn nicht und darf ihn nur kommentieren.
 
 **Warum das wichtig ist**
 
@@ -105,12 +107,24 @@ Kosten.
 **Wie der Score ermittelt wird**
 
 ```
-portability_score = (available_verdicts + 0.5 * partial_verdicts) / total_egress_signals
+portability_score = sum(weight_c * value_c) / sum(weight_c)   über die Komponenten mit Daten
 ```
 
-Dabei bedeutet `available`, dass ein Äquivalent in der souveränen Cloud existiert;
-`partial`, dass eine EU-Präsenz besteht, die vollständige souveräne Zertifizierung
-aber nicht bestätigt ist; `unavailable`, dass es keine souveräne Option gibt.
+| Komponente | Gewicht | Wert |
+|---|---|---|
+| Dienstverfügbarkeit | 0,35 | Anteil der benötigten Dienste (`service_dep:<capability>`), die mindestens 2 souveräne Provider in den Landing-Zone-Katalogen anbieten |
+| Vendor Lock-in | 0,25 | 1 minus 0,5 je blockierendem, 0,25 je teilweisem und 0,1 je beherrschbarem proprietären SDK (INV-09), nicht unter 0 |
+| Container | 0,15 | Kubernetes- oder Helm-Manifeste 1,0; Dockerfile oder Compose 0,75; keine 0 |
+| Infrastructure as Code | 0,10 | Terraform / OpenTofu, Pulumi-State oder Helm-Chart vorhanden 1,0; fehlt 0 |
+| Egress | 0,15 | Urteile des Katalogs souveräner Dienste: `available` 1,0, `partial` 0,5, `unavailable` 0; ohne Urteile fest codierte Produktions-Hosts: privat 0,5, öffentlich 0 |
+
+Ein souveräner Provider hat mindestens eine Katalogregion, die von einer EU-Gesellschaft
+betrieben wird und deren Fakten keine Exposition gegenüber US CLOUD Act oder FISA 702
+ausweisen. Eine Komponente ohne Eingangsdaten (etwa ohne Egress-Ziel oder bei
+übersprungenem Vendor-SDK-Scan) entfällt, und die übrigen Gewichte werden neu
+normiert; `wsp.yaml` `overall.portability` führt jede Komponente mit `used` und Grund,
+sodass fehlende Daten sichtbar sind statt eines Standardwerts von 0,5. Gewichte:
+`controls/migration-scores-catalogue.yaml`.
 
 **Wertebereiche**
 
@@ -123,8 +137,10 @@ aber nicht bestätigt ist; `unavailable`, dass es keine souveräne Option gibt.
 
 **Nachweisquellen**
 
-Signale des EGR-Passes, abgeglichen mit dem Katalog souveräner Dienste
-(`controls/sovereign-service-catalogue.yaml`).
+Pass 01 (Service-Footprint, Vendor-SDKs, Container-Dateien, Terraform- und
+Pulumi-State), Pass 06 (Terraform-Wurzeln, Helm- und Kubernetes-Stacks), Pass 07
+(Urteile zu souveränen Diensten, fest codierte Endpunkte) und die Landing-Zone-Kataloge
+(`lz-catalogues/`).
 
 **Typische Findings und Maßnahmen**
 

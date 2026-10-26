@@ -16,7 +16,7 @@
 // Tests for the provider-aware VCS token injection helper (#0326 Part A).
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildAuthenticatedCloneUrl, diagnoseCloneFailure } from './auth.js';
@@ -150,5 +150,91 @@ describe('diagnoseCloneFailure -- structured pattern matching', () => {
     const r = diagnoseCloneFailure(stderr, 'https://example.org/foo.git', 'x-access-token');
     expect(r.logCode).toBe('provider.vcs.clone-failed');
     expect(r.hint).toContain('unrecognised stderr pattern');
+  });
+});
+
+// #3439: support bundle 2026-10-23 -- GCM dialog / terminal prompt failures,
+// Windows long-path checkout failures, and `scheme: none` for https:// URLs.
+describe('diagnoseCloneFailure -- #3439 auth prompt, long paths, scheme telemetry', () => {
+  let tmpRoot: string;
+
+  beforeEach(() => {
+    tmpRoot = mkdtempSync(join(tmpdir(), 'swao-vcs-3439-test-'));
+    mkdirSync(join(tmpRoot, 'apps'), { recursive: true });
+    writeFileSync(join(tmpRoot, '.swao.yml'), '# test fixture\n');
+    setWorkspaceRoot(tmpRoot);
+  });
+
+  afterEach(() => {
+    setWorkspaceRoot(null);
+    rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  function lastPortfolioEntry(): { code: string; message: string; context: Record<string, unknown> } {
+    const dir = join(tmpRoot, 'wsp', 'logs');
+    expect(existsSync(dir)).toBe(true);
+    const file = readdirSync(dir).find((f) => f.startsWith('portfolio-events-'));
+    expect(file).toBeDefined();
+    const lines = readFileSync(join(dir, file as string), 'utf-8').trim().split('\n');
+    return JSON.parse(lines[lines.length - 1]) as { code: string; message: string; context: Record<string, unknown> };
+  }
+
+  const GCM_STDERR =
+    'warning: missing OAuth configuration for git.example.org - see https://aka.ms/gcm/gitlab for more information\n' +
+    'fatal: User cancelled dialog.\n' +
+    "error: unable to read input: /dev/tty: No such device or address\n" +
+    "fatal: could not read Username for 'https://git.example.org': No such device or address";
+
+  it('maps the GCM dialog / no-tty stderr to auth-required with credential guidance (no token stored)', () => {
+    const r = diagnoseCloneFailure(GCM_STDERR, 'https://git.example.org/acme/admin.git', 'none');
+    expect(r.logCode).toBe('provider.vcs.auth-required');
+    expect(r.hint).toContain('no access token is configured');
+    expect(r.hint).toContain('swao credential set provider:vcs:token');
+    expect(r.hint).toContain('non-interactively');
+  });
+
+  it('maps "terminal prompts disabled" with a stored token to a token-rejected hint naming the provider key', () => {
+    const stderr = "fatal: could not read Password for 'https://x-access-token@github.com': terminal prompts disabled";
+    const r = diagnoseCloneFailure(stderr, 'https://github.com/o/r.git', 'x-access-token');
+    expect(r.logCode).toBe('provider.vcs.auth-required');
+    expect(r.hint).toContain("token was rejected (token scheme 'x-access-token')");
+    expect(r.hint).toContain('swao credential set provider:github:token');
+  });
+
+  it('maps "Filename too long" / checkout failed to the long-path code', () => {
+    const stderr =
+      'error: unable to create file service/src/test/resources/bruno/very/long/name.bru: Filename too long\n' +
+      'fatal: unable to checkout working tree\n' +
+      "warning: Clone succeeded, but checkout failed.";
+    const r = diagnoseCloneFailure(stderr, 'https://git.example.org/acme/admin.git', 'x-access-token');
+    expect(r.logCode).toBe('provider.vcs.checkout-path-too-long');
+    expect(r.hint).toContain('core.longpaths');
+  });
+
+  it('does not label a bare checkout failure (no "Filename too long") as a long-path problem', () => {
+    const stderr = "error: invalid path 'aux.txt'\nfatal: unable to checkout working tree\nwarning: Clone succeeded, but checkout failed.";
+    const r = diagnoseCloneFailure(stderr, 'https://git.example.org/o/r.git', 'x-access-token');
+    expect(r.logCode).toBe('provider.vcs.clone-failed');
+  });
+
+  it('logs scheme=https (URL transport) and token_scheme=none for an https clone without a token', () => {
+    diagnoseCloneFailure('fatal: something weird happened', 'https://git.example.org/acme/admin.git', 'none');
+    const entry = lastPortfolioEntry();
+    expect(entry.code).toBe('provider.vcs.clone-failed');
+    expect(entry.context.scheme).toBe('https');
+    expect(entry.context.token_scheme).toBe('none');
+  });
+
+  it('logs scheme=scp for git@host:path URLs', () => {
+    diagnoseCloneFailure('Permission denied (publickey).', 'git@github.com:o/r.git', 'none');
+    expect(lastPortfolioEntry().context.scheme).toBe('scp');
+  });
+
+  it('never logs credentials embedded in the URL (message or context)', () => {
+    const secret = 'ghp_examplePersonalAccessTokenYYYYYYYYYYYY'; // secret-scan-exempt: fake PAT for redaction test
+    diagnoseCloneFailure('fatal: something weird happened', `ssh://git:${secret}@git.example.org/o/r.git`, 'none');
+    const raw = JSON.stringify(lastPortfolioEntry());
+    expect(raw).not.toContain(secret);
+    expect(lastPortfolioEntry().context.vcs_url).toBe('ssh://git.example.org/o/r.git');
   });
 });

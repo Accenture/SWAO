@@ -21,8 +21,8 @@
  * (startMcpServer of @swao/module-mcp, see writeServerEntry) twice, the way
  * each client starts it, with the workspace as cwd:
  *   - HTTP on a free port (what useChatSession auto-starts as
- *     `swao mcp --http`; never 3737, because startMcpServer kills the process
- *     on its port and the user's live server must not be touched);
+ *     `swao mcp --http`; never 3737, so the user's live server is never
+ *     involved; a busy port makes the server exit 1 since #3461);
  *   - stdio (`swao mcp`, MCP_SERVER_ARGS, the Claude Desktop registration of
  *     src/tui/mcp-config.ts).
  * Three clients are compared:
@@ -147,7 +147,10 @@ function writeServerEntry(dir: string): string {
     `import { startMcpServer } from ${JSON.stringify(mod)};`,
     'const http = process.argv.includes("--http");',
     'const port = http ? Number(process.argv[process.argv.indexOf("--port") + 1]) : undefined;',
-    `await startMcpServer({ http, port, version: "parity" }, { swaoCliPath: ${JSON.stringify(CLI)}, cliIsScript: true });`,
+    // #3471: the request log goes to the sandbox, not <workspace>/wsp/logs, so
+    // swao_list_directory output does not change between the compared calls.
+    `const logFile = ${JSON.stringify(dir)} + (http ? "/mcp-http.log" : "/mcp-stdio.log");`,
+    `await startMcpServer({ http, port, version: "parity", logFile }, { swaoCliPath: ${JSON.stringify(CLI)}, cliIsScript: true });`,
     '',
   ].join('\n'));
   return entry;
@@ -404,8 +407,10 @@ describe.skipIf(!HAS_CLI)('SWAO Chat and an external MCP client see the same MCP
   // Criterion 1: tool definitions
   // -------------------------------------------------------------------------
 
-  it('the server lists all 55 tools on both transports, identically', async () => {
-    expect(serverTools).toHaveLength(55);
+  it('the server lists all 53 listed tools on both transports, identically (#3470: swao_import and swao_lz_catalogue unlisted)', async () => {
+    expect(serverTools).toHaveLength(53);
+    expect(serverTools.map(t => t.name)).not.toContain('swao_import');
+    expect(serverTools.map(t => t.name)).not.toContain('swao_lz_catalogue');
     const stdioTools = (await stdioClient.listTools()).tools;
     expect(stdioTools).toEqual(serverTools);
     for (const prefix of ['swao_service_portfolio', 'swao_service_research', 'swao_service_runs', 'swao_service_scaffold']) {
@@ -413,7 +418,7 @@ describe.skipIf(!HAS_CLI)('SWAO Chat and an external MCP client see the same MCP
     }
   });
 
-  it("SWAO Chat's tool list equals tools/list: names, descriptions and input schemas of all 55 tools", () => {
+  it("SWAO Chat's tool list equals tools/list: names, descriptions and input schemas of all 53 listed tools", () => {
     expect(chatTools).toHaveLength(serverTools.length);
     expect(chatTools).toEqual(serverTools.map(t => ({ name: t.name, description: t.description ?? '', input_schema: t.inputSchema })));
     // Every server tool has a description, so the '' fallback never changes a description.

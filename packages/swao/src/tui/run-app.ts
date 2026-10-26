@@ -141,7 +141,8 @@ export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise
   const restore = () => { try { process.stdout.write(EXIT_ALT_SCREEN); } catch { /* terminal already gone */ } };
   // Kill any active assessment leg / challenge subprocesses before exiting
   // so they do not linger as orphans on Windows after the TUI window closes.
-  const cleanup = () => { killAllChildren(); killMcpServer(); restore(); };
+  // #3461: killMcpServer first (tree-kill of the MCP child SWAO Chat spawned, if any; never a pid-file PID).
+  const cleanup = () => { killMcpServer(); killAllChildren(); restore(); };
   process.once('exit',    cleanup);
   process.once('SIGINT',  () => { cleanup(); process.exit(130); });
   process.once('SIGTERM', () => { cleanup(); process.exit(143); });

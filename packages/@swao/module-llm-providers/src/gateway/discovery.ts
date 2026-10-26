@@ -14,12 +14,13 @@
 //
 // ================================================================
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dump as dumpYaml } from 'js-yaml';
 import { CredentialStore } from '@swao/core';
 import { Agent } from 'undici';
 import type { LoadedConnector } from './connector-loader.js';
+import { parseConnectorYaml } from './connector-schema.js';
 import type { ConnectorFile, ConnectorModelEntry } from './connector-schema.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -178,9 +179,22 @@ export function writeWorkspaceConnector(workspaceRoot: string, file: ConnectorFi
   const dir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
   mkdirSync(dir, { recursive: true });
   const outPath = join(dir, `${file.connector.id}.yaml`);
+  // #3438: never drop an existing workspace connector's tls block
+  // (reject_unauthorized / ca_bundle) when the refreshed file carries none.
+  let tls = file.connector.tls;
+  if (!tls && existsSync(outPath)) {
+    try {
+      const prev = parseConnectorYaml(readFileSync(outPath, 'utf-8'), outPath);
+      if (prev.ok && prev.file.connector.tls) tls = prev.file.connector.tls;
+    } catch { /* unreadable previous file -- nothing to preserve */ }
+  }
   const withSource: ConnectorFile = {
     ...file,
-    connector: { ...file.connector, meta: { ...(file.connector.meta ?? {}), source: 'user' } },
+    connector: {
+      ...file.connector,
+      ...(tls ? { tls } : {}),
+      meta: { ...(file.connector.meta ?? {}), source: 'user' },
+    },
   };
   writeFileSync(outPath, dumpYaml(withSource, { lineWidth: 120 }), 'utf-8');
   return outPath;

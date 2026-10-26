@@ -28,7 +28,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { load as loadYaml } from 'js-yaml';
 import { credentialStore, FEATURE_GATES, findWorkspace, LicenseGuard, LicenseInvalidError, LicenseTierError, type LicenseTier } from '@swao/core';
-import { createLlmProvider } from '@swao/module-llm-providers';
+import { createLlmProvider, createProxyAwareFetch } from '@swao/module-llm-providers';
 import {
   buildPortfolioSummary,
   recordPortfolioDelta,
@@ -279,6 +279,10 @@ export async function runServiceResearchCli(opts: ServiceResearchCliOptions, onP
     vtApiKey: await researchKey('VT_API_KEY'),
     baseUrls: researchBaseUrls(),
     userAgent: `SWAO/${SWAO_VERSION}`,
+    // #3369: route the research feeds (NVD, KEV, OSV, endoflife.date) through
+    // HTTPS_PROXY/NO_PROXY and the corporate TLS settings; the pkg runtime's
+    // global fetch does not apply the proxy env on a corporate network.
+    fetch: createProxyAwareFetch(),
     onProgress,
   });
 }

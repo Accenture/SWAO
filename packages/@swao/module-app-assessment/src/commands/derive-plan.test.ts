@@ -702,3 +702,54 @@ describe('#3296: one finding per sovereign service (EGR egress + catalogue verdi
     }
   });
 });
+
+describe('#3431: deterministic scores in wsp.yaml overall', () => {
+  it('writes the code-computed scores and breakdowns, ignoring an LLM portability_score', () => {
+    const wsRoot = mkdtempSync(join(tmpdir(), 'swao-3431-derive-'));
+    try {
+      const appDir = join(wsRoot, 'apps', 'score-app');
+      const runDir = join(appDir, 'wsp', 'runs', '2026-10-24-100000');
+      const passes = join(runDir, 'passes');
+      mkdirSync(passes, { recursive: true });
+      writeFileSync(join(wsRoot, '.swao.yml'), 'workspace_name: s\n', 'utf-8');
+      writeFileSync(join(appDir, '.swao.yml'), 'app_name: Score\napp_id: score-app\n', 'utf-8');
+      writeFileSync(join(passes, '01-inv.yaml'), dump({ signals: [], assessment: { runtime_type: 'container', dockerfile: true, reference_catalogue_checks: { vendor_sdk: 'no_match' } } }), 'utf-8');
+      writeFileSync(join(passes, '06-tf.yaml'), dump({ signals: [], assessment: { factor_scores: [{ factor: 'III (Config)', status: 'pass' }, { factor: 'XI (Logs)', status: 'unknown' }], twelve_factor_pass_rate: 1, iac_roots: 0 } }), 'utf-8');
+      writeFileSync(join(passes, '09-synth.yaml'), dump({ signals: [], assessment: { seven_r_label: 'Rehost', portability_score: 0.6, cloud_native_score: 0.9, portability_comment: 'A remark.' } }), 'utf-8');
+
+      derivePlanForRun(wsRoot, appDir, runDir, 'score-app', 'RUN-3431', '2026-10-24T10:00:00.000Z');
+
+      const spine = yamlLoad(readFileSync(join(runDir, 'wsp.yaml'), 'utf-8')) as { overall: Record<string, unknown> };
+      // (1 + 0.5) / 2; the TF pass rate (1.0) and the synth value (0.9) are not used.
+      expect(spine.overall['cloud_native_score']).toBe(0.75);
+      expect(spine.overall['cloud_native']).toMatchObject({ factors_checked: 1, factors_total: 2, confidence: 'medium' });
+      // vendor 1, container 0.75, iac 0: (0.25 + 0.1125 + 0) / 0.5 = 0.725.
+      expect(spine.overall['portability_score']).toBe(0.73);
+      expect((spine.overall['portability'] as { components_used: string[] }).components_used).toEqual(['vendor_lock', 'container', 'iac']);
+      expect(spine.overall['portability_comment']).toBe('A remark.');
+    } finally {
+      rmSync(wsRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('writes an empty score with the reason when the inputs are missing', () => {
+    const wsRoot = mkdtempSync(join(tmpdir(), 'swao-3431-derive-empty-'));
+    try {
+      const appDir = join(wsRoot, 'apps', 'empty-app');
+      const runDir = join(appDir, 'wsp', 'runs', '2026-10-24-100000');
+      mkdirSync(join(runDir, 'passes'), { recursive: true });
+      writeFileSync(join(wsRoot, '.swao.yml'), 'workspace_name: s\n', 'utf-8');
+      writeFileSync(join(appDir, '.swao.yml'), 'app_name: Empty\napp_id: empty-app\n', 'utf-8');
+      writeFileSync(join(runDir, 'passes', '09-synth.yaml'), dump({ signals: [], assessment: { seven_r_label: 'Rehost', portability_score: 0.6 } }), 'utf-8');
+
+      derivePlanForRun(wsRoot, appDir, runDir, 'empty-app', 'RUN-3431', '2026-10-24T10:00:00.000Z');
+
+      const spine = yamlLoad(readFileSync(join(runDir, 'wsp.yaml'), 'utf-8')) as { overall: Record<string, unknown> };
+      expect(spine.overall['cloud_native_score']).toBe('');
+      expect(spine.overall['cloud_native']).toEqual({ skipped_reason: 'twelve-factor (Pass 06) output not available' });
+      expect(spine.overall['portability_score']).toBe('');
+    } finally {
+      rmSync(wsRoot, { recursive: true, force: true });
+    }
+  });
+});

@@ -164,9 +164,13 @@ describe('fetchAzureCatalogue -- billing-zone pseudo-regions (#3155)', () => {
     expect(cat.meta.regions_count).toBe(2);
   });
 
-  it('isAzurePseudoRegion recognises billing zones only', () => {
+  it('isAzurePseudoRegion drops billing zones and non-customer regions (#3380)', () => {
+    // Billing pseudo-zones (#3155).
     for (const id of ['Global', 'Europe', 'Zone 8', 'US Gov', 'Middle East And Africa', 'Azure Stack US Gov']) expect(isAzurePseudoRegion(id), id).toBe(true);
-    for (const id of ['westeurope', 'germanywestcentral', 'eastus2euap', 'attatlanta1']) expect(isAzurePseudoRegion(id), id).toBe(false);
+    // Non-customer ARM regions: canary/EUAP, staging, AT&T partner, internal (#3380 decision 3b).
+    for (const id of ['eastus2euap', 'centraluseuap', 'southcentralusstg', 'eastusslv', 'attatlanta1', 'microsoftvancouver1', 'sgxsingapore1']) expect(isAzurePseudoRegion(id), id).toBe(true);
+    // Genuine commercial regions stay.
+    for (const id of ['westeurope', 'germanywestcentral', 'swedencentral']) expect(isAzurePseudoRegion(id), id).toBe(false);
   });
 });
 

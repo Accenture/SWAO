@@ -223,7 +223,11 @@ export function assembleGroups(records: CallRecord[], legStats: Record<string, L
     scored('cost.total_usd', (rs) => {
       const priced = done(rs).filter((r) => r.cost_usd.computed !== null);
       if (priced.length === 0) return null;
-      return priced.reduce((a, r) => a + (r.cost_usd.computed as number), 0);
+      const sum = priced.reduce((a, r) => a + (r.cost_usd.computed as number), 0);
+      // #3389: a billed leg whose total cost is exactly 0 has no price row
+      // configured (unpriced, e.g. a sovereign gateway with no cost entries).
+      // Exclude it from cost ranking instead of scoring it as the cheapest.
+      return sum === 0 ? null : sum;
     }),
   ].filter((p): p is PropertyScore => p !== null);
 

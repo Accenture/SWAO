@@ -25,7 +25,7 @@ import type { MenuTarget } from './MainMenu.js';
 // Subset of MenuTarget reachable from the Tools submenu.
 // challenge + lenses removed: both are now integrated into the assessment wizard flow.
 // lz-catalogue-manage removed (#1522): auto-seeded during init; no menu action needed.
-export type ToolsTarget = Extract<MenuTarget, 'license' | 'credentials' | 'help' | 'lz-catalogue-update' | 'ingest' | 'support-bundle' | 'chat'>;
+export type ToolsTarget = Extract<MenuTarget, 'license' | 'credentials' | 'help' | 'lz-catalogue-update' | 'llm-gateway-update' | 'ingest' | 'support-bundle' | 'chat'>;
 
 interface ToolsItem {
   key: string;
@@ -49,13 +49,15 @@ const ITEMS: ToolsItem[] = [
   { key: '2', label: 'Credentials',         detail: 'list / set / delete',                            target: 'credentials'         },
   // #0872 -- LZ catalogue refresh; Consultant+ gated inside the screen.
   { key: '3', label: 'Update LZ Catalogue', detail: 'refresh provider service catalogues',              target: 'lz-catalogue-update', consultantGated: true },
+  // #3388 -- refresh workspace LLM gateway connectors from the packaged seeds.
+  { key: '4', label: 'Update LLM Gateway',   detail: 'refresh workspace connectors from packaged seeds',   target: 'llm-gateway-update' },
   // #0967 -- pre-process ingestion/ before a full assessment run.
-  { key: '4', label: 'Ingest Files',         detail: 'pre-process ingestion/ folder (classify + extract)', target: 'ingest'          },
+  { key: '5', label: 'Ingest Files',         detail: 'pre-process ingestion/ folder (classify + extract)', target: 'ingest'          },
   // #1515 -- PII-free diagnostic bundle for support hand-off.
-  { key: '5', label: 'Support Bundle',       detail: 'create PII-free diagnostic bundle for support',       target: 'support-bundle'   },
+  { key: '6', label: 'Support Bundle',       detail: 'create PII-free diagnostic bundle for support',       target: 'support-bundle'   },
   // #2778 -- Multi-turn portfolio chat; Enterprise only.
-  { key: '6', label: 'Chat with Portfolio',  detail: 'multi-turn LLM conversation about assessments',       target: 'chat', enterpriseGated: true },
-  { key: '7', label: 'Help',                 detail: 'quick reference + troubleshooting',                  target: 'help'             },
+  { key: '7', label: 'Chat with Portfolio',  detail: 'multi-turn LLM conversation about assessments',       target: 'chat', enterpriseGated: true },
+  { key: '8', label: 'Help',                 detail: 'quick reference + troubleshooting',                  target: 'help'             },
 ];
 
 const TOOLS_INFO: Record<ToolsTarget, ToolsInfo> = {
@@ -100,6 +102,15 @@ const TOOLS_INFO: Record<ToolsTarget, ToolsInfo> = {
     use:    'Requires Consultant+ licence. No cloud credentials needed -- AWS, Azure, GCP, and STACKIT use public APIs. Refreshed files go to wsp/inputs/catalogs/lz-catalogues/ and override the bundled copy.',
     output: 'Updated JSON catalogue files in <workspace>/wsp/inputs/catalogs/lz-catalogues/. ' +
             'Run `swao lz catalogue list` to view the current state.',
+  },
+  // #3388 (Design 112 D-2) -- refresh workspace LLM gateway connectors.
+  'llm-gateway-update': {
+    what:   'Refresh the workspace LLM gateway connectors (wsp/inputs/llm-gateway/) from the ' +
+            'packaged seeds. The connector folder is the single source SWAO reads.',
+    use:    'All tiers; no credentials. Run after upgrading the SWAO binary. Connectors you have ' +
+            'edited are kept untouched; unchanged seeds are refreshed and new connectors are added.',
+    output: 'Updated connector YAML files in <workspace>/wsp/inputs/llm-gateway/. ' +
+            'Equivalent to `swao llm-gateway update`.',
   },
 };
 

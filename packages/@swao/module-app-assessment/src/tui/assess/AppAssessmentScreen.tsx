@@ -54,17 +54,21 @@ import { logApp } from '@swao/core';
 import { openWithDefaultApp, copyToClipboard } from '@swao/core';
 import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
 import { PASS_DESCRIPTIONS } from './shared/passDescriptions.js';
-import { ChallengePromptPhase } from './shared/ChallengePromptPhase.js';
+import { TUI_DEFAULT_PASS_KEYS, DEFAULT_PASS_KEYS as ORCHESTRATOR_DEFAULT_PASS_KEYS, TUI_OPT_IN_PASS_KEYS } from '../../orchestrator.js';
+import { ChallengePromptPhase, challengeOfferForApp } from './shared/ChallengePromptPhase.js';
 import { RunningPhase } from './shared/RunningPhase.js';
 import { PreflightLlmPhase } from './shared/PreflightLlmPhase.js';
 import { AppPickerPhase } from './shared/AppPickerPhase.js';
 import type { LocalConnectorInfo } from './shared/types.js';
+import { listLocalConnectors as sharedListLocalConnectors } from '@swao/module-llm-providers';
 import {
   buildChildEnv,
   discoverCommunityRegimes,
   filterRegimesAgainstInstalled,
   BUILTIN_API_CONNECTORS,
   listApiTokenConnectors,
+  readLastRunAppLzTargets,
+  insertCountryHeaders,
   type RegimeOption,
   type AppYamlOptions,
   type LzCatalogueEntry,
@@ -78,14 +82,17 @@ const SELF = process.argv[1] as string;
 
 // Core passes used as the first-run default selection (#0901).
 // dynamic and malware are opt-in: they require external tooling (Playwright / malware
-// scanners) and add significant run time. Only pre-select the core 12 passes.
-const DEFAULT_PASS_KEYS = 'inv,state,data,ctx,sbom,tf,egr,crypto,synth,comp,blocks,scope'.split(',');
+// scanners) and add significant run time.
+// #3419: derived from the one default list (@swao/core DEFAULT_PASS_PROFILE via
+// the orchestrator), so the secret scan (`secrets`) is pre-selected and the
+// TUI cannot drift from the CLI default.
+const DEFAULT_PASS_KEYS: string[] = [...TUI_DEFAULT_PASS_KEYS];
 
 // All-passes string (includes dynamic) used for spawn args when "All passes" is chosen.
-// Keep in sync with the --passes default in src/commands/assess.ts.
+// #3419: the CLI `--passes` default itself, not a copy.
 // The spawn logic conditionally omits --no-crawl when dynamic is in the selection (#0692).
-const ALL_PASSES = 'inv,state,data,ctx,sbom,tf,egr,crypto,synth,dynamic,comp,blocks,scope';
-const ALL_PASS_COUNT = ALL_PASSES.split(',').length;
+const ALL_PASSES = ORCHESTRATOR_DEFAULT_PASS_KEYS.join(',');
+const ALL_PASS_COUNT = ORCHESTRATOR_DEFAULT_PASS_KEYS.length;
 
 type Phase =
   | 'input-app'
@@ -158,7 +165,10 @@ const PASS_OPTIONS = [
   { label: '11-comp    -- Compliance evaluation (LLM)', value: 'comp'    },
   { label: '12-blocks  -- Block assessments (LLM)',     value: 'blocks'  },
   { label: '13-scope   -- Scope analysis',              value: 'scope'   },
-  { label: '14-malware -- Malware scan',                 value: 'malware' },
+  { label: '26-quality -- Code health worklist',         value: 'quality' }, // #3405
+  // #3419: default secret scan (Gitleaks); the full malware scan supersedes it.
+  { label: '14-secrets -- Secret scan (Gitleaks)',       value: 'secrets' },
+  { label: '14-malware -- Malware scan (full)',          value: 'malware' },
 ];
 
 // #0383: maps short pass keys (PASS_OPTIONS) to the long names used in
@@ -179,6 +189,8 @@ const PASS_SHORT_TO_LONG: Record<string, string> = {
   comp:    'compliance_evaluation',
   blocks:  'block_assessments',
   scope:   'scope_analysis',
+  secrets: 'secret_scan',
+  quality: 'code_health',
   malware: 'malware_scanning',
 };
 
@@ -269,46 +281,10 @@ function readWorkspacePartnershipLead(workspace: string | null): string | undefi
   } catch { return undefined; }
 }
 
-// LocalConnectorInfo moved to assess/shared/types.ts (#2371).
-
-function listLocalConnectors(workspaceRoot?: string): LocalConnectorInfo[] {
-  if (!workspaceRoot) return [];
-  const wsDir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
-  if (!existsSync(wsDir)) return [];
-  const out: LocalConnectorInfo[] = [];
-  const seen = new Set<string>();
-  let entries: string[];
-  try {
-    entries = readdirSync(wsDir).filter(f => (f.endsWith('.yaml') || f.endsWith('.yml')) && !f.startsWith('_'));
-  } catch { return []; }
-  for (const entry of entries.sort()) {
-    try {
-      const raw = loadYaml(readFileSync(join(wsDir, entry), 'utf-8')) as {
-        connector?: {
-          id?: string; name?: string; base_url?: string; protocol?: string;
-          models?: { default?: string };
-          auth?: { credential_key?: string; env_var?: string };
-          tls?: { reject_unauthorized?: boolean };
-        };
-      } | null;
-      const c = raw?.connector;
-      const id = c?.id;
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      out.push({
-        id,
-        name: c?.name ?? id,
-        credentialKey: c?.auth?.credential_key,
-        envVar: c?.auth?.env_var,
-        baseUrl: c?.base_url ?? '',
-        protocol: c?.protocol ?? '',
-        defaultModel: c?.models?.default ?? '',
-        rejectUnauthorized: c?.tls?.reject_unauthorized,
-      });
-    } catch { /* skip invalid connector files */ }
-  }
-  return out;
-}
+// #3388 (Design 112): the private listLocalConnectors copy was removed; the one
+// reader now lives in @swao/module-llm-providers (imported below) and seeds the
+// workspace folder when empty (single source, D-3).
+const listLocalConnectors = sharedListLocalConnectors;
 
 export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: AppAssessmentScreenProps): JSX.Element | null {
   const workspace = findWorkspace(process.cwd());
@@ -462,6 +438,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const API_TOKEN_PAGE_SIZE = 9;
   // #2328: resolved connector + apiKey passed as props into PreflightLlmPhase (#2371).
   const [preflightConnector, setPreflightConnector] = useState<LocalConnectorInfo | null>(null);
+  // #3383: run the deterministic passes only (adds --skip-llm) when the operator
+  // chooses to proceed without a reachable LLM.
+  const [skipLlm, setSkipLlm] = useState(false);
   const [preflightApiKey, setPreflightApiKey] = useState<string | undefined>(undefined);
 
   const detectedProvider = (() => {
@@ -528,6 +507,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       : passes.includes('dynamic');
     let args: string[];
     args = ['assess', '--app', app, '--passes', passArg];
+    if (skipLlm) args.push('--skip-llm'); // #3383
     if (!includeDynamic) args.push('--no-crawl');
     if (showStats) args.push('--stats');
     if (!useCassette) args.push('--no-cache');
@@ -535,6 +515,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     if (iter.trim() && iter.trim() !== '1') args.push('--iter', iter.trim());
     if (appLzCatTargets.length > 0) {
       args.push('--lz-cat-targets', appLzCatTargets.join(','));
+    } else {
+      // #3378 (ADR-0067): the TUI chooses LZ targets per run and never falls back
+      // to .swao.yml. An empty selection (or skipping the LZ step) means "no LZ
+      // fit for this run", so tell the CLI explicitly instead of letting its
+      // .swao.yml resolver fire.
+      args.push('--no-lz-fit');
     }
 
     // #2495: Design 098 -- emit assess.app.start before spawning the subprocess.
@@ -843,7 +829,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     // challenge-prompt step if onChallenge is wired (#0988 Design 074 Step 8).
     if (phase === 'assess-done' && key.escape) onBack();
     if (phase === 'assess-done' && key.return) {
-      if (onChallenge && isEnterprise) { setPhase('challenge-prompt'); }
+      // #3383: no Stakeholder Challenge for a deterministic-only run (no LLM).
+      if (onChallenge && isEnterprise && !skipLlm) { setPhase('challenge-prompt'); }
       else { onBack(); }
     }
     // #0715: open the assess.log in the OS default viewer when L is pressed.
@@ -856,6 +843,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     // #2262: guard -- challenge module absent on Community/Consultant; pressing C on those tiers crashes.
     if (phase === 'assess-done' && (input === 'c' || input === 'C')) {
       if (!isEnterprise) return;
+      if (skipLlm) return; // #3383: challenge is LLM-driven; not for a deterministic-only run
       onChallenge?.(app);
     }
     // #0408: in the inline export-done state, R/P/C/E launch templates +
@@ -1149,7 +1137,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #1018: normalize stored entries -- lowercase + dedup + restrict to known PASS_OPTIONS
   // values so stale uppercase entries (INV, LZR, MAL) or duplicates are silently dropped.
   const readAppPassProfile = (appId: string): string[] => {
-    const OPT_IN = new Set(['dynamic', 'malware', 'all']);
+    // #3419: TUI opt-in passes come from the orchestrator (dynamic); malware stays opt-in.
+    const OPT_IN = new Set([...TUI_OPT_IN_PASS_KEYS, 'malware', 'all']);
     const VALID_KEYS = new Set(PASS_OPTIONS.map(o => o.value));
     if (!workspace) return DEFAULT_PASS_KEYS;
     const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
@@ -1308,9 +1297,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // denominator tracks the count actually being run.
   // #0692: malware is opt-in -- not in ALL_PASSES -- so exclude it from the
   // denominator when individual passes are selected.
+  // #3419: malware supersedes the default secret scan (same Pass 14), so
+  // "All passes" + malware keeps the count; a manual selection with both
+  // counts Pass 14 once.
   const totalPasses = passes.includes('all')
-    ? ALL_PASS_COUNT + (passes.includes('malware') ? 1 : 0)
-    : passes.filter(p => p !== 'all').length;
+    ? ALL_PASS_COUNT + (passes.includes('malware') && !ALL_PASSES.split(',').includes('secrets') ? 1 : 0)
+    : passes.filter(p => p !== 'all' && !(p === 'secrets' && passes.includes('malware'))).length;
   // Effective work-done. #0396 (sprint-040): on FAILURE keep the bar at
   // the last actual progress instead of snapping to 100 percent. The bar
   // turns red so the failure is unmistakable; jumping to 100 percent on
@@ -1380,7 +1372,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #0732: optional target LZ step for app assessments -- Esc skips to running.
   if (phase === 'input-app-lz-provider') {
     const hint = scaffold.lzCatalogueHint;
-    const providerOptions = hint?.entries.map(e => ({ label: `${e.name}  (${e.provider})`, value: e.provider })) ?? [];
+    const providerOptions = hint?.entries.map(e => ({ label: e.label ?? `${e.name}  (${e.provider})`, value: e.provider })) ?? [];
     return (
       <Box flexDirection="column" padding={1}>
         <Header subtitle="Application Assessment -- Target Landing Zone (optional)" />
@@ -1392,6 +1384,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
               label="Cloud provider(s)"
               options={providerOptions}
               allowEmptyConfirm
+              // #3378 Part B: pre-select the providers of this app's last run.
+              initialSelected={[...new Set(readLastRunAppLzTargets(workspace, app).map(t => t.split(':')[0]!))]
+                .filter(p => providerOptions.some(o => o.value === p))}
               onConfirm={(selected) => {
                 if (selected.length === 0) { beginRun(); return; }
                 setAppLzCatProviders(selected);
@@ -1432,12 +1427,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const allTargetOptions = appLzCatProviders.flatMap(pid => {
       const entry = hint?.entries.find(e => e.provider === pid);
       if (!entry) return [];
-      return [...entry.regions]
-        .sort((a, b) => a.id.localeCompare(b.id))
-        .map(r => ({
-          label: `${pid.toUpperCase()} / ${r.id} - ${r.display}`,
-          value: `${pid}:${r.id}`,
-        }));
+      // #3380: render the shared label; carry country for header grouping.
+      return entry.regions.map(r => ({
+        label: `${pid.toUpperCase()} / ${r.label ?? `${r.id} - ${r.display}`}`,
+        value: `${pid}:${r.id}`,
+        country: r.country,
+      }));
     });
     const providerLabel = truncateLabel(appLzCatProviders.map(pid => lzProviderName(pid)).join(', '), 30 + app.length);
 
@@ -1480,8 +1475,14 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
               <MultiSelect
                 key={`app-lz-region-${appLzCatProviders.join('-')}-${appLzRegionFilter}`}
                 label="Target region(s)"
-                options={filteredTargetOptions}
-                initialSelected={appLzCatTargets.length > 0 ? appLzCatTargets : (filteredTargetOptions[0] ? [filteredTargetOptions[0].value] : [])}
+                options={insertCountryHeaders(filteredTargetOptions)}
+                initialSelected={(() => {
+                  // #3378 Part B: this run's picks, else the last run's targets, else the first option.
+                  if (appLzCatTargets.length > 0) return appLzCatTargets;
+                  const lastRun = readLastRunAppLzTargets(workspace, app).filter(t => filteredTargetOptions.some(o => o.value === t));
+                  if (lastRun.length > 0) return lastRun;
+                  return filteredTargetOptions[0] ? [filteredTargetOptions[0].value] : [];
+                })()}
                 allowEmptyConfirm
                 visibleCount={12}
                 onConfirm={(selected) => {
@@ -2792,8 +2793,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
         apiKey={preflightApiKey}
         app={app}
         typeLabel={typeLabel}
-        onPass={() => setPhase('running')}
+        onPass={() => { setSkipLlm(false); setPhase('running'); }}
         onBack={() => setPhase('input-app-credentials')}
+        onRunWithoutLlm={() => { setSkipLlm(true); setPhase('running'); }}
         Header={Header}
       />
     );
@@ -2830,6 +2832,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
           <Text>  LLM:          <Text color="cyanBright">{detectedProvider}</Text></Text>
           <Text>  Pass files:   <Text color="cyanBright">{signalsTotal} written</Text></Text>
           <Text>  Outputs:      <Text color="cyanBright">apps/{app}/wsp/passes/ + wsp/runs/&lt;ts&gt;/</Text></Text>
+          {/* #3383: a deterministic-only run makes no LLM call, so the LLM-driven passes and the Stakeholder Challenge were not run. */}
+          {skipLlm && <Text>  Mode:         <Text color="yellow">deterministic only (no LLM)</Text></Text>}
         </Box>
         {/* #0928: block assessment summary from 12-blocks.yaml */}
         {Object.keys(blockVerdicts).length > 0 && (
@@ -2862,7 +2866,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
           </Box>
         ) : null}
         <Box marginTop={1} flexDirection="column">
-          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onChallenge ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- Stakeholder Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
+          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onChallenge && !skipLlm ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- Stakeholder Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
+          {/* #3383: the Stakeholder Challenge is LLM-driven, so it is not offered for a deterministic-only run. */}
+          {onChallenge && skipLlm && <Text dimColor>  Stakeholder Challenge is unavailable for a deterministic-only run (no LLM).</Text>}
         </Box>
         <GuidanceBox
           title="Assessment complete"
@@ -2892,6 +2898,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
         onConfirm={() => { onChallenge?.(app); }}
         onBack={onBack}
         Header={Header}
+        offer={challengeOfferForApp(workspace, app, assessmentType)} /* #3427 */
       />
     );
   }

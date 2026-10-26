@@ -470,3 +470,33 @@ describe('bundled lz-catalogues seeds (#1381 / #1382)', () => {
     expect(region!.sovereignty.certifications).toEqual([]);
   });
 });
+
+describe('documentation-only blockers ask for verification (#3497)', () => {
+  const docOnly = (code: string) => ({ code, confidence: 'low' as const, evidence: [`docs/architecture.md`] });
+
+  it('NEEDS_VERIFICATION when every hard blocker is evidenced by documentation only', () => {
+    const report = computeLzFit({ requiredServices: [...ALL_BASELINE_SERVICES, docOnly('mysql'), docOnly('identity_management')], region: REGION, scan: SCAN });
+    expect(report.overall).toBe('NEEDS_VERIFICATION');
+    // the items keep their own verdict and the confirm note
+    const mysql = report.items.find((i) => i.service_code === 'mysql');
+    expect(mysql?.verdict).toBe('NOT_AVAILABLE_IN_REGION');
+    expect(mysql?.detail).toContain('confirm it before treating this as a blocker');
+    expect(report.services_not_in_catalogue).toEqual(['mysql', 'identity_management']);
+  });
+
+  it('BLOCKED when one blocker has stronger evidence than documentation (medium)', () => {
+    const report = computeLzFit({ requiredServices: [...ALL_BASELINE_SERVICES, docOnly('mysql'), { code: 'kafka', confidence: 'medium' as const }], region: REGION, scan: SCAN });
+    expect(report.overall).toBe('BLOCKED');
+  });
+
+  it('BLOCKED when a blocker has high confidence or no confidence recorded', () => {
+    expect(computeLzFit({ requiredServices: [...ALL_BASELINE_SERVICES, { code: 'kafka', confidence: 'high' as const }], region: REGION, scan: SCAN }).overall).toBe('BLOCKED');
+    expect(computeLzFit({ requiredServices: [...ALL_BASELINE_SERVICES, { code: 'kafka' }], region: REGION, scan: SCAN }).overall).toBe('BLOCKED');
+  });
+
+  it('a sovereignty gap still dominates documentation-only blockers', () => {
+    const sov: SovereigntyRequirements = { forbid_exposure: ['us_cloud_act'], derived_from: ['GDPR'] };
+    const report = computeLzFit({ requiredServices: [...ALL_BASELINE_SERVICES, docOnly('mysql')], region: REGION, scan: SCAN, sovereigntyRequirements: sov });
+    expect(report.overall).toBe('SOVEREIGNTY_BLOCKED');
+  });
+});

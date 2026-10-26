@@ -38,8 +38,43 @@
 
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, extname } from 'node:path';
-import { redactForReport } from './redact-pre-llm.js';
-import { recordRedaction } from '@swao/core';
+import { redactForReport, emptyPreLlmCounts, type PreLlmRedactionCounts } from './redact-pre-llm.js';
+import { recordRedaction, guardSecretText } from '@swao/core';
+
+// #3417: evidence IDs are SWAO-derived slugs (`EVD-<UPPERCASED-REF>`,
+// derive-plan.ts slugEvidenceRef, capped at 64 chars) used as catalogue keys,
+// evidence_index values and cross-references in every export. They carry no
+// operator data beyond the ref they slug, so the sweep leaves them verbatim:
+// rewriting one breaks the catalogue / index / star.ts joins. The capturing
+// group makes String.split keep the tokens at odd indices; only the text
+// between them is redacted. Bounded quantifier, no nesting: linear.
+const EVIDENCE_ID_SPLIT_RE = /(\bEVD-[A-Z0-9_-]{2,64})/;
+
+/**
+ * Redact a text file body while leaving evidence-ID tokens untouched.
+ * Per-class counts are summed over the redacted segments.
+ */
+export function redactReportText(input: string): { text: string; counts: PreLlmRedactionCounts } {
+  const counts = emptyPreLlmCounts();
+  const parts = input.split(EVIDENCE_ID_SPLIT_RE);
+  for (let i = 0; i < parts.length; i += 2) {
+    const seg = parts[i];
+    if (!seg) continue;
+    const r = redactForReport(seg);
+    // #3415: redactForReport already masks credential values (class
+    // `credential`); the guard then masks the remaining secret shapes (JWT,
+    // PEM bodies, vendor tokens) the PII classes do not match. Masking is
+    // idempotent, so a credential is counted once; the guard's hits are
+    // recorded under secret_shape.
+    const g = guardSecretText(r.text);
+    parts[i] = g.text;
+    for (const k of Object.keys(counts) as Array<keyof PreLlmRedactionCounts>) {
+      counts[k] += r.counts[k];
+    }
+    counts.secret_shape += g.count;
+  }
+  return { text: parts.join(''), counts };
+}
 
 // File extensions that contain scrubbable text. Binary outputs
 // (.xlsx, .pdf, .png, .jpg, .zip, .tar.gz, .sig, .pem, .crt) are
@@ -103,6 +138,34 @@ export interface ScrubRunDirectoryResult {
  * redaction-report sink. Files with zero matches are not recorded
  * (keeps the audit trail focused on real events).
  */
+/**
+ * #3484: quote YAML scalar values that begin with a redaction placeholder.
+ * `key: [REDACTED-IPV4]` or `- [REDACTED-EMAIL]:443` would otherwise be read
+ * as a flow sequence (or fail to parse). Line-based and linear: only a value
+ * that starts right after `key: ` or `- ` and is not already quoted is
+ * wrapped in double quotes; everything else is left byte-identical.
+ */
+export function quoteBareYamlPlaceholders(text: string): string {
+  return text.split('\n').map((line) => {
+    const cr = line.endsWith('\r') ? '\r' : '';
+    const body = cr ? line.slice(0, -1) : line;
+    let start = -1;
+    const keySep = body.indexOf(': [REDACTED-');
+    if (keySep !== -1) start = keySep + 2;
+    else {
+      const m = /^(\s*-\s+)\[REDACTED-/.exec(body);
+      if (m) start = m[1]!.length;
+    }
+    if (start === -1) return line;
+    const rest = body.slice(start);
+    const hash = rest.indexOf(' #');
+    const value = (hash === -1 ? rest : rest.slice(0, hash)).trimEnd();
+    const comment = hash === -1 ? '' : rest.slice(hash);
+    const quoted = '"' + value.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    return body.slice(0, start) + quoted + comment + cr;
+  }).join('\n');
+}
+
 export function scrubRunDirectory(runDir: string): ScrubRunDirectoryResult {
   const files: string[] = [];
   walkFiles(runDir, files);
@@ -122,7 +185,11 @@ export function scrubRunDirectory(runDir: string): ScrubRunDirectoryResult {
       continue;
     }
 
-    const { text: scrubbed, counts } = redactForReport(original);
+    const redacted = redactReportText(original);
+    const counts = redacted.counts;
+    // #3484: in YAML a bare `[REDACTED-...]` value parses as a flow sequence
+    // (a list), so a scrubbed `host: 10.1.2.3` would change type on read.
+    const scrubbed = /\.ya?ml$/i.test(filePath) ? quoteBareYamlPlaceholders(redacted.text) : redacted.text;
 
     if (scrubbed !== original) {
       writeFileSync(filePath, scrubbed, 'utf-8');

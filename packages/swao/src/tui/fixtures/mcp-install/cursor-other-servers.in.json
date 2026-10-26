@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "SWAO": {
+      "command": "/old/swao",
+      "args": ["mcp"],
+      "env": {
+        "SWAO_LOG": "debug"
+      }
+    },
+    "docs": {
+      "url": "https://example.invalid/mcp"
+    }
+  }
+}

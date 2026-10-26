@@ -18,11 +18,11 @@
 // produces text / YAML / JSON report content. PDF rendering delegates to
 // @swao/module-pdf-report via a ReportData stub so the same renderer is reused.
 
-import { join } from 'path';
+import { basename, dirname, join } from 'path';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { load as loadYaml, dump } from 'js-yaml';
 import type { ReportData, EngagementMeta, SignalEntry, ChallengeAgentFinding } from '@swao/core';
-import { readRunStatus, normalizeDashes, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE } from '@swao/core';
+import { readRunStatus, normalizeDashes, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, staleChallengeNote, challengeCommand } from '@swao/core';
 import { wrapLines } from './report.js';
 
 // ---------------------------------------------------------------------------
@@ -88,6 +88,10 @@ export interface LzReportData {
   challengeSource?: string;
   /** #3330: a challenge of another run exists and was left out. */
   challengeOtherRunOmitted?: boolean;
+  /** #3446: names the other run's challenge (staleChallengeNote, @swao/core); set only without findings. */
+  challengeNote?: string;
+  /** #3446: exact command that challenges the reported run (challengeCommand, @swao/core); set only without findings. */
+  challengeRunCommand?: string;
   engagement?: EngagementMeta;
   /** Files that could not be parsed; used to log report.generate.error events. */
   parseErrors?: Array<{ file: string; reason: string }>;
@@ -214,6 +218,10 @@ export function generateLzReport(workspaceAppDir: string, appId: string, runId?:
   const challengeSel = selectChallengeForRun(wspDir, 'lz', runDir);
   const challengeFindings = challengeSel.dir ? loadLzChallengeFindings(challengeSel.dir, parseErrors) : [];
   const challengeSource = challengeFindings.length > 0 ? challengeSourceLabel(challengeSel) : undefined;
+  // #3446: without findings, name the other run's challenge and the exact command for this run.
+  const challengeNote = challengeFindings.length === 0 ? staleChallengeNote(challengeSel) : undefined;
+  const reportedRunId = basename(dirname(runDir)) === 'runs' ? basename(runDir) : undefined;
+  const challengeRunCommand = challengeFindings.length === 0 ? challengeCommand(appId, 'lz', reportedRunId) : undefined;
   const engagement = loadLzEngagement(runDir);
 
   // #3281: a partial run (some targets skipped) records them in run-status.json.
@@ -230,6 +238,8 @@ export function generateLzReport(workspaceAppDir: string, appId: string, runId?:
     challengeFindings,
     ...(challengeSource ? { challengeSource } : {}),
     ...(challengeSel.otherRunOmitted ? { challengeOtherRunOmitted: true } : {}),
+    ...(challengeNote ? { challengeNote } : {}),
+    ...(challengeRunCommand ? { challengeRunCommand } : {}),
     engagement, parseErrors: parseErrors.length > 0 ? parseErrors : undefined,
   };
 }
@@ -404,6 +414,9 @@ export function formatLzText(data: LzReportData): string {
     lines.push(data.challengeOtherRunOmitted
       ? `Stakeholder Challenge Findings: none for this run (${CHALLENGE_OTHER_RUN_NOTE}). Run the LZ Sovereignty Challenge to generate.`
       : 'Stakeholder Challenge Findings: none. Run the LZ Sovereignty Challenge to generate.');
+    // #3446: name the other run's challenge and give the exact command.
+    if (data.challengeNote) lines.push(data.challengeNote);
+    if (data.challengeRunCommand) lines.push(`Command: ${data.challengeRunCommand}`);
     lines.push('');
   } else {
     lines.push('Stakeholder Challenge Findings');
@@ -477,6 +490,9 @@ export function formatLzYaml(data: LzReportData): string {
     ...(data.resolvedTargets?.length ? { resolved_targets: data.resolvedTargets } : {}),
     ...(data.challengeSource ? { challenge_source: data.challengeSource } : {}),
     ...(data.challengeOtherRunOmitted ? { challenge_note: CHALLENGE_OTHER_RUN_NOTE } : {}),
+    // #3446: the other run's challenge, named, and the command for this run.
+    ...(data.challengeNote ? { challenge_other_run: data.challengeNote } : {}),
+    ...(data.challengeRunCommand ? { challenge_command: data.challengeRunCommand } : {}),
     challenge_findings: data.challengeFindings.map(a => ({
       agent_id: a.agentId,
       agent_role: a.agentRole,

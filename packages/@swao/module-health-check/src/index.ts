@@ -19,6 +19,7 @@ import type {
   TuiScreenContribution,
   WorkspaceContext,
 } from '@swao/core';
+import { detectCodeHealthTools, fileBackedToolRunner, PROBE_DETECT_OPTIONS } from '@swao/core';
 
 // The command register fns + buildHealthCheckPayload are re-exported directly below
 // (export ... from './commands/*'); they are not referenced in this file, so they
@@ -143,7 +144,7 @@ export const probes: ProbeContribution[] = [
     id: 'prerequisites',
     name: 'prerequisites',
     run: async ({ workspacePath }) => {
-      const r = buildPrerequisitesProbe(workspacePath);
+      const r = buildPrerequisitesProbe(workspacePath, { codeHealthTools: await detectCodeHealthTools(fileBackedToolRunner, undefined, PROBE_DETECT_OPTIONS) }); // #3487
       return { ok: r.status !== 'fail', message: r.message };
     },
   },

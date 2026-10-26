@@ -16,11 +16,13 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --pool forks --testTimeout=20000"
+    "test": "vitest run --pool forks --testTimeout=20000",
+    "docs:languages": "tsc --project tsconfig.json && node scripts/render-language-coverage.mjs --write"
   },
   "dependencies": {
     "@swao/core": "workspace:*",
     "@swao/module-iac-scan": "workspace:*",
+    "@swao/module-llm-providers": "workspace:*",
     "@swao/tui-kit": "workspace:*",
     "adm-zip": "^0.6.0",
     "commander": "^12.1.0",

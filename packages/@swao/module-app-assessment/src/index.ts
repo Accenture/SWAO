@@ -48,7 +48,8 @@ import { loadAnalyticsBlocklist, getAnalyticsDomainSet } from './passes/phase2/a
 // from there directly.
 import { runBlocksPass } from './passes/pass-12-blocks.js';
 import { runScopePass } from './passes/pass-13-scope.js';
-import { runMalwarePass } from './passes/pass-14-malware.js';
+import { runQualityPass } from './passes/pass-26-quality.js';
+import { runMalwarePass, runSecretScanPass } from './passes/pass-14-malware.js';
 import { runLzrPass, findLzrInputFiles } from './passes/pass-23-lzr.js';
 
 // Re-export the raw pass runners for the transition window (#0548). @swao/swao's
@@ -123,7 +124,15 @@ export {
   applySkipLlm,
   expandPassProfile,
   filterByPassProfile,
+  // #3419: one default list, TUI pre-selection derived from it, supersession.
+  TUI_OPT_IN_PASS_KEYS,
+  TUI_DEFAULT_PASS_KEYS,
+  SUPERSEDED_PASS_KEYS,
 } from './orchestrator.js';
+// #3419 / #3436: passes not executed and degraded passes (run manifest, run-status, publication).
+export { passesNotScheduled, classifyPassOutcome, passIdentity, passDegradedLogEvent, PASS_DEGRADED_EVENT } from './pass-coverage.js';
+export type { PassesNotScheduledInput, PassOutcome, PassDegradedLogEvent } from './pass-coverage.js';
+export { runSecretScanPass, buildGitleaksArgs, mal00Signal } from './passes/pass-14-malware.js';
 export type {
   AppAssessmentPassKey,
   AppAssessmentPassDescriptor,
@@ -153,7 +162,7 @@ const lzrContributionRun = async (): Promise<PassResult> => {
   );
 };
 
-// The 14 application-assessment passes, registered as PassContribution[].
+// The application-assessment passes, registered as PassContribution[].
 // id matches the assess.ts PASS_MAP key; signal_prefix / name match each
 // pass's emitted PassHeader.
 export const passContributions: PassContribution[] = [
@@ -170,10 +179,13 @@ export const passContributions: PassContribution[] = [
   // 'comp' (Pass 11 / COMP) moved to @swao/module-framework (#0570).
   { id: 'blocks', name: 'block_assessments', signal_prefix: 'BLOCKS', run: runBlocksPass },
   { id: 'scope', name: 'scope_coverage', signal_prefix: 'SCOPE', run: runScopePass },
+  { id: 'quality', name: 'code_health', signal_prefix: 'QUAL', run: runQualityPass }, // #3405
   { id: 'lzr', name: 'lzr', signal_prefix: 'LZR', run: lzrContributionRun },
   // Pass 14 (MALWARE) is opt-in: excluded from passKeys() default profile but
   // discoverable by module consumers. (#0681 Phase 1)
   { id: 'malware', name: 'malware_scanning', signal_prefix: 'MAL', run: runMalwarePass },
+  // #3419: the Gitleaks part of Pass 14 as a default pass (secret scan).
+  { id: 'secrets', name: 'secret_scan', signal_prefix: 'MAL', run: runSecretScanPass },
 ];
 
 // AssessmentTypeContribution for `type: application` (#0549). The actual

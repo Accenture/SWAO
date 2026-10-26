@@ -56,3 +56,30 @@ export function openAiChatCompletionsUrl(baseUrl: string): string {
   const base = stripTrailingSlashes(baseUrl);
   return base.endsWith('/v1') ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
 }
+
+/** The subset of a fetch Response that internet-research HTTP layers consume. */
+export interface ProxyAwareResponse {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  text(): Promise<string>;
+}
+
+/**
+ * #3369: a fetch that routes through HTTPS_PROXY (honouring NO_PROXY) and the
+ * corporate TLS settings, built per request so NO_PROXY is evaluated against
+ * each target host. Node's global fetch does not apply HTTPS_PROXY on the pkg
+ * runtime, so the service research passes (NVD, KEV, OSV, endoflife.date) need
+ * this on a corporate network. An undici Response satisfies ProxyAwareResponse.
+ */
+export function createProxyAwareFetch(): (
+  url: string,
+  init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
+) => Promise<ProxyAwareResponse> {
+  return (url, init) => {
+    const dispatcher = buildFetchDispatcher({ targetUrl: url });
+    const opts: Record<string, unknown> = { ...(init ?? {}) };
+    if (dispatcher) opts['dispatcher'] = dispatcher;
+    return undiciFetch(url, opts as Parameters<typeof undiciFetch>[1]) as unknown as Promise<ProxyAwareResponse>;
+  };
+}

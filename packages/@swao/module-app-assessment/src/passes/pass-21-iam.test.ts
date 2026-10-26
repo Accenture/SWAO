@@ -142,3 +142,58 @@ describe('pass-21-iam -- informational path', () => {
     }
   });
 });
+
+describe('pass-21-iam -- #3410 shared catalogue matcher', () => {
+  it('generic / numeric code does not detect ELSTER (eric inside a word)', async () => {
+    writeFileSync(
+      join(src, 'util.ts'),
+      `export function generic<T>(numeric: number): T[] { return []; }\nconst americanFormat = true;\n`,
+      'utf-8',
+    );
+    const result = await runIamPass(makeCtx());
+    expect(result.assessment['catalogue_available']).toBe(true);
+    expect(result.assessment['providers_detected'] as string[]).not.toContain('elster-nezo');
+  });
+
+  it('segment matching still detects a provider inside a camelCase identifier', async () => {
+    writeFileSync(join(src, 'auth.service.ts'), `export class KeycloakAuthService {}\n`, 'utf-8');
+    const result = await runIamPass(makeCtx());
+    expect(result.assessment['providers_detected'] as string[]).toContain('keycloak');
+  });
+
+  it('an env-var hit names the catalogue pattern, never the value from the env file', async () => {
+    writeFileSync(join(src, '.env.example'), 'BUNDID_CLIENT_SECRET=s3cr3t-value-123\n', 'utf-8');
+    const result = await runIamPass(makeCtx());
+    const sig = result.signals.find((s) => s.derivation.includes('BundID'));
+    expect(sig).toBeDefined();
+    expect(sig!.derivation).toContain('BUNDID_.*');
+    expect(sig!.derivation).not.toContain('s3cr3t');
+  });
+});
+
+describe('pass-21-iam -- #3411 all hits with production/test split', () => {
+  it('cites the production file first with line numbers and counts every occurrence', async () => {
+    mkdirSync(join(src, 'test'), { recursive: true });
+    mkdirSync(join(src, 'zz'), { recursive: true });
+    writeFileSync(join(src, 'test', 'auth.mock.ts'), `const keycloak = mockKeycloak();\nkeycloak.init();\n`, 'utf-8');
+    writeFileSync(join(src, 'test', 'login.ts'), `import Keycloak from 'keycloak-js';\n`, 'utf-8');
+    writeFileSync(join(src, 'zz', 'auth.ts'), `\nimport Keycloak from 'keycloak-js';\n`, 'utf-8');
+    const result = await runIamPass(makeCtx());
+    const sig = result.signals.find((s) => s.derivation.includes('Keycloak'))!;
+    expect(sig.evidence[0]).toBe('zz/auth.ts:2');
+    expect(sig.evidence).toEqual(expect.arrayContaining(['test/auth.mock.ts:1', 'test/auth.mock.ts:2', 'test/login.ts:1']));
+    expect(sig.derivation).toContain('4 occurrences (1 production, 3 test)');
+    const hits = (result.assessment['hits'] as Record<string, { total: number; production: number; test: number }>)['keycloak'];
+    expect(hits).toMatchObject({ total: 4, production: 1, test: 3 });
+  });
+
+  it('a provider referenced only from test code keeps its severity with low confidence (down-weighting is #3403 tag mode)', async () => {
+    mkdirSync(join(src, '__mocks__'), { recursive: true });
+    writeFileSync(join(src, '__mocks__', 'keycloak-js.ts'), `export default class Keycloak {}\n`, 'utf-8');
+    const result = await runIamPass(makeCtx());
+    const sig = result.signals.find((s) => s.derivation.includes('Keycloak'))!;
+    expect(sig.severity).toBe('low'); // Keycloak: eu_sovereign, no eIDAS level
+    expect(sig.confidence).toBe('low');
+    expect(sig.derivation).toContain('Referenced from test code only');
+  });
+});

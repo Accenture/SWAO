@@ -40,6 +40,9 @@ the `swao` entry point to show the workflow overview screen.
 This runbook covers two installation modes (binary and source), per-platform
 client configuration, verification, and troubleshooting.
 
+For the short path (one install command per client, profiles, small local models and client pitfalls),
+see [Using SWAO from an AI client](./mcp-ai-clients.md).
+
 ---
 
 ## 1. Installation modes
@@ -153,7 +156,8 @@ client and server exchange a JSON-RPC handshake, after which the client may
 call tools on demand. The server process stays alive for the duration of the
 client session.
 
-The server exposes five tools:
+The core workflow tools are listed below; the full list depends on the profile (section 4.3, `full` lists 53
+tools) and `swao mcp profiles` prints it:
 
 | Tool | Purpose |
 |---|---|
@@ -166,7 +170,8 @@ The server exposes five tools:
 The `swao_assess` and `swao_report` tools require two key parameters:
 
 - `app_id`: the application folder name under `portfolio/apps/`
-- `workspace_path`: absolute path to the portfolio root that contains `.swao.yml`
+- `workspace_path`: absolute path to the portfolio root that contains `.swao.yml` (optional; not offered when
+  the server workspace is pinned, section 4.2)
 
 ### 4.1 Service Portfolio Assessment tools
 
@@ -174,7 +179,7 @@ For a workspace scaffolded with `swao service init` (Design 103), the server
 exposes the service results directly. Read tools follow
 `FEATURE_GATES['service-assessment']` (Community, so no gate beyond the MCP
 server's own licence; `swao_service_export` additionally requires Enterprise),
-return JSON, accept `workspace_path`,
+return JSON, accept `workspace_path` (unless pinned),
 and cap long lists (`limit` / `offset`). Contact, phone and e-mail from the
 intake are reported as presence booleans only; intake note text and analyst
 text in research stubs are never returned. Failed, aborted and in-progress runs
@@ -207,6 +212,57 @@ Example questions:
 - "Show the wave 1 apps" (calls `swao_service_waves` with `wave: 1`)
 - "What does SWAO know about `<app>`?" (calls `swao_service_app`, then
   `swao_service_research` for detail)
+
+### 4.2 Workspace resolution
+
+Every tool, prompt, completion and resource resolves the workspace in this order
+(Design 116 REQ-02):
+
+1. `swao mcp --workspace <path>`
+2. the environment variable `SWAO_WORKSPACE` (same meaning as the flag)
+3. the workspace found from the server's working directory
+4. the default workspace saved by `swao setup`
+
+A workspace from the flag or the environment variable is *pinned*. On a pinned
+server, `tools/list` does not offer the `workspace_path` parameter, and a call
+that still passes one must name the pinned folder; any other value (also `/`)
+fails with `isError`. Without a pin, `workspace_path` stays optional: leave it
+empty to use the server's workspace. Since the release after 1.4.2, `--workspace`
+beats the working directory (before, a server started inside one workspace
+ignored `--workspace` for another).
+
+For small local models, start the server pinned: the tool list is about 2,000
+tokens shorter and the model cannot guess a wrong path.
+
+### 4.3 Tool profiles
+
+Every MCP client sends the full tool list with every model request. Small local models (8k to 32k
+context) need a smaller list, so the server offers profiles (Design 116 REQ-08):
+
+| Profile | Tools | For |
+|---|---|---|
+| `starter` | `swao`, `swao_health_check`, `swao_workspace_inventory`, `swao_frameworks_list`, `swao_passes` | First contact, demos, 8k to 16k local models |
+| `assess` | `starter` plus `swao_assess`, `swao_report`, `swao_signals`, `swao_signal_detail`, `swao_control_detail`, `swao_risks`, `swao_publish`, `swao_explain_landing_zone`, `swao_costs` | Single-app assessment on 16k to 32k local models |
+| `full` (default) | every listed tool | Hosted models, portfolio and service work |
+
+Select a profile with `swao mcp --profile <name>`, or list exact tools with
+`swao mcp --tools swao,swao_health_check` (not both). Without a flag the server reads
+`SWAO_MCP_PROFILE` / `SWAO_MCP_TOOLS`, then the workspace `.swao.yml` `mcp:` block, then uses `full`.
+An unknown profile or tool name stops the server with exit code 2 and the list of valid values.
+`swao mcp profiles` prints each profile with its tools, measured size and token budget.
+
+A tool outside the profile is not listed and a call to it fails with `isError`. The `starter` profile
+offers the three static resources but no resource templates; the `swao_evidence_interview` prompt is
+offered only where `swao_evidence_capture` is enabled. SWAO Chat always starts the server with
+`--profile full`.
+
+### 4.4 The start prompt
+
+The server offers an MCP prompt `start` (title "Start SWAO") in every profile. It returns the SWAO main
+menu with one sentence per entry, the typical first run and the questions you can ask next (only for
+tools in the active profile), and tells the model to reply with it as written, without calling a tool.
+Clients show prompts as slash commands: Claude Code `/mcp__swao__start` (or `/mcp__SWAO__start` when the
+server is registered as `SWAO`), Kilo `/swao:start`; other clients list it in their prompt menu.
 
 ---
 
@@ -392,6 +448,84 @@ Any client that supports STDIO transport can run SWAO. The invariant is:
 The server name key (`"SWAO"`) is a display label only; choose whatever
 appears clearly in the client UI.
 
+### 5.7 HTTP transport (`swao mcp --http`)
+
+Claude Code in the Accenture-managed environment accepts only
+`http://localhost*` servers (ADR-0045), and SWAO Chat uses the same transport.
+Start the server before the client:
+
+```
+swao mcp --http [--port 3737] [--host localhost] [--allow-remote] [--workspace <path>] [--replace]
+```
+
+**Bind address (Design 116 REQ-03.1 to REQ-03.3, #3468).** The default
+`--host localhost` listens on `127.0.0.1` and `::1` on the same port, so
+`http://localhost:3737/mcp` works whether the client resolves `localhost` to
+IPv4 or IPv6. When `::1` is unavailable the server warns and serves on IPv4.
+The banner names the addresses actually bound, for example
+`http://localhost:3737/mcp (127.0.0.1, ::1)`. Another loopback address
+(`--host 127.0.0.1`, `--host ::1`) binds only itself. A non-loopback address
+(`0.0.0.0`, `::`, a LAN address or host name) exits with code 2 unless
+`--allow-remote` is given; with it the server prints a warning, because it has
+no authentication. Use that only on a trusted network, for example for a
+containerised client.
+
+**Port handling (Design 116 REQ-03.4 to REQ-03.6, #3461).** The server never
+stops another process to free its port:
+
+- Port free: the server starts and records its PID in `swao-mcp-<port>.pid`
+  in the system temp folder.
+- Port held by another SWAO MCP server: exit code 1 with
+  `a SWAO MCP server is already running on port 3737 (pid <n>); use --replace to restart it`.
+  SWAO Chat treats this as success and connects to the running server; closing
+  the TUI then leaves that server running.
+- Port held by any other process: exit code 1 with
+  `port 3737 is in use; stop the other process or start with --port <n>`.
+- `--replace` restarts a running SWAO server. It stops only the PID recorded in
+  the pid file, and only after that process answered an `initialize` probe as
+  `swao` and named the same PID in its `X-SWAO-MCP-PID` response header (a
+  server from SWAO 1.4.2 or earlier sends no such header; then the pid file
+  must name a running process).
+  Otherwise it refuses, stops nothing and exits 1.
+
+**Sessions (REQ-07.4, REQ-07.5, #3462).** A request the client aborts
+mid-body answers 400; a failure inside the transport answers 500. Neither
+ends the server. A session without a request for 30 minutes is closed; the
+client receives 404 for it and starts a new session.
+
+**Long tool calls (REQ-18, #3463).** Tools that run the SWAO CLI (for example
+`swao_publish`, `swao_report`, `swao_health_check`, `swao_challenge`) no longer
+block the server: other sessions and SWAO Chat's probe are answered while
+they run. Each call keeps the 5-minute limit. Cancelling the call in the
+client stops the CLI process and its subprocesses. `swao_challenge`,
+`swao_publish` and `swao_service_research_run` send progress notifications
+(start, every 5 seconds, finish) when the client asks for progress.
+
+**Host and Origin check (REQ-19, #3464).** The server answers only requests
+addressed to `localhost`, `127.0.0.1` or `[::1]` on its own port. A request
+with another `Host` header, or with an `Origin` header naming another site,
+receives 403. This stops a web page in the browser from reaching the server
+through DNS rebinding. Native clients send no `Origin` and are not affected.
+
+**Request log (REQ-07, #3471).** Both transports write a JSON-lines log:
+
+- Location: `<workspace>/wsp/logs/mcp-server.log`; without a resolved
+  workspace, `wsp/logs/mcp-server.log` in the folder that contains the SWAO
+  binary. `--log-file <path>` writes elsewhere; `--log-file -` writes to
+  stderr only. The stdio transport never writes the log to stdout.
+- Rotation at 10 MB; five files are kept (`mcp-server.log` plus `.1` to `.4`).
+- `--log-level error|warn|info|debug` (default `info`).
+- Each answered request is one line with `ts`, `level`, `session`, `client`,
+  `method`, `tool`, `duration_ms`, `status` (`ok`, `error` or `cancelled`) and
+  `error`. Tool arguments and results are never logged; error text passes the
+  secret guard. Start, stop, aborted requests, rejected requests, expired
+  sessions, unhandled rejections and uncaught exceptions are logged too.
+- The `--http` banner prints the log path.
+
+**Stopping the server (REQ-07.6, #3471).** `Ctrl+C` (SIGINT) or SIGTERM stops
+accepting connections, lets running requests finish for up to 5 seconds, stops
+running CLI subprocesses, removes the pid file and exits 0.
+
 ---
 
 ## 6. Verification
@@ -441,7 +575,7 @@ A successful startup ends with:
 Server started and connected successfully
 ```
 
-followed by a `tools/list` exchange that lists all five tools.
+followed by a `tools/list` exchange that lists the tools of the active profile.
 
 ### 7.2 "command not found" or spawn error
 

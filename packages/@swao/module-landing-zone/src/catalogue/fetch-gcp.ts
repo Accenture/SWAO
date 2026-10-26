@@ -113,7 +113,7 @@ const GCP_SERVICE_FULFILLS: Record<string, string[]> = {
   'Google Kubernetes Engine':             ['kubernetes'],
   'Live Stream API':                      ['media_streaming'],
   'Looker (Google Cloud core)':           ['bi_analytics'],
-  'Managed Service for Apache Kafka':     ['event_streaming'],
+  'Managed Service for Apache Kafka':     ['event_streaming', 'kafka'], // #3430
   'Memorystore':                          ['redis'],
   'Memorystore for Memcache':             ['memcached'],
   'Memorystore for Redis':                ['redis'],

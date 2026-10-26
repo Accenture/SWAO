@@ -244,7 +244,11 @@ swao assess --portfolio
    Anmeldedaten (gespeichert im Credential-Vault).
 3. Wählen Sie optional eine **Target Landing Zone**: Cloud-Anbieter auswählen, Regionen
    filtern und eine oder mehrere Zielregionen markieren. SWAO führt die
-   Landing-Zone-Bewertung dann zusammen mit den Passes aus.
+   Landing-Zone-Bewertung dann zusammen mit den Passes aus. Die Auswahl ist mit den
+   Zielen des letzten Laufs dieser App vorbelegt (ADR-0067: Ziele werden pro Lauf
+   gewählt, nicht vom Assistenten in die `.swao.yml` geschrieben); ändern Sie sie für
+   diesen Lauf oder lassen Sie sie leer, um ohne Landing-Zone-Bewertung zu laufen
+   (`--no-lz-fit`).
 4. Bestätigen Sie. Eine Fortschrittsanzeige zeigt jeden abgeschlossenen Pass.
 5. Nach dem Lauf geht es im Hauptmenü mit **4 Generate Report**, **5 Publish HTML** oder
    **6 Export BI** weiter.
@@ -281,6 +285,7 @@ für eine fiktive Patientenverwaltung.
 ## Weiterführende Seiten
 
 - [Überblick über die Bewertungstypen](/de/assessment/) und die [Pass-Referenz](/de/passes/)
+- [Unterstützte Sprachen](/de/assessment/supported-languages): welcher Pass welche Sprache analysiert
 - [Landing-Zone-Katalogbewertung](/de/assessment/landing-zone)
 - [LLM-Bewertung für SWAO](/de/assessment/llm)
 - [Service-Portfolio-Bewertung](/de/service-assessment/) für Anwendungen ohne Quellcode

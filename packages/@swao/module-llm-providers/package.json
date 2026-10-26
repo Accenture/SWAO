@@ -22,7 +22,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1117.0",
     "@swao/core": "workspace:*",
     "js-yaml": "^4.2.0",
-    "undici": ">=6.28.1",
+    "undici": ">=8.12.2 <9.0.0",
     "zod": "^4.0.0"
   },
   "peerDependencies": {

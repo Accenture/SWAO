@@ -47,12 +47,15 @@ export interface PreflightLlmPhaseProps {
   typeLabel: string;
   onPass: () => void;
   onBack: () => void;
+  /** #3383: run the deterministic passes only (adds --skip-llm), offered when the
+   *  gateway check does not pass. Omit to hide the option (e.g. LZ-only runs). */
+  onRunWithoutLlm?: () => void;
   Header: ComponentType<{ subtitle?: string }>;
 }
 
 // #2328: LLM preflight phase -- pings the active gateway connector before starting the run.
 // Shared by AppAssessmentScreen and LzAssessmentScreen (#2371).
-export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, onBack, Header }: PreflightLlmPhaseProps): JSX.Element {
+export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, onBack, onRunWithoutLlm, Header }: PreflightLlmPhaseProps): JSX.Element {
   const guidanceOpenRef = useRef(false);
   const [results, setResults] = useState<PreflightResult[]>([
     { connectorId: connector.id, status: 'running', message: 'checking...' },
@@ -121,10 +124,12 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
     if (guidanceOpenRef.current) return;
     if (key.escape) onBack();
     if (done && key.return) onPass();
+    // #3383: W starts the run without the LLM (deterministic passes only).
+    if (done && onRunWithoutLlm && (input === 'w' || input === 'W') && results.some(r => r.status === 'warn' || r.status === 'fail')) onRunWithoutLlm();
   });
 
   return (
@@ -147,6 +152,9 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
         <Box marginTop={1} flexDirection="column">
           <Text color="yellow">One or more connectors could not be verified.</Text>
           <Text dimColor>Press <Text color="cyanBright">Enter</Text> to start anyway, or <Text color="cyanBright">Esc</Text> to go back and fix credentials.</Text>
+          {onRunWithoutLlm && (
+            <Text dimColor>Press <Text color="cyanBright">W</Text> to run without the LLM (deterministic passes only; no CTX, compliance or blocks).</Text>
+          )}
         </Box>
       )}
       {!done && (

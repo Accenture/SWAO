@@ -35,6 +35,8 @@ import {
   type LicenseTier,
 } from '@swao/core';
 import { formatLicenseGateError, printLicenseInvalidError } from '../lib/license-gate-error.js';
+import type { McpClientInstallRequest, McpClientInstallResult } from '@swao/module-mcp';
+import { installMcpClient, type McpClientInstallEnv } from './mcp-client-install.js';
 
 // #3163: the config resolver (MSIX virtualised path + conventional %APPDATA%
 // path, Design 024 MSIX) and SWAO_BIN_RE now live in @swao/core so the wizard,
@@ -292,16 +294,21 @@ export function buildMcpInstallDeps(
   ops: StableBinaryOps = {},
   candidates?: ReadonlyArray<ClaudeDesktopConfigCandidate>,
   gate: McpRegistrationGateOps = {},
+  clientEnv: McpClientInstallEnv = {},
 ): {
   requireLicence: () => void;
   resolveBinary: () => StableBinaryResolution;
   patchAll: (binaryPath: string, args?: ReadonlyArray<string>) => ClaudeDesktopPatchOutcome[];
+  installClient: (request: McpClientInstallRequest) => McpClientInstallResult;
 } {
   const gateOps: McpRegistrationGateOps = { ...gate, execPath: gate.execPath ?? ops.execPath };
   return {
     requireLicence: () => requireMcpRegistration('swao mcp install', gateOps),
     resolveBinary: () => resolveStableBinary(ops),
     patchAll: (binaryPath, args) => patchAllClaudeDesktopConfigs(binaryPath, candidates, args),
+    // #3478: per-client safe writer (Design 116 REQ-13); same Claude Desktop candidates as patchAll.
+    installClient: (request) =>
+      installMcpClient(request, { ...(candidates ? { claudeDesktopCandidates: () => candidates } : {}), ...clientEnv }),
   };
 }
 
@@ -331,12 +338,17 @@ export function patchClaudeDesktopConfig(
   // #3163: patches exactly configPath. Choosing which configs to patch (MSIX
   // and/or conventional) is patchAllClaudeDesktopConfigs' job; the former
   // hidden MSIX redirect here meant only one of two configs was ever updated.
+  // An existing config that does not parse as a JSON object is never
+  // replaced: starting from {} would drop every other server and setting in
+  // the operator's file. Report 'error' and leave the file untouched.
   let config: Record<string, unknown> = {};
   try {
     if (existsSync(configPath)) {
-      config = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+      const parsed: unknown = JSON.parse(readFileSync(configPath, 'utf-8'));
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return 'error';
+      config = parsed as Record<string, unknown>;
     }
-  } catch { /* start from empty */ }
+  } catch { return 'error'; }
   try {
     const servers = (config['mcpServers'] ?? {}) as Record<string, unknown>;
     const existingKey = findSwaoServerKey(servers);

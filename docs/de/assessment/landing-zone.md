@@ -355,7 +355,7 @@ Jeder nicht unterstützte Eintrag wird zusätzlich zu einem `LZ-NN`-Signal. Schw
 | `SOVEREIGNTY_BLOCKED` <span class="swao-badge fail">FAIL</span> | Jede Souveränitätsverletzung. `blocker_category` gibt an, ob sie strukturell ist (Rechtsraum, Exposition), eine Zertifizierungslücke oder gemischt |
 | `BLOCKED` <span class="swao-badge fail">FAIL</span> | Ein benötigter Dienst fehlt oder ist nur in falscher Version beziehungsweise ohne benötigte Fähigkeit verfügbar |
 | `READY_WITH_CHANGES` <span class="swao-badge partial">PARTIAL</span> | Alles ist verfügbar, aber Dienste müssen in der betriebenen Landing Zone aktiviert oder korrigiert werden |
-| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Wäre READY, aber es wurden keine benötigten Dienste gefunden oder eine Basiskategorie (Compute, Netzwerk, Schlüsselverwaltung, Speicher) wurde nicht abgedeckt |
+| `NEEDS_VERIFICATION` <span class="swao-badge partial">PARTIAL</span> | Wäre READY, aber es wurden keine benötigten Dienste gefunden oder eine Basiskategorie (Compute, Netzwerk, Schlüsselverwaltung, Speicher) wurde nicht abgedeckt; oder es fehlen nur Dienste, deren Bedarf allein durch Dokumentation belegt ist (geringe Konfidenz) und vor einer Einstufung als Blocker bestätigt werden muss |
 | `READY` <span class="swao-badge pass">PASS</span> | Alle benötigten Dienste werden unterstützt, und alle Souveränitätsprüfungen sind bestanden |
 
 Ist in einem Lauf mit mehreren Zielen mindestens ein Ziel READY, nennt der

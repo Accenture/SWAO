@@ -27,10 +27,10 @@
  * tokens) are never copied into a signal.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { load } from 'js-yaml';
-import type { PassContext, PassResult, Signal } from '@swao/core';
+import { listInputFiles, type PassContext, type PassResult, type Signal } from '@swao/core';
 
 const TEXT_CONFIG = /\.(ini|xml|conf|cfg|config|json|env|properties|ya?ml|toml|txt|reg)$/i;
 const TEXT_DOC = /\.(md|txt|csv|sql|xml|json|ya?ml|html?)$/i;
@@ -39,19 +39,13 @@ const MAX_FILE_BYTES = 2 * 1024 * 1024;
 /** SWAO-generated or configuration folders under wsp/inputs/ that are never service evidence (#3212). */
 const GENERATED_INPUT_DIRS = new Set(['research', 'binary', 'catalogs', 'llm-gateway', 'yara-rules', 'service-intake', 'cache']);
 
+// #3428: input-folder walk through the central source scope's sibling walker.
 function listFiles(dir: string, re: RegExp): string[] {
   if (!existsSync(dir)) return [];
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const n of readdirSync(d)) {
-      const p = join(d, n);
-      const st = statSync(p);
-      if (st.isDirectory()) { if (!GENERATED_INPUT_DIRS.has(n)) walk(p); }
-      else if (re.test(n) && st.size <= MAX_FILE_BYTES) out.push(p);
-    }
-  };
-  walk(dir);
-  return out.sort();
+  return listInputFiles(dir, { skipDirNames: GENERATED_INPUT_DIRS })
+    .filter((f) => re.test(f.name) && f.sizeBytes <= MAX_FILE_BYTES)
+    .map((f) => f.abs)
+    .sort();
 }
 
 function signal(id: string, fields: Partial<Signal> & Pick<Signal, 'derivation' | 'evidence' | 'severity' | 'outcome'>): Signal {

@@ -241,7 +241,7 @@ export class OpenAiLlmProvider implements LlmProvider {
       streaming: false,
       promptChars,
       appId: this.appId,
-      attemptContext: { api_key_suffix: this.apiKey.slice(-4) },
+      // #3437: no api_key_suffix in the attempt event (key material in logs).
     } as const;
   }
 }

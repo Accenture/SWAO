@@ -43,7 +43,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
 import type { ChatTurn } from '@swao/core';
-import { findWorkspace } from '@swao/core';
+import { findWorkspace, guardSecretText, applyFindingsIntegrity, parseSignalIndexLines, mergeSignalIndex } from '@swao/core';
+import type { SignalIndexEntry } from '@swao/core';
 import {
   getConnector,
   listConnectors,
@@ -54,7 +55,7 @@ import {
   LLM_CHAT_MAX_ATTEMPTS,
 } from '@swao/module-llm-providers';
 import type { LlmProvider, LlmUsage } from '@swao/module-llm-providers';
-import { registerChild } from '../child-process-registry.js';
+import { registerChild, registerMcpServerChild } from '../child-process-registry.js';
 import {
   chatHistoryPath,
   appendTurn,
@@ -185,6 +186,24 @@ export interface ChatCompletionRequest {
   tools: LlmTool[];
   /** MCP tool executor; tool calling is used only when set and tools exist. */
   onToolCall?: (name: string, input: Record<string, unknown>) => Promise<string>;
+  /**
+   * #3418: compact signal index (pre-fetched context plus swao_signals tool
+   * results). A function is read after the answer, so signals fetched by tool
+   * calls during the answer count. When set, every answer runs the
+   * findings-integrity post-check before the secret guard.
+   */
+  signalIndex?: readonly SignalIndexEntry[] | (() => readonly SignalIndexEntry[]);
+}
+
+/**
+ * #3418: findings-integrity post-check, then the #3415 secret guard. The guard
+ * runs last over the combined text, so the integrity note (which quotes
+ * evidence paths) is masked like the answer itself.
+ */
+export function finaliseChatAnswer(text: string, signalIndex?: ChatCompletionRequest['signalIndex']): string {
+  const index = typeof signalIndex === 'function' ? signalIndex() : signalIndex;
+  const checked = index && index.length > 0 ? applyFindingsIntegrity(text, index).text : text;
+  return guardSecretText(checked).text;
 }
 
 /** Providers whose model rejected tool calling in this process (#3311). */
@@ -231,7 +250,10 @@ export function runChatCompletion(
           onToolCall: req.onToolCall,
         });
         // Tool-calling responses are already prose -- no JSON stripping needed
-        return { text: result.text, usage: result.usage };
+        // #3415: chat output guard -- an echoed secret is masked before the
+        // answer is displayed or written to the NDJSON history.
+        // #3418: findings-integrity post-check before the guard.
+        return { text: finaliseChatAnswer(result.text, req.signalIndex), usage: result.usage };
       } catch (err) {
         if (!isToolsUnsupported(err)) throw err;
         toolsUnsupportedProviders.add(provider);
@@ -241,7 +263,8 @@ export function runChatCompletion(
     // Fallback: format as a single prompt string (no tool calling)
     const result = await completeWithUsage(provider, formatChatPrompt(req.history, req.content));
     // Strip JSON envelope and unescape \n before storing in history (#2786)
-    return { text: notice + extractProseFromResponse(result.text), usage: result.usage };
+    // #3415: chat output guard (see above).
+    return { text: notice + finaliseChatAnswer(extractProseFromResponse(result.text), req.signalIndex), usage: result.usage };
   });
 }
 
@@ -264,6 +287,16 @@ export async function callMcpToolLogged(
     } catch { /* non-fatal */ }
   }
   return text;
+}
+
+/**
+ * #3474 (Design 116 REQ-08.8): arguments of the SWAO Chat MCP auto-start. The
+ * chat always starts the full profile, so a workspace `mcp.profile` meant for
+ * external clients does not shrink the chat's tool list. When the chat attaches
+ * to a running server it uses whatever that server lists.
+ */
+export function chatMcpAutoStartArgs(port: number): string[] {
+  return ['mcp', '--http', '--port', String(port), '--profile', 'full'];
 }
 
 export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
@@ -290,6 +323,8 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
   const workspaceRef = useRef<string>('');
   const historyPathRef = useRef<string>('');
   const systemPromptRef = useRef<string>('');
+  // #3418: signal facts for the findings-integrity post-check.
+  const signalIndexRef = useRef<SignalIndexEntry[]>([]);
   const isMountedRef = useRef(true);
 
   const safeSet = useCallback(<T>(setter: (v: T) => void, value: T) => {
@@ -357,7 +392,7 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
           safeSet(setStatusDetail, 'starting MCP server');
           const isPkg = !!(process as { pkg?: unknown }).pkg;
           const swaoCliPath = isPkg ? process.execPath : (process.argv[1] ?? process.execPath);
-          const spawnArgs = isPkg ? ['mcp', '--http', '--port', String(mcpPort)] : ['mcp', '--http', '--port', String(mcpPort)];
+          const spawnArgs = chatMcpAutoStartArgs(mcpPort); // #3474
           const spawnCmd = isPkg ? swaoCliPath : process.execPath;
           const finalArgs = isPkg ? spawnArgs : [swaoCliPath, ...spawnArgs];
 
@@ -374,6 +409,8 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
             onSpawn: child => {
               mcpChildRef.current = child;
               registerChild(child);
+              // #3461: TUI exit stops only this child, never a PID from the pid file.
+              registerMcpServerChild(child);
             },
           });
           mcpChildRef.current = started.child;
@@ -418,6 +455,7 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
       // Build system prompt and add to messages
       const systemPrompt = buildSystemPrompt(context);
       systemPromptRef.current = systemPrompt;
+      signalIndexRef.current = parseSignalIndexLines(context);
       const systemTurn: ChatTurn = {
         ts: new Date().toISOString(),
         role: 'system',
@@ -516,8 +554,17 @@ export function useChatSession(opts: ChatSessionOpts = {}): ChatSessionState {
         content,
         tools: mcpToolsRef.current,
         ...(mcpSession
-          ? { onToolCall: (name: string, input: Record<string, unknown>) => callMcpToolLogged(mcpSession, historyPathRef.current, name, input) }
+          ? {
+            onToolCall: async (name: string, input: Record<string, unknown>) => {
+              const out = await callMcpToolLogged(mcpSession, historyPathRef.current, name, input);
+              // #3418: signals fetched during the answer join the integrity index.
+              const fresh = parseSignalIndexLines(out);
+              if (fresh.length > 0) signalIndexRef.current = mergeSignalIndex(signalIndexRef.current, fresh);
+              return out;
+            },
+          }
           : {}),
+        signalIndex: () => signalIndexRef.current,
       });
 
       const tokensOut = usage?.output_tokens ?? estimateTokens(responseText);

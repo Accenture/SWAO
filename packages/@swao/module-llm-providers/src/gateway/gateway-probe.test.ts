@@ -125,6 +125,9 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
   });
 
   it('warns (ok null, not a failure) when no LLM is configured (#3375)', async () => {
+    // #3388: a real workspace (.swao.yml present) so the probe seeds + discovers
+    // connectors; with no providers.llm it reports "no LLM configured".
+    writeFileSync(join(dir, '.swao.yml'), 'workspace:\n  name: test\n');
     const r = await buildLlmGatewayProbe(dir);
     expect(r.ok).toBeNull();
     expect(r.message).toMatch(/^\[WARNING\] no LLM configured; LLM passes will be skipped/);
@@ -145,6 +148,9 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
   });
 
   it('warns when the active connector does not exist', async () => {
+    // #3388: a real workspace so the probe seeds + discovers connectors before
+    // checking the (non-existent) active connector from the env.
+    writeFileSync(join(dir, '.swao.yml'), 'workspace:\n  name: test\n');
     process.env['SWAO_LLM_CONNECTOR'] = 'no-such-platform';
     const r = await buildLlmGatewayProbe(dir);
     expect(r.ok).toBe(false);
@@ -264,14 +270,23 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
   }, 30_000);
 
   // #2953: on pre-Design-090 workspaces, wsp/inputs/llm-gateway/ is not seeded.
-  // buildLlmGatewayProbe must scaffold the directory on first health-check run.
-  it('scaffolds wsp/inputs/llm-gateway/ when directory is absent (#2953)', async () => {
+  // buildLlmGatewayProbe scaffolds the directory on first health-check run -- but
+  // #3388: only inside a real workspace (a .swao.yml present).
+  it('scaffolds wsp/inputs/llm-gateway/ when absent in a real workspace (#2953)', async () => {
+    writeFileSync(join(dir, '.swao.yml'), 'workspace:\n  name: test\n');
     const gatewayDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
     expect(existsSync(gatewayDir)).toBe(false);
-    // Probe without an active connector (no .swao.yml) -- just discovery.
     await buildLlmGatewayProbe(dir);
     expect(existsSync(gatewayDir)).toBe(true);
-    // README must be present
     expect(existsSync(join(gatewayDir, 'README.md'))).toBe(true);
+  });
+
+  // #3388: health-check resolves its workspace from process.cwd() when no
+  // --workspace is given. The gateway probe must not scaffold or seed into a
+  // non-workspace directory (no .swao.yml), or it litters wherever it is run.
+  it('does NOT scaffold or seed in a non-workspace directory (#3388 litter guard)', async () => {
+    // `dir` has no .swao.yml.
+    await buildLlmGatewayProbe(dir);
+    expect(existsSync(join(dir, 'wsp'))).toBe(false);
   });
 });

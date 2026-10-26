@@ -14,10 +14,12 @@
 // ================================================================
 
 import { createHash, sign as edSign, verify as edVerify, createPrivateKey, createPublicKey } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, rmSync } from 'node:fs';
 import { homedir, hostname, platform, networkInterfaces } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { z } from 'zod';
+import { logPortfolio } from './log.js';
 
 // Build-time constants -- must match the values in @swao/swao's branding.ts.
 // Rotated via `node scripts/license/generate-keypair.mjs`; both files updated atomically.
@@ -196,7 +198,8 @@ export class LicenseLimitError extends Error {
 export class LicenseInvalidError extends Error {
   constructor(
     message: string,
-    readonly code: 'fingerprint_mismatch' | 'signature_invalid' | 'expired',
+    // #3440: 'state_corrupt' = the licence state file is unreadable (truncated / not the expected shape).
+    readonly code: 'fingerprint_mismatch' | 'signature_invalid' | 'expired' | 'state_corrupt',
   ) {
     super(message);
     this.name = 'LicenseInvalidError';
@@ -210,6 +213,94 @@ interface StateFile {
   assessment_count: number;
   fingerprint: string;
   fp_version?: number;
+}
+
+// #3440: shape check at the file boundary. Passthrough keeps unknown keys a
+// newer binary may have written.
+const StateFileSchema = z.object({
+  first_run: z.string(),
+  assessment_count: z.number().int().nonnegative(),
+  fingerprint: z.string(),
+  fp_version: z.number().optional(),
+}).passthrough();
+
+// #3440: filesystem seams for the atomic state write; tests swap them to
+// simulate a locked target (Windows EPERM / EBUSY) without touching ACLs.
+export const _stateIo = {
+  rename: (from: string, to: string): void => renameSync(from, to),
+  sleep: (ms: number): void => { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); },
+  isWindows: (): boolean => process.platform === 'win32',
+};
+
+/** Rename attempts on Windows when the target is briefly locked (antivirus, indexer, a second SWAO process). */
+const STATE_RENAME_ATTEMPTS = 5;
+const STATE_RENAME_RETRY_MS = 50;
+
+/**
+ * #3440: write the licence state file atomically. The JSON goes to a temp
+ * file in the same directory (same volume, so the rename is atomic), which
+ * is then renamed over the target: a crash or a full disk mid-write leaves
+ * the previous file intact instead of a truncated one. On Windows a rename
+ * over a file another process holds open fails with EPERM / EBUSY / EACCES;
+ * only the rename is retried, a few times with a short pause, so the
+ * read-increment is never repeated and a run cannot be counted twice. The
+ * temp file is removed on failure and the error is re-thrown, so a counter
+ * write that still fails surfaces as assess.post_run.assessment_counter.failed.
+ */
+function writeStateFileAtomic(state: StateFile): void {
+  const target = _paths.statePath;
+  const tmp = join(dirname(target), `.${basename(target)}.${process.pid}.${Date.now()}.tmp`);
+  try {
+    writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf-8');
+    for (let attempt = 1; ; attempt++) {
+      try {
+        _stateIo.rename(tmp, target);
+        return;
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        const transient = _stateIo.isWindows() && (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES');
+        if (!transient || attempt >= STATE_RENAME_ATTEMPTS) throw e;
+        _stateIo.sleep(STATE_RENAME_RETRY_MS * attempt);
+      }
+    }
+  } catch (e) {
+    try { rmSync(tmp, { force: true }); } catch { /* best-effort cleanup */ }
+    throw e;
+  }
+}
+
+/**
+ * #3440: a state file that is not valid JSON or not the expected shape is
+ * never silently replaced: a fresh file would reset the assessment count to
+ * 0 (bypassing a licence assessment_limit) and change the machine
+ * fingerprint (derived from first_run), which invalidates an activated
+ * licence. Instead the bytes are preserved next to the file
+ * (`<state>.corrupt-<hash>`, one copy per distinct content), an error event
+ * `licence.state.corrupt` is logged, and LicenseInvalidError('state_corrupt')
+ * tells the operator how to recover.
+ */
+function failCorruptStateFile(raw: string, reason: string): never {
+  const target = _paths.statePath;
+  const backup = `${target}.corrupt-${createHash('sha256').update(raw).digest('hex').slice(0, 12)}`;
+  let backupSaved = existsSync(backup);
+  if (!backupSaved) {
+    try { writeFileSync(backup, raw, 'utf-8'); backupSaved = true; } catch { /* reported below */ }
+  }
+  try {
+    logPortfolio('error', 'licence.state.corrupt', 'Licence state file is unreadable; it was not reset', {
+      context: { state_path: target, backup_path: backupSaved ? backup : null, reason: reason.slice(0, 300), bytes: Buffer.byteLength(raw, 'utf-8') },
+    });
+  } catch { /* logging best-effort */ }
+  throw new LicenseInvalidError(
+    [
+      `The licence state file ${target} is unreadable (${reason.slice(0, 200)}).`,
+      backupSaved ? `Its contents were preserved as ${backup}.` : 'A backup copy could not be written.',
+      'SWAO did not reset it: that would restart the assessment count and change the machine fingerprint.',
+      'Restore the file from a backup if you have one. Otherwise delete it; SWAO creates a fresh one on the next run',
+      `(assessment count restarts at 0, an activated licence must be re-issued for the new fingerprint: ${SWAO_CONTACTS_INLINE}).`,
+    ].join('\n'),
+    'state_corrupt',
+  );
 }
 
 // #2633: layered hardware-ID fallback chain (ADR-0051).
@@ -301,23 +392,36 @@ function readStateFile(): StateFile {
     const firstRun = new Date().toISOString().slice(0, 10);
     const fingerprint = computeFingerprint(firstRun);
     const state: StateFile = { first_run: firstRun, assessment_count: 0, fingerprint, fp_version: 2 };
-    writeFileSync(_paths.statePath, JSON.stringify(state, null, 2), 'utf-8');
+    writeStateFileAtomic(state);
     return state;
   }
-  const state = JSON.parse(readFileSync(_paths.statePath, 'utf-8')) as StateFile;
+  // #3440: a truncated or malformed file is preserved and reported, never reset.
+  const raw = readFileSync(_paths.statePath, 'utf-8');
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch (e) {
+    failCorruptStateFile(raw, `invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  const parsed = StateFileSchema.safeParse(json);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    failCorruptStateFile(raw, `unexpected shape: ${issue ? `${issue.path.join('.') || '(root)'} ${issue.message}` : 'invalid'}`);
+  }
+  const state: StateFile = parsed.data;
   // #2633: migrate existing state files to the hardware-bound fp_v2 fingerprint
   // on first run of a binary that includes ADR-0051. NODE_ENV === 'test' skips
   // the rewrite so test fixtures (which set their own fingerprint) are unaffected.
   if (!state.fp_version && process.env['NODE_ENV'] !== 'test') {
     state.fingerprint = computeFingerprint(state.first_run);
     state.fp_version = 2;
-    writeFileSync(_paths.statePath, JSON.stringify(state, null, 2), 'utf-8');
+    writeStateFileAtomic(state);
   }
   return state;
 }
 
 function writeStateFile(state: StateFile): void {
-  writeFileSync(_paths.statePath, JSON.stringify(state, null, 2), 'utf-8');
+  writeStateFileAtomic(state);
 }
 
 // ---- license file helpers ----

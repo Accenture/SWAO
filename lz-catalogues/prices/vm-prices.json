@@ -2,7 +2,7 @@
   "meta": {
     "schema_version": "1.0",
     "name": "VM price table for the service cost model",
-    "generated_at": "2026-10-17",
+    "generated_at": "2026-10-25",
     "hours_per_month": 730,
     "price_type": "on-demand pay-as-you-go list price per hour; Windows with the licence included",
     "sources": [
@@ -12,7 +12,7 @@
         "url": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter=serviceName%20eq%20'Virtual%20Machines'%20and%20armRegionName%20eq%20'germanywestcentral'%20and%20priceType%20eq%20'Consumption'%20and%20(armSkuName%20eq%20'Standard_B1s'%20or%20armSkuName%20eq%20'Standard_B1ms'%20or%20armSkuName%20eq%20'Standard_B2s'%20or%20armSkuName%20eq%20'Standard_B2ms'%20or%20armSkuName%20eq%20'Standard_B4ms'%20or%20armSkuName%20eq%20'Standard_D2s_v3'%20or%20armSkuName%20eq%20'Standard_D4s_v3'%20or%20armSkuName%20eq%20'Standard_D8s_v3'%20or%20armSkuName%20eq%20'Standard_D16s_v3'%20or%20armSkuName%20eq%20'Standard_D32s_v3'%20or%20armSkuName%20eq%20'Standard_D64s_v3'%20or%20armSkuName%20eq%20'Standard_E4s_v3'%20or%20armSkuName%20eq%20'Standard_E8s_v3'%20or%20armSkuName%20eq%20'Standard_E16s_v3'%20or%20armSkuName%20eq%20'Standard_E32s_v3'%20or%20armSkuName%20eq%20'Standard_E64s_v3')",
         "region": "germanywestcentral",
         "currency": "USD",
-        "retrieved": "2026-10-17",
+        "retrieved": "2026-10-25",
         "published": null
       },
       {
@@ -21,8 +21,8 @@
         "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-central-1/index.csv",
         "region": "eu-central-1",
         "currency": "USD",
-        "retrieved": "2026-10-17",
-        "published": "2026-10-15"
+        "retrieved": "2026-10-25",
+        "published": "2026-10-23"
       }
     ]
   },

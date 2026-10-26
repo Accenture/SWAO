@@ -76,8 +76,13 @@ export function LlmStep({
 
   // #1400: discover SWAO LLM-Gateway connectors once per step mount --
   // bundled seeds plus any file the user dropped into wsp/inputs/llm-gateway/.
-  const [connectors] = useState<LoadedConnector[]>(() => {
-    try { return listConnectors({ workspaceRoot }).connectors; } catch { return []; }
+  // #3372: keep the loader warnings so a connector that fails to parse is shown
+  // with its reason instead of silently missing from the list.
+  const [{ connectors, skipped }] = useState<{ connectors: LoadedConnector[]; skipped: string[] }>(() => {
+    try {
+      const r = listConnectors({ workspaceRoot });
+      return { connectors: r.connectors ?? [], skipped: r.warnings ?? [] };
+    } catch { return { connectors: [], skipped: [] }; }
   });
   const selectedConnector = provider.startsWith('gw:')
     ? connectors.find(c => c.file.connector.id === provider.slice(3))
@@ -101,7 +106,9 @@ export function LlmStep({
     if (gwDiscovery.status !== 'idle') return;
     setGwDiscovery({ status: 'running', count: 0 });
     let cancelled = false;
-    void discoverModels(selectedConnector, { timeoutMs: 5000 })
+    // #3438: apply the connector's tls.reject_unauthorized like the provider does (#3381).
+    const rejectUnauthorized = selectedConnector.file.connector.tls?.reject_unauthorized === false ? false : undefined;
+    void discoverModels(selectedConnector, { timeoutMs: 5000, rejectUnauthorized })
       .then(r => {
         if (!r.ok) {
           if (!cancelled) setGwDiscovery({ status: 'offline', count: 0 });
@@ -143,6 +150,12 @@ export function LlmStep({
         {!isSecondary && <Text bold color="cyanBright">Step 1b -- LLM Provider (LLM-Gateway)</Text>}
         {!isSecondary && <Text dimColor>SWAO uses an LLM for code analysis and synthesis passes.</Text>}
         {!isSecondary && <Text dimColor>Connectors are files -- copy wsp/inputs/llm-gateway/_template.yaml to add your own platform.</Text>}
+        {skipped.length > 0 && (
+          <Box flexDirection="column" marginTop={1}>
+            <Text color="yellow">{skipped.length} connector file(s) were skipped (not shown in the list):</Text>
+            {skipped.slice(0, 5).map((w, i) => <Text key={i} dimColor>  {w}</Text>)}
+          </Box>
+        )}
         <Box marginTop={1}>
           <SelectInput
             label={isSecondary ? 'Select secondary LLM connector' : 'Select LLM connector'}

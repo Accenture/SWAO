@@ -13,10 +13,13 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
+import { listSourceFiles, findShallowestSourceFile, computeLanguageCensus, manifestKindInfo, productionLoc } from '@swao/core';
+import type { BuildManifest, LanguageCensus, LanguageCoverage, SourceLanguage } from '@swao/core';
+import { buildLanguageCoverage } from './language-coverage.js';
 import { findTfstateFiles, parseTfState, collectResourceTypes, extractSourceServices } from './tf-state-parser.js';
 import {
   extractCloudNativeServices,
@@ -26,7 +29,10 @@ import {
   extractPulumiServices,
 } from '@swao/module-iac-scan';
 import type { IaCResourceGraph } from '@swao/module-iac-scan';
-import { runInvReferenceScans } from './inv-reference-scans.js';
+import { runInvReferenceScans, collectDependencyInventory, type DependencyInventory } from './inv-reference-scans.js';
+import { deriveServiceFootprint, serviceFootprintSignals } from './service-footprint.js';
+import { loadServiceFootprintCatalogue } from '../catalogue/service-footprint-catalogue.js';
+import { readWorkspaceInfraRoles, resolveInfraRoleForFile } from './infra-input-role.js';
 
 function readJson(filePath: string): Record<string, unknown> | null {
   if (!existsSync(filePath)) return null;
@@ -56,75 +62,166 @@ function detectFrameworks(deps: Record<string, string>): string[] {
   return out;
 }
 
-// Detect non-Node.js languages from well-known manifest files.
-// Returns a summary string for INV-01 and an array of detected language names.
-function detectNonNodeLanguages(sourcePath: string): { detected: string[]; details: string } {
-  const detected: string[] = [];
-  const details: string[] = [];
+// #3423: languages from the build manifests at any depth inside the source
+// scope (before #3423 only the source root was checked, so a Java service
+// under service/pom.xml next to systemtest/package.json was reported as
+// "TypeScript/Node.js"). Production manifests come first; test-only
+// manifests (e.g. systemtest/package.json) count only when there is no
+// production manifest. Languages are ordered by production LOC from the
+// census, so the primary language (assessment.language) is the one with the
+// most production code. Without any manifest the census languages are used.
+function manifestLanguage(m: BuildManifest, census: LanguageCensus): SourceLanguage {
+  const candidates = manifestKindInfo(m.kind).languages;
+  let best: SourceLanguage = candidates[0] as SourceLanguage;
+  let bestLoc = -1;
+  for (const c of candidates) {
+    const row = census.languages.find((r) => r.language === c);
+    if (row && row.loc > bestLoc) { best = c; bestLoc = row.loc; }
+  }
+  return best;
+}
 
-  // Rust
-  if (existsSync(join(sourcePath, 'Cargo.toml'))) {
-    detected.push('Rust');
-    try {
-      const cargo = readFileSync(join(sourcePath, 'Cargo.toml'), 'utf-8');
+function manifestDetail(sourcePath: string, m: BuildManifest, lang: SourceLanguage): string {
+  const where = m.path;
+  switch (m.kind) {
+    case 'cargo': {
+      const cargo = readFileSync_safe(join(sourcePath, ...m.path.split('/')));
+      if (!cargo) return `Rust (${where})`;
       const nameM = cargo.match(/^\s*name\s*=\s*"([^"]+)"/m);
       const verM  = cargo.match(/^\s*version\s*=\s*"([^"]+)"/m);
       const edM   = cargo.match(/^\s*edition\s*=\s*"([^"]+)"/m);
-      details.push(`Rust${nameM ? ' ('+nameM[1]+')' : ''}${verM ? ' v'+verM[1] : ''}${edM ? ' edition '+edM[1] : ''}`);
-    } catch { details.push('Rust'); }
-  }
-
-  // Python
-  if (existsSync(join(sourcePath, 'pyproject.toml')) ||
-      existsSync(join(sourcePath, 'requirements.txt')) ||
-      existsSync(join(sourcePath, 'setup.py'))) {
-    detected.push('Python');
-    details.push('Python (pyproject.toml / requirements.txt)');
-  }
-
-  // Go
-  if (existsSync(join(sourcePath, 'go.mod'))) {
-    detected.push('Go');
-    try {
-      const gomod = readFileSync(join(sourcePath, 'go.mod'), 'utf-8');
-      const modM = gomod.match(/^module\s+(\S+)/m);
-      details.push(`Go${modM ? ' ('+modM[1]+')' : ''}`);
-    } catch { details.push('Go'); }
-  }
-
-  // Java / Kotlin (Maven or Gradle)
-  if (existsSync(join(sourcePath, 'pom.xml'))) {
-    detected.push('Java'); details.push('Java (Maven pom.xml)');
-  } else if (existsSync(join(sourcePath, 'build.gradle')) ||
-             existsSync(join(sourcePath, 'build.gradle.kts'))) {
-    detected.push('Java/Kotlin'); details.push('Java/Kotlin (Gradle)');
-  }
-
-  // C# .NET
-  const csprojFiles = existsSync(sourcePath) ? (() => {
-    try { return readdirSync(sourcePath).some((f) => f.endsWith('.csproj') || f.endsWith('.sln')); }
-    catch { return false; }
-  })() : false;
-  if (csprojFiles) { detected.push('C#'); details.push('C# (.NET .csproj/.sln)'); }
-
-  // #1498: also detect TypeScript/Node.js in subdirectories (e.g. frontend/ within a Rust mono-repo).
-  // Looks 2 levels deep for package.json so multi-language apps are correctly described.
-  const subPkgJsonPath = findFirstMatchRecursive(sourcePath, 2, (n) => n === 'package.json');
-  if (subPkgJsonPath) {
-    const subDir = subPkgJsonPath.slice(sourcePath.length + 1).replace(/\\/g, '/').split('/')[0];
-    if (!detected.includes('TypeScript') && !detected.includes('Node.js')) {
-      detected.push('TypeScript');
-      details.push(`TypeScript/Node.js (${subDir}/package.json)`);
+      return `Rust${nameM ? ' ('+nameM[1]+')' : ''}${verM ? ' v'+verM[1] : ''}${edM ? ' edition '+edM[1] : ''} (${where})`;
+    }
+    case 'go': {
+      const gomod = readFileSync_safe(join(sourcePath, ...m.path.split('/')));
+      const modM = gomod?.match(/^module\s+(\S+)/m);
+      return `Go${modM ? ' ('+modM[1]+')' : ''} (${where})`;
+    }
+    case 'maven': return `${lang} (Maven ${where})`;
+    case 'gradle': return `${lang} (Gradle ${where})`;
+    case 'sbt': return `${lang} (sbt ${where})`;
+    case 'npm': return `${lang}/Node.js (${where})`;
+    case 'python': return `Python (${where})`;
+    case 'dotnet': return `${lang} (.NET ${where})`;
+    case 'bundler': return `Ruby (${where})`;
+    case 'composer': return `PHP (${where})`;
+    default: {
+      const never: never = m.kind;
+      return never;
     }
   }
+}
 
-  return { detected, details: details.join(', ') };
+function detectNonNodeLanguages(
+  sourcePath: string,
+  census: LanguageCensus,
+): { detected: SourceLanguage[]; details: string; evidence: string[] } {
+  const prodManifests = census.manifests.filter((m) => !m.is_test);
+  const manifests = prodManifests.length > 0 ? prodManifests : census.manifests;
+  const byLang = new Map<SourceLanguage, string[]>();
+  const evidence: string[] = [];
+  for (const m of manifests) {
+    const lang = manifestLanguage(m, census);
+    const list = byLang.get(lang) ?? [];
+    // Up to three manifests named per language; evidence is capped at ten paths.
+    if (list.length < 3) list.push(manifestDetail(sourcePath, m, lang) + (m.is_test ? ' [test code]' : ''));
+    byLang.set(lang, list);
+    if (evidence.length < 10) evidence.push(m.path);
+  }
+  if (byLang.size === 0) {
+    // No build manifest: fall back to the languages the census counted.
+    const anyProd = census.languages.some((r) => productionLoc(r) > 0);
+    for (const r of census.languages) {
+      if (!anyProd || productionLoc(r) > 0) {
+        byLang.set(r.language, [`${r.language} (${r.files} file${r.files === 1 ? '' : 's'}, no build manifest)`]);
+      }
+    }
+  }
+  const prodLoc = (l: SourceLanguage): number => {
+    const row = census.languages.find((r) => r.language === l);
+    return row ? productionLoc(row) : 0;
+  };
+  // Stable: equal LOC keeps manifest order (shallowest first).
+  const detected = [...byLang.keys()]
+    .map((l, i) => ({ l, i }))
+    .sort((a, b) => prodLoc(b.l) - prodLoc(a.l) || a.i - b.i)
+    .map((x) => x.l);
+  const details = detected.flatMap((l) => byLang.get(l) ?? []).join(', ');
+  return { detected, details, evidence };
+}
+
+/** #3423: census summary, e.g. "Java 79,534 LOC (test 8,120; 812 files), TypeScript 13,443 LOC (...)". */
+function censusLine(census: LanguageCensus, max = 6): string {
+  const fmt = (n: number): string => n.toLocaleString('en-GB');
+  const parts = census.languages.slice(0, max).map((r) =>
+    `${r.language} ${fmt(r.loc)} LOC (${r.loc_test > 0 ? `test ${fmt(r.loc_test)}; ` : ''}${fmt(r.files)} file${r.files === 1 ? '' : 's'})`);
+  if (census.languages.length > max) parts.push(`${census.languages.length - max} more`);
+  return parts.join(', ');
+}
+
+/** Highest INV number used for service_dep signals (#3423: INV-90 and INV-91 are fixed). */
+const INV_SERVICE_DEP_MAX = 89;
+
+/** #3423: production build manifests other than the root package.json (polyglot repos), for the Node INV-01. */
+function otherManifestsNote(sourcePath: string, census: LanguageCensus): string {
+  const others = census.manifests.filter((m) => !m.is_test && m.path !== 'package.json' && m.kind !== 'npm');
+  if (others.length === 0) return '';
+  const named = others.slice(0, 5).map((m) => manifestDetail(sourcePath, m, manifestLanguage(m, census)));
+  return ` Further build manifests: ${named.join(', ')}${others.length > 5 ? `, ${others.length - 5} more` : ''}.`;
+}
+
+/**
+ * #3423: INV-90 (informational) carries the language census; INV-91 (medium,
+ * negative) warns when more than LANGUAGE_COVERAGE_WARNING_SHARE of the
+ * production lines are in languages no deterministic code-analysis pass reads.
+ */
+function languageSignals(census: LanguageCensus, coverage: LanguageCoverage): Signal[] {
+  if (census.languages.length === 0) return [];
+  const out: Signal[] = [];
+  const prodTotal = census.total_loc - census.total_loc_test;
+  const excluded = [
+    census.files_generated_excluded > 0 ? `${census.files_generated_excluded} generated or minified file(s)` : '',
+    census.files_too_large > 0 ? `${census.files_too_large} file(s) above 2 MB` : '',
+  ].filter(Boolean).join(' and ');
+  out.push({
+    id: 'INV-90',
+    source: 'static_analysis',
+    category: 'application',
+    severity: 'informational',
+    derivation: `Language census (non-blank lines, test code tagged by the source scope): ${censusLine(census)}. Total ${census.total_loc.toLocaleString('en-GB')} LOC, of which ${prodTotal.toLocaleString('en-GB')} production and ${census.total_loc_test.toLocaleString('en-GB')} test.${excluded ? ` Excluded: ${excluded}.` : ''}${coverage.dominant_language ? ` Dominant language: ${coverage.dominant_language}.` : ''}`,
+    evidence: census.manifests.slice(0, 10).map((m) => m.path),
+    confidence: 'high',
+    outcome: 'neutral',
+  });
+  if (coverage.warning) {
+    const uncovered = coverage.rows.filter((r) => !r.has_deterministic).map((r) => r.language);
+    const pct = Math.round(coverage.uncovered_loc_share * 100);
+    out.push({
+      id: 'INV-91',
+      source: 'static_analysis',
+      category: 'application',
+      severity: 'medium',
+      derivation: `${pct}% of the production code is in ${uncovered.join(', ')}, which no rule-based code-analysis pass (state, data, sbom, tf, egr, crypto) reads. Apart from the language-independent secret scan, SWAO analyses this code only where an LLM prompt includes it (see the LLM cells of the language coverage matrix) or not at all; absence of a finding is not evidence of absence. Plan a manual or tool-based review of this code.`,
+      evidence: census.manifests.filter((m) => !m.is_test).slice(0, 10).map((m) => m.path),
+      confidence: 'high',
+      outcome: 'negative',
+    });
+  }
+  return out;
 }
 
 export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   const { sourcePath, workspacePath, iter, assessedAt } = ctx;
   const signals: Signal[] = [];
   const assessment: Record<string, unknown> = {};
+
+  // #3423: language census and build manifests at any depth (central source scope).
+  const census: LanguageCensus = existsSync(sourcePath)
+    ? computeLanguageCensus(sourcePath)
+    : { method: 'non_blank_lines', total_files: 0, total_loc: 0, total_loc_test: 0, files_generated_excluded: 0, files_too_large: 0, languages: [], manifests: [], manifests_total: 0 };
+  const coverage: LanguageCoverage = buildLanguageCoverage(census);
+  assessment.language_census = census;
+  assessment.language_coverage = coverage;
 
   // --- INV-01: language, framework, version ---
   const pkg = readJson(join(sourcePath, 'package.json'));
@@ -145,7 +242,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
       source: 'static_analysis',
       category: 'application',
       severity: 'informational',
-      derivation: `Language: ${isTs ? 'TypeScript' : 'JavaScript'}. Frameworks: ${frameworks.join(', ') || 'none detected'}. Version: ${version}. Node: ${nodeConstraint}.`,
+      derivation: `Language: ${isTs ? 'TypeScript' : 'JavaScript'}. Frameworks: ${frameworks.join(', ') || 'none detected'}. Version: ${version}. Node: ${nodeConstraint}.${otherManifestsNote(sourcePath, census)}`,
       evidence: ['package.json'],
       confidence: 'high',
     });
@@ -261,29 +358,25 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   // Produces an informational signal for the LLM passes so they know
   // the source language even when static analysis is limited.
   if (!pkg) {
-    const { detected, details } = detectNonNodeLanguages(sourcePath);
+    const { detected, details, evidence } = detectNonNodeLanguages(sourcePath, census);
     if (detected.length > 0) {
-      assessment.language = detected[0].toLowerCase();
+      assessment.language = (detected[0] as string).toLowerCase();
       assessment.detected_languages = detected;
       signals.push({
         id: 'INV-01',
         source: 'static_analysis',
         category: 'application',
         severity: 'informational',
-        derivation: `Language detected: ${details}. Note: full static analysis (framework detection, SBOM, crypto pattern matching) is only available for Node.js/TypeScript. LLM-based passes (CTX, SYNTH, COMP) will read and reason over source files in any language.`,
-        evidence: [
-          existsSync(join(sourcePath, 'Cargo.toml')) ? 'Cargo.toml' : '',
-          existsSync(join(sourcePath, 'go.mod')) ? 'go.mod' : '',
-          existsSync(join(sourcePath, 'pyproject.toml')) ? 'pyproject.toml' : '',
-          existsSync(join(sourcePath, 'requirements.txt')) ? 'requirements.txt' : '',
-          existsSync(join(sourcePath, 'pom.xml')) ? 'pom.xml' : '',
-        ].filter(Boolean),
+        derivation: `Language detected: ${details}. Note: deterministic coverage differs per language (see the language coverage matrix, INV-90); LLM-based passes (CTX, SYNTH, COMP) read and reason over source files in any language.`,
+        // #3423: the manifests found at any depth (e.g. service/pom.xml).
+        evidence,
         confidence: 'high',
         outcome: 'neutral',
       });
 
       // #0660: extract service_dep signals from Cargo.toml (Rust workspaces)
-      // INV-10..INV-99 reserved for service_dep signals; service name carried
+      // INV-10..INV-89 reserved for service_dep signals (#3423: INV-90/91 are the
+      // language census and coverage warning); service name carried
       // in derivation + implies so the ID only needs to be a valid INV-NN.
       // #2945: also scan member-crate Cargo.toml files one level deep when the
       // root file is a [workspace] manifest (no direct deps in workspace root).
@@ -312,6 +405,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
         for (const { content, relPath } of allCargoContents) {
           for (const { service, note } of extractCargoServiceDeps(content)) {
             if (seen.has(service)) continue;
+            if (serviceDepIdx > INV_SERVICE_DEP_MAX) break;
             seen.add(service);
             signals.push({
               id: `INV-${String(serviceDepIdx++).padStart(2, '0')}`,
@@ -333,7 +427,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
         source: 'static_analysis',
         category: 'application',
         severity: 'high',
-        derivation: 'No source language indicator found (no package.json, Cargo.toml, go.mod, pyproject.toml, pom.xml). Source directory may be empty or the project root is in a subdirectory. Static passes cannot analyse without source code. Set source.vcs.url or source.path in .swao.yml to the correct application root.',
+        derivation: 'No source language indicator found (no build manifest such as package.json, pom.xml, build.gradle, go.mod, Cargo.toml, pyproject.toml or *.csproj at any depth, and no source file in a recognised language). Source directory may be empty or point at the wrong folder. Static passes cannot analyse without source code. Set source.vcs.url or source.path in .swao.yml to the correct application root.',
         evidence: [],
         confidence: 'high',
         outcome: 'negative',
@@ -345,13 +439,15 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   // Reads wsp/inputs/terraform/*.tfstate (ingestion folder) and *.tfstate at source root.
   // Emits service_dep signals for services not already covered by source-code analysis.
   // INV-06: guidance signal when .tf HCL files are present but no state file is available.
+  // #3429: only CURRENT infrastructure describes the app's own services. A state
+  // file declared target (context.infra_roles or infra/target/) feeds LZR only.
+  const infraRoles = readWorkspaceInfraRoles(workspacePath);
+  const isCurrentInfra = (f: string): boolean => resolveInfraRoleForFile(f, workspacePath, infraRoles) !== 'target';
   {
-    const tfFiles = findTfstateFiles(workspacePath, sourcePath);
+    const tfFiles = findTfstateFiles(workspacePath, sourcePath).filter(isCurrentInfra);
 
-    const hasTfHcl = existsSync(sourcePath) && (() => {
-      try { return readdirSync(sourcePath).some((f) => f.endsWith('.tf')); }
-      catch { return false; }
-    })();
+    const hasTfHcl = existsSync(sourcePath)
+      && listSourceFiles(sourcePath, { purpose: 'config', maxDepth: 0 }).some((f) => f.name.endsWith('.tf'));
 
     if (tfFiles.length === 0 && hasTfHcl) {
       signals.push({
@@ -375,7 +471,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
         .map((s) => s.id.match(/^INV-(\d{2})$/)?.[1])
         .filter((n): n is string => n !== undefined)
         .map(Number)
-        .filter((n) => n >= 10);
+        .filter((n) => n >= 10 && n <= INV_SERVICE_DEP_MAX);
       let nextIdx = usedInvNums.length > 0 ? Math.max(...usedInvNums) + 1 : 10;
 
       const states = tfFiles.map(parseTfState);
@@ -388,7 +484,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
 
       for (const [service, evidence] of tfServices) {
         if (alreadyDetected.has(service)) continue;
-        if (nextIdx > 99) break;
+        if (nextIdx > INV_SERVICE_DEP_MAX) break;
         alreadyDetected.add(service);
         signals.push({
           id: `INV-${String(nextIdx++).padStart(2, '0')}`,
@@ -407,7 +503,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   // --- INV Pulumi state detection ---
   // Reads wsp/inputs/pulumi/*.json (written by manual placement or #1322 Cloud API ingestion).
   {
-    const pulumiFiles = findPulumiStateFiles(workspacePath);
+    const pulumiFiles = findPulumiStateFiles(workspacePath).filter(isCurrentInfra);
     if (pulumiFiles.length > 0) {
       const alreadyDetected = new Set(
         signals
@@ -420,7 +516,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
         .map((s) => s.id.match(/^INV-(\d{2})$/)?.[1])
         .filter((n): n is string => n !== undefined)
         .map(Number)
-        .filter((n) => n >= 10);
+        .filter((n) => n >= 10 && n <= INV_SERVICE_DEP_MAX);
       let nextIdx = usedInvNums.length > 0 ? Math.max(...usedInvNums) + 1 : 10;
 
       const pulumiGraph: IaCResourceGraph = {
@@ -432,7 +528,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
 
       for (const [service, evidence] of pulumiServices) {
         if (alreadyDetected.has(service)) continue;
-        if (nextIdx > 99) break;
+        if (nextIdx > INV_SERVICE_DEP_MAX) break;
         alreadyDetected.add(service);
         signals.push({
           id: `INV-${String(nextIdx++).padStart(2, '0')}`,
@@ -453,17 +549,57 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   // (INV-08) and vendor-sdk-catalogue.yaml (INV-09) are matched against the
   // manifests, container images and file names of the source tree. A scan
   // failure never fails the pass; it is recorded in the assessment block.
+  // #3430: one dependency inventory for the reference scans and the service footprint.
+  let inventory: DependencyInventory | undefined;
   try {
+    inventory = collectDependencyInventory(sourcePath);
     const ref = runInvReferenceScans({
       sourcePath,
       priorSignals: signals,
       databaseEngine: typeof assessment.database_engine === 'string' ? assessment.database_engine : undefined,
+      inventory,
     });
     signals.push(...ref.signals);
     Object.assign(assessment, ref.assessment);
   } catch (err) {
     assessment.reference_catalogue_checks = { error: (err as Error).message.split('\n')[0] };
   }
+
+  // --- Service footprint (#3430): backing services from build files, compose,
+  // Kubernetes, configuration, Liquibase changelogs and documents. Runs after
+  // every other service_dep producer so their INV ids stay stable; emits
+  // service_dep only for capabilities no earlier signal carries. A failure
+  // never fails the pass; it is recorded in the assessment block.
+  try {
+    const cat = loadServiceFootprintCatalogue();
+    if (!cat.ok) {
+      assessment.service_footprint = { catalogue: `skipped: ${cat.reason}`, entries: [], files_scanned: {} };
+    } else {
+      const footprint = deriveServiceFootprint({
+        sourcePath,
+        workspacePath,
+        inventory: inventory ?? collectDependencyInventory(sourcePath),
+        priorSignals: signals,
+        catalogue: cat.data,
+      });
+      const used = new Set(signals.map((s) => s.id));
+      let idx = 10;
+      const nextId = (): string | null => {
+        while (idx <= INV_SERVICE_DEP_MAX && used.has(`INV-${String(idx).padStart(2, '0')}`)) idx++;
+        if (idx > INV_SERVICE_DEP_MAX) return null;
+        const id = `INV-${String(idx++).padStart(2, '0')}`;
+        used.add(id);
+        return id;
+      };
+      signals.push(...serviceFootprintSignals(footprint, nextId));
+      assessment.service_footprint = footprint;
+    }
+  } catch (err) {
+    assessment.service_footprint = { catalogue: `error: ${(err as Error).message.split('\n')[0]}`, entries: [], files_scanned: {} };
+  }
+
+  // --- INV-90 / INV-91: language census and coverage warning (#3423) ---
+  signals.push(...languageSignals(census, coverage));
 
   return {
     pass: {
@@ -480,25 +616,16 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
 }
 
 // #1498: search up to maxDepth levels for a file matching the predicate.
-// Returns the file path relative to root, or null. BFS order -- shallowest wins.
+// Returns the absolute file path, or null. Shallowest wins.
+// #3428: served by the central source scope (canonical skips; the old BFS
+// skipped dot-entries only and so could match node_modules/x/package.json).
 function findFirstMatchRecursive(
   root: string,
   maxDepth: number,
   test: (name: string, fullPath: string) => boolean,
 ): string | null {
-  const queue: Array<[string, number]> = [[root, 0]];
-  while (queue.length > 0) {
-    const [dir, depth] = queue.shift()!;
-    let entries;
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { continue; }
-    for (const e of entries) {
-      if (e.name.startsWith('.')) continue;
-      const full = join(dir, e.name);
-      if (e.isFile() && test(e.name, full)) return full;
-      if (e.isDirectory() && depth < maxDepth) queue.push([full, depth + 1]);
-    }
-  }
-  return null;
+  if (!existsSync(root)) return null;
+  return findShallowestSourceFile(root, { purpose: 'manifest', maxDepth }, (f) => test(f.name, f.abs))?.abs ?? null;
 }
 
 function readFileSync_safe(filePath: string): string | null {

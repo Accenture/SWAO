@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
@@ -190,6 +190,9 @@ describe('swao doctor CLI smoke (#0024)', () => {
     // the tsx transpilation overhead + Windows grandchild-pipe hang (#1415)
     // that causes spawnSync to time out before the process completes.
     const cli = join(__dirname, '..', '..', 'dist', 'index.js');
+    // #3406: health-check writes NDJSON logs only inside a real workspace (a
+    // directory with a .swao.yml); the #1095 log assertion below needs one.
+    writeFileSync(join(tmp, '.swao.yml'), 'workspace:\n  name: health-check-json-test\n', 'utf-8');
     const result = spawnSync(process.execPath, [cli, 'health-check', '--workspace', tmp, '--format', 'json'], {
       encoding: 'utf-8',
       cwd: join(__dirname, '..', '..'),

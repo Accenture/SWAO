@@ -13,12 +13,19 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
-import { logApp } from '@swao/core';
-import { loadPassCatalog } from './pass-catalog-loader.js';
+import { logApp, listSourceFiles } from '@swao/core';
+import type { PackageEcosystem } from '@swao/core';
+import { loadPassCatalog, compileRegexMatcher, scanCatalogueRules, type ScanRule } from './pass-catalog-loader.js';
+import { collectJvmProject, isConcreteVersion } from './jvm-build-files.js';
+import {
+  lookupOsv, osvBaseUrl, resolveOsvDbPath,
+  OSV_BATCH_SIZE, OSV_DETAIL_CAP, OSV_QUERY_CAP,
+  type OsvQuery,
+} from './osv-client.js';
 
 // Build config files that may contain runtime version constraints.
 const BUILD_CONFIG_BASENAMES = new Set([
@@ -29,53 +36,35 @@ const BUILD_CONFIG_BASENAMES = new Set([
 ]);
 
 // Returns a matching file path if any config_key regex matches a build config file in dir.
+// #3428: top-level listing through the central source scope (dot-files such
+// as .nvmrc / .tool-versions are build config here, so they are included).
+// #3410: config_keys go through the shared catalogue matcher: line-based,
+// case-folded, ReDoS-guarded, with identifier boundaries, so
+// `java.version=11` no longer matches `java.version=110`.
 function detectRuntimeInBuildFiles(dir: string, configKeys: string[]): string | null {
   if (!existsSync(dir) || !configKeys.length) return null;
-  let entries: string[];
-  try { entries = readdirSync(dir); } catch { return null; }
-  for (const entry of entries) {
-    if (!BUILD_CONFIG_BASENAMES.has(entry) && !entry.endsWith('.csproj') && !entry.endsWith('.fsproj')) continue;
-    const full = join(dir, entry);
-    try {
-      const st = statSync(full);
-      if (!st.isFile()) continue;
-      const content = readFileSync(full, 'utf-8');
-      for (const ck of configKeys) {
-        try {
-          if (new RegExp(ck, 'i').test(content)) return entry;
-        } catch { /* skip invalid regex */ }
-      }
-    } catch { /* skip unreadable */ }
+  const files = listSourceFiles(dir, { purpose: 'config', maxDepth: 0, includeHidden: true })
+    .filter((f) => BUILD_CONFIG_BASENAMES.has(f.name) || f.name.endsWith('.csproj') || f.name.endsWith('.fsproj'));
+  if (files.length === 0) return null;
+  const rules: ScanRule<string>[] = [];
+  for (const ck of configKeys) {
+    const c = compileRegexMatcher(ck, { match: 'identifier' });
+    if (c.ok) rules.push({ key: 'runtime', matcher: c.matcher, via: 'config_key' });
   }
-  return null;
+  const first = scanCatalogueRules(files, rules, { maxHitsPerKey: 1 }).hits.get('runtime')?.[0];
+  return first ? first.file : null;
 }
 
-/** Find package.json files up to maxDepth levels deep, excluding node_modules. */
+/** Find package.json files up to maxDepth levels deep (#3428: central source scope skips). */
 function findPackageJsonFiles(dir: string, maxDepth = 4): string[] {
-  const results: string[] = [];
-  function walk(current: string, depth: number): void {
-    if (depth > maxDepth) return;
-    try {
-      for (const entry of readdirSync(current)) {
-        if (entry === 'node_modules' || entry.startsWith('.')) continue;
-        const full = join(current, entry);
-        try {
-          const st = statSync(full);
-          if (st.isDirectory()) {
-            walk(full, depth + 1);
-          } else if (entry === 'package.json' && depth > 0) {
-            results.push(full);
-          }
-        } catch { /* skip unreadable entries */ }
-      }
-    } catch { /* skip unreadable dirs */ }
-  }
   // Root first
   const root = join(dir, 'package.json');
   if (existsSync(root)) return [root];
   // Otherwise walk
-  walk(dir, 0);
-  return results.slice(0, 5); // cap at 5 to avoid scanning huge monorepos
+  return listSourceFiles(dir, { purpose: 'manifest', maxDepth })
+    .filter((f) => f.name === 'package.json' && f.depth > 0)
+    .slice(0, 5) // cap at 5 to avoid scanning huge monorepos
+    .map((f) => f.abs);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +73,39 @@ function findPackageJsonFiles(dir: string, maxDepth = 4): string[] {
 
 /** File patterns recognised as external SBOM inputs from wsp/inputs/compliance/. */
 const SBOM_CSV_RE = /^SBOM-.*\.xlsx\..*\.csv$|^.*\.sbom\.csv$/;
-const SBOM_CDX_RE = /^.*\.cdx\.json$/;
+// #3420: bom.json is the CycloneDX Maven / Gradle plugin default name; since
+// #3428 a build-output target/bom.json is not read from the source tree, so
+// the operator supplies it here.
+const SBOM_CDX_RE = /^.*\.cdx\.json$|^(?:.*[.-])?s?bom\.json$/i;
+
+/**
+ * #3420: package URLs from a CycloneDX (components[].purl, nested components
+ * included) or SPDX JSON document (packages[].externalRefs purl). They carry
+ * the ecosystem, so a supplied SBOM feeds the Maven / npm OSV lookup;
+ * components without a purl stay out of it.
+ */
+export function readSbomPurls(filePath: string): string[] {
+  let doc: unknown;
+  try { doc = JSON.parse(readFileSync(filePath, 'utf-8')); } catch { return []; }
+  const out: string[] = [];
+  const visit = (list: unknown, depth: number): void => {
+    if (!Array.isArray(list) || depth > 8) return;
+    for (const c of list) {
+      if (typeof c !== 'object' || c === null) continue;
+      const r = c as Record<string, unknown>;
+      if (typeof r['purl'] === 'string') out.push(r['purl']);
+      for (const ref of Array.isArray(r['externalRefs']) ? r['externalRefs'] : []) {
+        const e = ref as Record<string, unknown>;
+        if (e['referenceType'] === 'purl' && typeof e['referenceLocator'] === 'string') out.push(e['referenceLocator']);
+      }
+      visit(r['components'], depth + 1);
+    }
+  };
+  const root = doc as Record<string, unknown> | null;
+  visit(root?.['components'], 0);
+  visit(root?.['packages'], 0);
+  return out;
+}
 
 /**
  * Parse an Excel-exported CSV sheet (or any *.sbom.csv) into component records.
@@ -219,33 +240,30 @@ const SOURCE_SBOM_RE = /(\.cdx\.json|\.spdx\.json|\.spdx|bom\.json|sbom\.json)$/
 function readSourceSbomFiles(sourcePath: string, maxDepth = 3): {
   packages: Array<{ name: string; version: string }>;
   files: string[];
+  purls: string[];
 } {
   const packages: Array<{ name: string; version: string }> = [];
   const files: string[] = [];
-  const walk = (dir: string, depth: number): void => {
-    if (depth > maxDepth || files.length >= 20) return;
-    let entries: string[];
-    try { entries = readdirSync(dir); } catch { return; }
-    for (const entry of entries) {
-      if (entry === 'node_modules' || entry.startsWith('.')) continue;
-      const full = join(dir, entry);
-      let isDir = false;
-      try { isDir = statSync(full).isDirectory(); } catch { continue; }
-      if (isDir) { walk(full, depth + 1); continue; }
-      if (!SOURCE_SBOM_RE.test(entry)) continue;
-      const lower = entry.toLowerCase();
-      const parsed = lower.endsWith('.spdx.json')
-        ? parseSpdxJson(full)
-        : lower.endsWith('.spdx')
-          ? parseSpdxTagValue(full)
-          : parseCycloneDxJson(full);
-      if (parsed.length === 0) continue;
-      packages.push(...parsed);
-      files.push(full.slice(sourcePath.length).replace(/\\/g, '/').replace(/^\//, ''));
-    }
-  };
-  if (existsSync(sourcePath)) walk(sourcePath, 0);
-  return { packages, files };
+  const purls: string[] = [];
+  if (!existsSync(sourcePath)) return { packages, files, purls };
+  // #3428: central source scope (canonical skips, same depth guard).
+  for (const f of listSourceFiles(sourcePath, { purpose: 'manifest', maxDepth })) {
+    if (files.length >= 20) break;
+    const entry = f.name;
+    const full = f.abs;
+    if (!SOURCE_SBOM_RE.test(entry)) continue;
+    const lower = entry.toLowerCase();
+    const parsed = lower.endsWith('.spdx.json')
+      ? parseSpdxJson(full)
+      : lower.endsWith('.spdx')
+        ? parseSpdxTagValue(full)
+        : parseCycloneDxJson(full);
+    if (parsed.length === 0) continue;
+    packages.push(...parsed);
+    if (lower.endsWith('.json')) purls.push(...readSbomPurls(full));
+    files.push(full.slice(sourcePath.length).replace(/\\/g, '/').replace(/^\//, ''));
+  }
+  return { packages, files, purls };
 }
 
 /**
@@ -255,17 +273,19 @@ function readSourceSbomFiles(sourcePath: string, maxDepth = 3): {
 function readExternalSbomInputs(complianceDir: string): {
   packages: Array<{ name: string; version: string }>;
   files: string[];
+  purls: string[];
 } {
   const packages: Array<{ name: string; version: string }> = [];
   const files: string[] = [];
+  const purls: string[] = [];
 
-  if (!existsSync(complianceDir)) return { packages, files };
+  if (!existsSync(complianceDir)) return { packages, files, purls };
 
   let entries: string[] = [];
   try {
     entries = readdirSync(complianceDir);
   } catch {
-    return { packages, files };
+    return { packages, files, purls };
   }
 
   for (const entry of entries) {
@@ -276,16 +296,18 @@ function readExternalSbomInputs(complianceDir: string): {
         packages.push(...parsed);
         files.push(entry);
       }
-    } else if (SBOM_CDX_RE.test(entry)) {
-      const parsed = parseCycloneDxJson(full);
+    } else if (SBOM_CDX_RE.test(entry) || /\.spdx\.json$/i.test(entry)) {
+      // #3420: SPDX JSON accepted here as well; purls feed the OSV lookup.
+      const parsed = /\.spdx\.json$/i.test(entry) ? parseSpdxJson(full) : parseCycloneDxJson(full);
       if (parsed.length > 0) {
         packages.push(...parsed);
+        purls.push(...readSbomPurls(full));
         files.push(entry);
       }
     }
   }
 
-  return { packages, files };
+  return { packages, files, purls };
 }
 
 // ---------------------------------------------------------------------------
@@ -401,33 +423,79 @@ export function classifyOsvSeverity(v: OsvVuln): OsvSeverity {
   return 'unknown';
 }
 
-// #1494: configurable base URL + offline mode for air-gapped / sovereign-cloud deployments.
-const OSV_BASE_URL = process.env['SWAO_OSV_BASE_URL'] ?? 'https://api.osv.dev';
+// #1494 / #3420: the OSV client (batched online lookups, offline database,
+// SWAO_OSV_BASE_URL read per call) lives in osv-client.ts.
 
-interface OsvCheckResult { reachable: boolean; vulns: OsvVuln[] }
+// #3423: package ecosystems whose dependencies this pass resolves and checks
+// against OSV (read by the language coverage matrix). Extend when a new
+// ecosystem is queried below. #3420: Maven (pom.xml, Gradle) added.
+export const SBOM_OSV_ECOSYSTEMS: readonly PackageEcosystem[] = ['npm', 'Maven'];
 
-async function checkOsv(name: string, version: string): Promise<OsvCheckResult> {
-  if (process.env['SWAO_OSV_OFFLINE'] === 'true') {
-    return { reachable: false, vulns: [] };
+/** Ecosystem-qualified dependency for the OSV lookup. */
+interface OsvCandidate extends OsvQuery { origin: string }
+
+/** pkg:maven/group/artifact@version and pkg:npm/(%40scope/)name@version from a supplied SBOM (#3420). */
+export function osvQueryFromPurl(purl: string): OsvQuery | null {
+  const m = /^pkg:(maven|npm)\/([^@?#]+)@([^?#]+)/i.exec(purl.trim());
+  if (!m) return null;
+  const version = decodeURIComponent(m[3]!);
+  if (!isConcreteVersion(version)) return null;
+  const path = decodeURIComponent(m[2]!);
+  if (m[1]!.toLowerCase() === 'maven') {
+    const slash = path.indexOf('/');
+    if (slash <= 0) return null;
+    return { ecosystem: 'Maven', name: `${path.slice(0, slash)}:${path.slice(slash + 1)}`, version };
   }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3000);
-  try {
-    const res = await fetch(`${OSV_BASE_URL}/v1/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ version, package: { name, ecosystem: 'npm' } }),
-      signal: controller.signal,
-    });
-    if (!res.ok) return { reachable: true, vulns: [] };
-    const data = (await res.json()) as { vulns?: OsvVuln[] };
-    return { reachable: true, vulns: data.vulns ?? [] };
-  } catch {
-    return { reachable: false, vulns: [] };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return { ecosystem: 'npm', name: path, version };
 }
+
+const LTS_JAVA: ReadonlySet<number> = new Set([8, 11, 17, 21, 25]);
+
+export type JavaEolStatus = 'supported' | 'eol' | 'unknown';
+
+/**
+ * #3420: EOL verdict for a Java feature release from the Pass 05 runtime EOL
+ * catalogue (entry `java-<major>`). A release without a catalogue entry is
+ * EOL when it is a non-LTS feature release (six months of updates) or older
+ * than Java 8; anything else is unknown.
+ */
+export function javaEolVerdict(
+  major: number,
+  entries: Array<Record<string, unknown>>,
+  today: string,
+): { status: JavaEolStatus; eolDate: string | null; upgradePath: string | null; name: string; severity: Signal['severity'] } {
+  const entry = entries.find((e) => String(e['id']) === `java-${major}`);
+  if (entry) {
+    const eolDate = typeof entry['eol_date'] === 'string' ? entry['eol_date'] : null;
+    const status: JavaEolStatus = eolDate ? (eolDate < today ? 'eol' : 'supported') : 'unknown';
+    // A supported release is positive only when the catalogue rates it so
+    // (java-8: severity high, vendor support ending) - otherwise low, as the
+    // #3065 catalogue loop did.
+    const severity: Signal['severity'] = status === 'eol' ? 'high'
+      : status === 'supported' && entry['severity'] === 'positive' ? 'positive'
+      : 'low';
+    return {
+      status,
+      severity,
+      eolDate,
+      upgradePath: typeof entry['upgrade_path'] === 'string' ? entry['upgrade_path'] : null,
+      name: String(entry['name'] ?? `Java ${major}`),
+    };
+  }
+  if (major < 8 || (!LTS_JAVA.has(major) && major < 25)) {
+    return {
+      status: 'eol',
+      severity: 'high',
+      eolDate: null,
+      upgradePath: 'Upgrade to a supported LTS release (Java 21 or 25).',
+      name: `Java ${major}${LTS_JAVA.has(major) ? '' : ' (non-LTS feature release)'}`,
+    };
+  }
+  return { status: 'unknown', severity: 'low', eolDate: null, upgradePath: null, name: `Java ${major}` };
+}
+
+/** Cap on the per-dependency list written to the pass assessment (#3430 consumer). */
+const JVM_DEPENDENCY_LIST_CAP = 500;
 
 export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
   const { sourcePath, workspacePath, appId, iter, assessedAt } = ctx;
@@ -441,6 +509,7 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
   const sourceSboms = readSourceSbomFiles(sourcePath);
   const externalPackages = [...compliance.packages, ...sourceSboms.packages];
   const externalFiles = [...compliance.files, ...sourceSboms.files];
+  const externalPurls = [...compliance.purls, ...sourceSboms.purls];
   const externalEvidence = [
     ...compliance.files.map((f) => `wsp/inputs/compliance/${f}`),
     ...sourceSboms.files,
@@ -453,15 +522,18 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
   }
 
   const pkgFiles = findPackageJsonFiles(sourcePath);
+  // #3420: Maven and Gradle build files (central source scope, no own walk).
+  const jvm = collectJvmProject(existsSync(sourcePath) ? sourcePath : '');
+  const hasJvm = jvm.manifests.length > 0;
 
-  // Guard: skip only when there is nothing to analyse from either source.
-  if (pkgFiles.length === 0 && externalPackages.length === 0) {
+  // Guard: skip only when there is nothing to analyse from any source.
+  if (pkgFiles.length === 0 && externalPackages.length === 0 && !hasJvm) {
     signals.push({
       id: 'SBOM-01',
       source: 'static_analysis',
       category: 'application',
       severity: 'high',
-      derivation: 'package.json not found anywhere in source tree and no external SBOM files found in wsp/inputs/compliance/. Cannot perform dependency scan.',
+      derivation: 'No dependency manifest (package.json, pom.xml, build.gradle, build.gradle.kts) found anywhere in source tree and no external SBOM files found in wsp/inputs/compliance/. Cannot perform dependency scan.',
       evidence: [],
       confidence: 'high',
     });
@@ -497,6 +569,10 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
   }
   depCount += externalPackages.length;
 
+  // #3420: direct, non-test JVM dependencies count towards the inventory.
+  const jvmDirect = jvm.dependencies.filter((d) => d.direct);
+  depCount += jvmDirect.filter((d) => d.scope !== 'test').length;
+
   if (externalFiles.length > 0) {
     assessment.external_sbom_files = externalFiles;
     assessment.external_sbom_component_count = externalPackages.length;
@@ -504,22 +580,45 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
 
   const deps = mergedDeps;
   const runtimeDeps = mergedRuntime;
-  const pkgEvidence = pkgFiles.length > 0
-    ? pkgFiles.map(f => f.replace(sourcePath, '').replace(/\\/g, '/').replace(/^\//, ''))
-    : externalEvidence;
+  const pkgEvidence = [
+    ...pkgFiles.map(f => f.replace(sourcePath, '').replace(/\\/g, '/').replace(/^\//, '')),
+    ...jvm.manifests,
+  ];
+  const sbomEvidence = pkgEvidence.length > 0 ? pkgEvidence : externalEvidence;
 
-  // --- SBOM-01: spot check key deps against OSV (with graceful degrade) ---
-  const spotCheckNames = Object.keys(runtimeDeps).slice(0, 10);
+  // --- SBOM-01: OSV lookup (#3420: batched, every ecosystem with a concrete version) ---
+  const candidates: OsvCandidate[] = [];
+  const seen = new Set<string>();
+  const addCandidate = (q: OsvQuery, origin: string): void => {
+    const key = `${q.ecosystem}|${q.name}|${q.version}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push({ ...q, origin });
+  };
+  let unresolvedVersions = 0;
+  for (const [name, range] of Object.entries(runtimeDeps)) {
+    const version = String(range).replace(/^[^0-9]*/, '');
+    if (isConcreteVersion(version)) addCandidate({ ecosystem: 'npm', name, version }, 'package.json');
+    else unresolvedVersions++;
+  }
+  for (const d of jvm.dependencies) {
+    if (d.scope === 'test') continue;
+    if (d.version === null) { unresolvedVersions++; continue; }
+    addCandidate({ ecosystem: 'Maven', name: `${d.group}:${d.artifact}`, version: d.version }, d.manifest);
+  }
+  for (const purl of externalPurls) {
+    const q = osvQueryFromPurl(purl);
+    if (q) addCandidate(q, 'external SBOM');
+  }
+
+  const osv = await lookupOsv(candidates, { dbPath: resolveOsvDbPath(workspacePath) });
+  const osvAvailable = osv.available;
   const osvResults: Array<{ name: string; version: string; vulns: OsvVuln[] }> = [];
-  let osvAvailable = false;
   let vulnerablePackages = 0;
   let totalVulns = 0;
-
-  for (const name of spotCheckNames) {
-    const version = runtimeDeps[name]!.replace(/^[^0-9]*/, '');
-    const { reachable, vulns } = await checkOsv(name, version);
-    if (reachable) osvAvailable = true;
-    const known = vulns.filter((v) => v.id);
+  for (let i = 0; i < osv.perQuery.length; i++) {
+    const cand = candidates[i]!;
+    const known = osv.perQuery[i]!.filter((v) => v.id);
     if (known.length > 0) { vulnerablePackages++; totalVulns += known.length; }
     // #3158: only high and critical entries count as high/critical CVEs.
     const criticalVulns = known.filter((v) => {
@@ -527,26 +626,28 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
       return sev === 'high' || sev === 'critical';
     });
     if (criticalVulns.length > 0) {
-      osvResults.push({ name, version, vulns: criticalVulns });
+      osvResults.push({ name: cand.name, version: cand.version, vulns: criticalVulns });
     }
   }
-  if (!osvAvailable && spotCheckNames.length > 0) {
-    const reason = process.env['SWAO_OSV_OFFLINE'] === 'true'
-      ? 'offline mode (SWAO_OSV_OFFLINE=true)'
-      : `OSV API unreachable at ${OSV_BASE_URL} -- set SWAO_OSV_BASE_URL to a reachable mirror or SWAO_OSV_OFFLINE=true to suppress`;
+  const queried = osv.queried;
+  if (!osvAvailable && queried > 0) {
+    const reason = osv.reason ?? `OSV API unreachable at ${osvBaseUrl()}`;
     signals.push({
       id: 'SBOM-00',
       source: 'static_analysis',
       category: 'application',
       severity: 'low',
-      derivation: `Vulnerability cross-check skipped: ${reason}. CVE data was not verified; a manual SBOM scan is required before production.`,
+      derivation: `Vulnerability cross-check skipped: ${reason}. Set SWAO_OSV_BASE_URL to a reachable mirror, supply an OSV database (SWAO_OSV_DB_PATH or wsp/inputs/osv/), or set SWAO_OSV_OFFLINE=true to suppress. CVE data was not verified; a manual SBOM scan is required before production.`,
       evidence: [],
       confidence: 'low',
     });
   }
 
+  const byEcosystem: Record<OsvQuery['ecosystem'], number> = { npm: 0, Maven: 0 };
+  for (const c of candidates.slice(0, queried)) byEcosystem[c.ecosystem]++;
+
   const highCvesFound = osvResults.length;
-  assessment.scan_type = osvAvailable ? 'osv_spot_check' : 'static_analysis';
+  assessment.scan_type = !osvAvailable ? 'static_analysis' : osv.mode === 'offline_db' ? 'osv_offline_db' : 'osv_batch';
   assessment.cve_lookup = osvAvailable ? 'completed' : 'skipped';
   assessment.full_scan_required = true;
   assessment.full_scan_gate = 'pre_migration';
@@ -554,20 +655,68 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
   assessment.vulnerable_packages_found = vulnerablePackages;
   assessment.known_vulnerabilities_found = totalVulns;
   assessment.dependency_count = depCount;
+  assessment.osv = {
+    mode: osv.mode,
+    queried,
+    queried_by_ecosystem: byEcosystem,
+    truncated: osv.truncated,
+    unresolved_versions_not_queried: unresolvedVersions,
+    batch_size: OSV_BATCH_SIZE,
+    query_cap: OSV_QUERY_CAP,
+    detail_cap: OSV_DETAIL_CAP,
+    details_fetched: osv.detailsFetched,
+    details_capped: osv.detailsCapped,
+    ...(osv.dbFiles.length > 0 ? { database_files: osv.dbFiles } : {}),
+  };
+  if (osvResults.length > 0) {
+    assessment.high_critical_vulnerabilities = osvResults.slice(0, 50).map((r) => ({
+      package: r.name, version: r.version, ids: r.vulns.map((v) => v.id).slice(0, 10),
+    }));
+  }
 
-  const derivationSources = pkgFiles.length > 0
-    ? `${pkgFiles.length} package.json file(s)`
-    : `${externalFiles.length} external SBOM file(s)`;
+  // #3420: JVM build summary + per-dependency list (consumed by #3430, the
+  // landing-zone footprint from build files).
+  if (hasJvm) {
+    assessment.jvm_build = {
+      build_tools: jvm.buildTools,
+      manifests: jvm.manifests,
+      modules: jvm.modules,
+      dependency_count: jvmDirect.length,
+      transitive_locked_count: jvm.dependencies.length - jvmDirect.length,
+      unresolved_version_count: jvmDirect.filter((d) => d.version === null).length,
+      spring_boot: jvm.usesSpringBoot,
+      spring_boot_version: jvm.springBootVersion,
+    };
+    const ordered = [...jvmDirect, ...jvm.dependencies.filter((d) => !d.direct)];
+    assessment.jvm_dependencies = ordered.slice(0, JVM_DEPENDENCY_LIST_CAP).map((d) => ({
+      group: d.group,
+      artifact: d.artifact,
+      version: d.version,
+      scope: d.scope,
+      version_source: d.versionSource,
+      direct: d.direct,
+      build_tool: d.buildTool,
+      manifest: d.manifest,
+      purl: d.purl,
+    }));
+    if (ordered.length > JVM_DEPENDENCY_LIST_CAP) assessment.jvm_dependencies_truncated = ordered.length - JVM_DEPENDENCY_LIST_CAP;
+  }
+
+  const sourceParts: string[] = [];
+  if (pkgFiles.length > 0) sourceParts.push(`${pkgFiles.length} package.json file(s)`);
+  if (hasJvm) sourceParts.push(`${jvm.manifests.length} Maven/Gradle build file(s)`);
+  if (sourceParts.length === 0) sourceParts.push(`${externalFiles.length} external SBOM file(s)`);
+  const lookupLabel = osv.mode === 'offline_db' ? 'Offline OSV database lookup' : 'OSV batch query';
 
   signals.push({
     id: 'SBOM-01',
     source: 'static_analysis',
     category: 'application',
-    // #3158: with 0 runtime dependencies spot-checked (SBOM-only input) nothing
-    // was verified, so the result is informational rather than positive.
-    severity: highCvesFound > 0 ? 'high' : vulnerablePackages > 0 ? 'medium' : spotCheckNames.length === 0 ? 'informational' : 'positive',
-    derivation: `Spot check of ${spotCheckNames.length} runtime dependencies across ${derivationSources}. CVE lookup: ${assessment.cve_lookup as string}. Packages with high/critical CVEs: ${highCvesFound}; packages with any known vulnerability: ${vulnerablePackages}. Full automated SBOM scan required as pre-migration gate.`,
-    evidence: pkgEvidence.length > 0 ? pkgEvidence : ['package.json'],
+    // #3158: with 0 dependencies queried (SBOM-only input without package URLs)
+    // nothing was verified, so the result is informational rather than positive.
+    severity: highCvesFound > 0 ? 'high' : vulnerablePackages > 0 ? 'medium' : queried === 0 || !osvAvailable ? 'informational' : 'positive',
+    derivation: `${lookupLabel} of ${queried} dependencies (npm: ${byEcosystem.npm}, Maven: ${byEcosystem.Maven}) across ${sourceParts.join(' and ')}. CVE lookup: ${assessment.cve_lookup as string}. Packages with high/critical CVEs: ${highCvesFound}; packages with any known vulnerability: ${vulnerablePackages}.${unresolvedVersions > 0 ? ` ${unresolvedVersions} dependencies without a locally resolvable version were not queried.` : ''}${osv.truncated > 0 ? ` ${osv.truncated} dependencies beyond the cap of ${OSV_QUERY_CAP} were not queried.` : ''}${osv.detailsCapped ? ` Severity was fetched for ${osv.detailsFetched} of the advisories found (cap ${OSV_DETAIL_CAP}); the high/critical count is a lower bound.` : ''} Full automated SBOM scan required as pre-migration gate.`,
+    evidence: sbomEvidence.length > 0 ? sbomEvidence : ['package.json'],
     confidence: osvAvailable ? 'medium' : 'low',
   });
 
@@ -599,40 +748,84 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
     }));
   }
 
-  // --- next signal: Node.js runtime EOL ---
-  const signalNum = 2 + staleFound.length;
-  const major = parseInt(nodeConstraint.replace(/^[^0-9]*/, ''), 10);
-  const eolStatus = isNaN(major)
-    ? 'unknown'
-    : major >= 22
-      ? 'active_lts'
-      : major >= 20
-        ? 'maintenance_lts'
-        : 'eol';
-  const eolSeverity = eolStatus === 'eol' ? 'high' : eolStatus === 'maintenance_lts' ? 'low' : 'positive';
+  let nextSig = 2 + staleFound.length;
+  const sigId = (): string => `SBOM-${String(nextSig++).padStart(2, '0')}`;
+  const eolCatalogue = loadPassCatalog(workspacePath, 'pass-05-runtime-eol.yaml');
+  const catalogueEntries = (eolCatalogue?.entries ?? []) as Array<Record<string, unknown>>;
+  const today = new Date().toISOString().slice(0, 10);
 
-  signals.push({
-    id: `SBOM-${String(signalNum).padStart(2, '0')}`,
-    source: 'static_analysis',
-    category: 'infrastructure_platform',
-    severity: eolSeverity,
-    derivation: `Runtime: Node.js ${nodeConstraint}. EOL status: ${eolStatus}.${eolStatus === 'eol' ? ' Node version is past end-of-life; upgrade required before migration.' : ''}`,
-    evidence: ['package.json (engines.node)'],
-    confidence: nodeConstraint !== 'unspecified' ? 'high' : 'low',
-  });
+  // --- Node.js runtime EOL ---
+  // #3420: a Java-only service (no package.json) no longer reports
+  // "Runtime: Node.js unspecified"; the Java runtime signal takes its place.
+  const runtimes: string[] = [];
+  if (pkgFiles.length > 0 || !hasJvm) {
+    const major = parseInt(nodeConstraint.replace(/^[^0-9]*/, ''), 10);
+    const eolStatus = isNaN(major)
+      ? 'unknown'
+      : major >= 22
+        ? 'active_lts'
+        : major >= 20
+          ? 'maintenance_lts'
+          : 'eol';
+    const eolSeverity = eolStatus === 'eol' ? 'high' : eolStatus === 'maintenance_lts' ? 'low' : 'positive';
 
-  assessment.runtime = 'node';
-  assessment.node_constraint = nodeConstraint;
-  assessment.node_eol_status = eolStatus;
+    signals.push({
+      id: sigId(),
+      source: 'static_analysis',
+      category: 'infrastructure_platform',
+      severity: eolSeverity,
+      derivation: `Runtime: Node.js ${nodeConstraint}. EOL status: ${eolStatus}.${eolStatus === 'eol' ? ' Node version is past end-of-life; upgrade required before migration.' : ''}`,
+      evidence: ['package.json (engines.node)'],
+      confidence: nodeConstraint !== 'unspecified' ? 'high' : 'low',
+    });
+    runtimes.push('node');
+    assessment.node_constraint = nodeConstraint;
+    assessment.node_eol_status = eolStatus;
+  }
+
+  // --- #3420: Java runtime EOL (deterministic, from the build files) ---
+  if (hasJvm) {
+    runtimes.push('java');
+    const j = jvm.java;
+    if (j) {
+      const verdict = javaEolVerdict(j.major, catalogueEntries, today);
+      const severity = verdict.severity;
+      signals.push({
+        id: sigId(),
+        source: 'static_analysis',
+        category: 'infrastructure_platform',
+        severity,
+        derivation: `Runtime: ${verdict.name}, declared by ${j.key} = ${j.raw} in ${j.file}. EOL date: ${verdict.eolDate ?? 'unknown'}. EOL status: ${verdict.status}.${verdict.status === 'eol' ? ' Java release is past end-of-life; upgrade required before migration.' : ''}${verdict.upgradePath ? ` ${verdict.upgradePath}` : ''}`,
+        evidence: [`${j.file} (${j.key})`],
+        confidence: verdict.status === 'unknown' ? 'low' : 'high',
+      });
+      assessment.java_runtime = {
+        major: j.major, declared: j.raw, setting: j.key, file: j.file,
+        eol_date: verdict.eolDate, eol_status: verdict.status,
+      };
+    } else {
+      signals.push({
+        id: sigId(),
+        source: 'static_analysis',
+        category: 'infrastructure_platform',
+        severity: 'low',
+        derivation: `Runtime: Java (${jvm.buildTools.join(' and ')} build), release not declared in the build files (no maven.compiler.release, java.version, toolchain or sourceCompatibility). EOL status: unknown. Declare the Java release so the runtime can be checked against end-of-life dates.`,
+        evidence: jvm.manifests.slice(0, 5),
+        confidence: 'low',
+      });
+      assessment.java_runtime = { major: null, eol_status: 'unknown' };
+    }
+  }
+  assessment.runtime = runtimes[0] ?? 'node';
+  if (runtimes.length > 1) assessment.runtimes = runtimes;
 
   // #3065: supplement EOL detection with curated catalogue (Java, Python, .NET, OS entries).
-  const eolCatalogue = loadPassCatalog(workspacePath, 'pass-05-runtime-eol.yaml');
   if (eolCatalogue) {
-    const today = new Date().toISOString().slice(0, 10);
     const nodejsIds = new Set(['nodejs-12', 'nodejs-14', 'nodejs-16', 'nodejs-18', 'nodejs-20', 'nodejs-22']);
-    let catalogueSigNum = 2 + staleFound.length + 1; // after Node.js signal
     for (const entry of eolCatalogue.entries) {
       if (nodejsIds.has(String(entry.id))) continue; // covered by hardcoded Node.js check
+      // #3420: a Java release resolved from the build files replaces the regex match.
+      if (jvm.java && entry['category'] === 'jvm_runtime') continue;
       const detection = entry.detection as { config_keys?: string[]; imports?: string[] } | undefined;
       const configKeys = detection?.config_keys ?? [];
       const matchedFile = detectRuntimeInBuildFiles(sourcePath, configKeys);
@@ -647,7 +840,7 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
         : isEol ? 'medium'
         : 'low';
       signals.push({
-        id: `SBOM-${String(catalogueSigNum).padStart(2, '0')}`,
+        id: sigId(),
         source: 'static_analysis',
         category: 'infrastructure_platform',
         severity: signalSeverity,
@@ -655,7 +848,6 @@ export async function runSbomPass(ctx: PassContext): Promise<PassResult> {
         evidence: [matchedFile],
         confidence: 'medium',
       });
-      catalogueSigNum++;
     }
   }
 

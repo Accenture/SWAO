@@ -20,6 +20,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, join } from 'path';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
 import { logPortfolio } from '@swao/core';
+import { seedBundledConnectors } from '@swao/module-llm-providers';
 import { buildWorkspaceSwaoYml, runWorkspaceScaffolders, validateIso8601Date } from '../../../../commands/init.js';
 import { TextInput } from '@swao/tui-kit';
 import { GuidanceBox } from '@swao/tui-kit';
@@ -119,6 +120,10 @@ export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagement
       mkdirSync(join(resolved, 'apps'), { recursive: true });
       writeFileSync(join(resolved, '.swao.yml'), yaml, 'utf-8');
       runWorkspaceScaffolders(resolved);
+      // #3388 (Design 112): seed the packaged LLM gateway connectors into
+      // wsp/inputs/llm-gateway/ so they are visible and editable at setup time.
+      // Best-effort; the runtime loader still falls back to the bundled seeds.
+      try { seedBundledConnectors(resolved); } catch { /* non-fatal */ }
     } catch (e) {
       setError(`Could not write .swao.yml: ${(e as Error).message}`);
       return;
