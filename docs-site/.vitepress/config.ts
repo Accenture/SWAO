@@ -38,6 +38,7 @@ const frameworks: Entry[] = [
   { en: 'AI 10 Pillars', de: 'AI 10 Pillars', link: '/frameworks/ai-10-pillars' },
   { en: 'BSI C5', de: 'BSI C5', link: '/frameworks/bsi-c5' },
   { en: 'BSI IT-Grundschutz 2023', de: 'BSI IT-Grundschutz 2023', link: '/frameworks/bsi-grundschutz-2023' },
+  { en: 'BSI Grundschutz++', de: 'BSI Grundschutz++', link: '/frameworks/bsi-grundschutz-plus-plus' },
   { en: 'COBIT 5', de: 'COBIT 5', link: '/frameworks/cobit-5' },
   { en: 'DORA', de: 'DORA', link: '/frameworks/dora' },
   { en: 'EC Cloud Sovereignty Framework', de: 'EC Cloud Sovereignty Framework', link: '/frameworks/ec-csf' },

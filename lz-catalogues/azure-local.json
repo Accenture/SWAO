@@ -3,11 +3,11 @@
     "schema_version": "0.1",
     "name": "Azure Local service catalogue",
     "provider": "azure-local",
-    "last_updated": "2026-10-25",
+    "last_updated": "2026-11-01",
     "source": {
       "mode": "curated",
       "operator": "Helmut Schindlwick + Claude (AI pair-programmer)",
-      "source_note": "Hand-curated from Microsoft documentation (retrieved 2026-08-06). Azure Local (formerly Azure Stack HCI) is customer-sited Arc-managed infrastructure. Two deployment modes are modelled as regions because they differ in service availability and sovereignty facts. Connected mode: Arc control plane (resource metadata, billing, telemetry, 30-day sync obligation) runs in Microsoft cloud under a US entity -- us_cloud_act and fisa_702 reflect management-plane exposure only, not workload data residency (learn.microsoft.com/azure/azure-local/faq and .../concepts/telemetry-and-diagnostics-overview). Disconnected mode: only registration and licence-renewal handshakes remain per Microsoft FAQ; residual dependency on Microsoft as US-jurisdiction licensor is noted (computerweekly.com opinion 2026). residency_country is unset in both modes: workload data lives at the customer site and the catalogue cannot know the location. certifications: [] is deliberate -- no Azure Local-specific C5 or ISO attestation exists (verified absence 2026-08-06); CIS Benchmark and DISA STIG capable baselines appear as capabilities on the Security Baseline entry rather than certifications. L1 pricing: USD 10 per physical core per month (hyperconverged). L2: USD 20.1 (external SAN / disaggregated). L3 disconnected: negotiated only, no public list price. Sources: learn.microsoft.com/azure/azure-local/ (overview, whats-new, disconnected-operations-overview, disconnected-operations-whats-new, billing, security-features, faq, system-requirements-23h2, manage/manage-bitlocker, concepts/telemetry-and-diagnostics-overview); azure.microsoft.com/pricing/details/azure-local/; learn.microsoft.com/azure/azure-sovereign-clouds/private/overview/sovereign-private-cloud; dataon.io/azure-local-pricing-for-external-san-support-and-disconnect-operations/ (2026-06-25); learn.microsoft.com/azure/virtual-desktop/azure-local-overview."
+      "source_note": "Hand-curated from Microsoft documentation (retrieved 2026-08-06). Azure Local (formerly Azure Stack HCI) is customer-sited Arc-managed infrastructure. Two deployment modes are modelled as regions because they differ in service availability and sovereignty facts. Connected mode: Arc control plane (resource metadata, billing, telemetry, 30-day sync obligation) runs in Microsoft cloud under a US entity -- us_cloud_act and fisa_702 reflect management-plane exposure only, not workload data residency (learn.microsoft.com/azure/azure-local/faq and .../concepts/telemetry-and-diagnostics-overview). Disconnected mode: only registration and licence-renewal handshakes remain per Microsoft FAQ; residual dependency on Microsoft as US-jurisdiction licensor is noted (computerweekly.com opinion 2026). residency_country is unset in both modes: workload data lives at the customer site and the catalogue cannot know the location. certifications: [] is deliberate -- no Azure Local-specific C5 or ISO attestation exists (verified absence 2026-08-06); CIS Benchmark and DISA STIG capable baselines appear as capabilities on the Security Baseline entry rather than certifications. L1 pricing: USD 10 per physical core per month (hyperconverged). L2: USD 20.1 (external SAN / disaggregated). L3 disconnected: negotiated only, no public list price. Sources: learn.microsoft.com/azure/azure-local/ (overview, whats-new, disconnected-operations-overview, disconnected-operations-whats-new, billing, security-features, faq, system-requirements-23h2, manage/manage-bitlocker, concepts/telemetry-and-diagnostics-overview); azure.microsoft.com/pricing/details/azure-local/; learn.microsoft.com/azure/azure-sovereign-clouds/private/overview/sovereign-private-cloud; dataon.io/azure-local-pricing-for-external-san-support-and-disconnect-operations/ (2026-06-25); learn.microsoft.com/azure/virtual-desktop/azure-local-overview. Re-checked 2026-11-01 (v1.6.0 release review): disconnected operations are generally available since release 2602 (February 2026), and AKS on Azure Local in disconnected mode is GA since release 2609 (learn.microsoft.com/azure/azure-local/manage/disconnected-operations-whats-new, updated 2026-10-22); the disconnected AKS entry is ga. SQL Server on Azure Local disconnected reached GA in September 2026 (Azure update AZ571836) and is not modelled as a service entry yet. L3 disconnected pricing is still negotiated only; no Azure Local-specific certification found."
     },
     "confidence": "medium",
     "regions_count": 2
@@ -322,7 +322,7 @@
         {
           "code": "Azure Kubernetes Service",
           "name": "Azure Kubernetes Service",
-          "status": "preview",
+          "status": "ga",
           "fulfills": [
             "kubernetes"
           ],
@@ -330,7 +330,7 @@
           "key_custody": [
             "operator-managed"
           ],
-          "last_verified": "2026-08-06",
+          "last_verified": "2026-11-01",
           "source": "curated"
         },
         {

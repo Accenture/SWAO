@@ -94,6 +94,10 @@ export const ServiceIntakeProvenanceSchema = z.object({
   fields: z.array(z.string()).optional(),
   /** #3210: fields carried verbatim in the client's wording (free text, not translated). */
   source_text_fields: z.array(z.string()).optional(),
+  /** #3521: intake workbook this app was scaffolded from (file name only, never a path). */
+  source: z.string().optional(),
+  /** #3521: SHA-256 of the intake workbook bytes at scaffold time. */
+  source_sha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).strict();
 
 export const ServiceAppConfigSchema = z.object({

@@ -36,6 +36,7 @@ import {
   LicenseTierError,
   FEATURE_GATES,
   normalizeTier,
+  _resetLicenseFileWarning,
 } from './license-guard.js';
 
 // --- helpers ---
@@ -249,6 +250,64 @@ describe('LicenseGuard.load() -- corrupted / malformed key', () => {
       exp: '2099-12-31',
       licensee: 'Test',
     }, null, 2), 'utf-8');
+    expect(() => LicenseGuard.load()).toThrow(LicenseInvalidError);
+  });
+});
+
+// #3536: a licence file without a usable key (legacy `{}` copied forward by
+// the #2588 migration, `{"key": null}`, hand-edited invalid JSON) crashed every
+// command with "Cannot read properties of undefined (reading 'startsWith')".
+// It must degrade to Community with a warning and leave the file in place.
+describe('LicenseGuard.load() -- licence file without a usable key (#3536)', () => {
+  const cases: Array<[string, string]> = [
+    ['empty object {}', '{}'],
+    ['key null', '{"key": null}'],
+    ['key empty string', '{"key": ""}'],
+    ['key not a string', '{"key": 42, "tier": "enterprise"}'],
+    ['invalid JSON', '{"key": "SWAO-'],
+    ['not an object', '[]'],
+  ];
+  for (const [label, body] of cases) {
+    it(`falls back to Community for ${label}, warns once and keeps the file`, () => {
+      _resetLicenseFileWarning();
+      mkdirSync(join(_paths.licensePath, '..'), { recursive: true });
+      writeFileSync(_paths.licensePath, body, 'utf-8');
+      const writes: string[] = [];
+      const orig = process.stderr.write.bind(process.stderr);
+      (process.stderr as { write: unknown }).write = (chunk: unknown) => { writes.push(String(chunk)); return true; };
+      try {
+        const g1 = LicenseGuard.load();
+        const g2 = LicenseGuard.load();
+        expect(g1.state.tier).toBe('community');
+        expect(g1.state.licenseFileProblem).toMatch(/invalid JSON|no licence key/);
+        expect(g2.state.tier).toBe('community');
+      } finally {
+        (process.stderr as { write: unknown }).write = orig;
+      }
+      const warnings = writes.filter((w) => w.includes('[warn] The licence file'));
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain('running as Community');
+      expect(readFileSync(_paths.licensePath, 'utf-8')).toBe(body);
+    });
+  }
+
+  it('a legacy {} file copied forward by the #2588 migration no longer crashes', () => {
+    _resetLicenseFileWarning();
+    _paths.legacyLicencePath = join(tmpDir, '.swao-license.json');
+    writeFileSync(_paths.legacyLicencePath, '{}', 'utf-8');
+    const orig = process.stderr.write.bind(process.stderr);
+    (process.stderr as { write: unknown }).write = () => true;
+    try {
+      expect(LicenseGuard.load().state.tier).toBe('community');
+    } finally {
+      (process.stderr as { write: unknown }).write = orig;
+    }
+    expect(existsSync(_paths.licensePath)).toBe(true); // migration still copies; load tolerates it
+  });
+
+  it('a licence file with a key string but a bad signature still throws (no silent downgrade)', () => {
+    mkdirSync(join(_paths.licensePath, '..'), { recursive: true });
+    writeFileSync(_paths.licensePath, JSON.stringify({ key: 'payload.signature' }), 'utf-8');
     expect(() => LicenseGuard.load()).toThrow(LicenseInvalidError);
   });
 });

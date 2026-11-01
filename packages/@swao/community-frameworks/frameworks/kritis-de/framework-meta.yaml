@@ -52,6 +52,7 @@ framework:
     target_frameworks:
       - BSI_C5               # cloud-hosted KRITIS systems require C5 Type 2
       - BSI_GRUNDSCHUTZ_2023 # ISMS methodology baseline for KRITIS operators
+      - BSI_GRUNDSCHUTZ_PP   # Grundschutz++ successor methodology (BSI-Standard 300-1)
       - ISO_27001            # BNetzA IT-Sicherheitskatalog mandates ISO 27001 for energy/water
       - DORA                 # Finance + ICT sectors have dual KRITIS + DORA obligation
       - NIS2                 # NIS2 Art 21 essential entity requirements overlap KRITIS §8a

@@ -67,6 +67,24 @@ describe('classifyMouseInput', () => {
   });
 });
 
+describe('classifyMouseInput: Ink ESC-stripped form (#3519)', () => {
+  it('classifies SGR reports without the leading ESC (as Ink 4 useInput delivers them)', () => {
+    expect(classifyMouseInput('[<64;10;5M')).toBe('wheel-up');
+    expect(classifyMouseInput('[<65;10;5M')).toBe('wheel-down');
+    expect(classifyMouseInput('[<0;10;5M')).toBe('noise');
+  });
+
+  it('classifies X10 reports without the leading ESC', () => {
+    expect(classifyMouseInput('[M' + String.fromCharCode(32 + 65) + '!!')).toBe('wheel-down');
+  });
+
+  it('leaves ordinary keyboard input that starts with [ alone', () => {
+    expect(classifyMouseInput('[')).toBeNull();
+    expect(classifyMouseInput('[<')).toBeNull();
+    expect(classifyMouseInput('[M')).toBeNull();
+  });
+});
+
 describe('MouseReportingManager (#1391)', () => {
   it('writes enable on first acquire and disable on last release only', () => {
     const writes: string[] = [];

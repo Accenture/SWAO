@@ -100,6 +100,21 @@ export function buildServiceWorkspaceProbe(workspacePath: string): ServiceProbeR
   const invalid = apps.filter((a) => !ServiceAppConfigSchema.safeParse(a.doc).success).map((a) => a.id);
   if (invalid.length > 0) errors.push(`invalid apps/<id>/.swao.yml for ${listShort(invalid)}`);
 
+  // #3521: a second intake workbook next to an earlier import scaffolds every service twice.
+  const bySource = new Map<string, number>();
+  for (const a of apps) {
+    const src = typeof a.doc?.['intake']?.['source'] === 'string' ? String(a.doc['intake']['source']) : '(source not recorded)';
+    bySource.set(src, (bySource.get(src) ?? 0) + 1);
+  }
+  if (bySource.size > 1) {
+    const parts = [...bySource.entries()].sort(([x], [y]) => x.localeCompare(y)).map(([s, n]) => `${s} (${n})`);
+    warnings.push(`service apps come from ${bySource.size} intake sources: ${parts.join(', ')}; services may be listed twice (swao service init --replace keeps one workbook)`);
+  }
+  const recorded = readYaml(join(workspacePath, '.swao.yml'))?.['service_portfolio']?.['app_count'];
+  if (typeof recorded === 'number' && apps.length > 0 && recorded !== apps.length) {
+    warnings.push(`${apps.length} service app folder(s) under apps/, but service_portfolio.app_count is ${recorded} (apps from another intake, or folders added or removed by hand)`);
+  }
+
   // Apps named in the scaffold signals or cluster membership must have a folder.
   const signalsPath = join(workspacePath, 'wsp', 'signals', 'scaffold-signals.json');
   if (!existsSync(signalsPath)) {

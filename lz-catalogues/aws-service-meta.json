@@ -1,7 +1,7 @@
 {
   "schema_version": "0.1",
   "description": "AWS, AWS ESC, and AWS ISO-E service display metadata derived from botocore service-2.json files. Each entry: name (serviceFullName), id (serviceId), abbreviation (serviceAbbreviation). Null fields indicate no service-2.json was found for that service code. Used by the lz-catalog-services HTML publication block for friendly display names.",
-  "generated_at": "2026-10-25",
+  "generated_at": "2026-11-01",
   "source": "https://github.com/boto/botocore/tree/develop/botocore/data",
   "partitions": [
     "aws",

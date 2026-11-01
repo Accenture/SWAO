@@ -577,3 +577,22 @@ Unknown
 Unlicense
 
   big-integer
+
+=============================================================================
+THIRD-PARTY CONTENT NOTICES
+=============================================================================
+
+This product includes content (not software) from the following sources,
+licensed separately from the Apache-2.0 SWAO code.
+
+-----------------------------------------------------------------------------
+CC-BY-SA-4.0
+
+  BSI Grundschutz++ Anwenderkatalog and BSI mapping collections
+  Source: BSI Stand-der-Technik-Bibliothek,
+          https://github.com/BSI-Bund/Stand-der-Technik-Bibliothek
+  Publisher: Bundesamt für Sicherheit in der Informationstechnik (BSI)
+  Used in: community-frameworks/bsi-grundschutz-plus-plus/ (and its demo
+           variant), shared under CC BY-SA 4.0; see LICENSE-CC-BY-SA-4.0.txt
+           and the "Licence and attribution" section of README.md there for
+           the changes made by SWAO.

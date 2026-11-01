@@ -23,15 +23,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { Box, Text, useInput, useStdout } from 'ink';
+import { load as loadYaml } from 'js-yaml';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { findWorkspace, LicenseGuard } from '@swao/core';
-import { discoverServiceApps, rankServiceApps, resolveServiceIntake, SERVICE_INTAKE_DIR } from '@swao/module-service-assessment';
+import { discoverServiceApps, planServiceInit, rankServiceApps, resolveServiceIntake, SERVICE_INTAKE_DIR, type IntakeSourceConflict, type OtherSourcePolicy } from '@swao/module-service-assessment';
 import { GuidanceBox, LiveOutput, ProgressBar, SelectInput, TextInput } from '@swao/tui-kit';
 import { Header } from '../components/Header.js';
 
-type Phase = 'intake' | 'mapping' | 'llm' | 'scope' | 'running' | 'finished';
+type Phase = 'intake' | 'mapping' | 'llm' | 'checking' | 'other-source' | 'scope' | 'confirm' | 'running' | 'finished';
 type Stage = 'init' | 'research' | 'assess' | 'export';
 export type ServiceScope = 'top' | 'all' | 'none';
 
@@ -39,6 +40,16 @@ export type ServiceScope = 'top' | 'all' | 'none';
 export const SERVICE_TOP_N = 20;
 /** Typical minutes per service app with an LLM (UAT 2026-10-11: 3-4 min). */
 const MINUTES_PER_APP: readonly [number, number] = [3, 4];
+/**
+ * #3518: LLM calls per app for the confirmation step. Research: the four LLM
+ * topics (LlmResearchTopic in module-service-assessment research/llm-prompts.ts:37),
+ * for every service app unless skipped. Assessment: at least one call each in
+ * Pass 04 CTX (pass-04-ctx.ts:325), Pass 09 SYNTH (pass-09-synth.ts:489),
+ * Pass 11 COMP (compliance-evaluator.ts:920, one call per 20 controls per regime)
+ * and Pass 12 BLOCKS (pass-12-blocks.ts:396); conditional passes add more.
+ */
+export const RESEARCH_LLM_CALLS_PER_APP = 4;
+export const MIN_ASSESS_LLM_CALLS_PER_APP = 4;
 const OUTPUT_LINES = 6;
 const OUTPUT_WIDTH = 100;
 const SUMMARY_ROWS = 8;
@@ -104,6 +115,50 @@ export interface ServiceInitScreenProps {
   workspacePath?: string;
   /** Test seam: replaces the CLI child process (output text in, exit code out). */
   runChild?: ServiceChildRunner;
+  /** Test seam: replaces the in-process init preview (#3521). */
+  previewInit?: ServiceInitPreviewer;
+}
+
+/** What `service init` would do, computed in-process before any child runs (#3521, #3518). */
+export interface ServiceInitPreview {
+  /** Workbook file name. */
+  sourceName: string;
+  /** App IDs the workbook scaffolds. */
+  plannedAppIds: string[];
+  /** Service apps under apps/ before the init (any source). */
+  existingServiceAppIds: string[];
+  /** Service apps of another intake workbook. */
+  conflict: IntakeSourceConflict;
+}
+
+export type ServiceInitPreviewer = (intake: string, mapping: string, workspace: string) => Promise<ServiceInitPreview | null>;
+
+const unquote = (v: string): string => v.trim().replace(/^"|"$/g, '');
+
+/**
+ * #3521: parse and plan the intake in-process (no writes) so the screen can
+ * name a second intake workbook before scaffolding. Null when the workbook
+ * cannot be read or has duplicate IDs: the CLI child then reports the error.
+ */
+export async function previewServiceInit(intake: string, mapping: string, workspace: string): Promise<ServiceInitPreview | null> {
+  try {
+    const from = unquote(intake);
+    const located = from ? null : resolveServiceIntake(workspace);
+    const intakePath = from ? resolve(from) : located!.intakePath;
+    if (!existsSync(intakePath)) return null;
+    const m = unquote(mapping);
+    const mappingPath = m ? resolve(m) : located?.mappingPath ?? undefined;
+    const plan = await planServiceInit({ workspacePath: workspace, intakePath, ...(mappingPath ? { mappingPath } : {}) });
+    if (!plan.ok) return null;
+    return {
+      sourceName: plan.source.name,
+      plannedAppIds: plan.plan.apps.map((a) => a.appId),
+      existingServiceAppIds: plan.existingServiceAppIds,
+      conflict: plan.conflict,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** #3304: `skipLlm` adds `--skip-llm` (the four LLM research topics are skipped; earlier findings are kept). */
@@ -122,11 +177,13 @@ export function buildServiceAssessArgs(workspace: string, appId: string): string
 }
 
 /** CLI arguments for the given inputs; exported for tests. An empty intake lets the CLI use wsp/inputs/service-intake/ (#3211). */
-export function buildServiceInitArgs(intake: string, mapping: string, workspace: string): string[] {
-  const from = intake.trim().replace(/^"|"$/g, '');
+export function buildServiceInitArgs(intake: string, mapping: string, workspace: string, otherSource: OtherSourcePolicy = 'refuse'): string[] {
+  const from = unquote(intake);
   const args = from ? ['service', 'init', '--from', from, '--workspace', workspace] : ['service', 'init', '--workspace', workspace];
-  const m = mapping.trim().replace(/^"|"$/g, '');
+  const m = unquote(mapping);
   if (m) args.push('--mapping', m);
+  // #3521: the operator's choice for a second intake workbook (CLI parity: --replace / --keep).
+  if (otherSource !== 'refuse') args.push(`--${otherSource}`);
   return args;
 }
 
@@ -213,6 +270,81 @@ export function estimateAssessment(apps: number): string {
   return `about ${fmt(apps * lo)} to ${fmt(apps * hi)}`;
 }
 
+/** #3518: what a scope choice means in numbers, for the option labels, the confirmation and the stage line. */
+export interface ScopePlan {
+  scope: ServiceScope;
+  /** Service apps in the workspace after the scaffold; null when the workbook could not be read in advance. */
+  totalApps: number | null;
+  /** Apps the assessment stage runs for; null when not known in advance. */
+  assessApps: number | null;
+  /** Assessment duration estimate; null when nothing is assessed or the count is unknown. */
+  duration: string | null;
+  /** LLM calls: research (all apps) plus the assessment minimum. */
+  researchLlmCalls: number | null;
+  assessLlmCallsMin: number | null;
+}
+
+export function planScope(scope: ServiceScope, totalApps: number | null, opts: { skipLlmResearch: boolean; topN?: number }): ScopePlan {
+  const topN = opts.topN ?? SERVICE_TOP_N;
+  const assessApps = scope === 'none' ? 0 : totalApps === null ? (scope === 'top' ? topN : null) : scope === 'top' ? Math.min(topN, totalApps) : totalApps;
+  return {
+    scope,
+    totalApps,
+    assessApps,
+    duration: assessApps ? estimateAssessment(assessApps) : null,
+    researchLlmCalls: opts.skipLlmResearch ? 0 : totalApps === null ? null : totalApps * RESEARCH_LLM_CALLS_PER_APP,
+    assessLlmCallsMin: assessApps === null ? null : assessApps * MIN_ASSESS_LLM_CALLS_PER_APP,
+  };
+}
+
+/** Scope tag for the stage line, e.g. "Top 20", "All 461", "no assessment" (#3518). */
+export function scopeTag(scope: ServiceScope, assessApps: number | null): string {
+  switch (scope) {
+    case 'top': return `Top ${assessApps ?? SERVICE_TOP_N}`;
+    case 'all': return assessApps === null ? 'All' : `All ${assessApps}`;
+    case 'none': return 'no assessment';
+    default: {
+      const never: never = scope;
+      return String(never);
+    }
+  }
+}
+
+/** Confirmation lines for a scope (#3518): scope, app count, duration and LLM calls. */
+export function scopeConfirmationLines(plan: ScopePlan): string[] {
+  const lines = [`Scope: ${plan.scope === 'none' ? 'None (scaffold and research only)' : plan.scope === 'top' ? `Top ${plan.assessApps ?? SERVICE_TOP_N} by risk` : 'All apps'}`];
+  lines.push(plan.totalApps === null
+    ? 'Service apps after the scaffold: not known in advance (the workbook could not be read before the scaffold)'
+    : `Service apps after the scaffold: ${plan.totalApps}`);
+  lines.push(`Apps to assess: ${plan.assessApps === null ? 'all scaffolded apps (count not known in advance)' : plan.assessApps}`);
+  if (plan.assessApps) {
+    const [lo, hi] = MINUTES_PER_APP;
+    lines.push(`Estimated assessment time: ${plan.duration} (${lo} to ${hi} min per app x ${plan.assessApps} apps)`);
+  } else if (plan.scope === 'all') {
+    lines.push(`Estimated assessment time: ${MINUTES_PER_APP[0]} to ${MINUTES_PER_APP[1]} min per app`);
+  }
+  const research = plan.researchLlmCalls === null ? `${RESEARCH_LLM_CALLS_PER_APP} per app` : `${plan.researchLlmCalls}`;
+  const assess = plan.assessLlmCallsMin === null ? `at least ${MIN_ASSESS_LLM_CALLS_PER_APP} per app` : `at least ${plan.assessLlmCallsMin}`;
+  lines.push(`LLM calls: research ${plan.researchLlmCalls === 0 ? '0 (LLM research skipped)' : research}; assessment ${plan.assessApps === 0 ? '0' : assess}`);
+  return lines;
+}
+
+/**
+ * #3518: the confirmation step may be skipped for "none" and for Top N with
+ * N <= 20 only when `service_portfolio.confirm_small_scope: false` is set in the
+ * workspace .swao.yml; "all" is always confirmed.
+ */
+export function needsScopeConfirmation(scope: ServiceScope, workspace: string, topN: number = SERVICE_TOP_N): boolean {
+  if (scope === 'all') return true;
+  if (scope === 'top' && topN > 20) return true;
+  try {
+    const doc = loadYaml(readFileSync(join(workspace, '.swao.yml'), 'utf-8')) as { service_portfolio?: { confirm_small_scope?: unknown } } | null;
+    return doc?.service_portfolio?.confirm_small_scope !== false;
+  } catch {
+    return true;
+  }
+}
+
 /** Stop a child and its own children (SWAO spawns passes and tools); Windows needs taskkill by PID. */
 function killChildTree(child: ChildProcess | null): void {
   if (!child?.pid || child.exitCode !== null) return;
@@ -255,7 +387,7 @@ export function ServiceAssessSummary({ outcomes, total, maxRows = SUMMARY_ROWS }
   );
 }
 
-export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceInitScreenProps): JSX.Element {
+export function ServiceInitScreen({ onBack, workspacePath, runChild, previewInit = previewServiceInit }: ServiceInitScreenProps): JSX.Element {
   const workspace = useRef(workspacePath ?? findWorkspace(process.cwd()) ?? process.cwd());
   const canExport = useRef<boolean | null>(null);
   const exportOk = (): boolean => (canExport.current ??= exportAllowed());
@@ -280,10 +412,16 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
   const [now, setNow] = useState(Date.now());
   const childRef = useRef<ChildProcess | null>(null);
   const cancelledRef = useRef(false);
+  const pipelineStartedRef = useRef(false);
   const backRef = useRef(false);
   const guidanceOpenRef = useRef(false);
   // #3304: the LLM research choice, reused by the R re-run.
   const skipLlmRef = useRef(false);
+  // #3521: in-process plan of the init and the choice for a second intake workbook.
+  const [preview, setPreview] = useState<ServiceInitPreview | null>(null);
+  const [otherSource, setOtherSource] = useState<OtherSourcePolicy>('refuse');
+  // #3518: the chosen scope, shown in the confirmation step and the stage line.
+  const [scope, setScope] = useState<ServiceScope | null>(null);
 
   // Heartbeat (#3169): the child is silent for minutes during LLM passes.
   useEffect(() => {
@@ -298,6 +436,12 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
     if (backRef.current || guidanceOpenRef.current) return;
     if (phase === 'running') {
       if (key.escape) { cancelledRef.current = true; killChildTree(childRef.current); }
+      return;
+    }
+    if (phase === 'confirm') {
+      // #3518: Enter starts, Esc returns to the scope question (never leaves the screen).
+      if (key.escape) setPhase('scope');
+      else if (key.return && scope) void runPipeline(mapping, scope);
       return;
     }
     if (phase === 'finished') {
@@ -387,11 +531,17 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
   };
 
   const runPipeline = async (mapping: string, scope: ServiceScope): Promise<void> => {
+    // #3518: a fast second Enter can arrive before the phase change re-renders
+    // the input handler; the ref makes the pipeline start exactly once.
+    if (pipelineStartedRef.current) return;
+    pipelineStartedRef.current = true;
     const ws = workspace.current;
+    // #3518: the app count the operator confirmed for "all".
+    const confirmedAll = scope === 'all' ? totalAppsAfterInit : null;
     setPhase('running');
 
     startStage('init');
-    const initCode = await spawnChild(buildServiceInitArgs(intake, mapping, ws), () => {});
+    const initCode = await spawnChild(buildServiceInitArgs(intake, mapping, ws, otherSource), () => {});
     if (cancelled()) return finish(false, 'Cancelled during the scaffold.');
     if (initCode !== 0) return finish(false, `swao service init exited with code ${initCode}; see the output above.`);
     const apps = discoverServiceApps(ws).map((a) => a.appId);
@@ -399,6 +549,11 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
 
     const researchCode = await researchStage(ws);
     if (cancelled()) return finish(false, 'Cancelled during research.');
+
+    // #3518: never assess more apps than the operator confirmed.
+    if (scope === 'all' && confirmedAll !== apps.length) {
+      return finish(false, `Stopped before the assessment: ${apps.length} service app(s) after the scaffold, but ${confirmedAll === null ? 'the count was not known when you confirmed' : `${confirmedAll} were confirmed`}. Nothing was assessed; start the Service Portfolio Assessment again to confirm the current count.`);
+    }
 
     if (scope !== 'none') {
       await assessStage(ws, scope === 'top' ? rankServiceApps(ws, { top: SERVICE_TOP_N }).map((a) => a.id) : apps);
@@ -432,6 +587,32 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
   };
 
   const [mapping, setMapping] = useState('');
+
+  // #3518: service apps the workspace holds after the scaffold: existing ones
+  // (minus those parked by Replace) plus the planned ones. Null when the
+  // workbook could not be read in advance.
+  const totalAppsAfterInit: number | null = preview
+    ? new Set([
+      ...preview.existingServiceAppIds.filter((id) => !(otherSource === 'replace' && preview.conflict.appIds.includes(id))),
+      ...preview.plannedAppIds,
+    ]).size
+    : null;
+  const scopePlan = (s: ServiceScope): ScopePlan => planScope(s, totalAppsAfterInit, { skipLlmResearch: skipLlmRef.current });
+  const chooseScope = (s: ServiceScope): void => {
+    setScope(s);
+    if (needsScopeConfirmation(s, workspace.current)) setPhase('confirm');
+    else void runPipeline(mapping, s);
+  };
+
+  /** #3521: plan the init before the scope question; a second intake workbook needs a choice first. */
+  const checkIntake = async (): Promise<void> => {
+    setPhase('checking');
+    const p = await previewInit(intake, mapping, workspace.current);
+    if (backRef.current) return;
+    setPreview(p);
+    setOtherSource('refuse');
+    setPhase(p && p.conflict.appIds.length > 0 ? 'other-source' : 'scope');
+  };
   const cols = stdout?.columns ?? 80;
   const width = Math.min(cols - 4, OUTPUT_WIDTH);
   const stages: Stage[] = ['init', 'research', 'assess', 'export'];
@@ -483,25 +664,60 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
               { value: 'run', label: 'Run LLM research (recommended; findings are model-cited and unverified until reviewed)' },
               { value: 'skip', label: 'Skip LLM research for this run (earlier LLM findings are kept)' },
             ]}
-            onSelect={(v) => { skipLlmRef.current = v === 'skip'; setPhase('scope'); }}
+            onSelect={(v) => { skipLlmRef.current = v === 'skip'; void checkIntake(); }}
           />
+        )}
+
+        {phase === 'checking' && <Text dimColor>Reading the intake workbook...</Text>}
+
+        {phase === 'other-source' && preview && (
+          <>
+            <Text color="yellow" wrap="wrap">
+              [warn] The workspace already holds {preview.conflict.appIds.length} service app(s) from another intake workbook ({preview.conflict.sources.join(', ')}). Scaffolding {preview.sourceName} ({preview.plannedAppIds.length} apps) next to them lists services twice when both workbooks describe the same servers.
+            </Text>
+            <SelectInput
+              label={`How should SWAO treat the ${preview.conflict.appIds.length} existing app(s)?`}
+              // The non-destructive choice comes first, so a stray Enter changes nothing.
+              options={[
+                { value: 'back', label: 'Back: choose another intake workbook (or use a new workspace)' },
+                { value: 'replace', label: `Replace: move them to parked-apps/ and scaffold ${preview.sourceName}` },
+                { value: 'keep', label: `Keep both: add ${preview.plannedAppIds.length} app(s) next to the ${preview.conflict.appIds.length} existing ones` },
+              ]}
+              onSelect={(v) => {
+                if (v === 'back') { setPreview(null); setPhase('intake'); return; }
+                setOtherSource(v as OtherSourcePolicy);
+                setPhase('scope');
+              }}
+            />
+          </>
         )}
 
         {phase === 'scope' && (
           <SelectInput
             label="What should SWAO run? (no further questions after this)"
             options={[
-              { value: 'top', label: `Scaffold, research all apps, assess the top ${SERVICE_TOP_N} by risk (recommended; ${estimateAssessment(SERVICE_TOP_N)})` },
-              { value: 'all', label: 'Scaffold, research and assess every app (3 to 4 min and several LLM calls per app)' },
+              { value: 'top', label: `Scaffold, research all apps, assess the top ${scopePlan('top').assessApps ?? SERVICE_TOP_N} by risk (recommended; ${estimateAssessment(scopePlan('top').assessApps || SERVICE_TOP_N)})` },
+              // #3518: the "all" label names the app count and the total time.
+              { value: 'all', label: totalAppsAfterInit === null
+                ? 'Scaffold, research and assess every app (app count not known in advance; 3 to 4 min and several LLM calls per app)'
+                : `Scaffold, research and assess every app (${totalAppsAfterInit} apps, ${estimateAssessment(totalAppsAfterInit)})` },
               { value: 'none', label: 'Scaffold and research only (no LLM assessment)' },
             ]}
-            onSelect={(v) => { void runPipeline(mapping, v as ServiceScope); }}
+            onSelect={(v) => chooseScope(v as ServiceScope)}
           />
+        )}
+
+        {phase === 'confirm' && scope && (
+          <Box flexDirection="column">
+            <Text bold color={scope === 'all' ? 'yellow' : undefined}>Confirm what SWAO will run:</Text>
+            {scopeConfirmationLines(scopePlan(scope)).map((l) => <Text key={l} wrap="truncate-end">  {l}</Text>)}
+            <Box marginTop={1}><Text color="cyan">Enter -- start   Esc -- back to the scope question</Text></Box>
+          </Box>
         )}
 
         {phase === 'running' && stage && (
           <>
-            <ProgressBar value={stageIndex} total={stages.length} label={`Stage ${stageIndex + 1}/${stages.length}: ${STAGE_LABEL[stage]} | ${formatDuration(now - stageStart)}`} color="cyan" />
+            <ProgressBar value={stageIndex} total={stages.length} label={`Stage ${stageIndex + 1}/${stages.length}: ${STAGE_LABEL[stage]}${scope ? ` (${scopeTag(scope, stage === 'assess' ? selected.length : scopePlan(scope).assessApps)})` : ''} | ${formatDuration(now - stageStart)}`} color="cyan" />
             {stage === 'research' && research && (
               <ProgressBar value={research.done} total={research.total} label={`Research ${research.done}/${research.total} apps`} color="cyan" />
             )}
@@ -545,7 +761,7 @@ export function ServiceInitScreen({ onBack, workspacePath, runChild }: ServiceIn
           what="Assesses third-party, SaaS, and COTS applications from an Excel inventory, with no source code required. Each row becomes one app folder; phone, e-mail, and contact columns are stored as yes/no flags only. Drop more documents into apps/<id>/ingestion/ and re-run to improve the evidence."
           details={serviceGuidanceDetails()}
           affordances={[
-            ...(phase === 'running' ? ['Esc -- cancel (finished apps are kept)'] : phase === 'finished' ? rerunAffordances({ assessApps: selected.length, export: exportOk() }) : ['Esc -- back']),
+            ...(phase === 'running' ? ['Esc -- cancel (finished apps are kept)'] : phase === 'finished' ? rerunAffordances({ assessApps: selected.length, export: exportOk() }) : phase === 'confirm' ? ['Enter -- start', 'Esc -- back to the scope question'] : ['Esc -- back']),
             'Ctrl+G -- toggle this panel',
           ]}
           onOpenChange={(open) => { guidanceOpenRef.current = open; }}

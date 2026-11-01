@@ -56,6 +56,10 @@ export interface ServiceInitCliOptions {
   mapping?: string;
   workspace?: string;
   refresh?: boolean;
+  /** #3521: park the service apps of an earlier, different intake workbook (moved to parked-apps/<stamp>/). */
+  replace?: boolean;
+  /** #3521: add the new apps next to those of an earlier, different intake workbook. */
+  keep?: boolean;
   clusterThreshold?: string;
   json?: boolean;
 }
@@ -77,10 +81,28 @@ export function ensureServiceWorkspace(explicit?: string): { path: string; creat
 export function formatServiceInitSummary(result: ServiceInitResult, workspacePath: string): string {
   const lines: string[] = [];
   if (!result.ok) {
-    lines.push(`[error] Scaffold halted: ${result.duplicateIds.length} duplicate app ID(s); no folders were written.`);
-    for (const id of result.duplicateIds) lines.push(`  - ${id}`);
-    lines.push('Make the IDs unique in the intake workbook, then re-run swao service init.');
-    return lines.join('\n');
+    switch (result.reason) {
+      case 'duplicate_ids':
+        lines.push(`[error] Scaffold halted: ${result.duplicateIds.length} duplicate app ID(s); no folders were written.`);
+        for (const id of result.duplicateIds) lines.push(`  - ${id}`);
+        lines.push('Make the IDs unique in the intake workbook, then re-run swao service init.');
+        return lines.join('\n');
+      case 'other_intake_source': {
+        // #3521: two workbooks describing the same servers scaffold every service twice.
+        const ids = result.conflict.appIds;
+        lines.push(`[error] Scaffold halted: the workspace already holds ${ids.length} service app(s) from another intake workbook (${result.conflict.sources.join(', ')}); ${result.source.name} would add ${result.plannedAppCount} app(s). Nothing was written.`);
+        lines.push(`  Apps from the other workbook: ${ids.slice(0, 5).join(', ')}${ids.length > 5 ? `, +${ids.length - 5} more` : ''}`);
+        lines.push('  Two workbooks that describe the same servers scaffold every service twice. Choose one:');
+        lines.push('    --replace   move the apps of the other workbook to parked-apps/<timestamp>/ and scaffold this one');
+        lines.push('    --keep      add the apps of this workbook next to the existing ones');
+        lines.push('    or scaffold into a new workspace (--workspace <dir>)');
+        return lines.join('\n');
+      }
+      default: {
+        const never: never = result;
+        return String(never);
+      }
+    }
   }
   const clusters = result.apps.filter((a) => a.members.length > 0);
   lines.push(`Service portfolio scaffold: ${workspacePath}`);
@@ -113,6 +135,12 @@ export function formatServiceInitSummary(result: ServiceInitResult, workspacePat
   if (result.write.skippedExisting.length > 0) {
     lines.push('  Existing service apps were not changed; use --refresh to update them from the intake file.');
   }
+  if (result.parked && result.parked.appIds.length > 0) {
+    lines.push(`  [info] ${result.parked.appIds.length} service app(s) of the earlier intake workbook moved to ${result.parked.dir}/ (--replace).`);
+  }
+  if ((result.keptOtherSource ?? []).length > 0) {
+    lines.push(`  [warn] ${(result.keptOtherSource ?? []).length} service app(s) of another intake workbook were kept (--keep); check swao service rank for services listed twice.`);
+  }
   for (const w of result.warnings) lines.push(`  [warn] ${w}`);
   if (result.unknownAppIds.length > 0) {
     lines.push('');
@@ -139,6 +167,7 @@ export async function runServiceInitCli(opts: ServiceInitCliOptions): Promise<{ 
   if (!existsSync(intakePath)) throw new Error(`intake file not found: ${opts.from}`);
   const mappingPath = opts.mapping ? resolve(opts.mapping) : located?.mappingPath ?? undefined;
   if (mappingPath && !existsSync(mappingPath)) throw new Error(`mapping file not found: ${opts.mapping}`);
+  if (opts.replace && opts.keep) throw new Error('--replace and --keep exclude each other');
   const threshold = opts.clusterThreshold !== undefined ? Number.parseInt(opts.clusterThreshold, 10) : undefined;
   if (threshold !== undefined && (!Number.isInteger(threshold) || threshold < 2)) {
     throw new Error('--cluster-threshold must be an integer of at least 2');
@@ -149,6 +178,7 @@ export async function runServiceInitCli(opts: ServiceInitCliOptions): Promise<{ 
     intakePath,
     ...(mappingPath ? { mappingPath } : {}),
     refresh: opts.refresh ?? false,
+    otherSource: opts.replace ? 'replace' : opts.keep ? 'keep' : 'refuse',
     ...(threshold !== undefined ? { clusterThreshold: threshold } : {}),
   });
   return { result, workspacePath: ws.path, workspaceCreated: ws.created };
@@ -388,6 +418,8 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
     .option('--mapping <yaml>', 'Column-map YAML for a non-standard workbook layout (Design 103 §21.1); default: a *column-map*.yaml next to the workbook in wsp/inputs/service-intake/, else header detection')
     .option('--workspace <dir>', 'Workspace root (default: nearest .swao.yml above the current directory, else the current directory)')
     .option('--refresh', 'Update existing service apps from the intake file; only keys listed in generated_fields are rewritten')
+    .option('--replace', 'If the workspace holds service apps from another intake workbook: move them to parked-apps/<timestamp>/ and scaffold this workbook')
+    .option('--keep', 'If the workspace holds service apps from another intake workbook: add the apps of this workbook next to them')
     .option('--cluster-threshold <n>', 'Minimum identical rows that form a cluster (default: 3, or service_portfolio.cluster_threshold)')
     .option('--json', 'Print the result as JSON (no PII values are included)')
     .action(async (opts: ServiceInitCliOptions) => {
@@ -396,8 +428,10 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
         if (workspaceCreated && !opts.json) console.log(`Created workspace .swao.yml at ${ws}`);
         if (opts.json) {
           console.log(JSON.stringify(result.ok
-            ? { ok: true, workspace: ws, apps: result.apps.map((a) => ({ app_id: a.appId, infra_category: a.config.infra_category, cluster_members: a.members.length })), write: result.write, signal_count: result.signals.length, unknown: result.unknownAppIds, warnings: result.warnings }
-            : { ok: false, reason: result.reason, duplicate_ids: result.duplicateIds }, null, 2));
+            ? { ok: true, workspace: ws, apps: result.apps.map((a) => ({ app_id: a.appId, infra_category: a.config.infra_category, cluster_members: a.members.length })), write: result.write, signal_count: result.signals.length, unknown: result.unknownAppIds, warnings: result.warnings, source: result.source.name, parked: result.parked, kept_other_source: result.keptOtherSource }
+            : result.reason === 'duplicate_ids'
+              ? { ok: false, reason: result.reason, duplicate_ids: result.duplicateIds }
+              : { ok: false, reason: result.reason, message: formatServiceInitSummary(result, ws), other_source: { app_count: result.conflict.appIds.length, app_ids: result.conflict.appIds, sources: result.conflict.sources }, planned_app_count: result.plannedAppCount, options: ['--replace', '--keep', '--workspace <new dir>'] }, null, 2));
         } else {
           console.log(formatServiceInitSummary(result, ws));
         }

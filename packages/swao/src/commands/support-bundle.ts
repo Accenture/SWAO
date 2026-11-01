@@ -16,7 +16,7 @@
 // `swao support-bundle` -- collect a PII-free diagnostic bundle of SWAO event
 // logs and environment info for support hand-off (#1515, #1599).
 //
-// Bundle v2.4 contents (#2965, #3437):
+// Bundle v2.5 contents (#2965, #3437, #3517):
 //   manifest.json            -- SWAO version, OS, Node, license tier, pii_attestation, prior_bundles
 //   execution-trace.ndjson   -- event codes + timestamps + PII-redacted message and context (#2421)
 //   environment.json         -- platform, arch, node_version, swao_env_vars, runtime_mode,
@@ -49,10 +49,17 @@
 // tool-output file names, key suffixes); every file gets the host pass. #3331: a final pass (redactUserIdentity)
 // replaces the home directory / any user-profile path with <home> and the OS
 // user / host name with <user> / <host> anywhere in every file's text.
+// #3517 (bundle v2.5, support-bundle-client-ids.ts): app IDs become per-bundle
+// pseudonyms (<app-xxxxxx>) in every file and entry name; client file names
+// (inputs, ingestion, intake workbooks, source) become <file-xxxxxxxx.ext>;
+// workspace-structure.json keeps shape, sizes and extensions only for client
+// folders; every value passes the PII and secret guards and every known
+// detected-secret value is masked. The bundle is refused when a known secret
+// value survives. The pseudonym mapping is written locally, never into the bundle.
 
 import type { Command } from 'commander';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { homedir, hostname as osHostname, userInfo } from 'node:os';
 import { basename, join, relative, resolve as resolvePath, sep } from 'node:path';
@@ -67,8 +74,17 @@ import { emptyCounts, redactPiiValue } from '../util/redact-pii.js';
 import { collectServiceArtefacts } from './support-bundle-service.js';
 import { summariseLlmPassForBundle } from './support-bundle-pass-summary.js'; // #3441
 import { createBundleRedactor, redactWorkspaceRoot, type BundleRedactor } from './support-bundle-redact.js';
+import {
+  collectClientIdentifiers, collectKnownSecrets, createClientIdPseudonymiser, entriesWithKnownSecrets, finalSecretPass, pseudonymTag,
+} from './support-bundle-client-ids.js';
 
-export const BUNDLE_VERSION = '2.4';
+export const BUNDLE_VERSION = '2.5';
+
+/** #3517: entries that carry input file names; they get the file-shape fallback when collection was truncated. */
+const FILE_NAME_FALLBACK_ENTRIES: ReadonlySet<string> = new Set(['execution-trace.ndjson', 'error-context.json', 'run-manifests.json']);
+
+/** #3517: redaction level recorded in manifest.json. */
+export const REDACTION_LEVEL = 'client-identifiers-pseudonymised';
 
 /** #3437: manifest attestation; describes what the redaction passes guarantee. */
 export const PII_ATTESTATION = 'diagnostics-only-client-identifiers-redacted';
@@ -77,7 +93,10 @@ export const PII_ATTESTATION_SCOPE =
   + 'e-mail, phone or user identity. Host names and URLs are replaced by per-bundle placeholders in every file; '
   + 'absolute paths and tool-output file names are replaced in log messages, log context and error excerpts; '
   + 'the workspace root and user profile are replaced everywhere; chat turn text is dropped (length only). '
-  + 'App ids, workspace-relative file names and SWAO install paths in health-check.json may remain.';
+  + 'App ids and client file names (inputs, ingestion, intake workbooks, source) are replaced by per-bundle '
+  + 'pseudonyms in every file and entry name; client folder contents keep shape, sizes and extensions only; '
+  + 'e-mail, IP addresses, credential values and known detected secrets are masked in every file. '
+  + 'SWAO install paths in health-check.json may remain.';
 
 function listLogFiles(workspaceRoot: string): string[] {
   const out: string[] = [];
@@ -165,6 +184,23 @@ function buildWorkspaceConfig(workspaceRoot: string, counts: ReturnType<typeof e
         if (eng['name'] !== undefined) eng['name'] = '[REDACTED]';
         if (eng['client_code'] !== undefined) eng['client_code'] = '[REDACTED]';
         if (eng['engagement_lead'] !== undefined) eng['engagement_lead'] = '[REDACTED]';
+      }
+      // #3517: the client's spreadsheet column and sheet names never leave the
+      // workspace; only their counts stay for diagnostics.
+      const sp = configObj['service_portfolio'];
+      if (sp !== null && typeof sp === 'object' && !Array.isArray(sp)) {
+        const block = sp as Record<string, unknown>;
+        const headers = block['headers'];
+        if (headers !== undefined) {
+          block['column_counts'] = headers !== null && typeof headers === 'object'
+            ? Object.values(headers as Record<string, unknown>).map((h) => (h !== null && typeof h === 'object' ? Object.keys(h).length : 0))
+            : [];
+          delete block['headers'];
+        }
+        if (Array.isArray(block['sheets'])) {
+          block['sheet_count'] = block['sheets'].length;
+          delete block['sheets'];
+        }
       }
     }
     return config;
@@ -1113,7 +1149,16 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const counts = emptyCounts();
   // #3437: client-identifier pass (hosts, absolute paths, tool-output file
   // names, key suffixes) on top of the PII redactor, keyed per bundle.
-  const clientRedactor = createBundleRedactor();
+  const salt = randomBytes(16).toString('hex');
+  const clientRedactor = createBundleRedactor(salt);
+  // #3517: app IDs (folders, parked apps, IDs named in the logs) and client file
+  // names, pseudonymised with the same per-bundle salt; known secret values for
+  // the masking pass and the refusal guard (memory only, never logged).
+  const clientIds = collectClientIdentifiers(workspaceRoot, allEntries.map((e) => e.app_id).filter((id): id is string => typeof id === 'string'));
+  const pseudonyms = createClientIdPseudonymiser(clientIds, pseudonymTag(salt));
+  const secretScan = collectKnownSecrets(workspaceRoot);
+  const knownSecrets = secretScan.values;
+  pseudonyms.counts.collection_truncated += secretScan.truncated.length;
   const scrubMessage = (m: string): string => clientRedactor.scrubText(redactPiiValue(m, counts) as string);
   const scrubContext = (c: Record<string, unknown>): Record<string, unknown> =>
     clientRedactor.scrubValue(redactPiiValue(c, counts)) as Record<string, unknown>;
@@ -1170,7 +1215,12 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   const workspaceConfig = buildWorkspaceConfig(workspaceRoot, counts);
 
   // v2.0 artefact: workspace-structure.json
-  const workspaceStructure = buildWorkspaceStructure(workspaceRoot);
+  // #3517: directory shape, sizes and extensions; client names hashed.
+  const rawStructure = buildWorkspaceStructure(workspaceRoot);
+  const workspaceStructure = {
+    wsp: rawStructure.wsp.map((e) => ({ ...e, path: pseudonyms.structurePath(e.path) })),
+    apps: rawStructure.apps.map((e) => ({ ...e, path: pseudonyms.structurePath(e.path) })),
+  };
 
   // v2.0 artefact: run-manifests.json
   const runManifests = buildRunManifests(workspaceRoot);
@@ -1270,7 +1320,10 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     // pii_redaction carries counts only, never values.
     pii_attestation: PII_ATTESTATION,
     pii_attestation_scope: PII_ATTESTATION_SCOPE,
+    // #3517: redaction level and client-identifier counts (never values).
+    redaction_level: REDACTION_LEVEL,
     pii_redaction: clientRedactor.counts,
+    client_identifier_redaction: pseudonyms.counts,
     ...(service ? { service_pii_redactions: service.redactions.length } : {}),
   };
 
@@ -1340,16 +1393,37 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
   // #3437: workspace-root replacement and host / URL pseudonymisation over
   // every other file's text (replacements contain no quote or backslash, so
   // JSON stays valid), then the manifest with the final redaction counts.
+  // #3517: then app IDs and client file names (content and entry names), and the
+  // PII / secret pass over every value, including known detected-secret values.
+  const piiCounts = emptyCounts();
   for (const entry of tarEntries) {
     if (entry.name === 'manifest.json') continue;
-    const text = redactWorkspaceRoot(entry.content.toString('utf-8'), workspaceRoot);
-    entry.content = Buffer.from(clientRedactor.scrubHosts(text), 'utf-8');
+    let text = redactWorkspaceRoot(entry.content.toString('utf-8'), workspaceRoot);
+    text = pseudonyms.scrub(clientRedactor.scrubHosts(text));
+    // A truncated collection may have missed client file names: fall back to
+    // replacing every document- or source-shaped file token in the files that
+    // carry input names (trace, error context, run manifests).
+    if (pseudonyms.counts.collection_truncated > 0 && FILE_NAME_FALLBACK_ENTRIES.has(entry.name)) text = pseudonyms.scrubFileShapes(text);
+    entry.name = pseudonyms.entryName(entry.name);
+    entry.content = Buffer.from(finalSecretPass(entry.name, text, knownSecrets, piiCounts, pseudonyms.counts), 'utf-8');
   }
-  tarEntries[0]!.content = Buffer.from(JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+  manifest.bundle_contents = manifest.bundle_contents.map((n) => pseudonyms.entryName(n));
+  const manifestText = pseudonyms.scrub(JSON.stringify(manifest, null, 2) + '\n');
+  tarEntries[0]!.content = Buffer.from(finalSecretPass('manifest.json', manifestText, knownSecrets, piiCounts, pseudonyms.counts), 'utf-8');
 
   const identity = currentBundleIdentity();
   for (const entry of tarEntries) {
     entry.content = Buffer.from(redactUserIdentity(entry.content.toString('utf-8'), identity), 'utf-8');
+  }
+
+  // #3517: refuse the bundle when a known detected-secret value survived (entry
+  // names only in the message, never the value).
+  const leaking = entriesWithKnownSecrets(tarEntries, knownSecrets);
+  if (leaking.length > 0) {
+    console.error(`[error] Support bundle refused: a detected secret value survived redaction in ${leaking.join(', ')}. No bundle was written; please report this to the SWAO team without the bundle.`);
+    try { logPortfolio('error', 'support.bundle.refused', 'Support bundle refused: detected secret survived redaction', { context: { entries: leaking.length } }); } catch { /* best-effort */ }
+    process.exitCode = 1;
+    return;
   }
 
   const tar = buildTar(tarEntries);
@@ -1362,7 +1436,20 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     return;
   }
 
+  // #3517: pseudonym -> original mapping, local only (never in the archive):
+  // in the workspace, not next to the bundle, so an --out share never holds it.
+  let mappingPath: string | null = null;
+  if (Object.keys(pseudonyms.mapping).length > 0) {
+    const localDir = join(reduced ? diagDir : join(workspaceRoot, 'wsp', 'support-diag'), 'local');
+    try {
+      mkdirSync(localDir, { recursive: true });
+      mappingPath = join(localDir, `${ts}.pseudonyms.json`);
+      writeFileSync(mappingPath, JSON.stringify({ bundle: basename(outPath), note: 'Local only. Do not send this file; it maps the bundle pseudonyms back to client names.', mapping: pseudonyms.mapping }, null, 2) + '\n', 'utf-8');
+    } catch { mappingPath = null; }
+  }
+
   console.log(`[ok]  Support bundle created: ${outPath}`);
+  if (mappingPath) console.log(`[ok]  Pseudonym mapping kept locally (do not send): ${mappingPath}`);
   console.log(`[ok]  ${traceEntries.length} event trace entries | ${errorEntries.length} error context entries | ${files.length} log files`);
   console.log(`[ok]  17 diagnostic artefacts (bundle v${BUNDLE_VERSION})`);
   if (service) {
@@ -1370,7 +1457,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     if (service.redactions.length > 0) console.log(`[warn] PII redacted (${service.redactions.length} field(s)) - check redaction-log.txt`);
   }
   console.log(`[ok]  Extract with: tar -xzf "${outPath}"`);
-  console.log('[ok]  Diagnostics only: no document content or credentials; client hosts, paths and chat text redacted.');
+  console.log('[ok]  Diagnostics only: no document content or credentials; client hosts, paths, app IDs, file names and chat text redacted.');
   // #2644: emit support.bundle.created so log monitors can confirm successful completion.
   try {
     logPortfolio('info', 'support.bundle.created', `Support bundle created: ${outPath}`, {
@@ -1388,7 +1475,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
 export function registerSupportBundle(program: Command): void {
   program
     .command('support-bundle')
-    .description('Create a redacted diagnostic bundle v2.4 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents + connector meta + per-session chat stats) for SWAO support hand-off (#1515 #1599 #1776 #2965)')
+    .description('Create a redacted diagnostic bundle v2.5 (event trace + environment + pass inventory + LLM legs + frameworks + challenge agents + connector meta + per-session chat stats) for SWAO support hand-off (#1515 #1599 #1776 #2965)')
     .option('--workspace <path>', 'workspace root (default: resolve from cwd)')
     .option('--out <dir>', 'output directory (default: <workspace>/wsp/support-diag/)')
     .action((opts: { workspace?: string; out?: string }) => cmdSupportBundle(opts));

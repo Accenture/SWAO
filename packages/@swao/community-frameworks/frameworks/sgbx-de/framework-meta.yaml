@@ -52,6 +52,7 @@ framework:
       - BSI_TR_03107       # eGov IAM trust levels apply when BundID or ELSTER is in use
       - BSI_C5             # cloud hosting of Sozialdaten requires C5 attestation
       - BSI_GRUNDSCHUTZ_2023  # ISMS baseline for systems handling Sozialdaten
+      - BSI_GRUNDSCHUTZ_PP    # Grundschutz++ successor ISMS baseline
       - NIS2               # operators of health/social IT may be essential entities
 
   redistribution_note: >-

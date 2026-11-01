@@ -32,6 +32,7 @@ Each framework is a pair of YAML files:
 | `AI_10_PILLARS` | `ai-10-pillars` | 10 Pillars of Secure AI Systems | 11 |
 | `BSI_C5` | `bsi-c5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) | 62 |
 | `BSI_GRUNDSCHUTZ_2023` | `bsi-grundschutz-2023` | BSI IT-Grundschutz Kompendium Edition 2023 | 105 |
+| `BSI_GRUNDSCHUTZ_PP` | `bsi-grundschutz-plus-plus` | BSI Grundschutz++ (Anwenderkatalog, BSI-Standard 300-1); BSI content under CC BY-SA 4.0 | 1000 |
 | `COBIT_5` | `cobit-5` | COBIT 5: Governance and Management of Enterprise IT (original SWAO wording) | 37 |
 | `EC_CSF` | `ec-csf` | EC Cloud Sovereignty Framework v1.2.1 | 34 |
 | `EU_AI_ACT` | `eu-ai-act` | EU Artificial Intelligence Act | 37 |

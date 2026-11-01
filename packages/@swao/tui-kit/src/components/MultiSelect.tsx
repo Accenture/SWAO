@@ -47,6 +47,10 @@ interface MultiSelectProps {
    *  exceeds this value the list scrolls and shows up/down count indicators
    *  so the frame height stays bounded (#0620). */
   visibleCount?: number;
+  /** #3519: opt-in mouse wheel navigation (default false). When false, terminal
+   *  mouse reporting is not enabled, so the wheel scrolls the terminal and
+   *  never moves the cursor. Same contract as SelectInput. */
+  wheelNavigation?: boolean;
 }
 
 export function MultiSelect({
@@ -59,6 +63,7 @@ export function MultiSelect({
   onCursorChange,
   allowEmptyConfirm = false,
   visibleCount,
+  wheelNavigation = false,
 }: MultiSelectProps): JSX.Element {
   // #0245: when allValue is set, treat it as a derived aggregate of the
   // individual options. The "all" row displays checked iff every other
@@ -107,7 +112,11 @@ export function MultiSelect({
   // wheel ticks reach the app (otherwise the terminal scrolls its own
   // scrollback and the cursor appears frozen). Restored on unmount and on
   // process exit via the shared refcounted manager.
-  useEffect(() => acquireMouseReporting(), []);
+  // #3519: only when wheel navigation is explicitly enabled; by default the
+  // wheel belongs to the terminal scrollback and cannot move the cursor.
+  const wheelNavRef = useRef(wheelNavigation);
+  wheelNavRef.current = wheelNavigation;
+  useEffect(() => (wheelNavigation ? acquireMouseReporting() : undefined), [wheelNavigation]);
   const [selected, setSelected] = useState<Set<string>>(() => {
     const initial = new Set(initialSelected);
     if (allValue && initial.has(allValue)) {
@@ -174,6 +183,7 @@ export function MultiSelect({
     };
     const mouse = classifyMouseInput(input);
     if (mouse) {
+      if (!wheelNavRef.current) return; // #3519: swallowed unless opted in
       if (mouse === 'wheel-up')   setIdx(i => step(i, -1));
       if (mouse === 'wheel-down') setIdx(i => step(i, 1));
       return;

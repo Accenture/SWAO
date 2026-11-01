@@ -36,6 +36,8 @@ export const SERVICE_INPUT_FOLDERS = ['vendor', 'security', 'certifications', 'b
 
 export interface ServicePortfolioMeta {
   source: string;
+  /** #3521: SHA-256 of the intake workbook; with `source` it identifies the intake generation. */
+  source_sha256?: string;
   mapping: string | null;
   imported_at: string;
   app_count: number;

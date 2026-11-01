@@ -161,6 +161,9 @@ export interface LicenseState {
    *  downgraded to Community. The value is the original tier (e.g.
    *  'enterprise'). Used by the TUI to show an expiry banner. */
   expiredTier?: LicenseTier;
+  /** #3536: set when a licence file exists but is unreadable (invalid JSON or
+   *  no string `key`); the session runs as Community and this says why. */
+  licenseFileProblem?: string;
 }
 
 export class LicenseTierError extends Error {
@@ -426,12 +429,45 @@ function writeStateFile(state: StateFile): void {
 
 // ---- license file helpers ----
 
-interface LicenseFile {
-  key: string;
-  activated_at: string;
-  tier: LicenseTier;
-  exp: string;
-  licensee: string;
+// #3536: shape check at the licence-file boundary. Only `key` is load-bearing
+// (everything else is re-derived from the verified payload); passthrough keeps
+// the informational fields and anything a newer binary wrote.
+const LicenseFileSchema = z.object({ key: z.string().min(1) }).passthrough();
+
+/**
+ * Reads the licence file. Returns the key, or a problem description when the
+ * file is not valid JSON or has no non-empty string `key` (e.g. a legacy `{}`
+ * copied forward by the #2588 migration). Before #3536 such a file crashed
+ * every command with "Cannot read properties of undefined (reading 'startsWith')".
+ */
+function readLicenseFileKey(path: string): { key: string } | { problem: string } {
+  let json: unknown;
+  try {
+    json = JSON.parse(readFileSync(path, 'utf-8'));
+  } catch (e) {
+    return { problem: `invalid JSON (${e instanceof Error ? e.message.slice(0, 120) : String(e)})` };
+  }
+  const parsed = LicenseFileSchema.safeParse(json);
+  if (!parsed.success) return { problem: 'no licence key in the file' };
+  return { key: parsed.data.key };
+}
+
+let warnedLicenseFileProblem = false;
+/** Test hook: re-arm the once-per-process warning. */
+export function _resetLicenseFileWarning(): void { warnedLicenseFileProblem = false; }
+
+function reportLicenseFileProblem(path: string, problem: string): void {
+  if (warnedLicenseFileProblem) return;
+  warnedLicenseFileProblem = true;
+  try {
+    logPortfolio('warn', 'licence.file.invalid', 'Licence file is unreadable; running as Community', {
+      context: { licence_path: path, reason: problem },
+    });
+  } catch { /* logging best-effort */ }
+  process.stderr.write(
+    `[warn] The licence file ${path} is unreadable (${problem}); running as Community. ` +
+    'Re-activate with: swao license activate <signed-key>\n',
+  );
 }
 
 interface LicensePayload {
@@ -601,7 +637,20 @@ export class LicenseGuard {
 
     // Try to load license file
     if (existsSync(_paths.licensePath)) {
-      const licenseFile = JSON.parse(readFileSync(_paths.licensePath, 'utf-8')) as LicenseFile;
+      const licenseFile = readLicenseFileKey(_paths.licensePath);
+      if ('problem' in licenseFile) {
+        // #3536: a malformed licence file degrades to Community with a warning
+        // instead of a TypeError on every command. The file is left in place.
+        reportLicenseFileProblem(_paths.licensePath, licenseFile.problem);
+        return new LicenseGuard({
+          tier: 'community',
+          fingerprint: fp,
+          firstRun: stateFile.first_run,
+          assessmentCount: count,
+          daysElapsed,
+          licenseFileProblem: licenseFile.problem,
+        });
+      }
 
       const payload: LicensePayload = verifyKey(licenseFile.key, fp);
 

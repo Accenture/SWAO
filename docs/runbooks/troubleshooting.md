@@ -301,6 +301,10 @@ The bundle does **not** include API keys, credential vault contents, assessment 
 
 Since bundle v2.4 (#3437), internal host names, URLs, absolute paths and file names in log messages and tool output are replaced by per-bundle placeholders, chat turns carry only their length (no prompt or reply text), and key suffixes are dropped. `manifest.json` records the attestation and the redaction counts (never the values).
 
+Since bundle v2.5 (#3517) the bundle carries no client application IDs or names and no client file names. App IDs and app names are replaced by per-bundle pseudonyms (for example `<app-1a2b3c>`) in every file and file name of the bundle; the names of input documents, intake workbooks and source files become `<file-...>` placeholders that keep only the extension; `workspace-structure.json` keeps the folder shape, sizes and extensions of client folders, not their names. The sheet and column names of a service intake workbook are dropped: `workspace-config.json` keeps only `sheet_count` and `column_counts`, and sheet or column names in other files become `<sheet-...>` / `<column-...>` placeholders. Every value passes a final e-mail, IP address and credential check, and any secret value SWAO can find in the workspace inputs, runs or chat history is masked; if such a value were still present, SWAO refuses to write the bundle. The mapping from pseudonyms back to the real names is written to `wsp/support-diag/local/<timestamp>.pseudonyms.json` in the workspace, never into the bundle: keep it, do not send it. It lets you answer questions from the SWAO team about a pseudonymised app. `manifest.json` states `bundle_version: 2.5` and `redaction_level`.
+
+Bundles created before SWAO 1.5 (bundle v2.3 and earlier) contain the full text of chat answers, which can repeat client data. Delete such bundles and create a new one with the current version.
+
 ### Generate the bundle
 
 ```bash

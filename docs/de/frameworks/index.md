@@ -2,7 +2,7 @@
 
 Community-Rahmenwerke sind die Compliance- und Bewertungskataloge, gegen die SWAO Anwendungen prüft: Verordnungen (DSGVO, DORA, NIS2, KI-Verordnung der EU), Standards (ISO/IEC 27001, SOC 2, BSI C5), Programme für souveräne Clouds (EUCS, SecNumCloud, EC Cloud Sovereignty Framework), nationale Regelwerke (KRITIS-DE, NCA, SAMA) sowie die SWAO-eigenen Rahmenwerke für die LLM-Auswahl und das Anwendungsportfolio-Management. Jedes Rahmenwerk ist ein Ordner mit zwei Dateien: `framework-meta.yaml` (Identität, Herausgeber, Version, Bewertung) und `controls.yaml` (die Kontrollen).
 
-SWAO liefert **24 Rahmenwerke** sowie **9 Demo-Varianten** mit einer kleinen Auswahl an Kontrollen für Workshops und Live-Präsentationen aus.
+SWAO liefert **25 Rahmenwerke** sowie **9 Demo-Varianten** mit einer kleinen Auswahl an Kontrollen für Workshops und Live-Präsentationen aus.
 
 ## Wie Rahmenwerke genutzt werden
 
@@ -35,6 +35,7 @@ COBIT 5 wird wieder ausgeliefert, mit Control-Texten in eigenen SWAO-Formulierun
 | [10 Säulen sicherer KI-Systeme](/de/frameworks/ai-10-pillars) | `AI_10_PILLARS` | Alok Sharan (Konzept) | 11 | `AI_10_PILLARS_DEMO` (11) |
 | [BSI C5:2020](/de/frameworks/bsi-c5) | `BSI_C5` | BSI | 62 | keine |
 | [BSI IT-Grundschutz-Kompendium 2023](/de/frameworks/bsi-grundschutz-2023) | `BSI_GRUNDSCHUTZ_2023` | BSI | 105 | `BSI_GRUNDSCHUTZ_2023_DEMO` (11) |
+| [BSI Grundschutz++](/de/frameworks/bsi-grundschutz-plus-plus) | `BSI_GRUNDSCHUTZ_PP` | BSI | 1000 | keine |
 | [COBIT 5](/de/frameworks/cobit-5) | `COBIT_5` | ISACA | 37 | keine |
 | [Verordnung über die digitale operationale Resilienz (DORA)](/de/frameworks/dora) | `DORA` | Europäische Union (Verordnung 2022/2554) | 31 | `DORA_DEMO` (12) |
 | [Cloud-Souveränitätsrahmen der Europäischen Kommission v1.2.1](/de/frameworks/ec-csf) | `EC_CSF` | Europäische Kommission (DIGIT) | 34 | keine |

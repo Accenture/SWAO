@@ -53,6 +53,7 @@ framework:
   cross_mapping_hints:
     target_frameworks:
       - BSI_GRUNDSCHUTZ_2023
+      - BSI_GRUNDSCHUTZ_PP
       - ISO_27001
       - GDPR
       - SOC_2

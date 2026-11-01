@@ -7,7 +7,7 @@ All Service Portfolio Assessment commands work on a SWAO workspace: a folder wit
 Scaffolds one app folder per intake row.
 
 ```bash
-swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--cluster-threshold <n>] [--json]
+swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json]
 ```
 
 | Option | Meaning |
@@ -16,6 +16,8 @@ swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--worksp
 | `--mapping <yaml>` | Column map for a layout that header detection does not cover. Without it, and when `--from` is omitted, SWAO uses a column map next to the workbook in `wsp/inputs/service-intake/` (a `.yaml` or `.yml` file whose name contains `column-map` or `columnmap`) if exactly one exists; otherwise it detects the columns from the header row. See [Column mapping](/service-assessment/column-mapping). |
 | `--workspace <dir>` | Workspace root. If no `.swao.yml` exists there, one is created. |
 | `--refresh` | Update existing service apps from the workbook. Only keys listed in each app's `generated_fields` are rewritten; your manual edits elsewhere are preserved. See [Editing safely](/service-assessment/configuration#editing-safely). |
+| `--replace` | The workspace already holds service apps from another intake workbook: move those app folders to `parked-apps/<timestamp>/` (nothing is deleted), then scaffold this workbook. |
+| `--keep` | The workspace already holds service apps from another intake workbook: add the apps of this workbook next to them. Services that both workbooks describe are then listed twice. |
 | `--cluster-threshold <n>` | Minimum number of identical rows that form a cluster (default 3, or `service_portfolio.cluster_threshold`). |
 | `--json` | Machine-readable result. Contains no PII values. |
 
@@ -24,9 +26,10 @@ What it does, in order:
 1. Reads every sheet, resolves the column layout, and coerces values (numbers, booleans, capacity units such as `16 GB`).
 2. Scrubs PII: contact, phone, and e-mail columns are reduced to true/false presence flags; vendor names that look like a personal name are redacted.
 3. Stops with an error if two rows share an app ID (no folder is written).
-4. Classifies each row against SWAO-INFRA-CAT and groups identical rows of cluster-capable categories (for example VDI workers) into one cluster app.
-5. Estimates lift-and-shift cloud cost from the hardware columns.
-6. Writes `apps/<id>/.swao.yml`, one empty drop folder `apps/<id>/ingestion/` per app (no further subfolders), `wsp/signals/scaffold-signals.json`, and the `service_portfolio:` block in the workspace `.swao.yml`.
+4. Stops with an error if the workspace already holds service apps scaffolded from a different intake workbook (no folder is written). The message names the other workbook and the number of apps, and the options `--replace`, `--keep`, or a new workspace. This also applies to `--refresh`. A workbook with the same file name (an edited version) or the same content (a renamed copy) counts as the same workbook. Every app records its workbook in `intake.source` (file name only) and `intake.source_sha256`.
+5. Classifies each row against SWAO-INFRA-CAT and groups identical rows of cluster-capable categories (for example VDI workers) into one cluster app.
+6. Estimates lift-and-shift cloud cost from the hardware columns.
+7. Writes `apps/<id>/.swao.yml`, one empty drop folder `apps/<id>/ingestion/` per app (no further subfolders), `wsp/signals/scaffold-signals.json`, and the `service_portfolio:` block in the workspace `.swao.yml`.
 
 The summary lists, per sheet, the recognised columns (field and column letter, and whether they came from header detection or the column map) and warns when no column was found for the operating system (end-of-life research), the app name (CVE and advisory research), or the vendor (CVE research). It then lists the SCAFFOLD signals and every app SWAO could not classify; assign `infra_category` for those manually.
 

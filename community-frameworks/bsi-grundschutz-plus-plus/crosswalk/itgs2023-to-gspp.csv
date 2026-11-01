@@ -1,0 +1,1186 @@
+baustein_2023,requirement_2023,sub_requirement_2023,relationship_2023_to_gspp,relationship_gspp_to_2023,gspp_id,gspp_title,gspp_id_in_pinned_catalogue,swao_bsi_grundschutz_2023_control,elementare_gefaehrdung,bsi_mapping_status,bsi_mapping_method
+APP.1.1,APP.1.1.A10,APP.1.1.A10-UA.6,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.1.1,APP.1.1.A10,APP.1.1.A10-UA.6,superset-of,subset-of,DEV.4.3,Softwarebestandteile (SBOM),yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.1.1,APP.1.1.A12,APP.1.1.A12-UA.1,intersects-with,intersects-with,KONF.10.4,Deaktivierung nicht benötigter Anwendungsfunktionen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.1.1,APP.1.1.A12,APP.1.1.A12-UA.1,subset-of,superset-of,KONF.2.4.2,Externe Cloud-Anbindungen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.1.1,APP.1.1.A15,APP.1.1.A15-UA.1,superset-of,subset-of,KONF.11.9,,no,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.1,APP.1.1.A15,APP.1.1.A15-UA.1,intersects-with,intersects-with,KONF.14.1,Verschlüsselung beim Transport,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.1,APP.1.1.A16,APP.1.1.A16-UA.1,intersects-with,intersects-with,DEV.5.3,Integritätsprüfung,yes,,G 0.22: Manipulation von Informationen,draft,human
+APP.1.1,APP.1.1.A16,APP.1.1.A16-UA.2,subset-of,superset-of,KONF.10.2,Kryptographische Verfahren in Anwendungen,yes,,G 0.22: Manipulation von Informationen,draft,human
+APP.1.1,APP.1.1.A17,APP.1.1.A17-UA.1,intersects-with,intersects-with,SENS.7.9,Aktive Inhalte,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.1.1,APP.1.1.A17,APP.1.1.A17-UA.2,intersects-with,intersects-with,SENS.7.2,Virenscan,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.1.1,APP.1.1.A17,APP.1.1.A17-UA.3,intersects-with,intersects-with,SENS.2.6,Umgehung von Sicherheitsfunktionen,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.1.1,APP.1.1.A17,APP.1.1.A17-UA.4,intersects-with,intersects-with,SENS.7.1,Spezifische Sensibilisierung,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.1.1,APP.1.1.A17,APP.1.1.A17-UA.5,intersects-with,intersects-with,SENS.2.3,Verschlüsselung und Signatur,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.1.1,APP.1.1.A2,APP.1.1.A2-UA.1,intersects-with,intersects-with,KONF.12.1.11,Aktive Dateiinhalte,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+APP.1.1,APP.1.1.A2,APP.1.1.A2-UA.1,intersects-with,intersects-with,KONF.13.1.2,Interpretation aktiver Inhalte,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+APP.1.1,APP.1.1.A2,APP.1.1.A2-UA.2,intersects-with,intersects-with,SENS.7.9,Aktive Inhalte,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+APP.1.1,APP.1.1.A2,APP.1.1.A2-UA.3,intersects-with,intersects-with,SENS.7.9,Aktive Inhalte,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+APP.1.1,APP.1.1.A3,APP.1.1.A3-UA.1,intersects-with,intersects-with,KONF.7.1,Echtzeitscanner,yes,,G 0.39: Schadprogramme,draft,human
+APP.1.1,APP.1.1.A3,APP.1.1.A3-UA.1,intersects-with,intersects-with,SENS.7.2,Virenscan,yes,,G 0.39: Schadprogramme,draft,human
+APP.1.1,APP.1.1.A3,APP.1.1.A3-UA.4,equivalent-to,equivalent-to,DET.6.2,Beurteilung von Eingängen,yes,,G 0.39: Schadprogramme,draft,human
+APP.1.1,APP.1.1.A3,APP.1.1.A3-UA.4,intersects-with,intersects-with,KONF.7.1,Echtzeitscanner,yes,,G 0.39: Schadprogramme,draft,human
+APP.1.2,APP.1.2.A1,APP.1.2.A1-UA.1,intersects-with,intersects-with,KONF.6.14,Browser Sandboxing,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.2,APP.1.2.A1,APP.1.2.A1-UA.2,intersects-with,intersects-with,KONF.6.14,Browser Sandboxing,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.2,APP.1.2.A1,APP.1.2.A1-UA.4,intersects-with,intersects-with,KONF.12.1.2,Content Security Policy (CSP),yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.2,APP.1.2.A1,APP.1.2.A1-UA.6,intersects-with,intersects-with,KONF.12.1.3,Same-Origin-Policy,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.2,APP.1.2.A1,APP.1.2.A1-UA.6,intersects-with,intersects-with,KONF.12.1.4,Subresource Integrity-Prüfung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.1,subset-of,superset-of,ARCH.5.1.10.1,Bekannte schädliche Inhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.1,intersects-with,intersects-with,ARCH.5.1.10.2,Bekannte illegale Inhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.1,intersects-with,intersects-with,KONF.12.1.7,Filtern schädlicher Webinhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.2,intersects-with,intersects-with,KONF.12.1.2,Content Security Policy (CSP),yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.2,intersects-with,intersects-with,KONF.12.1.7,Filtern schädlicher Webinhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.2,intersects-with,intersects-with,SENS.7.24,Zertifikatswarnungen,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.3,equal-to,equal-to,ARCH.5.1.10.1,Bekannte schädliche Inhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.3,superset-of,subset-of,ARCH.5.1.10.2,Bekannte illegale Inhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A11,APP.1.2.A11-UA.3,intersects-with,intersects-with,ARCH.5.1.9,Filterung von DNS,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A12,APP.1.2.A12-UA.1,intersects-with,intersects-with,NOT.3.6,Sicherheitsmechanismen,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.1.2,APP.1.2.A2,APP.1.2.A2-UA.2,intersects-with,intersects-with,KONF.14.1,Verschlüsselung beim Transport,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A2,APP.1.2.A2-UA.4,intersects-with,intersects-with,KONF.12.1.5,HTTP Strict Transport Security (HSTS),yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A3,APP.1.2.A3-UA.6,intersects-with,intersects-with,KONF.12.1.1,Zertifikatsprüfung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A3,APP.1.2.A3-UA.7,intersects-with,intersects-with,KONF.12.2,Verschlüsselungsstatus der aktuellen Verbindung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A6,APP.1.2.A6-UA.3,equivalent-to,equivalent-to,KONF.12.4,Speicherung von Zugangsdaten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.1.2,APP.1.2.A7,APP.1.2.A7-UA.1,intersects-with,intersects-with,ARCH.5.1.10,Webfilterung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A7,APP.1.2.A7-UA.1,intersects-with,intersects-with,KONF.12.3,Cookies,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.2,APP.1.2.A9,APP.1.2.A9-UA.1,intersects-with,intersects-with,KONF.6.15,Virtualisierte Browser-Umgebung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.1.4,APP.1.4.A1,APP.1.4.A1-UA.1,intersects-with,intersects-with,SENS.8.1,Screen Lock,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+APP.1.4,APP.1.4.A12,APP.1.4.A12-UA.1,intersects-with,intersects-with,ASST.7.3.2,Löschverfahren,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.4,APP.1.4.A14,APP.1.4.A14-UA.3,intersects-with,intersects-with,SENS.4.1.5,Biometrische Authentifikation,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.4,APP.1.4.A15,APP.1.4.A15-UA.1,subset-of,superset-of,TEST.3.1.10,Lasttest,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+APP.1.4,APP.1.4.A15,APP.1.4.A15-UA.3,subset-of,superset-of,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+APP.1.4,APP.1.4.A15,APP.1.4.A15-UA.3,subset-of,superset-of,TEST.3.1.10,Lasttest,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+APP.1.4,APP.1.4.A16,APP.1.4.A16-UA.1,intersects-with,intersects-with,KONF.2.5.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.1.4,APP.1.4.A3,APP.1.4.A3-UA.1,intersects-with,intersects-with,KONF.2.5.1.1,,no,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.4,APP.1.4.A7,APP.1.4.A7-UA.2,intersects-with,intersects-with,KONF.11.9,,no,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.4,APP.1.4.A8,APP.1.4.A8-UA.1,intersects-with,intersects-with,KONF.11.8,Verschlüsselung schützenswerter Daten (at-rest),yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.1.4,APP.1.4.A8,APP.1.4.A8-UA.3,subset-of,superset-of,DET.3.2,Integration von Cloud-Diensten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.2.1,APP.2.1.A1,APP.2.1.A1-UA.1,intersects-with,intersects-with,GC.6.1.3,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.2.1,APP.2.1.A1,APP.2.1.A1-UA.2,intersects-with,intersects-with,GC.6.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.2.2,APP.2.2.A1,APP.2.2.A1-UA.2,intersects-with,intersects-with,BER.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.2.2,APP.2.2.A22,APP.2.2.A22-UA.1,intersects-with,intersects-with,BER.3.5,Identität-Zugangskonto,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.2.2,APP.2.2.A23,APP.2.2.A23-UA.1,intersects-with,intersects-with,BER.5.3,Vorgehensweise zum Widerruf,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.2.2,APP.2.2.A3,APP.2.2.A3-UA.3,subset-of,superset-of,UMS.5.2,Dokumentation von Ausnahmen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A1,APP.3.1.A1-UA.1,equivalent-to,equivalent-to,KONF.11.1,Authentifizierung vor dem Zugriff,yes,BSI_APP31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A1,APP.3.1.A1-UA.2,intersects-with,intersects-with,KONF.11.1.2,Authentifizierung von Netzverbindungen - clientseitig,yes,BSI_APP31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A1,APP.3.1.A1-UA.4,intersects-with,intersects-with,BER.3.10,Anmeldeversuchsgrenze am System,yes,BSI_APP31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A1,APP.3.1.A1-UA.4,intersects-with,intersects-with,BER.3.9,Ereignisgesteuerte Deaktivierung,yes,BSI_APP31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A11,APP.3.1.A11-UA.2,equivalent-to,equivalent-to,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.15: Abhören,draft,human
+APP.3.1,APP.3.1.A11,APP.3.1.A11-UA.2,superset-of,subset-of,KONF.11.1.2,Authentifizierung von Netzverbindungen - clientseitig,yes,,G 0.15: Abhören,draft,human
+APP.3.1,APP.3.1.A12,APP.3.1.A12-UA.2,superset-of,subset-of,KONF.10.4,Deaktivierung nicht benötigter Anwendungsfunktionen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.1,APP.3.1.A14,APP.3.1.A14-UA.1,intersects-with,intersects-with,KONF.11.9,,no,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.1,APP.3.1.A14,APP.3.1.A14-UA.2,intersects-with,intersects-with,DEV.3.4,Passwort-Hashing,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.1,APP.3.1.A14,APP.3.1.A14-UA.3,intersects-with,intersects-with,KONF.6.9,Zugriff auf Code,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.1,APP.3.1.A21,APP.3.1.A21-UA.1,intersects-with,intersects-with,KONF.12.1.10,HTTP-Response-Header,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.3.1,APP.3.1.A21,APP.3.1.A21-UA.2,subset-of,superset-of,KONF.12.1.10,HTTP-Response-Header,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.3.1,APP.3.1.A21,APP.3.1.A21-UA.2,intersects-with,intersects-with,KONF.12.1.2,Content Security Policy (CSP),yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.3.1,APP.3.1.A21,APP.3.1.A21-UA.2,intersects-with,intersects-with,KONF.12.1.5,HTTP Strict Transport Security (HSTS),yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.3.1,APP.3.1.A4,APP.3.1.A4-UA.1,intersects-with,intersects-with,KONF.6.11,Einschränkung von Uploads,yes,BSI_APP31_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.1,APP.3.1.A8,APP.3.1.A8-UA.1,intersects-with,intersects-with,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.1,APP.3.1.A8,APP.3.1.A8-UA.2,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.1,intersects-with,intersects-with,KONF.2.1,Grundkonfiguration für Systeme,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.1,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.2,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.4,equivalent-to,equivalent-to,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.5,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A1,APP.3.2.A1-UA.6,intersects-with,intersects-with,KONF.2.4,Deaktivierung nicht benötigter Systemfunktionen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A11,APP.3.2.A11-UA.1,superset-of,subset-of,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.15: Abhören,draft,human
+APP.3.2,APP.3.2.A12,APP.3.2.A12-UA.5,equivalent-to,equivalent-to,DEV.3.2,Routinen zur Fehlerbehandlung,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A15,APP.3.2.A15-UA.1,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A15,APP.3.2.A15-UA.2,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A18,APP.3.2.A18-UA.1,intersects-with,intersects-with,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A18,APP.3.2.A18-UA.1,subset-of,superset-of,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A18,APP.3.2.A18-UA.2,superset-of,subset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A18,APP.3.2.A18-UA.2,intersects-with,intersects-with,ARCH.5.1.4,UDP-basierte Angriffe,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A18,APP.3.2.A18-UA.2,subset-of,superset-of,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A2,APP.3.2.A2-UA.1,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A2,APP.3.2.A2-UA.1,intersects-with,intersects-with,KONF.6.9,Zugriff auf Code,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A2,APP.3.2.A2-UA.2,intersects-with,intersects-with,KONF.6.10,Auflistung von Verzeichnisinhalten,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A2,APP.3.2.A2-UA.3,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.2,superset-of,subset-of,REA.1.1,Verfahren und Regelungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.2,superset-of,subset-of,REA.1.1.2,Zuweisung der Aufgaben,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.2,intersects-with,intersects-with,REA.2.6.3,Koordinierung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.3,intersects-with,intersects-with,DET.2.1.2,Meldeformulare,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.3,subset-of,superset-of,DET.5.9,Externe Schwachstellenmeldungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.4,intersects-with,intersects-with,DET.5.9,Externe Schwachstellenmeldungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A20,APP.3.2.A20-UA.4,superset-of,subset-of,DET.5.9.1,Bonusprogramm,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.2,APP.3.2.A4,APP.3.2.A4-UA.1,intersects-with,intersects-with,DET.3.1.1,Authentifizierungen,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A4,APP.3.2.A4-UA.1,subset-of,superset-of,DET.3.1.10,Nutzungsstatistik,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A4,APP.3.2.A4-UA.1,intersects-with,intersects-with,DET.3.1.12,Datenverarbeitungen,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A4,APP.3.2.A4-UA.1,superset-of,subset-of,DET.3.1.4,Systemfehler,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A4,APP.3.2.A4-UA.1,superset-of,subset-of,DET.3.1.9,Fehler der Anwendung,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.2,APP.3.2.A7,APP.3.2.A7-UA.1,subset-of,superset-of,GC.7.1,Vorgehen bei der Informationssicherheitseinstufung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+APP.3.3,APP.3.3.A12,APP.3.3.A12-UA.1,intersects-with,intersects-with,KONF.3.2,Speicherverschlüsselung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.3.3,APP.3.3.A14,APP.3.3.A14-UA.1,intersects-with,intersects-with,DET.3.1.4,Systemfehler,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.3,APP.3.3.A14,APP.3.3.A14-UA.1,intersects-with,intersects-with,DEV.3.2,Routinen zur Fehlerbehandlung,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.3,APP.3.3.A14,APP.3.3.A14-UA.1,intersects-with,intersects-with,KONF.7.1,Echtzeitscanner,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.3,APP.3.3.A14,APP.3.3.A14-UA.2,intersects-with,intersects-with,DET.3.3,Filterung nicht benötigter Inhalte,yes,,G 0.26: Fehlfunktion von Geräten oder Systemen,draft,human
+APP.3.4,APP.3.4.A12,APP.3.4.A12-UA.1,subset-of,superset-of,PERS.4.2.1,Produktspezifische Schulungen und Sensibilisierungen,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.3.4,APP.3.4.A15,APP.3.4.A15-UA.1,subset-of,superset-of,KONF.14.1,Verschlüsselung beim Transport,yes,,G 0.15: Abhören,draft,human
+APP.3.4,APP.3.4.A3,APP.3.4.A3-UA.5,subset-of,superset-of,DEV.4.9,"Voreinstellungen nach dem Prinzip ""Security by Default""",yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.3.6,APP.3.6.A1,APP.3.6.A1-UA.1,intersects-with,intersects-with,KONF.13.10,Authentifizierung der Server-Zertifikate über DNS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.6,APP.3.6.A1,APP.3.6.A1-UA.2,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.3.6,APP.3.6.A11,APP.3.6.A11-UA.2,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A11,APP.3.6.A11-UA.2,subset-of,superset-of,ARCH.7.2,Dedizierte Hardware,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A15,APP.3.6.A15-UA.3,subset-of,superset-of,DET.3.1.10,Nutzungsstatistik,yes,,G 0.22: Manipulation von Informationen,draft,human
+APP.3.6,APP.3.6.A16,APP.3.6.A16-UA.1,subset-of,superset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.6,APP.3.6.A16,APP.3.6.A16-UA.2,subset-of,superset-of,ARCH.2.2.6,Demilitarisierte Zone,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.6,APP.3.6.A2,APP.3.6.A2-UA.1,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A2,APP.3.6.A2-UA.2,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A4,APP.3.6.A4-UA.3,equivalent-to,equivalent-to,KONF.12.14,DNS-Falschinformationen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+APP.3.6,APP.3.6.A7,APP.3.6.A7-UA.1,superset-of,subset-of,DET.4.7,Auslaufen von Domains,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A7,APP.3.6.A7-UA.2,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A7,APP.3.6.A7-UA.2,subset-of,superset-of,DET.4.16,Ressourcenauslastung der Server-Dienste,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.3.6,APP.3.6.A8,APP.3.6.A8-UA.1,superset-of,subset-of,DET.4.7,Auslaufen von Domains,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+APP.4.2,APP.4.2.A13,APP.4.2.A13-UA.3,intersects-with,intersects-with,DEV.2.5,Einschränkung des Zugriffs auf Zugangsdaten,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+APP.4.2,APP.4.2.A14,APP.4.2.A14-UA.1,intersects-with,intersects-with,BER.5.3,Vorgehensweise zum Widerruf,yes,,G 0.22: Manipulation von Informationen,draft,human
+APP.4.2,APP.4.2.A14,APP.4.2.A14-UA.2,subset-of,superset-of,BER.5.1,"Ausgabe, Registrierung und Zuordnung",yes,,G 0.22: Manipulation von Informationen,draft,human
+APP.4.2,APP.4.2.A28,APP.4.2.A28-UA.3,intersects-with,intersects-with,NOT.1.1,Verfahren und Regelungen,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.4.2,APP.4.2.A30,APP.4.2.A30-UA.1,subset-of,superset-of,DET.4.4,Änderungen an Sicherheitsrichtlinien,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.2,APP.4.2.A30,APP.4.2.A30-UA.2,subset-of,superset-of,DET.5.10,Zeitnahes Patchmanagement,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.2,APP.4.2.A30,APP.4.2.A30-UA.2,equivalent-to,equivalent-to,DET.5.10.2,Automatisierte Überwachung von Systemupdates,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.2,APP.4.2.A30,APP.4.2.A30-UA.2,superset-of,subset-of,DET.5.10.3,Automatisierte Überwachung von Anwendungsupdates,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.2,APP.4.2.A32,APP.4.2.A32-UA.1,subset-of,superset-of,DET.4.1,Überwachung der Protokollierung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.2,APP.4.2.A9,APP.4.2.A9-UA.3,intersects-with,intersects-with,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.4.2,APP.4.2.A9,APP.4.2.A9-UA.3,subset-of,superset-of,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.4.3,APP.4.3.A1,APP.4.3.A1-UA.1,intersects-with,intersects-with,GC.6.1.3,,no,BSI_APP43_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.4.3,APP.4.3.A1,APP.4.3.A1-UA.5,subset-of,superset-of,VRB.1.2,,no,BSI_APP43_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.4.3,APP.4.3.A1,APP.4.3.A1-UA.6,intersects-with,intersects-with,KONF.1.2,Regelmäßige Überprüfung,yes,BSI_APP43_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.4.3,APP.4.3.A1,APP.4.3.A1-UA.6,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,BSI_APP43_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.4.3,APP.4.3.A1,APP.4.3.A1-UA.6,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,BSI_APP43_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.4.3,APP.4.3.A11,APP.4.3.A11-UA.4,intersects-with,intersects-with,ARCH.9.3,Automatische Skalierung,yes,,G 0.27: Ressourcenmangel,draft,human
+APP.4.3,APP.4.3.A20,APP.4.3.A20-UA.5,subset-of,superset-of,DET.4.6,Anomale Nutzung der Anwendung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.4.3,APP.4.3.A20,APP.4.3.A20-UA.5,subset-of,superset-of,DET.5.3.3,Historische Analyse,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.4.3,APP.4.3.A20,APP.4.3.A20-UA.5,subset-of,superset-of,DET.5.6,Threat Hunting,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.4.3,APP.4.3.A22,APP.4.3.A22-UA.4,subset-of,superset-of,TEST.4.4,Geregelte Notfalländerungen,yes,,G 0.27: Ressourcenmangel,draft,human
+APP.4.3,APP.4.3.A3,APP.4.3.A3-UA.4,intersects-with,intersects-with,KONF.10.5,Überprüfung der Konfiguration,yes,BSI_APP43_A3,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A1,APP.4.4.A1-UA.1,intersects-with,intersects-with,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,BSI_APP44_A1,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A1,APP.4.4.A1-UA.1,subset-of,superset-of,TEST.4.1.1.1,,no,BSI_APP44_A1,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A15,APP.4.4.A15-UA.1,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A15,APP.4.4.A15-UA.1,subset-of,superset-of,KONF.6.1.2,Isolierung von Anwendungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A18,APP.4.4.A18-UA.3,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A2,APP.4.4.A2-UA.2,superset-of,subset-of,TEST.3.1.5,Testumgebung,yes,BSI_APP44_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A3,APP.4.4.A3-UA.6,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,BSI_APP44_A3,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.4,APP.4.4.A7,APP.4.4.A7-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.4.6,APP.4.6.A20,APP.4.6.A20-UA.1,intersects-with,intersects-with,BES.4.5.2,Mandantentrennung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.4.6,APP.4.6.A20,APP.4.6.A20-UA.1,intersects-with,intersects-with,KONF.6.6.1,Mandantenfähigkeit,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.4.6,APP.4.6.A6,APP.4.6.A6-UA.3,subset-of,superset-of,UMS.5.2,Dokumentation von Ausnahmen,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+APP.5.2,APP.5.2.A7,APP.5.2.A7-UA.4,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.5.2,APP.5.2.A7,APP.5.2.A7-UA.4,subset-of,superset-of,TEST.4.1.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.5.3,APP.5.3.A1,APP.5.3.A1-UA.3,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.15: Abhören,draft,human
+APP.5.3,APP.5.3.A1,APP.5.3.A1-UA.8,subset-of,superset-of,KONF.13.1.2,Interpretation aktiver Inhalte,yes,,G 0.15: Abhören,draft,human
+APP.5.3,APP.5.3.A11,APP.5.3.A11-UA.1,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.5.3,APP.5.3.A12,APP.5.3.A12-UA.1,equivalent-to,equivalent-to,DET.4.18,Öffentliche Blocklisten,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+APP.5.3,APP.5.3.A2,APP.5.3.A2-UA.7,equivalent-to,equivalent-to,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.15: Abhören,draft,human
+APP.5.3,APP.5.3.A9,APP.5.3.A9-UA.4,subset-of,superset-of,KONF.13.5.1,Strenge Senderpolicy,yes,,G 0.36: Identitätsdiebstahl,draft,human
+APP.5.4,APP.5.4.A11,APP.5.4.A11-UA.3,superset-of,subset-of,ARCH.8.2,Redundante TK-Anbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+APP.5.4,APP.5.4.A11,APP.5.4.A11-UA.4,intersects-with,intersects-with,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+APP.5.4,APP.5.4.A13,APP.5.4.A13-UA.1,subset-of,superset-of,ARCH.4.2,Autorisiertes Routing,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.5.4,APP.5.4.A4,APP.5.4.A4-UA.5,intersects-with,intersects-with,DET.3.2,Integration von Cloud-Diensten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+APP.6,APP.6.A1,APP.6.A1-UA.3,superset-of,subset-of,UMS.4.1,Festlegung von Umsetzungsfristen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A12,APP.6.A12-UA.2,subset-of,superset-of,TEST.5.1,Information betroffener Kreise,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A3,APP.6.A3-UA.1,intersects-with,intersects-with,BES.4.3,Beschaffung anhand der Kriterien,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A3,APP.6.A3-UA.2,intersects-with,intersects-with,BES.3.3,Unzuverlässige Lieferanten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A3,APP.6.A3-UA.3,subset-of,superset-of,DET.5.10.1,Autorisierte Bezugsquellen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A3,APP.6.A3-UA.3,intersects-with,intersects-with,DEV.4.4,Integrität externer Software,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A3,APP.6.A3-UA.3,intersects-with,intersects-with,DEV.5.3,Integritätsprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A4,APP.6.A4-UA.7,superset-of,subset-of,DET.5.10.4,Integritätsprüfung von Patches,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A4,APP.6.A4-UA.7,superset-of,subset-of,TEST.3.1.2,Verwendung externer Software,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A5,APP.6.A5-UA.1,intersects-with,intersects-with,KONF.7.9,Einschränkung der Installation,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+APP.6,APP.6.A6,APP.6.A6-UA.1,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.6,APP.6.A8,APP.6.A8-UA.2,superset-of,subset-of,TEST.3.1.2,Verwendung externer Software,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.7,APP.7.A2,APP.7.A2-UA.1,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.7,APP.7.A2,APP.7.A2-UA.2,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.7,APP.7.A3,APP.7.A3-UA.1,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.7,APP.7.A4,APP.7.A4-UA.1,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+APP.7,APP.7.A6,APP.7.A6-UA.1,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.1,CON.1.A1,CON.1.A1-UA.1,intersects-with,intersects-with,BER.7.1,Etablierte Algorithmen bei der Schlüsselerzeugung,yes,BSI_CON1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.1,CON.1.A1,CON.1.A1-UA.1,intersects-with,intersects-with,KONF.2.2,Kryptographische Verfahren in IT-Systemen,yes,BSI_CON1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.1,CON.1.A1,CON.1.A1-UA.2,intersects-with,intersects-with,BER.7.8,Etablierte Algorithmen bei der Schlüsselnutzung,yes,BSI_CON1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.1,CON.1.A15,CON.1.A15-UA.2,intersects-with,intersects-with,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.1,CON.1.A20,CON.1.A20-UA.1,subset-of,superset-of,DET.4.9,Manipulations-Checkup,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+CON.10,CON.10.A1,CON.10.A1-UA.1,intersects-with,intersects-with,KONF.11.1,Authentifizierung vor dem Zugriff,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A11,CON.10.A11-UA.1,subset-of,superset-of,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A11,CON.10.A11-UA.1,intersects-with,intersects-with,TEST.2.2.3,Dokumentation der Abhängigkeiten,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A11,CON.10.A11-UA.2,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A11,CON.10.A11-UA.3,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A11,CON.10.A11-UA.4,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A13,CON.10.A13-UA.2,intersects-with,intersects-with,DET.3.1.9,Fehler der Anwendung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A17,CON.10.A17-UA.1,intersects-with,intersects-with,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A6,CON.10.A6-UA.1,intersects-with,intersects-with,DET.4.6,Anomale Nutzung der Anwendung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A7,CON.10.A7-UA.1,intersects-with,intersects-with,ASST.4.2,Vertraulichkeit und Integrität beim Transport,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A8,CON.10.A8-UA.1,equivalent-to,equivalent-to,DEV.2.6.1,Eingabevalidierung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A8,CON.10.A8-UA.1,equivalent-to,equivalent-to,DEV.2.6.2,Ausgabekodierung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.10,CON.10.A8,CON.10.A8-UA.1,intersects-with,intersects-with,KONF.12.1.7,Filtern schädlicher Webinhalte,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.11.1,CON.11.1.A16,CON.11.1.A16-UA.6,subset-of,superset-of,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+CON.11.1,CON.11.1.A17,CON.11.1.A17-UA.5,subset-of,superset-of,TEST.5.5,Rückblick,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+CON.11.1,CON.11.1.A17,CON.11.1.A17-UA.5,subset-of,superset-of,VRB.1.2,,no,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+CON.11.1,CON.11.1.A2,CON.11.1.A2-UA.3,intersects-with,intersects-with,TEST.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.11.1,CON.11.1.A2,CON.11.1.A2-UA.3,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.11.1,CON.11.1.A2,CON.11.1.A2-UA.4,subset-of,superset-of,UMS.6.2,Fortschreibung des Umsetzungsplans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.11.1,CON.11.1.A2,CON.11.1.A2-UA.4,intersects-with,intersects-with,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.11.1,CON.11.1.A5,CON.11.1.A5-UA.4,intersects-with,intersects-with,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+CON.7,CON.7.A1,CON.7.A1-UA.5,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.7,CON.7.A7,CON.7.A7-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+CON.7,CON.7.A7,CON.7.A7-UA.6,subset-of,superset-of,KONF.7.15,Lokale Firewall,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+CON.8,CON.8.A10,CON.8.A10-UA.3,equivalent-to,equivalent-to,DEV.4.10,Protokollierung von Codeänderungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A10,CON.8.A10-UA.3,equivalent-to,equivalent-to,TEST.2.1,Versionshistorie,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.1,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.3,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.3,intersects-with,intersects-with,DEV.4.3,Softwarebestandteile (SBOM),yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.4,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.4,superset-of,subset-of,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.5,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A12,CON.8.A12-UA.5,intersects-with,intersects-with,DEV.4.3,Softwarebestandteile (SBOM),yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A2,CON.8.A2-UA.1,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,BSI_CON8_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A20,CON.8.A20-UA.1,intersects-with,intersects-with,DEV.4.4,Integrität externer Software,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+CON.8,CON.8.A20,CON.8.A20-UA.3,superset-of,subset-of,DEV.4.4,Integrität externer Software,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+CON.8,CON.8.A21,CON.8.A21-UA.1,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A21,CON.8.A21-UA.2,subset-of,superset-of,DET.5.8,Bedrohungsanalyse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A22,CON.8.A22-UA.1,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A22,CON.8.A22-UA.2,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A22,CON.8.A22-UA.2,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A22,CON.8.A22-UA.3,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A5,CON.8.A5-UA.1,superset-of,subset-of,DEV.2.1,Security by Design Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A5,CON.8.A5-UA.9,intersects-with,intersects-with,DEV.3.4,Passwort-Hashing,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+CON.8,CON.8.A6,CON.8.A6-UA.1,equivalent-to,equivalent-to,DEV.4.2,Einbindung externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+CON.8,CON.8.A6,CON.8.A6-UA.1,equivalent-to,equivalent-to,DEV.4.4,Integrität externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+CON.8,CON.8.A6,CON.8.A6-UA.2,superset-of,subset-of,DEV.4.4,Integrität externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.4,subset-of,superset-of,TEST.3.1.6,Kontinuierliche Tests,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.5,subset-of,superset-of,TEST.3.1.8,Analyse der Zusammensetzung,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.6,intersects-with,intersects-with,TEST.3.1.3,Integritätstest,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.8,subset-of,superset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.8,subset-of,superset-of,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.8,equivalent-to,equivalent-to,TEST.3.1.4,Testdaten,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.8,equivalent-to,equivalent-to,TEST.4.1.1.1,,no,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A7,CON.8.A7-UA.9,subset-of,superset-of,TEST.3.1.9,Fuzzing,yes,BSI_CON8_A7,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+CON.8,CON.8.A8,CON.8.A8-UA.1,subset-of,superset-of,DET.5.10,Zeitnahes Patchmanagement,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+CON.9,CON.9.A8,CON.9.A8-UA.2,superset-of,subset-of,TEST.5.2,Verschlüsselte Bereitstellung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+DER.1,DER.1.A1,DER.1.A1-UA.1,intersects-with,intersects-with,DET.1.1,Verfahren und Regelungen,yes,BSI_DER1_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A1,DER.1.A1-UA.2,subset-of,superset-of,DET.1.1,Verfahren und Regelungen,yes,BSI_DER1_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A1,DER.1.A1-UA.3,superset-of,subset-of,DET.1.1.3,Bekanntgabe,yes,BSI_DER1_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A1,DER.1.A1-UA.4,subset-of,superset-of,VRB.1.2,,no,BSI_DER1_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A1,DER.1.A1-UA.5,equivalent-to,equivalent-to,DET.1.2,Regelmäßige Überprüfung,yes,BSI_DER1_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A10,DER.1.A10-UA.1,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+DER.1,DER.1.A12,DER.1.A12-UA.1,subset-of,superset-of,DET.5.8,Bedrohungsanalyse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A12,DER.1.A12-UA.1,equivalent-to,equivalent-to,DET.5.8.1,Auswertung öffentlicher Quellen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A12,DER.1.A12-UA.3,subset-of,superset-of,DET.5.8.1,Auswertung öffentlicher Quellen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A12,DER.1.A12-UA.4,subset-of,superset-of,DET.5.8,Bedrohungsanalyse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A13,DER.1.A13-UA.2,subset-of,superset-of,DET.3.1.10,Nutzungsstatistik,yes,,G 0.27: Ressourcenmangel,draft,human
+DER.1,DER.1.A14,DER.1.A14-UA.2,intersects-with,intersects-with,DET.4.1,Überwachung der Protokollierung,yes,,G 0.27: Ressourcenmangel,draft,human
+DER.1,DER.1.A15,DER.1.A15-UA.3,superset-of,subset-of,DET.3.1.6,Systemspezifische Ereignisse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A15,DER.1.A15-UA.3,intersects-with,intersects-with,DET.6.1.1,Automatisierte Feststellung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A15,DER.1.A15-UA.7,subset-of,superset-of,DET.6.1.2,Automatische Alarmierung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A17,DER.1.A17-UA.1,superset-of,subset-of,DET.4.2,Automatische Angriffserkennung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A17,DER.1.A17-UA.1,intersects-with,intersects-with,DET.6.1.2,Automatische Alarmierung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A17,DER.1.A17-UA.2,equivalent-to,equivalent-to,DET.4.2,Automatische Angriffserkennung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A3,DER.1.A3-UA.1,intersects-with,intersects-with,DET.2.1,Meldeverfahren,yes,BSI_DER1_A3,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A5,DER.1.A5-UA.1,intersects-with,intersects-with,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,BSI_DER1_A5,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A5,DER.1.A5-UA.1,superset-of,subset-of,DET.3.1.9,Fehler der Anwendung,yes,BSI_DER1_A5,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A6,DER.1.A6-UA.1,superset-of,subset-of,DET.4.1,Überwachung der Protokollierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.1,DER.1.A6,DER.1.A6-UA.4,superset-of,subset-of,DET.2.3,Ständiger Bereitschaftsdienst,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.1,DER.1.A9,DER.1.A9-UA.1,intersects-with,intersects-with,DET.4.11,Anomalien in Netzen und am Perimeter,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A9,DER.1.A9-UA.1,intersects-with,intersects-with,DET.4.11.3,Netzverkehrsfluss,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A9,DER.1.A9-UA.4,subset-of,superset-of,DET.4.11,Anomalien in Netzen und am Perimeter,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.1,DER.1.A9,DER.1.A9-UA.4,intersects-with,intersects-with,DET.4.11.2,Netzwerk-Honeypots,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+DER.2.1,DER.2.1.A1,DER.2.1.A1-UA.1,intersects-with,intersects-with,REA.1.1,Verfahren und Regelungen,yes,BSI_DER21_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A11,DER.2.1.A11-UA.1,equivalent-to,equivalent-to,DET.6.1,Beurteilung von Ereignissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A16,DER.2.1.A16-UA.1,subset-of,superset-of,REA.2.3,Dokumentation von Vorfällen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A17,DER.2.1.A17-UA.4,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A18,DER.2.1.A18-UA.1,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A19,DER.2.1.A19-UA.1,subset-of,superset-of,UMS.3.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A19,DER.2.1.A19-UA.3,subset-of,superset-of,UMS.3.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A2,DER.2.1.A2-UA.1,equivalent-to,equivalent-to,REA.1.1,Verfahren und Regelungen,yes,BSI_DER21_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A2,DER.2.1.A2-UA.8,equivalent-to,equivalent-to,REA.1.2,Regelmäßige Überprüfung,yes,BSI_DER21_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A20,DER.2.1.A20-UA.1,intersects-with,intersects-with,DET.2.1.2,Meldeformulare,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A20,DER.2.1.A20-UA.1,subset-of,superset-of,DET.2.2,Security Operations Center,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A20,DER.2.1.A20-UA.2,intersects-with,intersects-with,DET.2.3,Ständiger Bereitschaftsdienst,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A20,DER.2.1.A20-UA.4,intersects-with,intersects-with,DET.2.2,Security Operations Center,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A21,DER.2.1.A21-UA.6,subset-of,superset-of,DET.2.2,Security Operations Center,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A21,DER.2.1.A21-UA.7,intersects-with,intersects-with,DET.5.6,Threat Hunting,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A21,DER.2.1.A21-UA.8,subset-of,superset-of,DET.2.2,Security Operations Center,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A21,DER.2.1.A21-UA.9,subset-of,superset-of,DET.2.2,Security Operations Center,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A22,DER.2.1.A22-UA.1,superset-of,subset-of,VRB.2.2,Anpassung des ISMS,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+DER.2.1,DER.2.1.A5,DER.2.1.A5-UA.4,equivalent-to,equivalent-to,REA.2.6,Ursachenanalyse und Behandlung,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+DER.2.1,DER.2.1.A7,DER.2.1.A7-UA.1,equivalent-to,equivalent-to,REA.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A7,DER.2.1.A7-UA.4,equivalent-to,equivalent-to,REA.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A9,DER.2.1.A9-UA.2,subset-of,superset-of,DET.2.1,Meldeverfahren,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A9,DER.2.1.A9-UA.4,equivalent-to,equivalent-to,REA.2.6.2,Kommunikation bei Vorfällen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A9,DER.2.1.A9-UA.5,equivalent-to,equivalent-to,DET.2.1,Meldeverfahren,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.1,DER.2.1.A9,DER.2.1.A9-UA.5,superset-of,subset-of,DET.2.1.3,Rückmeldungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.2,DER.2.2.A11,DER.2.2.A11-UA.1,equivalent-to,equivalent-to,REA.2.5.1,Rechtssichere Beweissicherung,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+DER.2.2,DER.2.2.A14,DER.2.2.A14-UA.1,intersects-with,intersects-with,DET.3.5,Revisionssicherheit,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.2,DER.2.2.A5,DER.2.2.A5-UA.1,subset-of,superset-of,DET.3.5,Revisionssicherheit,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.2,DER.2.2.A9,DER.2.2.A9-UA.1,intersects-with,intersects-with,DET.3.2,Integration von Cloud-Diensten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.2.3,DER.2.3.A7,DER.2.3.A7-UA.5,subset-of,superset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+DER.2.3,DER.2.3.A7,DER.2.3.A7-UA.6,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+DER.3.1,DER.3.1.A1,DER.3.1.A1-UA.1,intersects-with,intersects-with,PERF.3.1.3,Auswahl des Auditteams,yes,BSI_DER31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A1,DER.3.1.A1-UA.3,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,BSI_DER31_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A15,DER.3.1.A15-UA.1,equivalent-to,equivalent-to,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A19,DER.3.1.A19-UA.1,subset-of,superset-of,UMS.2.1,Umsetzungsplanung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A2,DER.3.1.A2-UA.1,intersects-with,intersects-with,PERF.3.1,Aufbau und Pflege eines Auditprogramms,yes,BSI_DER31_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A21,DER.3.1.A21-UA.1,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A22,DER.3.1.A22-UA.1,equivalent-to,equivalent-to,PERF.4.1,Eignungsprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A24,DER.3.1.A24-UA.5,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A4,DER.3.1.A4-UA.1,equal-to,equal-to,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A4,DER.3.1.A4-UA.1,intersects-with,intersects-with,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A4,DER.3.1.A4-UA.1,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A4,DER.3.1.A4-UA.1,intersects-with,intersects-with,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A4,DER.3.1.A4-UA.2,equivalent-to,equivalent-to,VRB.4.1,Korrekturmaßnahmen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.2,intersects-with,intersects-with,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.3,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.3,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.3,superset-of,subset-of,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.3,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A5,DER.3.1.A5-UA.5,superset-of,subset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A6,DER.3.1.A6-UA.1,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A6,DER.3.1.A6-UA.2,intersects-with,intersects-with,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A6,DER.3.1.A6-UA.2,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A6,DER.3.1.A6-UA.2,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A7,DER.3.1.A7-UA.4,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A7,DER.3.1.A7-UA.4,equivalent-to,equivalent-to,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.1,DER.3.1.A8,DER.3.1.A8-UA.1,intersects-with,intersects-with,PERF.5.1.4,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A1,DER.3.2.A1-UA.1,subset-of,superset-of,GC.8.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A1,DER.3.2.A1-UA.2,intersects-with,intersects-with,UMS.6.2,Fortschreibung des Umsetzungsplans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A1,DER.3.2.A1-UA.2,intersects-with,intersects-with,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A1,DER.3.2.A1-UA.2,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A14,DER.3.2.A14-UA.2,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A14,DER.3.2.A14-UA.2,intersects-with,intersects-with,UMS.2.1,Umsetzungsplanung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A14,DER.3.2.A14-UA.2,intersects-with,intersects-with,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A15,DER.3.2.A15-UA.1,equivalent-to,equivalent-to,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A19,DER.3.2.A19-UA.1,equal-to,equal-to,UMS.2.1,Umsetzungsplanung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A19,DER.3.2.A19-UA.2,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A22,DER.3.2.A22-UA.2,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A22,DER.3.2.A22-UA.3,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A22,DER.3.2.A22-UA.3,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A22,DER.3.2.A22-UA.3,equivalent-to,equivalent-to,UMS.6.2,Fortschreibung des Umsetzungsplans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A22,DER.3.2.A22-UA.4,subset-of,superset-of,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A5,DER.3.2.A5-UA.1,equivalent-to,equivalent-to,PERF.3.1.3,Auswahl des Auditteams,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.1,superset-of,subset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.2,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.2,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.2,intersects-with,intersects-with,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.3,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.3.2,DER.3.2.A9,DER.3.2.A9-UA.3,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A1,DER.4.A1-UA.1,intersects-with,intersects-with,TEST.4.4,Geregelte Notfalländerungen,yes,BSI_DER4_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A12,DER.4.A12-UA.1,equivalent-to,equivalent-to,NOT.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A13,DER.4.A13-UA.2,equivalent-to,equivalent-to,NOT.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A14,DER.4.A14-UA.4,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A14,DER.4.A14-UA.6,superset-of,subset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A15,DER.4.A15-UA.4,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+DER.4,DER.4.A15,DER.4.A15-UA.4,subset-of,superset-of,VRB.3.1,Identifikation von Verbesserungspotenzialen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.1,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.2,superset-of,subset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.2,superset-of,subset-of,DET.4.1,Überwachung der Protokollierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.3,intersects-with,intersects-with,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.3,superset-of,subset-of,DET.3.1.12,Datenverarbeitungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.3,superset-of,subset-of,DET.3.1.3,Anbindung von Peripheriegeräten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.6,subset-of,superset-of,DET.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.6,superset-of,subset-of,DET.2.1,Meldeverfahren,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.6,superset-of,subset-of,DET.2.1.1,Sofortmaßnahmen Nutzender,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A10,IND.1.A10-UA.6,superset-of,subset-of,DET.6.1.3,Dokumentation von Ergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A11,IND.1.A11-UA.7,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.2,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.2,intersects-with,intersects-with,DET.5.2,Schwachstellenregister,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.2,superset-of,subset-of,DET.5.3,Schwachstellenscans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.2,superset-of,subset-of,DET.5.3.3,Historische Analyse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.4,subset-of,superset-of,DET.5.8.1,Auswertung öffentlicher Quellen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A12,IND.1.A12-UA.5,superset-of,subset-of,DET.5.3.3,Historische Analyse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A13,IND.1.A13-UA.1,subset-of,superset-of,NOT.1.1,Verfahren und Regelungen,yes,,G 0.5: Naturkatastrophen,draft,human
+IND.1,IND.1.A13,IND.1.A13-UA.1,subset-of,superset-of,NOT.2.1.4,Stabsübung,yes,,G 0.5: Naturkatastrophen,draft,human
+IND.1,IND.1.A13,IND.1.A13-UA.1,subset-of,superset-of,NOT.3.4,Funktionstest,yes,,G 0.5: Naturkatastrophen,draft,human
+IND.1,IND.1.A15,IND.1.A15-UA.3,equivalent-to,equivalent-to,DET.3.1.8,Privilegierte Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A15,IND.1.A15-UA.4,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A16,IND.1.A16-UA.2,intersects-with,intersects-with,ARCH.2.2.6,Demilitarisierte Zone,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+IND.1,IND.1.A17,IND.1.A17-UA.2,intersects-with,intersects-with,DET.4.9,Manipulations-Checkup,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A17,IND.1.A17-UA.4,subset-of,superset-of,TEST.3.1.5,Testumgebung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A20,IND.1.A20-UA.1,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A20,IND.1.A20-UA.3,subset-of,superset-of,TEST.2.1,Versionshistorie,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A24,IND.1.A24-UA.1,intersects-with,intersects-with,NOT.3.5,Ausweich-Telekommunikation,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.2,intersects-with,intersects-with,ASST.2.2,Inventar der Systeme,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.2,intersects-with,intersects-with,ASST.2.3,Inventar der Anwendungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.2,intersects-with,intersects-with,BES.7.4.4,Dokumentation der Komponenten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.2,intersects-with,intersects-with,DEV.2.2,Dokumentation der (Software-)Architektur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.3,intersects-with,intersects-with,ASST.2.3,Inventar der Anwendungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.6,subset-of,superset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A4,IND.1.A4-UA.6,subset-of,superset-of,ARCH.2.5,Netzplan,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A6,IND.1.A6-UA.1,subset-of,superset-of,TEST.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A6,IND.1.A6-UA.1,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.1,IND.1.A8,IND.1.A8-UA.1,subset-of,superset-of,ARCH.2.2.5,OT-Systeme,yes,,G 0.15: Abhören,draft,human
+IND.1,IND.1.A8,IND.1.A8-UA.2,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.15: Abhören,draft,human
+IND.1,IND.1.A8,IND.1.A8-UA.2,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.15: Abhören,draft,human
+IND.2.1,IND.2.1.A1,IND.2.1.A1-UA.1,intersects-with,intersects-with,KONF.2.3,Default-Zugangsdaten in IT-Systemen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A11,IND.2.1.A11-UA.3,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A11,IND.2.1.A11-UA.3,subset-of,superset-of,TEST.4.1.1.1,,no,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A16,IND.2.1.A16-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A16,IND.2.1.A16-UA.1,superset-of,subset-of,ARCH.5.1.10.1,Bekannte schädliche Inhalte,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A2,IND.2.1.A2-UA.2,equivalent-to,equivalent-to,ASST.4.2,Vertraulichkeit und Integrität beim Transport,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A2,IND.2.1.A2-UA.2,equivalent-to,equivalent-to,KONF.14.1,Verschlüsselung beim Transport,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.1,IND.2.1.A20,IND.2.1.A20-UA.1,subset-of,superset-of,DET.5.10.4,Integritätsprüfung von Patches,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+IND.2.4,IND.2.4.A1,IND.2.4.A1-UA.5,subset-of,superset-of,ARCH.2.2.5,OT-Systeme,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+IND.2.4,IND.2.4.A1,IND.2.4.A1-UA.5,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+IND.2.4,IND.2.4.A1,IND.2.4.A1-UA.5,subset-of,superset-of,KONF.4.4,Einschränkung von Fernwartungsfunktionen,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+IND.2.7,IND.2.7.A12,IND.2.7.A12-UA.1,intersects-with,intersects-with,DET.5.10.4,Integritätsprüfung von Patches,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+IND.2.7,IND.2.7.A12,IND.2.7.A12-UA.2,intersects-with,intersects-with,TEST.3.1.2,Verwendung externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+IND.2.7,IND.2.7.A12,IND.2.7.A12-UA.2,superset-of,subset-of,TEST.5.2,Verschlüsselte Bereitstellung,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+IND.2.7,IND.2.7.A12,IND.2.7.A12-UA.3,intersects-with,intersects-with,TEST.3.1.2,Verwendung externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+IND.2.7,IND.2.7.A5,IND.2.7.A5-UA.2,intersects-with,intersects-with,UMS.4.1,Festlegung von Umsetzungsfristen,yes,,G 0.5: Naturkatastrophen,draft,human
+IND.2.7,IND.2.7.A6,IND.2.7.A6-UA.1,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.5: Naturkatastrophen,draft,human
+IND.3.2,IND.3.2.A12,IND.3.2.A12-UA.1,intersects-with,intersects-with,ARCH.2.2.5,OT-Systeme,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.3.2,IND.3.2.A3,IND.3.2.A3-UA.2,subset-of,superset-of,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.3.2,IND.3.2.A3,IND.3.2.A3-UA.2,intersects-with,intersects-with,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.3.2,IND.3.2.A5,IND.3.2.A5-UA.1,intersects-with,intersects-with,ARCH.2.2.5,OT-Systeme,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+IND.3.2,IND.3.2.A7,IND.3.2.A7-UA.1,subset-of,superset-of,ARCH.2.2.5,OT-Systeme,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+IND.3.2,IND.3.2.A7,IND.3.2.A7-UA.2,subset-of,superset-of,ARCH.2.2.5,OT-Systeme,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+IND.3.2,IND.3.2.A7,IND.3.2.A7-UA.4,superset-of,subset-of,ARCH.2.2.12,Sprungserver,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+IND.3.2,IND.3.2.A7,IND.3.2.A7-UA.4,subset-of,superset-of,ARCH.2.2.5,OT-Systeme,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+IND.3.2,IND.3.2.A8,IND.3.2.A8-UA.5,intersects-with,intersects-with,ARCH.2.2.5,OT-Systeme,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+INF.1,INF.1.A1,INF.1.A1-UA.1,intersects-with,intersects-with,GEB.1.1,Verfahren und Regelungen,yes,,G 0.1: Feuer,draft,human
+INF.10,INF.10.A1,INF.10.A1-UA.1,intersects-with,intersects-with,GEB.3.5,Einbruchhemmung,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.10,INF.10.A1,INF.10.A1-UA.1,intersects-with,intersects-with,GEB.8.1,Gesonderte Aufbewahrung,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.10,INF.10.A1,INF.10.A1-UA.1,intersects-with,intersects-with,KONF.3.4,Physischer Diebstahlschutz,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.10,INF.10.A1,INF.10.A1-UA.2,intersects-with,intersects-with,GC.8.1.1,,no,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.10,INF.10.A1,INF.10.A1-UA.4,subset-of,superset-of,ARCH.2.2.2,Gastnetz,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.1,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.1,equivalent-to,equivalent-to,ARCH.2.2.2,Gastnetz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.1,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.2,equivalent-to,equivalent-to,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.3,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.3,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.3,equal-to,equal-to,ARCH.2.2.2,Gastnetz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.4,intersects-with,intersects-with,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.4,intersects-with,intersects-with,ARCH.2.2.2,Gastnetz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.4,superset-of,subset-of,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.5,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,subset-of,superset-of,ARCH.2.2.2,Gastnetz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,intersects-with,intersects-with,ARCH.2.2.4,VoIP-Netz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,subset-of,superset-of,ARCH.5.1.5,Deaktivierung von Split Tunneling,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A6,INF.10.A6-UA.6,intersects-with,intersects-with,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.10,INF.10.A9,INF.10.A9-UA.1,intersects-with,intersects-with,ASST.6.4,Zurücksetzen auf Ausgangszustand,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.11,INF.11.A4,INF.11.A4-UA.4,intersects-with,intersects-with,ARCH.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.1,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.1,subset-of,superset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.2,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.5,subset-of,superset-of,TEST.2.2.2,Anpassung der Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.6,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A10,INF.12.A10-UA.8,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.12,INF.12.A17,INF.12.A17-UA.3,superset-of,subset-of,ARCH.9.1,Dimensionierung der Netzanbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.12,INF.12.A5,INF.12.A5-UA.1,superset-of,subset-of,ARCH.9.1,Dimensionierung der Netzanbindung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A12,INF.13.A12-UA.3,intersects-with,intersects-with,TEST.5.4,Persistenz,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+INF.13,INF.13.A12,INF.13.A12-UA.8,superset-of,subset-of,TEST.5.1,Information betroffener Kreise,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+INF.13,INF.13.A16,INF.13.A16-UA.1,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A16,INF.13.A16-UA.2,subset-of,superset-of,TEST.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A16,INF.13.A16-UA.3,intersects-with,intersects-with,TEST.2.2.1,Kategorisierung von Änderungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A16,INF.13.A16-UA.4,subset-of,superset-of,TEST.3.1,Sicherheitstest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A16,INF.13.A16-UA.4,superset-of,subset-of,TEST.3.1.9,Fuzzing,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A17,INF.13.A17-UA.4,intersects-with,intersects-with,TEST.2.2.3,Dokumentation der Abhängigkeiten,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A21,INF.13.A21-UA.1,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A21,INF.13.A21-UA.2,equal-to,equal-to,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A21,INF.13.A21-UA.4,intersects-with,intersects-with,DET.3.1.12,Datenverarbeitungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A21,INF.13.A21-UA.4,subset-of,superset-of,DET.3.1.7,"Was, Wann, Wo",yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A21,INF.13.A21-UA.4,subset-of,superset-of,TEST.2.1,Versionshistorie,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A22,INF.13.A22-UA.3,equivalent-to,equivalent-to,TEST.3.1,Sicherheitstest,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A22,INF.13.A22-UA.3,equivalent-to,equivalent-to,TEST.3.1.9,Fuzzing,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A22,INF.13.A22-UA.5,subset-of,superset-of,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A22,INF.13.A22-UA.6,intersects-with,intersects-with,TEST.3.2,Testabdeckung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.4,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.4,subset-of,superset-of,DET.5.3,Schwachstellenscans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.4,intersects-with,intersects-with,DET.5.3.1,Autorisierung kritischer Scans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.4,intersects-with,intersects-with,DET.5.3.2,Korrelation komplexer Angriffswege,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.5,subset-of,superset-of,DET.5.3,Schwachstellenscans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.5,intersects-with,intersects-with,DET.5.3.1,Autorisierung kritischer Scans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.5,intersects-with,intersects-with,DET.5.3.2,Korrelation komplexer Angriffswege,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.6,intersects-with,intersects-with,DET.5.3.1,Autorisierung kritischer Scans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A23,INF.13.A23-UA.8,subset-of,superset-of,DET.5.3.1,Autorisierung kritischer Scans,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A25,INF.13.A25-UA.1,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A25,INF.13.A25-UA.1,subset-of,superset-of,TEST.4.1.1.1,,no,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A3,INF.13.A3-UA.4,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A30,INF.13.A30-UA.1,subset-of,superset-of,TEST.3.1.10,Lasttest,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+INF.13,INF.13.A30,INF.13.A30-UA.2,subset-of,superset-of,TEST.3.1.10,Lasttest,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+INF.13,INF.13.A4,INF.13.A4-UA.4,intersects-with,intersects-with,ARCH.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.13,INF.13.A6,INF.13.A6-UA.4,subset-of,superset-of,KONF.2.5,Überprüfung der Systemkonfiguration,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.13,INF.13.A6,INF.13.A6-UA.4,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.1,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.3,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.3,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.4,subset-of,superset-of,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A11,INF.14.A11-UA.5,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A13,INF.14.A13-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.14,INF.14.A13,INF.14.A13-UA.2,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.14,INF.14.A13,INF.14.A13-UA.2,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.14,INF.14.A18,INF.14.A18-UA.1,intersects-with,intersects-with,ARCH.2.2.5,OT-Systeme,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A28,INF.14.A28-UA.2,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A28,INF.14.A28-UA.2,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+INF.14,INF.14.A6,INF.14.A6-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+INF.2,INF.2.A1,INF.2.A1-UA.1,intersects-with,intersects-with,GEB.6.4,Normgerechte Rechenzentren,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+INF.2,INF.2.A2,INF.2.A2-UA.3,equivalent-to,equivalent-to,GEB.10.2.2,Brandabschnitte,yes,,G 0.1: Feuer,draft,human
+INF.2,INF.2.A2,INF.2.A2-UA.3,equivalent-to,equivalent-to,GEB.10.2.3,Rauchdichtheit,yes,,G 0.1: Feuer,draft,human
+INF.8,INF.8.A1,INF.8.A1-UA.1,intersects-with,intersects-with,SENS.9.3,Verwahrung außer Haus,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+INF.8,INF.8.A1,INF.8.A1-UA.3,intersects-with,intersects-with,GEB.5.1,Lieferzugang,yes,,"G 0.16: Diebstahl von Geräten, Datenträgern oder Dokumenten",draft,human
+ISMS.1,ISMS.1.A1,ISMS.1.A1-UA.1,intersects-with,intersects-with,GC.6.1.2,,no,BSI_ISMS1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A1,ISMS.1.A1-UA.5,equal-to,equal-to,GC.8.1.1,,no,BSI_ISMS1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.3,intersects-with,intersects-with,UMS.3.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.5,intersects-with,intersects-with,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.5,intersects-with,intersects-with,UMS.4.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.6,subset-of,superset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.7,intersects-with,intersects-with,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A10,ISMS.1.A10-UA.7,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.1,superset-of,subset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.1,superset-of,subset-of,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.2,intersects-with,intersects-with,ARCH.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.2,intersects-with,intersects-with,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.2,equivalent-to,equivalent-to,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.5,equivalent-to,equivalent-to,PERF.5.1,Methoden und Tools,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.6,superset-of,subset-of,TEST.4.1.1,Unabhängigkeit der Autorisierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.7,superset-of,subset-of,PERF.5.1.4,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.8,intersects-with,intersects-with,VRB.2.2,Anpassung des ISMS,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A11,ISMS.1.A11-UA.8,intersects-with,intersects-with,VRB.4.1,Korrekturmaßnahmen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A12,ISMS.1.A12-UA.1,superset-of,subset-of,PERF.5.2,,no,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ISMS.1,ISMS.1.A12,ISMS.1.A12-UA.3,intersects-with,intersects-with,PERF.5.1.9,,no,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ISMS.1,ISMS.1.A12,ISMS.1.A12-UA.6,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ISMS.1,ISMS.1.A12,ISMS.1.A12-UA.6,intersects-with,intersects-with,UMS.5.2,Dokumentation von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ISMS.1,ISMS.1.A12,ISMS.1.A12-UA.6,subset-of,superset-of,VRB.1.2,,no,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ISMS.1,ISMS.1.A13,ISMS.1.A13-UA.2,superset-of,subset-of,DET.6.1.3,Dokumentation von Ergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A13,ISMS.1.A13-UA.2,intersects-with,intersects-with,UMS.5.2,Dokumentation von Ausnahmen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A13,ISMS.1.A13-UA.3,equivalent-to,equivalent-to,GC.9.1.3,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A2,ISMS.1.A2-UA.5,intersects-with,intersects-with,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,BSI_ISMS1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A2,ISMS.1.A2-UA.5,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,BSI_ISMS1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A2,ISMS.1.A2-UA.5,intersects-with,intersects-with,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,BSI_ISMS1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A2,ISMS.1.A2-UA.5,equivalent-to,equivalent-to,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,BSI_ISMS1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A2,ISMS.1.A2-UA.5,intersects-with,intersects-with,VRB.1.2,,no,BSI_ISMS1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A3,ISMS.1.A3-UA.6,superset-of,subset-of,VRB.2.2,Anpassung des ISMS,yes,BSI_ISMS1_A3,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A4,ISMS.1.A4-UA.1,equal-to,equal-to,GC.8.1.1.1,,no,BSI_ISMS1_A4,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.2,equivalent-to,equivalent-to,GC.8.1.1,,no,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.4,equal-to,equal-to,GC.8.1.1,,no,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.7,intersects-with,intersects-with,ARCH.1.1.2,Zuweisung der Aufgaben,yes,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.8,intersects-with,intersects-with,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.8,subset-of,superset-of,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A6,ISMS.1.A6-UA.8,subset-of,superset-of,VRB.2.2,Anpassung des ISMS,yes,BSI_ISMS1_A6,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A7,ISMS.1.A7-UA.1,intersects-with,intersects-with,UMS.3.1,Benennung von Umsetzungszuständigen,yes,BSI_ISMS1_A7,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A7,ISMS.1.A7-UA.3,intersects-with,intersects-with,ARCH.1.2,Regelmäßige Überprüfung,yes,BSI_ISMS1_A7,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A8,ISMS.1.A8-UA.6,subset-of,superset-of,ARCH.1.1.3,Bekanntgabe,yes,BSI_ISMS1_A8,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A8,ISMS.1.A8-UA.6,superset-of,subset-of,TEST.1.1.3,Bekanntgabe,yes,BSI_ISMS1_A8,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A9,ISMS.1.A9-UA.2,intersects-with,intersects-with,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ISMS.1,ISMS.1.A9,ISMS.1.A9-UA.2,intersects-with,intersects-with,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A1,NET.1.1.A1-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,BSI_NET11_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A1,NET.1.1.A1-UA.7,superset-of,subset-of,ARCH.2.6,Topologieüberwachung,yes,BSI_NET11_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A10,NET.1.1.A10-UA.1,subset-of,superset-of,ARCH.2.2.6,Demilitarisierte Zone,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A10,NET.1.1.A10-UA.2,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A10,NET.1.1.A10-UA.2,subset-of,superset-of,ARCH.2.2.6,Demilitarisierte Zone,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A10,NET.1.1.A10-UA.3,subset-of,superset-of,ARCH.2.2.6,Demilitarisierte Zone,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A11,NET.1.1.A11-UA.6,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A12,NET.1.1.A12-UA.1,intersects-with,intersects-with,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A13,NET.1.1.A13-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A13,NET.1.1.A13-UA.1,subset-of,superset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A13,NET.1.1.A13-UA.3,intersects-with,intersects-with,ARCH.2.5,Netzplan,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A14,NET.1.1.A14-UA.2,intersects-with,intersects-with,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A15,NET.1.1.A15-UA.2,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A15,NET.1.1.A15-UA.3,equivalent-to,equivalent-to,ARCH.2.6,Topologieüberwachung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A16,NET.1.1.A16-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A16,NET.1.1.A16-UA.2,superset-of,subset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A16,NET.1.1.A16-UA.2,superset-of,subset-of,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A17,NET.1.1.A17-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A17,NET.1.1.A17-UA.2,superset-of,subset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A17,NET.1.1.A17-UA.2,superset-of,subset-of,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A18,NET.1.1.A18-UA.1,superset-of,subset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A18,NET.1.1.A18-UA.1,superset-of,subset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A18,NET.1.1.A18-UA.10,subset-of,superset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A18,NET.1.1.A18-UA.2,subset-of,superset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A19,NET.1.1.A19-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A19,NET.1.1.A19-UA.1,equivalent-to,equivalent-to,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A19,NET.1.1.A19-UA.2,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.1,equivalent-to,equivalent-to,ARCH.1.1.1,Dokumentation,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.2,equal-to,equal-to,ARCH.2.5,Netzplan,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.3,subset-of,superset-of,ARCH.1.1.1,Dokumentation,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.4,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.4,subset-of,superset-of,VRB.1.2,,no,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.5,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.5,equivalent-to,equivalent-to,ARCH.2.4,Inventar der Netze,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A2,NET.1.1.A2-UA.5,subset-of,superset-of,ARCH.2.5,Netzplan,yes,BSI_NET11_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.1,NET.1.1.A20,NET.1.1.A20-UA.1,equivalent-to,equivalent-to,ARCH.2.2.9,Segmentierung von IPv4 und IPv6,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A21,NET.1.1.A21-UA.4,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A21,NET.1.1.A21-UA.5,equivalent-to,equivalent-to,ARCH.2.2.7,Management-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A22,NET.1.1.A22-UA.1,intersects-with,intersects-with,ARCH.2.1,Netzsegmente,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A22,NET.1.1.A22-UA.4,superset-of,subset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A22,NET.1.1.A22-UA.6,superset-of,subset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A22,NET.1.1.A22-UA.6,superset-of,subset-of,ARCH.2.2.2,Gastnetz,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A23,NET.1.1.A23-UA.1,equivalent-to,equivalent-to,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A23,NET.1.1.A23-UA.2,intersects-with,intersects-with,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A23,NET.1.1.A23-UA.3,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A23,NET.1.1.A23-UA.4,intersects-with,intersects-with,ARCH.2.2.11,Physische Segmentierung,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A24,NET.1.1.A24-UA.1,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A25,NET.1.1.A25-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A25,NET.1.1.A25-UA.1,intersects-with,intersects-with,ARCH.2.4,Inventar der Netze,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A25,NET.1.1.A25-UA.1,superset-of,subset-of,ARCH.2.5,Netzplan,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A28,NET.1.1.A28-UA.2,superset-of,subset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.1.1,NET.1.1.A29,NET.1.1.A29-UA.1,equivalent-to,equivalent-to,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A29,NET.1.1.A29-UA.1,superset-of,subset-of,ARCH.8.2,Redundante TK-Anbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A29,NET.1.1.A29-UA.1,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A29,NET.1.1.A29-UA.3,superset-of,subset-of,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A3,NET.1.1.A3-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,BSI_NET11_A3,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A3,NET.1.1.A3-UA.3,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,BSI_NET11_A3,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.1,NET.1.1.A30,NET.1.1.A30-UA.1,subset-of,superset-of,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A30,NET.1.1.A30-UA.2,subset-of,superset-of,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.1.1,NET.1.1.A31,NET.1.1.A31-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A31,NET.1.1.A31-UA.1,subset-of,superset-of,ARCH.2.2.11,Physische Segmentierung,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A32,NET.1.1.A32-UA.1,subset-of,superset-of,ARCH.2.2.11,Physische Segmentierung,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A33,NET.1.1.A33-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A34,NET.1.1.A34-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.15: Abhören,draft,human
+NET.1.1,NET.1.1.A34,NET.1.1.A34-UA.3,superset-of,subset-of,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.15: Abhören,draft,human
+NET.1.1,NET.1.1.A34,NET.1.1.A34-UA.3,superset-of,subset-of,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.15: Abhören,draft,human
+NET.1.1,NET.1.1.A35,NET.1.1.A35-UA.1,subset-of,superset-of,DET.4.5,Unerwünschte Datenabflüsse,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.1,superset-of,subset-of,ARCH.2.1,Netzsegmente,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.1,superset-of,subset-of,ARCH.2.2.11,Physische Segmentierung,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.1,equal-to,equal-to,ARCH.2.2.6,Demilitarisierte Zone,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.3,subset-of,superset-of,ARCH.2.3,Mikrosegmentierung,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.4,intersects-with,intersects-with,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.4,superset-of,subset-of,ARCH.4.1.2,Quarantäne,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A4,NET.1.1.A4-UA.7,superset-of,subset-of,ARCH.5.1.11,P-A-P-Struktur,yes,BSI_NET11_A4,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.1,equivalent-to,equivalent-to,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.2,equivalent-to,equivalent-to,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.3,intersects-with,intersects-with,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.4,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.4,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A5,NET.1.1.A5-UA.4,superset-of,subset-of,ARCH.2.2.2,Gastnetz,yes,BSI_NET11_A5,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A6,NET.1.1.A6-UA.1,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.1,NET.1.1.A8,NET.1.1.A8-UA.2,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.1.1,NET.1.1.A8,NET.1.1.A8-UA.2,superset-of,subset-of,ARCH.5.1.4,UDP-basierte Angriffe,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.1.1,NET.1.1.A8,NET.1.1.A8-UA.2,equivalent-to,equivalent-to,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.1.2,NET.1.2.A1,NET.1.2.A1-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.2,NET.1.2.A11,NET.1.2.A11-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.1.2,NET.1.2.A11,NET.1.2.A11-UA.2,equivalent-to,equivalent-to,ARCH.1.1.3,Bekanntgabe,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.1.2,NET.1.2.A11,NET.1.2.A11-UA.4,superset-of,subset-of,ARCH.2.6,Topologieüberwachung,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.1.2,NET.1.2.A11,NET.1.2.A11-UA.8,superset-of,subset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.1.2,NET.1.2.A11,NET.1.2.A11-UA.9,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.1.2,NET.1.2.A12,NET.1.2.A12-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A12,NET.1.2.A12-UA.6,subset-of,superset-of,ARCH.2.4,Inventar der Netze,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A13,NET.1.2.A13-UA.2,intersects-with,intersects-with,ARCH.2.4,Inventar der Netze,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.2,NET.1.2.A14,NET.1.2.A14-UA.2,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.15: Abhören,draft,human
+NET.1.2,NET.1.2.A15,NET.1.2.A15-UA.1,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.2,NET.1.2.A21,NET.1.2.A21-UA.1,subset-of,superset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.15: Abhören,draft,human
+NET.1.2,NET.1.2.A21,NET.1.2.A21-UA.3,intersects-with,intersects-with,ARCH.2.2.12,Sprungserver,yes,,G 0.15: Abhören,draft,human
+NET.1.2,NET.1.2.A25,NET.1.2.A25-UA.1,equivalent-to,equivalent-to,DET.4.12,Monitoring der Netzverfügbarkeit,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.1.2,NET.1.2.A25,NET.1.2.A25-UA.1,equivalent-to,equivalent-to,DET.4.12.1,Auslastung des Netzes,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.1.2,NET.1.2.A25,NET.1.2.A25-UA.2,subset-of,superset-of,DET.4.12.1,Auslastung des Netzes,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.1.2,NET.1.2.A26,NET.1.2.A26-UA.1,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A26,NET.1.2.A26-UA.3,intersects-with,intersects-with,DET.3.1.4,Systemfehler,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A26,NET.1.2.A26-UA.3,intersects-with,intersects-with,DET.3.1.5,Störungen der Netzerreichbarkeit,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A26,NET.1.2.A26-UA.3,superset-of,subset-of,DET.4.12,Monitoring der Netzverfügbarkeit,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A28,NET.1.2.A28-UA.2,intersects-with,intersects-with,ARCH.2.2.7,Management-Netz,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.2,NET.1.2.A29,NET.1.2.A29-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.2,NET.1.2.A30,NET.1.2.A30-UA.2,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.1.2,NET.1.2.A32,NET.1.2.A32-UA.1,subset-of,superset-of,ARCH.2.2.11,Physische Segmentierung,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.2,NET.1.2.A33,NET.1.2.A33-UA.1,superset-of,subset-of,ARCH.2.1,Netzsegmente,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.2,NET.1.2.A33,NET.1.2.A33-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+NET.1.2,NET.1.2.A35,NET.1.2.A35-UA.1,equivalent-to,equivalent-to,DET.3.4,Speicherkapazität,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.2,NET.1.2.A35,NET.1.2.A35-UA.1,subset-of,superset-of,DET.3.5,Revisionssicherheit,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.1.2,NET.1.2.A7,NET.1.2.A7-UA.1,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A7,NET.1.2.A7-UA.1,superset-of,subset-of,DET.3.1.1,Authentifizierungen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A7,NET.1.2.A7-UA.1,superset-of,subset-of,DET.3.1.5,Störungen der Netzerreichbarkeit,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A7,NET.1.2.A7-UA.1,superset-of,subset-of,DET.3.1.9,Fehler der Anwendung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.1.2,NET.1.2.A7,NET.1.2.A7-UA.1,superset-of,subset-of,DET.4.11.1,Authentifizierungsversuche an externen Schnittstellen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+NET.2.1,NET.2.1.A1,NET.2.1.A1-UA.3,equivalent-to,equivalent-to,ARCH.3.2,Einschränkung in Sicherheitsbereichen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A10,NET.2.1.A10-UA.5,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A13,NET.2.1.A13-UA.2,subset-of,superset-of,ARCH.2.6,Topologieüberwachung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A13,NET.2.1.A13-UA.2,subset-of,superset-of,DET.4.19,Unautorisierte Sendeanlagen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A13,NET.2.1.A13-UA.3,subset-of,superset-of,ARCH.3.1,Netzabdeckung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A13,NET.2.1.A13-UA.5,subset-of,superset-of,DET.4.11,Anomalien in Netzen und am Perimeter,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A14,NET.2.1.A14-UA.1,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.1,NET.2.1.A17,NET.2.1.A17-UA.1,subset-of,superset-of,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.15: Abhören,draft,human
+NET.2.1,NET.2.1.A18,NET.2.1.A18-UA.1,equivalent-to,equivalent-to,DET.4.19,Unautorisierte Sendeanlagen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.2.1,NET.2.1.A3,NET.2.1.A3-UA.1,equivalent-to,equivalent-to,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.15: Abhören,draft,human
+NET.2.1,NET.2.1.A4,NET.2.1.A4-UA.2,superset-of,subset-of,ARCH.3.1,Netzabdeckung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.2.1,NET.2.1.A4,NET.2.1.A4-UA.3,equivalent-to,equivalent-to,ARCH.3.2,Einschränkung in Sicherheitsbereichen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.2.1,NET.2.1.A5,NET.2.1.A5-UA.2,equivalent-to,equivalent-to,ARCH.3.3,SSIDs,yes,,G 0.15: Abhören,draft,human
+NET.2.2,NET.2.2.A1,NET.2.2.A1-UA.7,subset-of,superset-of,ARCH.1.2,Regelmäßige Überprüfung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.2,NET.2.2.A1,NET.2.2.A1-UA.7,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.2.2,NET.2.2.A3,NET.2.2.A3-UA.3,superset-of,subset-of,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.15: Abhören,draft,human
+NET.2.2,NET.2.2.A4,NET.2.2.A4-UA.4,subset-of,superset-of,DET.6.1.3,Dokumentation von Ergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.1,NET.3.1.A1,NET.3.1.A1-UA.1,intersects-with,intersects-with,KONF.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.1,NET.3.1.A1,NET.3.1.A1-UA.2,intersects-with,intersects-with,ARCH.4.2,Autorisiertes Routing,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.1,NET.3.1.A10,NET.3.1.A10-UA.2,intersects-with,intersects-with,ARCH.4.2,Autorisiertes Routing,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.1,NET.3.1.A13,NET.3.1.A13-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.1,NET.3.1.A13,NET.3.1.A13-UA.2,subset-of,superset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.1,NET.3.1.A15,NET.3.1.A15-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A15,NET.3.1.A15-UA.1,subset-of,superset-of,DET.4.11,Anomalien in Netzen und am Perimeter,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A16,NET.3.1.A16-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A17,NET.3.1.A17-UA.1,subset-of,superset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A17,NET.3.1.A17-UA.1,intersects-with,intersects-with,ARCH.5.1.4,UDP-basierte Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A17,NET.3.1.A17-UA.1,intersects-with,intersects-with,ARCH.9.4,Content Delivery Network,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A17,NET.3.1.A17-UA.1,subset-of,superset-of,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A18,NET.3.1.A18-UA.2,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A19,NET.3.1.A19-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.3.1,NET.3.1.A20,NET.3.1.A20-UA.1,equal-to,equal-to,ARCH.4.3,Authentifizierung von Routingprotokollen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A20,NET.3.1.A20-UA.3,intersects-with,intersects-with,ARCH.5.1.7,Edge-Routing,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A20,NET.3.1.A20-UA.5,subset-of,superset-of,ARCH.5.1.7,Edge-Routing,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A21,NET.3.1.A21-UA.1,subset-of,superset-of,ARCH.4.1.1,Dynamische Netzzugangskontrolle,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A25,NET.3.1.A25-UA.1,subset-of,superset-of,TEST.5.4,Persistenz,yes,,G 0.22: Manipulation von Informationen,draft,human
+NET.3.1,NET.3.1.A26,NET.3.1.A26-UA.2,equal-to,equal-to,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.1,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.2,equivalent-to,equivalent-to,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.4,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.5,intersects-with,intersects-with,ARCH.2.2.7,Management-Netz,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.5,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A4,NET.3.1.A4-UA.5,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,,G 0.15: Abhören,draft,human
+NET.3.1,NET.3.1.A5,NET.3.1.A5-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.1,NET.3.1.A7,NET.3.1.A7-UA.1,intersects-with,intersects-with,DET.3.1.4,Systemfehler,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+NET.3.1,NET.3.1.A7,NET.3.1.A7-UA.1,intersects-with,intersects-with,DET.3.1.5,Störungen der Netzerreichbarkeit,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.3,subset-of,superset-of,ARCH.1.1.3,Bekanntgabe,yes,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.4,subset-of,superset-of,VRB.1.2,,no,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.5,subset-of,superset-of,ARCH.1.2,Regelmäßige Überprüfung,yes,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.5,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.5,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A1,NET.3.2.A1-UA.5,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,BSI_NET32_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A10,NET.3.2.A10-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.41: Sabotage,draft,human
+NET.3.2,NET.3.2.A16,NET.3.2.A16-UA.1,equal-to,equal-to,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A16,NET.3.2.A16-UA.3,subset-of,superset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A16,NET.3.2.A16-UA.3,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A16,NET.3.2.A16-UA.4,subset-of,superset-of,ARCH.5.1.11,P-A-P-Struktur,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A16,NET.3.2.A16-UA.4,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A17,NET.3.2.A17-UA.1,subset-of,superset-of,ARCH.2.2.9,Segmentierung von IPv4 und IPv6,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A18,NET.3.2.A18-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A18,NET.3.2.A18-UA.2,subset-of,superset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A18,NET.3.2.A18-UA.3,intersects-with,intersects-with,ARCH.2.2.7,Management-Netz,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.1,subset-of,superset-of,ARCH.5.1.2,Netzbasierte Angriffe,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.1,subset-of,superset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.1,subset-of,superset-of,ARCH.5.1.4,UDP-basierte Angriffe,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.2,subset-of,superset-of,ARCH.5.1.4,UDP-basierte Angriffe,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A19,NET.3.2.A19-UA.3,subset-of,superset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,,G 0.40: Verhinderung von Diensten (Denial of Service),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,intersects-with,intersects-with,ARCH.2.2.2,Gastnetz,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,intersects-with,intersects-with,ARCH.5.1.7,Edge-Routing,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,intersects-with,intersects-with,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.2,superset-of,subset-of,DET.4.11.1,Authentifizierungsversuche an externen Schnittstellen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,equivalent-to,equivalent-to,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,intersects-with,intersects-with,ARCH.5.1.7,Edge-Routing,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,intersects-with,intersects-with,ARCH.5.1.9,Filterung von DNS,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,equal-to,equal-to,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.3,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.4,intersects-with,intersects-with,ARCH.5.1.12,Software-definierte Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.5,intersects-with,intersects-with,ARCH.5.1.9,Filterung von DNS,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A2,NET.3.2.A2-UA.5,equivalent-to,equivalent-to,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,BSI_NET32_A2,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A20,NET.3.2.A20-UA.1,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A21,NET.3.2.A21-UA.1,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A23,NET.3.2.A23-UA.2,subset-of,superset-of,DET.4.3,Überwachung der Angriffserkennung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A23,NET.3.2.A23-UA.2,subset-of,superset-of,DET.4.4,Änderungen an Sicherheitsrichtlinien,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A23,NET.3.2.A23-UA.3,subset-of,superset-of,DET.6.1.2,Automatische Alarmierung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A23,NET.3.2.A23-UA.4,subset-of,superset-of,DET.6.1.2,Automatische Alarmierung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.3.2,NET.3.2.A24,NET.3.2.A24-UA.2,intersects-with,intersects-with,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A24,NET.3.2.A24-UA.2,superset-of,subset-of,TEST.3.1.10,Lasttest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.2,NET.3.2.A25,NET.3.2.A25-UA.1,subset-of,superset-of,TEST.5.4,Persistenz,yes,,G 0.22: Manipulation von Informationen,draft,human
+NET.3.2,NET.3.2.A25,NET.3.2.A25-UA.2,subset-of,superset-of,TEST.5.4,Persistenz,yes,,G 0.22: Manipulation von Informationen,draft,human
+NET.3.2,NET.3.2.A27,NET.3.2.A27-UA.1,equivalent-to,equivalent-to,ARCH.5.1.13,Produktdiversität,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.1,subset-of,superset-of,ARCH.5.1.10,Webfilterung,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.2,subset-of,superset-of,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.3,subset-of,superset-of,ARCH.5.1.10,Webfilterung,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.3,subset-of,superset-of,ARCH.5.1.10.1,Bekannte schädliche Inhalte,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.3,intersects-with,intersects-with,ARCH.5.1.10.2,Bekannte illegale Inhalte,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.3,intersects-with,intersects-with,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A28,NET.3.2.A28-UA.3,intersects-with,intersects-with,ARCH.5.1.9,Filterung von DNS,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.2,NET.3.2.A3,NET.3.2.A3-UA.2,subset-of,superset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,BSI_NET32_A3,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A3,NET.3.2.A3-UA.4,equivalent-to,equivalent-to,ARCH.5.1.4,UDP-basierte Angriffe,yes,BSI_NET32_A3,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A6,NET.3.2.A6-UA.1,superset-of,subset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+NET.3.2,NET.3.2.A8,NET.3.2.A8-UA.1,subset-of,superset-of,ARCH.5.1.7,Edge-Routing,yes,,G 0.22: Manipulation von Informationen,draft,human
+NET.3.2,NET.3.2.A9,NET.3.2.A9-UA.1,intersects-with,intersects-with,DET.4.11.3,Netzverkehrsfluss,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+NET.3.2,NET.3.2.A9,NET.3.2.A9-UA.3,subset-of,superset-of,DET.3.1.7,"Was, Wann, Wo",yes,,G 0.37: Abstreiten von Handlungen,draft,human
+NET.3.3,NET.3.3.A10,NET.3.3.A10-UA.1,intersects-with,intersects-with,ARCH.5.1.5,Deaktivierung von Split Tunneling,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.3,NET.3.3.A11,NET.3.3.A11-UA.1,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.3,NET.3.3.A11,NET.3.3.A11-UA.1,intersects-with,intersects-with,ARCH.5.1.5,Deaktivierung von Split Tunneling,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.3,NET.3.3.A11,NET.3.3.A11-UA.1,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+NET.3.3,NET.3.3.A5,NET.3.3.A5-UA.1,superset-of,subset-of,DET.4.11.1,Authentifizierungsversuche an externen Schnittstellen,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.3.4,NET.3.4.A12,NET.3.4.A12-UA.5,intersects-with,intersects-with,DET.4.4,Änderungen an Sicherheitsrichtlinien,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.3.4,NET.3.4.A14,NET.3.4.A14-UA.2,intersects-with,intersects-with,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A14,NET.3.4.A14-UA.2,superset-of,subset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A14,NET.3.4.A14-UA.2,intersects-with,intersects-with,ARCH.2.2.2,Gastnetz,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A14,NET.3.4.A14-UA.2,intersects-with,intersects-with,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A14,NET.3.4.A14-UA.2,intersects-with,intersects-with,ARCH.5.1.10.3,Speicherdienste,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A15,NET.3.4.A15-UA.3,intersects-with,intersects-with,ARCH.5.1.10.1,Bekannte schädliche Inhalte,yes,,G 0.39: Schadprogramme,draft,human
+NET.3.4,NET.3.4.A16,NET.3.4.A16-UA.2,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.3.4,NET.3.4.A18,NET.3.4.A18-UA.2,subset-of,superset-of,TEST.2.2.3,Dokumentation der Abhängigkeiten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.4,NET.3.4.A18,NET.3.4.A18-UA.5,subset-of,superset-of,TEST.2.2.2,Anpassung der Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.3.4,NET.3.4.A19,NET.3.4.A19-UA.1,subset-of,superset-of,ARCH.4.1.1,Dynamische Netzzugangskontrolle,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A23,NET.3.4.A23-UA.3,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.3.4,NET.3.4.A23,NET.3.4.A23-UA.4,intersects-with,intersects-with,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+NET.3.4,NET.3.4.A24,NET.3.4.A24-UA.1,equivalent-to,equivalent-to,ARCH.5.1.1,Blockieren anfälliger Netzprotokolle,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+NET.3.4,NET.3.4.A7,NET.3.4.A7-UA.2,equal-to,equal-to,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.36: Identitätsdiebstahl,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,intersects-with,intersects-with,ARCH.2.2.10,Drucker-Netz,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,intersects-with,intersects-with,ARCH.2.2.2,Gastnetz,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,subset-of,superset-of,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,intersects-with,intersects-with,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,intersects-with,intersects-with,ARCH.2.2.9,Segmentierung von IPv4 und IPv6,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,equivalent-to,equivalent-to,ARCH.2.3,Mikrosegmentierung,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,superset-of,subset-of,ARCH.4.1,Netzzugangskontrolle,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.2,subset-of,superset-of,ARCH.5.1.12,Software-definierte Verbindungen,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.3,subset-of,superset-of,ARCH.4.1.1,Dynamische Netzzugangskontrolle,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.3.4,NET.3.4.A9,NET.3.4.A9-UA.4,subset-of,superset-of,ARCH.4.1.1,Dynamische Netzzugangskontrolle,yes,,G 0.32: Missbrauch von Berechtigungen,draft,human
+NET.4.1,NET.4.1.A19,NET.4.1.A19-UA.1,equal-to,equal-to,ARCH.8.2,Redundante TK-Anbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.4.1,NET.4.1.A19,NET.4.1.A19-UA.2,intersects-with,intersects-with,ARCH.8.2,Redundante TK-Anbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+NET.4.1,NET.4.1.A5,NET.4.1.A5-UA.2,superset-of,subset-of,DET.3.1.12,Datenverarbeitungen,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+NET.4.2,NET.4.2.A1,NET.4.2.A1-UA.5,intersects-with,intersects-with,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A1,NET.4.2.A1-UA.6,equivalent-to,equivalent-to,ARCH.9.1,Dimensionierung der Netzanbindung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A16,NET.4.2.A16-UA.1,equal-to,equal-to,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A16,NET.4.2.A16-UA.2,intersects-with,intersects-with,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A16,NET.4.2.A16-UA.3,equivalent-to,equivalent-to,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A4,NET.4.2.A4-UA.2,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A4,NET.4.2.A4-UA.2,intersects-with,intersects-with,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+NET.4.2,NET.4.2.A4,NET.4.2.A4-UA.3,subset-of,superset-of,ARCH.2.2.4,VoIP-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A1,OPS.1.1.1.A1-UA.1,equivalent-to,equivalent-to,ARCH.1.1.2,Zuweisung der Aufgaben,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A1,OPS.1.1.1.A1-UA.2,intersects-with,intersects-with,ARCH.1.1.2,Zuweisung der Aufgaben,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A1,OPS.1.1.1.A1-UA.2,intersects-with,intersects-with,GC.8.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A1,OPS.1.1.1.A1-UA.2,intersects-with,intersects-with,TEST.1.1.2,Zuweisung der Aufgaben,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A1,OPS.1.1.1.A1-UA.2,superset-of,subset-of,UMS.4.1,Festlegung von Umsetzungsfristen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A10,OPS.1.1.1.A10-UA.1,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A10,OPS.1.1.1.A10-UA.1,equivalent-to,equivalent-to,DET.5.2,Schwachstellenregister,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A10,OPS.1.1.1.A10-UA.2,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A10,OPS.1.1.1.A10-UA.3,superset-of,subset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A10,OPS.1.1.1.A10-UA.4,intersects-with,intersects-with,DET.5.1.1,Risikobasierte Priorisierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A12,OPS.1.1.1.A12-UA.1,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A12,OPS.1.1.1.A12-UA.5,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A12,OPS.1.1.1.A12-UA.6,intersects-with,intersects-with,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A12,OPS.1.1.1.A12-UA.6,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A12,OPS.1.1.1.A12-UA.7,subset-of,superset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A15,OPS.1.1.1.A15-UA.3,subset-of,superset-of,ARCH.1.1,Verfahren und Regelungen,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.1,OPS.1.1.1.A15,OPS.1.1.1.A15-UA.3,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.1,OPS.1.1.1.A17,OPS.1.1.1.A17-UA.3,intersects-with,intersects-with,NOT.1.1,Verfahren und Regelungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A19,OPS.1.1.1.A19-UA.1,intersects-with,intersects-with,ASST.5.2,Geregelte Wartungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A19,OPS.1.1.1.A19-UA.3,subset-of,superset-of,ARCH.1.1.2,Zuweisung der Aufgaben,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A19,OPS.1.1.1.A19-UA.4,intersects-with,intersects-with,ASST.5.7,Dokumentation von Wartungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A20,OPS.1.1.1.A20-UA.1,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A20,OPS.1.1.1.A20-UA.2,equivalent-to,equivalent-to,DET.5.3,Schwachstellenscans,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A20,OPS.1.1.1.A20-UA.2,superset-of,subset-of,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A20,OPS.1.1.1.A20-UA.3,superset-of,subset-of,TEST.3.2,Testabdeckung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A20,OPS.1.1.1.A20-UA.4,subset-of,superset-of,DET.5.2,Schwachstellenregister,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A22,OPS.1.1.1.A22-UA.1,equivalent-to,equivalent-to,DET.5.3,Schwachstellenscans,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A22,OPS.1.1.1.A22-UA.1,intersects-with,intersects-with,TEST.3.1.8,Analyse der Zusammensetzung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A22,OPS.1.1.1.A22-UA.3,intersects-with,intersects-with,DET.5.1.1,Risikobasierte Priorisierung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.1,OPS.1.1.1.A23,OPS.1.1.1.A23-UA.1,equivalent-to,equivalent-to,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A23,OPS.1.1.1.A23-UA.1,equivalent-to,equivalent-to,TEST.3.1.10,Lasttest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A5,OPS.1.1.1.A5-UA.6,intersects-with,intersects-with,KONF.2.5,Überprüfung der Systemkonfiguration,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A7,OPS.1.1.1.A7-UA.6,intersects-with,intersects-with,TEST.3.1,Sicherheitstest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A7,OPS.1.1.1.A7-UA.8,intersects-with,intersects-with,TEST.3.2,Testabdeckung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.1,OPS.1.1.1.A9,OPS.1.1.1.A9-UA.4,superset-of,subset-of,DET.4.12,Monitoring der Netzverfügbarkeit,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.2,OPS.1.1.2.A11,OPS.1.1.2.A11-UA.4,subset-of,superset-of,TEST.1.1.1,Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.2,OPS.1.1.2.A16,OPS.1.1.2.A16-UA.1,intersects-with,intersects-with,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.2,OPS.1.1.2.A16,OPS.1.1.2.A16-UA.2,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.2,OPS.1.1.2.A16,OPS.1.1.2.A16-UA.2,equivalent-to,equivalent-to,ARCH.2.2.7,Management-Netz,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+OPS.1.1.2,OPS.1.1.2.A17,OPS.1.1.2.A17-UA.1,intersects-with,intersects-with,TEST.4.1.1,Unabhängigkeit der Autorisierung,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+OPS.1.1.2,OPS.1.1.2.A18,OPS.1.1.2.A18-UA.1,subset-of,superset-of,DET.3.1.11,Anwendungsspezifische Ereignisse,yes,,G 0.22: Manipulation von Informationen,draft,human
+OPS.1.1.2,OPS.1.1.2.A23,OPS.1.1.2.A23-UA.1,superset-of,subset-of,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.2,OPS.1.1.2.A24,OPS.1.1.2.A24-UA.4,superset-of,subset-of,TEST.2.2,Folgenabschätzung,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.2,OPS.1.1.2.A24,OPS.1.1.2.A24-UA.5,superset-of,subset-of,TEST.4.3,Rückfallösung,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.2,OPS.1.1.2.A28,OPS.1.1.2.A28-UA.3,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.22: Manipulation von Informationen,draft,human
+OPS.1.1.2,OPS.1.1.2.A5,OPS.1.1.2.A5-UA.4,intersects-with,intersects-with,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+OPS.1.1.2,OPS.1.1.2.A7,OPS.1.1.2.A7-UA.2,intersects-with,intersects-with,TEST.1.1.2,Zuweisung der Aufgaben,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.2,superset-of,subset-of,DET.5.10,Zeitnahes Patchmanagement,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.3,intersects-with,intersects-with,TEST.4.1,Autorisierung von Änderungen,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.3,superset-of,subset-of,TEST.4.1.2,Staging,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.3,subset-of,superset-of,VRB.1.2,,no,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.4,superset-of,subset-of,DET.5.10.5,Test gemäß Änderungsmanagement,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.4,superset-of,subset-of,TEST.3.1,Sicherheitstest,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.5,superset-of,subset-of,TEST.4.3,Rückfallösung,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.6,intersects-with,intersects-with,TEST.2.2,Folgenabschätzung,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.6,superset-of,subset-of,TEST.5.1,Information betroffener Kreise,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.7,superset-of,subset-of,TEST.5.5,Rückblick,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A1,OPS.1.1.3.A1-UA.8,superset-of,subset-of,TEST.5.4,Persistenz,yes,BSI_OPS113_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A10,OPS.1.1.3.A10-UA.3,superset-of,subset-of,DET.5.10.4,Integritätsprüfung von Patches,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+OPS.1.1.3,OPS.1.1.3.A10,OPS.1.1.3.A10-UA.3,superset-of,subset-of,DEV.4.4,Integrität externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+OPS.1.1.3,OPS.1.1.3.A10,OPS.1.1.3.A10-UA.3,superset-of,subset-of,TEST.3.1.2,Verwendung externer Software,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+OPS.1.1.3,OPS.1.1.3.A10,OPS.1.1.3.A10-UA.5,superset-of,subset-of,DET.5.10.1,Autorisierte Bezugsquellen,yes,,G 0.20: Informationen oder Produkte aus unzuverlässiger Quelle,draft,human
+OPS.1.1.3,OPS.1.1.3.A11,OPS.1.1.3.A11-UA.1,intersects-with,intersects-with,TEST.2.2.2,Anpassung der Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A11,OPS.1.1.3.A11-UA.1,subset-of,superset-of,VRB.1.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A13,OPS.1.1.3.A13-UA.1,subset-of,superset-of,DET.5.10.5,Test gemäß Änderungsmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A13,OPS.1.1.3.A13-UA.3,equivalent-to,equivalent-to,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A14,OPS.1.1.3.A14-UA.1,intersects-with,intersects-with,DET.5.10.5,Test gemäß Änderungsmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A15,OPS.1.1.3.A15-UA.2,superset-of,subset-of,DET.5.10,Zeitnahes Patchmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A15,OPS.1.1.3.A15-UA.3,superset-of,subset-of,DET.5.10.5,Test gemäß Änderungsmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A15,OPS.1.1.3.A15-UA.6,superset-of,subset-of,DET.5.10.3,Automatisierte Überwachung von Anwendungsupdates,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A6,OPS.1.1.3.A6-UA.1,superset-of,subset-of,TEST.5.1,Information betroffener Kreise,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A7,OPS.1.1.3.A7-UA.2,subset-of,superset-of,TEST.2.2,Folgenabschätzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.3,OPS.1.1.3.A9,OPS.1.1.3.A9-UA.3,subset-of,superset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.3,OPS.1.1.3.A9,OPS.1.1.3.A9-UA.3,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.3,OPS.1.1.3.A9,OPS.1.1.3.A9-UA.4,superset-of,subset-of,TEST.4.1.2,Staging,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.3,OPS.1.1.3.A9,OPS.1.1.3.A9-UA.4,subset-of,superset-of,TEST.4.2,Signatur,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.3,OPS.1.1.3.A9,OPS.1.1.3.A9-UA.5,subset-of,superset-of,TEST.4.2,Signatur,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.1.4,OPS.1.1.4.A10,OPS.1.1.4.A10-UA.1,equivalent-to,equivalent-to,DET.6.2.1,Dynamische Sandbox-Analyse,yes,,G 0.39: Schadprogramme,draft,human
+OPS.1.1.4,OPS.1.1.4.A12,OPS.1.1.4.A12-UA.1,equivalent-to,equivalent-to,DET.6.2.2,Datenträgerschleuse,yes,,G 0.39: Schadprogramme,draft,human
+OPS.1.1.4,OPS.1.1.4.A13,OPS.1.1.4.A13-UA.1,subset-of,superset-of,DET.6.2,Beurteilung von Eingängen,yes,,G 0.39: Schadprogramme,draft,human
+OPS.1.1.4,OPS.1.1.4.A13,OPS.1.1.4.A13-UA.1,equivalent-to,equivalent-to,DET.6.2.1,Dynamische Sandbox-Analyse,yes,,G 0.39: Schadprogramme,draft,human
+OPS.1.1.4,OPS.1.1.4.A2,OPS.1.1.4.A2-UA.3,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.39: Schadprogramme,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.3,superset-of,subset-of,DET.3.1.7,"Was, Wann, Wo",yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.4,intersects-with,intersects-with,DET.3.1.11,Anwendungsspezifische Ereignisse,yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.8,subset-of,superset-of,UMS.1.1,Ermittlung des Umsetzungsstatus,yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.8,intersects-with,intersects-with,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.8,intersects-with,intersects-with,VRB.1.1,Verfahren zur kontinuierlichen Verbesserung,yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A1,OPS.1.1.5.A1-UA.8,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,BSI_OPS115_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A10,OPS.1.1.5.A10-UA.1,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.22: Manipulation von Informationen,draft,human
+OPS.1.1.5,OPS.1.1.5.A11,OPS.1.1.5.A11-UA.1,superset-of,subset-of,DET.3.1.10,Nutzungsstatistik,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A11,OPS.1.1.5.A11-UA.1,superset-of,subset-of,DET.3.1.11,Anwendungsspezifische Ereignisse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A11,OPS.1.1.5.A11-UA.1,superset-of,subset-of,DET.3.1.12,Datenverarbeitungen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A11,OPS.1.1.5.A11-UA.1,equivalent-to,equivalent-to,DET.3.1.6,Systemspezifische Ereignisse,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A3,OPS.1.1.5.A3-UA.1,superset-of,subset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,BSI_OPS115_A3,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A3,OPS.1.1.5.A3-UA.1,superset-of,subset-of,DET.3.1.3,Anbindung von Peripheriegeräten,yes,BSI_OPS115_A3,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A3,OPS.1.1.5.A3-UA.1,intersects-with,intersects-with,DET.3.1.5,Störungen der Netzerreichbarkeit,yes,BSI_OPS115_A3,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A3,OPS.1.1.5.A3-UA.4,superset-of,subset-of,DET.4.1,Überwachung der Protokollierung,yes,BSI_OPS115_A3,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A5,OPS.1.1.5.A5-UA.5,equivalent-to,equivalent-to,DET.3.4,Speicherkapazität,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+OPS.1.1.5,OPS.1.1.5.A6,OPS.1.1.5.A6-UA.3,superset-of,subset-of,DET.3.1.3,Anbindung von Peripheriegeräten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A9,OPS.1.1.5.A9-UA.1,superset-of,subset-of,DET.3.2,Integration von Cloud-Diensten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.5,OPS.1.1.5.A9,OPS.1.1.5.A9-UA.6,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A1,OPS.1.1.6.A1-UA.1,superset-of,subset-of,TEST.3.1.3,Integritätstest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A11,OPS.1.1.6.A11-UA.3,intersects-with,intersects-with,TEST.3.1.3,Integritätstest,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+OPS.1.1.6,OPS.1.1.6.A12,OPS.1.1.6.A12-UA.2,subset-of,superset-of,TEST.5.4,Persistenz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A12,OPS.1.1.6.A12-UA.4,subset-of,superset-of,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.1,subset-of,superset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.1,equivalent-to,equivalent-to,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.1,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.1,subset-of,superset-of,TEST.4.1.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.2,equal-to,equal-to,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.2,equivalent-to,equivalent-to,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.2,equivalent-to,equivalent-to,TEST.3.1.4,Testdaten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A13,OPS.1.1.6.A13-UA.2,equivalent-to,equivalent-to,TEST.4.1.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A14,OPS.1.1.6.A14-UA.1,superset-of,subset-of,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A14,OPS.1.1.6.A14-UA.1,intersects-with,intersects-with,TEST.3.1.10,Lasttest,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A4,OPS.1.1.6.A4-UA.2,equivalent-to,equivalent-to,TEST.4.1.2,Staging,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A4,OPS.1.1.6.A4-UA.2,subset-of,superset-of,TEST.4.2,Signatur,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A4,OPS.1.1.6.A4-UA.3,intersects-with,intersects-with,TEST.4.1.1,Unabhängigkeit der Autorisierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.6,OPS.1.1.6.A5,OPS.1.1.6.A5-UA.2,subset-of,superset-of,TEST.3.1,Sicherheitstest,yes,,G 0.27: Ressourcenmangel,draft,human
+OPS.1.1.6,OPS.1.1.6.A5,OPS.1.1.6.A5-UA.3,superset-of,subset-of,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.27: Ressourcenmangel,draft,human
+OPS.1.1.7,OPS.1.1.7.A15,OPS.1.1.7.A15-UA.2,intersects-with,intersects-with,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.7,OPS.1.1.7.A15,OPS.1.1.7.A15-UA.2,superset-of,subset-of,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.7,OPS.1.1.7.A15,OPS.1.1.7.A15-UA.2,superset-of,subset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.7,OPS.1.1.7.A15,OPS.1.1.7.A15-UA.2,intersects-with,intersects-with,DET.4.17,Anwendungsbasiertes Kapazitätsmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.7,OPS.1.1.7.A15,OPS.1.1.7.A15-UA.5,superset-of,subset-of,DET.3.1.4,Systemfehler,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.1.7,OPS.1.1.7.A17,OPS.1.1.7.A17-UA.1,intersects-with,intersects-with,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A17,OPS.1.1.7.A17-UA.1,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A17,OPS.1.1.7.A17-UA.1,intersects-with,intersects-with,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A18,OPS.1.1.7.A18-UA.2,intersects-with,intersects-with,TEST.4.3,Rückfallösung,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A18,OPS.1.1.7.A18-UA.2,subset-of,superset-of,VRB.2.2,Anpassung des ISMS,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A2,OPS.1.1.7.A2-UA.2,superset-of,subset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+OPS.1.1.7,OPS.1.1.7.A20,OPS.1.1.7.A20-UA.2,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+OPS.1.1.7,OPS.1.1.7.A21,OPS.1.1.7.A21-UA.1,subset-of,superset-of,ARCH.2.2.11,Physische Segmentierung,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A22,OPS.1.1.7.A22-UA.4,intersects-with,intersects-with,DET.5.10.2,Automatisierte Überwachung von Systemupdates,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A22,OPS.1.1.7.A22-UA.4,intersects-with,intersects-with,DET.5.10.3,Automatisierte Überwachung von Anwendungsupdates,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A25,OPS.1.1.7.A25-UA.3,subset-of,superset-of,DET.4.6,Anomale Nutzung der Anwendung,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+OPS.1.1.7,OPS.1.1.7.A25,OPS.1.1.7.A25-UA.3,subset-of,superset-of,DET.4.6.1,Verhaltensanalyse von Zugangskonten,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+OPS.1.1.7,OPS.1.1.7.A25,OPS.1.1.7.A25-UA.3,subset-of,superset-of,DET.6.1.2,Automatische Alarmierung,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+OPS.1.1.7,OPS.1.1.7.A26,OPS.1.1.7.A26-UA.1,equivalent-to,equivalent-to,ARCH.2.2.12,Sprungserver,yes,,G 0.15: Abhören,draft,human
+OPS.1.1.7,OPS.1.1.7.A9,OPS.1.1.7.A9-UA.1,intersects-with,intersects-with,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+OPS.1.2.2,OPS.1.2.2.A12,OPS.1.2.2.A12-UA.1,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.27: Ressourcenmangel,draft,human
+OPS.1.2.2,OPS.1.2.2.A16,OPS.1.2.2.A16-UA.4,intersects-with,intersects-with,TEST.2.2.2,Anpassung der Dokumentation,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.2,OPS.1.2.2.A16,OPS.1.2.2.A16-UA.4,intersects-with,intersects-with,TEST.3.1.1,Dokumentation von Testergebnissen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.2,OPS.1.2.2.A8,OPS.1.2.2.A8-UA.3,intersects-with,intersects-with,DET.3.3,Filterung nicht benötigter Inhalte,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.5,OPS.1.2.5.A20,OPS.1.2.5.A20-UA.2,subset-of,superset-of,ARCH.5.1.3,TCP-basierte Angriffe,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.5,OPS.1.2.5.A20,OPS.1.2.5.A20-UA.2,subset-of,superset-of,ARCH.9.5,Schutz gegen volumetrische DoS-Angriffe,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.5,OPS.1.2.5.A21,OPS.1.2.5.A21-UA.2,subset-of,superset-of,TEST.4.4,Geregelte Notfalländerungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.1.2.5,OPS.1.2.5.A25,OPS.1.2.5.A25-UA.1,subset-of,superset-of,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+OPS.1.2.5,OPS.1.2.5.A25,OPS.1.2.5.A25-UA.3,equivalent-to,equivalent-to,ARCH.2.2.12,Sprungserver,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+OPS.1.2.5,OPS.1.2.5.A3,OPS.1.2.5.A3-UA.4,subset-of,superset-of,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+OPS.1.2.5,OPS.1.2.5.A3,OPS.1.2.5.A3-UA.5,subset-of,superset-of,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+OPS.1.2.5,OPS.1.2.5.A8,OPS.1.2.5.A8-UA.1,equal-to,equal-to,ARCH.5.1.1,Blockieren anfälliger Netzprotokolle,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+OPS.1.2.5,OPS.1.2.5.A8,OPS.1.2.5.A8-UA.4,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+OPS.1.2.5,OPS.1.2.5.A8,OPS.1.2.5.A8-UA.4,subset-of,superset-of,ARCH.6.2,Verschlüsselung von Weiterverkehrsverbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+OPS.1.2.6,OPS.1.2.6.A1,OPS.1.2.6.A1-UA.5,intersects-with,intersects-with,KONF.4.5,Zeitquellen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.2.2,OPS.2.2.A6,OPS.2.2.A6-UA.1,superset-of,subset-of,DET.3.1.13,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.2.3,OPS.2.3.A2,OPS.2.3.A2-UA.1,intersects-with,intersects-with,UMS.3.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.2.3,OPS.2.3.A2,OPS.2.3.A2-UA.4,equivalent-to,equivalent-to,DLS.3.2,Checkup,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+OPS.2.3,OPS.2.3.A25,OPS.2.3.A25-UA.1,subset-of,superset-of,DET.6.2.1,Dynamische Sandbox-Analyse,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+OPS.2.3,OPS.2.3.A25,OPS.2.3.A25-UA.2,subset-of,superset-of,DET.6.2.1,Dynamische Sandbox-Analyse,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+OPS.2.3,OPS.2.3.A25,OPS.2.3.A25-UA.3,subset-of,superset-of,DET.6.2.1,Dynamische Sandbox-Analyse,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+OPS.3.2,OPS.3.2.A14,OPS.3.2.A14-UA.1,intersects-with,intersects-with,DET.4.17,Anwendungsbasiertes Kapazitätsmanagement,yes,,G 0.11: Ausfall oder Störung von Dienstleistern,draft,human
+ORP.1,ORP.1.A1,ORP.1.A1-UA.1,intersects-with,intersects-with,ARCH.1.1.2,Zuweisung der Aufgaben,yes,BSI_ORP1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A1,ORP.1.A1-UA.3,superset-of,subset-of,ARCH.1.2,Regelmäßige Überprüfung,yes,BSI_ORP1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A1,ORP.1.A1-UA.3,equal-to,equal-to,TEST.1.2,Regelmäßige Überprüfung,yes,BSI_ORP1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A1,ORP.1.A1-UA.4,equivalent-to,equivalent-to,ARCH.1.1.3,Bekanntgabe,yes,BSI_ORP1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A1,ORP.1.A1-UA.4,superset-of,subset-of,TEST.1.1.3,Bekanntgabe,yes,BSI_ORP1_A1,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A2,ORP.1.A2-UA.1,intersects-with,intersects-with,ARCH.1.1.2,Zuweisung der Aufgaben,yes,BSI_ORP1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A2,ORP.1.A2-UA.1,superset-of,subset-of,UMS.4.1,Festlegung von Umsetzungsfristen,yes,BSI_ORP1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A2,ORP.1.A2-UA.2,intersects-with,intersects-with,UMS.4.1,Festlegung von Umsetzungsfristen,yes,BSI_ORP1_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.1,ORP.1.A4,ORP.1.A4-UA.1,intersects-with,intersects-with,ARCH.1.1.2,Zuweisung der Aufgaben,yes,BSI_ORP1_A4,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.1,intersects-with,intersects-with,PERS.1.1,Verfahren und Regelungen,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.1,intersects-with,intersects-with,PERS.3.7,Einarbeitung,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.2,equivalent-to,equivalent-to,ARCH.1.1.3,Bekanntgabe,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.2,intersects-with,intersects-with,PERS.1.1.3,Bekanntgabe,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.2,superset-of,subset-of,TEST.1.1.3,Bekanntgabe,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A1,ORP.2.A1-UA.3,intersects-with,intersects-with,PERS.3.7,Einarbeitung,yes,BSI_ORP2_A1,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.2,ORP.2.A13,ORP.2.A13-UA.2,intersects-with,intersects-with,PERS.3.6.1,Sicherheitsüberprüfung (intern),yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+ORP.2,ORP.2.A2,ORP.2.A2-UA.1,intersects-with,intersects-with,PERS.6.1.2,Neubesetzung,yes,BSI_ORP2_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.2,ORP.2.A2,ORP.2.A2-UA.10,intersects-with,intersects-with,PERS.6.1,Vorgehensweise für den Weggang,yes,BSI_ORP2_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.2,ORP.2.A2,ORP.2.A2-UA.4,intersects-with,intersects-with,BER.2.5,Deaktivierung bei Weggang,yes,BSI_ORP2_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.2,ORP.2.A2,ORP.2.A2-UA.4,intersects-with,intersects-with,PERS.6.1.1,Entzug von Berechtigungen gemäß BER,yes,BSI_ORP2_A2,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.2,ORP.2.A3,ORP.2.A3-UA.1,intersects-with,intersects-with,GC.8.1.2,,no,BSI_ORP2_A3,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+ORP.2,ORP.2.A3,ORP.2.A3-UA.1,intersects-with,intersects-with,UMS.4.1,Festlegung von Umsetzungsfristen,yes,BSI_ORP2_A3,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+ORP.2,ORP.2.A3,ORP.2.A3-UA.2,intersects-with,intersects-with,GC.5.1.1,Festlegung einer Sicherheitsstrategie,yes,BSI_ORP2_A3,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+ORP.3,ORP.3.A1,ORP.3.A1-UA.1,intersects-with,intersects-with,SENS.11.1,Sensibilisierung der Institutionsleitung,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.3,ORP.3.A1,ORP.3.A1-UA.4,intersects-with,intersects-with,SENS.11.2,Führen als Vorbild,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.3,ORP.3.A9,ORP.3.A9-UA.1,intersects-with,intersects-with,SENS.1.1,Verfahren und Regelungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+ORP.3,ORP.3.A9,ORP.3.A9-UA.1,intersects-with,intersects-with,SENS.12.1,Hohe Risiken,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+ORP.3,ORP.3.A9,ORP.3.A9-UA.1,intersects-with,intersects-with,SENS.7.1,Spezifische Sensibilisierung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+ORP.5,ORP.5.A2,ORP.5.A2-UA.1,intersects-with,intersects-with,UMS.3.2,,no,BSI_ORP5_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A2,ORP.5.A2-UA.3,intersects-with,intersects-with,UMS.4.1,Festlegung von Umsetzungsfristen,yes,BSI_ORP5_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A2,ORP.5.A2-UA.4,superset-of,subset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,BSI_ORP5_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A2,ORP.5.A2-UA.4,intersects-with,intersects-with,UMS.4.2,,no,BSI_ORP5_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A2,ORP.5.A2-UA.5,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,BSI_ORP5_A2,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A4,ORP.5.A4-UA.5,subset-of,superset-of,UMS.3.1,Benennung von Umsetzungszuständigen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.5,ORP.5.A4,ORP.5.A4-UA.5,intersects-with,intersects-with,UMS.3.2,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.5,ORP.5.A4,ORP.5.A4-UA.5,superset-of,subset-of,UMS.6.1,Nachverfolgung des Umsetzungsfortschritts,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.5,ORP.5.A4,ORP.5.A4-UA.5,superset-of,subset-of,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.1,superset-of,subset-of,DET.5.3.1,Autorisierung kritischer Scans,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.1,subset-of,superset-of,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.2,subset-of,superset-of,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.3,intersects-with,intersects-with,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.3,equivalent-to,equivalent-to,UMS.5.2,Dokumentation von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A5,ORP.5.A5-UA.5,intersects-with,intersects-with,UMS.5.1,Autorisierung von Ausnahmen,yes,,G 0.29: Verstoß gegen Gesetze oder Regelungen,draft,human
+ORP.5,ORP.5.A8,ORP.5.A8-UA.1,superset-of,subset-of,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+ORP.5,ORP.5.A8,ORP.5.A8-UA.2,superset-of,subset-of,UMS.7.1,Wahrung von Compliance in der Umsetzung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.1,Authentifizierungen,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.12,Datenverarbeitungen,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.3,Anbindung von Peripheriegeräten,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.4,Systemfehler,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.5,Störungen der Netzerreichbarkeit,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.3.1.8,Privilegierte Ereignisse,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,intersects-with,intersects-with,DET.3.1.9,Fehler der Anwendung,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.4.4,Änderungen an Sicherheitsrichtlinien,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A10,SYS.1.1.A10-UA.1,superset-of,subset-of,DET.4.5,Unerwünschte Datenabflüsse,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.1.1,SYS.1.1.A15,SYS.1.1.A15-UA.1,intersects-with,intersects-with,ARCH.8.3,Redundante Server,yes,,G 0.8: Ausfall oder Störung der Stromversorgung,draft,human
+SYS.1.1,SYS.1.1.A16,SYS.1.1.A16-UA.3,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A16,SYS.1.1.A16-UA.7,superset-of,subset-of,DEV.4.9,"Voreinstellungen nach dem Prinzip ""Security by Default""",yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A23,SYS.1.1.A23-UA.1,intersects-with,intersects-with,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A23,SYS.1.1.A23-UA.1,superset-of,subset-of,DET.4.16,Ressourcenauslastung der Server-Dienste,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A23,SYS.1.1.A23-UA.1,intersects-with,intersects-with,DET.4.17,Anwendungsbasiertes Kapazitätsmanagement,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A23,SYS.1.1.A23-UA.2,equivalent-to,equivalent-to,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A23,SYS.1.1.A23-UA.2,superset-of,subset-of,DET.4.16,Ressourcenauslastung der Server-Dienste,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A24,SYS.1.1.A24-UA.1,intersects-with,intersects-with,DET.5.3.2,Korrelation komplexer Angriffswege,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A24,SYS.1.1.A24-UA.1,subset-of,superset-of,DET.5.4,Regelmäßige Penetrationstests,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.1,SYS.1.1.A25,SYS.1.1.A25-UA.3,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.1,SYS.1.1.A25,SYS.1.1.A25-UA.3,superset-of,subset-of,ARCH.9.4,Content Delivery Network,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.1,SYS.1.1.A27,SYS.1.1.A27-UA.1,intersects-with,intersects-with,DET.4.10,Host-basierte Köder,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.1.1,SYS.1.1.A27,SYS.1.1.A27-UA.1,subset-of,superset-of,DET.4.2,Automatische Angriffserkennung,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.1.1,SYS.1.1.A27,SYS.1.1.A27-UA.4,intersects-with,intersects-with,DET.4.9,Manipulations-Checkup,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.1.1,SYS.1.1.A28,SYS.1.1.A28-UA.1,intersects-with,intersects-with,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.1,SYS.1.1.A28,SYS.1.1.A28-UA.1,superset-of,subset-of,ARCH.9.2,Lastverteilung,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.1,SYS.1.1.A28,SYS.1.1.A28-UA.1,superset-of,subset-of,ARCH.9.4,Content Delivery Network,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.1,SYS.1.1.A28,SYS.1.1.A28-UA.3,superset-of,subset-of,ARCH.8.1,Redundanz im Kernnetz,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.1,SYS.1.1.A28,SYS.1.1.A28-UA.3,intersects-with,intersects-with,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.1,SYS.1.1.A30,SYS.1.1.A30-UA.1,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.1.2.3,SYS.1.2.3.A7,SYS.1.2.3.A7-UA.1,subset-of,superset-of,DET.3.1.2,Ausgeführte Kommandozeilenbefehle,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.2.3,SYS.1.2.3.A7,SYS.1.2.3.A7-UA.5,intersects-with,intersects-with,KONF.7.12,Einschränkung von Skripten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A10,SYS.1.5.A10-UA.4,equal-to,equal-to,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A11,SYS.1.5.A11-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.15: Abhören,draft,human
+SYS.1.5,SYS.1.5.A15,SYS.1.5.A15-UA.2,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.5,SYS.1.5.A17,SYS.1.5.A17-UA.1,intersects-with,intersects-with,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A17,SYS.1.5.A17-UA.2,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A4,SYS.1.5.A4-UA.2,subset-of,superset-of,ARCH.2.3,Mikrosegmentierung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.5,SYS.1.5.A4,SYS.1.5.A4-UA.2,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.5,SYS.1.5.A5,SYS.1.5.A5-UA.1,intersects-with,intersects-with,ARCH.2.2.7,Management-Netz,yes,,G 0.15: Abhören,draft,human
+SYS.1.5,SYS.1.5.A5,SYS.1.5.A5-UA.1,equivalent-to,equivalent-to,ARCH.5.1.6,Blockieren direkter Management-Verbindungen,yes,,G 0.15: Abhören,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.3,equivalent-to,equivalent-to,ARCH.2.1,Netzsegmente,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.3,superset-of,subset-of,ARCH.2.2.7,Management-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,equivalent-to,equivalent-to,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,superset-of,subset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,superset-of,subset-of,ARCH.2.2.10,Drucker-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,equivalent-to,equivalent-to,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,superset-of,subset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.4,subset-of,superset-of,ARCH.2.3,Mikrosegmentierung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.5,SYS.1.5.A9,SYS.1.5.A9-UA.5,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.6,SYS.1.6.A11,SYS.1.6.A11-UA.1,subset-of,superset-of,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.6,SYS.1.6.A20,SYS.1.6.A20-UA.2,superset-of,subset-of,TEST.2.1,Versionshistorie,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.1.6,SYS.1.6.A24,SYS.1.6.A24-UA.2,intersects-with,intersects-with,DET.4.6,Anomale Nutzung der Anwendung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.6,SYS.1.6.A5,SYS.1.6.A5-UA.1,subset-of,superset-of,ARCH.2.2.7,Management-Netz,yes,BSI_SYS16_A5,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.6,SYS.1.6.A5,SYS.1.6.A5-UA.3,equivalent-to,equivalent-to,ARCH.2.3,Mikrosegmentierung,yes,BSI_SYS16_A5,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.7,SYS.1.7.A16,SYS.1.7.A16-UA.2,intersects-with,intersects-with,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.7,SYS.1.7.A33,SYS.1.7.A33-UA.1,subset-of,superset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.7,SYS.1.7.A33,SYS.1.7.A33-UA.1,subset-of,superset-of,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.7,SYS.1.7.A6,SYS.1.7.A6-UA.5,intersects-with,intersects-with,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.8,SYS.1.8.A20,SYS.1.8.A20-UA.2,subset-of,superset-of,TEST.4.4,Geregelte Notfalländerungen,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.8,SYS.1.8.A20,SYS.1.8.A20-UA.5,subset-of,superset-of,TEST.3.1.6,Kontinuierliche Tests,yes,,G 0.19: Offenlegung schützenswerter Informationen,draft,human
+SYS.1.9,SYS.1.9.A13,SYS.1.9.A13-UA.2,intersects-with,intersects-with,DET.3.1.3,Anbindung von Peripheriegeräten,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.9,SYS.1.9.A13,SYS.1.9.A13-UA.2,subset-of,superset-of,DET.3.1.6,Systemspezifische Ereignisse,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.9,SYS.1.9.A13,SYS.1.9.A13-UA.2,intersects-with,intersects-with,DET.3.1.8,Privilegierte Ereignisse,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.9,SYS.1.9.A14,SYS.1.9.A14-UA.2,intersects-with,intersects-with,DET.4.13,Verfügbarkeit des Hostsystems,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.9,SYS.1.9.A14,SYS.1.9.A14-UA.2,subset-of,superset-of,DET.4.14,Verfügbarkeit der Anwendung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.9,SYS.1.9.A14,SYS.1.9.A14-UA.2,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.1.9,SYS.1.9.A17,SYS.1.9.A17-UA.2,equivalent-to,equivalent-to,ARCH.5.1.1,Blockieren anfälliger Netzprotokolle,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.1.9,SYS.1.9.A19,SYS.1.9.A19-UA.3,superset-of,subset-of,DET.4.2,Automatische Angriffserkennung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.1.9,SYS.1.9.A21,SYS.1.9.A21-UA.2,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+SYS.1.9,SYS.1.9.A6,SYS.1.9.A6-UA.2,subset-of,superset-of,ARCH.9.1,Dimensionierung der Netzanbindung,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+SYS.2.1,SYS.2.1.A1,SYS.2.1.A1-UA.1,intersects-with,intersects-with,KONF.5.1,Authentifizierung am System,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+SYS.2.1,SYS.2.1.A1,SYS.2.1.A1-UA.2,intersects-with,intersects-with,BER.3.11,Anmeldeversuchsgrenze an der Anwendung,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+SYS.2.1,SYS.2.1.A1,SYS.2.1.A1-UA.3,intersects-with,intersects-with,BER.3.11,Anmeldeversuchsgrenze an der Anwendung,yes,,G 0.30: Unberechtigte Nutzung oder Administration von Geräten und Systemen,draft,human
+SYS.2.1,SYS.2.1.A11,SYS.2.1.A11-UA.3,subset-of,superset-of,TEST.5.3,Schrittweiser Rollout,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.1,SYS.2.1.A18,SYS.2.1.A18-UA.1,superset-of,subset-of,ARCH.3.4,Verschlüsselte Netzanbindung,yes,,G 0.15: Abhören,draft,human
+SYS.2.1,SYS.2.1.A23,SYS.2.1.A23-UA.1,intersects-with,intersects-with,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.2.1,SYS.2.1.A23,SYS.2.1.A23-UA.1,intersects-with,intersects-with,ARCH.7.1,Dedizierte Hostsysteme für Server,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.2.1,SYS.2.1.A24,SYS.2.1.A24-UA.1,superset-of,subset-of,ARCH.5.1.10.3,Speicherdienste,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.2.1,SYS.2.1.A24,SYS.2.1.A24-UA.3,intersects-with,intersects-with,DET.6.2.2,Datenträgerschleuse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.2.1,SYS.2.1.A3,SYS.2.1.A3-UA.1,intersects-with,intersects-with,KONF.8.1.1,Automatische Sicherheitsupdates,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.1,SYS.2.1.A3,SYS.2.1.A3-UA.2,subset-of,superset-of,DET.5.10,Zeitnahes Patchmanagement,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.1,SYS.2.1.A3,SYS.2.1.A3-UA.2,intersects-with,intersects-with,DET.5.10.3,Automatisierte Überwachung von Anwendungsupdates,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.1,SYS.2.1.A31,SYS.2.1.A31-UA.2,equivalent-to,equivalent-to,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.2.1,SYS.2.1.A36,SYS.2.1.A36-UA.1,intersects-with,intersects-with,KONF.2.8,Alternative Administrationszugänge,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.2.1,SYS.2.1.A36,SYS.2.1.A36-UA.1,intersects-with,intersects-with,KONF.5.1.1,Authentifizierung an der Firmware,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.2.1,SYS.2.1.A45,SYS.2.1.A45-UA.1,superset-of,subset-of,DET.4.6.1,Verhaltensanalyse von Zugangskonten,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.2.1,SYS.2.1.A45,SYS.2.1.A45-UA.1,subset-of,superset-of,DET.5.7,Analyse verdeckter Kanäle,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.2.1,SYS.2.1.A8,SYS.2.1.A8-UA.4,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.2.2.3,SYS.2.2.3.A22,SYS.2.2.3.A22-UA.2,subset-of,superset-of,DET.3.1.2,Ausgeführte Kommandozeilenbefehle,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.2.2.3,SYS.2.2.3.A9,SYS.2.2.3.A9-UA.2,equivalent-to,equivalent-to,ARCH.5.1.1,Blockieren anfälliger Netzprotokolle,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.2.3,SYS.2.3.A1,SYS.2.3.A1-UA.2,subset-of,superset-of,DET.3.1.2,Ausgeführte Kommandozeilenbefehle,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+SYS.2.3,SYS.2.3.A1,SYS.2.3.A1-UA.2,intersects-with,intersects-with,TEST.1.3,Einschränkung von Änderungen,yes,,G 0.31: Fehlerhafte Nutzung oder Administration von Geräten und Systemen,draft,human
+SYS.2.5,SYS.2.5.A15,SYS.2.5.A15-UA.2,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.2.5,SYS.2.5.A16,SYS.2.5.A16-UA.2,intersects-with,intersects-with,DET.3.1.8,Privilegierte Ereignisse,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.2.5,SYS.2.5.A17,SYS.2.5.A17-UA.3,subset-of,superset-of,DET.4.11,Anomalien in Netzen und am Perimeter,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.5,SYS.2.5.A17,SYS.2.5.A17-UA.3,superset-of,subset-of,DET.4.2,Automatische Angriffserkennung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.5,SYS.2.5.A17,SYS.2.5.A17-UA.3,equivalent-to,equivalent-to,DET.4.6,Anomale Nutzung der Anwendung,yes,,G 0.28: Software-Schwachstellen oder -Fehler,draft,human
+SYS.2.5,SYS.2.5.A18,SYS.2.5.A18-UA.3,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,,G 0.25: Ausfall von Geräten oder Systemen,draft,human
+SYS.2.5,SYS.2.5.A2,SYS.2.5.A2-UA.1,subset-of,superset-of,ARCH.9.1,Dimensionierung der Netzanbindung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.5,SYS.2.5.A2,SYS.2.5.A2-UA.3,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.5,SYS.2.5.A2,SYS.2.5.A2-UA.3,equivalent-to,equivalent-to,ARCH.2.2.3,Segmentierung von Servern und Clients,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.5,SYS.2.5.A4,SYS.2.5.A4-UA.2,subset-of,superset-of,ARCH.7.2,Dedizierte Hardware,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.6,SYS.2.6.A10,SYS.2.6.A10-UA.2,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.6,SYS.2.6.A12,SYS.2.6.A12-UA.2,subset-of,superset-of,ARCH.9.2,Lastverteilung,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.2.6,SYS.2.6.A15,SYS.2.6.A15-UA.1,superset-of,subset-of,ARCH.8.3,Redundante Server,yes,,G 0.9: Ausfall oder Störung von Kommunikationsnetzen,draft,human
+SYS.2.6,SYS.2.6.A4,SYS.2.6.A4-UA.2,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.2.6,SYS.2.6.A4,SYS.2.6.A4-UA.3,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.3.1,SYS.3.1.A1,SYS.3.1.A1-UA.1,intersects-with,intersects-with,SENS.8.1,Screen Lock,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.3.2.1,SYS.3.2.1.A1,SYS.3.2.1.A1-UA.1,intersects-with,intersects-with,GC.6.1.3,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.3.2.1,SYS.3.2.1.A28,SYS.3.2.1.A28-UA.1,subset-of,superset-of,ARCH.5.1.10,Webfilterung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.3.2.1,SYS.3.2.1.A28,SYS.3.2.1.A28-UA.2,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.3.2.1,SYS.3.2.1.A28,SYS.3.2.1.A28-UA.3,subset-of,superset-of,ARCH.5.1.10,Webfilterung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.3.2.1,SYS.3.2.1.A28,SYS.3.2.1.A28-UA.3,intersects-with,intersects-with,ARCH.5.1.8,Inspektion verschlüsselter Verbindungen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.3.2.2,SYS.3.2.2.A1,SYS.3.2.2.A1-UA.1,intersects-with,intersects-with,KONF.2.5.1.1,,no,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.3.2.2,SYS.3.2.2.A20,SYS.3.2.2.A20-UA.3,subset-of,superset-of,VRB.2.1,Umgang mit Nicht-Konformitäten,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.3.2.4,SYS.3.2.4.A2,SYS.3.2.4.A2-UA.1,intersects-with,intersects-with,KONF.2.4,Deaktivierung nicht benötigter Systemfunktionen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.3.3,SYS.3.3.A15,SYS.3.3.A15-UA.2,intersects-with,intersects-with,DET.4.19,Unautorisierte Sendeanlagen,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.4.1,SYS.4.1.A11,SYS.4.1.A11-UA.1,subset-of,superset-of,ARCH.2.2.10,Drucker-Netz,yes,,G 0.15: Abhören,draft,human
+SYS.4.1,SYS.4.1.A11,SYS.4.1.A11-UA.2,intersects-with,intersects-with,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.15: Abhören,draft,human
+SYS.4.1,SYS.4.1.A11,SYS.4.1.A11-UA.2,intersects-with,intersects-with,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.15: Abhören,draft,human
+SYS.4.1,SYS.4.1.A11,SYS.4.1.A11-UA.3,subset-of,superset-of,ARCH.2.2.10,Drucker-Netz,yes,,G 0.15: Abhören,draft,human
+SYS.4.1,SYS.4.1.A18,SYS.4.1.A18-UA.3,subset-of,superset-of,ARCH.2.2.10,Drucker-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.4.1,SYS.4.1.A4,SYS.4.1.A4-UA.1,intersects-with,intersects-with,ARCH.2.2.10,Drucker-Netz,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.4.3,SYS.4.3.A1,SYS.4.3.A1-UA.1,subset-of,superset-of,DET.1.1.3,Bekanntgabe,yes,,G 0.18: Fehlplanung oder fehlende Anpassung,draft,human
+SYS.4.3,SYS.4.3.A16,SYS.4.3.A16-UA.2,intersects-with,intersects-with,DET.4.9,Manipulations-Checkup,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.4.3,SYS.4.3.A18,SYS.4.3.A18-UA.1,intersects-with,intersects-with,DET.5.7,Analyse verdeckter Kanäle,yes,,G 0.15: Abhören,draft,human
+SYS.4.3,SYS.4.3.A3,SYS.4.3.A3-UA.1,subset-of,superset-of,DET.3.1.8,Privilegierte Ereignisse,yes,,G 0.21: Manipulation von Hard- oder Software,draft,human
+SYS.4.4,SYS.4.4.A1,SYS.4.4.A1-UA.1,intersects-with,intersects-with,KONF.8.1,Automatische Überprüfung,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.4.4,SYS.4.4.A17,SYS.4.4.A17-UA.1,subset-of,superset-of,DET.4.2,Automatische Angriffserkennung,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.4.4,SYS.4.4.A18,SYS.4.4.A18-UA.1,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,,G 0.37: Abstreiten von Handlungen,draft,human
+SYS.4.4,SYS.4.4.A24,SYS.4.4.A24-UA.2,intersects-with,intersects-with,KONF.6.8,Berechtigungen des Webserver-Prozesses,yes,,G 0.23: Unbefugtes Eindringen in IT-Systeme,draft,human
+SYS.4.4,SYS.4.4.A5,SYS.4.4.A5-UA.4,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.4.4,SYS.4.4.A5,SYS.4.4.A5-UA.4,subset-of,superset-of,ARCH.2.2.1,Externe Netzanschlüsse,yes,,G 0.14: Ausspähen von Informationen (Spionage),draft,human
+SYS.4.5,SYS.4.5.A11,SYS.4.5.A11-UA.1,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.4.5,SYS.4.5.A11,SYS.4.5.A11-UA.1,intersects-with,intersects-with,TEST.3.1.2,Verwendung externer Software,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.4.5,SYS.4.5.A11,SYS.4.5.A11-UA.2,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,,G 0.22: Manipulation von Informationen,draft,human
+SYS.4.5,SYS.4.5.A16,SYS.4.5.A16-UA.1,equivalent-to,equivalent-to,DET.6.2.2,Datenträgerschleuse,yes,,G 0.39: Schadprogramme,draft,human

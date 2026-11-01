@@ -7,7 +7,7 @@ Alle Befehle der Service-Portfolio-Bewertung arbeiten auf einem SWAO-Workspace: 
 Legt pro Intake-Zeile einen App-Ordner an.
 
 ```bash
-swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--cluster-threshold <n>] [--json]
+swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json]
 ```
 
 | Option | Bedeutung |
@@ -16,6 +16,8 @@ swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--worksp
 | `--mapping <yaml>` | Spaltenzuordnung für einen Aufbau, den die Erkennung über die Kopfzeile nicht abdeckt. Ohne diese Option, und wenn `--from` fehlt, verwendet SWAO eine Spaltenzuordnung neben der Arbeitsmappe in `wsp/inputs/service-intake/` (eine `.yaml`- oder `.yml`-Datei, deren Name `column-map` oder `columnmap` enthält), sofern genau eine vorhanden ist; andernfalls erkennt SWAO die Spalten aus der Kopfzeile. Siehe [Spaltenzuordnung](/de/service-assessment/column-mapping). |
 | `--workspace <dir>` | Workspace-Wurzel. Fehlt dort eine `.swao.yml`, wird sie angelegt. |
 | `--refresh` | Bestehende Service-Apps aus der Arbeitsmappe aktualisieren. Nur die in `generated_fields` jeder App aufgeführten Schlüssel werden neu geschrieben; Ihre manuellen Änderungen an anderer Stelle bleiben erhalten. Siehe [Sicher bearbeiten](/de/service-assessment/configuration#sicher-bearbeiten). |
+| `--replace` | Der Workspace enthält bereits Service-Apps aus einer anderen Intake-Arbeitsmappe: Diese App-Ordner werden nach `parked-apps/<Zeitstempel>/` verschoben (nichts wird gelöscht), danach wird diese Arbeitsmappe angelegt. |
+| `--keep` | Der Workspace enthält bereits Service-Apps aus einer anderen Intake-Arbeitsmappe: Die Apps dieser Arbeitsmappe werden daneben angelegt. Services, die beide Arbeitsmappen beschreiben, erscheinen dann doppelt. |
 | `--cluster-threshold <n>` | Mindestanzahl identischer Zeilen, die einen Cluster bilden (Standard 3, oder `service_portfolio.cluster_threshold`). |
 | `--json` | Maschinenlesbares Ergebnis. Enthält keine personenbezogenen Werte. |
 
@@ -24,9 +26,10 @@ Ablauf in dieser Reihenfolge:
 1. Liest alle Tabellenblätter, ermittelt den Spaltenaufbau und wandelt Werte um (Zahlen, Wahrheitswerte, Kapazitätsangaben wie `16 GB`).
 2. Bereinigt personenbezogene Daten: Spalten mit Ansprechpartner, Telefon und E-Mail werden auf Wahr/Falsch-Kennzeichen reduziert; Herstellernamen, die wie ein Personenname aussehen, werden geschwärzt.
 3. Bricht mit einem Fehler ab, wenn zwei Zeilen dieselbe App-ID tragen (es wird kein Ordner geschrieben).
-4. Klassifiziert jede Zeile gegen SWAO-INFRA-CAT und fasst identische Zeilen clusterfähiger Kategorien (zum Beispiel VDI-Worker) zu einer Cluster-App zusammen.
-5. Schätzt die Cloud-Kosten für Lift-and-Shift aus den Hardware-Spalten.
-6. Schreibt `apps/<id>/.swao.yml`, pro App einen leeren Ablageordner `apps/<id>/ingestion/` (ohne weitere Unterordner), `wsp/signals/scaffold-signals.json` und den Block `service_portfolio:` in der Workspace-`.swao.yml`.
+4. Bricht mit einem Fehler ab, wenn der Workspace bereits Service-Apps aus einer anderen Intake-Arbeitsmappe enthält (es wird kein Ordner geschrieben). Die Meldung nennt die andere Arbeitsmappe, die Anzahl der Apps und die Optionen `--replace`, `--keep` oder einen neuen Workspace. Das gilt auch für `--refresh`. Eine Arbeitsmappe mit demselben Dateinamen (eine bearbeitete Fassung) oder demselben Inhalt (eine umbenannte Kopie) gilt als dieselbe Arbeitsmappe. Jede App hält ihre Arbeitsmappe in `intake.source` (nur Dateiname) und `intake.source_sha256` fest.
+5. Klassifiziert jede Zeile gegen SWAO-INFRA-CAT und fasst identische Zeilen clusterfähiger Kategorien (zum Beispiel VDI-Worker) zu einer Cluster-App zusammen.
+6. Schätzt die Cloud-Kosten für Lift-and-Shift aus den Hardware-Spalten.
+7. Schreibt `apps/<id>/.swao.yml`, pro App einen leeren Ablageordner `apps/<id>/ingestion/` (ohne weitere Unterordner), `wsp/signals/scaffold-signals.json` und den Block `service_portfolio:` in der Workspace-`.swao.yml`.
 
 Die Zusammenfassung nennt pro Blatt die erkannten Spalten (Feld und Spaltenbuchstabe sowie die Herkunft: Erkennung über die Kopfzeile oder Spaltenzuordnung) und warnt, wenn keine Spalte für das Betriebssystem (End-of-Life-Recherche), den App-Namen (CVE- und Warnmeldungsrecherche) oder den Hersteller (CVE-Recherche) gefunden wurde. Danach nennt sie die SCAFFOLD-Signale und jede App, die SWAO nicht klassifizieren konnte; ordnen Sie dort `infra_category` manuell zu.
 

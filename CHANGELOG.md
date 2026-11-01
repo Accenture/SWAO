@@ -9,6 +9,66 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-01
+
+Minor release. It adds the BSI Grundschutz++ community framework (all 1000 requirements of
+the BSI Anwenderkatalog, with crosswalks from IT-Grundschutz 2023 and ISO 27001), carries the
+sprint 154 TUI and CLI fixes and a stricter support bundle, and refreshes the landing-zone
+catalogues.
+
+### Added
+
+- Community framework `BSI_GRUNDSCHUTZ_PP` (BSI Grundschutz++): all 1000 requirements of the BSI Anwenderkatalog in 20 Praktiken, generated from the official OSCAL catalogue (German text, CC BY-SA 4.0), with crosswalks from IT-Grundschutz 2023 and ISO 27001 Annex A.
+
+### Changed
+
+- Landing-zone catalogues refreshed on 2026-11-01 (AWS, AWS European Sovereign Cloud, AWS
+  ISO-E, STACKIT, GCP, Azure, AWS service metadata, VM prices). No existing region changed
+  its sovereignty facts; Azure adds two regions. The curated catalogues were re-checked
+  against the provider documentation: Azure Kubernetes Service on Azure Local in
+  disconnected mode is now generally available; Delos Cloud, T Cloud Public and OCI are
+  unchanged.
+
+### Security
+
+- Support bundle v2.5 (#3517): client application IDs and names, input document, intake
+  workbook and source file names are replaced by per-bundle pseudonyms in every file and file
+  name; `workspace-structure.json` keeps only the shape, sizes and extensions of client
+  folders; intake workbook sheet and column names are dropped (counts only); a final e-mail, IP address and credential pass runs over every value, known secret
+  values are masked, and the bundle is refused if one survives. The pseudonym mapping stays
+  in the workspace (`wsp/support-diag/local/`). Bundles created before SWAO 1.5 (v2.3 and
+  earlier) contain the full text of chat answers: delete them and create a new bundle.
+
+### Fixed
+
+- TUI pickers (#3519): the mouse wheel and touchpad no longer move the highlighted option, so
+  Enter confirms the option the operator chose. Terminal mouse reporting stays off by
+  default and the wheel scrolls the terminal again; wheel navigation is an opt-in per picker
+  (`wheelNavigation`), and stray mouse reports are swallowed.
+- Service Portfolio TUI (#3518): "assess every app" names the app count and total time; a
+  confirmation step shows scope, number of apps, estimated duration and LLM calls (Enter
+  starts, Esc returns to the scope question). "All" is always confirmed; Top 20 and "none"
+  skip the step only with `service_portfolio.confirm_small_scope: false`. The run stops
+  before the assessment if the scaffold yields a different app count, the stage line shows
+  the scope, and a fast double Enter starts the pipeline once.
+- `swao service init` (#3521): every app records its intake workbook (`intake.source`,
+  `intake.source_sha256`). A second workbook next to an earlier import is refused and nothing
+  is written; choose `--replace` (old apps moved to `parked-apps/<timestamp>/`), `--keep`, or a
+  new workspace. `--refresh` with another workbook takes the same path. The TUI asks the same
+  question, MCP `swao_service_init` takes `on_other_source`, and `swao health-check` warns about
+  mixed intake sources or an `app_count` mismatch.
+
+### Known issues
+
+- Ten Azure regions returned by the Azure Retail Prices API (including the new
+  `northeastus5` and `westcentralusfre`) have no documented country; their residency stays
+  `UNKNOWN`.
+- The public release tag and source commit on GitHub show "Unverified": they are signed with
+  a key that is not registered on the publishing account. Verify downloads with the signed
+  `SHA256SUMS*.asc` files (#3543, #3555).
+- The real-LLM release smoke ran against Anthropic only; the OpenAI leg was not run for
+  this release (#3509).
+
 ## [1.5.0] - 2026-10-25
 
 Minor release. It improves the quality of existing assessments (Java and Spring Boot

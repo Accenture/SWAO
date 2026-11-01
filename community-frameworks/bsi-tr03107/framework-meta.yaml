@@ -54,6 +54,7 @@ framework:
       - SGBX_DE             # Sozialdaten access requires substantiell/hoch trust level
       - GDPR                # identity verification feeds GDPR Art. 9 processing lawfulness
       - BSI_GRUNDSCHUTZ_2023 # ORP.4 (identity management), SYS.1.8 (CA services)
+      - BSI_GRUNDSCHUTZ_PP   # BER (Berechtigung), KONF.4 (Vertrauenswuerdige Basisdienste)
       - BSI_C5              # IAM domain (BSI C5 IDM controls)
       - NIS2                # MFA / secure authentication overlaps NIS2 Art. 21
 

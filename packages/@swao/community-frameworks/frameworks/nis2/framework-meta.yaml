@@ -56,6 +56,7 @@ framework:
       - EU_CRA               # Entities that also supply products face NIS2 + EU CRA obligation
       - KRITIS_DE            # German NIS2UmsuCG overlaps with BSIG §8a for KRITIS operators
       - BSI_GRUNDSCHUTZ_2023 # German NIS2 transposition references BSI methodology
+      - BSI_GRUNDSCHUTZ_PP   # Grundschutz++ catalogue declares scope_implements_norm BSIG section 44
       - EUCS                 # Digital infrastructure EE may also pursue EUCS certification
 
   redistribution_note: >-

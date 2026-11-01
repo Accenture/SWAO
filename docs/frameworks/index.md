@@ -2,7 +2,7 @@
 
 Community frameworks are the compliance and assessment catalogues SWAO evaluates applications against: regulations (GDPR, DORA, NIS2, the EU AI Act), standards (ISO/IEC 27001, SOC 2, BSI C5), sovereign cloud schemes (EUCS, SecNumCloud, EC Cloud Sovereignty Framework), national regimes (KRITIS-DE, NCA, SAMA), and SWAO's own frameworks for LLM selection and application portfolio management. Each framework is a folder with two files: `framework-meta.yaml` (identity, authority, version, scoring) and `controls.yaml` (the controls).
 
-SWAO ships **24 frameworks** plus **9 demo variants** with a small control subset for workshops and live presentations.
+SWAO ships **25 frameworks** plus **9 demo variants** with a small control subset for workshops and live presentations.
 
 ## How frameworks are used
 
@@ -35,6 +35,7 @@ COBIT 5 ships again, with its control text rewritten in original SWAO wording; `
 | [10 Pillars of Secure AI Systems](/frameworks/ai-10-pillars) | `AI_10_PILLARS` | Alok Sharan (concept) | 11 | `AI_10_PILLARS_DEMO` (11) |
 | [BSI C5:2020](/frameworks/bsi-c5) | `BSI_C5` | BSI | 62 | none |
 | [BSI IT-Grundschutz Kompendium 2023](/frameworks/bsi-grundschutz-2023) | `BSI_GRUNDSCHUTZ_2023` | BSI | 105 | `BSI_GRUNDSCHUTZ_2023_DEMO` (11) |
+| [BSI Grundschutz++](/frameworks/bsi-grundschutz-plus-plus) | `BSI_GRUNDSCHUTZ_PP` | BSI | 1000 | none |
 | [COBIT 5](/frameworks/cobit-5) | `COBIT_5` | ISACA | 37 | none |
 | [Digital Operational Resilience Act](/frameworks/dora) | `DORA` | European Union (Regulation 2022/2554) | 31 | `DORA_DEMO` (12) |
 | [EC Cloud Sovereignty Framework v1.2.1](/frameworks/ec-csf) | `EC_CSF` | European Commission (DIGIT) | 34 | none |

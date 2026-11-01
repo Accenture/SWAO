@@ -44,7 +44,7 @@ describe('swao service command tree (#3075)', () => {
     expect(service).toBeDefined();
     expect(service.commands.map((c) => c.name())).toEqual(['init', 'research', 'export', 'rank']);
     const init = service.commands.find((c) => c.name() === 'init')!;
-    expect(init.options.map((o) => o.long)).toEqual(['--from', '--mapping', '--workspace', '--refresh', '--cluster-threshold', '--json']);
+    expect(init.options.map((o) => o.long)).toEqual(['--from', '--mapping', '--workspace', '--refresh', '--replace', '--keep', '--cluster-threshold', '--json']);
     const research = service.commands.find((c) => c.name() === 'research')!;
     expect(research.options.map((o) => o.long)).toEqual(['--app', '--workspace', '--refresh', '--dry-run', '--skip-llm', '--json']);
   });
@@ -104,6 +104,12 @@ describe('ensureServiceWorkspace', () => {
 });
 
 describe('runServiceInitCli input validation', () => {
+  it('rejects --replace together with --keep (#3521)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-svc-flags-'));
+    dirs.push(dir);
+    await expect(runServiceInitCli({ from: fileURLToPath(import.meta.url), workspace: dir, replace: true, keep: true })).rejects.toThrow(/--replace and --keep exclude each other/);
+  });
+
   it('rejects a missing intake file and a bad cluster threshold before touching the workspace', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'swao-svc-val-'));
     dirs.push(dir);
@@ -243,6 +249,18 @@ describe('formatServiceInitSummary', () => {
   it('explains a duplicate-ID halt', () => {
     const text = formatServiceInitSummary({ ok: false, reason: 'duplicate_ids', duplicateIds: ['hosapp001'], signals: [], warnings: [] }, '/ws');
     expect(text).toMatch(/\[error\] Scaffold halted: 1 duplicate app ID\(s\); no folders were written/);
+  });
+
+  it('explains a second-workbook halt with the count and the options (#3521)', () => {
+    const text = formatServiceInitSummary({
+      ok: false, reason: 'other_intake_source', source: { name: 'second.xlsx', sha256: 'a'.repeat(64) },
+      conflict: { appIds: ['vm001', 'vm002', 'vm003', 'vm004', 'vm005', 'vm006'], sources: ['first.xlsx'] }, plannedAppCount: 6, signals: [], warnings: [],
+    }, '/ws');
+    expect(text).toContain('[error] Scaffold halted: the workspace already holds 6 service app(s) from another intake workbook (first.xlsx); second.xlsx would add 6 app(s). Nothing was written.');
+    expect(text).toContain('vm001, vm002, vm003, vm004, vm005, +1 more');
+    expect(text).toMatch(/--replace\s+move the apps of the other workbook to parked-apps/);
+    expect(text).toMatch(/--keep\s+add the apps of this workbook/);
+    expect(text).toContain('new workspace');
   });
 });
 

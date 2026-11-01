@@ -1,0 +1,366 @@
+iso_27001_annex_a,relationship_iso_to_gspp,relationship_gspp_to_iso,gspp_id,gspp_title,gspp_id_in_pinned_catalogue,swao_iso_27001_control,bsi_mapping_status,bsi_mapping_method
+A.5.1,subset-of,superset-of,GC.6.1.3,,no,ISO_27001_A.5.1,complete,human
+A.5.1,subset-of,superset-of,GC.6.1.4,,no,ISO_27001_A.5.1,complete,human
+A.5.1,subset-of,superset-of,GC.9.1,Festlegung einer Sicherheitsorganisation,yes,ISO_27001_A.5.1,complete,human
+A.5.1,subset-of,superset-of,PERF.7.1,,no,ISO_27001_A.5.1,complete,human
+A.5.2,subset-of,superset-of,GC.8.1.1,,no,ISO_27001_A.5.2,complete,human
+A.5.2,subset-of,superset-of,GC.8.1.4,,no,ISO_27001_A.5.2,complete,human
+A.5.3,equivalent-to,equivalent-to,GC.8.1.3,,no,ISO_27001_A.5.3,complete,human
+A.5.4,subset-of,superset-of,GC.6.1.2,,no,ISO_27001_A.5.4,complete,human
+A.5.4,subset-of,superset-of,GC.6.1.3,,no,ISO_27001_A.5.4,complete,human
+A.5.4,subset-of,superset-of,GC.8.1.1.1,,no,ISO_27001_A.5.4,complete,human
+A.5.4,subset-of,superset-of,SENS.11.1,Sensibilisierung der Institutionsleitung,yes,ISO_27001_A.5.4,complete,human
+A.5.4,subset-of,superset-of,SENS.11.2,Führen als Vorbild,yes,ISO_27001_A.5.4,complete,human
+A.5.5,subset-of,superset-of,GC.9.1,Festlegung einer Sicherheitsorganisation,yes,ISO_27001_A.5.5,complete,human
+A.5.5,subset-of,superset-of,GC.9.1.1,Festlegung von Rollen und Zuständigkeiten,yes,ISO_27001_A.5.5,complete,human
+A.5.6,equivalent-to,equivalent-to,GC.9.1.1,Festlegung von Rollen und Zuständigkeiten,yes,ISO_27001_A.5.6,complete,human
+A.5.7,subset-of,superset-of,DET.5.8,Bedrohungsanalyse,yes,ISO_27001_A.5.7,complete,human
+A.5.7,subset-of,superset-of,DET.5.8.1,Auswertung öffentlicher Quellen,yes,ISO_27001_A.5.7,complete,human
+A.5.7,subset-of,superset-of,PERF.1.1.1,,no,ISO_27001_A.5.7,complete,human
+A.5.7,subset-of,superset-of,PERF.6.1.3,,no,ISO_27001_A.5.7,complete,human
+A.5.8,subset-of,superset-of,GC.8.1.1.1,,no,ISO_27001_A.5.8,complete,human
+A.5.8,subset-of,superset-of,GC.9.1.2,,no,ISO_27001_A.5.8,complete,human
+A.5.9,subset-of,superset-of,ARCH.2.4,Inventar der Netze,yes,ISO_27001_A.5.9,complete,human
+A.5.9,subset-of,superset-of,ASST.2.1,Inventar der Informationen,yes,ISO_27001_A.5.9,complete,human
+A.5.9,subset-of,superset-of,ASST.2.1.1,Informationsverantwortung,yes,ISO_27001_A.5.9,complete,human
+A.5.9,subset-of,superset-of,ASST.2.2,Inventar der Systeme,yes,ISO_27001_A.5.9,complete,human
+A.5.9,subset-of,superset-of,ASST.2.3,Inventar der Anwendungen,yes,ISO_27001_A.5.9,complete,human
+A.5.10,subset-of,superset-of,ASST.2.1.1,Informationsverantwortung,yes,ISO_27001_A.5.10,complete,human
+A.5.10,subset-of,superset-of,ASST.3.1,Nutzungsvereinbarungen,yes,ISO_27001_A.5.10,complete,human
+A.5.11,subset-of,superset-of,BES.6.6,Rückgewähr von Assets,yes,ISO_27001_A.5.11,complete,human
+A.5.11,subset-of,superset-of,PERS.6.1,Vorgehensweise für den Weggang,yes,ISO_27001_A.5.11,complete,human
+A.5.11,subset-of,superset-of,SENS.8.6,Begleitung Externer,yes,ISO_27001_A.5.11,complete,human
+A.5.12,equivalent-to,equivalent-to,ASST.2.4,Klassifizierung,yes,ISO_27001_A.5.12,complete,human
+A.5.13,equivalent-to,equivalent-to,ASST.3.3,Kennzeichnung,yes,ISO_27001_A.5.13,complete,human
+A.5.13,equivalent-to,equivalent-to,ASST.3.4,Kennzeichnung ohne vertrauliche Daten,yes,ISO_27001_A.5.13,complete,human
+A.5.14,subset-of,superset-of,ASST.4.1,Autorisierung von Schnittstellen,yes,ISO_27001_A.5.14,complete,human
+A.5.14,subset-of,superset-of,ASST.4.2,Vertraulichkeit und Integrität beim Transport,yes,ISO_27001_A.5.14,complete,human
+A.5.14,subset-of,superset-of,ASST.4.5,Vereinbarungen zum Austausch,yes,ISO_27001_A.5.14,complete,human
+A.5.15,subset-of,superset-of,ARCH.4.1,Netzzugangskontrolle,yes,ISO_27001_A.5.15,complete,human
+A.5.15,subset-of,superset-of,BER.5.1,"Ausgabe, Registrierung und Zuordnung",yes,ISO_27001_A.5.15,complete,human
+A.5.15,subset-of,superset-of,BER.5.3,Vorgehensweise zum Widerruf,yes,ISO_27001_A.5.15,complete,human
+A.5.15,subset-of,superset-of,GEB.3.3,Authentifizierung vor Zutritt,yes,ISO_27001_A.5.15,complete,human
+A.5.16,subset-of,superset-of,BER.2.1,Person-Identität,yes,ISO_27001_A.5.16,complete,human
+A.5.16,subset-of,superset-of,BER.2.5,Deaktivierung bei Weggang,yes,ISO_27001_A.5.16,complete,human
+A.5.16,subset-of,superset-of,BER.3.1,Zentrales Management,yes,ISO_27001_A.5.16,complete,human
+A.5.16,subset-of,superset-of,BER.3.13,Sperre der Anwendung bei Inaktivität,yes,ISO_27001_A.5.16,complete,human
+A.5.16,subset-of,superset-of,BER.3.4,Protokollierung von Änderungen,yes,ISO_27001_A.5.16,complete,human
+A.5.16,subset-of,superset-of,PERS.6.1,Vorgehensweise für den Weggang,yes,ISO_27001_A.5.16,complete,human
+A.5.17,subset-of,superset-of,BER.3.19,Gruppenkonten - Passwortwechsel bei Weggang,yes,ISO_27001_A.5.17,complete,human
+A.5.17,subset-of,superset-of,BER.6.1,Passwortmanager,yes,ISO_27001_A.5.17,complete,human
+A.5.17,subset-of,superset-of,BER.6.8,,no,ISO_27001_A.5.17,complete,human
+A.5.17,subset-of,superset-of,SENS.4.1,Personengebundene Authentisierungsmittel,yes,ISO_27001_A.5.17,complete,human
+A.5.17,subset-of,superset-of,SENS.4.1.4,Passwörter nur im Passwortmanager,yes,ISO_27001_A.5.17,complete,human
+A.5.17,subset-of,superset-of,SENS.4.1.6,Keine Weitergabe personengebundener Authentisierungsmittel,yes,ISO_27001_A.5.17,complete,human
+A.5.18,subset-of,superset-of,BER.5.1,"Ausgabe, Registrierung und Zuordnung",yes,ISO_27001_A.5.18,complete,human
+A.5.18,subset-of,superset-of,BER.5.2,Zurücksetzung und Ersetzung von Authentifizierungsmitteln,yes,ISO_27001_A.5.18,complete,human
+A.5.18,subset-of,superset-of,BER.5.3,Vorgehensweise zum Widerruf,yes,ISO_27001_A.5.18,complete,human
+A.5.18,subset-of,superset-of,BER.5.8,Mehr-Faktor-Authentisierung am Perimeter,yes,ISO_27001_A.5.18,complete,human
+A.5.19,subset-of,superset-of,BES.1.3,Lieferanten- und Dienstleisterverzeichnis,yes,ISO_27001_A.5.19,complete,human
+A.5.19,subset-of,superset-of,BES.3.1,Klassifizierung von Lieferantenbeziehungen,yes,ISO_27001_A.5.19,complete,human
+A.5.19,subset-of,superset-of,BES.5.4,Informationssicherheitskontrollmechanismen,yes,ISO_27001_A.5.19,complete,human
+A.5.20,subset-of,superset-of,BES.4.4,Vertragsvorlage für Outsourcing,yes,ISO_27001_A.5.20,complete,human
+A.5.20,subset-of,superset-of,BES.5.11,Recht auf Audit,yes,ISO_27001_A.5.20,complete,human
+A.5.20,subset-of,superset-of,BES.5.12,Informationspflichten,yes,ISO_27001_A.5.20,complete,human
+A.5.20,subset-of,superset-of,BES.5.2,Service Level Agreement,yes,ISO_27001_A.5.20,complete,human
+A.5.20,subset-of,superset-of,BES.5.3,Compliance-Verpflichtungen,yes,ISO_27001_A.5.20,complete,human
+A.5.20,subset-of,superset-of,BES.5.4,Informationssicherheitskontrollmechanismen,yes,ISO_27001_A.5.20,complete,human
+A.5.21,subset-of,superset-of,BES.1.3.1,Gesamte Lieferkette,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.4.5,Security by Design,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.4.5.1,Entwicklung nach einem Sicherheitslebenszyklus,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.4.8,Konformitätsnachweise,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.5.6.3,Nachverfolgbarkeit der Lieferkette,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.7.4.12,Software Bill of Materials (SBOM) - Cloud,yes,ISO_27001_A.5.21,complete,human
+A.5.21,subset-of,superset-of,BES.7.4.4.1,Software Bill of Materials (SBOM),yes,ISO_27001_A.5.21,complete,human
+A.5.22,subset-of,superset-of,BES.5.11,Recht auf Audit,yes,ISO_27001_A.5.22,complete,human
+A.5.22,subset-of,superset-of,BES.5.9,Umgang mit Änderungen,yes,ISO_27001_A.5.22,complete,human
+A.5.22,subset-of,superset-of,DLS.3.1,Einhaltung der Sicherheitsvorgaben,yes,ISO_27001_A.5.22,complete,human
+A.5.22,subset-of,superset-of,DLS.3.2,Checkup,yes,ISO_27001_A.5.22,complete,human
+A.5.23,subset-of,superset-of,BES.1.4,Outsourcing-Strategie,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,BES.1.7,Vereinbarung der geteilten Verantwortung,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,BES.2.2,Dokumentation des Rechtsraums und der Datenlokation,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,BES.2.3,Vereinbarung des Rechtsraums und der Datenlokation,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,BES.5.5.1,Datenlokationen,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,BES.6.3,Übertragbarkeit von Daten,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,DET.3.1.13,,no,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,DLS.3.6,Portabilität,yes,ISO_27001_A.5.23,complete,human
+A.5.23,subset-of,superset-of,DLS.4.1,Dekomissionierung,yes,ISO_27001_A.5.23,complete,human
+A.5.24,subset-of,superset-of,DET.2.1,Meldeverfahren,yes,ISO_27001_A.5.24,complete,human
+A.5.24,subset-of,superset-of,REA.1.1,Verfahren und Regelungen,yes,ISO_27001_A.5.24,complete,human
+A.5.24,subset-of,superset-of,REA.1.3,Übungen zur Vorfallsbehandlung,yes,ISO_27001_A.5.24,complete,human
+A.5.25,equivalent-to,equivalent-to,DET.6.1,Beurteilung von Ereignissen,yes,ISO_27001_A.5.25,complete,human
+A.5.26,subset-of,superset-of,REA.2.1,Triage und Erstreaktion,yes,ISO_27001_A.5.26,complete,human
+A.5.26,subset-of,superset-of,REA.2.2,Automatische Erstreaktion,yes,ISO_27001_A.5.26,complete,human
+A.5.26,subset-of,superset-of,REA.2.6,Ursachenanalyse und Behandlung,yes,ISO_27001_A.5.26,complete,human
+A.5.27,equivalent-to,equivalent-to,REA.3.1,Verbesserung durch Erkenntnisse,yes,ISO_27001_A.5.27,complete,human
+A.5.28,subset-of,superset-of,REA.2.5,IT-Forensik,yes,ISO_27001_A.5.28,complete,human
+A.5.28,subset-of,superset-of,REA.2.5.1,Rechtssichere Beweissicherung,yes,ISO_27001_A.5.28,complete,human
+A.5.28,subset-of,superset-of,REA.2.5.2,Vier-Augen-Prinzip,yes,ISO_27001_A.5.28,complete,human
+A.5.29,subset-of,superset-of,NOT.2.1,Verfahren und Regelungen zur BAO,yes,ISO_27001_A.5.29,complete,human
+A.5.29,subset-of,superset-of,NOT.3.2,Geschäftsfortführungsplan,yes,ISO_27001_A.5.29,complete,human
+A.5.29,subset-of,superset-of,NOT.3.6,Sicherheitsmechanismen,yes,ISO_27001_A.5.29,complete,human
+A.5.30,subset-of,superset-of,NOT.1.1.4,Business Continuity Management System,yes,ISO_27001_A.5.30,complete,human
+A.5.30,subset-of,superset-of,NOT.3.1,Wiederanlaufplan,yes,ISO_27001_A.5.30,complete,human
+A.5.30,subset-of,superset-of,NOT.4.15,Vorgehen zur Wiederherstellung,yes,ISO_27001_A.5.30,complete,human
+A.5.30,subset-of,superset-of,NOT.4.16,Test der Datensicherung,yes,ISO_27001_A.5.30,complete,human
+A.5.30,subset-of,superset-of,NOT.4.2,Sicherung des Systems,yes,ISO_27001_A.5.30,complete,human
+A.5.30,subset-of,superset-of,NOT.4.3,Sicherung der Anwendung,yes,ISO_27001_A.5.30,complete,human
+A.5.31,subset-of,superset-of,GC.7.1.1,Festlegung der Geschäftsprozesse,yes,ISO_27001_A.5.31,complete,human
+A.5.31,subset-of,superset-of,GC.7.1.3,,no,ISO_27001_A.5.31,complete,human
+A.5.31,subset-of,superset-of,PERF.2.1,Überprüfung der Einhaltung von Verpflichtungen,yes,ISO_27001_A.5.31,complete,human
+A.5.32,intersects-with,intersects-with,BES.2.1.5,Lizenzierung,yes,ISO_27001_A.5.32,complete,human
+A.5.32,intersects-with,intersects-with,BES.5.8,Rechte für geistges Eigentum,yes,ISO_27001_A.5.32,complete,human
+A.5.33,subset-of,superset-of,ASST.7.2,Aufbewahrungs- und Löschfristen,yes,ISO_27001_A.5.33,complete,human
+A.5.33,subset-of,superset-of,BES.6.5,Behandlung aufzubewahrender Aufzeichnungen,yes,ISO_27001_A.5.33,complete,human
+A.5.33,subset-of,superset-of,NOT.4.5,Archivierung langfristig benötigter Daten,yes,ISO_27001_A.5.33,complete,human
+A.5.34,intersects-with,intersects-with,ASST.2.1,Inventar der Informationen,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,ASST.3.7,Pseudonymisierung,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,ASST.3.8,Anonymisierung,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,BES.2.2,Dokumentation des Rechtsraums und der Datenlokation,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,BES.2.3,Vereinbarung des Rechtsraums und der Datenlokation,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,GC.7.1.1,Festlegung der Geschäftsprozesse,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,GC.7.1.2,Festlegung des Schutzbedarfs,yes,ISO_27001_A.5.34,complete,human
+A.5.34,intersects-with,intersects-with,PERF.2.1,Überprüfung der Einhaltung von Verpflichtungen,yes,ISO_27001_A.5.34,complete,human
+A.5.35,subset-of,superset-of,PERF.3.1.1,Erstellen eines Auditsplans,yes,ISO_27001_A.5.35,complete,human
+A.5.35,subset-of,superset-of,PERF.3.1.3,Auswahl des Auditteams,yes,ISO_27001_A.5.35,complete,human
+A.5.35,subset-of,superset-of,PERF.5.1.4,,no,ISO_27001_A.5.35,complete,human
+A.5.36,subset-of,superset-of,PERF.2.1,Überprüfung der Einhaltung von Verpflichtungen,yes,ISO_27001_A.5.36,complete,human
+A.5.37,subset-of,superset-of,GC.10.1,Festlegung eines Verfahrens zum Kommunikationsmanagement,yes,ISO_27001_A.5.37,complete,human
+A.5.37,subset-of,superset-of,GC.10.2,,no,ISO_27001_A.5.37,complete,human
+A.5.37,subset-of,superset-of,GC.9.1.3,,no,ISO_27001_A.5.37,complete,human
+A.6.1,equivalent-to,equivalent-to,PERS.3.5,Prüfung der Bewerbungsunterlagen,yes,ISO_27001_A.6.1,complete,human
+A.6.1,equivalent-to,equivalent-to,PERS.3.6,Vertrauenswürdigkeit von Bewerbenden,yes,ISO_27001_A.6.1,complete,human
+A.6.1,equivalent-to,equivalent-to,PERS.3.6.1,Sicherheitsüberprüfung (intern),yes,ISO_27001_A.6.1,complete,human
+A.6.2,subset-of,superset-of,PERS.3.1,Dienst- oder Arbeitsvertrag,yes,ISO_27001_A.6.2,complete,human
+A.6.2,subset-of,superset-of,PERS.3.2,Verfahrensanweisungen,yes,ISO_27001_A.6.2,complete,human
+A.6.2,subset-of,superset-of,PERS.3.3,Betriebs- und Geschäftsgeheimnisse,yes,ISO_27001_A.6.2,complete,human
+A.6.3,subset-of,superset-of,BES.5.7,Schulung,yes,ISO_27001_A.6.3,complete,human
+A.6.3,subset-of,superset-of,PERS.4.1,Qualifikationsbedarf,yes,ISO_27001_A.6.3,complete,human
+A.6.3,subset-of,superset-of,PERS.4.2,Rollenspezifische Schulungen und Sensibilisierungen,yes,ISO_27001_A.6.3,complete,human
+A.6.3,subset-of,superset-of,SENS.1.1,Verfahren und Regelungen,yes,ISO_27001_A.6.3,complete,human
+A.6.4,equivalent-to,equivalent-to,PERS.5.1,Maßregelung,yes,ISO_27001_A.6.4,complete,human
+A.6.5,subset-of,superset-of,PERS.6.1,Vorgehensweise für den Weggang,yes,ISO_27001_A.6.5,complete,human
+A.6.5,subset-of,superset-of,PERS.6.1.1,Entzug von Berechtigungen gemäß BER,yes,ISO_27001_A.6.5,complete,human
+A.6.5,subset-of,superset-of,PERS.6.1.2,Neubesetzung,yes,ISO_27001_A.6.5,complete,human
+A.6.6,subset-of,superset-of,PERS.3.1,Dienst- oder Arbeitsvertrag,yes,ISO_27001_A.6.6,complete,human
+A.6.6,subset-of,superset-of,PERS.3.3,Betriebs- und Geschäftsgeheimnisse,yes,ISO_27001_A.6.6,complete,human
+A.6.7,subset-of,superset-of,KONF.3.2,Speicherverschlüsselung,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.8.1,Screen Lock,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.1,Verarbeitung in der Öffentlichkeit,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.2,Vorsicht vor Mithören,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.3,Verwahrung außer Haus,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.4,Mobile Arbeit mit Dokumenten,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.5,Mitnahme zur mobilen Arbeit,yes,ISO_27001_A.6.7,complete,human
+A.6.7,subset-of,superset-of,SENS.9.6,Mitnahme ins Ausland,yes,ISO_27001_A.6.7,complete,human
+A.6.8,equivalent-to,equivalent-to,DET.2.1,Meldeverfahren,yes,ISO_27001_A.6.8,complete,human
+A.6.8,equivalent-to,equivalent-to,SENS.2.8,Melden von Ereignissen,yes,ISO_27001_A.6.8,complete,human
+A.7.1,equivalent-to,equivalent-to,GEB.2.1,Installation von Perimetern,yes,ISO_27001_A.7.1,complete,human
+A.7.2,subset-of,superset-of,GEB.3.3,Authentifizierung vor Zutritt,yes,ISO_27001_A.7.2,complete,human
+A.7.2,subset-of,superset-of,GEB.3.3.1,Zugangskontrollanlage,yes,ISO_27001_A.7.2,complete,human
+A.7.2,subset-of,superset-of,GEB.3.3.3,Besucheranmeldung,yes,ISO_27001_A.7.2,complete,human
+A.7.3,subset-of,superset-of,GEB.3.5,Einbruchhemmung,yes,ISO_27001_A.7.3,complete,human
+A.7.3,subset-of,superset-of,GEB.4.1,Einrichtung,yes,ISO_27001_A.7.3,complete,human
+A.7.3,subset-of,superset-of,GEB.6.2,Geschützte Aufstellung,yes,ISO_27001_A.7.3,complete,human
+A.7.4,equivalent-to,equivalent-to,GEB.3.1,Überwachung von Zutrittspunkten,yes,ISO_27001_A.7.4,complete,human
+A.7.5,subset-of,superset-of,GEB.10.2,Brandschutz,yes,ISO_27001_A.7.5,complete,human
+A.7.5,subset-of,superset-of,GEB.10.3,Wasserschutz,yes,ISO_27001_A.7.5,complete,human
+A.7.5,subset-of,superset-of,GEB.10.4,Blitzschutzeinrichtungen,yes,ISO_27001_A.7.5,complete,human
+A.7.5,subset-of,superset-of,GEB.8.3,Schutz der Datenträger vor Brandschäden,yes,ISO_27001_A.7.5,complete,human
+A.7.5,subset-of,superset-of,GEB.9.4,Überspannungsschutz,yes,ISO_27001_A.7.5,complete,human
+A.7.6,subset-of,superset-of,ARCH.3.2,Einschränkung in Sicherheitsbereichen,yes,ISO_27001_A.7.6,complete,human
+A.7.6,subset-of,superset-of,GEB.4.2,Gesonderte Autorisierung,yes,ISO_27001_A.7.6,complete,human
+A.7.6,subset-of,superset-of,GEB.4.3,Schleusen,yes,ISO_27001_A.7.6,complete,human
+A.7.6,subset-of,superset-of,SENS.7.18,Mobile Endgeräte in Sicherheitsbereichen,yes,ISO_27001_A.7.6,complete,human
+A.7.7,equivalent-to,equivalent-to,GEB.5.1,Lieferzugang,yes,ISO_27001_A.7.7,complete,human
+A.7.7,equivalent-to,equivalent-to,GEB.5.2,Schutz gegen Manipulation,yes,ISO_27001_A.7.7,complete,human
+A.7.8,subset-of,superset-of,GEB.5.4,,no,ISO_27001_A.7.8,complete,human
+A.7.8,subset-of,superset-of,GEB.6.2,Geschützte Aufstellung,yes,ISO_27001_A.7.8,complete,human
+A.7.8,subset-of,superset-of,GEB.6.3,Netzkomponenten,yes,ISO_27001_A.7.8,complete,human
+A.7.9,subset-of,superset-of,KONF.3.2,Speicherverschlüsselung,yes,ISO_27001_A.7.9,complete,human
+A.7.9,subset-of,superset-of,KONF.3.4,Physischer Diebstahlschutz,yes,ISO_27001_A.7.9,complete,human
+A.7.9,subset-of,superset-of,SENS.8.1,Screen Lock,yes,ISO_27001_A.7.9,complete,human
+A.7.9,subset-of,superset-of,SENS.9.3,Verwahrung außer Haus,yes,ISO_27001_A.7.9,complete,human
+A.7.9,subset-of,superset-of,SENS.9.5,Mitnahme zur mobilen Arbeit,yes,ISO_27001_A.7.9,complete,human
+A.7.9,subset-of,superset-of,SENS.9.6,Mitnahme ins Ausland,yes,ISO_27001_A.7.9,complete,human
+A.7.10,subset-of,superset-of,ASST.3.13,Lagerung physischer Assets,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,ASST.3.15,Ausleihe physischer Assets,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,ASST.3.3,Kennzeichnung,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,ASST.7.3,Geregeltes Löschen oder Vernichten,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,ASST.7.5,Vernichtungseinrichtungen,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,GEB.8.1,Gesonderte Aufbewahrung,yes,ISO_27001_A.7.10,complete,human
+A.7.10,subset-of,superset-of,NOT.4.9,Speichermedien,yes,ISO_27001_A.7.10,complete,human
+A.7.11,subset-of,superset-of,GEB.10.1,Klimatisierung,yes,ISO_27001_A.7.11,complete,human
+A.7.11,subset-of,superset-of,GEB.9.1,Normgerechte Stromversorgung,yes,ISO_27001_A.7.11,complete,human
+A.7.11,subset-of,superset-of,GEB.9.1.3,Redundante Stromversorgung,yes,ISO_27001_A.7.11,complete,human
+A.7.12,subset-of,superset-of,GEB.9.5,Strukturierte Datenverkabelung,yes,ISO_27001_A.7.12,complete,human
+A.7.12,subset-of,superset-of,GEB.9.5.1,Physisch geschützte Verlegung,yes,ISO_27001_A.7.12,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.1,Wartungsbedarf dokumentieren,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.2,Geregelte Wartungen,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.3,Autorisierung von Wartungen,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.4,Behandlung als Änderungen und Tests,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.5,Wartungsfenster,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.6,Wartung durch Externe,yes,ISO_27001_A.7.13,complete,human
+A.7.13,equivalent-to,equivalent-to,ASST.5.7,Dokumentation von Wartungen,yes,ISO_27001_A.7.13,complete,human
+A.7.14,subset-of,superset-of,ASST.7.3,Geregeltes Löschen oder Vernichten,yes,ISO_27001_A.7.14,complete,human
+A.7.14,subset-of,superset-of,ASST.7.3.2,Löschverfahren,yes,ISO_27001_A.7.14,complete,human
+A.7.14,subset-of,superset-of,ASST.7.6,Autorisierung von Veräußerungen,yes,ISO_27001_A.7.14,complete,human
+A.7.14,subset-of,superset-of,ASST.7.7,Beschriftungen entfernen,yes,ISO_27001_A.7.14,complete,human
+A.8.1,subset-of,superset-of,KONF.3.2,Speicherverschlüsselung,yes,ISO_27001_A.8.1,complete,human
+A.8.1,subset-of,superset-of,KONF.3.4,Physischer Diebstahlschutz,yes,ISO_27001_A.8.1,complete,human
+A.8.1,subset-of,superset-of,KONF.3.6,Fernlöschung oder -sperre,yes,ISO_27001_A.8.1,complete,human
+A.8.1,subset-of,superset-of,KONF.3.7,Einschränkung angeschlossener Peripherie,yes,ISO_27001_A.8.1,complete,human
+A.8.1,subset-of,superset-of,SENS.8.1,Screen Lock,yes,ISO_27001_A.8.1,complete,human
+A.8.2,subset-of,superset-of,BER.3.5,Identität-Zugangskonto,yes,ISO_27001_A.8.2,complete,human
+A.8.2,subset-of,superset-of,BER.5.1.2,,no,ISO_27001_A.8.2,complete,human
+A.8.2,subset-of,superset-of,BER.6.5,Anlassbezogene Passwortwechsel,yes,ISO_27001_A.8.2,complete,human
+A.8.2,subset-of,superset-of,SENS.10.2,Umgang mit privilegierten Berechtigungen,yes,ISO_27001_A.8.2,complete,human
+A.8.3,subset-of,superset-of,BER.5.1,"Ausgabe, Registrierung und Zuordnung",yes,ISO_27001_A.8.3,complete,human
+A.8.3,subset-of,superset-of,BER.5.2,Zurücksetzung und Ersetzung von Authentifizierungsmitteln,yes,ISO_27001_A.8.3,complete,human
+A.8.3,subset-of,superset-of,BER.5.3,Vorgehensweise zum Widerruf,yes,ISO_27001_A.8.3,complete,human
+A.8.3,subset-of,superset-of,KONF.6.13,Dynamische Zugriffskontrolle in der Anwendung,yes,ISO_27001_A.8.3,complete,human
+A.8.3,subset-of,superset-of,KONF.6.5,Dynamische Zugriffskontrolle im System,yes,ISO_27001_A.8.3,complete,human
+A.8.4,subset-of,superset-of,DEV.2.4,Einschränkung Zugriffs auf Quellcode,yes,ISO_27001_A.8.4,complete,human
+A.8.4,subset-of,superset-of,DEV.4.10,Protokollierung von Codeänderungen,yes,ISO_27001_A.8.4,complete,human
+A.8.5,subset-of,superset-of,BER.6.4,Kriterien für die Qualität von Passwörtern,yes,ISO_27001_A.8.5,complete,human
+A.8.5,subset-of,superset-of,BER.6.5,Anlassbezogene Passwortwechsel,yes,ISO_27001_A.8.5,complete,human
+A.8.5,subset-of,superset-of,BER.6.8,,no,ISO_27001_A.8.5,complete,human
+A.8.5,subset-of,superset-of,KONF.11.1,Authentifizierung vor dem Zugriff,yes,ISO_27001_A.8.5,complete,human
+A.8.5,subset-of,superset-of,KONF.5.1,Authentifizierung am System,yes,ISO_27001_A.8.5,complete,human
+A.8.6,subset-of,superset-of,ARCH.9.1,Dimensionierung der Netzanbindung,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,ARCH.9.2,Lastverteilung,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,ARCH.9.3,Automatische Skalierung,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,DET.4.15,Ressourcenauslastung von Hostsystemen,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,DET.4.16,Ressourcenauslastung der Server-Dienste,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,DET.4.17,Anwendungsbasiertes Kapazitätsmanagement,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,KONF.9.1,Speicherplatzbegrenzung,yes,ISO_27001_A.8.6,complete,human
+A.8.6,subset-of,superset-of,KONF.9.2,Begrenzung der Hostleistung,yes,ISO_27001_A.8.6,complete,human
+A.8.7,subset-of,superset-of,KONF.7.1,Echtzeitscanner,yes,ISO_27001_A.8.7,complete,human
+A.8.7,subset-of,superset-of,KONF.7.2,Regelmäßige Scans,yes,ISO_27001_A.8.7,complete,human
+A.8.7,subset-of,superset-of,KONF.7.3,Host-basierte Angriffserkennung,yes,ISO_27001_A.8.7,complete,human
+A.8.7,subset-of,superset-of,KONF.7.4,Angriffserkennung anhand von Netzverkehr,yes,ISO_27001_A.8.7,complete,human
+A.8.7,subset-of,superset-of,KONF.7.6,Automatische Updates,yes,ISO_27001_A.8.7,complete,human
+A.8.7,subset-of,superset-of,SENS.3.1,Schadprogramme,yes,ISO_27001_A.8.7,complete,human
+A.8.8,subset-of,superset-of,DET.5.1,Zeitnahes Schwachstellenmanagement,yes,ISO_27001_A.8.8,complete,human
+A.8.8,subset-of,superset-of,DET.5.10,Zeitnahes Patchmanagement,yes,ISO_27001_A.8.8,complete,human
+A.8.8,subset-of,superset-of,DET.5.2,Schwachstellenregister,yes,ISO_27001_A.8.8,complete,human
+A.8.8,subset-of,superset-of,DET.5.3,Schwachstellenscans,yes,ISO_27001_A.8.8,complete,human
+A.8.8,subset-of,superset-of,DET.5.4,Regelmäßige Penetrationstests,yes,ISO_27001_A.8.8,complete,human
+A.8.8,subset-of,superset-of,DET.5.9,Externe Schwachstellenmeldungen,yes,ISO_27001_A.8.8,complete,human
+A.8.9,subset-of,superset-of,KONF.10.1,Grundkonfiguration für Anwendungen,yes,ISO_27001_A.8.9,complete,human
+A.8.9,subset-of,superset-of,KONF.10.5,Überprüfung der Konfiguration,yes,ISO_27001_A.8.9,complete,human
+A.8.9,subset-of,superset-of,KONF.2.1,Grundkonfiguration für Systeme,yes,ISO_27001_A.8.9,complete,human
+A.8.9,subset-of,superset-of,KONF.2.1.1,Versionierung der Systemkonfiguration,yes,ISO_27001_A.8.9,complete,human
+A.8.9,subset-of,superset-of,KONF.2.5,Überprüfung der Systemkonfiguration,yes,ISO_27001_A.8.9,complete,human
+A.8.10,subset-of,superset-of,ASST.7.2,Aufbewahrungs- und Löschfristen,yes,ISO_27001_A.8.10,complete,human
+A.8.10,subset-of,superset-of,ASST.7.3,Geregeltes Löschen oder Vernichten,yes,ISO_27001_A.8.10,complete,human
+A.8.10,subset-of,superset-of,ASST.7.3.2,Löschverfahren,yes,ISO_27001_A.8.10,complete,human
+A.8.10,subset-of,superset-of,BES.6.2,Löschung von Daten,yes,ISO_27001_A.8.10,complete,human
+A.8.10,subset-of,superset-of,BES.6.2.1,Löschverfahren,yes,ISO_27001_A.8.10,complete,human
+A.8.11,intersects-with,intersects-with,ASST.3.7,Pseudonymisierung,yes,ISO_27001_A.8.11,complete,human
+A.8.11,intersects-with,intersects-with,ASST.3.8,Anonymisierung,yes,ISO_27001_A.8.11,complete,human
+A.8.11,intersects-with,intersects-with,TEST.3.1.3,Integritätstest,yes,ISO_27001_A.8.11,complete,human
+A.8.12,intersects-with,intersects-with,ASST.3.10,Autorisierung von Datenlokationen,yes,ISO_27001_A.8.12,complete,human
+A.8.12,intersects-with,intersects-with,ASST.3.11,Autorisierung von Systemen,yes,ISO_27001_A.8.12,complete,human
+A.8.12,intersects-with,intersects-with,ASST.3.12,Autorisierung von Personen oder Institutionen,yes,ISO_27001_A.8.12,complete,human
+A.8.12,intersects-with,intersects-with,ASST.4.2,Vertraulichkeit und Integrität beim Transport,yes,ISO_27001_A.8.12,complete,human
+A.8.12,intersects-with,intersects-with,ASST.4.3,Autorisierung von Veröffentlichungen,yes,ISO_27001_A.8.12,complete,human
+A.8.12,intersects-with,intersects-with,DET.4.5,Unerwünschte Datenabflüsse,yes,ISO_27001_A.8.12,complete,human
+A.8.13,subset-of,superset-of,NOT.4.10,Getrennte Aufbewahrung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.14,Offline-Kopie,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.15,Vorgehen zur Wiederherstellung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.16,Test der Datensicherung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.2,Sicherung des Systems,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.3,Sicherung der Anwendung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.4,Automatische Datensicherung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.6,Geschützte Aufbewahrung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.7,Versionierte Datensicherung,yes,ISO_27001_A.8.13,complete,human
+A.8.13,subset-of,superset-of,NOT.4.8,Verschlüsselte Datensicherung,yes,ISO_27001_A.8.13,complete,human
+A.8.14,subset-of,superset-of,ARCH.8.1,Redundanz im Kernnetz,yes,ISO_27001_A.8.14,complete,human
+A.8.14,subset-of,superset-of,ARCH.8.2,Redundante TK-Anbindung,yes,ISO_27001_A.8.14,complete,human
+A.8.14,subset-of,superset-of,ARCH.8.3,Redundante Server,yes,ISO_27001_A.8.14,complete,human
+A.8.14,subset-of,superset-of,GEB.10.1.3,Redundante Klimatisierung,yes,ISO_27001_A.8.14,complete,human
+A.8.14,subset-of,superset-of,GEB.9.1.3,Redundante Stromversorgung,yes,ISO_27001_A.8.14,complete,human
+A.8.15,subset-of,superset-of,DET.3.1,Protokollierung sicherheitsrelevanter Ereignisse,yes,ISO_27001_A.8.15,complete,human
+A.8.15,subset-of,superset-of,DET.3.2,Integration von Cloud-Diensten,yes,ISO_27001_A.8.15,complete,human
+A.8.15,subset-of,superset-of,DET.3.3,Filterung nicht benötigter Inhalte,yes,ISO_27001_A.8.15,complete,human
+A.8.15,subset-of,superset-of,DET.3.4,Speicherkapazität,yes,ISO_27001_A.8.15,complete,human
+A.8.16,subset-of,superset-of,DET.4.1,Überwachung der Protokollierung,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.11,Anomalien in Netzen und am Perimeter,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.12,Monitoring der Netzverfügbarkeit,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.13,Verfügbarkeit des Hostsystems,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.14,Verfügbarkeit der Anwendung,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.2,Automatische Angriffserkennung,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.3,Überwachung der Angriffserkennung,yes,ISO_27001_A.8.16,complete,human
+A.8.16,subset-of,superset-of,DET.4.6,Anomale Nutzung der Anwendung,yes,ISO_27001_A.8.16,complete,human
+A.8.17,equivalent-to,equivalent-to,KONF.4.5,Zeitquellen,yes,ISO_27001_A.8.17,complete,human
+A.8.18,subset-of,superset-of,BER.3.5,Identität-Zugangskonto,yes,ISO_27001_A.8.18,complete,human
+A.8.18,subset-of,superset-of,KONF.6.4,Privilegierte Systemfunktionen,yes,ISO_27001_A.8.18,complete,human
+A.8.18,subset-of,superset-of,KONF.6.7,Privilegierte Funktionen der Anwendung,yes,ISO_27001_A.8.18,complete,human
+A.8.18,subset-of,superset-of,SENS.10.2,Umgang mit privilegierten Berechtigungen,yes,ISO_27001_A.8.18,complete,human
+A.8.19,subset-of,superset-of,DET.5.10.1,Autorisierte Bezugsquellen,yes,ISO_27001_A.8.19,complete,human
+A.8.19,subset-of,superset-of,KONF.7.10,Einschränkung der Ausführung,yes,ISO_27001_A.8.19,complete,human
+A.8.19,subset-of,superset-of,KONF.7.9,Einschränkung der Installation,yes,ISO_27001_A.8.19,complete,human
+A.8.20,subset-of,superset-of,ARCH.4.1,Netzzugangskontrolle,yes,ISO_27001_A.8.20,complete,human
+A.8.20,subset-of,superset-of,ARCH.5.1,Einschränkung und Inspektion von Verbindungen,yes,ISO_27001_A.8.20,complete,human
+A.8.20,subset-of,superset-of,ARCH.5.2,Blockieren direkter öffentlicher Verbindungen,yes,ISO_27001_A.8.20,complete,human
+A.8.20,subset-of,superset-of,ARCH.6.1,Kontrollierte Verbindungsführung,yes,ISO_27001_A.8.20,complete,human
+A.8.21,subset-of,superset-of,ARCH.4.1,Netzzugangskontrolle,yes,ISO_27001_A.8.21,complete,human
+A.8.21,subset-of,superset-of,BES.5.2,Service Level Agreement,yes,ISO_27001_A.8.21,complete,human
+A.8.21,subset-of,superset-of,DLS.3.1.1,Audit oder Zertifikat,yes,ISO_27001_A.8.21,complete,human
+A.8.22,subset-of,superset-of,ARCH.2.1,Netzsegmente,yes,ISO_27001_A.8.22,complete,human
+A.8.22,subset-of,superset-of,ARCH.2.2,Einschränkung von Verbindungen zwischen Segmenten,yes,ISO_27001_A.8.22,complete,human
+A.8.22,subset-of,superset-of,ARCH.2.3,Mikrosegmentierung,yes,ISO_27001_A.8.22,complete,human
+A.8.23,equivalent-to,equivalent-to,ARCH.5.1.10,Webfilterung,yes,ISO_27001_A.8.23,complete,human
+A.8.24,subset-of,superset-of,BER.7.1,Etablierte Algorithmen bei der Schlüsselerzeugung,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,BER.7.15,Vorgehensweise nach Nutzung,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,BER.7.6,Etablierte Algorithmen beim Transport,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,BER.7.8,Etablierte Algorithmen bei der Schlüsselnutzung,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,KONF.10.2,Kryptographische Verfahren in Anwendungen,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,KONF.14.1,Verschlüsselung beim Transport,yes,ISO_27001_A.8.24,complete,human
+A.8.24,subset-of,superset-of,KONF.2.2,Kryptographische Verfahren in IT-Systemen,yes,ISO_27001_A.8.24,complete,human
+A.8.25,subset-of,superset-of,BES.4.5.1,Entwicklung nach einem Sicherheitslebenszyklus,yes,ISO_27001_A.8.25,complete,human
+A.8.25,subset-of,superset-of,DEV.1.1,Verfahren und Regelungen,yes,ISO_27001_A.8.25,complete,human
+A.8.25,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,ISO_27001_A.8.25,complete,human
+A.8.25,subset-of,superset-of,DEV.6.1,Freigabe nach Änderungen und Tests,yes,ISO_27001_A.8.25,complete,human
+A.8.26,subset-of,superset-of,BES.2.1,Erfassung des Bedarfes,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,BES.4.1,Klassifizierung von Beschaffungsvorhaben,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,BES.4.2,Dokumentation der Beschaffungskriterien,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,BES.4.3,Beschaffung anhand der Kriterien,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,BES.4.5,Security by Design,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,BES.4.6,Security by Default,yes,ISO_27001_A.8.26,complete,human
+A.8.26,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,ISO_27001_A.8.26,complete,human
+A.8.27,subset-of,superset-of,BES.4.5,Security by Design,yes,ISO_27001_A.8.27,complete,human
+A.8.27,subset-of,superset-of,DEV.2.1,Security by Design Architektur,yes,ISO_27001_A.8.27,complete,human
+A.8.27,subset-of,superset-of,DEV.2.2,Dokumentation der (Software-)Architektur,yes,ISO_27001_A.8.27,complete,human
+A.8.27,subset-of,superset-of,DEV.2.6,Widerstandsfähigkeit gegen gängige Angriffsmuster,yes,ISO_27001_A.8.27,complete,human
+A.8.28,subset-of,superset-of,DEV.2.6.1,Eingabevalidierung,yes,ISO_27001_A.8.28,complete,human
+A.8.28,subset-of,superset-of,DEV.2.6.2,Ausgabekodierung,yes,ISO_27001_A.8.28,complete,human
+A.8.28,subset-of,superset-of,DEV.3.2,Routinen zur Fehlerbehandlung,yes,ISO_27001_A.8.28,complete,human
+A.8.28,subset-of,superset-of,DEV.3.3,Deaktivierung der Ausgabe schützenswerter Daten durch Fehlermeldungen,yes,ISO_27001_A.8.28,complete,human
+A.8.28,subset-of,superset-of,DEV.3.4,Passwort-Hashing,yes,ISO_27001_A.8.28,complete,human
+A.8.29,subset-of,superset-of,DEV.4.11,Test bei Änderungen am Quellcode,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,DEV.6.1,Freigabe nach Änderungen und Tests,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,TEST.3.1,Sicherheitstest,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,TEST.3.1.1,Dokumentation von Testergebnissen,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,TEST.3.1.10,Lasttest,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,TEST.3.1.4,Testdaten,yes,ISO_27001_A.8.29,complete,human
+A.8.29,subset-of,superset-of,TEST.3.1.5,Testumgebung,yes,ISO_27001_A.8.29,complete,human
+A.8.30,subset-of,superset-of,BES.4.4,Vertragsvorlage für Outsourcing,yes,ISO_27001_A.8.30,complete,human
+A.8.30,subset-of,superset-of,BES.4.5.1,Entwicklung nach einem Sicherheitslebenszyklus,yes,ISO_27001_A.8.30,complete,human
+A.8.30,subset-of,superset-of,BES.5.11,Recht auf Audit,yes,ISO_27001_A.8.30,complete,human
+A.8.30,subset-of,superset-of,BES.5.6,Vergabe von Unteraufträgen,yes,ISO_27001_A.8.30,complete,human
+A.8.31,subset-of,superset-of,ARCH.2.2.8,Segmentierung von Test und Betrieb,yes,ISO_27001_A.8.31,complete,human
+A.8.31,subset-of,superset-of,ARCH.7.3,Entwicklungs- und Testumgebungen,yes,ISO_27001_A.8.31,complete,human
+A.8.31,subset-of,superset-of,KONF.6.1.3,Isolierte Arbeitsumgebungen,yes,ISO_27001_A.8.31,complete,human
+A.8.32,subset-of,superset-of,TEST.1.1,Verfahren und Regelungen,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.1.3,Einschränkung von Änderungen,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.2.1,Versionshistorie,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.2.2,Folgenabschätzung,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.4.1,Autorisierung von Änderungen,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.4.3,Rückfallösung,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.4.4,Geregelte Notfalländerungen,yes,ISO_27001_A.8.32,complete,human
+A.8.32,subset-of,superset-of,TEST.5.5,Rückblick,yes,ISO_27001_A.8.32,complete,human
+A.8.33,equivalent-to,equivalent-to,TEST.3.1.3,Integritätstest,yes,ISO_27001_A.8.33,complete,human
+A.8.34,subset-of,superset-of,TEST.1.1,Verfahren und Regelungen,yes,ISO_27001_A.8.34,complete,human
+A.8.34,subset-of,superset-of,TEST.3.1,Sicherheitstest,yes,ISO_27001_A.8.34,complete,human
+A.8.34,subset-of,superset-of,TEST.4.1,Autorisierung von Änderungen,yes,ISO_27001_A.8.34,complete,human

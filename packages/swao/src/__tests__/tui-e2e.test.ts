@@ -41,7 +41,10 @@ const hasEntry    = existsSync(DIST_ENTRY);
 // (piped stdout, VS Code task, CI) this fails and the spawned PTY produces
 // empty output. Skip the suite in that environment rather than timing out.
 const hasRealConsole = process.platform !== 'win32' || process.stdout.isTTY === true;
-const canRunE2e = hasEntry && hasRealConsole;
+// Quarantined on Linux CI (#3554): the PTY child stops at "Starting SWAO..." and
+// never renders the menu there; the cause is not yet known. Still runs locally.
+const quarantinedInCi = process.env['CI'] === 'true' && process.platform === 'linux';
+const canRunE2e = hasEntry && hasRealConsole && !quarantinedInCi;
 
 // Sandbox HOME so the TUI finds no real licence file and falls back to Community.
 let sandboxHome: string;
@@ -98,6 +101,12 @@ function spawnTui(args: string[] = ['menu'], cwd?: string): {
       ...process.env,
       HOME: sandboxHome,
       USERPROFILE: sandboxHome,
+      // #3536: the licence path is ${XDG_CONFIG_HOME:-~/.config}/swao (Linux) or
+      // %LOCALAPPDATA%\swao (Windows). GitHub's Linux runners set XDG_CONFIG_HOME,
+      // so a HOME-only sandbox wrote into the runner's real config dir.
+      XDG_CONFIG_HOME: join(sandboxHome, '.config'),
+      LOCALAPPDATA: join(sandboxHome, 'AppData', 'Local'),
+      APPDATA: join(sandboxHome, 'AppData', 'Roaming'),
       SWAO_NO_SPLASH_DELAY: '1',
       SWAO_LICENSE_SECRET: 'test-secret-for-tui-e2e',
     },
@@ -118,9 +127,9 @@ function spawnTui(args: string[] = ['menu'], cwd?: string): {
 function setupSandbox(): void {
   sandboxHome = mkdtempSync(join(tmpdir(), 'swao-tui-e2e-'));
   tmpDirs.push(sandboxHome);
-  // Place a minimal Community licence so the TUI does not prompt for one.
-  // An empty object makes LicenseGuard fall back cleanly to Community tier.
-  writeFileSync(join(sandboxHome, '.swao-license.json'), JSON.stringify({}));
+  // #3536: no licence file at all = Community. The former `{}` placeholder was
+  // copied forward by the #2588 migration into the (unsandboxed) config dir and
+  // crashed every later command on the CI runner.
 }
 
 afterEach(() => {

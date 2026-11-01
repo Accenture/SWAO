@@ -36,6 +36,7 @@ export type MouseClassification = 'wheel-up' | 'wheel-down' | 'noise';
 
 const X10_PREFIX = '\x1b[M';
 const SGR_RE = /^\x1b\[<(\d+);\d+;\d+[Mm]/;
+const SGR_STRIPPED_RE = /^\[<(\d+);\d+;\d+[Mm]$/;
 
 function classifyButton(btn: number): MouseClassification {
   if ((btn & 64) !== 0 && (btn & 32) === 0) {
@@ -52,7 +53,18 @@ function classifyButton(btn: number): MouseClassification {
  * ignore entirely.
  */
 export function classifyMouseInput(input: string): MouseClassification | null {
-  if (!input || !input.startsWith('\x1b[')) return null;
+  if (!input) return null;
+  // #3519: Ink 4 useInput strips the leading ESC from every sequence before
+  // handing it to components ("Strip meta if it's still remaining"), so a real
+  // mouse report reaches a picker as `[<65;10;5M` or `[M` + 3 bytes. Recognise
+  // that form too (complete reports only, so a typed `[` stays keyboard input);
+  // otherwise mouse reports bypass the filter entirely.
+  if (!input.startsWith('\x1b[')) {
+    const stripped = SGR_STRIPPED_RE.exec(input);
+    if (stripped) return classifyButton(parseInt(stripped[1]!, 10));
+    if (input.length === 5 && input.startsWith('[M')) return classifyButton(input.charCodeAt(2) - 32);
+    return null;
+  }
 
   if (input.startsWith(X10_PREFIX)) {
     if (input.length < 4) return 'noise'; // truncated chunk

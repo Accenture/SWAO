@@ -34,9 +34,15 @@ interface SelectInputProps {
   /** Maximum number of options visible at once. When provided, a scroll-window is applied and
    *  above/below counters are shown -- same windowing pattern as MultiSelect (#0620). */
   visibleCount?: number;
+  /** #3519: opt-in mouse wheel navigation. Default false: terminal mouse
+   *  reporting stays off so the wheel scrolls the terminal scrollback and can
+   *  never move the highlighted option behind the operator's back (a wheel
+   *  tick before Enter used to confirm an option the operator did not pick).
+   *  Leave false on any question that starts long-running or costly work. */
+  wheelNavigation?: boolean;
 }
 
-export function SelectInput({ label, options, onSelect, onCursorChange, active = true, visibleCount }: SelectInputProps): JSX.Element {
+export function SelectInput({ label, options, onSelect, onCursorChange, active = true, visibleCount, wheelNavigation = false }: SelectInputProps): JSX.Element {
   const [idx, setIdx] = useState(0);
 
   // #0620: scroll-window state -- keep the cursor row inside the visible band.
@@ -72,7 +78,10 @@ export function SelectInput({ label, options, onSelect, onCursorChange, active =
   }, []);
 
   // #1391: terminal mouse reporting while mounted -- see MultiSelect.
-  useEffect(() => acquireMouseReporting(), []);
+  // #3519: only when wheel navigation is explicitly enabled.
+  const wheelNavRef = useRef(wheelNavigation);
+  wheelNavRef.current = wheelNavigation;
+  useEffect(() => (wheelNavigation ? acquireMouseReporting() : undefined), [wheelNavigation]);
 
   // #1387: single stable useInput registration + mouse-report filtering.
   // Same rationale as MultiSelect -- see that component for the full note.
@@ -82,6 +91,9 @@ export function SelectInput({ label, options, onSelect, onCursorChange, active =
     const cur  = idxRef.current;
     const mouse = classifyMouseInput(input);
     if (mouse) {
+      // #3519: mouse reports never move the cursor unless wheel navigation is
+      // opted in; clicks, motion and (by default) wheel ticks are swallowed.
+      if (!wheelNavRef.current) return;
       if (mouse === 'wheel-up') {
         const n = Math.max(0, cur - 1);
         setIdx(n);

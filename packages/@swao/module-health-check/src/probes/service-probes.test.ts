@@ -148,6 +148,23 @@ describe('service-workspace probe (#3127)', () => {
     const p = buildServiceWorkspaceProbe(ws);
     expect(p.errors).toEqual(['invalid apps/<id>/.swao.yml for hosapp200', 'wsp/portfolio-summary.json does not match the portfolio summary schema']);
   });
+
+  it('warns when service apps come from more than one intake source (#3521)', () => {
+    const ws = cleanWorkspace();
+    editApp(ws, 'hosapp200', (d) => { d['intake']['source'] = 'second.xlsx'; d['intake']['source_sha256'] = 'b'.repeat(64); });
+    const p = buildServiceWorkspaceProbe(ws);
+    expect(p.status).toBe('warn');
+    expect(p.message).toMatch(/service apps come from 2 intake sources: \(source not recorded\) \(\d+\), second\.xlsx \(1\)/);
+    expect(p.message).toContain('swao service init --replace');
+  });
+
+  it('warns when the app count differs from service_portfolio.app_count (#3521)', () => {
+    const ws = cleanWorkspace();
+    mkdirSync(join(ws, 'apps', 'extra001'), { recursive: true });
+    writeFileSync(join(ws, 'apps', 'extra001', '.swao.yml'), readFileSync(appYml(ws, 'hosapp200'), 'utf-8').replace(/app_id: hosapp200/, 'app_id: extra001'));
+    const p = buildServiceWorkspaceProbe(ws);
+    expect(p.warnings.some((w) => /service app folder\(s\) under apps\/, but service_portfolio\.app_count is \d+/.test(w))).toBe(true);
+  });
 });
 
 describe('research-cache probe (#3128)', () => {

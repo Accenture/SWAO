@@ -185,7 +185,8 @@ describe('swao service init: safety', () => {
     writeFileSync(join(ws, 'apps', 'hosapp003-old-long-id', '.swao.yml'), 'app_id: hosapp003-old-long-id\nassessment:\n  type: service\n');
     const second = join(ws, 'second.xlsx');
     await writeWorkbook(second, [{ name: 'S', headers: ['App ID', 'OS'], rows: [['HOSAPP001', 'x'], ['HOSAPP003', 'z']] }]);
-    const res = await runServiceInit({ workspacePath: ws, intakePath: second, refresh: true });
+    // #3521: a second workbook needs an explicit choice; 'keep' is the pre-#3521 behaviour.
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second, refresh: true, otherSource: 'keep' });
     expect(res.ok && res.write.notInIntake).toEqual(['hosapp002', 'hosapp003-old-long-id']);
     expect(existsSync(join(ws, 'apps', 'hosapp002', '.swao.yml'))).toBe(true);
   });
@@ -201,5 +202,101 @@ describe('swao service init: safety', () => {
     expect(res.ok && res.write.conflicts).toEqual(['hosapp001']);
     expect(readFileSync(join(ws, 'apps', 'hosapp001', '.swao.yml'), 'utf-8')).toBe(original);
     expect(existsSync(join(ws, 'apps', 'hosapp002', '.swao.yml'))).toBe(true);
+  });
+});
+
+// #3521: a second intake workbook next to an earlier import duplicated every service.
+describe('swao service init: second intake workbook (#3521)', () => {
+  const HEAD = ['App ID', 'OS'];
+  const listApps = (ws: string) => readdirSync(join(ws, 'apps')).sort();
+  const wsYml = (ws: string) => readFileSync(join(ws, '.swao.yml'), 'utf-8');
+
+  /** Workspace scaffolded from first.xlsx; second.xlsx describes the same rows under other IDs (plus one shared ID). */
+  async function twoWorkbooks(): Promise<{ ws: string; first: string; second: string }> {
+    const ws = newWorkspace();
+    const first = join(ws, 'first.xlsx');
+    const second = join(ws, 'second.xlsx');
+    await writeWorkbook(first, [{ name: 'S', headers: HEAD, rows: [['VMA001', 'x'], ['VMA002', 'y'], ['SHARED01', 'z']] }]);
+    await writeWorkbook(second, [{ name: 'S', headers: HEAD, rows: [['APP0001', 'x'], ['APP0002', 'y'], ['SHARED01', 'z']] }]);
+    expect((await runServiceInit({ workspacePath: ws, intakePath: first })).ok).toBe(true);
+    return { ws, first, second };
+  }
+
+  it('records the workbook name and SHA-256 on every app and in service_portfolio', async () => {
+    const { ws } = await twoWorkbooks();
+    for (const id of listApps(ws)) {
+      const intake = appYml(ws, id)['intake'];
+      expect(intake).toMatchObject({ sheet: 'S', source: 'first.xlsx' });
+      expect(intake['source_sha256']).toMatch(/^[a-f0-9]{64}$/);
+      expect(() => ServiceAppConfigSchema.parse(appYml(ws, id))).not.toThrow();
+    }
+    const doc = load(wsYml(ws)) as Record<string, any>;
+    expect(doc['service_portfolio']['source_sha256']).toBe(appYml(ws, 'vma001')['intake']['source_sha256']);
+  });
+
+  it('refuses a second workbook without a flag and writes nothing', async () => {
+    const { ws, second } = await twoWorkbooks();
+    const before = { apps: listApps(ws), yml: wsYml(ws), signals: readFileSync(join(ws, 'wsp', 'signals', 'scaffold-signals.json'), 'utf-8') };
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second });
+    expect(res).toMatchObject({ ok: false, reason: 'other_intake_source', plannedAppCount: 3 });
+    expect(!res.ok && res.reason === 'other_intake_source' && res.conflict).toEqual({ appIds: ['shared01', 'vma001', 'vma002'], sources: ['first.xlsx'] });
+    expect(listApps(ws)).toEqual(before.apps);
+    expect(wsYml(ws)).toBe(before.yml);
+    expect(readFileSync(join(ws, 'wsp', 'signals', 'scaffold-signals.json'), 'utf-8')).toBe(before.signals);
+  });
+
+  it('refuses --refresh with a different workbook than the recorded one', async () => {
+    const { ws, second } = await twoWorkbooks();
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second, refresh: true });
+    expect(res).toMatchObject({ ok: false, reason: 'other_intake_source' });
+    expect(listApps(ws)).toEqual(['shared01', 'vma001', 'vma002']);
+  });
+
+  it('--replace parks the apps of the old workbook and leaves exactly the new set', async () => {
+    const { ws, second } = await twoWorkbooks();
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second, otherSource: 'replace' });
+    expect(res.ok).toBe(true);
+    expect(listApps(ws)).toEqual(['app0001', 'app0002', 'shared01']);
+    // The shared ID is re-created from the new workbook, not left with the old source tag.
+    for (const id of listApps(ws)) expect(appYml(ws, id)['intake']['source']).toBe('second.xlsx');
+    expect(res.ok && res.parked?.appIds).toEqual(['shared01', 'vma001', 'vma002']);
+    const parkedDir = join(ws, res.ok && res.parked ? res.parked.dir : 'x');
+    expect(readdirSync(parkedDir).sort()).toEqual(['shared01', 'vma001', 'vma002']);
+    expect(existsSync(join(parkedDir, 'vma001', '.swao.yml'))).toBe(true);
+    expect((load(wsYml(ws)) as Record<string, any>)['service_portfolio']).toMatchObject({ source: 'second.xlsx', app_count: 3 });
+  });
+
+  it('--keep adds the new apps next to the old ones', async () => {
+    const { ws, second } = await twoWorkbooks();
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second, otherSource: 'keep' });
+    expect(res.ok && res.keptOtherSource).toEqual(['shared01', 'vma001', 'vma002']);
+    expect(listApps(ws)).toEqual(['app0001', 'app0002', 'shared01', 'vma001', 'vma002']);
+  });
+
+  it('treats an edited workbook with the same name, and a renamed copy with the same bytes, as the same source', async () => {
+    const { ws, first } = await twoWorkbooks();
+    await writeWorkbook(first, [{ name: 'S', headers: HEAD, rows: [['VMA001', 'x'], ['VMA002', 'changed'], ['SHARED01', 'z'], ['VMA003', 'new']] }]);
+    const edited = await runServiceInit({ workspacePath: ws, intakePath: first, refresh: true });
+    expect(edited.ok && edited.write.refreshed).toHaveLength(3);
+    const copy = join(ws, 'renamed.xlsx');
+    writeFileSync(copy, readFileSync(first));
+    expect((await runServiceInit({ workspacePath: ws, intakePath: copy, refresh: true })).ok).toBe(true);
+  });
+
+  it('falls back to service_portfolio.source for apps scaffolded before the source was recorded', async () => {
+    const { ws, second } = await twoWorkbooks();
+    // Strip the per-app record, as on apps written by SWAO 1.5 and earlier.
+    for (const id of listApps(ws)) {
+      const doc = appYml(ws, id);
+      delete doc['intake']['source'];
+      delete doc['intake']['source_sha256'];
+      const { dump } = await import('js-yaml');
+      writeFileSync(join(ws, 'apps', id, '.swao.yml'), dump(doc));
+    }
+    const res = await runServiceInit({ workspacePath: ws, intakePath: second });
+    expect(res).toMatchObject({ ok: false, reason: 'other_intake_source', conflict: { sources: ['first.xlsx'] } });
+    writeFileSync(join(ws, '.swao.yml'), 'wsp_version: "0.9"\n');
+    const unknown = await runServiceInit({ workspacePath: ws, intakePath: second });
+    expect(unknown).toMatchObject({ ok: false, reason: 'other_intake_source', conflict: { sources: ['(not recorded)'] } });
   });
 });

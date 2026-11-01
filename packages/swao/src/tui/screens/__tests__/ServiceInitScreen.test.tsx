@@ -25,6 +25,8 @@ import {
   lineColor, readServiceAssessOutcome, readServiceRunPointer,
   defaultServiceIntake, estimateAssessment, formatDuration, parsePassProgress, parseResearchProgress,
   finishedKeyAction, rerunAffordances, serviceGuidanceDetails, SERVICE_COLUMN_MAPPING_DOCS_URL,
+  previewServiceInit, type ServiceChildRunner, type ServiceInitPreview,
+  planScope, scopeConfirmationLines, scopeTag, needsScopeConfirmation, RESEARCH_LLM_CALLS_PER_APP, MIN_ASSESS_LLM_CALLS_PER_APP,
 } from '../ServiceInitScreen.js';
 
 const dirs: string[] = [];
@@ -246,7 +248,9 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
       return Promise.resolve(0);
     };
 
-    const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} />);
+    // #3518: the in-process plan names the 300 apps before the scope question.
+    const previewInit = async (): Promise<ServiceInitPreview> => ({ sourceName: 'intake.xlsx', plannedAppIds: ids, existingServiceAppIds: ids, conflict: { appIds: [], sources: [] } });
+    const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} previewInit={previewInit} />);
     await tick();
     const headerLine = (r.lastFrame() ?? '').split('\n')[1];
     r.stdin.write('intake.xlsx');
@@ -261,8 +265,14 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
     r.stdin.write('\r');
     await tick();
     holdApp = 'hosapp150';
+    expect(r.lastFrame() ?? '').toContain('assess every app (300 apps, about 15 h to 20 h)');
     r.stdin.write(DOWN);
     await tick();
+    r.stdin.write('\r');
+    await tick();
+    // #3518: "all" is confirmed with the count first; nothing runs before Enter.
+    expect(r.lastFrame() ?? '').toContain('Apps to assess: 300');
+    expect(calls).toEqual([]);
     r.stdin.write('\r');
     await tick(100);
 
@@ -283,6 +293,7 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
     // Assessment stage, held at the 151st app.
     frame = r.lastFrame() ?? '';
     expect(frame).toContain('Stage 3/4');
+    expect(frame).toContain('Assessing service apps (All 300)');
     expect(frame).toContain('App 151/300: hosapp150');
     expect(frame).toContain('Pass compliance evaluation');
     check(frame);
@@ -316,4 +327,181 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
     check(frame);
     r.unmount();
   }, 60_000); // #3294 (D-32): 30 s timed out under full-suite load; 12 s alone
+});
+
+// #3521: a second intake workbook next to an earlier import is named before anything is scaffolded.
+describe('ServiceInitScreen second intake workbook (#3521)', () => {
+  const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+  const DOWN = '\u001B[B';
+
+  it('passes the choice for a second intake workbook to the CLI as --replace / --keep', () => {
+    expect(buildServiceInitArgs('in.xlsx', '', '/ws', 'replace')).toEqual(['service', 'init', '--from', 'in.xlsx', '--workspace', '/ws', '--replace']);
+    expect(buildServiceInitArgs('in.xlsx', '', '/ws', 'keep')).toEqual(['service', 'init', '--from', 'in.xlsx', '--workspace', '/ws', '--keep']);
+    expect(buildServiceInitArgs('in.xlsx', '', '/ws', 'refuse')).toEqual(['service', 'init', '--from', 'in.xlsx', '--workspace', '/ws']);
+  });
+
+  it('previewServiceInit returns null for a workbook that does not exist (the CLI reports it)', async () => {
+    expect(await previewServiceInit(join(tmpdir(), 'swao-does-not-exist', 'intake.xlsx'),'', mkdtempSync(join(tmpdir(), 'swao-svc-prev-')))).toBeNull();
+  });
+
+  async function toConflictQuestion(runChild: ServiceChildRunner) {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-tui-3521-'));
+    dirs.push(ws);
+    const preview: ServiceInitPreview = {
+      sourceName: 'second.xlsx',
+      plannedAppIds: ['app0001', 'app0002'],
+      existingServiceAppIds: ['vma001', 'vma002', 'vma003'],
+      conflict: { appIds: ['vma001', 'vma002', 'vma003'], sources: ['first.xlsx'] },
+    };
+    const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} previewInit={async () => preview} />);
+    await tick();
+    r.stdin.write('second.xlsx');
+    await tick();
+    r.stdin.write('\r'); // intake
+    await tick();
+    r.stdin.write('\r'); // column map
+    await tick();
+    r.stdin.write('\r'); // LLM research: run
+    await tick(120);
+    return r;
+  }
+
+  it('names the other workbook and its app count, defaults to Back, and spawns nothing', async () => {
+    const calls: string[][] = [];
+    const r = await toConflictQuestion(async (args) => { calls.push(args); return 0; });
+    const frame = r.lastFrame() ?? '';
+    expect(frame).toContain('already holds 3 service app(s) from another intake workbook (first.xlsx)');
+    expect(frame).toContain('second.xlsx (2 apps)');
+    r.stdin.write('\r'); // Back (first option)
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('Enter the path to the intake Excel file');
+    expect(calls).toEqual([]);
+    r.unmount();
+  });
+
+  it('Replace runs service init with --replace', async () => {
+    const calls: string[][] = [];
+    const r = await toConflictQuestion(async (args) => { calls.push(args); return 0; });
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r'); // Replace
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('What should SWAO run?');
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r'); // scaffold and research only
+    await tick();
+    r.stdin.write('\r'); // confirm (#3518)
+    await tick(300);
+    expect(calls[0]).toEqual(expect.arrayContaining(['service', 'init', '--replace']));
+    r.unmount();
+  });
+});
+
+// #3518: "assess every app" is confirmed with scope, app count, duration and LLM calls.
+describe('ServiceInitScreen scope confirmation (#3518)', () => {
+  const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
+  const DOWN = '\u001B[B';
+  const ESC = '\u001B';
+
+  it('computes count, duration and LLM calls per scope', () => {
+    const all = planScope('all', 461, { skipLlmResearch: false });
+    expect(all).toMatchObject({ assessApps: 461, duration: estimateAssessment(461), researchLlmCalls: 461 * RESEARCH_LLM_CALLS_PER_APP, assessLlmCallsMin: 461 * MIN_ASSESS_LLM_CALLS_PER_APP });
+    expect(planScope('top', 461, { skipLlmResearch: true })).toMatchObject({ assessApps: 20, researchLlmCalls: 0 });
+    expect(planScope('top', 7, { skipLlmResearch: false }).assessApps).toBe(7);
+    expect(planScope('none', 461, { skipLlmResearch: false })).toMatchObject({ assessApps: 0, duration: null, assessLlmCallsMin: 0 });
+    expect(planScope('all', null, { skipLlmResearch: false })).toMatchObject({ assessApps: null, researchLlmCalls: null });
+    const lines = scopeConfirmationLines(all);
+    expect(lines).toContain('Scope: All apps');
+    expect(lines).toContain('Service apps after the scaffold: 461');
+    expect(lines).toContain('Apps to assess: 461');
+    expect(lines.some((l) => l.startsWith('Estimated assessment time: about ') && l.includes('x 461 apps'))).toBe(true);
+    expect(lines).toContain(`LLM calls: research ${461 * 4}; assessment at least ${461 * 4}`);
+    expect(scopeTag('top', 20)).toBe('Top 20');
+    expect(scopeTag('all', 461)).toBe('All 461');
+  });
+
+  it('always confirms "all"; small scopes skip only with service_portfolio.confirm_small_scope: false', () => {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-confirm-'));
+    dirs.push(ws);
+    expect(needsScopeConfirmation('all', ws)).toBe(true);
+    expect(needsScopeConfirmation('top', ws)).toBe(true);
+    expect(needsScopeConfirmation('none', ws)).toBe(true);
+    writeFileSync(join(ws, '.swao.yml'), 'wsp_version: "0.9"\nservice_portfolio:\n  confirm_small_scope: false\n');
+    expect(needsScopeConfirmation('all', ws)).toBe(true);
+    expect(needsScopeConfirmation('top', ws)).toBe(false);
+    expect(needsScopeConfirmation('top', ws, 50)).toBe(true);
+    expect(needsScopeConfirmation('none', ws)).toBe(false);
+  });
+
+  async function toScopeQuestion(plannedApps: number, runChild: ServiceChildRunner) {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-tui-3518-'));
+    dirs.push(ws);
+    const ids = Array.from({ length: plannedApps }, (_, i) => `app${String(i).padStart(4, '0')}`);
+    const preview: ServiceInitPreview = { sourceName: 'inventory.xlsx', plannedAppIds: ids, existingServiceAppIds: [], conflict: { appIds: [], sources: [] } };
+    const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} previewInit={async () => preview} />);
+    await tick();
+    r.stdin.write('inventory.xlsx');
+    await tick();
+    r.stdin.write('\r'); // intake
+    await tick();
+    r.stdin.write('\r'); // column map
+    await tick();
+    r.stdin.write('\r'); // LLM research: run
+    await tick(120);
+    return r;
+  }
+
+  it('selecting "all" renders the confirmation with count and estimate; Esc returns to the scope question without spawning a child', async () => {
+    const calls: string[][] = [];
+    const r = await toScopeQuestion(461, async (args) => { calls.push(args); return 0; });
+    expect(r.lastFrame() ?? '').toContain('assess every app (461 apps, about 23 h to 31 h)');
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r');
+    await tick();
+    const frame = r.lastFrame() ?? '';
+    expect(frame).toContain('Confirm what SWAO will run:');
+    expect(frame).toContain('Scope: All apps');
+    expect(frame).toContain('Apps to assess: 461');
+    expect(frame).toContain('Estimated assessment time: about 23 h to 31 h');
+    expect(frame).toContain('LLM calls: research 1844; assessment at least 1844');
+    expect(frame).toContain('Esc -- back to the scope question');
+    expect(calls).toEqual([]);
+    r.stdin.write(ESC);
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain('What should SWAO run? (no further questions after this)');
+    expect(calls).toEqual([]);
+    r.unmount();
+  });
+
+  it('a fast double Enter on the confirmation starts the pipeline exactly once', async () => {
+    const calls: string[][] = [];
+    const r = await toScopeQuestion(2, async (args) => { calls.push(args); return 0; });
+    r.stdin.write('\r'); // top 20
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('Confirm what SWAO will run:');
+    r.stdin.write('\r'); // confirm
+    r.stdin.write('\r'); // second Enter before the re-render
+    await tick(400);
+    expect(calls.filter((c) => c[0] === 'service' && c[1] === 'init')).toHaveLength(1);
+    r.unmount();
+  });
+
+  it('stops before assessing when the scaffold yields a different count than the one confirmed', async () => {
+    const calls: string[][] = [];
+    const r = await toScopeQuestion(2, async (args) => { calls.push(args); return 0; });
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r'); // all
+    await tick();
+    r.stdin.write('\r'); // confirm 2 apps
+    await tick(400);
+    // The mock init writes no app folder, so the workspace holds 0 apps, not the 2 confirmed.
+    expect(r.lastFrame() ?? '').toContain('Stopped before the assessment: 0 service app(s) after the scaffold, but 2 were confirmed');
+    expect(calls.some((c) => c[0] === 'assess')).toBe(false);
+    r.unmount();
+  });
 });
