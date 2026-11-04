@@ -11,12 +11,12 @@
 # eliminates the pnpm-in-Docker issue class entirely.
 #
 # Built by: private CI (release-enterprise.yml publish-container)
-# Push target: ghcr.io/accenture-cloud-first-tech/swao-enterprise:*
+# Push target: ghcr.io/<private-org>/swao-enterprise:*
 #
 # Usage:
-#   docker pull ghcr.io/accenture-cloud-first-tech/swao-enterprise:latest
+#   docker pull ghcr.io/<private-org>/swao-enterprise:latest
 #   docker run --rm -v $(pwd):/workspace -v /path/to/licence.json:/licence.json \
-#              ghcr.io/accenture-cloud-first-tech/swao-enterprise:latest --version
+#              ghcr.io/<private-org>/swao-enterprise:latest --version
 #
 # Licence file: mount via `-v licence.json:/licence.json`. See ADR-0056 OQ-097-04.
 

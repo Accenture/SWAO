@@ -35,7 +35,7 @@ import {
   type LicenseTier,
 } from '@swao/core';
 import { formatLicenseGateError, printLicenseInvalidError } from '../lib/license-gate-error.js';
-import type { McpClientInstallRequest, McpClientInstallResult } from '@swao/module-mcp';
+import type { McpClientInstallRequest, McpClientInstallResult } from '../lib/mcp-chat-contract.js';
 import { installMcpClient, type McpClientInstallEnv } from './mcp-client-install.js';
 
 // #3163: the config resolver (MSIX virtualised path + conventional %APPDATA%
@@ -286,7 +286,7 @@ export function requireMcpRegistration(feature: string, ops: McpRegistrationGate
 
 /**
  * #3217: the dependencies `swao mcp install` receives from the host (see
- * McpInstallDeps in @swao/module-mcp): the shared licence gate (#3341), the
+ * McpInstallDeps in lib/mcp-chat-contract.ts): the shared licence gate (#3341), the
  * shared stable-binary resolver and the shared multi-config patcher,
  * identical to the wizard and `init --mcp`.
  */

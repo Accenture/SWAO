@@ -51,7 +51,7 @@ describe('cmdExport (#0327 Part D)', () => {
     const appLogsDir = join(workspace, 'apps', 'demo-app', 'wsp', 'logs');
     mkdirSync(appLogsDir, { recursive: true });
     const appEntries = [
-      { ts: `${ts}T10:10:00Z`, level: 'warn', scope: 'app', app_id: 'demo-app', code: 'test.path', message: 'read C:\\Users\\helmut\\swao failed' },
+      { ts: `${ts}T10:10:00Z`, level: 'warn', scope: 'app', app_id: 'demo-app', code: 'test.path', message: 'read C:\\Users\\jane\\swao failed' },
     ];
     const appFile = join(appLogsDir, 'app-events-2026-05.ndjson');
     writeFileSync(appFile, appEntries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf-8');
@@ -104,7 +104,7 @@ describe('cmdExport (#0327 Part D)', () => {
     expect(tarText).not.toContain('alice@example.com');
     expect(tarText).not.toContain('10.20.30.40');
     expect(tarText).not.toMatch(/ghp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/);
-    expect(tarText).not.toContain('C:\\Users\\helmut\\');
+    expect(tarText).not.toContain('C:\\Users\\jane\\');
     // Redaction markers should be PRESENT
     expect(tarText).toContain('[REDACTED-EMAIL]');
     expect(tarText).toContain('[REDACTED-IPV4]');

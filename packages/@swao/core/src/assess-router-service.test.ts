@@ -19,6 +19,7 @@
 import { describe, it, expect } from 'vitest';
 import { AssessmentTypeRouter, KNOWN_ASSESSMENT_TYPES } from './assess-router.js';
 import type { WspResult } from './plugin-types.js';
+import { SwaoYmlSchema } from './swao-yml.js';
 
 const stubWsp: WspResult = { wsp_version: '0', generated_at: '', signals: [] };
 
@@ -43,8 +44,7 @@ describe('AssessmentTypeRouter -- service type (ADR-0064)', () => {
 });
 
 describe('SwaoYmlSchema -- service app .swao.yml (ADR-0064)', () => {
-  it('accepts assessment.type service and passes service blocks through unchanged', async () => {
-    const { SwaoYmlSchema } = await import('./swao-yml.js');
+  it('accepts assessment.type service and passes service blocks through unchanged', () => {
     const parsed = SwaoYmlSchema.parse({
       assessment: { type: 'service' },
       vendor: { name: 'Example Vendor', support_phone_present: true },

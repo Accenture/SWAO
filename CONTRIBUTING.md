@@ -34,8 +34,11 @@ Prerequisites: Node.js 20+ LTS, pnpm 10+.
 
 ```bash
 git clone https://github.com/Accenture/SWAO.git
-cd SWAO/swao
+cd SWAO
 pnpm install
+
+# The CLI package: run the checks from its folder
+cd packages/swao
 
 # Typecheck
 pnpm exec tsc --noEmit

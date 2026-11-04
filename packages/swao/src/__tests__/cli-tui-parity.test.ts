@@ -52,7 +52,7 @@ const MODULE_DOCTOR_COMMANDS_DIR = join(
 // #0574: the `mcp` command lives in the mcp module; it remains wired into the
 // CLI via swao's index.ts bootstrap (registerMcp with injected McpHostDeps).
 const MODULE_MCP_COMMANDS_DIR = join(
-  REPO_ROOT, 'packages', '@swao', 'module-mcp', 'src', 'commands',
+  REPO_ROOT, '..', 'swao-premium', 'packages', '@swao', 'module-mcp', 'src', 'commands', // #3348 B-01
 );
 // #0575: the `publish` command lives in the html-report module; it remains wired
 // into the CLI via swao's index.ts bootstrap (registerPublish with injected
@@ -109,7 +109,7 @@ const MODULE_POWERBI_TUI_DIR = join(REPO_ROOT, 'packages', '@swao', 'module-powe
 const MODULE_PORTFOLIO_TUI_DIR = join(PREMIUM_PACKAGES_ROOT, 'module-portfolio', 'src', 'tui');
 const INDEX_TS = join(REPO_ROOT, 'packages', 'swao', 'src', 'index.ts');
 // #0673: MCP parity -- server.ts lists MCP tool names that must mirror CLI commands.
-const MCP_SERVER_SRC = join(REPO_ROOT, 'packages', '@swao', 'module-mcp', 'src', 'server.ts');
+const MCP_SERVER_SRC = join(REPO_ROOT, '..', 'swao-premium', 'packages', '@swao', 'module-mcp', 'src', 'server.ts'); // #3348 B-01
 
 // Top-level commander commands registered in index.ts (or commands/*.ts).
 // Order does not matter; this is a set comparison.

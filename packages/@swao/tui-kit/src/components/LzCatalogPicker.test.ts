@@ -62,7 +62,7 @@ describe('applyLzCuratedLabels', () => {
       authority: 'EU',
       controlsCount: 53,
       slug: 'gdpr',
-      contributorName: 'Helmut Schindlwick',
+      contributorName: 'Jane Example',
       gate_summary: 'requires EU-entity operator',
     }]);
     expect(opts[0].name).toBe('General Data Protection Regulation');
@@ -70,7 +70,7 @@ describe('applyLzCuratedLabels', () => {
     expect(opts[0].authority).toBe('EU');
     expect(opts[0].controlsCount).toBe(53);
     expect(opts[0].slug).toBe('gdpr');
-    expect(opts[0].contributorName).toBe('Helmut Schindlwick');
+    expect(opts[0].contributorName).toBe('Jane Example');
     expect(opts[0].gate_summary).toBe('requires EU-entity operator');
   });
 

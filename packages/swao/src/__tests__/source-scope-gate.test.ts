@@ -35,8 +35,9 @@ const COPY = [
   ['@swao', 'module-service-assessment', 'src', 'profile'],
   ['swao', 'src', 'passes'],
   ['swao', 'src', 'commands', 'assess.ts'],
-  ['@swao', 'module-mcp', 'src', 'server.ts'],
 ];
+// #3348 B-01: the MCP server lives in swao-premium/.
+const PREMIUM_COPY = [['@swao', 'module-mcp', 'src', 'server.ts']];
 
 let root: string;
 
@@ -51,6 +52,9 @@ beforeAll(() => {
     const from = join(PKGS, ...parts);
     if (!existsSync(from)) continue;
     cpSync(from, join(root, 'swao', 'packages', ...parts), { recursive: true });
+  }
+  for (const parts of PREMIUM_COPY) {
+    cpSync(join(REPO_ROOT, 'swao-premium', 'packages', ...parts), join(root, 'swao-premium', 'packages', ...parts), { recursive: true });
   }
 });
 
@@ -90,7 +94,7 @@ describe('source-scope-single-walker gate (#3428)', () => {
   });
 
   it('fails when the MCP assess spawn passes --source-path (bypasses vcs.subdir)', () => {
-    const file = join(root, 'swao', 'packages', '@swao', 'module-mcp', 'src', 'server.ts');
+    const file = join(root, 'swao-premium', 'packages', '@swao', 'module-mcp', 'src', 'server.ts');
     const original = readFileSync(file, 'utf-8');
     appendFileSync(file, "\nconst bypass = ['assess', '--source-path', '/tmp/x'];\n");
     try {

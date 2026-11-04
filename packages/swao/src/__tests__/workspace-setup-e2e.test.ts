@@ -167,7 +167,7 @@ describe('buildWorkspaceSwaoYml (#1093)', () => {
   it('produced YAML round-trips through js-yaml without errors', () => {
     const yml = buildWorkspaceSwaoYml({
       name: 'Sovereign Health', code: 'sovereign-health',
-      ownerLead: 'owner@example.com', engLead: 'Helmut Schindlwick',
+      ownerLead: 'owner@example.com', engLead: 'Jane Example',
       endDate: '2027-06-30',
     });
     expect(() => yamlLoad(yml)).not.toThrow();
@@ -226,7 +226,7 @@ describe('full workspace creation flow (#1093)', () => {
       name: 'Sovereign Health',
       code: 'sovereign-health',
       ownerLead: 'owner@example.com',
-      engLead: 'Helmut Schindlwick',
+      engLead: 'Jane Example',
       endDate: '2027-06-30',
     });
     mkdirSync(tmp, { recursive: true });
@@ -245,7 +245,7 @@ describe('full workspace creation flow (#1093)', () => {
         name: 'Sovereign Health',
         client_code: 'sovereign-health',
         end_date: '2027-06-30',
-        engagement_lead: 'Helmut Schindlwick',
+        engagement_lead: 'Jane Example',
       }),
       imports_dir: 'wsp/inputs/',
     });

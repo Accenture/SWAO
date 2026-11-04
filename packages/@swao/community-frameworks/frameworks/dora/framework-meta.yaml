@@ -46,8 +46,9 @@ framework:
       - GDPR           # Art 32 technical measures; Art 33-34 breach notification
 
   redistribution_note: >-
-    DORA (Regulation EU 2022/2554) is an EU legislative act in the public
-    domain per EUR-Lex terms of reuse. Control descriptions paraphrase the
+    DORA (Regulation EU 2022/2554) is an EU legislative act; EUR-Lex allows
+    reuse, also commercial, with the source acknowledged and the meaning not
+    distorted (EUR-Lex legal notice, Commission Decision 2011/833/EU). Control descriptions paraphrase the
     regulation's requirements; they do not constitute legal advice.
     Consult qualified legal counsel and your competent authority for
     jurisdiction-specific implementation guidance.

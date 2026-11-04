@@ -1,0 +1,65 @@
+# markdownlint-cli2 config for SWAO (private repo root and, as a synced copy, the public repo; #3359).
+#
+# We follow CommonMark + standard heading / list discipline, but relax
+# rules that don't fit our authoring style:
+#
+# - MD013 (line-length): we don't enforce 80-char hard wraps. ADRs, spec
+#   sections, and tracker issues read better with longer lines, and most
+#   editors soft-wrap.
+# - MD034 (bare URLs): tracker issues and runbooks frequently paste raw
+#   URLs as reference. Enforcing `<>` or named-link wrappers would create
+#   churn without value.
+# - MD041 (first-line-h1): many issue templates use YAML frontmatter
+#   first, then H2-style sections. The H1 is implied by the issue title.
+
+config:
+  MD013: false   # line-length -- we soft-wrap, not hard-wrap
+  MD032: false   # blanks-around-lists -- legacy content frequently violates
+  MD033: false   # no-inline-html -- issue templates use placeholders like <name>
+  MD034: false   # no-bare-urls -- tracker issues paste raw URLs
+  MD040: false   # fenced-code-language -- many code blocks are plain text
+  MD060: false   # fenced-code-language (markdownlint v15+ alias for MD040)
+  MD041: false   # first-line-h1 -- issue templates use YAML frontmatter first
+  MD022: false   # blanks-around-headings -- legacy content varies
+  MD024: false   # no-duplicate-heading -- multiple "## Notes" or "## References" common
+  MD025: false   # single-h1 -- some docs have multiple H1 sections by design
+  MD036: false   # no-emphasis-as-heading -- legacy formatting
+  MD004: false   # ul-style -- mixed - and * bullets across legacy content
+  MD007: false   # ul-indent -- legacy content uses varied indentation
+  MD009: false   # no-trailing-spaces -- editors add trailing spaces on Windows
+  MD012: false   # no-multiple-blanks -- design docs use double-blank for visual spacing
+  MD029: false   # ol-prefix -- legacy docs use 1. 1. 1. style intentionally
+  MD031: false   # blanks-around-fences -- legacy code blocks lack surrounding blanks
+  MD049: false   # emphasis-style -- mixed * and _ emphasis in legacy content
+  MD058: false   # blanks-around-tables -- tables in inline contexts without blank lines
+  MD001: false   # heading-increment -- legacy docs intentionally skip heading levels
+  MD003: false   # heading-style -- mixed ATX and Setext across legacy content
+  MD026: false   # trailing-punctuation -- headings like "Note:" are intentional
+  MD028: false   # no-blanks-blockquote -- stylistic; used for visual spacing in specs
+  MD051: false   # link-fragments -- false positives on SPEC.md internal anchors
+  MD056: false   # table-column-count -- legacy tables with intentional blank cells
+  MD046: false   # code-block-style -- mixed fenced and indented in legacy content
+  MD014: false   # commands-show-output -- shell examples with $ prefix are standard
+  MD018: false   # no-missing-space-atx -- legacy heading style e.g. #0271 issue refs
+  MD037: false   # no-space-in-emphasis -- spaces inside * in legacy regex/code examples
+  MD047: false   # single-trailing-newline -- editors vary; enforcing causes churn
+  MD053: false   # unused-link-definition -- CHANGELOG.md uses compare-URL footer refs that
+                 # markdownlint misreads as orphaned because the [Unreleased] anchor is in
+                 # the section heading, not a bare [text] reference
+  MD035: false   # hr-style -- docs/legal/evb-it/ uses underscores for signature lines;
+                 # legal template formatting is intentional, not a style violation
+
+globs:
+  - "**/*.md"
+
+ignores:
+  - "node_modules"
+  - "**/node_modules"
+  - ".git"
+  - ".ai-memory"             # imported historical notes; not authored by us
+  - "swao/docs-site"         # VitePress publication, generated content
+  - "swao/node_modules"
+  - "**/dist"
+  - "**/build"
+  - "docs/legal/evb-it"      # legal contract templates with intentional signature-line formatting
+  - "docs/tracker/issues/closed"  # historical closed issues; minor lint violations not worth fixing

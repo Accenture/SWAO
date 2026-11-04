@@ -179,6 +179,32 @@ export interface OpenLlmGatewayOpts {
    *  the current apiKey and the request is retried once. When undefined, 401 throws
    *  immediately as before. The returned token must NOT be logged by this function. */
   tokenRefresh?: () => string | undefined;
+  /** #3557: which credential the connector authenticates with, so a 401 names
+   *  the right one (connector auth.credential_key / auth.env_var; tokenCommand
+   *  when auth.token_command supplies an ADFS/SSO token). */
+  credentialHint?: AuthCredentialHint;
+}
+
+export interface AuthCredentialHint {
+  credentialKey?: string;
+  envVar?: string;
+  tokenCommand?: boolean;
+}
+
+/** #3557: operator advice for an HTTP 401. ADFS is named only for connectors
+ *  whose token comes from a token_command; API-key connectors are pointed at
+ *  their own credential key and environment variable. */
+export function authFailureMessage(url: string, hint?: AuthCredentialHint): string {
+  const where = [
+    hint?.credentialKey ? `credential '${hint.credentialKey}' (swao setup)` : undefined,
+    hint?.envVar ? `environment variable ${hint.envVar}` : undefined,
+  ].filter(Boolean).join(' or ');
+  if (hint?.tokenCommand) {
+    return `HTTP 401 from ${url} -- the ADFS/SSO token from the connector's token_command was rejected after one refresh. ` +
+      `Check that the token command still signs in${where ? `, or update ${where}` : ''}, and retry.`;
+  }
+  return `HTTP 401 from ${url} -- API key may be expired or invalid. ` +
+    (where ? `Update ${where} and retry.` : 'Re-authenticate (swao setup) and retry.');
 }
 
 const RESERVED_BODY_KEYS = ['model', 'messages', 'stream'];
@@ -384,8 +410,7 @@ export class OpenLlmProvider implements LlmProvider {
             throw new LlmHttpStatusError(`${opts.failPrefix} 401`, 401, {
               throwAs: new ConnectivityFailureError(
                 'auth',
-                `HTTP 401 from ${this.completionsUrl} -- ADFS/API token may be expired or invalid. ` +
-                `Re-authenticate (swao setup or update SWAO_ADFS_TOKEN) and retry.`,
+                authFailureMessage(this.completionsUrl, this.gateway.credentialHint),
               ),
             });
           }

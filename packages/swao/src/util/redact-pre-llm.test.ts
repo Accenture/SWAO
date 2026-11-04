@@ -112,14 +112,14 @@ describe('redactPreLlm', () => {
 
   describe('person_name class', () => {
     it('is off by default in sprint-038', () => {
-      const { text, counts } = redactPreLlm('Helmut Schindlwick reviewed the change');
-      expect(text).toContain('Helmut Schindlwick');
+      const { text, counts } = redactPreLlm('Jane Example reviewed the change');
+      expect(text).toContain('Jane Example');
       expect(counts.person_name).toBe(0);
     });
 
     it('activates when setScrubPersonName(true)', () => {
       setScrubPersonName(true);
-      const { text, counts } = redactPreLlm('Helmut Schindlwick reviewed the change');
+      const { text, counts } = redactPreLlm('Jane Example reviewed the change');
       expect(text).toContain('[REDACTED-NAME]');
       expect(counts.person_name).toBe(1);
     });
@@ -142,9 +142,9 @@ describe('redactPreLlm', () => {
 
     it('passes through allowlisted person names when person_name is on', () => {
       setScrubPersonName(true);
-      setAllowlist(['Helmut Schindlwick']);
-      const { text, counts } = redactPreLlm('Helmut Schindlwick and Some Other');
-      expect(text).toContain('Helmut Schindlwick');
+      setAllowlist(['Jane Example']);
+      const { text, counts } = redactPreLlm('Jane Example and Some Other');
+      expect(text).toContain('Jane Example');
       expect(text).toContain('[REDACTED-NAME]');
       expect(counts.person_name).toBe(1);
     });

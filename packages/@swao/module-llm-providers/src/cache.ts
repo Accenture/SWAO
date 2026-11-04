@@ -105,7 +105,10 @@ export class LlmCacheLayer implements LlmProvider {
       try {
         const entry = JSON.parse(readFileSync(cacheFile, 'utf-8')) as CacheEntry;
         const ageDays = (Date.now() - new Date(entry.cached_at).getTime()) / 86_400_000;
-        if (ageDays <= this.maxAgeDays) {
+        // Strict (#3559): with maxAgeDays 0 an entry written in the same
+        // millisecond has age 0 and must still count as expired (failed on
+        // the fast Linux CI runner, passed on Windows).
+        if (ageDays < this.maxAgeDays) {
           this._lastCacheHit = true;
           return { text: entry.response, usage: hitUsage };
         }

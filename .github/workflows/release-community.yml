@@ -56,11 +56,19 @@ jobs:
                     swao-community-macos-arm64 > checksums.sha256
           cat checksums.sha256
 
-      - name: Generate Community SBOM
+      - name: Download the Community SBOM from the private release
+        env:
+          GH_TOKEN: ${{ secrets.PRIVATE_RELEASE_TOKEN }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          npm install -g @cyclonedx/cdxgen --quiet
-          cdxgen -o dist-community/swao-${{ steps.version.outputs.VERSION }}-community-sbom.cdx.json \
-            --no-recurse --spec-version 1.5 .
+          # The SBOM lists the community dependencies of the released Community
+          # bundle. The release CI generates it from the bundle, removes machine
+          # paths and checks it against the lockfile; it is not regenerated here.
+          gh release download "$VERSION" \
+            --repo "${{ secrets.SWAO_PRIVATE_REPO }}" \
+            --pattern "swao-$VERSION-community-sbom.cdx.json" \
+            --dir dist-community
+          test -s "dist-community/swao-$VERSION-community-sbom.cdx.json"
 
       - name: Create or update public release
         env:

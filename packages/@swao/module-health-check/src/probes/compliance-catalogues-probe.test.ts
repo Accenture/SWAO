@@ -319,7 +319,7 @@ describe('buildCommunityFrameworksProbe -- sprint-037 #0342 framework-meta valid
     const catalogsDir = join(tmpRoot, 'wsp', 'inputs', 'catalogs');
     writeCommunityFolder(catalogsDir, 'gdpr', {
       id: 'GDPR',
-      contributor: { name: 'Helmut Schindlwick', email: 'https://github.com/Accenture/SWAO/discussions' },
+      contributor: { name: 'Jane Example', email: 'https://github.com/Accenture/SWAO/discussions' },
       controls: 53,
     });
     const result = buildCommunityFrameworksProbe(tmpRoot);
@@ -328,7 +328,7 @@ describe('buildCommunityFrameworksProbe -- sprint-037 #0342 framework-meta valid
     const gdpr = result.frameworks[0]!;
     expect(gdpr.id).toBe('GDPR');
     expect(gdpr.scope).toBe('community');
-    expect(gdpr.contributor).toBe('Helmut Schindlwick');
+    expect(gdpr.contributor).toBe('Jane Example');
     expect(gdpr.controls_count).toBe(53);
     expect(result.status).toBe('ok');
     expect(result.errors).toEqual([]);

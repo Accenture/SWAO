@@ -58,7 +58,6 @@ import { PublishScreen, ServeScreen } from '@swao/module-html-report';
 import { LlmAssessmentScreen } from './screens/LlmAssessmentScreen.js';
 import { ServiceInitScreen } from './screens/ServiceInitScreen.js';
 import { UpgradePromptScreen } from './screens/UpgradePromptScreen.js';
-import { ChatScreen } from './screens/ChatScreen.js';
 import type { LicenseTier } from '@swao/tui-kit';
 
 // Build LZ catalogue hint once at startup so provider/region screens show
@@ -245,7 +244,7 @@ export function App({ initialScreen = 'main' }: AppProps) {
       {/* #2150 -- Upgrade prompt: shown when a Community user activates a tier-gated menu item. */}
       {screen === 'upgrade-prompt' && <UpgradePromptScreen feature={upgradeCtx.feature} requiredTier={upgradeCtx.tier} description={upgradeCtx.description} onBack={() => setScreen('main')} onOpenLicenseScreen={() => setToolsScreen('license')} />}
       {/* #2778 -- Chat with Portfolio: Enterprise-gated; reached via Tools submenu. */}
-      {screen === 'chat' && <ChatScreen onBack={() => setToolsScreen('tools')} />}
+      {screen === 'chat' && premiumScreens.ChatScreen && <premiumScreens.ChatScreen onBack={() => setToolsScreen('tools')} />}
     </Box>
   );
 }

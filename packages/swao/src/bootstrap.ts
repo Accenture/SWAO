@@ -54,8 +54,10 @@ import { registerSetup } from './commands/setup.js';
 // mcp command + MCP server relocated to @swao/module-mcp (#0574). The host
 // injects the resolved swao CLI invocation (McpHostDeps) so the MCP tools spawn
 // the correct entry after the module's extraction; module-mcp must not import
-// host code, so the host mediates.
-import { registerMcp, type McpHostDeps, type McpInstallDeps } from '@swao/module-mcp';
+// host code, so the host mediates. #3348 B-01 / B-02 step 2a: the entry injects
+// registerMcp and registerChat (BootstrapDeps.mcpChat); this module uses the
+// host contract only and imports neither module-mcp nor the chat command.
+import type { McpChatCommands, McpHostDeps, McpInstallDeps } from './lib/mcp-chat-contract.js';
 import { mainMenuEntries } from './tui/screens/main-menu-items.js';
 import { buildMcpInstallDeps } from './tui/mcp-config.js';
 import { registerInstallPlaywright } from './commands/install-playwright.js';
@@ -92,8 +94,6 @@ import { llmGatewayProbeContribution } from '@swao/module-llm-providers';
 import { registerLz } from '@swao/module-landing-zone';
 // llm command group -- memorable entry point for LLM assessments (#1558)
 import { registerLlm } from './commands/llm.js';
-// chat command -- multi-turn portfolio chat; Enterprise-gated (#2779)
-import { registerChat } from './commands/chat.js';
 import { LicenseGuard } from '@swao/core';
 import { SWAO_CONTACTS_INLINE, SWAO_LANDING_URL, SWAO_VERSION } from './branding.js';
 
@@ -121,6 +121,13 @@ export interface BootstrapDeps {
    * only in the Enterprise entry; communityServiceDeps in Community and Consultant.
    */
   serviceDeps: ServiceDeps;
+  /**
+   * #3348 B-01 / B-02: `swao mcp` and `swao chat` (Enterprise). Real
+   * (@swao/module-mcp, commands/chat.ts) only in the Enterprise entry; the
+   * premium-stubs registrars (same command tree and help, every action
+   * refuses) in Community and Consultant.
+   */
+  mcpChat: McpChatCommands;
 }
 
 function editionLabel(): string {
@@ -206,7 +213,7 @@ export function buildProgram(deps: BootstrapDeps): Command {
   // `swao init --mcp`, so every entry point registers the same `command`.
   const mcpInstallDeps: McpInstallDeps = buildMcpInstallDeps();
   // #3476: the main menu for the MCP start prompt (Design 116 REQ-12.3).
-  registerMcp(program, { ...deps.cliSpawnDescriptor, mainMenu: mainMenuEntries }, SWAO_VERSION, mcpInstallDeps);
+  deps.mcpChat.registerMcp(program, { ...deps.cliSpawnDescriptor, mainMenu: mainMenuEntries }, SWAO_VERSION, mcpInstallDeps);
   registerInstallPlaywright(program);
   registerRegimeSelect(program);
   registerExport(program);
@@ -222,7 +229,7 @@ export function buildProgram(deps: BootstrapDeps): Command {
   registerAccept(program);
   registerLz(program);
   registerLlm(program);
-  registerChat(program);
+  deps.mcpChat.registerChat(program);
 
   return program;
 }

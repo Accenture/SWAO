@@ -37,8 +37,8 @@ describe('quickbase hostname validation (#1197)', () => {
     expect(isQuickbaseHost('https://quickbase.com/db/main')).toBe(true);
   });
 
-  it('accepts legitimate subdomain acnlegalreadiness.quickbase.com', () => {
-    expect(isQuickbaseHost('https://acnlegalreadiness.quickbase.com/db/7')).toBe(true);
+  it('accepts legitimate subdomain example-tenant.quickbase.com', () => {
+    expect(isQuickbaseHost('https://example-tenant.quickbase.com/db/7')).toBe(true);
   });
 
   it('rejects spoofed host quickbase.com.evil.test', () => {

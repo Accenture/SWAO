@@ -83,7 +83,8 @@ import {
   PortfolioScreen,
   type PortfolioHostDeps,
 } from '@swao/module-portfolio';
-import type { McpHostDeps } from '@swao/module-mcp';
+import type { McpHostDeps } from './lib/mcp-chat-contract.js';
+import { registerEnterpriseMcpChat } from './tiers/mcp-chat-enterprise.js';
 // #0576: the PDF renderer (Consultant) is wired in here for the full entry.
 import { renderTextReportToPdf, renderLlmComparisonToPdf } from '@swao/module-pdf-report';
 // #0582: the HTML Portal builder (Consultant) -- `publish --site`.
@@ -119,6 +120,8 @@ const portfolioRunForApp = buildSpawnRunForApp(cliSpawnDescriptor);
 
 const program = buildProgram({
   cliSpawnDescriptor,
+  // #3348 B-01 / B-02: the real MCP server and SWAO Chat (Enterprise only).
+  mcpChat: registerEnterpriseMcpChat(),
   buildPortal: buildPortalSite,
   serviceDeps: { runExport: runPortfolioExport },
   assessDeps: {

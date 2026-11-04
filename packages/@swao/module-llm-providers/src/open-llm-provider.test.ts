@@ -49,7 +49,7 @@ vi.mock('undici', async (importOriginal) => {
   };
 });
 import { Agent, ProxyAgent } from 'undici';
-import { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
+import { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher, authFailureMessage } from './open-llm-provider.js';
 import type { LlmTool } from './types.js';
 import { LlmConnectivityError } from './anthropic.js';
 import { ConnectivityFailureError } from './errors.js';
@@ -573,6 +573,33 @@ describe('OpenLlmProvider -- ConnectivityFailureError on 401', () => {
     await expect(p.complete('hello')).rejects.toBeInstanceOf(ConnectivityFailureError);
     // Only one fetch call -- no retry
     expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  // #3557: the advice names the connector's own credential.
+  it('API-key connector: 401 names its credential key and env var, not ADFS', async () => {
+    mockFetchOnce(errorResponse(401, 'unauthorized'));
+    const p = new OpenLlmProvider('expired-key', 'gpt-4o-mini', 'https://api.example.com',
+      '', undefined, undefined, undefined,
+      { credentialHint: { credentialKey: 'openai-api-key', envVar: 'SWAO_OPENAI_API_KEY', tokenCommand: false } });
+    const err = await p.complete('hello').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ConnectivityFailureError);
+    const msg = (err as Error).message;
+    expect(msg).toContain("credential 'openai-api-key'");
+    expect(msg).toContain('SWAO_OPENAI_API_KEY');
+    expect(msg).not.toMatch(/ADFS/);
+  });
+
+  it('token_command (ADFS) connector: 401 names ADFS and the token command', () => {
+    const msg = authFailureMessage('https://hub.example.com/v1/chat/completions',
+      { credentialKey: 'open-llm-api-key', envVar: 'SWAO_OPEN_LLM_API_KEY', tokenCommand: true });
+    expect(msg).toMatch(/ADFS\/SSO token from the connector's token_command/);
+    expect(msg).toContain('SWAO_OPEN_LLM_API_KEY');
+  });
+
+  it('no credential hint: generic advice without ADFS', () => {
+    const msg = authFailureMessage('https://host.example.com/v1/chat/completions');
+    expect(msg).toContain('Re-authenticate (swao setup) and retry.');
+    expect(msg).not.toMatch(/ADFS/);
   });
 });
 

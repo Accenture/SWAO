@@ -180,7 +180,7 @@ const sidebar: Entry[] = [
         en: 'Maintenance', de: 'Wartung', collapsed: true,
         items: [
           { en: 'Malware scanning', de: 'Malware-Scan', link: '/malware-scanning' },
-          { en: 'Code signing', de: 'Code-Signierung', link: '/runbooks/code-signing' },
+          { en: 'Verify a download', de: 'Download prüfen', link: '/runbooks/verify-release' },
           { en: 'Updating SWAO', de: 'SWAO aktualisieren', link: '/runbooks/updating-swao' },
           { en: 'Troubleshooting', de: 'Fehlerbehebung', link: '/runbooks/troubleshooting' },
         ],

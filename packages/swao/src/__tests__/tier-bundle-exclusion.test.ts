@@ -52,6 +52,7 @@ import { buildBundle } from '../../scripts/build-lib.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = join(__dirname, '..', '..');
 const COMMUNITY_ENTRY = join(PKG_ROOT, 'dist', 'tiers', 'community.js');
+const CONSULTANT_ENTRY = join(PKG_ROOT, 'dist', 'tiers', 'consultant.js');
 const ENTERPRISE_ENTRY = join(PKG_ROOT, 'dist', 'index.js');
 
 // Higher-tier module markers (implementation-unique strings). Keyed by the
@@ -75,6 +76,21 @@ const TIER_MARKERS: Array<{ marker: string; module: string }> = [
   { marker: 'No apps discovered under apps', module: '@swao/module-portfolio (Enterprise)' },
   // Enterprise: @swao/module-service-export DORA ICT Register note (#3353, F-133).
   { marker: 'Partial EBA ITS register template', module: '@swao/module-service-export (Enterprise)' },
+  // Enterprise: @swao/module-mcp profiles report (#3348 B-01; build-time stub in Community and Consultant).
+  { marker: 'Measured from the live definitions', module: '@swao/module-mcp (Enterprise)' },
+  // Enterprise: SWAO Chat session context, tui/chat/mcp-context.ts (#3348 B-02).
+  { marker: 'No portfolio context is available', module: 'SWAO Chat (Enterprise)' },
+];
+
+// #3348 B-01 / B-02 (Design 122): metafile inputs that only the Enterprise
+// bundle may contain. Matched on the normalised input path.
+const ENTERPRISE_ONLY_INPUTS: Array<{ name: string; match: (input: string) => boolean }> = [
+  { name: '@swao/module-mcp', match: (i) => i.includes('module-mcp/') },
+  {
+    name: 'SWAO Chat',
+    match: (i) => !i.includes('premium-stubs') &&
+      (/(^|\/)commands\/chat\.js$/.test(i) || i.includes('/tui/chat/') || /(^|\/)screens\/ChatScreen\.js$/.test(i)),
+  },
 ];
 
 // Community-only positive control: the product banner is registered by the
@@ -87,7 +103,9 @@ const distBuilt = existsSync(COMMUNITY_ENTRY) && existsSync(ENTERPRISE_ENTRY);
 
 describe.skipIf(!distBuilt)('tier-bundle exclusion (#0583)', () => {
   let communityBundle = '';
+  let consultantBundle = '';
   let enterpriseBundle = '';
+  const inputs: Record<'community' | 'consultant' | 'enterprise', string[]> = { community: [], consultant: [], enterprise: [] };
   let tmp = '';
   const prevCwd = process.cwd();
 
@@ -97,12 +115,20 @@ describe.skipIf(!distBuilt)('tier-bundle exclusion (#0583)', () => {
     process.chdir(PKG_ROOT);
     tmp = mkdtempSync(join(tmpdir(), 'swao-tier-bundle-'));
     const communityOut = join(tmp, 'community.cjs');
+    const consultantOut = join(tmp, 'consultant.cjs');
     const enterpriseOut = join(tmp, 'enterprise.cjs');
     const silent = () => {};
-    await buildBundle({ entry: COMMUNITY_ENTRY, outfile: communityOut, log: silent });
+    // Same options as build-community.mjs / build-consultant.mjs / build-enterprise.mjs.
+    await buildBundle({ entry: COMMUNITY_ENTRY, outfile: communityOut, log: silent, enterpriseOnlyStubs: true });
+    await buildBundle({ entry: CONSULTANT_ENTRY, outfile: consultantOut, log: silent, enterpriseOnlyStubs: true });
     await buildBundle({ entry: ENTERPRISE_ENTRY, outfile: enterpriseOut, log: silent });
     communityBundle = readFileSync(communityOut, 'utf-8');
+    consultantBundle = readFileSync(consultantOut, 'utf-8');
     enterpriseBundle = readFileSync(enterpriseOut, 'utf-8');
+    for (const [tier, out] of [['community', communityOut], ['consultant', consultantOut], ['enterprise', enterpriseOut]] as const) {
+      const meta = JSON.parse(readFileSync(out.replace(/\.cjs$/, '') + '.meta.json', 'utf-8')) as { inputs: Record<string, unknown> };
+      inputs[tier] = Object.keys(meta.inputs).map((k) => k.replace(/\\/g, '/'));
+    }
     process.chdir(prevCwd);
   }, 120_000);
 
@@ -120,6 +146,29 @@ describe.skipIf(!distBuilt)('tier-bundle exclusion (#0583)', () => {
       expect(enterpriseBundle).toContain(marker);
     });
   }
+
+  // #3348 B-01 / B-02: the MCP server and SWAO Chat are Enterprise-only code.
+  for (const { marker, module } of TIER_MARKERS.slice(-2)) {
+    it(`Consultant bundle EXCLUDES ${module} (marker: "${marker}")`, () => {
+      expect(consultantBundle).not.toContain(marker);
+    });
+  }
+
+  for (const { name, match } of ENTERPRISE_ONLY_INPUTS) {
+    it(`Community and Consultant metafiles have no ${name} inputs; Enterprise has them`, () => {
+      expect(inputs.community.filter(match)).toEqual([]);
+      expect(inputs.consultant.filter(match)).toEqual([]);
+      expect(inputs.enterprise.filter(match).length).toBeGreaterThan(0);
+    });
+  }
+
+  it('Community and Consultant bundles use the premium stubs; Enterprise does not', () => {
+    for (const tier of ['community', 'consultant'] as const) {
+      // module-mcp, chat, ChatScreen and the mcp-chat wiring (#3348 step 2a).
+      expect(inputs[tier].filter((i) => i.includes('premium-stubs/')).length).toBe(4);
+    }
+    expect(inputs.enterprise.filter((i) => i.includes('premium-stubs/'))).toEqual([]);
+  });
 
   it('cleanup temp bundles', () => {
     if (tmp) rmSync(tmp, { recursive: true, force: true });

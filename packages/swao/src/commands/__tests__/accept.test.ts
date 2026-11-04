@@ -44,7 +44,7 @@ describe('loadAcceptedRun (#0477)', () => {
     writeFileSync(acceptedPath, JSON.stringify({
       run_id: '2026-06-03T10-00-00',
       accepted_at: '2026-06-03T10:05:00.000Z',
-      accepted_by: 'helmut',
+      accepted_by: 'jane',
       note: 'Post-remediation acceptance',
     }), 'utf-8');
     const result = loadAcceptedRun(appDir);

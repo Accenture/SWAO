@@ -11,8 +11,8 @@ framework:
   # the 10 Pillars rulebook; SWAO repackaged it as a community catalogue.
   authority: "Alok Sharan -- 10 Pillars of Secure AI Systems"
   # `contributor:` is the SWAO-team packager (sprint-037 #0340 sweep:
-  # every bundled community framework attributes packaging to Helmut as
-  # the SWAO maintainer; upstream authorship stays in `authority:`).
+  # every bundled community framework attributes packaging to the SWAO
+  # Development Team as maintainer; upstream authorship stays in `authority:`).
   contributor:
     name: "SWAO Development Team (Accenture)"
     url: "https://accenture.example/swao/community-frameworks/ai-10-pillars"

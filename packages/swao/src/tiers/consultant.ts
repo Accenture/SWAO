@@ -33,7 +33,8 @@
 // a gated stub here.
 
 import { fileURLToPath } from 'url';
-import type { McpHostDeps } from '@swao/module-mcp';
+import type { McpHostDeps } from '../lib/mcp-chat-contract.js';
+import { registerStubMcpChat } from './premium-stubs/mcp-chat.js';
 import { renderTextReportToPdf, renderLlmComparisonToPdf } from '@swao/module-pdf-report';
 import { registerGenerateTf } from '@swao/module-terraform';
 import { GenerateTfScreen } from '@swao/module-terraform';
@@ -63,6 +64,8 @@ const cliSpawnDescriptor: McpHostDeps = (process as { pkg?: unknown }).pkg
 
 const program = buildProgram({
   cliSpawnDescriptor,
+  // #3348 B-01 / B-02: MCP server and SWAO Chat are Enterprise; stubs here.
+  mcpChat: registerStubMcpChat(),
   buildPortal: communityBuildPortal,
   serviceDeps: communityServiceDeps,
   assessDeps: {

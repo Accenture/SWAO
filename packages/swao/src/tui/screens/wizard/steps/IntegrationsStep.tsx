@@ -23,11 +23,10 @@ import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
 import { resolve } from 'path';
 import {
   DEFAULT_MCP_HTTP_URL,
-  defaultTransport,
-  profileToolNames,
+  mcpClientHelpers,
   type McpClientInstallRequest,
   type McpClientInstallResult,
-} from '@swao/module-mcp';
+} from '../../../../lib/mcp-chat-contract.js';
 import { formatMcpRegistrationRefusal, mcpRegistrationRefusal, patchAllClaudeDesktopConfigs, resolveStableBinary, stableCopyWarning, type ClaudeDesktopPatchOutcome, type StableBinaryResolution } from '../../../mcp-config.js';
 import { installMcpClient } from '../../../mcp-client-install.js';
 import { SWAO_VERSION } from '../../../../branding.js';
@@ -62,8 +61,8 @@ export function wizardInstallRequest(
     scope: 'user',
     profile: 'starter',
     profileExplicit: false,
-    tools: profileToolNames('starter'),
-    transport: defaultTransport(client),
+    tools: mcpClientHelpers().profileToolNames('starter'),
+    transport: mcpClientHelpers().defaultTransport(client),
     url: DEFAULT_MCP_HTTP_URL,
     agent: true,
     dryRun: false,

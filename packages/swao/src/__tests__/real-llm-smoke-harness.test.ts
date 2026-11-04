@@ -52,10 +52,19 @@ describe('real-LLM smoke harness shape contract (#0322 Part C, sprint-036)', () 
     expect(first).toMatch(/^#!.*\bbash\b/);
   });
 
-  it('run-smoke.sh loops over both providers (anthropic + openai)', () => {
+  // #3509 (owner decision 2026-11-01): Anthropic only; the OpenAI leg was dropped.
+  it('run-smoke.sh runs the anthropic leg only', () => {
     const content = readFileSync(SMOKE_SCRIPT, 'utf-8');
-    expect(content).toContain('anthropic');
-    expect(content).toContain('openai');
+    expect(content).toMatch(/PROVIDERS=\("anthropic"\)/);
+    expect(content).not.toMatch(/PROVIDERS=\([^)]*openai/);
+  });
+
+  // #3509: the manifest verdict (provider + cost above zero) comes from the tested helper.
+  it('run-smoke.sh judges the manifest with scripts/real-llm-smoke-check.mjs and has a NOT RUN exit', () => {
+    const content = readFileSync(SMOKE_SCRIPT, 'utf-8');
+    expect(content).toContain('scripts/real-llm-smoke-check.mjs');
+    expect(content).toMatch(/OVERALL: NOT RUN/);
+    expect(content).not.toMatch(/grep -oE '"cost_usd"/);
   });
 
   it('run-smoke.sh runs assess with --passes inv,synth (proves a real LLM call)', () => {

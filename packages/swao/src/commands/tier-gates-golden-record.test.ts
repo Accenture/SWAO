@@ -14,11 +14,13 @@
 // ================================================================
 
 // Per-tier licence gate tests against the SWAO
-// licence tier matrix (#3318, #3320, #3321,
+// licence tier matrix (#3320, #3321,
 // #3323, #3324). Each tier runs with a real signed licence (Community: none)
 // in an isolated licence directory; the commands are driven through Commander
 // with process.exit intercepted. A licence failure must print the [LICENSE]
 // block and exit non-zero, never throw a stack trace or exit 0.
+// The swao chat gate (#3318) lives in chat.test.ts: SWAO Chat stays out of the
+// public source (#3348 B-02), so its gate test travels with it.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync, existsSync, mkdtempSync, readdirSync } from 'node:fs';
@@ -31,17 +33,14 @@ vi.mock('../tui/run-app.js', () => ({ runTuiInAltScreen: vi.fn(async () => undef
 import {
   _paths,
   LicenseGuard,
-  LicenseInvalidError,
   buildLicenseKey,
   FEATURE_GATES,
 } from '../license/license-guard.js';
 import type { LicensePayload } from '../license/license-guard.js';
-import { registerChat, gateChat } from './chat.js';
 import { registerReport, type ReportDeps } from './report.js';
 import { registerUnipipe } from './unipipe.js';
 import { scaffoldPowerBiTemplates, runWorkspaceScaffolders } from './init.js';
 import { registerCommunityTierStubs } from '../tiers/community-stubs.js';
-import { runTuiInAltScreen } from '../tui/run-app.js';
 
 type Tier = 'community' | 'consultant' | 'enterprise';
 const TIERS: Tier[] = ['community', 'consultant', 'enterprise'];
@@ -105,40 +104,6 @@ async function run(register: (p: Command) => void, args: string[]): Promise<RunR
   vi.restoreAllMocks();
   return { out: out.join('\n'), err: err.join('\n'), exitCode, threw };
 }
-
-// ---------------------------------------------------------------------------
-// #3318 swao chat (F-112, Enterprise)
-// ---------------------------------------------------------------------------
-
-describe('#3318 swao chat licence gate (FEATURE_GATES chat = enterprise)', () => {
-  it('FEATURE_GATES maps chat to enterprise', () => {
-    expect(FEATURE_GATES['chat']).toBe('enterprise');
-  });
-
-  it.each(['community', 'consultant'] as const)('%s: prints the [LICENSE] block and exits 1 without opening the TUI', async (tier) => {
-    useTier(tier);
-    const r = await run(registerChat, ['chat']);
-    expect(r.threw).toBeUndefined();
-    expect(r.exitCode).toBe(1);
-    expect(r.err).toContain('[LICENSE] swao chat requires an Enterprise licence.');
-    expect(r.err).toContain(`Your current tier: ${tier}`);
-    expect(r.err).not.toContain('LicenseTierError');
-    expect(vi.mocked(runTuiInAltScreen)).not.toHaveBeenCalled();
-  });
-
-  it('enterprise: the gate passes', () => {
-    useTier('enterprise');
-    expect(() => gateChat()).not.toThrow();
-  });
-
-  it('an invalid licence prints [LICENSE] Invalid licence and exits 3', async () => {
-    vi.spyOn(LicenseGuard, 'load').mockImplementation(() => { throw new LicenseInvalidError('licence expired', 'expired'); });
-    const r = await run(registerChat, ['chat']);
-    expect(r.threw).toBeUndefined();
-    expect(r.exitCode).toBe(3);
-    expect(r.err).toContain('[LICENSE] Invalid licence: licence expired');
-  });
-});
 
 // ---------------------------------------------------------------------------
 // #3320 report --format html (F-082, Consultant+)

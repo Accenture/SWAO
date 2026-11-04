@@ -54,8 +54,8 @@ describe('isQuickbaseHost (#1197 regression)', () => {
     expect(isQuickbaseHost('https://quickbase.com/nav/app/xyz')).toBe(true);
   });
 
-  it('accepts legitimate subdomain acnlegalreadiness.quickbase.com', () => {
-    expect(isQuickbaseHost('https://acnlegalreadiness.quickbase.com/nav/app/bss4pik5n')).toBe(true);
+  it('accepts legitimate subdomain example-tenant.quickbase.com', () => {
+    expect(isQuickbaseHost('https://example-tenant.quickbase.com/nav/app/bss4pik5n')).toBe(true);
   });
 
   it('rejects spoofed host: quickbase.com.evil.test', () => {
@@ -81,15 +81,15 @@ describe('isQuickbaseHost (#1197 regression)', () => {
 // ---------------------------------------------------------------------------
 describe('isReadyQuickbasePage', () => {
   it('passes for authenticated app nav view', () => {
-    expect(isReadyQuickbasePage('https://acnlegalreadiness.quickbase.com/nav/app/bss4pik5n/table/bss4pik5q')).toBe(true);
+    expect(isReadyQuickbasePage('https://example-tenant.quickbase.com/nav/app/bss4pik5n/table/bss4pik5q')).toBe(true);
   });
 
   it('fails for sign-in page', () => {
-    expect(isReadyQuickbasePage('https://acnlegalreadiness.quickbase.com/db/main?a=SignIn')).toBe(false);
+    expect(isReadyQuickbasePage('https://example-tenant.quickbase.com/db/main?a=SignIn')).toBe(false);
   });
 
   it('fails for /db/main unauthenticated page', () => {
-    expect(isReadyQuickbasePage('https://acnlegalreadiness.quickbase.com/db/main')).toBe(false);
+    expect(isReadyQuickbasePage('https://example-tenant.quickbase.com/db/main')).toBe(false);
   });
 
   it('fails for spoofed host even on /nav/app path', () => {

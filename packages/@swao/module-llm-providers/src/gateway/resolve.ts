@@ -274,6 +274,12 @@ export function createProviderFromConnector(
           rejectUnauthorized,
           // #2743: 401-triggered token refresh callback (only when token_command is set).
           ...(tokenRefresh ? { tokenRefresh } : {}),
+          // #3557: a 401 names this connector's credential, not SWAO_ADFS_TOKEN.
+          credentialHint: {
+            credentialKey: connector.auth.credential_key,
+            envVar: connector.auth.env_var,
+            tokenCommand: Boolean(tokenCommand),
+          },
         },
       );
       break;

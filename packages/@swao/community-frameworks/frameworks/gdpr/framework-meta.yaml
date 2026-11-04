@@ -5,7 +5,7 @@
 # REPLACES the legacy bundled stub at `swao/controls/standard/gdpr-controls.yaml`
 # (which carries only 5 controls; this catalogue carries 53).
 #
-# Per Helmut's decision (2026-05-22): all flagship regimes ship as community
+# Per maintainer decision (2026-05-22): all flagship regimes ship as community
 # frameworks; SWAO ships no embedded regulatory catalogues. GDPR is the pilot.
 
 framework:
