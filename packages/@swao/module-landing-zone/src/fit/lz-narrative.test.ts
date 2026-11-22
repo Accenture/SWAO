@@ -396,3 +396,51 @@ describe('NEEDS_VERIFICATION with documentation-only blockers (#3497)', () => {
     expect(n.summary_headline).not.toContain('baseline coverage incomplete');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #3569: BLOCKED_BY_POLICY and UNVERIFIED (Design 120 section 5.3)
+// ---------------------------------------------------------------------------
+
+describe('live-scan verdicts in the narrative (#3569)', () => {
+  function reportWith(overall: LzFitReport['overall'], items: LzFitReport['items']): LzFitReport {
+    return { ...makeReadyReport(), region: 'eu-de', overall, items };
+  }
+  const supported = { service_code: 'vm_compute', verdict: 'SUPPORTED' as const, detail: 'vm_compute is enabled.' };
+  const policy = { service_code: 'kubernetes', verdict: 'BLOCKED_BY_POLICY' as const, detail: 'kubernetes is denied by tenant policy.' };
+  const missing = { service_code: 'hsm_service', verdict: 'NOT_AVAILABLE_IN_REGION' as const, detail: 'hsm_service is not offered in eu-de.' };
+  const unverified = { service_code: 'audit_logging', verdict: 'UNVERIFIED' as const, detail: 'audit_logging could not be read (HTTP 403).' };
+  const narrate = (fit: LzFitReport) => generateLzNarrative({ lz_id: 'otc/eu-de', region_id: 'eu-de', display: 'OTC / eu-de', fit });
+
+  it('names policy-only blocks as tenant policy, not as missing primitives', () => {
+    const n = narrate(reportWith('BLOCKED', [supported, policy]));
+    expect(n.summary_headline).toBe('Passes sovereignty; blocked by tenant policy on 1 service primitive(s): kubernetes.');
+    expect(n.summary_headline).not.toContain('missing');
+    expect(n.summary_body).toContain('kubernetes (BLOCKED_BY_POLICY)');
+  });
+
+  it('separates missing primitives from policy blocks when both occur', () => {
+    const n = narrate(reportWith('BLOCKED', [missing, policy]));
+    expect(n.summary_headline).toBe(
+      'Passes sovereignty; blocked on 1 missing service primitive(s): hsm_service; and by tenant policy on 1: kubernetes.',
+    );
+  });
+
+  it('keeps the existing wording when no policy block is present', () => {
+    const n = narrate(reportWith('BLOCKED', [missing]));
+    expect(n.summary_headline).toBe('Passes sovereignty; blocked on 1 missing service primitive(s): hsm_service.');
+  });
+
+  it('explains NEEDS_VERIFICATION caused by UNVERIFIED as a scope gap, not as incomplete baseline coverage', () => {
+    const n = narrate(reportWith('NEEDS_VERIFICATION', [supported, unverified]));
+    expect(n.summary_headline).toContain('1 service primitive(s) could not be verified in this scope: audit_logging');
+    expect(n.summary_headline).not.toContain('baseline coverage incomplete');
+    expect(n.summary_body).toContain('could not be verified in this scope');
+    expect(n.summary_body).toContain('never as missing');
+    expect(n.summary_body).not.toContain('Baseline coverage is incomplete');
+  });
+
+  it('mentions unverified services next to hard blockers in the body', () => {
+    const n = narrate(reportWith('BLOCKED', [policy, unverified]));
+    expect(n.summary_body).toContain('Not verifiable in this scope (permission or API gap): audit_logging.');
+  });
+});

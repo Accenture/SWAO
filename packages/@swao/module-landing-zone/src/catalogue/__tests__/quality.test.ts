@@ -19,7 +19,7 @@ import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { safeParseLzCatalogue, safeParseVmPriceTable } from '@swao/core';
+import { safeParseLzCatalogue, safeParseVmPriceTable, LZ_CATALOGUE_CONFIDENCES } from '@swao/core';
 import {
   checkLzCatalogueDir,
   checkLzConfiguredTargets,
@@ -31,12 +31,13 @@ import {
   LZ_CATALOGUE_QUALITY_RULES,
   LZ_CATALOGUE_MAX_AGE_DAYS,
   LZ_CERTIFICATION_VOCABULARY,
+  LZ_CATALOGUE_CONFIDENCE_VOCABULARY,
   LZ_OPERATOR_SITE_RESIDENCY,
   LZ_PRICE_TABLE_FILE,
   type LzCatalogueQualityOptions,
   type LzQualityRuleId,
 } from '../quality.js';
-import { LZ_SOVEREIGNTY_PINS, AWS_SOVEREIGNTY_PINS, LZ_SOVEREIGNTY_PIN_SOURCES } from '../sovereignty-pins.js';
+import { LZ_SOVEREIGNTY_PINS, AWS_SOVEREIGNTY_PINS, LZ_SOVEREIGNTY_PIN_SOURCES, LZ_ACCEPTED_UNKNOWN_RESIDENCY } from '../sovereignty-pins.js';
 import { resolveLzGeography, lzRegionGeographies, LZ_GEOGRAPHY_COUNTRIES } from '../geographies.js';
 import { checkLzCatalogueQuality } from '../loader.js';
 
@@ -199,6 +200,34 @@ describe('LZ catalogue quality rules (#3282)', () => {
     expect(f.map((x) => x.file)).toEqual(['acme.json']);
   });
 
+  it('#3566: confidence operator-declared (077, schema 0.2) is in the vocabulary', () => {
+    const dir = fixture({ 'acme.json': catalogue('acme', [region('de-1')], { confidence: 'operator-declared', source: { mode: 'manual', operator: 'SWAO team', source_note: 'hand-maintained custom catalogue' } }) });
+    expect(findings(dir)).toEqual([]);
+  });
+
+  it('#3566: the confidence vocabulary equals the schema enum in @swao/core', () => {
+    expect([...LZ_CATALOGUE_CONFIDENCE_VOCABULARY]).toEqual([...LZ_CATALOGUE_CONFIDENCES]);
+  });
+
+  it('#3566: a schema 0.2 live catalogue (live-api, canonical_code, iac, check-availability) has no findings', () => {
+    const live = region('de-1', {
+      services: [
+        {
+          code: 'ecs', canonical_code: 'otc.ecs', status: 'ga', fulfills: ['vm_compute'],
+          iac: { tool: ['terraform', 'opentofu'], provider: 'opentelekomcloud', provider_version: '1.37.11', level: 'full', resources: ['opentelekomcloud_compute_instance_v2'], source: 'provider-schema' },
+        },
+        { code: 'dms', status: 'check-availability', fulfills: ['queue'] },
+      ],
+    });
+    const cat = catalogue('acme', [live], { schema_version: '0.2', source: { mode: 'live-api', tool: 'acme-prod/platform', source_note: 'live LZ catalogue' } });
+    expect(findings(fixture({ 'acme.json': cat }))).toEqual([]);
+  });
+
+  it('#3566: an unknown source.mode fails the catalogue-schema rule', () => {
+    const cat = catalogue('acme', [region('de-1')], { source: { mode: 'live-crawl', operator: 'SWAO team', source_note: 'x' } });
+    expect(rules(fixture({ 'acme.json': cat }))).toContain('catalogue-schema');
+  });
+
   it('source-missing: meta.source.mode is required', () => {
     const cat = catalogue('acme', [region('de-1')], { source: { mode: '' } });
     const dir = fixture({ 'acme.json': cat });
@@ -255,6 +284,23 @@ describe('LZ catalogue quality rules (#3282)', () => {
     expect(f.filter((x) => x.rule === 'facts-unsourced').map((x) => x.region)).toEqual(['xx-new-1', 'xx-new-2']);
     const curated = findings(fixture({ 'acme.json': catalogue('acme', [region('de-1')], { source: { mode: 'curated' } }) }));
     expect(curated.find((x) => x.rule === 'facts-unsourced')?.message).toMatch(/no meta\.source\.source_note/);
+  });
+
+  it('#4228: an accepted UNKNOWN residency is info naming the decision; another UNKNOWN region still warns', () => {
+    const portland = region('portland', { sovereignty: { residency_country: 'UNKNOWN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: [], certifications: [] } });
+    const fresh = region('newregion9', { sovereignty: { residency_country: 'UNKNOWN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: [], certifications: [] } });
+    const dir = fixture({ 'azure.json': catalogue('azure', [portland, fresh], { source: { mode: 'azure-retail-prices' } }) });
+    const r = checkLzCatalogueDir(dir, { ...opts, acceptedUnknownResidency: LZ_ACCEPTED_UNKNOWN_RESIDENCY });
+    const unsourced = r.findings.filter((x) => x.rule === 'facts-unsourced');
+    expect(unsourced.find((x) => x.region === 'portland')).toMatchObject({ severity: 'info', message: expect.stringContaining('accepted by decision #4067') });
+    expect(unsourced.find((x) => x.region === 'newregion9')?.severity).toBe('warn');
+    expect(LZ_ACCEPTED_UNKNOWN_RESIDENCY['azure/portland']?.decision).toBe('#4067');
+  });
+
+  it('#4228: the shipped catalogues carry no facts-unsourced warning for an accepted unknown (gate parity)', () => {
+    const r = checkLzCatalogueQuality(BUNDLED, { now: NOW });
+    const portland = r.findings.filter((x) => x.rule === 'facts-unsourced' && x.region === 'portland');
+    expect(portland.every((x) => x.severity === 'info')).toBe(true);
   });
 
   it('formatLzQualityFindings groups region findings per rule and file, errors first', () => {
@@ -385,7 +431,7 @@ describe('shipped swao/lz-catalogues (#3282 gate parity)', () => {
 
   it('#3287: every documented pin source names an existing pin, an https URL and a retrieval date', () => {
     const keys = Object.keys(LZ_SOVEREIGNTY_PIN_SOURCES);
-    expect(keys).toHaveLength(18);
+    expect(keys).toHaveLength(27); // #4060: +9 Azure regions sourced from the Retail Prices API location label
     for (const k of keys) {
       const [table, id] = k.split('/') as [string, string];
       expect(LZ_SOVEREIGNTY_PINS[table]?.[id], k).toBeDefined();
@@ -405,6 +451,18 @@ describe('shipped swao/lz-catalogues (#3282 gate parity)', () => {
     }
     const local = JSON.parse(readFileSync(join(BUNDLED, 'azure-local.json'), 'utf-8')) as { regions: Array<{ sovereignty: { residency_country?: string } }> };
     expect(local.regions.map((r) => r.sovereignty.residency_country)).toEqual([LZ_OPERATOR_SITE_RESIDENCY, LZ_OPERATOR_SITE_RESIDENCY]);
+  });
+
+  it('#3592: every fulfills tag of _lz-catalogue-template.json is in the capability vocabulary the bundled catalogues use (073)', () => {
+    const vocabulary = new Set<string>();
+    for (const f of readdirSync(BUNDLED).filter(isLzProviderCatalogueFile)) {
+      const cat = JSON.parse(readFileSync(join(BUNDLED, f), 'utf-8')) as { regions: Array<{ services?: Array<{ fulfills?: string[] }> }> };
+      for (const r of cat.regions) for (const s of r.services ?? []) for (const tag of s.fulfills ?? []) vocabulary.add(tag);
+    }
+    const template = TEMPLATE as { regions: Array<{ services: Array<{ code: string; fulfills: string[] }> }> };
+    const outside = template.regions.flatMap((r) => r.services.flatMap((s) => s.fulfills.filter((tag) => !vocabulary.has(tag)).map((tag) => `${s.code}: ${tag}`)));
+    expect(vocabulary.size).toBeGreaterThan(50);
+    expect(outside).toEqual([]);
   });
 
   it('#3287: the shipped catalogues carry no certification outside the vocabulary and no sovereignty-shape warning', () => {

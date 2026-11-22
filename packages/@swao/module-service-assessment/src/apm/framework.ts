@@ -27,6 +27,7 @@ import { join } from 'node:path';
 import { load } from 'js-yaml';
 import { z } from 'zod';
 import { communityFrameworksDir } from '@swao/community-frameworks';
+import { resolveRegimeCatalogue } from '@swao/core';
 
 export const APM_DOMAINS = ['APM-STR', 'APM-VND', 'APM-TCH', 'APM-SEC', 'APM-DAT', 'APM-SOV', 'APM-BIZ', 'APM-HW', 'APM-INT', 'APM-MIG', 'APM-REG'] as const;
 export type ApmDomain = (typeof APM_DOMAINS)[number];
@@ -86,10 +87,19 @@ export class ApmFrameworkError extends Error {
   }
 }
 
+/** The SWAO_APM framework id (regime id in `regimes_active`). */
+export const APM_FRAMEWORK_ID = 'SWAO_APM';
+
+/**
+ * #4286 (D-10): SWAO_APM resolves exactly like every other community framework,
+ * through the shared resolver of @swao/core that Pass 11 also uses: the
+ * workspace copy under wsp/inputs/catalogs/community first, then the bundled
+ * copy. Without a workspace only the bundled copy is considered.
+ */
 export function apmFrameworkDir(workspacePath?: string): { dir: string; source: 'workspace' | 'bundled' } | null {
   if (workspacePath) {
-    const ws = join(workspacePath, 'wsp', 'inputs', 'catalogs', 'community', APM_FOLDER);
-    if (existsSync(join(ws, 'framework-meta.yaml'))) return { dir: ws, source: 'workspace' };
+    const r = resolveRegimeCatalogue(workspacePath, APM_FRAMEWORK_ID, communityFrameworksDir);
+    return r && existsSync(join(r.dir, 'framework-meta.yaml')) ? { dir: r.dir, source: r.source } : null;
   }
   const bundled = join(communityFrameworksDir, APM_FOLDER);
   return existsSync(join(bundled, 'framework-meta.yaml')) ? { dir: bundled, source: 'bundled' } : null;

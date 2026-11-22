@@ -23,7 +23,15 @@ swao assess --portfolio
 
 # Aggregiertes BI-Paket exportieren
 swao export --portfolio --formats csv,xlsx
+
+# Landing Zone Live Assessment (alle LZs): den neuesten Live-Lauf jeder registrierten Landing Zone zusammenführen
+swao assess --portfolio --type landing-zone-live [--include-simulated]
+
+# Multi-Cloud Governance (HTML) dieser Zusammenführung
+swao publish --portfolio --block-profile lz-live-portfolio
 ```
+
+Die beiden Zeilen zur Landing-Zone-Live-Bewertung erklärt [Landing-Zone-Live-Bewertung](/de/assessment/landing-zone-live#portfolio-sicht-enterprise).
 
 ## Kombinierte Portfolio-Sicht (Anwendungs- und Service-Apps)
 

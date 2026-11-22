@@ -29,13 +29,13 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { spawnSync } from 'child_process';
+import { releaseBinaryFileName, windowsLauncherScript } from '../binary-names.js';
 
 const __dirname  = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT  = join(__dirname, '../../../../');
 const DIST_BIN   = join(REPO_ROOT, 'dist-bin');
 const SWAO_PKG   = join(REPO_ROOT, 'packages/swao');
 const BUILD_SH   = join(REPO_ROOT, 'scripts/build-binary.sh');
-const SWAO_BAT   = join(DIST_BIN, 'swao.bat');
 const PKG_JSON   = join(SWAO_PKG, 'package.json');
 const BUNDLE_MJS = join(SWAO_PKG, 'scripts/bundle.mjs');
 
@@ -43,34 +43,30 @@ const BUNDLE_MJS = join(SWAO_PKG, 'scripts/bundle.mjs');
 // swao.bat -- Windows double-click launcher
 // ---------------------------------------------------------------------------
 
-describe('dist-bin/swao.bat integrity', () => {
-  it('swao.bat exists', () => {
-    expect(existsSync(SWAO_BAT)).toBe(true);
-  });
+// #4160: dist-bin/swao.bat was removed as a stale artefact (#2788) and no build
+// step writes it; the launcher is generated from the shared release name list
+// (binary-names.ts windowsLauncherScript) into docs/runbooks/swao.bat.
+describe('swao.bat launcher integrity (#4160)', () => {
+  const bat = windowsLauncherScript();
 
   it('swao.bat passes arguments straight through when called with args', () => {
-    const bat = readFileSync(SWAO_BAT, 'utf-8');
     expect(bat).toContain('%*');
     expect(bat).toContain('%~1');
   });
 
   it('swao.bat launches TUI directly via swao menu when no args given', () => {
-    const bat = readFileSync(SWAO_BAT, 'utf-8');
     expect(bat).toMatch(/"%SWAO%"\s+menu/);
   });
 
-  it('swao.bat sets SWAO variable to swao-enterprise-win.exe', () => {
-    const bat = readFileSync(SWAO_BAT, 'utf-8');
-    expect(bat).toContain('swao-enterprise-win.exe');
+  it('swao.bat sets SWAO variable to the released Enterprise Windows binary', () => {
+    expect(bat).toContain(`set "SWAO=%~dp0${releaseBinaryFileName('enterprise', 'win-x64')}"`);
   });
 
   it('swao.bat exits cleanly after TUI', () => {
-    const bat = readFileSync(SWAO_BAT, 'utf-8');
     expect(bat).toContain('exit /b');
   });
 
   it('swao.bat uses setlocal EnableDelayedExpansion', () => {
-    const bat = readFileSync(SWAO_BAT, 'utf-8');
     expect(bat).toContain('setlocal EnableDelayedExpansion');
   });
 });

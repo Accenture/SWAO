@@ -1,0 +1,1483 @@
+# SWAO Community Framework: SOC 2 Trust Services Criteria (TSC 2017, revised points of focus 2022)
+#
+# Schema: RegimeCatalogueSchema (design 029 section 4.5; Design 104 section 5.2).
+# Catalogue 2.0.0 (#4061, 2026-11-09): quality review of the 64-control
+# catalogue of #2808 before publication.
+#
+# Criteria. 61 controls, one per criterion of the 2017 Trust Services Criteria:
+#   CC  Common Criteria (security, in every SOC 2 report)  33  CC1.1 to CC9.2
+#   A   Availability                                        3  A1.1 to A1.3
+#   PI  Processing Integrity                                5  PI1.1 to PI1.5
+#   C   Confidentiality                                     2  C1.1, C1.2
+#   P   Privacy                                            18  P1.1 to P8.1
+# CC1 to CC5 follow the 17 principles of the COSO 2013 Internal Control
+# framework (principle number in official_control_id). Catalogue 1.0.0 carried
+# three criteria that the TSC does not have (CC8.2 to CC8.4); their content is
+# folded into SOC_2_CC8.1, which lists them in `replaces:` so earlier
+# assessments still resolve (Design 104 section 5.2a). Eleven controls of
+# 1.0.0 carried the subject of another criterion under their id (CC6.3, CC6.5,
+# CC6.6, CC6.8, CC7.5, PI1.1, PI1.5, P6.2 to P6.5, P6.7); the id is kept and the
+# subject corrected. The criterion list is from the research notes
+# (docs/custom-frameworks/soc-2/research-notes.md) and needs a check against the
+# AICPA publication before release (#4061, owner sign-off).
+#
+# Text. AICPA owns the copyright of the Trust Services Criteria; COSO owns the
+# 2013 framework. This catalogue cites criterion ids only and describes each
+# criterion in its own words; it does not reproduce criterion text or points of
+# focus (framework-meta.yaml redistribution_note, README section Sources).
+#
+# Evidence. Each control carries one tag of the evidence axis:
+#   evidence.workload        assessable from workload evidence (pass signals)
+#   evidence.organisational  organisational documents in the app's ingestion
+#                            folder (layer: governance; no pass without one)
+#   evidence.both            either source; documents complete the signals
+# The context_input names are the document names the README lists.
+#
+# Scope. CC, A, PI and C controls: [app, aud]. P controls: [aud]; privacy
+# practices need a manual privacy review. A SOC 2 report always covers CC; A,
+# PI, C and P are scoped in by the service organisation. No applies_when is set:
+# a category that is out of scope is excluded by the assessor (owner question
+# in #4061 on an opt-in framework_context key per category).
+#
+# Tags (#0348 axis form): tsc.<category>, evidence.<kind>.
+
+regime_meta:
+  id: SOC_2
+  name: "SOC 2 Trust Services Criteria"
+  version: "2017 (revised points of focus 2022)"
+  scope: community
+  authority: "American Institute of Certified Public Accountants (AICPA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO"
+  catalogue_version: "2.0.0"
+  signal_prefix: SOC2
+  last_reviewed: "2026-11-09"
+  applicability_hints:
+    - saas
+    - b2b
+    - us_market
+    - cloud_hosted
+    - enterprise_buyer
+  description: >-
+    AICPA Trust Services Criteria (2017, revised points of focus 2022) for SOC 2
+    examinations of service organisations: 61 criteria across security (CC),
+    availability (A), processing integrity (PI), confidentiality (C) and privacy (P).
+  references:
+    - "AICPA, TSP Section 100, 2017 Trust Services Criteria for Security, Availability, Processing Integrity, Confidentiality, and Privacy (revised points of focus, 2022)"
+    - "COSO, Internal Control - Integrated Framework (2013), principles 1 to 17 (basis of CC1 to CC5)"
+  redistribution_note: >-
+    The Trust Services Criteria are copyrighted by the AICPA and the COSO 2013
+    principles by COSO. This catalogue cites the criterion ids only and
+    describes each criterion in SWAO's own words; no criterion text or point of
+    focus is reproduced. It is not an AICPA publication and does not replace
+    the criteria or a SOC 2 examination by a licensed CPA firm.
+
+controls:
+
+  # ===========================================================================
+  # CC: Common Criteria (security), in every SOC 2 report
+  # ===========================================================================
+
+  # ------ CC1: Control environment (COSO principles 1 to 5) ------
+
+  - id: SOC_2_CC1.1
+    pillar: "CC1: Control environment"
+    category: CC
+    title: "Integrity and ethical values"
+    description: >-
+      Leadership sets the tone on ethics: a code of conduct states the expected
+      behaviour, staff and contractors acknowledge it, departures from it are
+      detected and dealt with consistently, and senior managers visibly follow
+      it themselves.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC1.1 (COSO principle 1)"
+    evidence_basis:
+      - context_input: code_of_conduct
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.4, ISO_27001_A.6.2, ISO_27001_A.6.4, BSI_C5_HRS-03]
+    references:
+      - "AICPA TSC CC1.1"
+    remediation: >-
+      Publish a code of conduct, collect signed acknowledgements on hiring and
+      yearly, and keep a record of how breaches were handled.
+
+  - id: SOC_2_CC1.2
+    pillar: "CC1: Control environment"
+    category: CC
+    title: "Independent oversight of internal control by the governing body"
+    description: >-
+      A board or equivalent governing body that is independent of day-to-day
+      management oversees how internal control, including information
+      security, is designed and run, with the expertise to challenge
+      management and a documented reporting line to it.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC1.2 (COSO principle 2)"
+    evidence_basis:
+      - context_input: security_governance_charter
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.4]
+    references:
+      - "AICPA TSC CC1.2"
+    remediation: >-
+      Document the governing body's oversight role for security in a charter or
+      terms of reference and keep minutes of its security reviews.
+
+  - id: SOC_2_CC1.3
+    pillar: "CC1: Control environment"
+    category: CC
+    title: "Structure, reporting lines, authority and responsibility"
+    description: >-
+      Management sets up the organisational structure, reporting lines and
+      delegated authority needed to meet the service objectives, including
+      named information security roles and their accountability.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC1.3 (COSO principle 3)"
+    evidence_basis:
+      - context_input: security_governance_charter
+      - context_input: organisation_chart
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.2, ISO_27001_A.5.3, BSI_C5_OIS-02]
+    references:
+      - "AICPA TSC CC1.3"
+    remediation: >-
+      Keep a current organisation chart and a roles and responsibilities
+      matrix that names the security owners of the system.
+
+  - id: SOC_2_CC1.4
+    pillar: "CC1: Control environment"
+    category: CC
+    title: "Competent staff: hiring, development and retention"
+    description: >-
+      The organisation defines the skills each role needs, checks them when
+      hiring, trains and develops staff and contractors, and plans for
+      succession in key roles, so that controls are run by competent people.
+    severity_default: low
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC1.4 (COSO principle 4)"
+    evidence_basis:
+      - context_input: training_programme_record
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.6.1, ISO_27001_A.6.3, BSI_C5_HRS-01, BSI_C5_HRS-02]
+    references:
+      - "AICPA TSC CC1.4"
+    remediation: >-
+      Record role competence requirements, background screening and the
+      completion of security training per person.
+
+  - id: SOC_2_CC1.5
+    pillar: "CC1: Control environment"
+    category: CC
+    title: "Accountability for internal control duties"
+    description: >-
+      People are held to account for the control duties assigned to them:
+      duties are written down, performance against them is reviewed, and
+      incentives and sanctions support rather than undermine them.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC1.5 (COSO principle 5)"
+    evidence_basis:
+      - context_input: code_of_conduct
+      - context_input: security_governance_charter
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.4, ISO_27001_A.6.4, BSI_C5_HRS-03]
+    references:
+      - "AICPA TSC CC1.5"
+    remediation: >-
+      Put control duties into job descriptions and objectives, and keep a
+      disciplinary process for control and policy breaches.
+
+  # ------ CC2: Communication and information (COSO principles 13 to 15) ------
+
+  - id: SOC_2_CC2.1
+    pillar: "CC2: Communication and information"
+    category: CC
+    title: "Quality information for running internal control"
+    description: >-
+      The organisation decides which information its controls depend on (for
+      example asset and system inventories, logs, risk and audit results,
+      threat information), captures it from internal and external sources and
+      keeps it accurate, complete and current.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC2.1 (COSO principle 13)"
+    evidence_basis:
+      - context_input: security_reporting_pack
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.7, ISO_27001_A.5.9]
+    references:
+      - "AICPA TSC CC2.1"
+    remediation: >-
+      Define the security reporting the controls rely on (inventories, metrics,
+      risk and audit results) and who maintains each source.
+
+  - id: SOC_2_CC2.2
+    pillar: "CC2: Communication and information"
+    category: CC
+    title: "Internal communication of control objectives and duties"
+    description: >-
+      Security objectives, policies and individual control duties are
+      communicated to staff and contractors, and there is a separate channel,
+      including an anonymous one, to raise concerns or report security events.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC2.2 (COSO principle 14)"
+    evidence_basis:
+      - context_input: information_security_policy
+      - context_input: training_programme_record
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.1, ISO_27001_A.6.3, ISO_27001_A.6.8, BSI_C5_HRS-02]
+    references:
+      - "AICPA TSC CC2.2"
+    remediation: >-
+      Publish the security policies internally, track acknowledgement, and
+      document the reporting and whistleblowing channel.
+
+  - id: SOC_2_CC2.3
+    pillar: "CC2: Communication and information"
+    category: CC
+    title: "External communication about internal control"
+    description: >-
+      Customers, suppliers, regulators and other outside parties receive the
+      information they need about the service, its commitments and its
+      security obligations, including material changes and incidents, and can
+      report problems back.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC2.3 (COSO principle 15)"
+    evidence_basis:
+      - context_input: customer_security_commitments
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.5, ISO_27001_A.5.20]
+    references:
+      - "AICPA TSC CC2.3"
+    remediation: >-
+      Keep the system description, customer security commitments and the
+      external notification and contact procedure current and published.
+
+  # ------ CC3: Risk assessment (COSO principles 6 to 9) ------
+
+  - id: SOC_2_CC3.1
+    pillar: "CC3: Risk assessment"
+    category: CC
+    title: "Objectives clear enough to assess risk against"
+    description: >-
+      The service commitments and security, availability and other objectives
+      are stated precisely enough that the risks to meeting them can be
+      identified and rated.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC3.1 (COSO principle 6)"
+    evidence_basis:
+      - context_input: security_objectives
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.1, BSI_C5_OIS-04]
+    references:
+      - "AICPA TSC CC3.1"
+    remediation: >-
+      Write down the service commitments and measurable security objectives
+      and have them approved by management.
+
+  - id: SOC_2_CC3.2
+    pillar: "CC3: Risk assessment"
+    category: CC
+    title: "Risk identification and analysis"
+    description: >-
+      Risks to the objectives are identified across the organisation, its
+      suppliers and its technology, rated by likelihood and impact, and given
+      a treatment decision; the assessment covers threats to confidentiality,
+      integrity and availability.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC3.2 (COSO principle 7)"
+    evidence_basis:
+      - context_input: ict_risk_assessment
+      - context_input: risk_register
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [BSI_C5_OIS-03]
+    references:
+      - "AICPA TSC CC3.2"
+    remediation: >-
+      Run a documented risk assessment at least at the interval the entity has
+      set and keep the risk register with owners and treatment decisions.
+
+  - id: SOC_2_CC3.3
+    pillar: "CC3: Risk assessment"
+    category: CC
+    title: "Fraud risk"
+    description: >-
+      The risk assessment explicitly considers fraud, such as misuse of
+      privileged access, manipulation of data or reports, and theft of
+      assets, including the pressures and opportunities that make it likely.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC3.3 (COSO principle 8)"
+    evidence_basis:
+      - context_input: ict_risk_assessment
+    tags: [tsc.cc, evidence.organisational]
+    references:
+      - "AICPA TSC CC3.3"
+    remediation: >-
+      Add fraud scenarios (insider misuse, data manipulation) to the risk
+      assessment and link them to mitigating controls.
+
+  - id: SOC_2_CC3.4
+    pillar: "CC3: Risk assessment"
+    category: CC
+    title: "Changes that could significantly affect internal control"
+    description: >-
+      Significant changes in the business, its environment, leadership,
+      suppliers or technology are identified and their effect on the control
+      system is assessed before or as they happen.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC3.4 (COSO principle 9)"
+    evidence_basis:
+      - context_input: ict_risk_assessment
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.35]
+    references:
+      - "AICPA TSC CC3.4"
+    remediation: >-
+      Trigger a risk review on significant business, supplier or technology
+      changes and record the outcome.
+
+  # ------ CC4: Monitoring activities (COSO principles 16 and 17) ------
+
+  - id: SOC_2_CC4.1
+    pillar: "CC4: Monitoring activities"
+    category: CC
+    title: "Ongoing and separate evaluations of controls"
+    description: >-
+      Controls are checked to confirm they are in place and working, through
+      continuous or automated monitoring, periodic self-assessments and
+      independent reviews such as internal audit or penetration tests.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC4.1 (COSO principle 16)"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: ict_internal_audit_plan
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36, BSI_C5_COM-02]
+    references:
+      - "AICPA TSC CC4.1"
+    remediation: >-
+      Keep a control monitoring and internal audit plan, and evidence of the
+      checks run against it.
+
+  - id: SOC_2_CC4.2
+    pillar: "CC4: Monitoring activities"
+    category: CC
+    title: "Reporting and correcting control deficiencies"
+    description: >-
+      Control deficiencies found by monitoring, audits or incidents are
+      reported in good time to those who must fix them, escalated to senior
+      management or the governing body where serious, and tracked to closure.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC4.2 (COSO principle 17)"
+    evidence_basis:
+      - context_input: deficiency_tracking_log
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.36]
+    references:
+      - "AICPA TSC CC4.2"
+    remediation: >-
+      Track control findings with owner, due date and status, and report open
+      serious findings to management.
+
+  # ------ CC5: Control activities (COSO principles 10 to 12) ------
+
+  - id: SOC_2_CC5.1
+    pillar: "CC5: Control activities"
+    category: CC
+    title: "Control activities chosen to reduce risk"
+    description: >-
+      For the risks identified, the organisation chooses a mix of preventive,
+      detective, manual and automated controls, including segregation of
+      incompatible duties, that brings the risk down to an acceptable level.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC5.1 (COSO principle 10)"
+    evidence_basis:
+      - context_input: risk_register
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.3, BSI_C5_OIS-03]
+    references:
+      - "AICPA TSC CC5.1"
+    remediation: >-
+      Link each significant risk in the register to the controls that treat it
+      and record the residual risk accepted.
+
+  - id: SOC_2_CC5.2
+    pillar: "CC5: Control activities"
+    category: CC
+    title: "General controls over technology"
+    description: >-
+      General IT controls are defined for the technology the service relies on:
+      infrastructure configuration, security management, and the acquisition,
+      development and maintenance of systems.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC5.2 (COSO principle 11)"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: IAM
+      - context_input: configuration_baseline
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.8.9, ISO_27001_A.8.25, BSI_C5_OPS-05]
+    references:
+      - "AICPA TSC CC5.2"
+    remediation: >-
+      Document the IT general controls (configuration baselines, access
+      management, secure development) and apply them through code where
+      possible.
+
+  - id: SOC_2_CC5.3
+    pillar: "CC5: Control activities"
+    category: CC
+    title: "Controls put into practice through policies and procedures"
+    description: >-
+      Policies say what is expected and procedures say how it is done; both
+      are approved, assigned to owners, carried out on time and reviewed when
+      circumstances change.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC5.3 (COSO principle 12)"
+    evidence_basis:
+      - context_input: information_security_policy
+      - context_input: operating_procedures
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.1, ISO_27001_A.5.37, BSI_C5_OIS-01]
+    references:
+      - "AICPA TSC CC5.3"
+    remediation: >-
+      Keep approved security policies and operating procedures with an owner
+      and a review date each.
+
+  # ------ CC6: Logical and physical access controls ------
+
+  - id: SOC_2_CC6.1
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Logical access security, authentication and encryption of protected assets"
+    description: >-
+      Protected information assets are inventoried and shielded by access
+      control software, network and architecture choices: users and services
+      are identified and authenticated, access paths are restricted, and data
+      is encrypted where the risk calls for it, with the keys managed.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.1"
+    evidence_basis:
+      - signal_prefix: IAM
+      - signal_prefix: CRYPTO
+      - context_input: access_management_policy
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.5.15, ISO_27001_A.8.3, ISO_27001_A.8.5, ISO_27001_A.8.24, DORA_Art_9_1, BSI_C5_IDM-01, BSI_C5_CRY-02]
+    references:
+      - "AICPA TSC CC6.1"
+    remediation: >-
+      Enforce central identity with strong authentication, restrict access
+      paths to protected data, and encrypt data stores with managed keys.
+
+  - id: SOC_2_CC6.2
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "User registration and authorisation before credentials are issued"
+    description: >-
+      Internal and external users are registered and their access approved
+      before they receive credentials, and the credentials are withdrawn when
+      the access is no longer authorised.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.2"
+    evidence_basis:
+      - signal_prefix: IAM
+      - context_input: access_management_policy
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.5.16, ISO_27001_A.5.18, BSI_C5_IDM-06]
+    references:
+      - "AICPA TSC CC6.2"
+    remediation: >-
+      Route every account creation through an approved request and disable
+      credentials automatically from the leaver feed.
+
+  - id: SOC_2_CC6.3
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Role-based access, least privilege and segregation of duties"
+    description: >-
+      Access to data, software and functions is granted, changed and removed
+      according to roles, following least privilege and keeping incompatible
+      duties apart; access rights are reviewed periodically.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.3"
+    evidence_basis:
+      - signal_prefix: IAM
+      - context_input: access_management_policy
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.5.3, ISO_27001_A.5.18, ISO_27001_A.8.2, BSI_C5_IDM-03, BSI_C5_IDM-04]
+    references:
+      - "AICPA TSC CC6.3"
+    remediation: >-
+      Grant access through roles, remove standing administrator rights, and
+      record the periodic access recertification.
+
+  - id: SOC_2_CC6.4
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Physical access to facilities and protected assets"
+    description: >-
+      Physical access to data centres, offices, backup media and other
+      locations holding protected assets is limited to authorised people;
+      for cloud-hosted services this is largely inherited from the provider
+      and shown through its assurance report.
+    csp_inherited: true
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC6.4"
+    evidence_basis:
+      - context_input: csp_assurance_report
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.7.1, ISO_27001_A.7.2, BSI_C5_PRY-01]
+    references:
+      - "AICPA TSC CC6.4"
+    remediation: >-
+      Obtain and review the cloud provider's current assurance report for
+      physical security, and document the controls for own premises.
+
+  - id: SOC_2_CC6.5
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Protection of physical assets until data on them is unrecoverable"
+    description: >-
+      Hardware and media are only released from protection (disposed of,
+      reused or returned) after the data and software on them have been
+      securely erased or destroyed so they can no longer be read or recovered.
+    csp_inherited: true
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC6.5"
+    evidence_basis:
+      - context_input: media_disposal_procedure
+      - context_input: csp_assurance_report
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.7.10, ISO_27001_A.7.14, ISO_27001_A.8.10, BSI_C5_PRY-03]
+    references:
+      - "AICPA TSC CC6.5"
+    remediation: >-
+      Document secure wiping or destruction of media and devices, keep
+      destruction certificates, and cover provider-held media through the
+      provider's assurance report.
+
+  - id: SOC_2_CC6.6
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Protection against threats from outside the system boundary"
+    description: >-
+      Access from outside the system boundary is restricted and protected:
+      network segmentation, firewalls and gateways limit exposed services,
+      remote and external access is authenticated, and boundary defences
+      detect and block attacks.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.6"
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: TF
+      - signal_prefix: CTX
+    tags: [tsc.cc, evidence.workload]
+    maps_to: [ISO_27001_A.8.20, ISO_27001_A.8.21, ISO_27001_A.8.22, BSI_C5_COS-01, BSI_C5_COS-02, BSI_C5_COS-03]
+    references:
+      - "AICPA TSC CC6.6"
+    remediation: >-
+      Expose only required endpoints, place them behind a firewall or gateway,
+      and require strong authentication for remote and administrative access.
+
+  - id: SOC_2_CC6.7
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Controlled and protected transmission and movement of data"
+    description: >-
+      Data may only be sent, moved or taken out of the system by authorised
+      users and processes, and is protected on the way: encrypted channels,
+      data loss prevention and controls over removable media and transfers.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.7"
+    evidence_basis:
+      - signal_prefix: EGR
+      - signal_prefix: CRYPTO
+    tags: [tsc.cc, evidence.workload]
+    maps_to: [ISO_27001_A.5.14, ISO_27001_A.8.12, ISO_27001_A.8.24, BSI_C5_PI-03]
+    references:
+      - "AICPA TSC CC6.7"
+    remediation: >-
+      Enforce TLS on every external and internal channel that carries
+      protected data and restrict bulk export to approved processes.
+
+  - id: SOC_2_CC6.8
+    pillar: "CC6: Logical and physical access controls"
+    category: CC
+    title: "Prevention and detection of unauthorised or malicious software"
+    description: >-
+      Malicious or unapproved software is kept out or detected and dealt with:
+      malware protection, control over what software may be installed or
+      deployed, and detection of unauthorised changes to software and
+      configuration.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC6.8"
+    evidence_basis:
+      - signal_prefix: SBOM
+      - signal_prefix: TF
+      - signal_prefix: CTX
+    tags: [tsc.cc, evidence.workload]
+    maps_to: [ISO_27001_A.8.7, ISO_27001_A.8.19, ISO_27001_A.8.9, BSI_C5_COS-04]
+    references:
+      - "AICPA TSC CC6.8"
+    remediation: >-
+      Run malware protection on hosts and images, allow only signed or
+      approved artefacts to deploy, and alert on configuration drift.
+
+  # ------ CC7: System operations ------
+
+  - id: SOC_2_CC7.1
+    pillar: "CC7: System operations"
+    category: CC
+    title: "Detection of vulnerabilities and insecure configuration changes"
+    description: >-
+      Configuration standards are monitored so that changes which open new
+      weaknesses are found, and components are scanned for newly published
+      vulnerabilities, which are rated and fixed in line with their risk.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC7.1"
+    evidence_basis:
+      - signal_prefix: SBOM
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: patch_management_policy
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.8.8, ISO_27001_A.8.9, BSI_C5_OPS-02, BSI_C5_OPS-05]
+    references:
+      - "AICPA TSC CC7.1"
+    remediation: >-
+      Scan dependencies, images and infrastructure for vulnerabilities and
+      misconfiguration, and fix findings within the deadlines the entity has
+      set.
+
+  - id: SOC_2_CC7.2
+    pillar: "CC7: System operations"
+    category: CC
+    title: "Monitoring for anomalies that point to attacks, failures or errors"
+    description: >-
+      System components and their controls are monitored for unusual activity
+      that may indicate an attack, a natural or environmental event or an
+      error; alerts are analysed to decide whether they are security events.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC7.2"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: monitoring_and_alerting_runbook
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.8.15, ISO_27001_A.8.16, BSI_C5_SIM-01, BSI_C5_OPS-06]
+    references:
+      - "AICPA TSC CC7.2"
+    remediation: >-
+      Centralise security and audit logs, define alert rules for suspicious
+      activity, and document who triages the alerts.
+
+  - id: SOC_2_CC7.3
+    pillar: "CC7: System operations"
+    category: CC
+    title: "Evaluation of security events as incidents"
+    description: >-
+      Security events are assessed against defined criteria to decide whether
+      they are incidents that threaten the service objectives, and confirmed
+      incidents are passed to incident response.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC7.3"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: incident_classification_policy
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.5.25, DORA_Art_18_1, BSI_C5_INM-02]
+    references:
+      - "AICPA TSC CC7.3"
+    remediation: >-
+      Document the criteria that turn a security event into an incident and
+      the severity levels used.
+
+  - id: SOC_2_CC7.4
+    pillar: "CC7: System operations"
+    category: CC
+    title: "Incident response"
+    description: >-
+      Confirmed incidents are handled under a defined response programme with
+      assigned roles: contain the incident, remove its cause, restore
+      service, and inform affected parties as committed or required.
+    severity_default: critical
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC7.4"
+    evidence_basis:
+      - context_input: incident_management_procedure
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.24, ISO_27001_A.5.26, DORA_Art_17_1, BSI_C5_INM-01]
+    references:
+      - "AICPA TSC CC7.4"
+    remediation: >-
+      Keep an incident response plan with roles, containment and
+      communication steps, and exercise it.
+
+  - id: SOC_2_CC7.5
+    pillar: "CC7: System operations"
+    category: CC
+    title: "Recovery from incidents and lessons learned"
+    description: >-
+      After an incident, operations are restored, the root cause is
+      established, and changes are made to prevent a recurrence and to improve
+      detection, response and recovery.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC7.5"
+    evidence_basis:
+      - context_input: post_incident_review
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.27, DORA_Art_13, BSI_C5_INM-04]
+    references:
+      - "AICPA TSC CC7.5"
+    remediation: >-
+      Hold a post-incident review for every significant incident and track its
+      corrective actions to closure.
+
+  # ------ CC8: Change management ------
+
+  - id: SOC_2_CC8.1
+    replaces: [SOC_2_CC8.2, SOC_2_CC8.3, SOC_2_CC8.4]
+    pillar: "CC8: Change management"
+    category: CC
+    title: "Controlled changes to infrastructure, data, software and procedures"
+    description: >-
+      Every change to infrastructure, data, software or procedures, whether
+      built in house or acquired, goes through a controlled life cycle:
+      authorised, designed and configured securely, documented, tested
+      (including security testing) in an environment separate from
+      production, approved and then deployed, with emergency changes and data
+      migrations covered by the same rules.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "CC8.1"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: change_management_procedure
+    tags: [tsc.cc, evidence.both]
+    maps_to: [ISO_27001_A.8.32, ISO_27001_A.8.25, ISO_27001_A.8.29, ISO_27001_A.8.31, DORA_Art_9_8, BSI_C5_OPS-01, BSI_C5_DEV-02, BSI_C5_DEV-03]
+    references:
+      - "AICPA TSC CC8.1"
+    remediation: >-
+      Require an approved, peer-reviewed and tested change (pull request plus
+      pipeline with security tests) for every production deployment and record
+      emergency changes.
+
+  # ------ CC9: Risk mitigation ------
+
+  - id: SOC_2_CC9.1
+    pillar: "CC9: Risk mitigation"
+    category: CC
+    title: "Mitigation of business disruption risk"
+    description: >-
+      Activities that reduce the risk of business disruption are chosen and
+      put in place, such as continuity and recovery planning, and residual
+      risk is transferred where sensible, for example through insurance.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC9.1"
+    evidence_basis:
+      - context_input: ict_business_continuity_policy
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, BSI_C5_AVL-01]
+    references:
+      - "AICPA TSC CC9.1"
+    remediation: >-
+      Keep a business continuity policy and plan for the service and record the
+      risk transfer decisions taken.
+
+  - id: SOC_2_CC9.2
+    pillar: "CC9: Risk mitigation"
+    category: CC
+    title: "Vendor and business partner risk"
+    description: >-
+      Risks from vendors and business partners are assessed before and during
+      the relationship: security and confidentiality obligations are agreed in
+      contracts, their performance is monitored, and relationships are ended
+      in a controlled way.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "CC9.2"
+    evidence_basis:
+      - context_input: vendor_risk_register
+    tags: [tsc.cc, evidence.organisational]
+    maps_to: [ISO_27001_A.5.19, ISO_27001_A.5.20, ISO_27001_A.5.22, BSI_C5_OIS-05]
+    references:
+      - "AICPA TSC CC9.2"
+    remediation: >-
+      Keep a vendor register with risk ratings, contractual security clauses
+      and the date of the last review, including subservice organisations'
+      assurance reports.
+
+  # ===========================================================================
+  # A: Availability (scoped in by the service organisation)
+  # ===========================================================================
+
+  - id: SOC_2_A1.1
+    pillar: "A1: Availability"
+    category: A
+    title: "Capacity management"
+    description: >-
+      Current use and capacity of infrastructure, data stores and software are
+      measured and forecast, so that capacity can be added before demand
+      threatens the availability commitments.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "A1.1"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: capacity_management_plan
+    tags: [tsc.a, evidence.both]
+    maps_to: [ISO_27001_A.8.6, BSI_C5_OPS-03]
+    references:
+      - "AICPA TSC A1.1"
+    remediation: >-
+      Monitor capacity metrics with thresholds and autoscaling, and review the
+      capacity forecast at the interval the entity has set.
+
+  - id: SOC_2_A1.2
+    pillar: "A1: Availability"
+    category: A
+    title: "Environmental protection, backup and recovery infrastructure"
+    description: >-
+      Environmental safeguards, data backup and the infrastructure and
+      software needed for recovery (for example redundant sites or zones) are
+      put in place, operated and monitored in line with the availability
+      commitments.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "A1.2"
+    evidence_basis:
+      - signal_prefix: TF
+      - context_input: backup_policy
+    tags: [tsc.a, evidence.both]
+    maps_to: [ISO_27001_A.8.13, ISO_27001_A.8.14, ISO_27001_A.7.5, DORA_Art_12_1, BSI_C5_AVL-03, BSI_C5_AVL-04]
+    references:
+      - "AICPA TSC A1.2"
+    remediation: >-
+      Back up data to a separate location, deploy across zones or sites as the
+      availability commitment requires, and monitor backup success.
+
+  - id: SOC_2_A1.3
+    pillar: "A1: Availability"
+    category: A
+    title: "Recovery plan testing"
+    description: >-
+      Recovery procedures, including restoring from backup and failing over,
+      are tested regularly, and the results are used to correct the plans.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "A1.3"
+    evidence_basis:
+      - context_input: bcp_dr_test_report
+      - context_input: restore_test_report
+    tags: [tsc.a, evidence.organisational]
+    maps_to: [ISO_27001_A.5.30, DORA_Art_11_4, BSI_C5_AVL-01, BSI_C5_AVL-04]
+    references:
+      - "AICPA TSC A1.3"
+    remediation: >-
+      Test restore and failover at the interval the entity has set and keep
+      the test report with the follow-up actions.
+
+  # ===========================================================================
+  # PI: Processing integrity (scoped in by the service organisation)
+  # ===========================================================================
+
+  - id: SOC_2_PI1.1
+    pillar: "PI1: Processing integrity"
+    category: PI
+    title: "Processing specifications and data definitions"
+    description: >-
+      What the system processes and what it must deliver is defined and made
+      available to those who use it: data definitions, product and service
+      specifications, and the processing objectives they serve.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "PI1.1"
+    evidence_basis:
+      - context_input: processing_specification
+    tags: [tsc.pi, evidence.organisational]
+    references:
+      - "AICPA TSC PI1.1"
+    remediation: >-
+      Document data definitions, processing rules and service specifications
+      and publish them to users.
+
+  - id: SOC_2_PI1.2
+    pillar: "PI1: Processing integrity"
+    category: PI
+    title: "Complete and accurate system inputs"
+    description: >-
+      Inputs are checked for completeness and accuracy when they enter the
+      system, for example through validation rules, and rejected or
+      erroneous inputs are handled.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    official_control_id: "PI1.2"
+    evidence_basis:
+      - signal_prefix: CTX
+      - context_input: processing_specification
+    tags: [tsc.pi, evidence.both]
+    references:
+      - "AICPA TSC PI1.2"
+    remediation: >-
+      Validate inputs at every interface against the specification and log
+      and follow up rejected records.
+
+  - id: SOC_2_PI1.3
+    pillar: "PI1: Processing integrity"
+    category: PI
+    title: "Complete, accurate and timely processing"
+    description: >-
+      Processing follows the specification so that results are complete,
+      accurate, timely and authorised; processing errors are detected and
+      corrected.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    official_control_id: "PI1.3"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: processing_specification
+    tags: [tsc.pi, evidence.both]
+    references:
+      - "AICPA TSC PI1.3"
+    remediation: >-
+      Add reconciliation and error handling to processing jobs and monitor
+      failed or delayed runs.
+
+  - id: SOC_2_PI1.4
+    pillar: "PI1: Processing integrity"
+    category: PI
+    title: "Complete, accurate and timely outputs"
+    description: >-
+      Outputs are delivered or made available completely, accurately and on
+      time, only to the intended recipients, in line with the specification.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "PI1.4"
+    evidence_basis:
+      - context_input: processing_specification
+    tags: [tsc.pi, evidence.organisational]
+    references:
+      - "AICPA TSC PI1.4"
+    remediation: >-
+      Reconcile outputs with inputs and restrict output distribution to the
+      recipients defined in the specification.
+
+  - id: SOC_2_PI1.5
+    pillar: "PI1: Processing integrity"
+    category: PI
+    title: "Complete and accurate storage of inputs, work in progress and outputs"
+    description: >-
+      Inputs, items in processing and outputs are stored completely,
+      accurately and on time according to the specification, with their
+      integrity protected while stored.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    official_control_id: "PI1.5"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: CTX
+      - context_input: processing_specification
+    tags: [tsc.pi, evidence.both]
+    references:
+      - "AICPA TSC PI1.5"
+    remediation: >-
+      Protect stored processing data against loss and unauthorised change
+      (versioning, integrity checks) and retain it as specified.
+
+  # ===========================================================================
+  # C: Confidentiality (scoped in by the service organisation)
+  # ===========================================================================
+
+  - id: SOC_2_C1.1
+    pillar: "C1: Confidentiality"
+    category: C
+    title: "Identification and protection of confidential information"
+    description: >-
+      Confidential information is identified when it is received or created,
+      classified, kept protected for as long as it is retained, and its
+      retention period is defined.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    official_control_id: "C1.1"
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - context_input: data_classification_policy
+    tags: [tsc.c, evidence.both]
+    maps_to: [ISO_27001_A.5.12, ISO_27001_A.5.13, BSI_C5_DAT-01]
+    references:
+      - "AICPA TSC C1.1"
+    remediation: >-
+      Classify data at creation, label confidential stores, and set a
+      retention period per class.
+
+  - id: SOC_2_C1.2
+    pillar: "C1: Confidentiality"
+    category: C
+    title: "Disposal of confidential information"
+    description: >-
+      Confidential information is identified for disposal when its retention
+      period ends and is then erased or destroyed securely.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    official_control_id: "C1.2"
+    evidence_basis:
+      - context_input: data_disposal_procedure
+    tags: [tsc.c, evidence.organisational]
+    maps_to: [ISO_27001_A.8.10, ISO_27001_A.7.14, BSI_C5_DAT-03]
+    references:
+      - "AICPA TSC C1.2"
+    remediation: >-
+      Automate deletion at the end of the retention period and record secure
+      disposal.
+
+  # ===========================================================================
+  # P: Privacy (scoped in by the service organisation; manual review, [aud])
+  # ===========================================================================
+
+  - id: SOC_2_P1.1
+    pillar: "P1: Privacy notice"
+    category: P
+    title: "Privacy notice to data subjects"
+    description: >-
+      Data subjects are told, in time and in plain language, what personal
+      information is collected, why, how it is used, kept and shared, and what
+      choices and rights they have.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P1.1"
+    evidence_basis:
+      - context_input: privacy_notice
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_13, GDPR_Art_14]
+    references:
+      - "AICPA TSC P1.1"
+    remediation: >-
+      Publish a privacy notice covering collection, purposes, retention,
+      sharing and data subject rights, and keep its version history.
+
+  - id: SOC_2_P2.1
+    pillar: "P2: Choice and consent"
+    category: P
+    title: "Choice and consent"
+    description: >-
+      Data subjects are told which choices they have about the collection,
+      use, retention, sharing and disposal of their personal information and
+      what each choice means; consent is obtained and recorded where needed.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P2.1"
+    evidence_basis:
+      - context_input: consent_records
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_6, GDPR_Art_7]
+    references:
+      - "AICPA TSC P2.1"
+    remediation: >-
+      Offer and record consent choices, and honour withdrawals in all
+      downstream systems.
+
+  - id: SOC_2_P3.1
+    pillar: "P3: Collection"
+    category: P
+    title: "Collection limited to the stated purposes"
+    description: >-
+      Personal information is collected only for the purposes stated in the
+      privacy objectives and notice, by fair and lawful means, and no more is
+      collected than those purposes need.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P3.1"
+    evidence_basis:
+      - context_input: record_of_processing
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_5_1_c, GDPR_Art_25]
+    references:
+      - "AICPA TSC P3.1"
+    remediation: >-
+      Keep a record of processing that lists each data category with its
+      purpose, and remove fields no purpose needs.
+
+  - id: SOC_2_P3.2
+    pillar: "P3: Collection"
+    category: P
+    title: "Explicit consent where required"
+    description: >-
+      Where explicit consent is required, for example for sensitive personal
+      information, data subjects are told why it is needed and what refusing
+      means, and their explicit consent is obtained and recorded before
+      collection.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P3.2"
+    evidence_basis:
+      - context_input: consent_records
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_7, GDPR_Art_9]
+    references:
+      - "AICPA TSC P3.2"
+    remediation: >-
+      Capture explicit, recorded consent before collecting information that
+      requires it.
+
+  - id: SOC_2_P4.1
+    pillar: "P4: Use, retention and disposal"
+    category: P
+    title: "Use limited to the stated purposes"
+    description: >-
+      Personal information is used only for the purposes stated in the notice
+      and agreed by the data subject, unless another use is permitted by law.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P4.1"
+    evidence_basis:
+      - context_input: record_of_processing
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_5_1_b, GDPR_Art_6]
+    references:
+      - "AICPA TSC P4.1"
+    remediation: >-
+      Check new uses of personal information against the recorded purposes
+      before they go live.
+
+  - id: SOC_2_P4.2
+    pillar: "P4: Use, retention and disposal"
+    category: P
+    title: "Retention of personal information"
+    description: >-
+      Personal information is kept only as long as its purposes or legal
+      obligations require, following a defined retention schedule.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P4.2"
+    evidence_basis:
+      - context_input: retention_schedule
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_5_1_e, ISO_27001_A.5.33]
+    references:
+      - "AICPA TSC P4.2"
+    remediation: >-
+      Define a retention period per data category and enforce it in the data
+      stores.
+
+  - id: SOC_2_P4.3
+    pillar: "P4: Use, retention and disposal"
+    category: P
+    title: "Secure disposal of personal information"
+    description: >-
+      Personal information that is no longer needed is erased, destroyed or
+      anonymised securely, in line with the retention schedule.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P4.3"
+    evidence_basis:
+      - context_input: data_disposal_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_17, ISO_27001_A.8.10]
+    references:
+      - "AICPA TSC P4.3"
+    remediation: >-
+      Automate erasure or anonymisation at the end of the retention period and
+      log it.
+
+  - id: SOC_2_P5.1
+    pillar: "P5: Access"
+    category: P
+    title: "Data subject access to their personal information"
+    description: >-
+      Data subjects whose identity has been verified can see the personal
+      information held about them; a refused request is explained.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P5.1"
+    evidence_basis:
+      - context_input: data_subject_request_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_15]
+    references:
+      - "AICPA TSC P5.1"
+    remediation: >-
+      Run a data subject request procedure with identity verification and
+      response deadlines.
+
+  - id: SOC_2_P5.2
+    pillar: "P5: Access"
+    category: P
+    title: "Correction of personal information on request"
+    description: >-
+      Data subjects can have their personal information corrected or
+      completed; corrections are passed on to third parties that received the
+      information, and a refusal is explained.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P5.2"
+    evidence_basis:
+      - context_input: data_subject_request_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_16]
+    references:
+      - "AICPA TSC P5.2"
+    remediation: >-
+      Record correction requests, propagate corrections to recipients, and
+      explain refusals in writing.
+
+  - id: SOC_2_P6.1
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Disclosure to third parties with consent or a legal basis"
+    description: >-
+      Personal information is passed to third parties only for the purposes
+      in the notice and with the data subject's consent, or where the law
+      requires or allows it.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.1"
+    evidence_basis:
+      - context_input: disclosure_register
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_6, GDPR_Art_28]
+    references:
+      - "AICPA TSC P6.1"
+    remediation: >-
+      Approve each third-party disclosure against the notice and the legal
+      basis before it starts.
+
+  - id: SOC_2_P6.2
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Record of authorised disclosures"
+    description: >-
+      A complete and current record is kept of the authorised disclosures of
+      personal information: what was shared, with whom and on what basis.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.2"
+    evidence_basis:
+      - context_input: disclosure_register
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_30]
+    references:
+      - "AICPA TSC P6.2"
+    remediation: >-
+      Keep a disclosure register with recipient, data categories, purpose and
+      legal basis.
+
+  - id: SOC_2_P6.3
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Record of unauthorised disclosures and breaches"
+    description: >-
+      Detected or reported unauthorised disclosures of personal information,
+      including breaches, are recorded completely and promptly.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.3"
+    evidence_basis:
+      - context_input: breach_register
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_33]
+    references:
+      - "AICPA TSC P6.3"
+    remediation: >-
+      Keep a breach register with facts, effects and remedial action for every
+      unauthorised disclosure.
+
+  - id: SOC_2_P6.4
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Privacy commitments from vendors and other third parties"
+    description: >-
+      Vendors and other third parties that receive personal information are
+      bound by contract to privacy commitments consistent with the
+      organisation's own, and their compliance is checked.
+    severity_default: high
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.4"
+    evidence_basis:
+      - context_input: vendor_privacy_agreements
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.20]
+    references:
+      - "AICPA TSC P6.4"
+    remediation: >-
+      Sign data processing agreements with every recipient and review their
+      compliance periodically.
+
+  - id: SOC_2_P6.5
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Third-party notification of unauthorised disclosures"
+    description: >-
+      Vendors and other third parties are obliged to report unauthorised
+      disclosures of personal information they hold for the organisation, and
+      the organisation acts on these reports.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.5"
+    evidence_basis:
+      - context_input: vendor_privacy_agreements
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_28, GDPR_Art_33]
+    references:
+      - "AICPA TSC P6.5"
+    remediation: >-
+      Include breach notification duties and deadlines in vendor agreements
+      and test that reports reach the privacy team.
+
+  - id: SOC_2_P6.6
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Breach notification to data subjects and authorities"
+    description: >-
+      Affected data subjects, regulators and others are notified of breaches
+      and incidents involving personal information as the law and the
+      organisation's commitments require.
+    severity_default: critical
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.6"
+    evidence_basis:
+      - context_input: breach_notification_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_33, GDPR_Art_34]
+    references:
+      - "AICPA TSC P6.6"
+    remediation: >-
+      Keep a breach notification procedure with the legal deadlines and
+      notification templates.
+
+  - id: SOC_2_P6.7
+    pillar: "P6: Disclosure and notification"
+    category: P
+    title: "Accounting of personal information held and disclosed"
+    description: >-
+      On request, data subjects receive an account of the personal
+      information held about them and, where committed or required, of its
+      disclosures to third parties.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P6.7"
+    evidence_basis:
+      - context_input: data_subject_request_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_15]
+    references:
+      - "AICPA TSC P6.7"
+    remediation: >-
+      Produce the data held and its recipients from the record of processing
+      and the disclosure register when a data subject asks.
+
+  - id: SOC_2_P7.1
+    pillar: "P7: Quality"
+    category: P
+    title: "Accurate, complete and relevant personal information"
+    description: >-
+      Personal information is kept accurate, complete, current and relevant
+      for its purposes, and data subjects can update it.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P7.1"
+    evidence_basis:
+      - context_input: data_quality_procedure
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_5_1_d]
+    references:
+      - "AICPA TSC P7.1"
+    remediation: >-
+      Validate personal data on entry, let data subjects update it, and review
+      its quality periodically.
+
+  - id: SOC_2_P8.1
+    pillar: "P8: Monitoring and enforcement"
+    category: P
+    title: "Privacy compliance monitoring, inquiries and complaints"
+    description: >-
+      Compliance with the privacy commitments is monitored, and inquiries,
+      complaints and disputes from data subjects are taken in, handled and
+      resolved, with corrective action where needed.
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    official_control_id: "P8.1"
+    evidence_basis:
+      - context_input: privacy_complaints_log
+    tags: [tsc.p, evidence.organisational]
+    maps_to: [GDPR_Art_24]
+    references:
+      - "AICPA TSC P8.1"
+    remediation: >-
+      Log privacy inquiries and complaints with outcomes, and review privacy
+      compliance at the interval the entity has set.

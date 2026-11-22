@@ -131,7 +131,7 @@ describe('pass-14 Gitleaks mapping never copies the value (#3415)', () => {
     expect(sig).not.toBeNull();
     const out = JSON.stringify(sig);
     expect(out).not.toContain(PLANTED);
-    expect(sig!.evidence).toEqual(['generic-api-key: src/config.ts:7']);
+    expect(sig!.evidence).toEqual(['src/config.ts:7 (generic-api-key)']);
     expect(sig!.derivation).toContain(`generic-api-key ${MASKED}`);
   });
 });

@@ -14,7 +14,7 @@
 // ================================================================
 
 import { readFileSync, existsSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { load } from 'js-yaml';
 import {
   RegimeIndexSchema,
@@ -24,6 +24,34 @@ import {
   type RegimeIndexEntry,
   type Scope,
 } from './regime-catalogue.js';
+
+// #4410: a scoped parse cache. The community frameworks health probe read and
+// parsed every controls.yaml three times (loadCommunityIndex, readReplaces,
+// loadRegimeCatalogue): 13.5 MB of YAML for 27 frameworks. Inside
+// withCatalogueParseCache each file is parsed once; outside it nothing is
+// cached, so a long-running process (TUI, MCP server) never serves a stale
+// catalogue. The parsed documents are read only (Zod parse builds new objects).
+let yamlParseCache: Map<string, unknown> | null = null;
+
+/** Parse a catalogue YAML file; inside withCatalogueParseCache each path is parsed once. */
+export function loadYamlFile(path: string): unknown {
+  if (!yamlParseCache) return load(readFileSync(path, 'utf-8'));
+  if (yamlParseCache.has(path)) return yamlParseCache.get(path);
+  const doc = load(readFileSync(path, 'utf-8'));
+  yamlParseCache.set(path, doc);
+  return doc;
+}
+
+/** Run `fn` with every catalogue YAML file parsed at most once (#4410). Nested calls share the outer cache. */
+export function withCatalogueParseCache<T>(fn: () => T): T {
+  if (yamlParseCache) return fn();
+  yamlParseCache = new Map();
+  try {
+    return fn();
+  } finally {
+    yamlParseCache = null;
+  }
+}
 
 const LEGACY_ALIASES: Record<string, string> = {
   DiGA: 'DiGA',
@@ -99,7 +127,7 @@ function loadCommunityIndex(catalogsDir: string): { dir: string; index: RegimeIn
     };
     let raw: CommunityCatalogue | null = null;
     try {
-      raw = load(readFileSync(controlsPath, 'utf-8')) as CommunityCatalogue | null;
+      raw = loadYamlFile(controlsPath) as CommunityCatalogue | null;
     } catch { /* skip unparseable */ }
     const meta = raw?.regime_meta;
     if (!meta?.id || !meta?.name || !meta?.version) continue;
@@ -143,7 +171,7 @@ function readReplaces(catalogueFile: string): Set<string> {
   // controls.yaml legacy / synthetic-fixture path
   if (existsSync(catalogueFile)) {
     try {
-      const raw = load(readFileSync(catalogueFile, 'utf-8')) as {
+      const raw = loadYamlFile(catalogueFile) as {
         regime_meta?: { replaces?: unknown };
       } | null;
       collectFrom(raw?.regime_meta?.replaces);
@@ -267,6 +295,56 @@ export function loadBundledRegimeRegistry(bundledDir: string): RegimeRegistry {
   return { byId, collisions };
 }
 
+/** #4286: where a resolved regime catalogue comes from. */
+export type RegimeCatalogueSource = 'workspace' | 'bundled';
+
+export interface ResolvedRegimeCatalogue extends ResolvedRegime {
+  source: RegimeCatalogueSource;
+  /** The framework folder (the directory of `catalogueFile`). */
+  dir: string;
+}
+
+// The bundled frameworks never change while the process runs: parse them once.
+const bundledRegistryCache = new Map<string, RegimeRegistry>();
+
+/**
+ * #4286 (owner decision D-10, 2026-11-09): the one resolver for community
+ * frameworks. Pass 11, the SWAO_APM scorer and the Service setup check all use
+ * it, so a framework never resolves differently between two artefacts of one run.
+ *
+ *   1. The workspace copy under `<workspace>/wsp/inputs/catalogs/community/`
+ *      (the operator's copy wins, including `replaces:` aliases).
+ *   2. The bundled copy shipped with SWAO (`bundledCommunityDir`, the
+ *      `communityFrameworksDir` of `@swao/community-frameworks`).
+ *
+ * Nothing is copied into the workspace (no seeding): the bundled copy is read
+ * in place. Returns null when neither holds the regime.
+ */
+export function resolveRegimeCatalogue(
+  workspaceRoot: string,
+  regimeId: string,
+  bundledCommunityDir?: string,
+): ResolvedRegimeCatalogue | null {
+  const withDir = (r: ResolvedRegime, source: RegimeCatalogueSource): ResolvedRegimeCatalogue =>
+    ({ ...r, source, dir: dirname(r.catalogueFile) });
+  try {
+    const ws = loadRegimeRegistry(join(workspaceRoot, 'wsp', 'inputs', 'catalogs')).byId.get(regimeId);
+    if (ws) return withDir(ws, 'workspace');
+  } catch { /* an invalid workspace catalogue set falls through to the bundled copy */ }
+  if (!bundledCommunityDir) return null;
+  try {
+    let reg = bundledRegistryCache.get(bundledCommunityDir);
+    if (!reg) {
+      reg = loadBundledRegimeRegistry(bundledCommunityDir);
+      bundledRegistryCache.set(bundledCommunityDir, reg);
+    }
+    const b = reg.byId.get(regimeId);
+    return b ? withDir(b, 'bundled') : null;
+  } catch {
+    return null;
+  }
+}
+
 export function validateRegimeIdAgainstRegistry(
   id: string,
   registry: RegimeRegistry,
@@ -297,6 +375,6 @@ export function regimeFiles(catalogsDir: string, scope: Scope): string[] {
 }
 
 export function loadRegimeCatalogue(filePath: string) {
-  const raw = load(readFileSync(filePath, 'utf-8'));
+  const raw = loadYamlFile(filePath);
   return RegimeCatalogueSchema.parse(raw);
 }

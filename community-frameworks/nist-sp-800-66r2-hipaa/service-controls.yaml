@@ -1,0 +1,184 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: HIPAA Security Rule -- Implementation Guidance (NIST SP 800-66 Revision 2). Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: NIST_SP_800_66R2
+mappings:
+  - capability: key_vault
+    controls: [HIPAA-TEC-04]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: secrets_management
+    controls: [HIPAA-ADM-15]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: certificate_management
+    controls: [HIPAA-TEC-08]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: identity_management
+    controls: [HIPAA-ADM-06, HIPAA-ADM-10, HIPAA-TEC-07]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: audit_logging
+    controls: [HIPAA-ADM-14]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: log_management
+    controls: [HIPAA-ADM-14]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: monitoring
+    controls: [HIPAA-ADM-14]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: backup
+    controls: [HIPAA-ADM-17, HIPAA-ADM-18]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_protection
+    controls: [HIPAA-TEC-04, HIPAA-ADM-18]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpn
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dedicated_connectivity
+    controls: [HIPAA-TEC-08]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: load_balancer
+    controls: [HIPAA-ADM-18]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: cdn
+    controls: [HIPAA-TEC-08, HIPAA-ADM-18, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: api_gateway
+    controls: [HIPAA-TEC-08, HIPAA-ADM-06]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: object_storage
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: block_storage
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: file_storage
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: hci_storage
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: postgresql
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mysql
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mariadb
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: sql_server
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: nosql_database
+    controls: [HIPAA-TEC-04, HIPAA-ADM-17]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: redis
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_warehouse
+    controls: [HIPAA-TEC-04]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: big_data
+    controls: [HIPAA-TEC-04]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kafka
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: event_streaming
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: queue
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: messaging
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_migration
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_integration
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: managed_file_transfer
+    controls: [HIPAA-TEC-08, HIPAA-TEC-09]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: payment_processing
+    controls: [HIPAA-TEC-08]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iot_platform
+    controls: [HIPAA-ADM-06, HIPAA-TEC-08, HIPAA-ADM-10]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

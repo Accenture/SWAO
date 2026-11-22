@@ -20,7 +20,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  selectChallengeForRun, challengeSourceLabel, toFolderTs,
+  selectChallengeForRun, challengeTargetsDiffer, challengeSourceLabel, toFolderTs,
   challengeFreshness, challengeCommand, otherChallengeLabel, staleChallengeNote, challengeOfferForRun,
 } from './challenge-run.js';
 
@@ -215,5 +215,42 @@ describe('challengeOfferForRun (#3427)', () => {
     } finally {
       wsp = prev;
     }
+  });
+});
+
+describe('challenge of other targets (#4466)', () => {
+  function targetedLzChallenge(ts: string, runId: string, targets: string[]): string {
+    const dir = join(wsp, 'challenge-lz', ts);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'LZCA_ciso.yaml'), `agent_id: ciso\nchallenged_run:\n  run_id: ${runId}\n  assessment_type: application\n  targets:\n${targets.map(x => `    - ${x}`).join('\n')}\nfindings: []\n`);
+    return dir;
+  }
+
+  it('challengeTargetsDiffer compares sets and ignores unknown targets', () => {
+    expect(challengeTargetsDiffer(['stackit:eu02'], ['otc:eu-de'])).toBe(true);
+    expect(challengeTargetsDiffer(['OTC:eu-de', 'aws:eu-central-1'], ['aws:eu-central-1', 'otc:eu-de'])).toBe(false);
+    expect(challengeTargetsDiffer(undefined, ['otc:eu-de'])).toBe(false);
+    expect(challengeTargetsDiffer(['otc:eu-de'], [])).toBe(false);
+  });
+
+  it('an application run does not take the LZ challenge of another run with other targets', () => {
+    const run = appRun(R2);
+    targetedLzChallenge('2026-10-11T18-00-00', R1, ['stackit:eu02']);
+    const sel = selectChallengeForRun(wsp, 'lz', run, { targets: ['otc:eu-de'] });
+    expect(sel.dir).toBeNull();
+    expect(sel.otherRunOmitted).toBe(true);
+    expect(sel.otherRunId).toBe(R1);
+  });
+
+  it('the unscoped newest challenge is not shown when its targets differ', () => {
+    targetedLzChallenge('2026-10-11T18-00-00', R1, ['stackit:eu02']);
+    expect(selectChallengeForRun(wsp, 'lz', undefined, { targets: ['otc:eu-de'] }).dir).toBeNull();
+    expect(selectChallengeForRun(wsp, 'lz', undefined, { targets: ['stackit:eu02'] }).match).toBe('unscoped');
+  });
+
+  it('the challenge of the run itself is shown when the targets agree', () => {
+    const run = appRun(R2);
+    const c = targetedLzChallenge('2026-10-18T13-00-00', R2, ['otc:eu-de']);
+    expect(selectChallengeForRun(wsp, 'lz', run, { targets: ['otc:eu-de'] }).dir).toBe(c);
   });
 });

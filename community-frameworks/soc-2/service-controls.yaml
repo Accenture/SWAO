@@ -1,0 +1,319 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: SOC 2 Trust Services Criteria. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: SOC_2
+mappings:
+  - capability: key_vault
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: secrets_management
+    controls: [SOC_2_CC6.2, SOC_2_CC6.1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: certificate_management
+    controls: [SOC_2_CC6.7]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: identity_management
+    controls: [SOC_2_CC6.1, SOC_2_CC6.2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: log_management
+    controls: [SOC_2_CC7.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: monitoring
+    controls: [SOC_2_CC7.2, SOC_2_CC7.1, SOC_2_A1.1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: metrics
+    controls: [SOC_2_A1.1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: threat_detection
+    controls: [SOC_2_CC7.2, SOC_2_CC6.8]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: compliance_monitoring
+    controls: [SOC_2_CC4.1, SOC_2_CC7.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: waf
+    controls: [SOC_2_CC7.2, SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: network_firewall
+    controls: [SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: backup
+    controls: [SOC_2_A1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_protection
+    controls: [SOC_2_C1.1, SOC_2_C1.2, SOC_2_A1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: systems_management
+    controls: [SOC_2_CC6.1, SOC_2_CC7.1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: itsm
+    controls: [SOC_2_CC7.4, SOC_2_CC8.1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpn
+    controls: [SOC_2_CC6.7, SOC_2_CC6.6]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dedicated_connectivity
+    controls: [SOC_2_CC6.6, SOC_2_CC6.7]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc
+    controls: [SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc_networking
+    controls: [SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: networking
+    controls: [SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: load_balancer
+    controls: [SOC_2_CC6.6, SOC_2_A1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: cdn
+    controls: [SOC_2_CC6.7, SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: api_gateway
+    controls: [SOC_2_CC6.1, SOC_2_CC6.7, SOC_2_CC6.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dns
+    controls: [SOC_2_CC6.6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: object_storage
+    controls: [SOC_2_CC6.1, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: block_storage
+    controls: [SOC_2_CC6.1, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: file_storage
+    controls: [SOC_2_CC6.1, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: hci_storage
+    controls: [SOC_2_CC6.1, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: postgresql
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mysql
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mariadb
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: sql_server
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: nosql_database
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: redis
+    controls: [SOC_2_CC6.7, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: memcached
+    controls: [SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_warehouse
+    controls: [SOC_2_C1.2, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: big_data
+    controls: [SOC_2_C1.2, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kafka
+    controls: [SOC_2_CC6.7, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: event_streaming
+    controls: [SOC_2_CC6.7, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: queue
+    controls: [SOC_2_CC6.7, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: messaging
+    controls: [SOC_2_CC6.7, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: search
+    controls: [SOC_2_CC6.1, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vm_compute
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kubernetes
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_orchestration
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_registry
+    controls: [SOC_2_CC6.8, SOC_2_CC7.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: serverless_compute
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: paas_compute
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: batch_compute
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: gpu_compute
+    controls: [SOC_2_CC7.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vdi
+    controls: [SOC_2_CC6.1, SOC_2_CC7.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ci_cd
+    controls: [SOC_2_CC8.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vcs
+    controls: [SOC_2_CC8.1, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: developer_tools
+    controls: [SOC_2_CC8.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iac
+    controls: [SOC_2_CC8.1, SOC_2_CC7.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_migration
+    controls: [SOC_2_CC6.7, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_integration
+    controls: [SOC_2_CC6.7, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: managed_file_transfer
+    controls: [SOC_2_CC6.7, SOC_2_C1.2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: payment_processing
+    controls: [SOC_2_CC6.7]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_analytics
+    controls: [SOC_2_C1.2, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: bi_analytics
+    controls: [SOC_2_C1.2, SOC_2_CC6.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iot_platform
+    controls: [SOC_2_CC6.1, SOC_2_CC6.7, SOC_2_CC7.1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

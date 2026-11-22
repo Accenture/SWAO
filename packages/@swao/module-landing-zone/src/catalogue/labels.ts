@@ -15,6 +15,8 @@
 //
 // ================================================================
 
+import { providerLabel } from '@swao/core';
+
 // A single source for the way a provider or a region reads in every picker
 // (#3399) and in `swao lz-target-config` (#3380). Do not inline provider or
 // region label strings anywhere else; call these so naming stays consistent.
@@ -30,7 +32,7 @@ export interface LzLabelRegion {
 /**
  * The human provider name without the boilerplate " service catalogue"
  * suffix that every `meta.name` carries, so a picker row stays short.
- * "Open Telekom Cloud / T Cloud Public service catalogue" -> "Open Telekom Cloud / T Cloud Public";
+ * "T Cloud Public service catalogue" -> "T Cloud Public";
  * "AWS ISOE Europe service catalogue (classified)" -> "AWS ISOE Europe (classified)";
  * "GCP service catalogue" -> "GCP". Falls back to the raw name when it has no suffix.
  */
@@ -47,13 +49,14 @@ export function lzProviderDisplayName(metaName: string): string {
 }
 
 /**
- * The consistent provider picker label: `<id> - <display name>`
- * (e.g. `otc - Open Telekom Cloud / T Cloud Public`). When the cleaned name
- * is empty or equals the id it degrades to the bare id.
+ * The consistent provider picker label. #4296: delegates to the central
+ * provider name map of @swao/core, so a picker row reads like every other
+ * SWAO surface: `OTC, T Cloud Public`, `STACKIT`. A provider SWAO does not
+ * know (a user-defined catalogue) shows the upper-cased id plus the cleaned
+ * `meta.name`.
  */
 export function lzProviderLabel(providerId: string, metaName: string): string {
-  const name = lzProviderDisplayName(metaName);
-  return name && name.toLowerCase() !== providerId.toLowerCase() ? `${providerId} - ${name}` : providerId;
+  return providerLabel(providerId, 'pair', lzProviderDisplayName(metaName));
 }
 
 /**

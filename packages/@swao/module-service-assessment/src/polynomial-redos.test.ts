@@ -26,7 +26,7 @@ import { dropTrailingSeparators, normaliseAppId, parseIdNameCell } from './intak
 import { containsEmail, looksLikePersonalName } from './intake/pii.js';
 import { extractJsonObject, fenceBody } from './research/llm-research.js';
 import { decodeXmlEntities, parseBsiRss } from './research/feeds.js';
-import { upsertServicePortfolioBlock } from './scaffold/write.js';
+import { upsertServicePortfolioBlock, rewriteServicePortfolioBlockLines } from './scaffold/write.js';
 
 const EM = String.fromCharCode(0x2014);
 const EN = String.fromCharCode(0x2013);
@@ -219,11 +219,13 @@ describe('fenceBody / extractJsonObject (research/llm-research.ts)', () => {
 describe('upsertServicePortfolioBlock append path (scaffold/write.ts)', () => {
   const meta = { source: 'x.xlsx', mapping: null, imported_at: '2026-10-20', app_count: 1, row_count: 1, sheets: ['S'], headers: {}, pii_columns: [], cluster_threshold: 3 };
 
-  it('trims trailing whitespace before appending the block', () => {
-    const out = upsertServicePortfolioBlock('wsp_version: "0.9"\n \t\n\n', meta);
+  it('trims trailing whitespace before appending the block (line fallback, #4283)', () => {
+    const out = rewriteServicePortfolioBlockLines('wsp_version: "0.9"\n \t\n\n', meta);
     expect(out.startsWith('wsp_version: "0.9"\n\nservice_portfolio:\n')).toBe(true);
-    expect(upsertServicePortfolioBlock('', meta).startsWith('\n\nservice_portfolio:\n')).toBe(true);
-    expect(upsertServicePortfolioBlock('   ', meta).startsWith('\n\nservice_portfolio:\n')).toBe(true);
+    expect(rewriteServicePortfolioBlockLines('', meta).startsWith('\n\nservice_portfolio:\n')).toBe(true);
+    expect(rewriteServicePortfolioBlockLines('   ', meta).startsWith('\n\nservice_portfolio:\n')).toBe(true);
+    // The central writer appends the block and keeps the existing lines.
+    expect(upsertServicePortfolioBlock('wsp_version: "0.9"\n', meta).startsWith('wsp_version: "0.9"\n')).toBe(true);
   });
 
   it('trimEnd matches the former regex on random input (differential)', () => {

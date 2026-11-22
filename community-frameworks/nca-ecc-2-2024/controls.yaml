@@ -584,7 +584,8 @@ controls:
       testing of the effectiveness of backup and recovery procedures.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: INFRA }
+      - { signal_prefix: STATE }
+      - { signal_prefix: TF }
     references:
       - "https://nca.gov.sa/en/Pages/ECC.aspx"
       - "ECC-2:2024 Subdomain 2-9"
@@ -673,7 +674,8 @@ controls:
       and retention of event logs for at least 12 months.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "https://nca.gov.sa/en/Pages/ECC.aspx"
       - "ECC-2:2024 Subdomain 2-12"

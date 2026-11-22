@@ -48,9 +48,9 @@ class NoUsageProvider implements LlmProvider {
 
 describe('anthropicCostUsd (#0188)', () => {
   it('computes cost for opus-4-7 from price table', () => {
-    // 1k input tokens at $15/MTok = $0.015; 500 output at $75/MTok = $0.0375
+    // 1k input tokens at $5/MTok = $0.005; 500 output at $25/MTok = $0.0125 (rates of 2026-11-16)
     const cost = anthropicCostUsd('claude-opus-4-7', 1000, 500);
-    expect(cost).toBeCloseTo(0.015 + 0.0375, 6);
+    expect(cost).toBeCloseTo(0.005 + 0.0125, 6);
   });
 
   it('computes cost for sonnet-4-6 from price table', () => {

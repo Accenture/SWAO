@@ -16,11 +16,12 @@
 // Tests for CredentialStore audit log (#2325 Feature 1).
 // Verifies that set() and delete() emit the correct logPortfolio events.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CredentialStore } from './credential-store.js';
+import { _atomicWriteIo } from './atomic-write.js';
 
 vi.mock('./log.js', async (importOriginal) => {
   const original = await importOriginal<typeof import('./log.js')>();
@@ -95,5 +96,73 @@ describe('CredentialStore audit log (#2325)', () => {
     // The only log event should be credential.stored
     expect(order).toEqual(['credential.stored']);
     cleanup();
+  });
+});
+
+// #3686, #3823: the vault write survives a transient Windows lock on the
+// rename (antivirus or indexer holding the file) and still surfaces a
+// persistent one. The lock is simulated through the _atomicWriteIo seam.
+describe('CredentialStore vault write under a locked target (#3686, #3823)', () => {
+  const savedIo = { ..._atomicWriteIo };
+
+  function errno(code: string): NodeJS.ErrnoException {
+    return Object.assign(new Error(`${code}: operation not permitted, rename (simulated)`), { code });
+  }
+
+  function lockRename(codes: string[]): () => number {
+    let attempts = 0;
+    const queue = [...codes];
+    _atomicWriteIo.rename = (src, dest) => {
+      attempts++;
+      const code = queue.shift();
+      if (code !== undefined) throw errno(code);
+      savedIo.rename(src, dest);
+    };
+    return () => attempts;
+  }
+
+  function vaultTmpFiles(): string[] {
+    return readdirSync(vaultDir).filter(f => f.endsWith('.tmp'));
+  }
+
+  beforeEach(() => {
+    _atomicWriteIo.platform = () => 'win32';
+    _atomicWriteIo.sleep = () => undefined;
+  });
+
+  afterEach(() => {
+    Object.assign(_atomicWriteIo, savedIo);
+    cleanup();
+  });
+
+  it.each(['EPERM', 'EBUSY'])('set() survives one transient %s on the rename', async (code) => {
+    const attempts = lockRename([code]);
+    await store.set('api-key', 'v1');
+    expect(attempts()).toBe(2);
+    expect(await store.get('api-key')).toBe('v1');
+    expect(vaultTmpFiles()).toEqual([]);
+    expect(vi.mocked(logPortfolio).mock.calls.find(c => c[1] === 'credential.store.error')).toBeUndefined();
+  });
+
+  it('a persistent EPERM surfaces, keeps the previous vault and leaves no temp copy', async () => {
+    await store.set('api-key', 'v1');
+    const before = readFileSync(join(vaultDir, '.swao-credentials.json'), 'utf-8');
+    const attempts = lockRename(Array(10).fill('EPERM'));
+    await expect(store.set('api-key', 'v2')).rejects.toThrow(/EPERM/);
+    expect(attempts()).toBe(5);
+    expect(readFileSync(join(vaultDir, '.swao-credentials.json'), 'utf-8')).toBe(before);
+    expect(vaultTmpFiles()).toEqual([]);
+    const ev = vi.mocked(logPortfolio).mock.calls.find(c => c[1] === 'credential.store.error');
+    expect(ev?.[3]).toMatchObject({ context: { error: 'EPERM' } });
+    Object.assign(_atomicWriteIo, savedIo);
+    expect(await store.get('api-key')).toBe('v1');
+  });
+
+  it('off Windows the rename is not retried', async () => {
+    _atomicWriteIo.platform = () => 'linux';
+    const attempts = lockRename(['EPERM']);
+    await expect(store.set('api-key', 'v1')).rejects.toThrow(/EPERM/);
+    expect(attempts()).toBe(1);
+    expect(vaultTmpFiles()).toEqual([]);
   });
 });

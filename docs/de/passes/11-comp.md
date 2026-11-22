@@ -22,7 +22,7 @@ Er nimmt alle Signale der vorangegangenen Passes desselben Laufs und lässt ein 
 | Eingabe | Ort | Hinweise |
 |---|---|---|
 | Aktive Frameworks | `assessment.regimes_active` in der `.swao.yml` der App oder, wenn die App keine Liste hat, in der `.swao.yml` des Workspace | Ohne Liste endet der Pass mit dem Status `not_applicable` |
-| Framework-Kataloge | `wsp/inputs/catalogs/` auf Workspace-Ebene (Standard- und Community-Kataloge) | Installiert durch `swao init` und `swao framework install <id>` |
+| Framework-Kataloge | `wsp/inputs/catalogs/` auf Workspace-Ebene (Standard- und Community-Kataloge) | Demo-Rahmenwerke durch `swao init`; weitere Rahmenwerke von GitHub nach `wsp/inputs/catalogs/community/<ordner>/` kopiert |
 | Ein LLM-Provider | `providers.llm` in `.swao.yml`, `--llm` oder `--model` | Ohne LLM ist jedes Control `UNKNOWN` |
 | Signale vorangegangener Passes | Werden im selben Lauf automatisch geschrieben | Je mehr Passes laufen, desto besser die Nachweislage |
 | Für das Framework `LLM_SELECTION` | Provider-Dokumente (Model Card, AVV, Konformitätsbewertung) in `apps/<app>/context/` | Andernfalls fügt SWAO ein informatives Warnsignal hinzu |

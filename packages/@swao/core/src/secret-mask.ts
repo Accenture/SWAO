@@ -116,6 +116,32 @@ function isBareNonSecret(value: string): boolean {
   return false;
 }
 
+/**
+ * #4352: a bare value in an `=` assignment that is a connection-string field
+ * (`Password=abc;`, `Pwd=abc;`, or the last field `Server=db;Password=abc`,
+ * that is a semicolon after the value or before the keyword) is a credential,
+ * so a letters-only value there is masked, not kept as a type name such as
+ * `string`.
+ */
+function isConnectionStringValue(lead: string, next: string | undefined, prev: string | undefined): boolean {
+  const l = lead.trimEnd();
+  if (!l.endsWith('=') || l.endsWith('=>')) return false;
+  return next === ';' || prev === ';';
+}
+
+/** Last non-blank character before `index` in `text` (undefined at the start). */
+function prevNonBlank(text: string, index: number): string | undefined {
+  let i = index - 1;
+  while (i >= 0 && (text[i] === ' ' || text[i] === '\t')) i--;
+  return i >= 0 ? text[i] : undefined;
+}
+
+/** A bare value that must stay verbatim (code reference, type, placeholder). */
+function keepBare(lead: string, value: string, next: string | undefined, prev: string | undefined): boolean {
+  if (!isBareNonSecret(value)) return false;
+  return !(/^[A-Za-z_]+$/.test(value) && isConnectionStringValue(lead, next, prev));
+}
+
 /** A quoted value that is empty, a placeholder or a template reference. */
 function isQuotedNonSecret(value: string): boolean {
   if (value.trim().length === 0) return true;
@@ -140,7 +166,9 @@ export function extractCredentialValues(text: string, minLength = 6): string[] {
     const bare = m[9];
     const value = quoted ?? bare;
     if (value === undefined || value.length < minLength || isAlreadyMasked(value)) continue;
-    if (quoted !== undefined ? isQuotedNonSecret(quoted) : isBareNonSecret(value)) continue;
+    const at = m.index ?? 0;
+    const next = text[at + m[0].length];
+    if (quoted !== undefined ? isQuotedNonSecret(quoted) : keepBare(m[1] ?? '', value, next, prevNonBlank(text, at))) continue;
     out.add(value);
   }
   return [...out].sort((a, b) => b.length - a.length);
@@ -173,6 +201,8 @@ export function maskCredentials(text: string): SecretMaskResult {
       escSqPrefix?: string,
       escSq?: string,
       bare?: string,
+      offset?: number,
+      whole?: string,
     ) => {
       const quoted = dq ?? sq ?? bq ?? escDq ?? escSq;
       if (quoted !== undefined) {
@@ -188,7 +218,10 @@ export function maskCredentials(text: string): SecretMaskResult {
         count += 1;
         return `${lead}${q}${maskSecretValue(quoted)}${q}`;
       }
-      if (bare === undefined || isAlreadyMasked(bare) || isBareNonSecret(bare)) return m;
+      const hasPos = typeof offset === 'number' && typeof whole === 'string';
+      const next = hasPos ? whole[offset + m.length] : undefined;
+      const prev = hasPos ? prevNonBlank(whole, offset) : undefined;
+      if (bare === undefined || isAlreadyMasked(bare) || keepBare(lead, bare, next, prev)) return m;
       count += 1;
       return `${lead}${maskSecretValue(bare)}`;
     },

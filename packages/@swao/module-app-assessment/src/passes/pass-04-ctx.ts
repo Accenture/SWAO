@@ -19,7 +19,7 @@ import { load } from 'js-yaml';
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
-import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio, listInputFiles } from '@swao/core';
+import { SIGNAL_SCHEMA_HINT, normalizeSignal, logPortfolio, listInputFiles, normalizeDashes, isEvidenceNote } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 import { getFileCategory, selectContextChunks, PASS_WEIGHTS } from './context-file-weights.js';
 import type { ScoredChunk } from './context-file-weights.js';
@@ -163,6 +163,60 @@ const SEVERITY_RANK: Record<string, number> = {
   critical: 5, high: 4, medium: 3, low: 2, informational: 1, positive: 0,
 };
 
+/** #4401: values that carry no reference: empty, an empty list or object, null. */
+const STRUCTURAL_EVIDENCE_VALUES = new Set(['', '[]', '{}', 'null', '~', 'none', 'n/a', '""', "''"]);
+
+/**
+ * #4401: an evidence entry that is an empty or structural value rather than a
+ * reference: `''`, `[]`, `{}`, `null`, or a key with such a value
+ * (`files: []`, `documents: {}`), as an LLM writes it when it has nothing to
+ * cite. Such an entry yields no evidence reference and no warning.
+ */
+export function isStructuralEvidenceValue(ref: string): boolean {
+  const v = ref.trim();
+  if (STRUCTURAL_EVIDENCE_VALUES.has(v.toLowerCase())) return true;
+  const colon = v.indexOf(':');
+  if (colon <= 0) return false;
+  const key = v.slice(0, colon).trim();
+  if (!/^[A-Za-z_][\w-]*$/.test(key) || /^https?$/i.test(key)) return false;
+  return STRUCTURAL_EVIDENCE_VALUES.has(v.slice(colon + 1).trim().toLowerCase());
+}
+
+/**
+ * #4401: an http(s) evidence reference is an external source (a vendor page,
+ * an end-of-life calendar). It is kept as a link and never resolved against
+ * the workspace, so it is not counted as unresolved.
+ */
+export function isExternalEvidenceUrl(ref: string): boolean {
+  const v = ref.trim();
+  if (!/^https?:\/\/\S+$/i.test(v)) return false;
+  try {
+    const u = new URL(v);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname !== '';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * #4445: the external URL of an evidence entry, or null. Accepts a bare
+ * http(s) URL and a key-prefixed one (`evidence_url: https://...`,
+ * `source: https://...`), as an LLM writes it when it echoes a research field.
+ */
+export function externalEvidenceUrlOf(ref: string): string | null {
+  const v = ref.trim();
+  if (isExternalEvidenceUrl(v)) return v;
+  const colon = v.indexOf(':');
+  if (colon <= 0) return null;
+  const key = v.slice(0, colon).trim();
+  if (!/^[A-Za-z_][\w.-]*$/.test(key) || /^https?$/i.test(key)) return null;
+  const rest = v.slice(colon + 1).trim();
+  return isExternalEvidenceUrl(rest) ? rest : null;
+}
+
+// #4455: the note rule is shared with the publication (core evidence-note.ts).
+export { isEvidenceNote };
+
 /**
  * #3429: a CTX signal whose file evidence cites at least one target-LZ input
  * and no current-infrastructure input is a target-platform gap, whatever the
@@ -243,7 +297,7 @@ function buildCtxPrompt(
     const first = excluded[0];
     const firstWeight = PASS_WEIGHTS['04']?.[first.category] ?? 1.0;
     console.warn(
-      `[warn] CTX: ${excluded.length} chunk(s) from ${excludedByFile.size} file(s) excluded -- prompt budget exhausted` +
+      `[warn] CTX: ${excluded.length} chunk(s) from ${excludedByFile.size} file(s) excluded, prompt budget exhausted` +
       ` (${effectiveBudget} chars max).` +
       ` First excluded: ${first.relativePath}, category=${first.category}, weight=${firstWeight} for pass 04.` +
       ` Excluded: ${excludedSummary}.` +
@@ -295,7 +349,7 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
     seenFiles.add(chunk.relativePath);
     if (PLACEHOLDER_PATTERNS.some((p) => p.test(chunk.content))) {
       placeholderFiles.push(chunk.relativePath);
-      console.warn(`[warn] CTX: ${chunk.relativePath} contains placeholder text -- findings may be hallucinated`);
+      console.warn(`[warn] CTX: ${chunk.relativePath} contains placeholder text, findings may be hallucinated`);
     }
   }
 
@@ -402,7 +456,13 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
     const unresolvable: string[] = [];
     // #3429: infrastructure roles of the files this signal cites.
     const evidenceRoles = new Set<InfraRole>();
+    // #4401: an empty or structural value ('files: []', '[]', '') is no reference at all.
+    if (signal.evidence) signal.evidence = signal.evidence.filter((r) => !isStructuralEvidenceValue(stripInfraRoleTag(r)));
+    // #4445: a key-prefixed URL ('evidence_url: https://...') is kept as the bare link.
+    if (signal.evidence) signal.evidence = signal.evidence.map((r) => externalEvidenceUrlOf(stripInfraRoleTag(r)) ?? r);
     for (const evidenceRef of signal.evidence ?? []) {
+      // #4401: an external http(s) source stays a link; the local resolver does not apply.
+      if (isExternalEvidenceUrl(stripInfraRoleTag(evidenceRef))) continue;
       // Evidence refs may include a row qualifier after ':' (e.g. 'cmdb/file.csv:row 3').
       // Strip the qualifier before resolving so the file-existence check uses only the path.
       // #3429: the LLM may echo the chunk-label role tag ('[TARGET-LZ] terraform/x.json').
@@ -410,7 +470,7 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
       // Negative-evidence observations describe absence of data, not a missing file (#0998).
       // Log at INFO and skip file resolution to avoid spurious WARN noise.
       if (NEGATIVE_EVIDENCE_RE.test(colonStripped) && !matchKnownExt(colonStripped)) {
-        console.log(`[info] CTX ${signal.id}: negative-evidence observation (not a file path): '${evidenceRef}'`);
+        console.log(normalizeDashes(`[info] CTX ${signal.id}: negative-evidence observation (not a file path): '${evidenceRef}'`));
         continue;
       }
       // Also strip space-separated section descriptions after the file extension
@@ -440,12 +500,16 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
         // Path traversal attempt -- flag without following
         signal.false_positive_flag = true;
         signal.false_positive_note = `Evidence reference escapes workspace: ${evidenceRef}`;
-        console.warn(`[warn] CTX ${signal.id}: evidence '${evidenceRef}' escapes workspace bounds`);
+        console.warn(normalizeDashes(`[warn] CTX ${signal.id}: evidence '${evidenceRef}' escapes workspace bounds`));
       } else if (isBudgetExcluded) {
         // File exists but was excluded from the context prompt by budget ceiling.
         // Annotate as a context gap rather than a false positive.
         signal.context_gaps = [...(signal.context_gaps ?? []), evidenceRef];
         unresolvable.push(`[budget-excluded] ${evidenceRef}`);
+      } else if (!existsSync(resolved) && isEvidenceNote(stripInfraRoleTag(evidenceRef))) {
+        // #4455, #4445: a sentence or key=value observation, not a file
+        // reference. It stays on the signal as a note and is not unresolved.
+        console.log(normalizeDashes(`[info] CTX ${signal.id}: evidence note (not a file path): '${evidenceRef}'`));
       } else if (!existsSync(resolved)) {
         signal.false_positive_flag = true;
         signal.false_positive_note = `Evidence file not found: ${evidenceRef}`;
@@ -456,13 +520,14 @@ export async function runCtxPass(ctx: PassContext): Promise<PassResult> {
       const budgetExcludedRefs = unresolvable.filter((r) => r.startsWith('[budget-excluded] '));
       const missingRefs = unresolvable.filter((r) => !r.startsWith('[budget-excluded] '));
       if (budgetExcludedRefs.length > 0) {
-        console.warn(
-          `[warn] CTX ${signal.id}: ${budgetExcludedRefs.length} evidence file(s) budget-excluded -- cited but not verified: ` +
+        console.warn(normalizeDashes(
+          `[warn] CTX ${signal.id}: ${budgetExcludedRefs.length} evidence file(s) budget-excluded, cited but not verified: ` +
           budgetExcludedRefs.map((r) => `'${r.slice('[budget-excluded] '.length)}'`).join(', '),
-        );
+        ));
       }
       if (missingRefs.length > 0) {
-        console.warn(`[warn] CTX ${signal.id}: ${missingRefs.length} evidence reference(s) could not be resolved: ${missingRefs.map((r) => `'${r}'`).join(', ')}`);
+        // #4455: the references quote LLM text; CLAUDE.md section 5.1 dash rule.
+        console.warn(normalizeDashes(`[warn] CTX ${signal.id}: ${missingRefs.length} evidence reference(s) could not be resolved: ${missingRefs.map((r) => `'${r}'`).join(', ')}`));
       }
     }
     const alreadyTagged = signal.implies?.includes(TARGET_CAPABILITY_GAP_TAG) === true;

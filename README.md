@@ -39,9 +39,7 @@ swao log export --for-feedback --out feedback.tar.gz
                             # PII-redacted bundle ready to email back
 
 # Compliance frameworks
-swao framework list         # enumerate bundled + installed community frameworks
-swao framework install <id> # copy bundled framework into the workspace
-swao framework info <id>    # print classification, contributor, applicability
+swao framework list         # list the community frameworks in the workspace
 
 # LLM provider configuration
 swao credential set anthropic-api-key sk-ant-...
@@ -67,7 +65,9 @@ or runs by default in full sweeps (skip with `--no-crawl`).
 ISO 27001, DORA, NIS2, EU AI Act, EUCS, EU CRA, BSI C5, KRITIS-DE, SecNumCloud,
 EC Cloud Sovereignty Framework, SOC 2, OpenSSF Scorecard, PCI-DSS, SAMA CSF,
 NCA CCC, NCA ECC, BSI IT-Grundschutz, HIPAA/NIST, AI 10 Pillars, LLM Selection,
-and more). Install into a workspace via `swao framework install <id>`, or download
+and more). Copy a framework folder from
+[community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
+into the workspace (`wsp/inputs/catalogs/community/<folder>/`), or download
 all 22 as a standalone zip from the [Releases page](https://github.com/Accenture/SWAO/releases/latest).
 
 > **Operator references**
@@ -264,15 +264,14 @@ SWAO ships 22 bundled community frameworks (Apache-2.0, free to use):
 | `SECNUMCLOUD` | SecNumCloud v3.2 -- ANSSI Sovereign Cloud Certification | Sovereign cloud, FR/EU |
 | `SOC_2` | SOC 2 Trust Services Criteria (AICPA 2017-revised) | SaaS/cloud, US |
 
-All 22 frameworks ship inside the binary. Use the CLI to copy any framework into your
-active workspace, or download the standalone zip from the
+`swao init` seeds the demo frameworks. Copy any other framework folder from the
+[GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into
+`wsp/inputs/catalogs/community/<folder>/` in your workspace, or download the standalone zip from the
 [Releases page](https://github.com/Accenture/SWAO/releases/latest) for offline use
 and customisation without the CLI.
 
 ```bash
-swao framework list                 # enumerate bundled + installed frameworks
-swao framework install GDPR         # copy bundled framework YAML into workspace
-swao framework info ISO_27001       # print authority, controls count, contributor
+swao framework list                 # list the frameworks in the workspace
 ```
 
 Organisations can also author custom frameworks by providing a `framework-meta.yaml` +

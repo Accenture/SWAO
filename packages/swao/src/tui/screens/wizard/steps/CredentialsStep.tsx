@@ -14,16 +14,14 @@
 // ================================================================
 
 import { useState, useRef, useEffect } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, useInput } from 'ink';
 import { spawn } from 'child_process';
-import { homedir } from 'os';
-import { join } from 'path';
 import { CredentialStore, logPortfolio } from '@swao/core';
-import { getConnector, connectorPostJson, openAiChatCompletionsUrl } from '@swao/module-llm-providers';
-import { PasswordInput, GuidanceBox } from '@swao/tui-kit';
-import { type LlmProvider, BIN, SELF_ARGS, setWizardGuidanceOpen } from '../shared.js';
-
-const CRED_PATH = join(homedir(), '.config', 'swao', '.swao-credentials.json');
+import { selfSpawnCommand } from '@swao/core';
+import { getConnector, connectorPostJson, openAiChatCompletionsUrl, resolveModelAlias } from '@swao/module-llm-providers';
+import { PasswordInput, SelectInput, StatusRow, useOptionGuidance, type SelectOption } from '@swao/tui-kit';
+import { type LlmProvider } from '../shared.js';
+import { SetupStepFrame } from '../../../../setup/setup-frame.js';
 
 function isCredentialStored(name: string): boolean {
   const envKey = `SWAO_CREDENTIAL_${name.toUpperCase().replace(/-/g, '_')}`;
@@ -34,13 +32,20 @@ function isCredentialStored(name: string): boolean {
   } catch { return false; }
 }
 
-// -- Step 3: Credentials --------------------------------------------------
+// -- Credentials --------------------------------------------------------------
+
+/** #4230: the entries of the menu after a failed connectivity check, each with its guidance entry. */
+export function credentialFailOptions(testMessage: string, obtainUrl: string): SelectOption[] {
+  return [
+    { label: 'Continue with this key', value: 'continue', guidance: { title: 'Continue with this key', what: 'The key stays stored; the assessment tries it and the health check reports the connection again.', sections: [{ label: 'Reason', text: testMessage }] } },
+    { label: 'Enter the key again', value: 'again', guidance: { title: 'Enter the key again', what: 'Back to the key input; a new key replaces the stored one and the check runs again.', sections: [{ label: 'Obtain at', text: obtainUrl }] } },
+  ];
+}
 
 export function CredentialsStep({
   provider,
   onNext,
   workspaceRoot,
-  stepNumber = 3,
   model: selectedModel,
 }: {
   provider: LlmProvider;
@@ -56,6 +61,11 @@ export function CredentialsStep({
   const [testMessage, setTestMessage] = useState('');
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
+  // #4230: the guidance of the failed check follows the highlighted entry.
+  const { entry: failGuidance, onCursorChange: onFailCursor } = useOptionGuidance({
+    title: 'Connectivity check failed',
+    what: 'The key is stored, but the LLM did not answer the check request. Continue with it, or enter the key again.',
+  });
 
   // #1400: gateway connector selection -- the connector file names the
   // credential-store entry; a connector without auth (ollama) needs nothing.
@@ -73,7 +83,7 @@ export function CredentialsStep({
   const isBedrockConnector = gwConnector?.file.connector.protocol === 'bedrock';
 
   useInput((input, key) => {
-    if (testPhase === 'fail' && key.return) { onNextRef.current(); }
+    // #4254: a failed check offers "Continue with this key" and "Enter the key again" as list entries.
     // #2382: allow Enter to advance early when connectivity check succeeded.
     if (testPhase === 'ok' && key.return) { onNextRef.current(); }
     if (isBedrockConnector && (key.return || input === ' ')) { onNextRef.current(); }
@@ -98,9 +108,10 @@ export function CredentialsStep({
 
   const storeCredential = (name: string, value: string, cb: () => void) => {
     if (!value) { cb(); return; }
-    const child = spawn(BIN, [...SELF_ARGS, 'credential', 'set', name, value], {
+    const selfCmd = selfSpawnCommand(['credential', 'set', name, value]);
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, PKG_EXECPATH: '' },
+      env: selfCmd.env,
     });
     // #2326: call cb only after write completes so health-check reads the stored key.
     // #2367: error handler prevents unhandled error event crash on spawn failure.
@@ -129,7 +140,10 @@ export function CredentialsStep({
         if (gwConnector) {
           const proto = gwConnector.file.connector.protocol;
           const base = gwConnector.file.connector.base_url.replace(/\/$/, '');
-          const model = selectedModel || gwConnector.file.connector.models.default;
+          // #4500: a ~vendor/family-latest alias goes through the same resolver as
+          // the Health Check (gateway-probe.ts) and the assessment, so a model the
+          // Health Check would reject never passes this ping.
+          const model = await resolveModelAlias(selectedModel || gwConnector.file.connector.models.default, gwConnector.file.connector, apiKey);
           pingModel = model;
           if (proto === 'anthropic-messages') {
             url = `${base}/v1/messages`;
@@ -182,7 +196,7 @@ export function CredentialsStep({
           // #2383: log connectivity check failure to portfolio event log
           try { logPortfolio('warn', 'wizard.credentials.llm.ping.fail', 'Wizard LLM connectivity check failed', { context: { connector_id: connId, protocol: proto, model: pingModel || null, http_status: resp.status, duration_ms: Date.now() - pingStart } }); } catch { /* best-effort */ }
           setTestPhase('fail');
-          setTestMessage(`HTTP ${resp.status}${pingModel ? ` (model ${pingModel})` : ''} -- ${errText}`);
+          setTestMessage(`HTTP ${resp.status}${pingModel ? ` (model ${pingModel})` : ''}: ${errText}`);
         }
       } catch (err) {
         clearTimeout(timeoutId);
@@ -196,25 +210,35 @@ export function CredentialsStep({
     })();
   };
 
-  // #2162: Bedrock guidance panel -- no API key entry; inform user of AWS auth options.
+  // #4254 (Design 126 sections 4.5, 6, 8 and 9): every view renders through
+  // SetupStepFrame (step title without a number, the hint line of its input
+  // kind, one guidance box); states are StatusRows; no profile path on screen
+  // (the vault location is in the guidance). Esc belongs to the wizard.
+  const title = 'Credentials';
+
+  // #2162: Bedrock guidance panel: no API key entry; inform the operator of the AWS auth options.
   if (isBedrockConnector) {
     return (
-      <Box flexDirection="column" gap={1}>
-        <Text bold color="cyanBright">Step 2 -- AWS Authentication (Bedrock)</Text>
-        <Text>Amazon Bedrock uses the AWS SDK credential chain -- no API key is stored in SWAO.</Text>
-        <Text> </Text>
-        <Text bold>Ensure one of the following is active before running swao health-check:</Text>
-        <Box flexDirection="column" paddingLeft={2}>
-          <Text>AWS SSO:        <Text color="yellow">aws sso login --profile {'<profile>'}</Text></Text>
-          <Text>Environment:    <Text color="yellow">export AWS_ACCESS_KEY_ID=...  AWS_SECRET_ACCESS_KEY=...  AWS_REGION=...</Text></Text>
-          <Text>IAM role:       EC2 / ECS / Lambda instance role (no action needed)</Text>
+      <SetupStepFrame
+        title={title}
+        subtitle="Amazon Bedrock uses the AWS SDK credential chain; no API key is stored in SWAO."
+        kind="confirm"
+        guidance={{
+          title: 'AWS authentication (Bedrock)',
+          what: 'SWAO calls Amazon Bedrock with the AWS SDK credential chain of this machine. One of the options must be active before the health check and the assessment run.',
+          sections: [
+            { label: 'AWS SSO', text: 'aws sso login with your AWS profile.' },
+            { label: 'Environment', text: 'AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION set in the shell that starts SWAO.' },
+            { label: 'IAM role', text: 'An EC2, ECS or Lambda instance role; no action needed.' },
+            { label: 'Permission', text: 'bedrock:InvokeModel on the configured model ARN.' },
+          ],
+        }}
+      >
+        <Box flexDirection="column">
+          <StatusRow level="info" label="Bedrock" summary="AWS SSO, environment variables or an instance role; details in the guidance." labelWidth={10} />
+          {status ? <StatusRow level="warn" label="Vault" summary={status} labelWidth={10} /> : null}
         </Box>
-        <Text> </Text>
-        <Text dimColor>Required IAM permission: bedrock:InvokeModel on the configured model ARN.</Text>
-        <Text> </Text>
-        <Text dimColor>Press Enter to continue</Text>
-        {status ? <Text color="yellow">{status}</Text> : null}
-      </Box>
+      </SetupStepFrame>
     );
   }
 
@@ -222,9 +246,9 @@ export function CredentialsStep({
 
   const isOpenLlm = provider === 'open-llm-provider';
   const llmLabel = gwConnector
-    ? `API key for ${gwConnector.file.connector.name} (Enter to skip if unauthenticated)`
+    ? `API key for ${gwConnector.file.connector.name} (empty if unauthenticated)`
     : isOpenLlm
-      ? 'Bearer token for Open LLM Provider (Enter to skip if unauthenticated)'
+      ? 'Bearer token for Open LLM Provider (empty if unauthenticated)'
       : provider === 'openai'
         ? 'OpenAI API key (sk-...)'
         : 'Anthropic API key (sk-ant-...)';
@@ -236,100 +260,106 @@ export function CredentialsStep({
         : 'anthropic-api-key');
   const llmAlreadyStored = isCredentialStored(credName);
   const obtainUrl = gwConnector
-    ? (gwConnector.file.connector.description ?? 'Your platform administrator -- see the connector file')
+    ? (gwConnector.file.connector.description ?? 'Your platform administrator; see the connector file')
     : isOpenLlm
-      ? 'Your platform administrator -- see runbook docs/runbooks/llm-provider-swap.md'
+      ? 'Your platform administrator; see runbook docs/runbooks/llm-provider-swap.md'
       : provider === 'openai'
         ? 'https://platform.openai.com/api-keys'
         : 'https://console.anthropic.com/settings/keys';
   const providerLabel = gwConnector
     ? gwConnector.file.connector.name
     : isOpenLlm ? 'Open LLM Provider' : provider === 'openai' ? 'OpenAI' : 'Anthropic';
-  const llmStatusLine = llmAlreadyStored
-    ? `${providerLabel} token: stored (Enter to keep)`
-    : `${providerLabel} token: NOT stored -- needed for authenticated endpoints`;
+  const labelWidth = Math.max(10, providerLabel.length + 2);
 
-  // #2382: when connectivity check is running/done, show dedicated section
-  // matching AssessScreen preflight-llm visual pattern.
+  // #2382: when the connectivity check is running or done, show its result.
   if (testPhase !== 'idle') {
+    const failOptions = credentialFailOptions(testMessage, obtainUrl);
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step {stepNumber} -- Credentials</Text>
-        <Text> </Text>
-        <Text bold>LLM connectivity check</Text>
-        {testPhase === 'testing' && <Text color="yellow">Pinging connector...</Text>}
-        {testPhase === 'ok' && (
-          <Box flexDirection="column">
-            <Text color="green">[ok]   <Text bold>{providerLabel}</Text>   reachable</Text>
-            <Text> </Text>
-            <Text dimColor>Press Enter to continue...</Text>
-          </Box>
-        )}
-        {testPhase === 'fail' && (
-          <Box flexDirection="column">
-            <Text color="green">Key stored.</Text>
-            <Text color="yellow">[warn]  Connectivity check failed for <Text bold>{providerLabel}</Text>: {testMessage}</Text>
-            <Text> </Text>
-            <Text dimColor>Continue with this key (assessment will attempt it), or press Esc to go back and re-enter.</Text>
-          </Box>
-        )}
-        {status && <Text color="yellow">{status}</Text>}
-        <GuidanceBox
-          title={`Step ${stepNumber} -- Credentials`}
-          what="Verifying connectivity to the configured LLM gateway before proceeding."
-          details={[
-            { label: 'Connector', value: providerLabel },
-            ...(testPhase === 'fail' ? [{ label: 'Reason', value: testMessage }] : []),
-          ]}
-          affordances={testPhase === 'fail'
-            ? ['Enter -- continue (key is stored)  |  Esc -- re-enter key']
-            : testPhase === 'ok'
-            ? ['Enter -- continue to next step']
-            : []}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
+      <SetupStepFrame
+        title={title}
+        subtitle="LLM connectivity check"
+        kind={testPhase === 'fail' ? 'picker' : 'confirm'}
+        guidance={testPhase === 'fail' ? failGuidance : {
+          title: 'LLM connectivity check',
+          what: 'Verifies the connection to the configured LLM with a short request before the setup goes on.',
+          sections: [{ label: 'Connector', text: providerLabel }],
+        }}
+      >
+        <Box flexDirection="column">
+          {testPhase === 'testing' && <StatusRow level="waiting" label={providerLabel} summary="checking the connection" labelWidth={labelWidth} />}
+          {testPhase === 'ok' && <StatusRow level="ok" label={providerLabel} summary="reachable" labelWidth={labelWidth} />}
+          {testPhase === 'fail' && (
+            <>
+              <StatusRow level="ok" label="Key" summary="stored in the vault" labelWidth={labelWidth} />
+              <StatusRow level="warn" label={providerLabel} summary={`connectivity check failed: ${testMessage}`} labelWidth={labelWidth} />
+              <Box marginTop={1}>
+                <SelectInput
+                  label=""
+                  options={failOptions}
+                  numbered
+                  showKeyHints={false}
+                  visibleCount={failOptions.length}
+                  onCursorChange={onFailCursor}
+                  onSelect={(v) => {
+                    if (v === 'again') { setTestPhase('idle'); setTestMessage(''); return; }
+                    onNextRef.current();
+                  }}
+                />
+              </Box>
+            </>
+          )}
+          {status && <StatusRow level="warn" label="Vault" summary={status} labelWidth={labelWidth} />}
+        </Box>
+      </SetupStepFrame>
     );
   }
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="cyanBright">Step {stepNumber} -- Credentials</Text>
-      <Text dimColor>Values are stored locally. Enter to keep existing value. Never printed after entry.</Text>
-      <Text>Storage: <Text bold color="whiteBright">{CRED_PATH}</Text></Text>
-      <Box marginTop={1} flexDirection="column">
-        {llmAlreadyStored && <Text color="green">{providerLabel} token already stored -- press Enter to keep.</Text>}
-        <PasswordInput
-          label={llmAlreadyStored ? `${llmLabel} (Enter to keep existing)` : llmLabel}
-          onSubmit={(v) => {
-            if (v) {
-              storeCredential(credName, v, () => runTest(v));
-            } else {
-              // #2354: when credential already stored, test with the stored
-              // value instead of advancing silently so the user sees
-              // whether the key is still valid.
-              try {
-                const stored = new CredentialStore().loadSync();
-                const existingKey = stored[credName];
-                if (existingKey) { runTest(existingKey); return; }
-              } catch { /* best-effort: fall through to onNext */ }
-              onNext();
-            }
-          }}
-          active
+    <SetupStepFrame
+      title={title}
+      subtitle="Stored encrypted on this machine; never printed after entry."
+      kind="textInput"
+      guidance={{
+        title: `${providerLabel} credential`,
+        what: llmAlreadyStored
+          ? 'A key is already stored. An empty entry keeps it and checks the connection with it; a new key replaces it.'
+          : 'The key is needed for authenticated endpoints. It is stored encrypted in the SWAO credential vault on this machine and never printed in reports or logs.',
+        sections: [
+          { label: 'Stored as', text: credName },
+          { label: 'Obtain at', text: obtainUrl },
+        ],
+      }}
+    >
+      <Box flexDirection="column">
+        <StatusRow
+          level={llmAlreadyStored ? 'ok' : 'missing'}
+          label={providerLabel}
+          summary={llmAlreadyStored ? 'key stored; an empty entry keeps it' : 'no key stored, needed for authenticated endpoints'}
+          labelWidth={labelWidth}
         />
+        <Box marginTop={1}>
+          <PasswordInput
+            label={llmLabel}
+            onSubmit={(v) => {
+              if (v) {
+                storeCredential(credName, v, () => runTest(v));
+              } else {
+                // #2354: when credential already stored, test with the stored
+                // value instead of advancing silently so the user sees
+                // whether the key is still valid.
+                try {
+                  const stored = new CredentialStore().loadSync();
+                  const existingKey = stored[credName];
+                  if (existingKey) { runTest(existingKey); return; }
+                } catch { /* best-effort: fall through to onNext */ }
+                onNext();
+              }
+            }}
+            active
+          />
+        </Box>
+        {status && <StatusRow level="warn" label="Vault" summary={status} labelWidth={labelWidth} />}
       </Box>
-      {status && <Text color="yellow">{status}</Text>}
-      <GuidanceBox
-        title={`Step ${stepNumber} -- Credentials`}
-        what="Stored encrypted on this machine. Never printed in reports or logs."
-        details={[
-          { label: 'Token',     value: llmStatusLine },
-          { label: 'Obtain at', value: obtainUrl },
-        ]}
-        affordances={['Enter -- save or keep existing  |  Esc -- back']}
-        onOpenChange={setWizardGuidanceOpen}
-      />
-    </Box>
+    </SetupStepFrame>
   );
 }

@@ -28,8 +28,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const { events, probeRuns } = vi.hoisted(() => ({
+const { events, probeRuns, completeContexts, prefetchEvents } = vi.hoisted(() => ({
   events: [] as Array<{ code: string; probe: unknown }>,
+  // #4487: the prefetch events with level and context.
+  prefetchEvents: [] as Array<{ level: string; code: string; context: Record<string, unknown> }>,
+  // #4461: the context of every probe.complete (meter fields).
+  completeContexts: [] as Array<Record<string, unknown>>,
   // #3215: how often each probe that the --json branch used to re-run executes.
   probeRuns: { ingestion: 0, iac_toolchain: 0, wsp_metadata: 0 },
 }));
@@ -55,9 +59,11 @@ vi.mock('@swao/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@swao/core')>();
   return {
     ...actual,
-    logPortfolio: (_level: string, code: string, _message: string, opts?: { context?: Record<string, unknown> }) => {
+    logPortfolio: (level: string, code: string, _message: string, opts?: { context?: Record<string, unknown> }) => {
+      if (code.startsWith('health-check.prefetch.')) prefetchEvents.push({ level, code, context: opts?.context ?? {} });
       if (code === 'health-check.probe.start' || code === 'health-check.probe.complete') {
         events.push({ code, probe: opts?.context?.['probe'] });
+        if (code === 'health-check.probe.complete') completeContexts.push(opts?.context ?? {});
       }
     },
   };
@@ -120,6 +126,49 @@ describe('health-check probe event sequence (#3171)', () => {
     for (const key of ['service_workspace', 'research_cache', 'vendor_catalog', 'cluster_detection', 'pii_scrub_audit', 'delta_snapshot', 'framework_controls']) {
       expect(starts.map((e) => e.probe)).toContain(key);
     }
+  }, 60_000);
+});
+
+describe('health-check probe meter fields (#4461)', () => {
+  it('every probe.complete carries cpu_ms; prerequisites names its slowest tool detection', async () => {
+    completeContexts.length = 0;
+    await buildHealthCheckPayload(workspace, hostDeps);
+    expect(completeContexts).toHaveLength(PROBE_TOTAL);
+    for (const c of completeContexts) expect(typeof c['cpu_ms']).toBe('number');
+    const prereq = completeContexts.find((c) => c['probe'] === 'prerequisites')!;
+    expect(String(prereq['slowest_step'])).toMatch(/^detect /);
+  }, 60_000);
+});
+
+describe('health-check tool version prefetch events (#4487, #4488)', () => {
+  it('logs prefetch.start and prefetch.tools.complete with per-tool outcome; a timed-out git is warn, not fail', async () => {
+    prefetchEvents.length = 0;
+    completeContexts.length = 0;
+    const unanswered = (cmd: string) => (cmd === 'git' ? { outcome: 'timeout' as const, detail: 'did not answer within 15 s' } : undefined);
+    const payload = await buildHealthCheckPayload(workspace, {
+      ...hostDeps,
+      detectPrerequisiteTools: async () => ({
+        detect: (cmd: string) => (cmd === 'git' ? null : `${cmd} 1.0.0`),
+        unanswered,
+        ms: { git: 5_010, ssh: 40 },
+        outcome: { git: 'timeout', ssh: 'found' },
+        retryMs: { git: 15_005 },
+        timedOut: ['git'],
+        totalMs: 20_100,
+      }),
+    });
+    expect(prefetchEvents.map((e) => e.code)).toContain('health-check.prefetch.start');
+    const tools = prefetchEvents.find((e) => e.code === 'health-check.prefetch.tools.complete');
+    expect(tools?.level).toBe('warn');
+    expect(tools?.context).toMatchObject({ outcome: { git: 'timeout', ssh: 'found' }, timed_out: ['git'], retry_ms: { git: 15_005 }, ms: { git: 5_010, ssh: 40 } });
+    const prereq = completeContexts.find((c) => c['probe'] === 'prerequisites')!;
+    expect(prereq['detect_timed_out']).toEqual(['git']);
+    expect(prereq['detect_outcome']).toEqual({ git: 'timeout', ssh: 'found' });
+    const probe = (payload as unknown as { probes?: Record<string, { status?: string; message?: string }> }).probes?.['prerequisites']
+      ?? (payload as unknown as Record<string, { status?: string; message?: string }>)['prerequisites'];
+    expect(probe?.status).toBe('warn');
+    expect(probe?.message).toContain('`git` did not answer within 15 s');
+    expect(probe?.message).not.toMatch(/not found on PATH/);
   }, 60_000);
 });
 

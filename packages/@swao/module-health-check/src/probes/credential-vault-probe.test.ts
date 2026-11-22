@@ -139,3 +139,40 @@ describe('buildCredentialVaultProbe (#2325 Feature 3)', () => {
     }
   });
 });
+
+describe('buildCredentialVaultProbe legacy LZ keys (#3570)', () => {
+  it('warns with a count (never names) when Pass 23 keys remain and lists lz as a category', async () => {
+    const dir = makeTempDir();
+    try {
+      const store = new CredentialStore(dir);
+      await store.importAll({
+        'anthropic-api-key': ['fake', 'llm'].join('-'),
+        'aws-access-key-id': ['fake', 'ak'].join('-'),
+        'aws-secret-access-key': ['fake', 'sk'].join('-'),
+        'lz:otc-prod:platform:password': ['fake', 'pw'].join('-'),
+      }, 'merge');
+      const r = buildCredentialVaultProbe(dir);
+      expect(r.status).toBe('warn');
+      expect(r.legacyLzKeyCount).toBe(2);
+      expect(r.categories).toContain('lz');
+      expect(r.message).toContain('2 legacy landing zone credentials');
+      expect(r.message).toContain('swao lz connect');
+      expect(r.message).not.toContain('aws-access-key-id');
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  it('stays ok with scoped keys only', async () => {
+    const dir = makeTempDir();
+    try {
+      const store = new CredentialStore(dir);
+      await store.importAll({ 'anthropic-api-key': 'x', 'lz:otc-prod:platform:password': 'y' }, 'merge');
+      const r = buildCredentialVaultProbe(dir);
+      expect(r.status).toBe('ok');
+      expect(r.legacyLzKeyCount).toBe(0);
+    } finally {
+      cleanup(dir);
+    }
+  });
+});

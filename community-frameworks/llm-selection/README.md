@@ -20,7 +20,7 @@
 **Framework ID:** `LLM_SELECTION`
 **Version:** 1.0
 **Authority:** Accenture SWAO team -- internal community framework (Design 063)
-**SWAO tier:** Community (install via `swao framework install LLM_SELECTION`)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/llm-selection/`)
 **Controls:** 34 controls across 7 domains
 
 ## What this framework evaluates
@@ -52,7 +52,8 @@ is uploaded via Hybrid Assessment. This is expected behaviour, not an error.
 Install the framework into your workspace:
 
 ```bash
-swao framework install LLM_SELECTION
+# copy this folder from the GitHub repository into the workspace
+cp -r llm-selection <workspace>/wsp/inputs/catalogs/community/llm-selection
 ```
 
 Or add to your workspace `.swao.yml` after installation:
@@ -110,7 +111,8 @@ Controls are evaluated from:
 Install a local copy to override specific controls for your engagement:
 
 ```bash
-swao framework install LLM_SELECTION
+# copy this folder from the GitHub repository into the workspace
+cp -r llm-selection <workspace>/wsp/inputs/catalogs/community/llm-selection
 ```
 
 The installed copy at `wsp/inputs/catalogs/community/llm-selection/controls.yaml` overrides the

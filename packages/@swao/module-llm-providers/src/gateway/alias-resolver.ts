@@ -21,6 +21,7 @@
 
 import { logPortfolio } from '@swao/core';
 import type { Connector } from './connector-schema.js';
+import { isChatServableId } from './discovery.js';
 
 /** True when a model id is a SWAO alias (starts with ~). */
 export function isAlias(model: string): boolean {
@@ -84,26 +85,36 @@ function aliasBase(alias: string): string {
   return idx === -1 ? bare : bare.slice(0, idx);
 }
 
+/** #4500: the newest id of a candidate list (descending string order), plain
+ *  ids before variants: `anthropic/claude-sonnet-5.5` wins over
+ *  `anthropic/claude-sonnet-5.5:thinking`; a variant only when no plain id matches. */
+function newest(candidates: string[]): string | null {
+  const plain = candidates.filter((id) => !id.includes(':')).sort();
+  if (plain.length > 0) return plain[plain.length - 1]!;
+  const sorted = [...candidates].sort();
+  return sorted.length > 0 ? sorted[sorted.length - 1]! : null;
+}
+
 /** Select the best model from the discovered list for an alias.
  *  Primary: startsWith(base). Fallback: vendor-scoped token match to handle
  *  providers that insert version numbers mid-name (e.g. google/gemini-2.5-flash
- *  for alias base google/gemini-flash). Returns null when no match. */
-function pickBestModel(alias: string, discoveredIds: string[]): string | null {
+ *  for alias base google/gemini-flash). #4500: ids the chat route cannot serve
+ *  (OpenRouter `:batch` variants) are never picked; plain ids win over variants.
+ *  Returns null when no match. */
+export function pickBestModel(alias: string, discoveredIds: string[], protocol: Connector['protocol'] = 'openai-chat'): string | null {
   const base = aliasBase(alias);
+  const usable = discoveredIds.filter((id) => isChatServableId(protocol, id));
 
   // Primary pass: strict prefix match (vendor/family-version-*)
-  const candidates = discoveredIds.filter((id) => id.startsWith(base)).sort();
-  if (candidates.length > 0) return candidates[candidates.length - 1]!;
+  const primary = newest(usable.filter((id) => id.startsWith(base)));
+  if (primary) return primary;
 
   // Fallback: vendor-scoped family-token match (#2863).
   const slashIdx = base.indexOf('/');
   if (slashIdx === -1) return null;
   const vendor = base.slice(0, slashIdx + 1);
   const tokens = base.slice(slashIdx + 1).split('-').filter(Boolean);
-  const tokenCandidates = discoveredIds
-    .filter((id) => id.startsWith(vendor) && tokens.every((t) => id.includes(t)))
-    .sort();
-  return tokenCandidates.length > 0 ? tokenCandidates[tokenCandidates.length - 1]! : null;
+  return newest(usable.filter((id) => id.startsWith(vendor) && tokens.every((t) => id.includes(t))));
 }
 
 /** Resolve a `~vendor/family-latest` alias to a concrete model ID.
@@ -149,7 +160,7 @@ export async function resolveModelAlias(
     return base;
   }
 
-  const resolved = pickBestModel(alias, discovered);
+  const resolved = pickBestModel(alias, discovered, connector.protocol);
   if (!resolved) {
     // #1895: alias-no-match is a user configuration issue (stale/invalid alias),
     // not a product defect -- log at warn so monitors don't treat it as a crash.
@@ -171,17 +182,8 @@ export async function resolveModelAlias(
     );
   }
 
-  // #2570: warn when alias resolves to a batch-only model (e.g. moonshotai/kimi-k3:batch).
-  // Batch models respond 404 on the standard chat completions endpoint and will fail
-  // any LLM assessment leg that uses them.
-  if (resolved.includes(':batch')) {
-    logPortfolio(
-      'warn',
-      'provider.llm.gateway.alias-batch-model',
-      `Model alias '${alias}' resolved to batch-only model '${resolved}' -- chat completions will return 404. Update your connector to specify a non-batch model explicitly.`,
-      { context: { alias, resolved, connector: connector.id } },
-    );
-  }
-
+  // #2570 / #4500: batch-only ids (e.g. moonshotai/kimi-k3:batch) answer HTTP 404
+  // on chat completions; pickBestModel never returns one, so the former
+  // alias-batch-model warning cannot occur any more.
   return resolved;
 }

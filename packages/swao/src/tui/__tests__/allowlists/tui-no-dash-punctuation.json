@@ -1,0 +1,5 @@
+{
+  "gate": "G-01",
+  "rule": "U+2014, U+2013 or a spaced double hyphen in TUI code",
+  "entries": {}
+}

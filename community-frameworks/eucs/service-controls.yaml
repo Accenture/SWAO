@@ -1,0 +1,314 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: EU Cloud Security Certification Scheme (EUCS). Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: EUCS
+mappings:
+  - capability: key_vault
+    controls: [EUCS_CRY_3, EUCS_CRY_1, EUCS_CRY_4]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: secrets_management
+    controls: [EUCS_CRY_3, EUCS_CRY_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: certificate_management
+    controls: [EUCS_CRY_2, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: identity_management
+    controls: [EUCS_IAM_3, EUCS_IAM_4, EUCS_IAM_5]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: audit_logging
+    controls: [EUCS_OPS_5]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: log_management
+    controls: [EUCS_OPS_5, EUCS_OPS_7]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: monitoring
+    controls: [EUCS_OPS_7, EUCS_OPS_5]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: threat_detection
+    controls: [EUCS_OPS_7, EUCS_OPS_6]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: waf
+    controls: [EUCS_IAM_8]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: network_firewall
+    controls: [EUCS_IAM_8]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: backup
+    controls: [EUCS_BCP_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_protection
+    controls: [EUCS_ASM_2, EUCS_CRY_1, EUCS_BCP_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: systems_management
+    controls: [EUCS_ASM_1, EUCS_OPS_1, EUCS_ASM_3]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: itsm
+    controls: [EUCS_INC_1, EUCS_OPS_1, EUCS_ASM_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpn
+    controls: [EUCS_CRY_2, EUCS_IAM_8]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dedicated_connectivity
+    controls: [EUCS_IAM_8, EUCS_CRY_2, EUCS_OPS_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc
+    controls: [EUCS_OPS_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc_networking
+    controls: [EUCS_OPS_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: networking
+    controls: [EUCS_OPS_4, EUCS_IAM_8]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: load_balancer
+    controls: [EUCS_BCP_2, EUCS_IAM_8, EUCS_BCP_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: cdn
+    controls: [EUCS_CRY_2, EUCS_IAM_8, EUCS_BCP_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: api_gateway
+    controls: [EUCS_IAM_5, EUCS_CRY_2, EUCS_IAM_4]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dns
+    controls: [EUCS_OPS_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: object_storage
+    controls: [EUCS_CRY_1, EUCS_CRY_3, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: block_storage
+    controls: [EUCS_CRY_1, EUCS_CRY_3, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: file_storage
+    controls: [EUCS_CRY_1, EUCS_CRY_3, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: hci_storage
+    controls: [EUCS_CRY_1, EUCS_CRY_3, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: postgresql
+    controls: [EUCS_CRY_1, EUCS_IAM_5, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mysql
+    controls: [EUCS_CRY_1, EUCS_IAM_5, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mariadb
+    controls: [EUCS_CRY_1, EUCS_IAM_5, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: sql_server
+    controls: [EUCS_CRY_1, EUCS_IAM_5, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: nosql_database
+    controls: [EUCS_CRY_1, EUCS_IAM_5, EUCS_CRY_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: redis
+    controls: [EUCS_CRY_2, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: memcached
+    controls: [EUCS_IAM_5, EUCS_IAM_1, EUCS_IAM_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_warehouse
+    controls: [EUCS_ASM_2, EUCS_CRY_1, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: big_data
+    controls: [EUCS_ASM_2, EUCS_CRY_1, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kafka
+    controls: [EUCS_CRY_2, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: event_streaming
+    controls: [EUCS_CRY_2, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: queue
+    controls: [EUCS_CRY_2, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: messaging
+    controls: [EUCS_CRY_2, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: search
+    controls: [EUCS_IAM_5, EUCS_ASM_2, EUCS_IAM_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vm_compute
+    controls: [EUCS_OPS_2, EUCS_OPS_6, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kubernetes
+    controls: [EUCS_OPS_2, EUCS_OPS_6, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_orchestration
+    controls: [EUCS_OPS_2, EUCS_OPS_6, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_registry
+    controls: [EUCS_DEV_1, EUCS_OPS_2, EUCS_DEV_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: serverless_compute
+    controls: [EUCS_OPS_2, EUCS_OPS_6, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: paas_compute
+    controls: [EUCS_OPS_2, EUCS_OPS_6, EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: batch_compute
+    controls: [EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: gpu_compute
+    controls: [EUCS_IAM_5]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vdi
+    controls: [EUCS_IAM_5, EUCS_OPS_6, EUCS_IAM_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ci_cd
+    controls: [EUCS_DEV_1, EUCS_OPS_1, EUCS_DEV_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vcs
+    controls: [EUCS_DEV_1, EUCS_IAM_5, EUCS_DEV_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: developer_tools
+    controls: [EUCS_DEV_1, EUCS_DEV_4, EUCS_DEV_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iac
+    controls: [EUCS_OPS_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_migration
+    controls: [EUCS_CRY_2, EUCS_ASM_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_integration
+    controls: [EUCS_CRY_2, EUCS_ASM_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: managed_file_transfer
+    controls: [EUCS_CRY_2, EUCS_ASM_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: payment_processing
+    controls: [EUCS_CRY_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_analytics
+    controls: [EUCS_ASM_2, EUCS_IAM_5, EUCS_DPI_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: bi_analytics
+    controls: [EUCS_ASM_2, EUCS_IAM_5, EUCS_DPI_1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iot_platform
+    controls: [EUCS_IAM_3, EUCS_CRY_2, EUCS_IAM_4]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

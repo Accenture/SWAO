@@ -11,6 +11,7 @@ connector:
     env_var: SWAO_OPENAI_API_KEY
   models:
     default: gpt-4o-mini
+    discovery_endpoint: /v1/models   # #4475: served models read live in the pickers
     catalogue:
       - id: gpt-4o
         cost: { input_per_million: 2.5, output_per_million: 10.0 }
@@ -28,5 +29,5 @@ connector:
     notes: Exposed to US jurisdiction; verify per engagement.
   meta:
     source: bundled
-    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    last_reviewed: "2026-11-16"   # #4475: ids listed by the public OpenRouter list (openai/*) on 2026-11-16
     contributor: Accenture SWAO team

@@ -14,20 +14,23 @@ SWAO ships in three tiers - Community, Consultant, and Enterprise - each unlocki
 | Text, YAML and JSON reports (`swao report`) | ✓ | ✓ | ✓ |
 | Star schema BI export: CSV, NDJSON, XLSX (`swao export`) | ✓ | ✓ | ✓ |
 | Audit log (`swao log`) | ✓ | ✓ | ✓ |
+| Landing zone live connections (`swao lz connect`, `probe`, `list`, `remove`) | ✓ | ✓ | ✓ |
 | HTML publication (`swao publish --app`, `swao report --format html`) | - | ✓ | ✓ |
 | PDF report (`swao report --format pdf`) | - | ✓ | ✓ |
 | Power BI dashboard templates (.pbit, written by `swao export` and `swao init --powerbi`) | - | ✓ | ✓ |
-| LZ catalogue update (`swao lz catalogue update`) | - | ✓ | ✓ |
+| LZ catalogue update (`swao lz catalogue update`, also `--source live`) | - | ✓ | ✓ |
+| Landing Zone Live Assessment and publication (`swao lz scan`, `swao lz diff`, `swao assess --type landing-zone-live`, `swao publish --lz-live`) | - | ✓ | ✓ |
 | Email support SLA | - | ✓ | ✓ |
 | Portfolio assessment, report and BI export (`--portfolio`) | - | - | ✓ |
 | Service portfolio export (`swao service export`) | - | - | ✓ |
+| Landing zone live portfolio (`swao assess --portfolio --type landing-zone-live`, `swao publish --portfolio --block-profile lz-live-portfolio`) | - | - | ✓ |
 | Adversarial challenge review (`swao challenge`) | - | - | ✓ |
 | HTML Editor (interactive evidence editor, `swao publish --edit`) | - | - | ✓ |
 | MCP server (`swao mcp`) | - | - | ✓ |
 | SWAO Chat (`swao chat`) | - | - | ✓ |
 | Terraform module stubs (`swao generate-tf`) and meshcloud UniPipe integration (`swao unipipe`) | - | - | Roadmap |
 
-A command that needs a higher tier prints a `[LICENSE]` block naming the required licence and exits with a non-zero code. `swao export` on Community writes the star schema and prints a `[LICENSE]` notice in place of the Power BI templates.
+A command that needs a higher tier prints a `[LICENSE]` block naming the required licence and exits with code 2 (an invalid licence file exits 3). `swao export` on Community writes the star schema and prints a `[LICENSE]` notice in place of the Power BI templates.
 
 Community edition runs without any licence key. All capabilities are available locally with no registration required.
 

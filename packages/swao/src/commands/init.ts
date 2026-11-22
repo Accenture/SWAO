@@ -13,7 +13,7 @@
 //
 // ================================================================
 import { Command } from 'commander';
-import { saveDefaultWorkspace, discoverFrameworks } from '@swao/core';
+import { saveDefaultWorkspace, discoverFrameworks, readSavedDefaultWorkspacePath, defaultWorkspaceChangeLine } from '@swao/core';
 import {
   copyFileSync,
   existsSync,
@@ -27,6 +27,7 @@ import { fileURLToPath } from 'url';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import { scaffoldWorkspaceGateway, seedBundledConnectors } from '@swao/module-llm-providers';
 import { resolveBundledLzCataloguesDir } from '@swao/module-landing-zone';
+import { binaryGitignorePatterns } from '../binary-names.js';
 import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '../license/license-guard.js';
 import { printLicenseGateError, printLicenseLimitError, printLicenseInvalidError } from '../lib/license-gate-error.js';
 import {
@@ -87,22 +88,34 @@ function swaoFileHeader(purpose: string, style: 'slash' | 'hash' = 'slash'): str
 // can supply their own dir without editing this file.
 const BUNDLED_COMMUNITY_DIR = communityFrameworksDir;
 
+const POWERBI_TEMPLATE_FILES = ['swao-report.pbit', 'swao-portfolio.pbit'] as const;
+
 // Bundled PowerBI templates (#0231). Same path-probing approach as the
 // standard catalogs above -- pkg flattens dist/, so the relative path
 // from src/commands/ differs between dev (4 up) and pkg snapshot (3 up).
-function resolveBundledPowerBiDir(): string {
+export function resolveBundledPowerBiDir(): string {
+  // #4226: the templates ship as a module asset (@swao/module-powerbi/assets,
+  // ADR-0048); the binary bundle copies them to <host dist>/templates/powerbi.
+  // In the bundle __dirname is the host dist/ itself (bundle.mjs sets
+  // import.meta.url to bundle.cjs for every module), so both `templates/powerbi`
+  // and `../templates/powerbi` are probed. The probe is a file, not the folder:
+  // pkg's snapshot reports existsSync(dir) false for bundled folders (#1153).
+  const probe = POWERBI_TEMPLATE_FILES[0];
   const candidates = [
-    // pkg snapshot: dist/templates/powerbi is bundled via pkg.assets "dist/templates/powerbi/**"
-    // __dirname = <snapshot>/dist/commands -> ../templates/powerbi = <snapshot>/dist/templates/powerbi
+    // binary: <snapshot>/dist (bundle) or <snapshot>/dist/commands (tsc layout)
+    resolve(__dirname, 'templates/powerbi'),
     resolve(__dirname, '../templates/powerbi'),
-    // dev (tsc output): __dirname = dist/commands -> walk up to repo root + docs/
+    // dev and tests: swao/packages/swao/{dist,src}/commands -> packages/@swao/module-powerbi/assets
+    resolve(__dirname, '../../../@swao/module-powerbi/assets'),
+    resolve(__dirname, '../../@swao/module-powerbi/assets'),
+    // legacy docs/templates/powerbi (host repo authoring workflow)
     resolve(__dirname, '../../../../../docs/templates/powerbi'),
     resolve(__dirname, '../../../../docs/templates/powerbi'),
     resolve(__dirname, '../../../docs/templates/powerbi'),
     resolve(__dirname, '../../docs/templates/powerbi'),
   ];
   for (const c of candidates) {
-    try { if (existsSync(c)) return c; } catch { /* try next */ }
+    try { if (existsSync(join(c, probe))) return c; } catch { /* try next */ }
   }
   return candidates[0]!;
 }
@@ -455,12 +468,11 @@ regimes: []
 const gitignoreContent = `# SWAO workspace -- never commit credentials or run-time outputs
 .swao.secrets.env
 
-# SWAO binary and launcher placed in the workspace root by swao init (#0968).
-# Never commit -- GitHub hard-rejects pushes >100 MB.
-swao-enterprise-win.exe
-swao-community-win.exe
-swao-consultant-win.exe
-swao.bat
+# SWAO binaries copied into the workspace root by the user (#0968; swao init
+# writes no launcher, #4160).
+# Never commit -- GitHub hard-rejects pushes >100 MB. All tiers and
+# platforms, plus the names of earlier releases (#4119).
+${binaryGitignorePatterns().join('\n')}
 
 # Sprint-039 #0358 Phase 3 -- standard scope retired. Bundled community
 # frameworks are mirrored by swao init into
@@ -496,6 +508,10 @@ apps/*/wsp/inputs/source/
 # Dynamic-crawl parity baseline written by the crawler to the app workspace root
 # (outside wsp/); not committed (#1504).
 apps/*/parity-baseline/
+
+# Live landing zone raw API responses (Design 120 section 6.4, #3587): outside
+# the WSP, never committed, never published or bundled.
+landing-zones/*/.raw/
 
 # LLM Assessment run data (call records, comparison JSON, publication model).
 llm-assessments/
@@ -747,42 +763,56 @@ export function scaffoldLandingZoneStubs(appDir: string, appId?: string): LzStub
 
 const LZ_STUBS_README = `# Landing-zone snapshot inputs
 
-The files in this folder (\`wsp/inputs/terraform/\`) are read by
-**Pass 23 -- Landing Zone Readiness** (LZR) when you run
-\`swao assess --portfolio --lzr <id>\` (or pick
-\`Portfolio Operations -> Assess (LZR)\` in the TUI).
+A landing zone snapshot is an export of the client's target landing zone:
+the clusters, databases, caches, quotas and policy compliance that are
+already deployed there. **Landing Zone Readiness** (LZR, Pass 23) reads the
+snapshot files in this folder (\`wsp/inputs/terraform/\`) offline when you
+run \`swao assess --portfolio --lzr <label>\` or pick
+\`Portfolio Operations, Landing Zone Readiness\` in the TUI.
 
 ## What's here
 
-- \`lz-aws-snapshot.json\`       -- sample AWS landing-zone snapshot
-- \`lz-azure-snapshot.json\`     -- sample Azure landing-zone snapshot
-- \`lz-meshstack-snapshot.json\` -- sample meshStack landing-zone snapshot
+- \`lz-aws-snapshot.json\`: sample AWS landing zone snapshot
+- \`lz-azure-snapshot.json\`: sample Azure landing zone snapshot
+- \`lz-meshstack-snapshot.json\`: sample meshStack snapshot (meshStack is a
+  landing zone platform; the sample manages a STACKIT platform)
 
-These are **samples** so you can see the format and run a Premium LZR
-pass end-to-end. For a real engagement, replace one of these with the
-actual landing-zone state for your target environment, or drop a
-Terraform state file (\`*.tfstate\`) or plan (\`*.tfplan\`) alongside.
+These are **samples** (\`"sample": true\`) so you can see the format and run
+the pass end to end; their results are marked \`[SIM]\`. For a real
+engagement, replace a sample with an export of the client's target landing
+zone in the same format, or add a Terraform state file (\`*.tfstate\`) or a
+JSON plan (\`*.tfplan\`). The field list per provider is in the manual,
+Pass 23, section "Landing zone snapshots".
 
 ## What the LZR pass does
 
-For each candidate landing zone, it evaluates 30+ checks (service
-presence, resource quotas, network egress, compliance posture) and
-emits a verdict: \`ready\`, \`advisory\`, \`blocked\`, or \`skipped\`.
-Outputs feed the portfolio LZR report and the BI export's landing-zone
-dimension.
+It checks whether the services and settings the application needs are
+present in the landing zone (service presence, resource quotas, network
+egress, compliance posture) and emits a verdict: \`ready\`, \`advisory\`,
+\`blocked\`, or \`skipped\`. Outputs feed the portfolio LZR report and the
+BI export's landing-zone dimension.
 
-## How to switch provider
+## Which snapshot is evaluated
 
-The portfolio LZR adapter auto-detects which provider to evaluate against
-based on which snapshot file exists, in priority order:
+The label you pick selects the file:
 
-1. \`lz-meshstack-snapshot.json\` -- meshStack first (default for sovereign engagements)
-2. \`lz-aws-snapshot.json\`        -- AWS
-3. \`lz-azure-snapshot.json\`      -- Azure
-4. \`*.tfstate\` / \`*.tfplan\` -- Terraform fall-through
+1. \`lz-meshstack-01\`: \`lz-meshstack-snapshot.json\`
+2. \`lz-aws-01\`: \`lz-aws-snapshot.json\`
+3. \`lz-azure-01\`: \`lz-azure-snapshot.json\`
+4. \`lz-terraform-01\`: the \`*.tfstate\` and \`*.tfplan\` files
 
-Delete the snapshots you don't want and keep one of the providers you're
-actually targeting.
+An app without the picked file is skipped, not evaluated on another file.
+With a label that names no snapshot (for example \`lz-stackit-de-01\`), the
+first file found in the order above is used.
+
+## How LZR differs from the other landing zone checks
+
+- LZ catalogue fit (Application Assessment): compares the services the
+  application needs with what a provider offers in a region
+  (\`lz-catalogue-fit.yaml\`); no client landing zone is read.
+- LZ Live Assessment: reads the client tenant through the provider API.
+- LZR (this folder): evaluates an exported snapshot of the target landing
+  zone offline.
 
 ## Current vs target infrastructure (#3429)
 
@@ -814,7 +844,6 @@ export interface PowerBiScaffoldResult {
   warnings: string[];
 }
 
-const POWERBI_TEMPLATE_FILES = ['swao-report.pbit', 'swao-portfolio.pbit'] as const;
 
 export function scaffoldPowerBiTemplates(workspaceDir: string): PowerBiScaffoldResult {
   const result: PowerBiScaffoldResult = {
@@ -834,22 +863,18 @@ export function scaffoldPowerBiTemplates(workspaceDir: string): PowerBiScaffoldR
     return result;
   }
 
-  mkdirSync(result.templatesDir, { recursive: true });
-
-  if (!existsSync(BUNDLED_POWERBI_DIR)) {
-    result.warnings.push(
-      `bundled PowerBI templates not found at ${BUNDLED_POWERBI_DIR}; ` +
-        'wsp/templates/powerbi/ left empty (binary build issue?)',
-    );
+  // #4226 (owner decision D-2): the folder is created only together with a
+  // template file, so no empty wsp/templates/powerbi/ is left behind.
+  const sources = POWERBI_TEMPLATE_FILES.map((f) => ({ filename: f, src: join(BUNDLED_POWERBI_DIR, f) }));
+  for (const { filename, src } of sources) if (!existsSync(src)) result.warnings.push(`bundled template missing: ${filename}`);
+  if (sources.every((x) => !existsSync(x.src))) {
+    result.warnings.push(`bundled PowerBI templates not found at ${BUNDLED_POWERBI_DIR}; wsp/templates/powerbi/ not created (binary build issue?)`);
     return result;
   }
+  mkdirSync(result.templatesDir, { recursive: true });
 
-  for (const filename of POWERBI_TEMPLATE_FILES) {
-    const src = join(BUNDLED_POWERBI_DIR, filename);
-    if (!existsSync(src)) {
-      result.warnings.push(`bundled template missing: ${filename}`);
-      continue;
-    }
+  for (const { filename, src } of sources) {
+    if (!existsSync(src)) continue;
     // #0411 (sprint-040 round-11): EBUSY-tolerant copy. Setup re-runs on
     // an active workspace can race the operator's PowerBI Desktop having
     // the .pbit open. Warn + skip instead of crashing setup.
@@ -894,11 +919,9 @@ export function ensureGitignore(workspaceDir: string): void {
     'wsp/inputs/catalogs/community/.bundled/',
     'wsp/templates/powerbi/*.pbit',
     '.swao.secrets.env',
-    // #0968 -- binary and launcher (GitHub rejects >100 MB), logs
-    'swao-enterprise-win.exe',
-    'swao-community-win.exe',
-    'swao-consultant-win.exe',
-    'swao.bat',
+    // #0968 -- binaries copied in by the user (GitHub rejects >100 MB), logs; no launcher is written (#4160)
+    // #4119: patterns for every tier and platform, from the shared name list.
+    ...binaryGitignorePatterns(),
     'wsp/logs/',
     'wsp/runs/',
     'wsp/exports/',
@@ -915,6 +938,8 @@ export function ensureGitignore(workspaceDir: string): void {
     'apps/*/wsp/inputs/source/',
     // #1709: LLM prompt traces (customer workspace data, both assessment paths)
     'llm-traces/',
+    // #3587: live landing zone raw API responses (Design 120 section 6.4)
+    'landing-zones/*/.raw/',
   ];
   const additions = required.filter((r) => !lines.some((l) => l.trim() === r));
   if (additions.length > 0) {
@@ -1085,11 +1110,29 @@ export function runInitMcp(deps: InitMcpDeps = {}): number {
 }
 
 /**
+ * #4392: saves the workspace as the saved default (~/.config/swao/config.json,
+ * read by the MCP server last, Design 116 section 12.3) and prints a line when
+ * that changes it (old path to new path). `--no-save-default` (save false)
+ * leaves the saved default as it is, for example for a test or a sandbox
+ * workspace created on the operator profile.
+ */
+export function saveDefaultWorkspaceStep(workspaceDir: string, save: boolean): void {
+  if (!save) {
+    console.log(`[ok]  Saved default workspace left unchanged (--no-save-default): ${readSavedDefaultWorkspacePath() ?? '(none)'}`);
+    return;
+  }
+  const previous = readSavedDefaultWorkspacePath();
+  saveDefaultWorkspace(workspaceDir);
+  const line = defaultWorkspaceChangeLine(previous, workspaceDir);
+  if (line !== null) console.log(`[ok]  ${line}`);
+}
+
+/**
  * #3347: `swao init --reconfigure` without `--name`: refresh the
  * workspace-level scaffolds (community-framework mirror, Power BI templates,
  * .gitignore) and touch nothing under apps/. Returns the exit code.
  */
-export function reconfigureWorkspaceOnly(workspaceDir: string): number {
+export function reconfigureWorkspaceOnly(workspaceDir: string, saveDefault = true): number {
   if (!existsSync(workspaceDir)) {
     mkdirSync(workspaceDir, { recursive: true });
   }
@@ -1107,7 +1150,7 @@ export function reconfigureWorkspaceOnly(workspaceDir: string): number {
   }
   console.log('[ok]  Workspace reconfigured; no app scaffolded (add --name <app-id> to scaffold or refresh an app).');
   console.log(workspaceDir);
-  saveDefaultWorkspace(workspaceDir);
+  saveDefaultWorkspaceStep(workspaceDir, saveDefault);
   return 0;
 }
 
@@ -1120,7 +1163,9 @@ export function registerInit(program: Command): void {
     .option('--force', 'Re-scaffold the app directory even when .swao.yml already exists')
     .option('--powerbi', 'Scaffold Power BI templates into the workspace (Consultant+)')
     .option('--mcp', 'Configure MCP server in Claude Desktop only (skip workspace scaffold) -- re-run after each upgrade (#2908)')
-    .action((directory: string = '.', options: { name?: string; reconfigure?: boolean; force?: boolean; powerbi?: boolean; mcp?: boolean }) => {
+    // #4392: commander sets saveDefault false for --no-save-default (default true).
+    .option('--no-save-default', 'Do not make this workspace the saved default workspace (~/.config/swao/config.json, used by the MCP server and other commands outside a workspace)')
+    .action((directory: string = '.', options: { name?: string; reconfigure?: boolean; force?: boolean; powerbi?: boolean; mcp?: boolean; saveDefault?: boolean }) => {
       // #2908: --mcp runs only the MCP setup step and exits. The stable binary
       // sits in the same folder as the running binary (swao-enterprise-win-x64.exe
       // on Windows, derived from the running binary elsewhere, #3286).
@@ -1154,7 +1199,7 @@ export function registerInit(program: Command): void {
       // (framework mirror, Power BI templates, .gitignore). Defaulting the app
       // id to my-app here scaffolded an unwanted apps/my-app/.
       if (options.reconfigure && options.name === undefined) {
-        process.exit(reconfigureWorkspaceOnly(workspaceDir));
+        process.exit(reconfigureWorkspaceOnly(workspaceDir, options.saveDefault !== false));
       }
 
       const appId = options.name ?? 'my-app';
@@ -1204,7 +1249,7 @@ export function registerInit(program: Command): void {
       }
       if (scaffold.copiedFiles.length > 0) {
         console.log(`[ok]  Frameworks installed (${scaffold.copiedFiles.length}): GDPR_DEMO, AI_10_PILLARS_DEMO, NIST_SP_800_66R2_DEMO, BSI_GRUNDSCHUTZ_2023_DEMO -> ${scaffold.communityDir}`);
-        console.log(`      To add more frameworks: swao framework list  |  swao framework install <id>`);
+        console.log(`      To add more frameworks: copy a folder from https://github.com/Accenture/SWAO/tree/main/community-frameworks (swao framework list shows the workspace frameworks)`);
       }
       if (pbi.copiedFiles.length > 0) {
         console.log(`[ok]  PowerBI templates scaffolded -> ${pbi.templatesDir}`);
@@ -1217,7 +1262,7 @@ export function registerInit(program: Command): void {
       }
       console.log(`[ok]  Ingestion drop folder scaffolded -> ${join(appDir, 'ingestion')}`);
       console.log(appDir);
-      saveDefaultWorkspace(workspaceDir);
+      saveDefaultWorkspaceStep(workspaceDir, options.saveDefault !== false);
       // #2228: explicit exit so stdout flushes to Windows named pipes (piped stdout).
       process.exit(0);
     });

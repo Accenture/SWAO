@@ -1,6 +1,6 @@
 # 2. Health Check
 
-Run `swao health-check` (or select option 2 from the main menu) to verify that your workspace is ready for an assessment. It runs 25 probes; probes 17 to 25 apply to Service Portfolio workspaces and show INFO elsewhere. Resolve every FAIL before an assessment; WARN and INFO are advisory.
+Run `swao health-check` (or select option 2 from the main menu) to verify that your workspace is ready for an assessment. It runs 26 probes; probes 17 to 25 apply to Service Portfolio workspaces and show INFO elsewhere, and probe 26 checks the live landing zone connections. Resolve every FAIL before an assessment; WARN and INFO are advisory.
 
 ## Checks
 
@@ -14,6 +14,8 @@ Run `swao health-check` (or select option 2 from the main menu) to verify that y
 | Traceability | Audit-grade signal fields enabled |
 | BI export bundle | Integrity of the last export (skipped on first run) |
 | LZ catalogue (probe 15) | Every LZ catalogue the fit can resolve loads and validates, the catalogue quality rules below pass for the bundled catalogues (and for a workspace catalogue folder that holds catalogue files), and the LZ targets configured in `.swao.yml` name a known provider and region or geography. Any error or warning finding is a WARN; the probe never fails |
+| Community frameworks, service mapping (probe 4) | One line per community framework with its service-mapping coverage: the capability tags its `service-controls.yaml` maps, out of the tags the resolved LZ catalogues use (`no service mapping` when the file is absent, so every service of a Landing Zone Live Assessment is grey for that framework) |
+| LZ connections (probe 26) | For every landing zone scope registered in `.swao.yml` (`landing_zones[]`): the live driver is in this build, the credential fields are stored in the vault (field names only) and an `expires-at` token is not expired; where the credentials are complete, the last stored read-only probe of the scope (from `swao lz probe`, the Setup Probe step, `swao lz connect` or an LZ Live run; no call to the provider) with its outcome, coverage counts and time (stale after 7 days), the credential field names stored, and the services and resources the last run read. `verified` everywhere and not stale is ok; write-capable, unverifiable, login failed, not probed, missing credentials, expired or stale is a WARN that names its causes. The probe never fails the health check, because a write-capable operator login is the expected setup of a test tenant; a run asks for its own confirmation (`--accept-write-capable-credentials`). INFO when no landing zone is registered |
 
 ## LZ catalogue quality rules
 
@@ -28,7 +30,7 @@ The SWAO team owns the bundled LZ catalogues (`lz-catalogues/`: one JSON file pe
 | `regions-count` | error | `meta.regions_count` equals the number of regions |
 | `region-id-duplicate` | error | Region ids are unique within a provider |
 | `sovereignty-shape` | error | Every region carries `residency_country`, `operator_jurisdiction`, `extraterritorial_exposure` and `certifications`; a region whose site the customer chooses states `residency_country: OPERATOR_SITE`, which is valid only with `operator_jurisdiction: operator-site` |
-| `confidence-vocabulary` | error | `meta.confidence` is `high`, `medium` or `low` |
+| `confidence-vocabulary` | error | `meta.confidence` is `high`, `medium`, `low` or `operator-declared` (custom catalogue, schema 0.2) |
 | `certification-vocabulary` | warning | Every region certification is in the template vocabulary: `BSI_C5`, `ISO_27001`, `SOC_2`, `TISAX_L3`, `PCI_DSS`, `FedRAMP_High`, `MAS_TRM`, `IRAP` |
 | `source-missing` | error | Every catalogue names a source (`meta.source.mode`) |
 | `date-format` | error | `meta.last_updated` is a valid `YYYY-MM-DD` date |
@@ -76,6 +78,10 @@ Only FAIL results count as failures. The summary line (`All probes passed.` or `
 ```bash
 swao health-check
 swao health-check --verbose
+swao health-check --type lz-live          # one assessment type
+swao health-check --type service --json
 ```
+
+`--type` (`generic`, `application`, `service`, `lz-catalog`, `lz-live` or `llm`) runs the generic probes (licence, engagement metadata, credential vault, LLM gateway, MCP, community frameworks) plus the probes of that assessment type. The other probes are not run and not listed, the lines are numbered within the type, and the log and the JSON output carry only that type. The setup of each assessment type runs this check at its end ([Workspace Setup](/workspace-setup)). Without `--type` all probes run.
 
 See also: [Workspace Setup](/workspace-setup) | [Troubleshooting runbook](/runbooks/troubleshooting)

@@ -1,0 +1,5 @@
+{
+  "gate": "G-03",
+  "rule": "status word literal outside StatusLabel",
+  "entries": {}
+}

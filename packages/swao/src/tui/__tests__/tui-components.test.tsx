@@ -142,8 +142,29 @@ describe('MainMenu', () => {
   it('shows the keyboard hint line', () => {
     const { lastFrame } = render(<MainMenu onSelect={noop} />);
     const frame = lastFrame() ?? '';
-    // Navigation footer
-    expect(frame).toContain('Arrow keys');
+    // #4257: the menu key hints of Design 126 section 7.9 (block 7).
+    expect(frame).toContain('↑↓ select   Enter open   Esc abort');
+    expect(frame).toContain('0  Exit');
+  });
+
+  it('Q-03 (#4257): Esc asks "Exit SWAO?"; Esc stays on the menu', async () => {
+    const onSelect = vi.fn();
+    const { lastFrame, stdin } = render(<MainMenu onSelect={onSelect} />);
+    await pressKey(stdin, '');
+    expect(lastFrame()).toContain('Exit SWAO?');
+    expect(lastFrame()).toContain('Enter exit   Esc stay');
+    await pressKey(stdin, '');
+    expect(lastFrame()).not.toContain('Exit SWAO?');
+    expect(lastFrame()).toContain('Workspace Setup');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('with onBack, Esc leaves at once without the exit question', async () => {
+    const onBack = vi.fn();
+    const { lastFrame, stdin } = render(<MainMenu onSelect={noop} onBack={onBack} />);
+    await pressKey(stdin, '');
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(lastFrame()).not.toContain('Exit SWAO?');
   });
 
   it('calls onSelect with correct target when shortcut key pressed', async () => {
@@ -603,8 +624,9 @@ describe('IngestScreen', () => {
     const { lastFrame } = render(<IngestScreen onBack={noop} />);
     await new Promise<void>(r => setTimeout(r, 60));
     const frame = lastFrame() ?? '';
-    // done state shows the press-to-return footer hint
-    expect(frame).toContain('Press Enter');
+    // #4257: the done state shows the finish key hints and the fail result row.
+    expect(frame).toContain('Enter finish   Esc abort');
+    expect(frame).toContain('[fail]');
   });
 });
 

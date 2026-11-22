@@ -33,6 +33,9 @@ Three HTML publications for the Sovereign Health demo application, rendered from
 ```bash
 swao publish --app my-app
 # Output: wsp/publications/latest/index.html
+
+# Landing Zone Live View of a registered landing zone (TUI: Publish HTML, mode 4)
+swao publish --lz-live <lz-id>
 ```
 
 ## Engagement Hub

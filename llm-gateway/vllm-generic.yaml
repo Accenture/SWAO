@@ -19,6 +19,7 @@ connector:
     # token_ttl_s: 3300   # cache the token for 55 min (ADFS default lifetime is 60 min)
   models:
     default: served-model
+    discovery_endpoint: /v1/models   # #4475: vLLM serves its model list here
   defaults:
     temperature: 0
   cost_per_token:
@@ -30,5 +31,5 @@ connector:
     notes: Sovereignty facts depend on where you host it -- amend for your deployment.
   meta:
     source: bundled
-    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    last_reviewed: "2026-11-16"   # #4475: no catalogue; the served list is read live
     contributor: Accenture SWAO team

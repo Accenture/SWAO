@@ -1,0 +1,29 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: OpenSSF Security Scorecard. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: OPENSSF_SCORECARD
+mappings:
+  - capability: container_registry
+    controls: [OSS_VLN_1, OSS_INT_1, OSS_INT_2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ci_cd
+    controls: [OSS_INT_1, OSS_INT_2, OSS_INT_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vcs
+    controls: [OSS_INT_1, OSS_INT_2, OSS_INT_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: developer_tools
+    controls: [OSS_INT_1, OSS_INT_2, OSS_INT_3]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

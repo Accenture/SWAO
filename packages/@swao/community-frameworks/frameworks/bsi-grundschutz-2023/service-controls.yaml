@@ -1,0 +1,314 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: BSI IT-Grundschutz Kompendium Edition 2023. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: BSI_GRUNDSCHUTZ_2023
+mappings:
+  - capability: key_vault
+    controls: [BSI_CON1_A2, BSI_CON1_A4, BSI_CON1_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: secrets_management
+    controls: [BSI_CON1_A2, BSI_CON1_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: certificate_management
+    controls: [BSI_CON1_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: identity_management
+    controls: [BSI_ORP4_A1, BSI_ORP1_A2, BSI_ORP4_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: audit_logging
+    controls: [BSI_NET33_A2, BSI_DER1_A2, BSI_DER1_A4]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: log_management
+    controls: [BSI_NET33_A2, BSI_APP31_A5, BSI_DER1_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: monitoring
+    controls: [BSI_APP31_A5, BSI_NET33_A2, BSI_DER1_A1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: threat_detection
+    controls: [BSI_NET32_A3, BSI_DER1_A1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: compliance_monitoring
+    controls: [BSI_ORP5_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: waf
+    controls: [BSI_NET32_A1, BSI_NET32_A3, BSI_NET32_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: network_firewall
+    controls: [BSI_NET32_A1, BSI_NET11_A2, BSI_NET32_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: backup
+    controls: [BSI_CON3_A1, BSI_DER4_A1, BSI_CON3_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_protection
+    controls: [BSI_CON2_A1, BSI_CON1_A4, BSI_DER4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: systems_management
+    controls: [BSI_OPS112_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: itsm
+    controls: [BSI_DER21_A1, BSI_OPS112_A1, BSI_DER21_A2]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpn
+    controls: [BSI_NET11_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dedicated_connectivity
+    controls: [BSI_NET11_A2, BSI_NET11_A3, BSI_NET32_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc
+    controls: [BSI_NET11_A2, BSI_NET32_A1, BSI_NET32_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vpc_networking
+    controls: [BSI_NET11_A2, BSI_NET32_A1, BSI_NET32_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: networking
+    controls: [BSI_NET11_A2, BSI_NET32_A1, BSI_NET32_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: load_balancer
+    controls: [BSI_DER4_A1, BSI_NET11_A2, BSI_DER4_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: cdn
+    controls: [BSI_NET11_A2, BSI_DER4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: api_gateway
+    controls: [BSI_ORP4_A1, BSI_APP31_A2, BSI_APP43_A1]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: dns
+    controls: [BSI_NET11_A2, BSI_NET11_A3, BSI_NET32_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: object_storage
+    controls: [BSI_CON1_A4, BSI_CON1_A1, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: block_storage
+    controls: [BSI_CON1_A4, BSI_CON1_A1, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: file_storage
+    controls: [BSI_CON1_A4, BSI_CON1_A1, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: hci_storage
+    controls: [BSI_CON1_A4, BSI_CON1_A1, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: postgresql
+    controls: [BSI_APP43_A1, BSI_APP43_A5, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mysql
+    controls: [BSI_APP43_A1, BSI_APP43_A5, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mariadb
+    controls: [BSI_APP43_A1, BSI_APP43_A5, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: sql_server
+    controls: [BSI_APP43_A1, BSI_APP43_A5, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: nosql_database
+    controls: [BSI_APP43_A1, BSI_APP43_A5, BSI_CON3_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: redis
+    controls: [BSI_ORP4_A1, BSI_NET11_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: memcached
+    controls: [BSI_ORP4_A1, BSI_NET11_A2, BSI_APP31_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_warehouse
+    controls: [BSI_CON2_A1, BSI_CON1_A4, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: big_data
+    controls: [BSI_CON2_A1, BSI_CON1_A4, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kafka
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: event_streaming
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: queue
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: messaging
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: search
+    controls: [BSI_ORP4_A1, BSI_CON2_A1, BSI_APP31_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vm_compute
+    controls: [BSI_OPS113_A1, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: kubernetes
+    controls: [BSI_OPS113_A1, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_orchestration
+    controls: [BSI_OPS113_A1, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: container_registry
+    controls: [BSI_CON6_A2, BSI_OPS113_A1, BSI_CON8_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: serverless_compute
+    controls: [BSI_OPS113_A1, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: paas_compute
+    controls: [BSI_OPS113_A1, BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: batch_compute
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: gpu_compute
+    controls: [BSI_ORP4_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vdi
+    controls: [BSI_ORP4_A1, BSI_APP31_A2, BSI_APP43_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ci_cd
+    controls: [BSI_CON6_A2, BSI_OPS112_A1, BSI_CON8_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: vcs
+    controls: [BSI_CON6_A2, BSI_ORP4_A1, BSI_CON8_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: developer_tools
+    controls: [BSI_CON6_A2, BSI_CON8_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iac
+    controls: [BSI_OPS112_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_migration
+    controls: [BSI_CON2_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_integration
+    controls: [BSI_CON2_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: managed_file_transfer
+    controls: [BSI_CON2_A1]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_analytics
+    controls: [BSI_CON2_A1, BSI_ORP4_A1, BSI_CON8_A7]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: bi_analytics
+    controls: [BSI_CON2_A1, BSI_ORP4_A1, BSI_CON8_A7]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: iot_platform
+    controls: [BSI_ORP4_A1, BSI_ORP1_A2, BSI_ORP4_A2]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

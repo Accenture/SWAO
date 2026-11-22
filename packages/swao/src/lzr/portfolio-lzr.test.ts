@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { runPortfolioLzr, detectAdapterConfig, formatPortfolioLzrReport } from './portfolio-lzr.js';
+import { runPortfolioLzr, detectAdapterConfig, formatPortfolioLzrReport, lzrSelectionFromLabel, lzrProviderMapId, lzrProviderText } from './portfolio-lzr.js';
 import type { PortfolioLzrSummary } from './portfolio-lzr.js';
 
 // ---------------------------------------------------------------------------
@@ -422,5 +422,140 @@ describe('formatPortfolioLzrReport', () => {
     };
     const out = formatPortfolioLzrReport(summary);
     expect(out).toContain('lz-meshstack');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4351: the picked snapshot is the one evaluated
+// ---------------------------------------------------------------------------
+
+// Shapes of the three samples `swao init` seeds (sample: true, fabricated: true).
+const SAMPLE_MESHSTACK = { sample: true, fabricated: true, ...MESHSTACK_READY };
+const SAMPLE_AWS = {
+  sample: true, fabricated: true,
+  eks_clusters: [{ name: 'app-prod', status: 'ACTIVE', version: '1.30' }],
+  rds_instances: [{ identifier: 'app-pg', engine: 'postgres', status: 'available', engineVersion: '15.6' }],
+  elasticache_groups: [{ id: 'app-redis', status: 'available' }],
+  config_compliance: { non_compliant_rules: [] },
+  vpc_count: 1, service_quota_eks_remaining: 3, service_quota_rds_remaining: 10,
+};
+const SAMPLE_AZURE = {
+  sample: true, fabricated: true,
+  aks_clusters: [{ name: 'app-prod', provisioningState: 'Succeeded', kubernetesVersion: '1.30.5' }],
+  postgresql_servers: [{ name: 'app-pg', state: 'Ready', version: '15' }],
+  redis_instances: [{ name: 'app-redis', provisioningState: 'Succeeded' }],
+  keyvault_vaults: [{ name: 'app-kv' }],
+  vnet_count: 1, aks_quota_remaining: 4, policy_non_compliant_count: 0, policy_violations: [],
+};
+
+function makeThreeSampleApp(appId: string): void {
+  makeApp(appId, 'lz-meshstack-snapshot.json', SAMPLE_MESHSTACK);
+  makeApp(appId, 'lz-aws-snapshot.json', SAMPLE_AWS);
+  makeApp(appId, 'lz-azure-snapshot.json', SAMPLE_AZURE);
+}
+
+describe('lzrSelectionFromLabel (#4351)', () => {
+  it('reads the picker labels, the file stem and the file name', () => {
+    expect(lzrSelectionFromLabel('lz-meshstack-01')).toBe('meshstack');
+    expect(lzrSelectionFromLabel('lz-aws-01')).toBe('aws');
+    expect(lzrSelectionFromLabel('lz-azure')).toBe('azure');
+    expect(lzrSelectionFromLabel('lz-azure-snapshot.json')).toBe('azure');
+    expect(lzrSelectionFromLabel('LZ-AWS-01')).toBe('aws');
+    expect(lzrSelectionFromLabel('lz-terraform-01')).toBe('terraform');
+  });
+
+  it('picks nothing for a label that names no snapshot kind', () => {
+    expect(lzrSelectionFromLabel('lz-stackit-de-01')).toBeNull();
+    expect(lzrSelectionFromLabel('lz-x')).toBeNull();
+    expect(lzrSelectionFromLabel('azure')).toBeNull();
+    expect(lzrSelectionFromLabel('')).toBeNull();
+    expect(lzrSelectionFromLabel(undefined)).toBeNull();
+  });
+});
+
+describe('runPortfolioLzr evaluates the picked snapshot (#4351)', () => {
+  const cases = [
+    { label: 'lz-meshstack-01', file: 'lz-meshstack-snapshot.json', providerId: 'stackit_de_sovereign', mapId: 'stackit', platform: 'meshstack' },
+    { label: 'lz-aws-01', file: 'lz-aws-snapshot.json', providerId: 'aws_eu_central_1', mapId: 'aws', platform: undefined },
+    { label: 'lz-azure-01', file: 'lz-azure-snapshot.json', providerId: 'azure_eu_west', mapId: 'azure', platform: undefined },
+  ] as const;
+
+  for (const c of cases) {
+    it(`${c.label} evaluates ${c.file} and reports its provider`, async () => {
+      makeThreeSampleApp('picked');
+      const summary = await runPortfolioLzr(TEMP_ROOT, c.label);
+      const app = summary.apps.find((a) => a.app_id === 'picked');
+      expect(app?.source_snapshot).toBe(c.file);
+      expect(app?.provider_id).toBe(c.providerId);
+      expect(app?.provider_map_id).toBe(c.mapId);
+      expect(app?.platform).toBe(c.platform);
+      expect(app?.lzr_snapshot_fabricated).toBe(true);
+    });
+  }
+
+  it('the provider label comes from the name map; meshStack names the cloud it manages', async () => {
+    makeThreeSampleApp('labels');
+    const azure = (await runPortfolioLzr(TEMP_ROOT, 'lz-azure-01')).apps[0];
+    expect(azure?.provider_label).toBe('Azure, Microsoft Azure');
+    const mesh = (await runPortfolioLzr(TEMP_ROOT, 'lz-meshstack-01')).apps[0];
+    expect(mesh?.provider_label).toBe('STACKIT through meshStack');
+    expect(mesh?.provider_label).not.toContain('stackit_de_sovereign');
+  });
+
+  it('an app without the picked snapshot is skipped with the file name, never evaluated on another snapshot', async () => {
+    makeApp('mesh-only', 'lz-meshstack-snapshot.json', SAMPLE_MESHSTACK);
+    const summary = await runPortfolioLzr(TEMP_ROOT, 'lz-azure-01');
+    const app = summary.apps.find((a) => a.app_id === 'mesh-only');
+    expect(app?.verdict).toBe('skipped');
+    expect(app?.skip_reason).toContain('lz-azure-snapshot.json');
+    expect(app?.source_snapshot).toBeUndefined();
+  });
+
+  it('without a selection the fixed priority still applies (meshStack first)', async () => {
+    makeThreeSampleApp('no-pick');
+    const summary = await runPortfolioLzr(TEMP_ROOT, 'lz-stackit-de-01');
+    expect(summary.apps[0]?.source_snapshot).toBe('lz-meshstack-snapshot.json');
+  });
+
+  it('lz-terraform-01 takes the Terraform route even when snapshots exist', () => {
+    makeThreeSampleApp('tf-pick');
+    makeApp('tf-pick', 'terraform-prod.tfstate', TFV5_SOURCE_TFSTATE);
+    expect(detectAdapterConfig('tf-pick', join(TEMP_ROOT, 'apps', 'tf-pick'), 'lz-terraform-01')?.adapterType).toBe('terraform');
+  });
+});
+
+describe('provider labels in the LZR report (#4351)', () => {
+  it('maps LZR provider ids onto the name map', () => {
+    expect(lzrProviderMapId('aws_eu_central_1')).toBe('aws');
+    expect(lzrProviderMapId('stackit_de_sovereign')).toBe('stackit');
+    expect(lzrProviderMapId('custom_cloud')).toBe('custom_cloud');
+    expect(lzrProviderText({ provider_id: 'azure_eu_west' })).toBe('Azure, Microsoft Azure');
+    expect(lzrProviderText({ provider_id: 'stackit_de_sovereign', picker_label: 'lz-meshstack' }, 'abbr')).toBe('STACKIT through meshStack');
+  });
+
+  it('the row shows the provider of the picked file and the source file; no double hyphen', async () => {
+    makeThreeSampleApp('report-app');
+    makeAppNoImports('no-lz');
+    const out = formatPortfolioLzrReport(await runPortfolioLzr(TEMP_ROOT, 'lz-azure-01'));
+    const row = out.split('\n').find((l) => l.startsWith('report-app '));
+    expect(row).toContain('Azure');
+    expect(row).toContain('lz-azure');
+    expect(row).not.toContain('STACKIT');
+    expect(out).toContain('report-app: lz-azure-snapshot.json, Azure, Microsoft Azure, sample data');
+    expect(out).toContain('no-lz: skipped');
+    // The rule lines under the header are the only runs of hyphens.
+    const text = out.split('\n').filter((l) => l.replaceAll('-', '').replaceAll('=', '') !== '');
+    expect(text.join('\n')).not.toContain('--');
+  });
+
+  it('a meshStack row reads as a platform managing STACKIT', () => {
+    const out = formatPortfolioLzrReport({
+      assessed_at: '2026-11-10', total_apps: 1,
+      apps: [{ app_id: 'a', provider_id: 'stackit_de_sovereign', landing_zone_id: 'lz-stackit-de-01', verdict: 'ready', blocker_count: 0, warning_count: 0, picker_label: 'lz-meshstack', source_snapshot: 'lz-meshstack-snapshot.json' }],
+      counts: { ready: 1, blocked: 0, advisory: 0, skipped: 0 }, overall_verdict: 'ready',
+    });
+    expect(out).toContain('STACKIT through meshStack');
+    expect(out).toContain('meshStack is a landing zone platform');
+    expect(out).not.toContain('stackit_de_sovereign');
   });
 });

@@ -144,6 +144,25 @@ describe('BedrockLlmProvider -- happy path', () => {
     await p.complete('x');
     // 1M in * 3.0 + 1M out * 15.0 per million = 18 USD
     expect(p.getLastUsage()?.cost_usd).toBeCloseTo(18.0, 6);
+    // #4372: connector rates are a list price estimate, never billed.
+    expect(p.getLastUsage()?.cost_source).toBe('configured');
+  });
+
+  it('#4372: a model in the Anthropic code table is configured (list price), not billed', async () => {
+    mockSend.mockResolvedValueOnce(makeConverseResponse('ok', 1_000_000, 0));
+    const p = new BedrockLlmProvider(MODEL, BASE_URL_EU);
+    await p.complete('x');
+    // claude-sonnet-4-6 after the eu.anthropic. prefix: 3 USD per 1M input tokens.
+    expect(p.getLastUsage()?.cost_usd).toBeCloseTo(3.0, 6);
+    expect(p.getLastUsage()?.cost_source).toBe('configured');
+  });
+
+  it('#4372: a model without catalogue cost and not in the code table is unpriced (none)', async () => {
+    mockSend.mockResolvedValueOnce(makeConverseResponse('ok', 1000, 500));
+    const p = new BedrockLlmProvider('eu.meta.llama-unpriced-v1', BASE_URL_EU);
+    await p.complete('x');
+    expect(p.getLastUsage()?.cost_usd).toBe(0);
+    expect(p.getLastUsage()?.cost_source).toBe('none');
   });
 
   it('falls back to anthropicCostUsd() when no catalogue cost; strips eu.anthropic. prefix', async () => {
@@ -259,7 +278,7 @@ describe('BedrockLlmProvider.completeWithToolsDetailed (#3311)', () => {
     });
 
     expect(res.text).toBe('Two risks.');
-    expect(res.usage).toEqual({ input_tokens: 250, output_tokens: 50, cost_usd: (250 * 1 + 50 * 2) / 1_000_000 });
+    expect(res.usage).toEqual({ input_tokens: 250, output_tokens: 50, cost_usd: (250 * 1 + 50 * 2) / 1_000_000, cost_source: 'configured' });
     expect(onToolCall).toHaveBeenCalledWith('swao_risks', { app_id: 'a1' });
     expect(sent).toHaveLength(2);
     const first = sent[0] as { system: unknown; toolConfig: { tools: Array<{ toolSpec: Record<string, unknown> }> }; messages: unknown[] };

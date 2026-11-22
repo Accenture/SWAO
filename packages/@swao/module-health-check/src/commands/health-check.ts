@@ -17,8 +17,11 @@ import type { Command } from 'commander';
 import { resolve, join, extname, isAbsolute } from 'path';
 import { existsSync, readFileSync, readdirSync, statSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { load } from 'js-yaml';
-import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot, readRunStatus, isRunStale, detectCodeHealthTools, fileBackedToolRunner, PROBE_DETECT_OPTIONS } from '@swao/core';
+import { prefetchAppInputs, withSharedAppConfigWalk } from '../app-config-walk.js';
+import { meterStepAsync, probeMeterLogFields, startProbeMeter, takeProbeMeterReading } from '../probe-meter.js';
+import { LicenseGuard, LicenseInvalidError, logPortfolio, setWorkspaceRoot, readRunStatus, isRunStale, detectCodeHealthTools, fileBackedToolRunner, PROBE_DETECT_OPTIONS, buildProvenance } from '@swao/core';
 import { createHash } from 'crypto';
+import { homedir } from 'os';
 import { resolveProviderCatalogue, LzCatalogueSchemaError, LzCatalogueDuplicateIdError, listLzCatalogueProviders } from '@swao/module-landing-zone';
 import { seedBundledConnectors, resolveBundledConnectorsDir, updateBundledConnectors } from '@swao/module-llm-providers';
 import type { LicenseState } from '@swao/core';
@@ -39,8 +42,8 @@ import { buildBiExportProbe } from '../probes/bi-probe.js';
 import type { BiExportProbeResult } from '../probes/bi-probe.js';
 import { buildScopeProbe } from '../probes/scope-probe.js';
 import type { ScopeProbeResult } from '../probes/scope-probe.js';
-import { buildPrerequisitesProbe } from '../probes/prerequisites-probe.js';
-import type { PrerequisitesProbeResult } from '../probes/prerequisites-probe.js';
+import { buildPrerequisitesProbe, detectPrerequisiteTools } from '../probes/prerequisites-probe.js';
+import type { PrerequisiteDetections, PrerequisitesProbeResult } from '../probes/prerequisites-probe.js';
 import { buildIngestionProbe } from '../probes/ingestion-probe.js';
 import type { IngestionProbeResult } from '../probes/ingestion-probe.js';
 import { buildIaCToolchainProbe } from '../probes/iac-toolchain-probe.js';
@@ -48,13 +51,19 @@ import type { IaCToolchainProbeResult } from '../probes/iac-toolchain-probe.js';
 import { buildWspMetadataProbe } from '../probes/wsp-metadata-probe.js';
 import type { WspMetadataProbeResult } from '../probes/wsp-metadata-probe.js';
 import { buildCredentialVaultProbe } from '../probes/credential-vault-probe.js';
+import { buildLzConnectionsProbe, formatLzConnectionScopeLines } from '../probes/lz-connections-probe.js';
+import type { LzConnectionsProbeResult } from '../probes/lz-connections-probe.js';
 import { buildIntakeMappingProbe } from '../probes/intake-mapping-probe.js';
 import type { IntakeMappingProbeResult } from '../probes/intake-mapping-probe.js';
 import { buildApmWeightsProbe } from '../probes/apm-weights-probe.js';
 import type { ApmWeightsProbeResult } from '../probes/apm-weights-probe.js';
-import { runServiceProbes, formatServiceProbeLine, PROBE_TOTAL } from '../probes/service-probes.js';
-import type { ServiceProbeResult } from '../probes/service-probes.js';
+import { checkRecordedIntake, runServiceProbes, formatServiceProbeLine, PROBE_TOTAL } from '../probes/service-probes.js';
+import type { RecordedIntakeCheck, ServiceProbeResult } from '../probes/service-probes.js';
 import type { CredentialVaultProbeResult } from '../probes/credential-vault-probe.js';
+import { isProbeInScope, isCheckInScope, scopedProbeLineEmitter, notInScopeProbe, type HealthProbeKey } from '../probe-scope.js';
+import { parseHealthCheckOutput } from '../tui/components/health-check-parse.js';
+import { formatMcpHttpProbeDetail, type McpHttpProbeResult } from '../probes/mcp-http.js';
+import { SETUP_SCOPES, parseSetupAssessmentType, type SetupScope } from '@swao/core';
 
 // ---------------------------------------------------------------------------
 // #0470 -- LLM provider config check + LZR snapshot staleness
@@ -498,10 +507,15 @@ export function checkSourceAccessibility(workspacePath: string): string[] {
     }
 
     if (!isSourceNonEmpty(resolved)) {
-      warnings.push(
-        `[WARN] ${label}: source directory '${sourcePath}' is empty or contains only README ` +
-        `files -- source code was never cloned. Configure source.vcs.url for auto-clone, ` +
-        `or populate the directory before running swao assess.`,
+      // #4261: with source.vcs.url set, the assessment clones the repository
+      // into the directory, so an empty directory is expected before the
+      // first run and is information, not a warning asking for vcs.url.
+      warnings.push(hasVcsUrl
+        ? `[INFO] ${label}: source directory '${sourcePath}' holds no source yet; source.vcs.url is set, ` +
+          `so swao assess clones the repository into it at the next run.`
+        : `[WARN] ${label}: source directory '${sourcePath}' is empty or contains only README ` +
+          `files, so the source code is missing. Set source.vcs.url so swao assess clones it, ` +
+          `or populate the directory before running swao assess.`,
       );
     }
   }
@@ -614,6 +628,28 @@ export interface PlaywrightProbeResult {
   version: string | null;
   path: string | null;
   error: string | null;
+  /** #4451: why the probe is not ok: Chromium not found, playwright-core missing, a slow test launch (warn) or a launch error. */
+  reason?: 'not_found' | 'package_missing' | 'timeout' | 'launch_error';
+  /** Design 126: the raw launch error, logged only. */
+  detail?: string;
+  /** #4461: duration of the test launch, when one ran. */
+  launch_ms?: number;
+  /** #4461: duration of the browser close; null when it still ran after the close wait. */
+  close_ms?: number | null;
+}
+
+/**
+ * #4451 / #4461: the log fields of the Playwright probe: the reason and the
+ * message of a warn or fail, and the launch and close timings.
+ */
+export function playwrightProbeLogFields(probe: PlaywrightProbeResult): Record<string, unknown> {
+  return {
+    ...(probe.status !== 'ok' && probe.error ? { message: probe.error } : {}),
+    ...(probe.reason ? { reason: probe.reason } : {}),
+    ...(probe.detail ? { error_detail: probe.detail } : {}),
+    ...(probe.launch_ms !== undefined ? { launch_ms: probe.launch_ms } : {}),
+    ...(probe.close_ms !== undefined ? { close_ms: probe.close_ms } : {}),
+  };
 }
 
 // Host-coupled probe builders injected by the host (#0573). These three probes
@@ -639,6 +675,22 @@ export interface HealthCheckHostDeps {
   llmGatewayProbe: ProbeContribution;
   /** #3487: optional override of the Pass 26 code health tool detection (tests). */
   detectCodeHealthTools?: () => Promise<DetectedCodeHealthTool[]>;
+  /** #4461: optional override of the concurrent prerequisite version probes (tests). */
+  detectPrerequisiteTools?: () => Promise<PrerequisiteDetections>;
+  /** #3589: optional override of the LZ connections probe [26] (tests; default live read-only probe). */
+  buildLzConnectionsProbe?: (workspacePath: string) => Promise<LzConnectionsProbeResult>;
+  /**
+   * #4392: probe of the HTTP MCP endpoint (probes/mcp-http.ts probeMcpHttpEndpoint),
+   * shown under the SWAO-MCP line; informational, never part of the verdict.
+   * The host wires the live probe; without it (tests) no request is sent.
+   */
+  mcpHttpProbe?: () => Promise<McpHttpProbeResult>;
+  /**
+   * #4430: the host version with its build, e.g. "1.6.1 (4c8dd01e, 2026-11-14)"
+   * (host branding SWAO_VERSION_LABEL; the module cannot import host code).
+   * Printed under the start line of the text output.
+   */
+  swaoVersionLabel?: string;
 }
 
 export function buildLicenseProbe(state: LicenseState): LicenseProbeResult {
@@ -686,7 +738,7 @@ export function buildLicenseProbe(state: LicenseState): LicenseProbeResult {
 
 function formatLicenseProbeLine(probe: LicenseProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[1/25] License', LABEL_W);
+  const label = pad(`[1/${PROBE_TOTAL}] License`, LABEL_W);
   const tierDisplay = probe.tier === 'community' ? 'Community (free, unlimited)' : probe.tier;
   const limit = probe.assessments_limit;
   const budgetDisplay =
@@ -716,7 +768,7 @@ function formatLicenseProbeLine(probe: LicenseProbeResult): string {
 
 function formatPlaywrightProbeLine(probe: PlaywrightProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[2/25] Playwright / Chromium', LABEL_W);
+  const label = pad(`[2/${PROBE_TOTAL}] Playwright / Chromium`, LABEL_W);
   if (probe.status === 'fail') {
     return `  ${label}  FAIL  ${probe.error ?? 'Chromium unavailable'}`;
   }
@@ -729,7 +781,7 @@ function formatPlaywrightProbeLine(probe: PlaywrightProbeResult): string {
 
 function formatMcpProbeLine(probe: McpProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[3/25] SWAO-MCP', LABEL_W);
+  const label = pad(`[3/${PROBE_TOTAL}] SWAO-MCP`, LABEL_W);
   const head = ((): string => {
     switch (probe.status) {
       case 'ok':
@@ -739,7 +791,7 @@ function formatMcpProbeLine(probe: McpProbeResult): string {
       case 'binary_not_found':
         return `  ${label}  WARN  swao binary path in config not found: ${probe.commandPath}`;
       case 'binary_unreachable':
-        return `  ${label}  WARN  swao binary found but did not respond to --version: ${probe.commandPath}`;
+        return `  ${label}  WARN  swao binary found but did not respond to --version${probe.reason ? ` (${probe.reason})` : ''}: ${probe.commandPath}`;
       case 'binary_slow':
         // #3333: timed out twice (VERSION_CHECK_TIMEOUT_MS each); the binary exists and is not reported as unreachable.
         return `  ${label}  WARN  swao binary found but slow to respond to --version (>${VERSION_CHECK_TIMEOUT_MS / 1000} s, retried once): ${probe.commandPath}`;
@@ -753,18 +805,21 @@ function formatMcpProbeLine(probe: McpProbeResult): string {
   })();
   // #3163: one continuation line per stale entry, in any of the configs checked.
   const detail = (probe.staleEntries ?? []).map((e) => `          ${formatStaleEntry(e)}`);
-  return [head, ...detail].join('\n');
+  // #4392: the HTTP endpoint (Claude Code, the Claude Desktop Code tab).
+  const http = probe.http ? formatMcpHttpProbeDetail(probe.http) : [];
+  return [head, ...detail, ...http].join('\n');
 }
 
-function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResult): string {
+/** Exported for tests (#3577). */
+export function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[4/25] Community frameworks', LABEL_W);
+  const label = pad(`[4/${PROBE_TOTAL}] Community frameworks`, LABEL_W);
   if (probe.status === 'absent') {
     // #2910: when bundled frameworks are available, emit 'ok' with an explanatory note
     // instead of a misleading INFO warning. Bundled frameworks are always functional;
     // the workspace catalog dir is optional (run `swao init` to install local copies).
     if (probe.bundled_count > 0) {
-      return `  ${label}  ok    ${probe.bundled_count} bundled frameworks available (no workspace-level overrides -- run \`swao init\` to install local copies)`;
+      return `  ${label}  ok    ${probe.bundled_count} bundled frameworks available (no workspace-level overrides; run \`swao init\` to install local copies)`;
     }
     return `  ${label}  INFO  no catalogs at ${probe.catalogs_dir} (run \`swao init\`)`;
   }
@@ -784,14 +839,28 @@ function formatCommunityFrameworksProbeLine(probe: CommunityFrameworksProbeResul
     .filter((f) => f.scope === 'community')
     .map((f) => {
       const contrib = f.contributor ?? '(missing)';
-      return `  ${pad('', LABEL_W)}  [ok] community/${f.id} -- contributor=${contrib}, ${f.controls_count} controls`;
+      // #3577: service-mapping coverage (Design 120 §8.2); absent = every capability grey.
+      const sm = f.service_mapping;
+      const mapping = sm.status === 'ok' ? `service mapping ${sm.mapped}/${sm.in_use} capability tags`
+        : sm.status === 'invalid' ? 'service mapping invalid' : 'no service mapping';
+      // #3869: policy baseline state (Design 123 section 7.4); absent = not a baseline, nothing shown.
+      const pb = f.policy_baseline;
+      const baseline = pb.status === 'absent' ? ''
+        : pb.status === 'invalid' ? ', policy baseline invalid'
+        : `, policy baseline ${pb.enabled}/${pb.policies} enabled${pb.not_set.length > 0 ? `, ${pb.not_set.length} not reviewed` : ''}${pb.stale ? `, stale (${pb.catalogue_version} < shipped ${pb.shipped_version})` : ''}`;
+      const marker = pb.status === 'invalid' ? 'FAIL' : 'ok';
+      return `  ${pad('', LABEL_W)}  [${marker}] community/${f.id}: contributor=${contrib}, ${f.controls_count} controls, ${mapping}${baseline}`;
     });
-  return [headLine, ...communityLines].join('\n');
+  // #4452: every further warning on a line of its own (the head line shows the first).
+  const warnLines = probe.status === 'warn'
+    ? probe.warnings.slice(1).map((w) => `  ${pad('', LABEL_W)}  [warn] ${w}`)
+    : [];
+  return [headLine, ...warnLines, ...communityLines].join('\n');
 }
 
 function formatImportsProbeLine(probe: ImportsProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[5/25] Import templates', LABEL_W);
+  const label = pad(`[5/${PROBE_TOTAL}] Import templates`, LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -808,7 +877,7 @@ function formatImportsProbeLine(probe: ImportsProbeResult): string {
 
 function formatTraceabilityProbeLine(probe: TraceabilityProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[6/25] Traceability', LABEL_W);
+  const label = pad(`[6/${PROBE_TOTAL}] Traceability`, LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -823,7 +892,7 @@ function formatTraceabilityProbeLine(probe: TraceabilityProbeResult): string {
 
 function formatBiExportProbeLine(probe: BiExportProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[7/25] BI export', LABEL_W);
+  const label = pad(`[7/${PROBE_TOTAL}] BI export`, LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -839,7 +908,7 @@ function formatBiExportProbeLine(probe: BiExportProbeResult): string {
 // #0263 Phase 2 -- Scope coverage probe formatter.
 function formatScopeProbeLine(probe: ScopeProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[8/25] Scope', LABEL_W);
+  const label = pad(`[8/${PROBE_TOTAL}] Scope`, LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -855,7 +924,7 @@ function formatScopeProbeLine(probe: ScopeProbeResult): string {
 // #0326 sprint-036 -- Prerequisites probe formatter (git / ssh / node on PATH).
 function formatPrerequisitesProbeLine(probe: PrerequisitesProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[9/25] Prerequisites', LABEL_W);
+  const label = pad(`[9/${PROBE_TOTAL}] Prerequisites`, LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -871,7 +940,7 @@ function formatPrerequisitesProbeLine(probe: PrerequisitesProbeResult): string {
 // #0326 sprint-036 -- VCS auth probe formatter (ls-remote against configured URLs).
 function formatVcsAuthProbeLine(probe: VcsAuthProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[10/25] VCS auth', LABEL_W);
+  const label = pad(`[10/${PROBE_TOTAL}] VCS auth`, LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -898,7 +967,7 @@ export function llmGatewayStatus(probe: { ok: boolean | null; message: string })
 
 export function formatLlmGatewayLine(probe: { ok: boolean | null; message: string }): string {
   const LABEL_W = 26;
-  const label = pad('[13/25] LLM gateway', LABEL_W);
+  const label = pad(`[13/${PROBE_TOTAL}] LLM gateway`, LABEL_W);
   const m = probe.message.match(/^\[([^\]]+)\]\s*([\s\S]*)$/);
   const msgState = m ? m[1]!.toUpperCase() : (probe.ok === true ? 'PASS' : probe.ok === null ? 'N/A' : 'FAIL');
   // #2366: probe.ok is authoritative; a [WARNING] message prefix must not
@@ -921,7 +990,7 @@ export function formatLlmGatewayLine(probe: { ok: boolean | null; message: strin
 // #1509: wsp metadata (engagement placeholder) probe formatter.
 function formatWspMetadataProbeLine(probe: WspMetadataProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[14/25] Engagement', LABEL_W);
+  const label = pad(`[14/${PROBE_TOTAL}] Engagement`, LABEL_W);
   switch (probe.status) {
     case 'absent':
       return `  ${label}  INFO  ${probe.message}`;
@@ -934,7 +1003,7 @@ function formatWspMetadataProbeLine(probe: WspMetadataProbeResult): string {
 
 // #3102: SWAO_APM domain-weights probe formatter.
 function formatApmWeightsProbeLine(probe: ApmWeightsProbeResult): string {
-  const label = pad('[18/25] SWAO_APM weights', 26);
+  const label = pad(`[18/${PROBE_TOTAL}] SWAO_APM weights`, 26);
   switch (probe.status) {
     case 'skip':
       return `  ${label}  INFO  ${probe.message}`;
@@ -949,7 +1018,7 @@ function formatApmWeightsProbeLine(probe: ApmWeightsProbeResult): string {
 
 // #3084: service intake column-mapping probe formatter.
 function formatIntakeMappingProbeLine(probe: IntakeMappingProbeResult): string {
-  const label = pad('[17/25] Intake mapping', 26);
+  const label = pad(`[17/${PROBE_TOTAL}] Intake mapping`, 26);
   switch (probe.status) {
     case 'skip':
       return `  ${label}  INFO  ${probe.message}`;
@@ -965,7 +1034,7 @@ function formatIntakeMappingProbeLine(probe: IntakeMappingProbeResult): string {
 // #0995 / #1212: ingestion folder probe formatter.
 function formatIngestionFolderProbeLine(probe: IngestionProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[11/25] Ingestion folder', LABEL_W);
+  const label = pad(`[11/${PROBE_TOTAL}] Ingestion folder`, LABEL_W);
   switch (probe.status) {
     case 'ok':
       return `  ${label}  ok    ${probe.message}`;
@@ -983,40 +1052,70 @@ function formatIngestionFolderProbeLine(probe: IngestionProbeResult): string {
 // #1340: IaC toolchain probe formatter.
 function formatIaCToolchainProbeLine(probe: IaCToolchainProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[12/25] IaC toolchain', LABEL_W);
+  const label = pad(`[12/${PROBE_TOTAL}] IaC toolchain`, LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
     case 'warn': return `  ${label}  WARN  ${probe.message}`;
+    case 'info': return `  ${label}  INFO  ${probe.message}`;
   }
 }
 
 // #1698: LZ catalogue service-dep coverage probe formatter.
-function formatLzCatalogueCoverageProbeLine(probe: LzCatalogueCoverageProbeResult): string {
+export function formatLzCatalogueCoverageProbeLine(probe: LzCatalogueCoverageProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[15/25] LZ catalogue', LABEL_W);
+  const label = pad(`[15/${PROBE_TOTAL}] LZ catalogue`, LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
     case 'warn': {
-      // #3282: one line per structural issue / grouped quality finding, capped;
-      // `health-check --json` carries every finding (lz_catalogue_coverage.quality).
+      // #3282: one line per structural issue / grouped quality finding.
+      // #4113: the text detail lists every line (no cap); findings are grouped
+      // per rule and catalogue, so the list stays short.
       const indent = `\n  ${pad('', LABEL_W)}        `;
       const lines = probe.detail_lines ?? (probe.detail ? [probe.detail] : []);
-      const shown = lines.slice(0, LZ_DETAIL_LINES_MAX);
-      const more = lines.length > shown.length ? `${indent}... ${lines.length - shown.length} more (see health-check --json)` : '';
-      return `  ${label}  WARN  ${probe.message}` + shown.map((l) => `${indent}${l}`).join('') + more;
+      return `  ${label}  WARN  ${probe.message}` + lines.map((l) => `${indent}${l}`).join('');
     }
     case 'info':  return `  ${label}  INFO  ${probe.message}`;
     case 'fail':  return `  ${label}  FAIL  ${probe.message}`;
   }
 }
 
+/**
+ * #3589: probe [26] LZ connections. Never FAIL: a write-capable operator login
+ * is the expected test-tenant setup (Design 120 section 6.3), so refused and
+ * unverifiable are warnings; per scope a state line and a facts line (#4233). Exported for tests.
+ */
+export function formatLzConnectionsProbeLine(probe: LzConnectionsProbeResult): string {
+  const LABEL_W = 26;
+  const label = pad(`[26/${PROBE_TOTAL}] LZ connections`, LABEL_W);
+  const state = probe.status === 'ok' ? 'ok  ' : probe.status === 'warn' ? 'WARN' : 'INFO';
+  const indent = `\n  ${pad('', LABEL_W)}        `;
+  return `  ${label}  ${state}  ${probe.message}` + probe.scopes.flatMap(formatLzConnectionScopeLines).map((l) => `${indent}${l}`).join('');
+}
+
 /** #3282: text-mode cap on LZ catalogue finding lines under probe 15. */
-const LZ_DETAIL_LINES_MAX = 15;
+/**
+ * #4113: NDJSON fields naming the LZ catalogue quality findings (grouped and
+ * capped by the probe) so the log entry is actionable, not a bare count.
+ */
+export function lzQualityFindingsLogFields(probe: LzCatalogueCoverageProbeResult): Record<string, unknown> {
+  if (!probe.quality_findings || probe.quality_findings.length === 0) return {};
+  return {
+    quality_findings: probe.quality_findings.map((f) => ({
+      catalogue: f.catalogue,
+      rule: f.rule,
+      severity: f.severity,
+      count: f.count,
+      ...(f.regions.length > 0 ? { regions: f.regions } : {}),
+      text: f.text,
+    })),
+    ...(probe.quality_findings_more ? { quality_findings_more: probe.quality_findings_more } : {}),
+  };
+}
 
 // #2325: credential vault probe formatter.
 function formatCredentialVaultProbeLine(probe: CredentialVaultProbeResult): string {
   const LABEL_W = 26;
-  const label = pad('[16/25] Credential vault', LABEL_W);
+  const label = pad(`[16/${PROBE_TOTAL}] Credential vault`, LABEL_W);
   switch (probe.status) {
     case 'ok':   return `  ${label}  ok    ${probe.message}`;
     case 'warn': return `  ${label}  WARN  ${probe.message}`;
@@ -1119,6 +1218,8 @@ export interface HealthCheckPayload {
   apm_weights: ApmWeightsProbeResult;
   /** #3127-#3133: service workspace probes keyed by probe key. */
   service_probes: Record<string, ServiceProbeResult>;
+  /** #3589: LZ connection probes [26] (read-only result and coverage per registered scope). */
+  lz_connections: LzConnectionsProbeResult;
   llm_provider_errors: string[];
   lzr_snapshot_warnings: string[];
   llm_temperature_warnings: string[];
@@ -1162,9 +1263,85 @@ export interface BuildHealthCheckContext {
   apmWeightsProbe: ApmWeightsProbeResult;
   /** #3127-#3133: service workspace probes [19]-[25]; each skips outside a service workspace. */
   serviceProbes: ServiceProbeResult[];
+  /** #3589: probe [26], LZ connections. */
+  lzConnectionsProbe: LzConnectionsProbeResult;
+  /** #4260: the probe lines as printed (renumbered in a scoped run); absent in hand-built test contexts. */
+  probeLines?: string[];
 }
 
-async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, onProbeLine?: (line: string) => void): Promise<BuildHealthCheckContext> {
+/**
+ * #4461: one shared walk of the app configs and the probe meter for the whole
+ * gather, so every probe reads apps/<id>/.swao.yml from one walk and a probe
+ * over 10 s names its cause in health-check.probe.complete.
+ */
+async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, onProbeLineRaw?: (line: string) => void, scope?: SetupScope): Promise<BuildHealthCheckContext> {
+  return withSharedAppConfigWalk(async () => {
+    const stopMeter = startProbeMeter();
+    try {
+      return await gatherProbesMetered(workspacePath, host, onProbeLineRaw, scope);
+    } finally {
+      stopMeter();
+    }
+  });
+}
+
+async function gatherProbesMetered(workspacePath: string, host: HealthCheckHostDeps, onProbeLineRaw?: (line: string) => void, scope?: SetupScope): Promise<BuildHealthCheckContext> {
+  // #4461: a probe start resets the meter, so each reading covers one probe.
+  const probeStart = (message: string, opts: { context: Record<string, unknown> }): void => {
+    takeProbeMeterReading();
+    logPortfolio('info', 'health-check.probe.start', message, opts);
+  };
+  // #4197 (Design 125 section 6): with a scope, probes that do not serve it are
+  // neither run nor listed; the listed lines are renumbered [k/M].
+  const want = (k: HealthProbeKey): boolean => isProbeInScope(k, scope);
+  // #4260: every printed probe line is kept (also in json and yaml mode), so the
+  // warned probes of health-check.complete come from the very lines the Setup
+  // Wizard parses (computeWarnedProbes).
+  const probeLines: string[] = [];
+  const onProbeLine = scopedProbeLineEmitter((line: string) => { probeLines.push(line); onProbeLineRaw?.(line); }, scope);
+  // #4260: health-check.probe.complete takes its level from the status token of
+  // the probe line (ok and INFO info, WARN warn, FAIL error). The line itself is
+  // printed, so the console mirror is skipped.
+  const completeProbe = (line: string, message: string, context: Record<string, unknown>): void => {
+    // #4461: CPU time, files read and the slowest step; a slow_cause above SLOW_PROBE_MS.
+    const elapsed = typeof context['elapsed_ms'] === 'number' ? context['elapsed_ms'] : 0;
+    const metered = { ...context, ...probeMeterLogFields(elapsed, takeProbeMeterReading()) };
+    logPortfolio(probeLineLogLevel(line), 'health-check.probe.complete', message, { context: metered, mirror: false });
+    onProbeLine?.(line);
+  };
+  // #4461: the waits that need no probe result start now and overlap the first
+  // probes (playwright launches a browser): the concurrent read of the app
+  // configs and research stubs, and the tool version probes of prerequisites.
+  // Each probe that needs them awaits them; the wait left is in its elapsed_ms.
+  const prefetchStart = Date.now();
+  // #4487: the prefetch is logged at its start and at its end (app inputs, tool version checks).
+  logPortfolio('info', 'health-check.prefetch.start', 'prefetch: app inputs and tool version checks', {
+    context: { app_inputs: true, research_stubs: want('research_cache'), tool_versions: want('prerequisites') },
+    mirror: false,
+  });
+  // #4487: a failed prefetch is logged (the probes then read the files themselves).
+  let prefetchError: string | null = null;
+  const prefetchP = prefetchAppInputs(workspacePath, { researchStubs: want('research_cache') }).catch((err: unknown) => {
+    prefetchError = err instanceof Error ? err.message : String(err);
+    return null;
+  });
+  const prereqP: Promise<PrerequisiteDetections | null> | null = want('prerequisites')
+    ? (host.detectPrerequisiteTools ?? (() => detectPrerequisiteTools()))()
+      .then((d) => {
+        // #4487 / #4488: per tool the wall clock, the outcome and the retry of a timed-out check.
+        logPortfolio(d.timedOut.length > 0 ? 'warn' : 'info', 'health-check.prefetch.tools.complete', `tool version checks: ${Object.keys(d.outcome).length} tools in ${d.totalMs} ms${d.timedOut.length > 0 ? `, timed out: ${d.timedOut.join(', ')}` : ''}`, {
+          context: { ms: d.ms, outcome: d.outcome, retry_ms: d.retryMs, timed_out: d.timedOut, total_ms: d.totalMs, since_start_ms: Date.now() - prefetchStart },
+          mirror: false,
+        });
+        return d;
+      })
+      .catch(() => null)
+    : null;
+  const codeHealthP: Promise<DetectedCodeHealthTool[]> | null = want('prerequisites')
+    ? (host.detectCodeHealthTools ?? (() => detectCodeHealthTools(fileBackedToolRunner, undefined, PROBE_DETECT_OPTIONS)))()
+    : null;
+  // Never an unhandled rejection while the first probes run; the probe awaits the original.
+  codeHealthP?.catch(() => undefined);
   let licenseProbe: LicenseProbeResult;
   let licenseInvalid = false;
   let fingerprint: string = 'unknown';
@@ -1172,7 +1349,7 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   // #1786: emit probe.start/complete for every probe so the NDJSON event stream
   // captures per-probe timing and the last start entry identifies a hung probe.
   let t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: license', { context: { probe: 'license' } });
+  probeStart('probe: license', { context: { probe: 'license' } });
   try {
     const guard = LicenseGuard.load();
     fingerprint = guard.state.fingerprint.substring(0, 8);
@@ -1191,91 +1368,131 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
       throw e;
     }
   }
-  logPortfolio('info', 'health-check.probe.complete', `probe: license status=${licenseProbe.status}`, { context: { probe: 'license', status: licenseProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatLicenseProbeLine(licenseProbe));
+  completeProbe(formatLicenseProbeLine(licenseProbe), `probe: license status=${licenseProbe.status}`, { probe: 'license', status: licenseProbe.status, elapsed_ms: Date.now() - t0 });
 
   // Playwright probe is host-injected + deferred (sprint-038 #0350): the host
   // supplies a thunk that lazy-imports playwright-driver so `--version` /
   // `--help` do not pay the ~50MB init cost.
   // #1682: per-probe portfolio-events so slow probes are visible in the log.
   // #1684: populate probe.start context with available config for support bundle.
+  let playwrightProbe: PlaywrightProbeResult = notInScopeProbe<PlaywrightProbeResult>();
+  if (want('playwright')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: playwright', {
+  probeStart('probe: playwright', {
     context: {
       probe: 'playwright',
       chromium_path: process.env['PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH'] ?? process.env['CHROMIUM_PATH'] ?? undefined,
     },
   });
-  const playwrightProbe: PlaywrightProbeResult = await host.buildPlaywrightProbe();
-  logPortfolio('info', 'health-check.probe.complete', `probe: playwright status=${playwrightProbe.status}`, { context: { probe: 'playwright', status: playwrightProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatPlaywrightProbeLine(playwrightProbe));
+  playwrightProbe = await host.buildPlaywrightProbe();
+  completeProbe(formatPlaywrightProbeLine(playwrightProbe), `probe: playwright status=${playwrightProbe.status}`, { probe: 'playwright', status: playwrightProbe.status, ...playwrightProbeLogFields(playwrightProbe), elapsed_ms: Date.now() - t0 });
+  }
 
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: mcp', { context: { probe: 'mcp' } });
+  probeStart('probe: mcp', { context: { probe: 'mcp' } });
   const mcpProbe: McpProbeResult = buildMcpProbe();
-  logPortfolio('info', 'health-check.probe.complete', `probe: mcp status=${mcpProbe.status}`, { context: { probe: 'mcp', status: mcpProbe.status, configs_checked: mcpProbe.configsChecked?.length ?? 0, stale_entries: mcpProbe.staleEntries?.length ?? 0, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatMcpProbeLine(mcpProbe));
+  // #4392: the HTTP endpoint; a failing probe never fails the health check.
+  if (host.mcpHttpProbe) {
+    try { mcpProbe.http = await host.mcpHttpProbe(); } catch { /* informational only */ }
+  }
+  completeProbe(formatMcpProbeLine(mcpProbe), `probe: mcp status=${mcpProbe.status}`, { probe: 'mcp', status: mcpProbe.status, configs_checked: mcpProbe.configsChecked?.length ?? 0, stale_entries: mcpProbe.staleEntries?.length ?? 0, ...mcpProbeLogFields(mcpProbe), ...(mcpProbe.http ? { http_status: mcpProbe.http.status } : {}), elapsed_ms: Date.now() - t0 });
+
+  // #4461: the prefetch of the app inputs is done before the first probe that reads apps/.
+  {
+    const waitStart = Date.now();
+    const prefetch = await prefetchP;
+    if (!prefetch && prefetchError !== null) {
+      logPortfolio('warn', 'health-check.prefetch.failed', `app inputs prefetch failed: ${prefetchError}`, {
+        context: { error: prefetchError, waited_ms: Date.now() - waitStart, since_start_ms: Date.now() - prefetchStart },
+        mirror: false,
+      });
+    }
+    if (prefetch) {
+      logPortfolio('info', 'health-check.prefetch.complete', `app inputs read: ${prefetch.files_read} files (${prefetch.apps} apps, ${prefetch.service_apps} service apps)`, {
+        context: { ...prefetch, waited_ms: Date.now() - waitStart, since_start_ms: Date.now() - prefetchStart },
+        mirror: false,
+      });
+    }
+  }
 
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: community_frameworks', { context: { probe: 'community_frameworks' } });
+  probeStart('probe: community_frameworks', { context: { probe: 'community_frameworks' } });
   const communityFrameworksProbe = buildCommunityFrameworksProbe(workspacePath);
-  logPortfolio('info', 'health-check.probe.complete', `probe: community_frameworks status=${communityFrameworksProbe.status}`, { context: { probe: 'community_frameworks', status: communityFrameworksProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatCommunityFrameworksProbeLine(communityFrameworksProbe));
+  completeProbe(formatCommunityFrameworksProbeLine(communityFrameworksProbe), `probe: community_frameworks status=${communityFrameworksProbe.status}`, { probe: 'community_frameworks', status: communityFrameworksProbe.status, elapsed_ms: Date.now() - t0 });
 
+  let importsProbe: ImportsProbeResult = notInScopeProbe<ImportsProbeResult>();
+  if (want('imports')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: imports', { context: { probe: 'imports' } });
-  const importsProbe = host.buildImportsProbe(workspacePath);
-  logPortfolio('info', 'health-check.probe.complete', `probe: imports status=${importsProbe.status}`, { context: { probe: 'imports', status: importsProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatImportsProbeLine(importsProbe));
+  probeStart('probe: imports', { context: { probe: 'imports' } });
+  importsProbe = host.buildImportsProbe(workspacePath);
+  completeProbe(formatImportsProbeLine(importsProbe), `probe: imports status=${importsProbe.status}`, { probe: 'imports', status: importsProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
+  let traceabilityProbe: TraceabilityProbeResult = notInScopeProbe<TraceabilityProbeResult>();
+  if (want('traceability')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: traceability', { context: { probe: 'traceability' } });
-  const traceabilityProbe = buildTraceabilityProbe(workspacePath);
-  logPortfolio('info', 'health-check.probe.complete', `probe: traceability status=${traceabilityProbe.status}`, { context: { probe: 'traceability', status: traceabilityProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatTraceabilityProbeLine(traceabilityProbe));
+  probeStart('probe: traceability', { context: { probe: 'traceability' } });
+  traceabilityProbe = buildTraceabilityProbe(workspacePath);
+  completeProbe(formatTraceabilityProbeLine(traceabilityProbe), `probe: traceability status=${traceabilityProbe.status}`, { probe: 'traceability', status: traceabilityProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
+  let biExportProbe: BiExportProbeResult = notInScopeProbe<BiExportProbeResult>();
+  if (want('bi_export')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: bi_export', { context: { probe: 'bi_export' } });
-  const biExportProbe = buildBiExportProbe(workspacePath);
-  logPortfolio('info', 'health-check.probe.complete', `probe: bi_export status=${biExportProbe.status}`, { context: { probe: 'bi_export', status: biExportProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatBiExportProbeLine(biExportProbe));
+  probeStart('probe: bi_export', { context: { probe: 'bi_export' } });
+  biExportProbe = buildBiExportProbe(workspacePath);
+  completeProbe(formatBiExportProbeLine(biExportProbe), `probe: bi_export status=${biExportProbe.status}`, { probe: 'bi_export', status: biExportProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
+  let scopeProbe: ScopeProbeResult = notInScopeProbe<ScopeProbeResult>();
+  if (want('scope')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: scope', { context: { probe: 'scope' } });
-  const scopeProbe = buildScopeProbe(workspacePath);  // #0263 Phase 2
-  logPortfolio('info', 'health-check.probe.complete', `probe: scope status=${scopeProbe.status}`, { context: { probe: 'scope', status: scopeProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatScopeProbeLine(scopeProbe));
+  probeStart('probe: scope', { context: { probe: 'scope' } });
+  scopeProbe = buildScopeProbe(workspacePath);  // #0263 Phase 2
+  completeProbe(formatScopeProbeLine(scopeProbe), `probe: scope status=${scopeProbe.status}`, { probe: 'scope', status: scopeProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
+  let prerequisitesProbe: PrerequisitesProbeResult = notInScopeProbe<PrerequisitesProbeResult>();
+  if (want('prerequisites')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: prerequisites', { context: { probe: 'prerequisites' } });
+  probeStart('probe: prerequisites', { context: { probe: 'prerequisites' } });
   // #3487: optional Pass 26 code health tools, detected with the Windows-safe async runner.
-  const codeHealthTools = await (host.detectCodeHealthTools ?? (() => detectCodeHealthTools(fileBackedToolRunner, undefined, PROBE_DETECT_OPTIONS)))();
-  const prerequisitesProbe = buildPrerequisitesProbe(workspacePath, { codeHealthTools });  // #0326 sprint-036; #3375 VCS-aware git rule
-  logPortfolio('info', 'health-check.probe.complete', `probe: prerequisites status=${prerequisitesProbe.status}`, { context: { probe: 'prerequisites', status: prerequisitesProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatPrerequisitesProbeLine(prerequisitesProbe));
+  // #4461: both detections were started with the first probe and ran concurrently.
+  const codeHealthTools = await meterStepAsync('detect code health tools', () => codeHealthP!);
+  const detections = await meterStepAsync('detect tool versions', () => prereqP!);
+  prerequisitesProbe = buildPrerequisitesProbe(workspacePath, { codeHealthTools, ...(detections ? { detect: detections.detect, unanswered: detections.unanswered } : {}) });  // #0326 sprint-036; #3375 VCS-aware git rule
+  // #4488: per tool the wall clock, the outcome, the retry and the tools that timed out.
+  completeProbe(formatPrerequisitesProbeLine(prerequisitesProbe), `probe: prerequisites status=${prerequisitesProbe.status}`, { probe: 'prerequisites', status: prerequisitesProbe.status, ...(detections ? { detect_ms: detections.ms, detect_outcome: detections.outcome, detect_retry_ms: detections.retryMs, detect_timed_out: detections.timedOut, detect_total_ms: detections.totalMs } : {}), elapsed_ms: Date.now() - t0 });
+  }
 
+  let vcsAuthProbe: VcsAuthProbeResult = notInScopeProbe<VcsAuthProbeResult>();
+  if (want('vcs_auth')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: vcs_auth', {
+  probeStart('probe: vcs_auth', {
     context: { probe: 'vcs_auth', workspace_path: workspacePath },
   });
-  const vcsAuthProbe = await host.buildVcsAuthProbe(workspacePath);  // #0326 sprint-036
-  logPortfolio('info', 'health-check.probe.complete', `probe: vcs_auth status=${vcsAuthProbe.status}`, { context: { probe: 'vcs_auth', status: vcsAuthProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatVcsAuthProbeLine(vcsAuthProbe));
+  vcsAuthProbe = await host.buildVcsAuthProbe(workspacePath);  // #0326 sprint-036
+  completeProbe(formatVcsAuthProbeLine(vcsAuthProbe), `probe: vcs_auth status=${vcsAuthProbe.status}`, { probe: 'vcs_auth', status: vcsAuthProbe.status, elapsed_ms: Date.now() - t0 });
+  }
+
+  let ingestionProbe: IngestionProbeResult = notInScopeProbe<IngestionProbeResult>();
+  if (want('ingestion')) {
+  t0 = Date.now();
+  probeStart('probe: ingestion', { context: { probe: 'ingestion' } });
+  ingestionProbe = buildIngestionProbe(workspacePath);  // #0970
+  completeProbe(formatIngestionFolderProbeLine(ingestionProbe), `probe: ingestion status=${ingestionProbe.status}`, { probe: 'ingestion', status: ingestionProbe.status, elapsed_ms: Date.now() - t0 });
+  }
+
+  let iacToolchainProbe: IaCToolchainProbeResult = notInScopeProbe<IaCToolchainProbeResult>();
+  if (want('iac_toolchain')) {
+  t0 = Date.now();
+  probeStart('probe: iac_toolchain', { context: { probe: 'iac_toolchain' } });
+  iacToolchainProbe = buildIaCToolchainProbe(workspacePath);  // #1328 design 085 OI-05; #4224 IaC sources decide a warning
+  completeProbe(formatIaCToolchainProbeLine(iacToolchainProbe), `probe: iac_toolchain status=${iacToolchainProbe.status}`, { probe: 'iac_toolchain', status: iacToolchainProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: ingestion', { context: { probe: 'ingestion' } });
-  const ingestionProbe = buildIngestionProbe(workspacePath);  // #0970
-  logPortfolio('info', 'health-check.probe.complete', `probe: ingestion status=${ingestionProbe.status}`, { context: { probe: 'ingestion', status: ingestionProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatIngestionFolderProbeLine(ingestionProbe));
-
-  t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: iac_toolchain', { context: { probe: 'iac_toolchain' } });
-  const iacToolchainProbe = buildIaCToolchainProbe();  // #1328 design 085 OI-05
-  logPortfolio('info', 'health-check.probe.complete', `probe: iac_toolchain status=${iacToolchainProbe.status}`, { context: { probe: 'iac_toolchain', status: iacToolchainProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatIaCToolchainProbeLine(iacToolchainProbe));
-
-  t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: llm_gateway', {
+  probeStart('probe: llm_gateway', {
     context: {
       probe: 'llm_gateway',
       workspace_path: workspacePath,
@@ -1286,51 +1503,85 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
   // #2318: include message in log when probe is not ok so support bundle captures the reason.
   // #2251: add status field (string) to match all other probe.complete events; ok:boolean kept for compat.
   // #2897: ok: null = credential not loaded (skip) -- distinct from fail.
-  logPortfolio('info', 'health-check.probe.complete', `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { context: { probe: 'llm_gateway', status: llmGatewayStatus(llmGatewayProbe), ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok !== true ? { message: llmGatewayProbe.message } : {}), elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatLlmGatewayLine(llmGatewayProbe));
+  completeProbe(formatLlmGatewayLine(llmGatewayProbe), `probe: llm_gateway ok=${llmGatewayProbe.ok}`, { probe: 'llm_gateway', status: llmGatewayStatus(llmGatewayProbe), ok: llmGatewayProbe.ok, ...(llmGatewayProbe.ok !== true ? { message: llmGatewayProbe.message } : {}), elapsed_ms: Date.now() - t0 });
 
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: wsp_metadata', { context: { probe: 'wsp_metadata' } });
+  probeStart('probe: wsp_metadata', { context: { probe: 'wsp_metadata' } });
   const wspMetadataProbe = buildWspMetadataProbe(workspacePath);  // #1509 engagement placeholder guard
-  logPortfolio('info', 'health-check.probe.complete', `probe: wsp_metadata status=${wspMetadataProbe.status}`, { context: { probe: 'wsp_metadata', status: wspMetadataProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatWspMetadataProbeLine(wspMetadataProbe));
+  completeProbe(formatWspMetadataProbeLine(wspMetadataProbe), `probe: wsp_metadata status=${wspMetadataProbe.status}`, { probe: 'wsp_metadata', status: wspMetadataProbe.status, elapsed_ms: Date.now() - t0 });
 
+  let lzCatalogueCoverageProbe: LzCatalogueCoverageProbeResult = notInScopeProbe<LzCatalogueCoverageProbeResult>();
+  let lzCatalogueProvenance: string[] = [];
+  if (want('lz_catalogue_coverage')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: lz_catalogue_coverage', { context: { probe: 'lz_catalogue_coverage' } });
-  const lzCatalogueCoverageProbe = buildLzCatalogueCoverageProbe(workspacePath);  // #1698
-  logPortfolio('info', 'health-check.probe.complete', `probe: lz_catalogue_coverage status=${lzCatalogueCoverageProbe.status}`, { context: { probe: 'lz_catalogue_coverage', status: lzCatalogueCoverageProbe.status, gaps: lzCatalogueCoverageProbe.gaps_count, quality_errors: lzCatalogueCoverageProbe.quality?.errors ?? 0, quality_warnings: lzCatalogueCoverageProbe.quality?.warnings ?? 0, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatLzCatalogueCoverageProbeLine(lzCatalogueCoverageProbe));
+  probeStart('probe: lz_catalogue_coverage', { context: { probe: 'lz_catalogue_coverage' } });
+  lzCatalogueCoverageProbe = buildLzCatalogueCoverageProbe(workspacePath);  // #1698
+  completeProbe(formatLzCatalogueCoverageProbeLine(lzCatalogueCoverageProbe), `probe: lz_catalogue_coverage status=${lzCatalogueCoverageProbe.status}`, { probe: 'lz_catalogue_coverage', status: lzCatalogueCoverageProbe.status, gaps: lzCatalogueCoverageProbe.gaps_count, quality_errors: lzCatalogueCoverageProbe.quality?.errors ?? 0, quality_warnings: lzCatalogueCoverageProbe.quality?.warnings ?? 0, ...lzQualityFindingsLogFields(lzCatalogueCoverageProbe), elapsed_ms: Date.now() - t0 });
   // #2222: persist per-file provenance (hash, origin, last_updated) so Support Bundle
   // captures full catalogue detail without requiring text-format health-check output.
-  const lzCatalogueProvenance = checkLzCatalogueProvenance(workspacePath);  // #3282: once per run
+  lzCatalogueProvenance = checkLzCatalogueProvenance(workspacePath);  // #3282: once per run
   logPortfolio('info', 'health-check.lz-catalogue-provenance', 'LZ catalogue provenance', {
     context: { detail: lzCatalogueProvenance },
   });
+  }
 
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: credential_vault', { context: { probe: 'credential_vault' } });
+  probeStart('probe: credential_vault', { context: { probe: 'credential_vault' } });
   const credentialVaultProbe = buildCredentialVaultProbe();  // #2325
-  logPortfolio('info', 'health-check.probe.complete', `probe: credential_vault status=${credentialVaultProbe.status}`, { context: { probe: 'credential_vault', status: credentialVaultProbe.status, key_count: credentialVaultProbe.keyCount, categories: credentialVaultProbe.categories, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatCredentialVaultProbeLine(credentialVaultProbe));
+  completeProbe(formatCredentialVaultProbeLine(credentialVaultProbe), `probe: credential_vault status=${credentialVaultProbe.status}`, { probe: 'credential_vault', status: credentialVaultProbe.status, key_count: credentialVaultProbe.keyCount, categories: credentialVaultProbe.categories, elapsed_ms: Date.now() - t0 });
 
+  let intakeMappingProbe: IntakeMappingProbeResult = notInScopeProbe<IntakeMappingProbeResult>();
+  if (want('intake_mapping')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: intake_mapping', { context: { probe: 'intake_mapping' } });
-  const intakeMappingProbe = buildIntakeMappingProbe(workspacePath);  // #3084
-  logPortfolio('info', 'health-check.probe.complete', `probe: intake_mapping status=${intakeMappingProbe.status}`, { context: { probe: 'intake_mapping', status: intakeMappingProbe.status, errors: intakeMappingProbe.errors.length, warnings: intakeMappingProbe.warnings.length, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatIntakeMappingProbeLine(intakeMappingProbe));
+  probeStart('probe: intake_mapping', { context: { probe: 'intake_mapping' } });
+  intakeMappingProbe = buildIntakeMappingProbe(workspacePath);  // #3084
+  completeProbe(formatIntakeMappingProbeLine(intakeMappingProbe), `probe: intake_mapping status=${intakeMappingProbe.status}`, { probe: 'intake_mapping', status: intakeMappingProbe.status, errors: intakeMappingProbe.errors.length, warnings: intakeMappingProbe.warnings.length, elapsed_ms: Date.now() - t0 });
+  }
 
+  let apmWeightsProbe: ApmWeightsProbeResult = notInScopeProbe<ApmWeightsProbeResult>();
+  if (want('apm_weights')) {
   t0 = Date.now();
-  logPortfolio('info', 'health-check.probe.start', 'probe: apm_weights', { context: { probe: 'apm_weights' } });
-  const apmWeightsProbe = buildApmWeightsProbe(workspacePath);  // #3102
-  logPortfolio('info', 'health-check.probe.complete', `probe: apm_weights status=${apmWeightsProbe.status}`, { context: { probe: 'apm_weights', status: apmWeightsProbe.status, elapsed_ms: Date.now() - t0 } });
-  onProbeLine?.(formatApmWeightsProbeLine(apmWeightsProbe));
+  probeStart('probe: apm_weights', { context: { probe: 'apm_weights' } });
+  apmWeightsProbe = buildApmWeightsProbe(workspacePath);  // #3102
+  completeProbe(formatApmWeightsProbeLine(apmWeightsProbe), `probe: apm_weights status=${apmWeightsProbe.status}`, { probe: 'apm_weights', status: apmWeightsProbe.status, elapsed_ms: Date.now() - t0 });
+  }
 
   // #3127-#3133 probes [19]-[25]. #3171: start/complete per probe, per-probe elapsed_ms.
-  const serviceProbes = runServiceProbes(
+  // #4295: before the first import the service workspace probe reports the recorded intake's rows, or why it cannot be read.
+  let intakeCheck: RecordedIntakeCheck | null = null;
+  if (want('service_workspace')) {
+    try { intakeCheck = await checkRecordedIntake(workspacePath); } catch { intakeCheck = null; }
+  }
+  const serviceProbes = want('service_workspace') ? runServiceProbes(
     workspacePath,
-    (level, code, message, opts) => logPortfolio(level, code, message, opts),
+    (level, code, message, opts) => {
+      // #4461: the meter reading of each service probe (reset at its start).
+      if (code === 'health-check.probe.start') {
+        takeProbeMeterReading();
+        logPortfolio(level, code, message, { ...opts, mirror: false });
+        return;
+      }
+      const elapsed = typeof opts.context['elapsed_ms'] === 'number' ? opts.context['elapsed_ms'] : 0;
+      logPortfolio(level, code, message, { context: { ...opts.context, ...probeMeterLogFields(elapsed, takeProbeMeterReading()) }, mirror: false });
+    },
     (sp, i) => onProbeLine?.(formatServiceProbeLine(sp, i)),
-  );
+    new Date(),
+    Date.now,
+    intakeCheck,
+  ) : [];
+
+  // #3589 probe [26]: LZ connections (read-only + coverage per registered scope).
+  t0 = Date.now();
+  if (want('lz_connections')) probeStart('probe: lz_connections', { context: { probe: 'lz_connections' } });
+  let lzConnectionsProbe: LzConnectionsProbeResult = notInScopeProbe<LzConnectionsProbeResult>();
+  if (want('lz_connections')) {
+  try {
+    lzConnectionsProbe = await (host.buildLzConnectionsProbe ?? ((ws: string) => buildLzConnectionsProbe(ws)))(workspacePath);
+  } catch (e) {
+    lzConnectionsProbe = { status: 'warn', message: `LZ connections could not be checked: ${(e as Error).message}`, scopes: [] };
+  }
+  completeProbe(formatLzConnectionsProbeLine(lzConnectionsProbe), `probe: lz_connections status=${lzConnectionsProbe.status}`, { probe: 'lz_connections', status: lzConnectionsProbe.status, scopes: lzConnectionsProbe.scopes.length, states: lzConnectionsProbe.scopes.map((s) => s.state), stale: lzConnectionsProbe.scopes.filter((s) => s.stale).length, elapsed_ms: Date.now() - t0 });
+  }
 
   return {
     licenseProbe,
@@ -1355,11 +1606,43 @@ async function gatherProbes(workspacePath: string, host: HealthCheckHostDeps, on
     intakeMappingProbe,
     apmWeightsProbe,
     serviceProbes,
+    lzConnectionsProbe,
+    probeLines,
   };
 }
 
+/**
+ * #4197 (Design 125 section 6): the payload of a scoped run keeps the probes
+ * and checks of the scope only (`service_probes` follows `service_workspace`).
+ */
+export function filterHealthCheckPayload(payload: HealthCheckPayload, scope: SetupScope | undefined): Partial<HealthCheckPayload> {
+  if (scope === undefined) return payload;
+  return Object.fromEntries(Object.entries(payload).filter(([k]) => {
+    if (k === 'service_probes') return isProbeInScope('service_workspace', scope);
+    if (k.endsWith('_warnings') || k.endsWith('_errors') || k.endsWith('_info') || k.endsWith('_messages')) return isCheckInScope(k, scope);
+    return isProbeInScope(k, scope);
+  })) as Partial<HealthCheckPayload>;
+}
+
+/** #4197: parses `--type`; accepts the setup ids, `generic` and the assess type ids. */
+export function parseHealthCheckScope(value: string | undefined): SetupScope | undefined | Error {
+  if (value === undefined) return undefined;
+  const v = value.trim().toLowerCase();
+  if (v === 'generic') return 'generic';
+  const t = parseSetupAssessmentType(v);
+  return t ?? new Error(`unknown --type ${value}; expected one of ${SETUP_SCOPES.join(', ')}`);
+}
+
 export async function buildHealthCheckPayload(workspacePath: string, host: HealthCheckHostDeps): Promise<HealthCheckPayload> {
-  const ctx = await gatherProbes(workspacePath, host);
+  return buildPayloadFromContext(workspacePath, await gatherProbes(workspacePath, host));
+}
+
+/** #4197: the payload of one scope; probes outside it are not run. */
+export async function buildScopedHealthCheckPayload(workspacePath: string, host: HealthCheckHostDeps, scope: SetupScope): Promise<Partial<HealthCheckPayload>> {
+  return filterHealthCheckPayload(buildPayloadFromContext(workspacePath, await gatherProbes(workspacePath, host, undefined, scope)), scope);
+}
+
+function buildPayloadFromContext(workspacePath: string, ctx: BuildHealthCheckContext): HealthCheckPayload {
   return {
     license: { ...ctx.licenseProbe, fingerprint: ctx.fingerprint },
     playwright: ctx.playwrightProbe,
@@ -1392,6 +1675,7 @@ export async function buildHealthCheckPayload(workspacePath: string, host: Healt
     intake_mapping: ctx.intakeMappingProbe,
     apm_weights: ctx.apmWeightsProbe,
     service_probes: Object.fromEntries(ctx.serviceProbes.map((sp) => [sp.key, sp])),
+    lz_connections: ctx.lzConnectionsProbe,
   };
 }
 
@@ -1428,10 +1712,115 @@ export function computeFailedProbes(ctx: BuildHealthCheckContext): string[] {
  * summariseHealthCheckOutput) instead of re-deriving failures from the probe
  * lines, so both always report the same count.
  */
-export function formatHealthCheckSummaryLine(failedProbes: readonly string[]): string {
-  return failedProbes.length === 0
-    ? 'All probes passed.'
-    : `${failedProbes.length} probe(s) failed: ${failedProbes.join(', ')}.`;
+export function formatHealthCheckSummaryLine(failedProbes: readonly string[], warnedProbes: readonly string[] = []): string {
+  // #4260: "All probes passed." only when no probe failed or warned; the
+  // warnings line names the warned probes (read by summariseHealthCheckOutput).
+  const failLine = failedProbes.length > 0
+    ? `${failedProbes.length} probe(s) failed: ${failedProbes.join(', ')}.`
+    : warnedProbes.length > 0 ? 'No probe failed.' : 'All probes passed.';
+  return warnedProbes.length === 0 ? failLine : `${failLine}\n${formatHealthCheckWarningsLine(warnedProbes)}`;
+}
+
+/** #4260: the runner's warnings epilogue, "Warnings (2): SWAO-MCP, IaC toolchain." */
+export function formatHealthCheckWarningsLine(warnedProbes: readonly string[]): string {
+  return `Warnings (${warnedProbes.length}): ${warnedProbes.join(', ')}.`;
+}
+
+/** #4260: a path with the user's home folder replaced by `<home>` (log redaction). */
+export function redactHomePath(p: string, home: string = homedir()): string {
+  if (!home) return p;
+  const win = process.platform === 'win32';
+  const hay = win ? p.toLowerCase() : p;
+  const needle = win ? home.toLowerCase() : home;
+  return hay.startsWith(needle) ? `<home>${p.slice(home.length)}` : p;
+}
+
+/**
+ * #4260: the MCP probe fields of health-check.probe.complete: the checked
+ * config entry (effective config and command, home folder redacted) and, for
+ * binary_unreachable, the reason code of the `--version` check.
+ */
+export function mcpProbeLogFields(probe: McpProbeResult, home: string = homedir()): Record<string, unknown> {
+  if (probe.status === 'ok' || probe.status === 'not_installed') return {};
+  return {
+    config_path: redactHomePath(probe.configPath, home),
+    ...(probe.commandPath ? { command_path: redactHomePath(probe.commandPath, home) } : {}),
+    ...(probe.reason ? { reason: probe.reason } : {}),
+  };
+}
+
+/** #4260: log level of a printed probe line from its status token (ok and INFO info, WARN warn, FAIL error). */
+export function probeLineLogLevel(line: string): 'info' | 'warn' | 'error' {
+  const status = parseHealthCheckOutput(line.split('\n'))[0]?.status;
+  return status === 'FAIL' ? 'error' : status === 'WARN' ? 'warn' : 'info';
+}
+
+/** #4261: name of the source accessibility check when it counts as a warning. */
+export const SOURCE_ACCESS_WARNING_NAME = 'Source access';
+
+/**
+ * #4260: the warned probes of a run, by the display name of the probe line
+ * (the names the Setup Wizard reports in setup.health-check.complete). The
+ * probe lines are parsed with the wizard's own parser, so both events agree.
+ * #4261: a `[WARN]` entry of the source accessibility check counts as a
+ * warning named "Source access".
+ */
+export function computeWarnedProbes(ctx: BuildHealthCheckContext, checks?: Record<string, string[]>, scope?: SetupScope): string[] {
+  const lines = (ctx.probeLines ?? []).flatMap((l) => l.split('\n'));
+  const warned = parseHealthCheckOutput(lines).filter((p) => p.status === 'WARN').map((p) => p.name);
+  const source = checks?.['source_accessibility_warnings'] ?? [];
+  if (isCheckInScope('source_accessibility_warnings', scope) && source.some((w) => w.startsWith('[WARN]'))) warned.push(SOURCE_ACCESS_WARNING_NAME);
+  // #4262: a service-scoped check in which every service probe skipped checked
+  // nothing of the service setup; that is a warning naming the reason.
+  if (scope === 'service' && allServiceProbesSkipped(ctx)) warned.push(SERVICE_PROBES_SKIPPED_NAME);
+  return warned;
+}
+
+/** #4262: warned-check name of a service-scoped run whose service probes all skipped. */
+export const SERVICE_PROBES_SKIPPED_NAME = 'Service probes (all skipped as not a service workspace)';
+
+/** #4262: true when the intake mapping, SWAO_APM weights and probes [19] to [25] all skipped. */
+export function allServiceProbesSkipped(ctx: BuildHealthCheckContext): boolean {
+  return ctx.serviceProbes.length > 0
+    && ctx.serviceProbes.every((sp) => sp.status === 'skip')
+    && ctx.intakeMappingProbe.status === 'skip'
+    && ctx.apmWeightsProbe.status === 'skip';
+}
+
+/** #4261: number of apps (apps/<id>/.swao.yml) in the workspace. */
+export function countConfiguredApps(workspacePath: string): number {
+  const appsDir = join(workspacePath, 'apps');
+  try {
+    return readdirSync(appsDir, { withFileTypes: true })
+      .filter((e) => e.isDirectory() && existsSync(join(appsDir, e.name, '.swao.yml'))).length;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * #4260 / #4261: the health-check.complete message. It never says "all probes
+ * ok" when a probe failed or warned, and names the app count instead of "no
+ * apps to assess" when apps exist but none has an assessment run yet.
+ */
+export function formatHealthCheckCompleteMessage(input: {
+  failedProbes: readonly string[];
+  warnedProbes: readonly string[];
+  /** Probes that reported `absent` because no app or no run exists (scope, traceability). */
+  absentProbes: readonly string[];
+  appCount: number;
+}): string {
+  const { failedProbes, warnedProbes, absentProbes, appCount } = input;
+  const warnText = warnedProbes.length > 0 ? `${warnedProbes.length} warning(s): ${warnedProbes.join(', ')}` : '';
+  if (failedProbes.length > 0) {
+    return `Health-check found ${failedProbes.length} failure(s): ${failedProbes.join(', ')}${warnText ? `; ${warnText}` : ''}`;
+  }
+  const skipped = absentProbes.length > 0 ? ` (${absentProbes.join(', ')} skipped)` : '';
+  const apps = absentProbes.length === 0 ? ''
+    : appCount === 0 ? `, workspace only, no apps yet${skipped}`
+    : `, ${appCount} app(s) configured, none assessed yet${skipped}`;
+  if (warnedProbes.length > 0) return `Health-check passed with ${warnText}${apps}`;
+  return apps ? `Health-check passed${apps}` : 'Health-check passed, all probes ok';
 }
 
 // #1094: extracted so health-check-json.test.ts can unit-test the log context
@@ -1441,7 +1830,15 @@ export function buildHealthCheckLogContext(
   ctx: BuildHealthCheckContext,
   failedProbes: string[],
   checks?: Record<string, string[]>,
+  scope?: SetupScope,
 ): Record<string, unknown> {
+  // #4197: a scoped run logs only the probes and checks of its scope.
+  if (scope !== undefined) {
+    const full = buildHealthCheckLogContext(ctx, failedProbes, checks ? Object.fromEntries(Object.entries(checks).filter(([k]) => isCheckInScope(k, scope))) : undefined);
+    const probes = Object.fromEntries(Object.entries(full['probes'] as Record<string, unknown>).filter(([k]) => isProbeInScope(k, scope)));
+    const warned = computeWarnedProbes(ctx, checks, scope);
+    return { ...full, scope, probe_count: Object.keys(probes).length, warn_count: warned.length, warned_probes: warned, probes };
+  }
   // #3388: the string[] check results (warnings / info / seed detection) are
   // logged alongside the 25 probes so health-check.complete is a complete record.
   // Every supplied check is logged, including the ones that came back clean (an
@@ -1459,14 +1856,19 @@ export function buildHealthCheckLogContext(
     if (msg && probe.status !== 'ok') entry.message = msg;
     return entry;
   }
+  // #4260: warn_count / warned_probes, the same list setup.health-check.complete reports.
+  const warnedProbes = computeWarnedProbes(ctx, checks);
   return {
     fail_count: failedProbes.length,
     failed_probes: failedProbes,
+    warn_count: warnedProbes.length,
+    warned_probes: warnedProbes,
     probe_count: PROBE_TOTAL,
     ...(checkResults && Object.keys(checkResults).length > 0 ? { checks: checkResults } : {}),
     probes: {
       license: probeEntry(ctx.licenseProbe),
-      playwright: probeEntry(ctx.playwrightProbe),
+      // #4451: a warn or fail carries its reason and message.
+      playwright: { status: ctx.playwrightProbe.status, ...playwrightProbeLogFields(ctx.playwrightProbe) },
       mcp: probeEntry(ctx.mcpProbe),
       community_frameworks: {
         ...probeEntry(ctx.communityFrameworksProbe),
@@ -1488,11 +1890,14 @@ export function buildHealthCheckLogContext(
         gaps_count: ctx.lzCatalogueCoverageProbe.gaps_count,
         // #3282: quality rule counts (the full findings list is in --json).
         ...(ctx.lzCatalogueCoverageProbe.quality ? { quality_errors: ctx.lzCatalogueCoverageProbe.quality.errors, quality_warnings: ctx.lzCatalogueCoverageProbe.quality.warnings } : {}),
+        // #4113: the findings by name (catalogue, rule, short text), capped with a count of the rest.
+        ...lzQualityFindingsLogFields(ctx.lzCatalogueCoverageProbe),
       },
       credential_vault: { ...probeEntry(ctx.credentialVaultProbe), key_count: ctx.credentialVaultProbe.keyCount, categories: ctx.credentialVaultProbe.categories },
       intake_mapping: probeEntry(ctx.intakeMappingProbe),
       apm_weights: probeEntry(ctx.apmWeightsProbe),
       ...Object.fromEntries(ctx.serviceProbes.map((sp) => [sp.key, probeEntry(sp)])),
+      lz_connections: { ...probeEntry(ctx.lzConnectionsProbe), scopes: ctx.lzConnectionsProbe.scopes.length },
     },
   };
 }
@@ -1505,10 +1910,22 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
     .option('--format <fmt>', 'Output format: text, yaml, or json (default: text)', 'text')
     .option('--json', 'Shorthand for --format json; exits with code 1 when errors are present')
     .option('--workspace <path>', 'Workspace path (default: current directory)')
-    .action(async (opts: { format: string; json?: boolean; workspace?: string }) => {
+    .option('--type <type>', 'Run only the probes of one setup scope: generic, application, service, lz-catalog, lz-live or llm (Design 125)')
+    .action(async (opts: { format: string; json?: boolean; workspace?: string; type?: string }) => {
       if (opts.json) opts.format = 'json';
+      // #4197: scoped health check (Design 125 section 6).
+      const scope = parseHealthCheckScope(opts.type);
+      if (scope instanceof Error) {
+        console.error(`[error] ${scope.message}`);
+        process.exit(2);
+      }
+      if (scope !== undefined && opts.format === 'yaml') {
+        console.error('[error] --type supports the text and json formats');
+        process.exit(2);
+      }
       if (opts.format === 'text') {
-        console.log('Running swao health-check...\n');
+        // #4430: name the build, so two builds of one version can be told apart.
+        console.log(host.swaoVersionLabel ? `Running swao health-check (SWAO ${host.swaoVersionLabel})...\n` : 'Running swao health-check...\n');
       }
 
       const workspacePath = opts.workspace ? resolve(opts.workspace) : process.cwd();
@@ -1534,10 +1951,12 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           platform: process.platform,
           node_version: process.version,
           dev_build: process.env['SWAO_DEV_BUILD'] === '1',
+          // #4430: the build that ran the check (build-info stamp of the bundle).
+          ...buildProvenance(),
         },
       });
       const onProbeLine = opts.format === 'text' ? console.log : undefined;
-      const ctx = await gatherProbes(workspacePath, host, onProbeLine);
+      const ctx = await gatherProbes(workspacePath, host, onProbeLine, scope);
       const {
         licenseProbe,
         fingerprint,
@@ -1559,6 +1978,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         intakeMappingProbe,
         apmWeightsProbe,
         serviceProbes,
+        lzConnectionsProbe,
       } = ctx;
 
       // #3170: one shared failure definition for the log, the JSON exit code and the text summary.
@@ -1568,9 +1988,6 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
       const hcAbsentProbes: string[] = [];
       if (scopeProbe.status === 'absent') hcAbsentProbes.push('scope');
       if (traceabilityProbe.status === 'absent') hcAbsentProbes.push('traceability');
-      const okMessage = hcAbsentProbes.length > 0
-        ? `Health-check passed -- workspace only, no apps to assess (${hcAbsentProbes.join(', ')} skipped)`
-        : 'Health-check passed -- all probes ok';
       // #3388: capture every string[] check result so health-check.complete (log
       // + NDJSON) records the full outcome, not only the 25 probes.
       const loggedChecks: Record<string, string[]> = {
@@ -1588,13 +2005,21 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         image_sidecar_warnings:      checkImageSidecars(workspacePath),
         lz_catalogue_provenance:     ctx.lzCatalogueProvenance ?? [],
       };
+      // #4260: the warned probes (same list as the wizard's setup.health-check.complete).
+      const hcWarnedProbes = computeWarnedProbes(ctx, loggedChecks, scope);
+      const hcLevel = hcFailedProbes.length > 0 || hcWarnedProbes.length > 0 ? 'warn' : 'info';
       logPortfolio(
-        hcFailedProbes.length > 0 ? 'warn' : 'info',
+        hcLevel,
         'health-check.complete',
-        hcFailedProbes.length > 0
-          ? `Health-check found ${hcFailedProbes.length} failure(s): ${hcFailedProbes.join(', ')}`
-          : okMessage,
-        { context: buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks) },
+        formatHealthCheckCompleteMessage({
+          failedProbes: hcFailedProbes,
+          warnedProbes: hcWarnedProbes,
+          absentProbes: hcAbsentProbes,
+          appCount: countConfiguredApps(workspacePath),
+        }),
+        // A warnings-only run is shown by the probe lines and the summary; the
+        // console mirror stays for failures as before.
+        { context: buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks, scope), mirror: hcFailedProbes.length > 0 },
       );
 
       // #1277: persist results to wsp/logs/health-check-YYYY-MM.ndjson so
@@ -1610,9 +2035,9 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         const entry = JSON.stringify({
           ts:        new Date().toISOString(),
           event:     'health-check.complete',
-          level:     hcFailedProbes.length > 0 ? 'warn' : 'info',
+          level:     hcLevel,
           workspace: workspacePath,
-          ...buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks),
+          ...buildHealthCheckLogContext(ctx, hcFailedProbes, loggedChecks, scope),
         });
         appendFileSync(join(logsDir, `health-check-${month}.ndjson`), entry + '\n', 'utf-8');
       } catch {
@@ -1650,6 +2075,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           intake_mapping: intakeMappingProbe,
           apm_weights: apmWeightsProbe,
           service_probes: Object.fromEntries(serviceProbes.map((sp) => [sp.key, sp])),
+          lz_connections: lzConnectionsProbe,
           llm_provider_errors: llmProviderErrors,
           lzr_snapshot_warnings: lzrSnapshotWarnings,
           llm_temperature_warnings: llmTempWarnings,
@@ -1663,7 +2089,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           context_config_messages: checkContextConfig(workspacePath),
           image_sidecar_warnings: checkImageSidecars(workspacePath),
         };
-        console.log(JSON.stringify(payload, null, 2));
+        console.log(JSON.stringify(filterHealthCheckPayload(payload, scope), null, 2));
         // #0550: llmProviderErrors is now WARN-level (LLM-optional); it no
         // longer fails doctor. The assessment completes without an LLM.
         // #1790: blocked status (e.g. imports probe with missing required column)
@@ -1691,6 +2117,8 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
           `    version: ${playwrightProbe.version === null ? 'null' : JSON.stringify(playwrightProbe.version)}`,
           `    path: ${playwrightProbe.path === null ? 'null' : JSON.stringify(playwrightProbe.path)}`,
           `    error: ${playwrightProbe.error === null ? 'null' : JSON.stringify(playwrightProbe.error)}`,
+          ...(playwrightProbe.reason ? [`    reason: ${playwrightProbe.reason}`] : []),
+          ...(playwrightProbe.detail ? [`    detail: ${JSON.stringify(playwrightProbe.detail)}`] : []),
           '  mcp:',
           `    status: ${mcpProbe.status}`,
           `    config_path: ${JSON.stringify(mcpProbe.configPath)}`,
@@ -1757,19 +2185,19 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
 
         // #0470 + #0476 + #0516: LLM config, LZR staleness, temperature, placeholders, source
         const maxAge = readLzrMaxAgeDays(workspacePath);
-        for (const msg of checkLlmProviderConfig(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkLzrSnapshots(workspacePath, maxAge)) { console.log(`  ${msg}`); }
-        for (const msg of checkLlmTemperature(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkLlmContextWindow(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkPlaceholderInputs(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkLzrCoveragePerApp(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of ctx.lzCatalogueProvenance ?? []) { console.log(`  ${msg}`); }
-        for (const msg of checkSourceAccessibility(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkSeededAssets(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkRunAccumulation(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkRunStatusMarkers(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkContextConfig(workspacePath)) { console.log(`  ${msg}`); }
-        for (const msg of checkImageSidecars(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('llm_provider_errors', scope)) for (const msg of checkLlmProviderConfig(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('lzr_snapshot_warnings', scope)) for (const msg of checkLzrSnapshots(workspacePath, maxAge)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('llm_temperature_warnings', scope)) for (const msg of checkLlmTemperature(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('llm_context_window_warnings', scope)) for (const msg of checkLlmContextWindow(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('placeholder_input_warnings', scope)) for (const msg of checkPlaceholderInputs(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('lzr_coverage_info', scope)) for (const msg of checkLzrCoveragePerApp(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('lz_catalogue_provenance', scope)) for (const msg of ctx.lzCatalogueProvenance ?? []) { console.log(`  ${msg}`); }
+        if (isCheckInScope('source_accessibility_warnings', scope)) for (const msg of checkSourceAccessibility(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('seeded_asset_warnings', scope)) for (const msg of checkSeededAssets(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('run_accumulation_warnings', scope)) for (const msg of checkRunAccumulation(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('run_status_warnings', scope)) for (const msg of checkRunStatusMarkers(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('context_config_messages', scope)) for (const msg of checkContextConfig(workspacePath)) { console.log(`  ${msg}`); }
+        if (isCheckInScope('image_sidecar_warnings', scope)) for (const msg of checkImageSidecars(workspacePath)) { console.log(`  ${msg}`); }
 
         console.log(`\n  Machine fingerprint: ${fingerprint}  (needed when requesting a license key)`);
         if (licenseProbe.warning) {
@@ -1778,7 +2206,7 @@ export function registerHealthCheck(program: Command, host: HealthCheckHostDeps)
         // #2222 / #3170: text-format exit code and summary use the same
         // failure definition as the NDJSON fail_count (computeFailedProbes).
         const failCount = hcFailedProbes.length;
-        console.log(`\n${formatHealthCheckSummaryLine(hcFailedProbes)}`);
+        console.log(`\n${formatHealthCheckSummaryLine(hcFailedProbes, hcWarnedProbes)}`);
         // #2229: explicit exit so LLM gateway HTTP connections do not hold event loop.
         process.exit(failCount > 0 ? 1 : 0);
       }

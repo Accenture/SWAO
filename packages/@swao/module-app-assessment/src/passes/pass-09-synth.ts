@@ -23,13 +23,15 @@ import type { Signal } from '@swao/core';
 import { SIGNAL_SCHEMA_HINT, normalizeSignal } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 import { TARGET_CAPABILITY_GAP_TAG } from './infra-input-role.js';
-import type { LandingZoneResult } from '@swao/core';
 import { computeMigrationScores, type MigrationScores } from '../scoring/migration-scores.js';
 import {
   resolveDefaultCataloguePath,
-  loadCatalogue,
+  loadCatalogueDocument,
   deriveConstraints,
-  matchLandingZone,
+  marketScan,
+  lzCatalogueFitFileName,
+  MARKET_SCAN_MAX_REVIEW_AGE_DAYS,
+  type MarketScanResult,
 } from '@swao/core';
 
 // ---------------------------------------------------------------------------
@@ -280,7 +282,7 @@ function computeCoverageScore(priorSignals: Signal[]): number {
 export function buildSynthPrompt(
   priorSignals: Signal[],
   appId: string,
-  recommendedProvider?: string,
+  lz: SynthLzPromptContext = { targets: [] },
   scores?: MigrationScores,
 ): string {
   const bySeverity: Record<string, string[]> = {};
@@ -342,9 +344,21 @@ export function buildSynthPrompt(
     }
   }
 
-  if (recommendedProvider) {
-    lines.push('', `Recommended landing zone from catalogue matching: ${recommendedProvider}`);
-    lines.push('Use this provider name in your landing_zone field and migration_rationale.');
+  // #4481 (Design 012 section 5a): only the landing zones selected for the run
+  // reach the LLM; the bundled provider list only when the market scan is on.
+  lines.push('', '--- LANDING ZONES SELECTED FOR THIS RUN ---');
+  if (lz.targets.length > 0) {
+    lines.push(`Selected targets (assessed by the LZ catalogue fit of this run): ${lz.targets.map(lzTargetLabel).join(', ')}`);
+    lines.push('landing_zone must be one of these targets (provider/region) or an empty string; do not name any other provider.');
+  } else {
+    lines.push('No landing zone was selected for this run. Set landing_zone to an empty string and do not name a provider.');
+  }
+  if (lz.marketScan && lz.marketScan.candidates.length > 0) {
+    lines.push('', '--- MARKET SCAN (bundled provider list, lower confidence; not a selected landing zone) ---');
+    for (const c of lz.marketScan.candidates.slice(0, 5)) {
+      lines.push(`${c.id}: fit ${c.disqualified ? 'disqualified' : c.fit_score.toFixed(2)} (reviewed ${c.last_reviewed})`);
+    }
+    lines.push('You may mention the market scan in recommended_next_steps as an option to assess; never as the landing_zone.');
   }
 
   if (priorSignals.length > 0) {
@@ -444,6 +458,84 @@ export function extractJsonObject(raw: string): unknown {
   try { return JSON.parse(candidate.slice(first, last + 1)); } catch { return null; }
 }
 
+/** #4481: skip reason of a service run (a service assessment has no LZ catalogue target; same wording as the baseline decisions in assess.ts). */
+// #4511: a service run with no selected target (the workspace sets none); with a target it is matched like an application run.
+export const SERVICE_NO_LZ_TARGET_REASON = 'no landing zone selected for the service assessment';
+
+/** #4481: LZ context of the synthesis prompt (selected targets, optional market scan). */
+export interface SynthLzPromptContext {
+  targets: ReadonlyArray<{ provider: string; region: string }>;
+  marketScan?: MarketScanResult;
+}
+
+function lzTargetLabel(t: { provider: string; region: string }): string {
+  return `${t.provider}/${t.region}`;
+}
+
+/**
+ * #4481: true when an LLM landing_zone value names a selected target: the
+ * provider/region label (also provider:region), the provider id alone, or a
+ * value that starts with the provider id followed by a separator.
+ */
+export function landingZoneInSelection(value: string, targets: ReadonlyArray<{ provider: string; region: string }>): boolean {
+  const v = value.trim().toLowerCase();
+  return targets.some((t) => {
+    const p = t.provider.toLowerCase();
+    const r = t.region.toLowerCase();
+    if (v === `${p}/${r}` || v === `${p}:${r}` || v === p) return true;
+    if (!v.startsWith(p)) return false;
+    const next = v.charAt(p.length);
+    return next === '/' || next === ':' || next === '_' || next === '-' || next === ' ';
+  });
+}
+
+/**
+ * #4481 (Design 012 section 5a): the landing-zone fields of the synthesis
+ * assessment. Default: the targets selected for the run with the name of the
+ * catalogue fit file each is written to (the inline fit runs after the
+ * passes), or the skip reason when none is selected. With the market scan on:
+ * also the scored bundled provider list, lower confidence, with its version,
+ * review dates and sources; providers not reviewed within 180 days are listed
+ * without a fit score and named in the run log.
+ */
+export function synthLandingZoneContext(
+  targets: ReadonlyArray<{ provider: string; region: string }>,
+  opts: { marketScan: boolean; priorSignals: Signal[]; assessedAt: string; cataloguePath?: string | null; service?: boolean },
+): { context: Record<string, unknown>; marketScan?: MarketScanResult } {
+  const context: Record<string, unknown> = targets.length > 0
+    ? {
+      landing_zone_targets: targets.map((t) => ({
+        provider: t.provider,
+        region: t.region,
+        fit_file: lzCatalogueFitFileName(t.provider, t.region, targets.length),
+      })),
+    }
+    : { landing_zone_match_skipped_reason: opts.service ? SERVICE_NO_LZ_TARGET_REASON : 'no landing zone selected' };
+  if (!opts.marketScan) return { context };
+  const cataloguePath = opts.cataloguePath !== undefined ? opts.cataloguePath : resolveCloudProviderCataloguePath();
+  if (!cataloguePath) {
+    context['landing_zone_market_scan_skipped_reason'] = 'cloud-provider-catalogue.yaml not found';
+    return { context };
+  }
+  try {
+    const scan = marketScan(
+      loadCatalogueDocument(cataloguePath),
+      deriveConstraints(opts.priorSignals),
+      opts.assessedAt,
+      computeCoverageScore(opts.priorSignals),
+      MARKET_SCAN_MAX_REVIEW_AGE_DAYS,
+    );
+    context['landing_zone_market_scan'] = scan;
+    if (scan.not_reviewed.length > 0) {
+      console.log(`[info] SYNTH market scan: ${scan.not_reviewed.length} provider(s) not reviewed within ${scan.max_review_age_days} days, listed without a fit score: ${scan.not_reviewed.map((p) => p.id).join(', ')}`);
+    }
+    return { context, marketScan: scan };
+  } catch (err) {
+    context['landing_zone_market_scan_skipped_reason'] = `cloud-provider catalogue unreadable: ${(err as Error).message.split('\n')[0]}`;
+    return { context };
+  }
+}
+
 export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
   const { workspacePath, appId, iter, assessedAt, llm } = ctx;
 
@@ -461,31 +553,20 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
     return llmSkipResult({ id: 9, name: 'synthesis', signalPrefix: 'SYNTH', iter, assessedAt, assessment: scoreFields });
   }
 
-  // Landing zone matching sub-pass: runs before LLM call to inform the prompt
-  let landingZoneResult: LandingZoneResult | undefined;
-  let landingZoneSkipReason: string | undefined;
-  const cataloguePath = resolveCloudProviderCataloguePath();
-  if (!cataloguePath) {
-    landingZoneSkipReason = 'cloud-provider-catalogue.yaml not found';
-  } else {
-    try {
-      const providers = loadCatalogue(cataloguePath);
-      const constraints = deriveConstraints(priorSignals);
-      const coverageScoreForLz = computeCoverageScore(priorSignals);
-      landingZoneResult = matchLandingZone(providers, constraints, {}, coverageScoreForLz);
-    } catch (err) {
-      landingZoneSkipReason = `cloud-provider catalogue unreadable: ${(err as Error).message.split('\n')[0]}`;
-    }
-  }
-  const lzContext: Record<string, unknown> = {
-    ...(landingZoneResult ?? {}),
-    ...(landingZoneSkipReason ? { landing_zone_match_skipped_reason: landingZoneSkipReason } : {}),
-  };
+  // #4481 (Design 012 section 5a): the landing zones selected for the run, and
+  // the opt-in market scan over the bundled provider list.
+  const lzTargets = ctx.lzTargets ?? [];
+  const { context: lzContext, marketScan: lzMarketScan } = synthLandingZoneContext(lzTargets, {
+    marketScan: ctx.lzMarketScan === true,
+    priorSignals,
+    assessedAt,
+    service: ctx.assessmentType === 'service',
+  });
 
   // Read the LZR verdict from 23-lzr.yaml of THIS run (Pass 23 runs before SYNTH, #3152).
   const lzrVerdictInfo = readLzrVerdict(workspacePath, ctx.passesDir);
 
-  const prompt = buildSynthPrompt(priorSignals, appId, landingZoneResult?.recommended_landing_zone, migrationScores);
+  const prompt = buildSynthPrompt(priorSignals, appId, { targets: lzTargets, ...(lzMarketScan ? { marketScan: lzMarketScan } : {}) }, migrationScores);
   const raw = await llm.complete(prompt);
 
   // #3158: an unusable answer degrades this pass (SYNTH-00, not_applicable)
@@ -520,6 +601,13 @@ export async function runSynthPass(ctx: PassContext): Promise<PassResult> {
   parsed.assessment['seven_r_label'] = sevenR;
   if (sevenR !== sevenRRaw) {
     console.log(`[info] SYNTH pass: normalised seven_r_label "${String(sevenRRaw)}" -> "${sevenR}"`);
+  }
+
+  // #4481: the landing zone the LLM names must be a selected target.
+  const llmLz = parsed.assessment['landing_zone'];
+  if (typeof llmLz === 'string' && llmLz.trim() !== '' && !landingZoneInSelection(llmLz, lzTargets)) {
+    console.warn(`[warn] SYNTH pass: landing_zone "${llmLz.slice(0, 60)}" is not a landing zone selected for this run; cleared.`);
+    parsed.assessment['landing_zone'] = '';
   }
 
   const modernizationPosition = parsed.assessment['modernization_position'];

@@ -14,7 +14,8 @@
 // ================================================================
 
 import { existsSync, readFileSync } from 'fs';
-import { credentialStore } from '@swao/core';
+import { credentialStore, resolveLzCredentials, LzCredentialExpiredError } from '@swao/core';
+import { readAzurePass23StateForScope } from '@swao/module-landing-zone';
 import type { LandingZoneReadinessResult, LZServiceCheck, LZQuotaCheck, LZPolicyCheck, LZBlockerItem, LZNetworkCheck } from '../../schema/wsp-lzr.js';
 
 // ---------------------------------------------------------------------------
@@ -27,6 +28,8 @@ export interface AzureAdapterConfig {
   landingZoneId: string;
   providerId: string;
   snapshotFile?: string;
+  // #3570: live credentials come from lz:<lzId>:<scopeId>:<field> (Design 120 section 6.2).
+  credentialScope?: { lzId: string; scopeId: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -213,11 +216,11 @@ export interface AzureCredentials {
   clientSecret: string;
 }
 
-export async function resolveAzureCredentials(): Promise<AzureCredentials> {
-  const tenantId = await credentialStore.getOrThrow('azure-tenant-id', 'Azure LZR adapter');
-  const clientId = await credentialStore.getOrThrow('azure-client-id', 'Azure LZR adapter');
-  const clientSecret = await credentialStore.getOrThrow('azure-client-secret', 'Azure LZR adapter');
-  return { tenantId, clientId, clientSecret };
+// #3570: scoped keys only; the Pass 23 keys azure-tenant-id, ... are moved by
+// moveLegacyLzCredentials() and no longer read (no dual-read fallback).
+export async function resolveAzureCredentials(scope: { lzId: string; scopeId: string }): Promise<AzureCredentials> {
+  const c = await resolveLzCredentials(credentialStore, scope.lzId, scope.scopeId, ['tenant-id', 'client-id', 'client-secret']);
+  return { tenantId: c['tenant-id'], clientId: c['client-id'], clientSecret: c['client-secret'] };
 }
 
 // ---------------------------------------------------------------------------
@@ -236,26 +239,41 @@ export async function runAzureChecks(
   }
 
   // Live mode: resolve credentials then call Azure ARM / Policy Insights APIs
-  const _creds = await resolveAzureCredentials();
-  // TODO(#0108): implement live Azure ARM + Policy Insights calls using _creds + config.subscriptionId
-  return {
-    provider_id: config.providerId,
-    landing_zone_id: config.landingZoneId,
-    assessed_at: new Date().toISOString(),
-    ingestion_strategy: 'cloud_native',
-    blockers: [],
-    warnings: [
-      {
-        check_id: 'LZ-WARN-01',
-        category: 'service',
-        description: 'Live Azure API assessment not yet implemented; results are incomplete',
-        evidence: [],
-      },
-    ],
-    service_checks: [],
-    quota_checks: [],
-    policy_checks: [],
-    network_checks: [],
-    overall_verdict: 'advisory',
-  };
+  if (!config.credentialScope) {
+    throw new Error('[credential] Azure live mode needs a registered landing zone scope (landing_zones in .swao.yml) with lz:<lz-id>:<scope-id>:tenant-id, client-id and client-secret');
+  }
+  // Missing or legacy-only scoped keys refuse before any request (#3570).
+  await resolveAzureCredentials(config.credentialScope);
+  const scope = config.credentialScope;
+  try {
+    // #3575 (Design 120 section 7.5): the live reads run on the `azure` driver
+    // transport (read-only allow-list, endpoint seam, service principal token,
+    // Resource Graph). Policy compliance is not read live yet (no Policy
+    // Insights route in the driver), so the live result says so in a warning
+    // instead of reporting a pass.
+    const state = await readAzurePass23StateForScope({ lzId: scope.lzId, scopeId: scope.scopeId, subscriptionId: config.subscriptionId, store: credentialStore });
+    const result = buildFromSnapshot({ ...state }, requiredServices, config);
+    return {
+      ...result,
+      policy_checks: [],
+      warnings: [...result.warnings, { check_id: 'LZ-WARN-03', category: 'policy', description: 'Azure Policy compliance is not read on the live path yet (#3575); no policy check reported', evidence: [] }],
+      input_type: 'live_api' as const,
+    };
+  } catch (err) {
+    if (err instanceof LzCredentialExpiredError) throw err;
+    return {
+      provider_id: config.providerId,
+      landing_zone_id: config.landingZoneId,
+      assessed_at: new Date().toISOString(),
+      ingestion_strategy: 'cloud_native',
+      blockers: [],
+      warnings: [{ check_id: 'LZ-WARN-02', category: 'service', description: `Live Azure API call failed: ${(err as Error).message}`, evidence: [] }],
+      service_checks: [],
+      quota_checks: [],
+      policy_checks: [],
+      network_checks: [],
+      overall_verdict: 'advisory',
+      input_type: 'live_api' as const,
+    };
+  }
 }

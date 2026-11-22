@@ -23,6 +23,12 @@ Projekt kombinieren?
 | **LLM** | Empfohlen. Statische Passes laufen ohne; `data`, `ctx`, `synth`, `comp` und `blocks` benötigen eines | Empfohlen für Kontext-, Synthese- und Compliance-Pass; Erfassung, Recherche und Scoring sind deterministisch | Nicht verwendet. Die Bewertung ist vollständig deterministisch | Erforderlich: Die verglichenen LLMs sind Gegenstand der Bewertung |
 | **Lizenzstufe** | Alle Stufen. Workspace-weite Läufe (`--portfolio`) erfordern Enterprise | Alle Stufen. Die Portfolio-Arbeitsmappe (`swao service export`) erfordert Enterprise | Alle Stufen. `swao lz catalogue update` ab Consultant | Alle Stufen (siehe [LLM-Seite](/de/assessment/llm#lizenzstufe)) |
 
+Ein fünfter Typ, die [Landing-Zone-Live-Bewertung](/de/assessment/landing-zone-live)
+(`swao assess --type landing-zone-live --lz <lz-id>`), liest statt einer Anwendung eine
+bereitgestellte Landing Zone über die nur lesenden APIs des Anbieters. Sie braucht eine mit
+`swao lz connect` registrierte Landing Zone und deren Zugangsdaten im SWAO-Vault, nutzt
+kein LLM und braucht Consultant oder höher (Verbinden und Prüfen gehen in jeder Edition).
+
 SWAO nennt für keinen Typ feste Laufzeiten. Die Dauer hängt von der Größe des
 Quellcodes oder Portfolios, den gewählten Passes, dem LLM-Anbieter und dessen
 Ratenlimits ab. `swao assess --stats` gibt nach jedem Lauf eine Zeittabelle je Pass aus,

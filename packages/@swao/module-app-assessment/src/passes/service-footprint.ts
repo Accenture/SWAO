@@ -38,7 +38,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { loadAll } from 'js-yaml';
-import { isTestPath, listInputFiles, listSourceFiles, type Signal } from '@swao/core';
+import { isTestPath, listInputFiles, listSourceFiles, readAppSourceRoot, reportPassProgress, type Signal } from '@swao/core';
 import type { DependencyInventory, DependencyRef } from './inv-reference-scans.js';
 import { imageRepository } from './inv-reference-scans.js';
 import type { ServiceFootprintCatalogue, ServiceFootprintCapability, ServiceFootprintCategory } from '../catalogue/service-footprint-catalogue.js';
@@ -404,7 +404,10 @@ function scanSourceConfigAndManifests(
     purpose: 'config',
     extensions: ['.yaml', '.yml', '.properties', '.xml', '.sql'],
   });
+  let seen = 0;
   for (const f of files) {
+    // #4266: synchronous file reads; the sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase: 'inventory:service_config', files: ++seen });
     if (f.isTest || f.isGenerated) continue;
     const lower = f.name.toLowerCase();
     const isChangelog = lower.includes('changelog') && f.ext !== '.properties';
@@ -486,12 +489,18 @@ function scanDocuments(
     if (text === null) continue;
     budget--;
     counts.docs++;
+    reportPassProgress({ phase: 'inventory:service_docs', files: counts.docs });
     scanDocText(cat, text, f.rel, acc);
   }
   if (!workspacePath) return;
   const inputsDir = join(workspacePath, 'wsp', 'inputs');
   const roles = readWorkspaceInfraRoles(workspacePath);
-  for (const f of listInputFiles(inputsDir, { skipTopLevelDirs: INPUT_SKIP_TOP_DIRS })) {
+  // #4266: a source clone configured elsewhere under wsp/inputs/ (source.path) is the
+  // source tree, read above through the source scope; the input walk does not
+  // descend into it, nor into a .git or node_modules folder.
+  const baseRel = readAppSourceRoot(workspacePath).baseRelToApp;
+  const cloneUnderInputs = baseRel && baseRel.startsWith('wsp/inputs/') ? [baseRel.slice('wsp/inputs/'.length)] : [];
+  for (const f of listInputFiles(inputsDir, { skipTopLevelDirs: INPUT_SKIP_TOP_DIRS, skipDirNames: ['.git', 'node_modules'], skipRelDirs: cloneUnderInputs })) {
     if (budget <= 0) return;
     if (!DOC_EXTENSIONS.has(f.ext)) continue;
     // #3429: a target-role input describes the candidate landing zone, not the application.
@@ -500,6 +509,7 @@ function scanDocuments(
     if (text === null) continue;
     budget--;
     counts.docs++;
+    reportPassProgress({ phase: 'inventory:service_docs', files: counts.docs });
     scanDocText(cat, text, `wsp/inputs/${f.rel}`, acc);
   }
 }

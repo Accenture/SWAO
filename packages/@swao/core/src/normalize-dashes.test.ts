@@ -52,8 +52,8 @@ describe('normalizeDashes (#3291)', () => {
     expect(normalizeDashes('   \t ')).toBe('   \t ');
     expect(normalizeDashes('\u2014')).toBe(', ');
     expect(normalizeDashes(' \t\u2014 \t')).toBe(', ');
-    expect(normalizeDashes('a \u2014 \u2014 b')).toBe('a, , b');
-    expect(normalizeDashes('a\u2014\u2014b')).toBe('a, , b');
+    expect(normalizeDashes('a \u2014 \u2014 b')).toBe('a, b');
+    expect(normalizeDashes('a\u2014\u2014b')).toBe('a, b');
     expect(normalizeDashes('Gr\u00f6\u00dfe \u2014 \u00fcbersicht')).toBe('Gr\u00f6\u00dfe, \u00fcbersicht');
   });
 
@@ -69,8 +69,19 @@ describe('normalizeDashes (#3291)', () => {
       let s = '';
       const len = rnd(16);
       for (let i = 0; i < len; i++) s += alphabet[rnd(alphabet.length)];
-      expect(normalizeDashes(s), JSON.stringify(s)).toBe(oracle(s));
+      // #4467: adjacent separators collapse into one comma; the oracle (no
+      // comma in the alphabet) is exact whenever it produces no doubled comma.
+      const expected = oracle(s);
+      if (/,\s*,/.test(expected)) expect(normalizeDashes(s), JSON.stringify(s)).not.toMatch(/,[ \t]*,/);
+      else expect(normalizeDashes(s), JSON.stringify(s)).toBe(expected);
     }
+  });
+
+  it('collapses a replaced double dash next to an existing comma into one comma (#4467)', () => {
+    expect(normalizeDashes('password_hash TEXT NOT NULL,  -- argon2id hash')).toBe('password_hash TEXT NOT NULL, argon2id hash');
+    expect(normalizeDashes('a, \u2014 b')).toBe('a, b');
+    expect(normalizeDashes('a -- , b')).toBe('a, b');
+    expect(normalizeDashes('a -- b')).toBe('a, b');
   });
 
   it('stays fast on 50 000 blanks without a dash and around a dash', () => {

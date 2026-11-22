@@ -1,0 +1,41 @@
+# SWAO community framework metadata (design 029 section 2.3 and section 11)
+# Client LZ Policy Baseline (Design 123, #3863; owner decisions D-01 to D-19).
+#
+# The baseline settings live in the sibling policy-baseline.yaml (strict
+# schema, @swao/core policy-baseline.ts), never here: FrameworkMetaSchema is
+# not strict and would drop them silently (Design 123 section 4).
+# No sovereignty_requirements block: the residency policies of
+# policy-baseline.yaml are the framework's sovereignty declaration, so there is
+# one source (Design 123 section 8.2).
+
+framework:
+  id: CLIENT_LZ_POLICY_BASELINE
+  name: "Client LZ Policy Baseline (German public agency default)"
+  version: "1.0.0"
+  authority: "SWAO default for a German public agency; not an official publication"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - de_sovereign
+    - public_sector
+    - german_public_sector
+    - cloud
+  assessment_type_scope: [app, lz]
+  description: >-
+    Normalised, cross-CSP landing zone policy baseline that a client copies
+    into its workspace and edits to express its own organisation rules. The
+    shipped default is a standard ruleset for a German public agency: data
+    residency in Germany, BSI C5 and IT-Grundschutz oriented controls,
+    customer-managed keys, no public exposure by default, logging and
+    retention, and a restricted service list where sovereignty requires it.
+    This catalogue covers 20 controls, one per policy of policy-baseline.yaml,
+    across 11 categories. Each default names its source control or is marked
+    as an assumption.
+  references:
+    - "https://accenture.github.io/SWAO/en/"
+  catalogue_version: "1.0.0"
+  last_reviewed: "2026-11-05"
+
+  replaces: []

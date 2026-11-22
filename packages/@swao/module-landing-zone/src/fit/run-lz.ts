@@ -16,7 +16,7 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
-import { findRegion, type WspResult, type LzScanResult, type LzServiceCatalogue } from '@swao/core';
+import { findRegion, loadPolicyBaseline, policyBaselineSovereigntyRequirements, type WspResult, type LzRequirementProvenance, type LzScanResult, type LzServiceCatalogue } from '@swao/core';
 import {
   resolveProviderCatalogue,
   LzCatalogueSchemaError,
@@ -54,6 +54,12 @@ export interface AssembleLzInput {
   frameworkDecls?: FrameworkSovereigntyDecl[];
   cataloguesDir?: string;
   assessedAt?: string;
+  /** #3888 (Design 123 section 8.4, D-12): capability -> id of the enabled baseline service_deny policy
+   *  (`baselineServiceDenies`); a needed capability in it is BLOCKED_BY_POLICY with evidence `baseline:<id>`. */
+  baselineDenies?: ReadonlyMap<string, string>;
+  /** #3920 (Design 123 section 9.3): value-level requirement provenance, set only when the
+   *  app selected a client policy baseline; copied to the fit report's `requirement_provenance`. */
+  requirementProvenance?: readonly LzRequirementProvenance[];
 }
 
 export type AssembleLzResult =
@@ -105,6 +111,30 @@ interface ScannedFrameworkMeta {
   contributorName?: string;
 }
 
+/**
+ * #3871 (Design 123 sections 6.1 and 8.2): a Client LZ Policy Baseline declares its
+ * sovereignty requirements through the enabled region_residency policies of its
+ * policy-baseline.yaml, joined (union) with any block of framework-meta.yaml. An
+ * absent or invalid baseline file adds nothing (the live run refuses an invalid one).
+ */
+function withBaselineResidency(frameworkDir: string, frameworkId: string, declared: SovereigntyReqs): SovereigntyReqs {
+  const loaded = loadPolicyBaseline(frameworkDir, frameworkId);
+  if (loaded.status !== 'ok') return declared;
+  const fromPolicies = policyBaselineSovereigntyRequirements(loaded.baseline);
+  if (!fromPolicies) return declared;
+  const union = (a?: string[], b?: string[]): string[] | undefined => {
+    const set = new Set([...(a ?? []), ...(b ?? [])]);
+    return set.size > 0 ? [...set] : undefined;
+  };
+  const merged: NonNullable<SovereigntyReqs> = { ...(declared ?? {}) };
+  const keys = ['require_residency_country', 'require_operator_jurisdiction', 'forbid_exposure', 'require_certifications'] as const;
+  for (const k of keys) {
+    const v = union(declared?.[k], fromPolicies[k]);
+    if (v) merged[k] = v;
+  }
+  return merged;
+}
+
 /** Populate `byId` with framework metas read from a directory of framework subfolders.
  *  Entries already present in `byId` are NOT overwritten (caller controls priority). */
 function scanMetaDir(dir: string, byId: Map<string, ScannedFrameworkMeta>): void {
@@ -135,7 +165,7 @@ function scanMetaDir(dir: string, byId: Map<string, ScannedFrameworkMeta>): void
           byId.set(fwId, {
             id: fwId,
             name: typeof raw?.framework?.name === 'string' ? raw.framework.name : undefined,
-            sovereignty_requirements: raw?.framework?.sovereignty_requirements,
+            sovereignty_requirements: withBaselineResidency(join(dir, entry.name), fwId, raw?.framework?.sovereignty_requirements),
             description: typeof raw?.framework?.description === 'string'
               ? raw.framework.description.replace(/\s+/g, ' ').trim() : undefined,
             authority: typeof raw?.framework?.authority === 'string' ? raw.framework.authority : undefined,
@@ -314,6 +344,8 @@ export function assembleLandingZoneWsp(input: AssembleLzInput): AssembleLzResult
     sovereigntyRequirements,
     assessedAt,
     catalogueMode,
+    ...(input.baselineDenies ? { baselineDenies: input.baselineDenies } : {}),
+    ...(input.requirementProvenance ? { requirementProvenance: input.requirementProvenance } : {}),
   });
   return { ok: true, wsp, notice: scanNotice, catalogueOrigin, catalogueFile };
 }

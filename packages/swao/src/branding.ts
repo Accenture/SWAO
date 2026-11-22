@@ -19,9 +19,24 @@
 // from here -- prevents drift between the TUI, CLI error messages,
 // and docs.
 
+import { buildProvenance, buildTag, versionWithBuild } from '@swao/core';
+
 // Kept as a literal so release-version-consistency.gate.mjs can parse it.
 // bump-version.mjs updates this constant in lockstep with package.json.
-export const SWAO_VERSION = '1.6.1';
+export const SWAO_VERSION = '1.7.0';
+
+// #4430: the build that produced this bundle (stamped by scripts/build-lib.mjs
+// buildBundle; "source" for `node dist/index.js`). SWAO_VERSION stays the plain
+// semver: manifests (`swao_version`), the LLM comparability key and the MCP
+// server info keep it; the label is for operator-facing version lines.
+/** e.g. "1.6.1 (4c8dd01e, 2026-11-14)" in a dev binary; "1.6.1 (source)" for a source run; plain "1.6.1" in every other build. */
+export const SWAO_VERSION_LABEL = versionWithBuild(SWAO_VERSION);
+/** e.g. "4c8dd01e, 2026-11-14" (the part in the brackets of SWAO_VERSION_LABEL); null when the build does not show it. */
+export const SWAO_BUILD_TAG = buildTag();
+/** " (4c8dd01e, 2026-11-14)" or "" when the build does not show it. */
+export const SWAO_BUILD_SUFFIX = SWAO_BUILD_TAG ? ` (${SWAO_BUILD_TAG})` : '';
+/** `{ build_commit, build_date }` for log start events and run manifests; empty in a non-dev build. */
+export const SWAO_BUILD = buildProvenance();
 
 export const SWAO_LANDING_URL = 'https://accenture.github.io/SWAO/en/';
 

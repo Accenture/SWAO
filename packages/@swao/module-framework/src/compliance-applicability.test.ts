@@ -140,6 +140,12 @@ describe('assessmentScopeTokens (#3425)', () => {
     expect(assessmentScopeTokens('llm')).toEqual(['llm']);
     expect(assessmentScopeTokens('workshop')).toBeNull();
   });
+
+  it('maps landing-zone-live to the lz scope and treats the retired token as unknown (#3568)', () => {
+    expect(assessmentScopeTokens('landing-zone-live')).toEqual(['lz']);
+    expect(assessmentScopeTokens('landing-zone-catalog')).toEqual(['lz']);
+    expect(assessmentScopeTokens(['landing', 'zone', 'customer'].join('-'))).toBeNull();
+  });
 });
 
 describe('controlApplicability (#3425)', () => {

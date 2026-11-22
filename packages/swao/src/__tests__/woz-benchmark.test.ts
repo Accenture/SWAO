@@ -13,10 +13,11 @@
 //
 // ================================================================
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { readdirSync, readFileSync, existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { readdirSync, readFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { runInvPass } from '../passes/index.js';
 import { runStatePass } from '../passes/index.js';
@@ -96,6 +97,67 @@ function loadWozSignalIds(appId: string): Set<string> {
 }
 
 const FIXTURES = ['ghostfolio', 'medplum', 'sovereign-health'] as const;
+
+// #3800: the benchmark must not depend on the network. Pass 05 queried the
+// public OSV API, so an unreachable api.osv.dev in CI added SBOM-00 to the
+// signal set and broke the snapshot. The suite points Pass 05 at an empty
+// offline OSV database (SWAO_OSV_DB_PATH): the lookup is "available" with no
+// advisories, exactly like a reachable API returning none, so the snapshot
+// (SBOM-01 plus the catalogue-driven SBOM-02/03) stays the same and no
+// request leaves the process. Proxy variables are cleared so any request
+// that still happened would go through the stubbed global fetch below and
+// fail the "no network" test instead of reaching a proxy.
+const NETWORK_ENV = ['SWAO_OSV_DB_PATH', 'SWAO_OSV_OFFLINE', 'SWAO_OSV_BASE_URL', 'HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy'] as const;
+const savedEnv: Partial<Record<(typeof NETWORK_ENV)[number], string>> = {};
+const fetchCalls: string[] = [];
+let osvDir = '';
+
+beforeAll(() => {
+  for (const k of NETWORK_ENV) {
+    const v = process.env[k];
+    if (v !== undefined) savedEnv[k] = v;
+    delete process.env[k];
+  }
+  osvDir = mkdtempSync(join(tmpdir(), 'swao-woz-osv-'));
+  const db = join(osvDir, 'osv-empty.json');
+  writeFileSync(db, '[]', 'utf-8');
+  process.env['SWAO_OSV_DB_PATH'] = db;
+  vi.stubGlobal('fetch', async (input: unknown) => {
+    fetchCalls.push(String(input instanceof Request ? input.url : input));
+    throw new Error('network access is not allowed in the WoZ benchmark (#3800)');
+  });
+});
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+  for (const k of NETWORK_ENV) delete process.env[k];
+  Object.assign(process.env, savedEnv);
+  rmSync(osvDir, { recursive: true, force: true });
+});
+
+beforeEach(() => { fetchCalls.length = 0; });
+
+describe('WoZ benchmark -- no network (#3800)', () => {
+  it('runs every engine pass of every fixture without a network request and without SBOM-00', async () => {
+    for (const appId of FIXTURES) {
+      const ids = (await runAllPasses(appId)).map(s => s.id);
+      expect(ids, appId).not.toContain('SBOM-00');
+    }
+    expect(fetchCalls).toEqual([]);
+  }, 60000);
+
+  it('the guard works: a pass that reaches the network is recorded (OSV database removed)', async () => {
+    const db = process.env['SWAO_OSV_DB_PATH'];
+    delete process.env['SWAO_OSV_DB_PATH'];
+    try {
+      const ids = (await runAllPasses('ghostfolio')).map(s => s.id);
+      expect(fetchCalls.some(u => u.includes('/v1/querybatch'))).toBe(true);
+      expect(ids).toContain('SBOM-00');
+    } finally {
+      process.env['SWAO_OSV_DB_PATH'] = db;
+    }
+  }, 30000);
+});
 
 for (const appId of FIXTURES) {
   describe(`WoZ benchmark -- ${appId}`, () => {

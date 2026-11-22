@@ -40,7 +40,7 @@ Browse and download catalogues from GitHub:
 | `delos.json` | Delos Cloud (SAP / Arvato Systems, DE) |
 | `gcp.json` | Google Cloud Platform (EU regions) |
 | `oci.json` | Oracle Cloud Infrastructure (EU / OCI sovereign) |
-| `otc.json` | Open Telekom Cloud (T-Systems, DE / EU) |
+| `otc.json` | T Cloud Public, formerly Open Telekom Cloud (T-Systems, DE / EU) |
 | `stackit.json` | STACKIT (Schwarz Group, DE / EU) |
 
 There is no index file. SWAO builds the catalogue list by scanning this

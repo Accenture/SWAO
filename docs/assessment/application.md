@@ -239,13 +239,26 @@ swao assess --portfolio
    the application ID, the Git repository URL, the branch or ref and the app
    subdirectory, and optionally the Playwright crawl URL and login credentials (stored
    in the credential vault).
-3. Optionally choose a **Target Landing Zone**: pick a cloud provider, filter and select
+3. Choose the frameworks and the passes of this run. They start from the app defaults
+   (`assessment.regimes_active`, `assessment.pass_profile`) and apply to this run only
+   (`swao assess --regimes <ids|none> --passes <list>`; an app LLM provider chosen in the
+   credential hub becomes `--llm-provider <type>`). When a choice differs from the default,
+   SWAO asks "Save as the new default for this app?" (default No); Yes changes only that
+   key in `apps/<id>/.swao.yml` and keeps its comments.
+4. Optionally choose a **Target Landing Zone**: pick a cloud provider, filter and select
    one or more target regions. SWAO then runs the inline landing zone fit together with
-   the passes. The pickers are pre-selected from this app's last run (ADR-0067: targets
-   are chosen per run, not stored in `.swao.yml` by the wizard); change them for this run,
-   or leave the selection empty to run with no landing zone fit (`--no-lz-fit`).
-4. Confirm. A live progress view shows each pass as it completes.
-5. When the run finishes, continue to **4 Generate Report**, **5 Publish HTML** or
+   the passes. The pickers are pre-selected with the set-up targets
+   (`assessment.landing_zone.targets`, app then workspace); a geography such as
+   `azure:germany` is shown and pre-selected as its default region
+   (`azure:germanywestcentral`), exactly as `swao assess --app <id>` resolves it. Without
+   set-up targets the last run's targets are pre-selected. Change them for this run, or
+   leave the selection empty to run with no landing zone fit (`--no-lz-fit`). A provider
+   left without a region is named before the run. `run-context.yaml` records where the
+   targets came from (`lz_targets_source`). An app linked to a live landing zone scope is
+   still assessed against the static catalogue, with a warning: live landing zone data is
+   used only by the Landing Zone Live Assessment.
+5. Confirm. A live progress view shows each pass as it completes.
+6. When the run finishes, continue to **4 Generate Report**, **5 Publish HTML** or
    **6 Export BI** from the main menu.
 
 ---

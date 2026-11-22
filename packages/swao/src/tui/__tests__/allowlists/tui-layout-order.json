@@ -1,0 +1,5 @@
+{
+  "gate": "G-07",
+  "rule": "screen not rendered through ScreenLayout",
+  "entries": {}
+}

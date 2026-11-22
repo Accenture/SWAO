@@ -20,7 +20,7 @@ import { readFileSync, mkdtempSync, rmSync, chmodSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { createPostRunTimer, rebuildPortfolioSummaryStep, incrementAssessmentCounterStep } from './post-run-timing.js';
+import { createPostRunTimer, rebuildPortfolioSummaryStep, incrementAssessmentCounterStep, createPortfolioProgressLogger, createPortfolioPhaseLogger } from './post-run-timing.js';
 import { LicenseGuard, _paths } from '../license/license-guard.js';
 
 interface Ev { scope: 'app' | 'portfolio'; level: string; code: string; context: Record<string, unknown> }
@@ -174,6 +174,46 @@ describe('portfolio summary rebuild after a closed run (#3309)', () => {
   });
 });
 
+describe('portfolio_summary start context and progress (#4271)', () => {
+  it('the start event carries apps_total', () => {
+    const { timer, events } = harness([0, 10]);
+    rebuildPortfolioSummaryStep(timer, 'complete', () => 1, () => {}, { apps_total: 235 });
+    expect(events[0]!.code).toBe('assess.post_run.portfolio_summary.start');
+    expect(events[0]!.context).toMatchObject({ step: 'portfolio_summary', apps_total: 235, run_id: 'run-1' });
+  });
+
+  it('logs progress at most once per interval and never for the last app', () => {
+    const events: Ev[] = [];
+    let t = 0;
+    const progress = createPortfolioProgressLogger({
+      app: 'hosapp001', runId: 'run-1', assessmentType: 'service', intervalMs: 10_000, now: () => t,
+      logApp: ((_a: string, level: string, code: string, _m: string, o?: { context?: Record<string, unknown> }) => { events.push({ scope: 'app', level, code, context: o?.context ?? {} }); }) as never,
+      logPortfolio: ((level: string, code: string, _m: string, o?: { context?: Record<string, unknown> }) => { events.push({ scope: 'portfolio', level, code, context: o?.context ?? {} }); }) as never,
+    });
+    // 235 apps at 0.7 s each: a 164 s cold rebuild.
+    for (let done = 1; done <= 235; done += 1) { t = done * 700; progress({ done, total: 235, cached: 0 }); }
+    const app = events.filter((e) => e.scope === 'app');
+    expect(app.length).toBe(15);
+    expect(app.every((e) => e.code === 'assess.post_run.portfolio_summary.progress')).toBe(true);
+    expect(app[0]!.context).toMatchObject({ apps_done: 15, apps_total: 235, apps_cached: 0, step: 'portfolio_summary' });
+    expect(events.filter((e) => e.scope === 'portfolio')[0]!.context['app']).toBe('hosapp001');
+  });
+
+  it('a fast rebuild writes no progress line', () => {
+    const events: unknown[] = [];
+    let t = 0;
+    const progress = createPortfolioProgressLogger({ app: 'a', runId: 'r', assessmentType: 'service', now: () => t, logApp: (() => events.push(1)) as never, logPortfolio: (() => events.push(1)) as never });
+    for (let done = 1; done <= 235; done += 1) { t = done * 3; progress({ done, total: 235, cached: done }); }
+    expect(events).toEqual([]);
+  });
+
+  it('assess.ts passes the run app, the progress logger and apps_total to the rebuild', () => {
+    const src = readFileSync(join(fileURLToPath(new URL('.', import.meta.url)), 'assess.ts'), 'utf-8');
+    expect(src).toContain('buildPortfolioSummary(workspaceRoot, { apmScoreFor: opts.app, onProgress: portfolioProgress, onPhase: portfolioPhase, onPhaseStart: portfolioPhase.start, onStats: (s) => { portfolioStats = s; } })');
+    expect(src).toContain('{ apps_total: countPortfolioApps(workspaceRoot) }');
+  });
+});
+
 describe('assessment counter post-run step (#3440)', () => {
   // A read-only state file makes writeFileSync fail (EPERM on Windows, EACCES
   // on POSIX) while reads still succeed. root ignores the mode bits.
@@ -287,5 +327,65 @@ describe('assessment counter without a post-run timer (#3440: LLM and LZ catalog
     ]);
     expect(events[0]!.context).toMatchObject({ step: 'assessment_counter', status: 'error', assessment_type: 'landing-zone-catalog', error: 'EPERM: locked' });
     expect(events[1]!.context['app']).toBe('app1');
+  });
+});
+
+describe('portfolio_summary phases and cache context (#4412)', () => {
+  it('the complete event carries the context of the build (cache state, phases)', () => {
+    const { timer, events } = harness([0, 35_390]);
+    rebuildPortfolioSummaryStep(timer, 'complete', () => 1, () => {}, { apps_total: 235 }, () => ({ cache: 'cold', cache_miss_reason: 'framework', phases_ms: { application_rows: 24_000 } }));
+    const done = events.find((e) => e.code === 'assess.post_run.portfolio_summary.complete')!;
+    expect(done.context).toMatchObject({ status: 'ok', duration_ms: 35_390, cache: 'cold', cache_miss_reason: 'framework', phases_ms: { application_rows: 24_000 } });
+  });
+
+  it('a step of 1 s or more logs its own phase line, a short one none', () => {
+    const events: Array<{ code: string; context: Record<string, unknown> }> = [];
+    const phase = createPortfolioPhaseLogger({
+      app: 'svc001', runId: 'run-1', assessmentType: 'service',
+      logApp: ((_a: string, _l: string, code: string, _m: string, o?: { context?: Record<string, unknown> }) => { events.push({ code, context: o?.context ?? {} }); }) as never,
+      logPortfolio: (() => {}) as never,
+    });
+    phase('service_rows', 400);
+    phase('application_rows', 24_980);
+    expect(events).toEqual([{ code: 'assess.post_run.portfolio_summary.phase', context: { run_id: 'run-1', assessment_type: 'service', step: 'portfolio_summary', phase: 'application_rows', duration_ms: 24_980 } }]);
+  });
+
+  it('a cross-app step logs its start, and then always its phase line, even when short (#4412)', () => {
+    const events: Array<{ code: string; context: Record<string, unknown> }> = [];
+    const phase = createPortfolioPhaseLogger({
+      app: 'svc001', runId: 'run-1', assessmentType: 'service',
+      logApp: ((_a: string, _l: string, code: string, _m: string, o?: { context?: Record<string, unknown> }) => { events.push({ code, context: o?.context ?? {} }); }) as never,
+      logPortfolio: (() => {}) as never,
+    });
+    phase.start('integration_graph');
+    phase('integration_graph', 25_000);
+    phase.start('waves');
+    phase('waves', 120);
+    phase('vendors', 120);
+    expect(events.map((e) => `${e.code}:${String(e.context['phase'])}`)).toEqual([
+      'assess.post_run.portfolio_summary.phase.start:integration_graph',
+      'assess.post_run.portfolio_summary.phase:integration_graph',
+      'assess.post_run.portfolio_summary.phase.start:waves',
+      'assess.post_run.portfolio_summary.phase:waves',
+    ]);
+  });
+});
+
+describe('post-pass step lines on stdout (#4498)', () => {
+  it('a step prints its name when it starts; the portfolio progress prints "n of m apps" at most every second', () => {
+    const printed: string[] = [];
+    const noop = (() => undefined) as never;
+    const timer = createPostRunTimer({ app: 'a', runId: 'r', assessmentType: 'application', logApp: noop, logPortfolio: noop, print: (l) => printed.push(l) });
+    timer.step('portfolio_summary', () => 1);
+    expect(printed).toEqual(['[post] Portfolio summary']);
+    let t = 0;
+    const progress = createPortfolioProgressLogger({ app: 'a', runId: 'r', assessmentType: 'application', now: () => t, logApp: noop, logPortfolio: noop, print: (l) => printed.push(l) });
+    progress({ done: 1, total: 235, cached: 0 });
+    t = 500; progress({ done: 50, total: 235, cached: 0 });
+    t = 1200; progress({ done: 106, total: 235, cached: 0 });
+    expect(printed.slice(1)).toEqual(['[post] Portfolio summary: 1 of 235 apps', '[post] Portfolio summary: 106 of 235 apps']);
+    const silent = createPostRunTimer({ app: 'a', runId: 'r', assessmentType: 'application', logApp: noop, logPortfolio: noop });
+    silent.step('findings', () => 1);
+    expect(printed).toHaveLength(3);
   });
 });

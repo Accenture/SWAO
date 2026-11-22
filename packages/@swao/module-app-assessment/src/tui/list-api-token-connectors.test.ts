@@ -19,7 +19,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { listApiTokenConnectors, BUILTIN_API_CONNECTORS } from './AssessScreen.js';
+import { listApiTokenConnectors, BUILTIN_API_CONNECTORS } from './assess-helpers.js';
 
 function makeTempDir(): string {
   return mkdtempSync(join(tmpdir(), 'swao-api-connectors-test-'));

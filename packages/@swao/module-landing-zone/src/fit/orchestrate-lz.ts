@@ -19,6 +19,7 @@ import {
   type LzRequiredService,
   type SovereigntyRequirements,
   type LzFitItem,
+  type LzFitVerdict,
 } from './lz-fit.js';
 
 /**
@@ -87,6 +88,41 @@ export function deriveSovereigntyRequirements(
   };
 }
 
+/** One merged requirement value and the frameworks that contributed it (#3871, D-11). */
+export interface SovereigntyRequirementProvenance {
+  requirement: 'residency_country' | 'operator_jurisdiction' | 'forbid_exposure' | 'certification';
+  value: string;
+  frameworks: string[];
+}
+
+/**
+ * Value-level provenance of the merged requirements of `deriveSovereigntyRequirements`
+ * (#3871, Design 123 section 8.2, D-11): for every requirement value the frameworks
+ * that declared it, in declaration order. A separate function so the merged
+ * requirements keep their shape (`derived_from` stays the framework list).
+ */
+export function sovereigntyRequirementProvenance(frameworks: readonly FrameworkSovereigntyDecl[]): SovereigntyRequirementProvenance[] {
+  const keys = [
+    ['residency_country', 'require_residency_country'],
+    ['operator_jurisdiction', 'require_operator_jurisdiction'],
+    ['forbid_exposure', 'forbid_exposure'],
+    ['certification', 'require_certifications'],
+  ] as const;
+  const out: SovereigntyRequirementProvenance[] = [];
+  for (const [requirement, field] of keys) {
+    const byValue = new Map<string, string[]>();
+    for (const fw of frameworks) {
+      for (const v of fw.sovereignty_requirements?.[field] ?? []) {
+        const list = byValue.get(v) ?? [];
+        if (!list.includes(fw.id)) list.push(fw.id);
+        byValue.set(v, list);
+      }
+    }
+    for (const [value, fws] of byValue) out.push({ requirement, value, frameworks: fws });
+  }
+  return out;
+}
+
 // --- Orchestration -------------------------------------------------------
 
 export interface OrchestrateLzInput {
@@ -99,13 +135,23 @@ export interface OrchestrateLzInput {
   assessedAt?: string;
   /** Forwarded from AssembleLzInput -- see LzFitInput.catalogueMode for semantics. */
   catalogueMode?: boolean;
+  /** #3888 (D-12): forwarded to computeLzFit (LzFitInput.baselineDenies). */
+  baselineDenies?: ReadonlyMap<string, string>;
+  /** #3920: forwarded to computeLzFit (LzFitInput.requirementProvenance). */
+  requirementProvenance?: readonly SovereigntyRequirementProvenance[];
 }
 
-const SEVERITY_BY_VERDICT: Record<string, Signal['severity']> = {
+/** Exhaustive over LzFitVerdict (#3569), so a new verdict cannot silently fall back. */
+export const SEVERITY_BY_VERDICT: Record<LzFitVerdict, Signal['severity']> = {
+  SUPPORTED: 'informational',
   SOVEREIGNTY_GAP: 'critical',
   NOT_AVAILABLE_IN_REGION: 'high',
+  BLOCKED_BY_POLICY: 'high',
   MISCONFIGURED: 'high',
   AVAILABLE_NOT_ENABLED: 'medium',
+  VERSION_MISMATCH: 'medium',
+  CAPABILITY_MISSING: 'medium',
+  UNVERIFIED: 'low',
 };
 
 /** Emit an LZ-NN signal per non-SUPPORTED fit item (a gap to act on). */
@@ -119,7 +165,7 @@ function gapSignals(items: LzFitItem[], assessedAt: string): Signal[] {
       id: `LZ-${String(n).padStart(2, '0')}`,
       source: 'static_analysis',
       category: 'infrastructure_platform',
-      severity: SEVERITY_BY_VERDICT[item.verdict] ?? 'medium',
+      severity: SEVERITY_BY_VERDICT[item.verdict],
       derivation: `${item.service_code}: ${item.verdict} -- ${item.detail}`,
       // #3430: provenance of the requirement (service footprint); documentation-only stays low.
       evidence: item.evidence ?? [],
@@ -141,6 +187,8 @@ export function orchestrateLandingZone(input: OrchestrateLzInput): WspResult {
     sovereigntyRequirements: input.sovereigntyRequirements,
     generatedAt: assessedAt,
     catalogueMode: input.catalogueMode,
+    ...(input.baselineDenies ? { baselineDenies: input.baselineDenies } : {}),
+    ...(input.requirementProvenance ? { requirementProvenance: input.requirementProvenance } : {}),
   });
 
   return {

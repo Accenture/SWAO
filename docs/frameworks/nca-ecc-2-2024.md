@@ -107,10 +107,9 @@ The demo variant is a live-presentation and first-run subset. Its selection prio
 The framework source (`framework-meta.yaml`, `controls.yaml` and any supporting files) is public. You can view it on GitHub and copy and paste it:
 
 - Framework source: <https://github.com/Accenture/SWAO/tree/main/community-frameworks/nca-ecc-2-2024>
-- Demo variant `NCA_ECC_DEMO`: <https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/nca-ecc-demo>
 - Overview of all community frameworks: <https://github.com/Accenture/SWAO/tree/main/community-frameworks>
 
-To customise the framework for one engagement, copy the folder `nca-ecc-2-2024` into your workspace at `wsp/inputs/catalogs/community/nca-ecc-2-2024/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework info NCA_ECC` prints the bundled metadata.
+To customise the framework for one engagement, copy the folder `nca-ecc-2-2024` into your workspace at `wsp/inputs/catalogs/community/nca-ecc-2-2024/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework list` lists the frameworks in the workspace.
 
 ## Limitations and notes
 

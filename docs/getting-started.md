@@ -342,6 +342,24 @@ This creates the workspace folder with, among other files:
                 └── source/      # put the application source code here
 ```
 
+#### Set up the assessment types you will run
+
+After the workspace part, the setup asks which assessments you will run and
+then sets up each one with its own steps, its own health check and its own
+Ready summary ([Workspace Setup](/workspace-setup)). From the command line:
+
+| Assessment type | Set up and check |
+|---|---|
+| Application Assessment (this guide) | `swao setup --type application` |
+| Service Portfolio Assessment | `swao setup --type service` (needs the intake workbook in the portfolio ingestion folder) |
+| Landing Zone Catalog Assessment | `swao setup --type lz-catalog` (catalogues and targets) |
+| Landing Zone Live Assessment | `swao setup --type lz-live` (landing zones and scopes; Consultant) |
+| LLM Assessment | `swao setup --type llm` (two to five LLM connectors; needs a finished Application Assessment) |
+
+Add `--non-interactive` to print the health result and the missing items
+without opening the wizard. What a setup stores is preselected when you run
+that assessment.
+
 ### Step 2: Put the source code in place
 
 Clone or copy the application's source code into the `source/` folder of the

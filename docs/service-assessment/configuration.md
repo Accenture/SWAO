@@ -28,6 +28,8 @@ service_portfolio:
   glossary:                          # optional: intake term -> English term
     Sonderbereich Nord: Special Unit North
     Radiologie: Diagnostic Imaging   # overrides the product default (Radiology)
+  assess_top_n: 20                   # optional: default N for "Top N by risk"
+  confirm_small_scope: true          # optional: false skips the confirmation for N <= 20
 ```
 
 | Key | Meaning |
@@ -37,8 +39,10 @@ service_portfolio:
 | `cost.currency` | Reporting currency for cost estimates. Default `EUR`; `USD` works out of the box (ECB reference rate). |
 | `cost.exchange_rates` | Extra currencies as units per 1 EUR. A currency without a rate stops the scaffold with a clear error. Prices come from the VM price table, see [Cost prices](#cost-prices). |
 | `glossary` | Optional. Maps intake department and function terms to English terms (source term -> English term). See [Intake terms in English](#intake-terms-in-english). |
+| `assess_top_n` | Optional. Default N for "Top N by risk" in the terminal interface and for `swao service assess` without `--top` (positive integer; default 20). |
+| `confirm_small_scope` | Optional. `false` skips the confirmation step for Top N with N up to 20 and for scaffold and research only. "Assess every app" and N above 20 are always confirmed. |
 
-`swao service init` rewrites only the intake metadata keys of this block. Keys you add, `cost` and `glossary`, are kept when you run the scaffold again.
+`swao service init` rewrites only the intake metadata keys of this block. Keys you add, such as `cost`, `glossary`, `assess_top_n` and `confirm_small_scope`, are kept when you run the scaffold again.
 
 The presence of the `service_portfolio:` block marks the workspace as a service workspace: health-check probes 19 to 25, the support bundle service artefacts, and the TIME, CVE, and EoL badges on the engagement hub depend on it.
 

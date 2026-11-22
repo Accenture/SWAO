@@ -183,9 +183,10 @@ describe('doctor probe label rename (#0154)', () => {
     const doctorSrc = readFileSync(res(__dirname, '../commands/health-check.ts'), 'utf-8');
     // [3/N] SWAO-MCP -- N grew from 7 to 8 in Sprint 029 with the
     // addition of Pass 13's [8/8] Scope probe (#0263).
-    expect(doctorSrc).toMatch(/\[3\/\d+\] SWAO-MCP/);
+    // #3589: the total is the PROBE_TOTAL template expression since probe [26].
+    expect(doctorSrc).toMatch(/\[3\/(\d+|\$\{PROBE_TOTAL\})\] SWAO-MCP/);
     // The old bare label must no longer appear inside the probe-line formatter.
-    expect(doctorSrc).not.toMatch(/pad\('\[3\/\d+\] MCP'/);
+    expect(doctorSrc).not.toMatch(/pad\(['`]\[3\/(\d+|\$\{PROBE_TOTAL\})\] MCP['`]/);
   });
 });
 
@@ -510,9 +511,48 @@ describe('runVersionCheck() / buildMcpProbe() -- slow binary (#3333)', () => {
     } finally { rmSync(f.dir, { recursive: true, force: true }); }
   });
 
+  it('#4241 / #4260: the child gets an empty PKG_EXECPATH even when the parent (a running binary) has it set', async () => {
+    const { runVersionCheck } = await import('./claude-desktop.js');
+    const dir = mkdtempSync(join(tmpdir(), 'swao-test-mcp-pkgenv-'));
+    const script = join(dir, 'fake-swao.cjs');
+    writeFileSync(script, "process.exit(process.env.PKG_EXECPATH === '' ? 0 : 7);\n");
+    const prev = process.env['PKG_EXECPATH'];
+    process.env['PKG_EXECPATH'] = join(dir, 'swao-enterprise-win-x64.exe');
+    try {
+      expect(runVersionCheck(process.execPath, { argsPrefix: [script], timeoutMs: 10_000 })).toBe('ok');
+    } finally {
+      if (prev === undefined) delete process.env['PKG_EXECPATH']; else process.env['PKG_EXECPATH'] = prev;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it('a missing binary is failed', async () => {
     const { runVersionCheck } = await import('./claude-desktop.js');
     expect(runVersionCheck(join(tmpdir(), 'no-such-swao-3333.exe'), { timeoutMs: 2_000 })).toBe('failed');
+  });
+
+  it('#4260: runVersionCheckDetail names the reason: exit code of a non-zero exit, spawn error of a missing binary', async () => {
+    const { runVersionCheckDetail } = await import('./claude-desktop.js');
+    const f = fakeBinary({ delayMs: 0, exitCode: 3 });
+    try {
+      expect(runVersionCheckDetail(process.execPath, { argsPrefix: [f.script], timeoutMs: 10_000 })).toEqual({ outcome: 'failed', reason: 'exit_code_3' });
+    } finally { rmSync(f.dir, { recursive: true, force: true }); }
+    expect(runVersionCheckDetail(join(tmpdir(), 'no-such-swao-4260.exe'), { timeoutMs: 2_000 })).toEqual({ outcome: 'failed', reason: 'spawn_error_ENOENT' });
+  });
+
+  it('#4260: buildMcpProbe carries the reason of binary_unreachable (not_reported for a boolean runner)', async () => {
+    const { buildMcpProbe } = await import('./claude-desktop.js');
+    const dir = mkdtempSync(join(tmpdir(), 'swao-test-mcp-reason-'));
+    try {
+      const bin = join(dir, 'swao-enterprise-win-x64.exe');
+      writeFileSync(bin, 'x');
+      const cfg = join(dir, 'claude_desktop_config.json');
+      writeFileSync(cfg, JSON.stringify({ mcpServers: { swao: { command: bin, args: ['mcp'] } } }));
+      expect(buildMcpProbe({ configPathOverride: cfg, versionRunner: () => ({ outcome: 'failed', reason: 'exit_code_1' }) }))
+        .toMatchObject({ status: 'binary_unreachable', commandPath: bin, reason: 'exit_code_1' });
+      expect(buildMcpProbe({ configPathOverride: cfg, versionRunner: () => false })).toMatchObject({ status: 'binary_unreachable', reason: 'not_reported' });
+      expect(buildMcpProbe({ configPathOverride: cfg, versionRunner: () => true }).reason).toBeUndefined();
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 
   function probeFixture(withStale: boolean): { root: string; candidates: ClaudeDesktopConfigCandidate[]; running: string } {

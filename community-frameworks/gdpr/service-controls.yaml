@@ -1,0 +1,144 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: General Data Protection Regulation (Regulation (EU) 2016/679). Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: GDPR
+mappings:
+  - capability: key_vault
+    controls: [GDPR_Art_32_a]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: identity_management
+    controls: [GDPR_Art_32_b]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: audit_logging
+    controls: [GDPR_Art_32_b]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: log_management
+    controls: [GDPR_Art_32_b]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: compliance_monitoring
+    controls: [GDPR_Art_32_d]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: backup
+    controls: [GDPR_Art_32_c, GDPR_Art_32_b]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_protection
+    controls: [GDPR_Art_25, GDPR_Art_32_a, GDPR_Art_32_b]
+    relevance: supports
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: load_balancer
+    controls: [GDPR_Art_32_b]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: cdn
+    controls: [GDPR_Art_32_b]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: object_storage
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c, GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: block_storage
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c, GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: file_storage
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c, GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: hci_storage
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c, GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: postgresql
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mysql
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: mariadb
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: sql_server
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: nosql_database
+    controls: [GDPR_Art_32_a, GDPR_Art_32_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_warehouse
+    controls: [GDPR_Art_25, GDPR_Art_32_a, GDPR_Art_5_1_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: big_data
+    controls: [GDPR_Art_25, GDPR_Art_32_a, GDPR_Art_5_1_c]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: search
+    controls: [GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_migration
+    controls: [GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_integration
+    controls: [GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: managed_file_transfer
+    controls: [GDPR_Art_25]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_inference
+    controls: [GDPR_Art_22]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: data_analytics
+    controls: [GDPR_Art_25, GDPR_Art_5_1_c, GDPR_Art_5_1_e]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: bi_analytics
+    controls: [GDPR_Art_25, GDPR_Art_5_1_c, GDPR_Art_5_1_e]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

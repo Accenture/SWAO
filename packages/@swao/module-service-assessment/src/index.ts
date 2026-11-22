@@ -44,11 +44,12 @@ export { planScaffold, DEFAULT_CLUSTER_THRESHOLD, GENERATED_FIELDS } from './sca
 export type { AppPlan, ScaffoldPlan } from './scaffold/plan.js';
 export { writeScaffold, upsertServicePortfolioBlock, INGESTION_HINT_FOLDERS } from './scaffold/write.js';
 export { SERVICE_INTAKE_DIR, IntakeLocationError, resolveServiceIntake, serviceIntakeDir, type ResolvedIntake } from './scaffold/intake-location.js';
+export { INTAKE_TEMPLATE_FILE, INTAKE_TEMPLATE_HEADERS, INTAKE_TEMPLATE_SHEET, copyIntakeTemplate, writeIntakeTemplateWorkbook, type IntakeTemplateCopy } from './intake/template-workbook.js';
 export type { ServicePortfolioMeta, WriteResult } from './scaffold/write.js';
-export { runServiceInit, planServiceInit, loadColumnMapFile, intakeSourceId, intakeSourceConflict, existingServiceAppIds, parkServiceApps, PARKED_APPS_DIR } from './scaffold/init.js';
+export { runServiceInit, planServiceInit, vendorCoverageWarning, serviceAppVendorNames, NO_VENDOR_COLUMN_WARNING_PREFIX, loadColumnMapFile, intakeSourceId, intakeSourceConflict, existingServiceAppIds, parkServiceApps, PARKED_APPS_DIR } from './scaffold/init.js';
 export type { ServiceInitOptions, ServiceInitResult, ServiceInitPlan, OtherSourcePolicy, IntakeSourceId, IntakeSourceConflict } from './scaffold/init.js';
 export * from './research/schema.js';
-export { runServiceResearch, discoverServiceApps, readServiceApp, validateStub, ResearchError, DEFAULT_BASE_URLS, llmSkippedNote } from './research/research.js';
+export { runServiceResearch, discoverServiceApps, readServiceApp, validateStub, ResearchError, DEFAULT_BASE_URLS, llmSkippedNote, cachedLlmResearch, topicSkipReasons, type CachedLlmResearch, type ServiceResearchFailure } from './research/research.js';
 export type { ServiceResearchOptions, ServiceResearchResult, AppResearchResult, ResearchBaseUrls, ResearchAppInput, TopicAction } from './research/research.js';
 export { LLM_RESEARCH_SIGNAL_CODES, RESEARCH_SIGNALS, RESEARCH_SIGNAL_CODES, RESEARCH_SIGNALS_FILE, ResearchSignalSchema, ResearchSignalsFileSchema, isNegativeFinding, researchSignals, PATCH_CADENCE_SLOW_DAYS } from './research/signals.js';
 export type { ResearchSignal, ResearchSignalCode, ResearchSignalsFile, ResearchAppContext } from './research/signals.js';
@@ -86,9 +87,10 @@ export { APM_RULES, APM_RULE_NAMES } from './apm/rules.js';
 export type { ApmEvidence, ApmRule, ApmSignal } from './apm/rules.js';
 export { APM_DOMAINS, APM_FOLDER, ApmControlSchema, loadApmFramework, apmFrameworkDir, validateDomainWeights, ApmFrameworkError } from './apm/framework.js';
 export type { ApmDomain, ApmFramework, ApmControl, TimeRules } from './apm/framework.js';
-export { scoreApp, classifyTime, gatherEvidence, buildPortfolioSummary } from './apm/score.js';
+export { scoreApp, classifyTime, gatherEvidence, buildPortfolioSummary, alignServiceRunSevenR, synthesisLabelOf, PORTFOLIO_PHASES, PORTFOLIO_CROSS_APP_PHASES } from './apm/score.js';
 export { discoverApplicationApps, resolveApplicationRun, gatherApplicationEvidence, scoreApplicationApp, classifyApplicationTime, sevenRToTime, SEVEN_R_TIME, APPLICATION_RULES, type ApplicationEvidence } from './apm/application.js';
-export type { AppScore, ControlScore, TimeResult } from './apm/score.js';
+export type { AppScore, ControlScore, TimeResult, BuildPortfolioSummaryOptions, PortfolioBuildProgress, PortfolioBuildStats } from './apm/score.js';
+export { countPortfolioApps, PORTFOLIO_ROW_CACHE_FILE, cacheKeyDifference, fingerprintDifference, readPortfolioRowCacheDetailed, type PortfolioCacheMissReason } from './apm/summary-cache.js';
 export { runServiceCryptoPass, runServiceDataPass, scanConfigFiles, hasDeclaredDataFields } from './profile/service-passes.js';
 export { SERVICE_PASS_PROFILE, planServicePasses, buildServiceScopeCoverage, formatSkippedSummary, hintInputDir } from './profile/service-pass-profile.js';
 export type { ServicePassDef, ServicePassMode, ServicePassPlan, ServiceScopeCoverage, SkippedPass } from './profile/service-pass-profile.js';
@@ -116,4 +118,4 @@ export const manifest: SwaoModuleManifest = {
   tier: 'community',
   contributions: { assessmentTypes: [serviceAssessmentType] },
 };
-export { rankServiceApps, rankPortfolioApps, isNotAssessed, type RankedServiceApp } from './portfolio/selection.js';
+export { rankServiceApps, rankServiceAppsDetailed, emptyServiceRankMessage, missingFromSummaryNote, type ServiceRankDetail, rankPortfolioApps, isNotAssessed, readAssessTopN, parseTopN, DEFAULT_ASSESS_TOP_N, type RankedServiceApp } from './portfolio/selection.js';

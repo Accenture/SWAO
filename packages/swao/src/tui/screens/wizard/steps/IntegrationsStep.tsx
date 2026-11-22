@@ -13,13 +13,13 @@
 //
 // ================================================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { findInstalledChromium, PLAYWRIGHT_VERSION, resolveClaudeDesktopConfigs, selectClaudeDesktopPatchTargets, type ClaudeDesktopConfigCandidate } from '@swao/core';
-import { GuidanceBox } from '@swao/tui-kit';
-import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
+import { PickerRow, SelectInput, TextInput, fitToWidth, guidanceOwnsKey, tone, useGuidanceOpen, useHeaderWidth, useOptionGuidance, type GuidanceEntry, type KeyHint, type SelectOption } from '@swao/tui-kit';
+import { SetupStepFrame } from '../../../../setup/setup-frame.js';
 import { resolve } from 'path';
 import {
   DEFAULT_MCP_HTTP_URL,
@@ -28,26 +28,34 @@ import {
   type McpClientInstallResult,
 } from '../../../../lib/mcp-chat-contract.js';
 import { formatMcpRegistrationRefusal, mcpRegistrationRefusal, patchAllClaudeDesktopConfigs, resolveStableBinary, stableCopyWarning, type ClaudeDesktopPatchOutcome, type StableBinaryResolution } from '../../../mcp-config.js';
-import { installMcpClient } from '../../../mcp-client-install.js';
+import { installMcpClient } from '../../../../lib/mcp-client-install.js';
 import { SWAO_VERSION } from '../../../../branding.js';
 
 /**
  * #3479 (Design 116 REQ-13.3): MCP clients the wizard offers, the same
  * targets as `swao mcp install --client`. Claude Desktop stays first and
  * preselected, so Enter keeps the existing flow.
+ * #4116: Cursor and VS Code added. `scope` is the scope the wizard passes to
+ * the shared writer: the CLI default (user), except VS Code, whose writer only
+ * supports project scope (`swao mcp install --client vscode --scope project`,
+ * mcp-client-install.ts `case 'vscode'`); the project is the workspace.
+ * #4115: `hint` is a short menu hint; transports and paths are in the guidance.
  */
 export const WIZARD_MCP_CLIENTS = [
-  { id: 'claude-desktop', label: 'Claude Desktop', hint: 'stdio, Claude Desktop config' },
-  { id: 'claude-code', label: 'Claude Code', hint: 'HTTP on localhost (start swao mcp --http), lean agent, starter profile' },
-  { id: 'kilo', label: 'Kilo', hint: 'stdio, lean agent, starter profile' },
+  { id: 'claude-desktop', label: 'Claude Desktop', hint: 'stdio, detected config', scope: 'user', detail: 'stdio; SWAO updates every Claude Desktop config that holds or needs the SWAO entry.' },
+  { id: 'claude-code', label: 'Claude Code', hint: 'HTTP transport, agent', scope: 'user', detail: 'HTTP on localhost (start the SWAO MCP server in HTTP mode first), lean agent, starter profile, scope user.' },
+  { id: 'kilo', label: 'Kilo', hint: 'stdio, lean agent', scope: 'user', detail: 'stdio, lean agent, starter profile, scope user (Kilo user config).' },
+  { id: 'cursor', label: 'Cursor', hint: 'stdio, user config', scope: 'user', detail: 'stdio, starter profile, scope user: ~/.cursor/mcp.json.' },
+  { id: 'vscode', label: 'VS Code', hint: 'stdio, workspace .vscode', scope: 'project', detail: 'stdio, starter profile, scope project: .vscode/mcp.json in the workspace (the CLI has no user scope for VS Code).' },
 ] as const;
 export type WizardMcpClient = (typeof WIZARD_MCP_CLIENTS)[number]['id'];
 
 /**
- * #3479: the request the wizard sends to the shared writer for Claude Code or
- * Kilo: the `swao mcp install --client <id>` defaults (scope user, client
- * transport, lean agent with the starter profile), the workspace being set up
- * as workspace and project folder.
+ * #3479 / #4116: the request the wizard sends to the shared writer for every
+ * client except Claude Desktop: the `swao mcp install --client <id>` defaults
+ * (client transport, lean agent where the client takes one, starter profile),
+ * the client's wizard scope, and the workspace being set up as workspace and
+ * project folder.
  */
 export function wizardInstallRequest(
   client: Exclude<WizardMcpClient, 'claude-desktop'>,
@@ -56,9 +64,10 @@ export function wizardInstallRequest(
   version: string = SWAO_VERSION,
 ): McpClientInstallRequest {
   const ws = resolve(workDir);
+  const scope = WIZARD_MCP_CLIENTS.find((c) => c.id === client)?.scope ?? 'user';
   return {
     client,
-    scope: 'user',
+    scope,
     profile: 'starter',
     profileExplicit: false,
     tools: mcpClientHelpers().profileToolNames('starter'),
@@ -72,6 +81,31 @@ export function wizardInstallRequest(
     projectDir: ws,
     version,
   };
+}
+
+/**
+ * #4115: fit one output line into `width` columns. Well-known folders are
+ * written as %LOCALAPPDATA%, %APPDATA% or ~ first; a line that is still too
+ * long keeps its start and its end around a middle ellipsis (shared
+ * `fitToWidth`, #4110), so the file name stays visible.
+ */
+export function fitLine(line: string, width: number, env: NodeJS.ProcessEnv = process.env): string {
+  return fitToWidth(shortenKnownDirs(line, env), Math.max(4, width), 'middle');
+}
+
+/** #4115: write %LOCALAPPDATA%, %APPDATA% or ~ for the well-known folders in a line. */
+export function shortenKnownDirs(line: string, env: NodeJS.ProcessEnv = process.env): string {
+  let out = line;
+  const prefixes: Array<[string | undefined, string]> = [
+    [env['LOCALAPPDATA'], '%LOCALAPPDATA%'],
+    [env['APPDATA'], '%APPDATA%'],
+    [env['USERPROFILE'], '~'],
+    [env['HOME'], '~'],
+  ];
+  for (const [dir, token] of prefixes) {
+    if (dir && dir.length > 3) out = out.split(dir).join(token);
+  }
+  return out;
 }
 
 // #3217: the stable binary path (a stable copy next to the running SWAO
@@ -115,30 +149,118 @@ export interface ClaudeDesktopStepProps {
   checkLicence?: () => string | undefined;
   /**
    * #3479: the per-client safe writer shared with `swao mcp install --client`
-   * (Claude Code, Kilo). Injectable for tests; defaults to installMcpClient.
+   * (Claude Code, Kilo, Cursor, VS Code). Injectable for tests; defaults to installMcpClient.
    */
   installClient?: (request: McpClientInstallRequest) => McpClientInstallResult;
 }
 
-/** #3479: the client list of the MCP step; Up/Down or 1 to 3 choose. */
-function ClientChoice({ choice, desktopInstalled }: { choice: number; desktopInstalled: boolean }) {
+/**
+ * #3479 / #4115: the client list of the MCP step. One line per client, name
+ * plus a short hint, labels padded so the hints align; the same number of
+ * lines for every selection.
+ */
+// #4254 (run 9): the rows are central PickerRows (marker and colour of the
+// pickers); the list stays local because a registered client keeps its hint
+// in the ok colour. The keys are the KeyHints line, not the label.
+function ClientChoice({ choice, desktopInstalled, width, registered }: { choice: number; desktopInstalled: boolean; width: number; registered: ReadonlySet<WizardMcpClient> }) {
+  const pad = Math.max(...WIZARD_MCP_CLIENTS.map((c) => c.label.length)) + 2;
   return (
     <Box marginTop={1} flexDirection="column">
-      <Text>MCP client (Up/Down or 1-{WIZARD_MCP_CLIENTS.length}):</Text>
-      {WIZARD_MCP_CLIENTS.map((c, i) => (
-        <Text key={c.id} color={i === choice ? 'cyanBright' : undefined}>
-          {i === choice ? '> ' : '  '}{i + 1}  {c.label}
-          <Text dimColor>{`  ${c.id === 'claude-desktop' && !desktopInstalled ? 'not detected' : c.hint}`}</Text>
-        </Text>
-      ))}
+      <Text>MCP client:</Text>
+      {WIZARD_MCP_CLIENTS.map((c, i) => {
+        // #4221: a client registered in this pass is marked; the step can register several.
+        const hint = registered.has(c.id) ? 'registered in this setup' : c.id === 'claude-desktop' && !desktopInstalled ? 'not detected' : c.hint;
+        const label = `${i + 1}  ${c.label.padEnd(pad)}`;
+        return (
+          <PickerRow key={c.id} selected={i === choice} indent={false} wrap="truncate">
+            <Text {...tone(i === choice ? 'selection' : 'text')}>{label}</Text>
+            <Text {...tone(registered.has(c.id) ? 'ok' : 'muted')}>{hint.slice(0, Math.max(0, width - 2 - label.length))}</Text>
+          </PickerRow>
+        );
+      })}
+      <PickerRow selected={choice === MCP_CONTINUE_INDEX} indent={false}>
+        <Text {...tone(choice === MCP_CONTINUE_INDEX ? 'selection' : 'text')}>0  Continue</Text>
+      </PickerRow>
     </Box>
   );
+}
+
+/** #4221 (Design 126 section 4.5): the Continue entry after the clients goes on to the next step. */
+export const MCP_CONTINUE_INDEX = WIZARD_MCP_CLIENTS.length;
+
+/** #4221: after a registration the cursor moves to the next client not registered yet, else to Continue. */
+export function nextMcpChoice(from: number, registered: ReadonlySet<WizardMcpClient>): number {
+  for (let k = 1; k <= WIZARD_MCP_CLIENTS.length; k++) {
+    const i = (from + k) % WIZARD_MCP_CLIENTS.length;
+    if (!registered.has(WIZARD_MCP_CLIENTS[i]!.id)) return i;
+  }
+  return MCP_CONTINUE_INDEX;
 }
 
 /** #3341: default wizard gate, same decision as the CLI entry points. */
 export function defaultMcpWizardLicenceCheck(): string | undefined {
   const r = mcpRegistrationRefusal();
   return r ? formatMcpRegistrationRefusal(r, 'MCP server registration') : undefined;
+}
+
+/**
+ * #4115: the guidance of the MCP step. Paths, transports and what Enter will
+ * write live here, not above or below the menu.
+ * #4230 (Design 126 section 9.2, replaces the #4115 rule of one entry for the
+ * whole list): the box shows the entry of the highlighted client or of
+ * Continue and follows the cursor (`mcpClientGuidance`).
+ */
+function mcpGuidanceDetails(installed: boolean, configPath: string, targets: ClaudeDesktopConfigCandidate[], workDir: string, width: number): Array<{ label: string; value: string }> {
+  const desktop = installed
+    ? `${WIZARD_MCP_CLIENTS[0].detail} Will update ${targets.length} config${targets.length === 1 ? '' : 's'}: ${targets.map((t) => fitLine(t.path, width - 6) + (t.effective ? '' : ' (older SWAO entry)')).join('; ')}`
+    : `Not detected; expected at ${fitLine(configPath, width - 6)}.`;
+  return [
+    { label: 'Claude Desktop', value: desktop },
+    ...WIZARD_MCP_CLIENTS.slice(1).map((c) => ({
+      label: c.label,
+      value: c.id === 'vscode' ? `${c.detail} Workspace: ${fitLine(resolve(workDir), width - 20)}` : c.detail,
+    })),
+  ];
+}
+
+/** #4230: what registering each client does and when to choose it (one entry per list row). */
+const MCP_CLIENT_WHAT: Readonly<Record<WizardMcpClient, string>> = {
+  'claude-desktop': 'Registers SWAO as an MCP server in Claude Desktop, so the SWAO tools appear in its chats. Choose it when the team works in Claude Desktop.',
+  'claude-code': 'Registers SWAO with Claude Code over HTTP, with the lean SWAO agent. Choose it when you work in Claude Code; start the SWAO MCP server in HTTP mode first.',
+  kilo: 'Registers SWAO in the Kilo user config, with the lean SWAO agent. Choose it when you work in Kilo.',
+  cursor: 'Registers SWAO in the Cursor user config. Choose it when you work in Cursor.',
+  vscode: 'Registers SWAO for this workspace in VS Code (.vscode/mcp.json). Choose it when you open the workspace in VS Code.',
+};
+
+/**
+ * #4230: the guidance entry of one row of the MCP client list: a client (its
+ * transport and the files it writes) or Continue (index MCP_CONTINUE_INDEX).
+ */
+export function mcpClientGuidance(
+  index: number,
+  ctx: { details: ReadonlyArray<{ label: string; value: string }>; registered: ReadonlySet<WizardMcpClient>; desktopInstalled: boolean },
+): GuidanceEntry {
+  const client = WIZARD_MCP_CLIENTS[index];
+  if (!client) {
+    return {
+      title: 'Continue',
+      what: `Goes on to the health check${ctx.registered.size > 0 ? ` with ${ctx.registered.size} client(s) registered` : ' without registering a client'}. Clients can be registered later from Workspace Setup.`,
+      sections: [{ label: 'Restart', text: 'Restart each registered client for the SWAO tools to appear.' }],
+      cli: 'swao mcp install --client <name>',
+    };
+  }
+  const detail = ctx.details.find((d) => d.label === client.label)?.value ?? client.detail;
+  const notDetected = client.id === 'claude-desktop' && !ctx.desktopInstalled;
+  return {
+    title: `MCP client ${client.label}`,
+    what: notDetected ? 'Claude Desktop was not found on this machine; choosing it skips this step. Install Claude Desktop and run the setup again to register SWAO there.' : MCP_CLIENT_WHAT[client.id],
+    sections: [
+      { label: 'Setup', text: detail },
+      ...(ctx.registered.has(client.id) ? [{ label: 'State', text: 'registered in this setup; Enter registers it again' }] : []),
+      { label: 'Afterwards', text: `Restart ${client.label} for the SWAO tools to appear.` },
+    ],
+    cli: `swao mcp install --client ${client.id}`,
+  };
 }
 
 export function ClaudeDesktopStep({
@@ -149,6 +271,9 @@ export function ClaudeDesktopStep({
   checkLicence = defaultMcpWizardLicenceCheck,
   installClient = (request) => installMcpClient(request),
 }: ClaudeDesktopStepProps) {
+  // #4115: no line wider than the header rule.
+  // #4110: shared header-rule width (tui-kit header-width.ts).
+  const width = useHeaderWidth();
   // #3479: index into WIZARD_MCP_CLIENTS; 0 (Claude Desktop) keeps the existing flow.
   const [choice, setChoice] = useState(0);
   const [clientResult, setClientResult] = useState<McpClientInstallResult | undefined>(undefined);
@@ -176,299 +301,281 @@ export function ClaudeDesktopStep({
     setOutcomes(patchAllClaudeDesktopConfigs(resolved.path, candidates, resolved.args));
     setStatus('done');
   };
-  // #3479: Claude Code or Kilo through the writer `swao mcp install --client` uses.
+  // #3479 / #4116: every other client through the writer `swao mcp install --client` uses.
   const doClientInstall = (client: Exclude<WizardMcpClient, 'claude-desktop'>) => {
     if (licenceRefusal !== undefined) return;
     const resolved = resolveBinary();
-    setCopyWarning(stableCopyWarning(resolved, `swao mcp install --client ${client}`));
+    setCopyWarning(stableCopyWarning(resolved));
     setClientResult(installClient(wizardInstallRequest(client, workDir, resolved)));
     setStatus('done');
   };
   const anyPatched = outcomes.some((o) => o.result === 'patched');
   const anyError = outcomes.some((o) => o.result === 'error');
   const chosen = WIZARD_MCP_CLIENTS[choice]?.id ?? 'claude-desktop';
+  // #4221: clients registered in this pass; after a result Enter returns to the list.
+  const [registered, setRegistered] = useState<ReadonlySet<WizardMcpClient>>(new Set());
+  // #4394: the open state of the guidance box (the wizard's owner, tui-kit guidance-open.ts).
+  const guidance = useGuidanceOpen();
+  const backToList = (): void => {
+    const ok = clientResult !== undefined ? clientResult.exitCode === 0 : !anyError;
+    const next = ok ? new Set([...registered, chosen]) : registered;
+    setRegistered(next);
+    setChoice(nextMcpChoice(choice, next));
+    setClientResult(undefined);
+    setOutcomes([]);
+    setCopyWarning(undefined);
+    setStatus('idle');
+  };
 
   useInput((input, key) => {
     if (status === 'skipped') return;
-    if (status === 'done' && key.return) { onNext(); return; }
+    if (status === 'done' && key.return) { backToList(); return; }
     if (status !== 'idle') return;
-    // #3341: refused below Enterprise; Enter and Esc both skip.
+    // #3341: refused below Enterprise; Enter skips (#4341: Esc belongs to the wizard).
     if (licenceRefusal !== undefined) {
-      if ((key.return || key.escape) && !_wizardGuidanceOpen) doSkip();
+      if (key.return) doSkip();
       return;
     }
-    if (_wizardGuidanceOpen) return;
+    if (guidanceOwnsKey(key, guidance.isOpen())) return; // #4230: arrows and number keys keep working with the box open
     // #3479: client choice.
-    if (key.upArrow) { setChoice((c) => (c + WIZARD_MCP_CLIENTS.length - 1) % WIZARD_MCP_CLIENTS.length); return; }
-    if (key.downArrow) { setChoice((c) => (c + 1) % WIZARD_MCP_CLIENTS.length); return; }
+    // #4221: the list holds the clients and the Continue entry (0).
+    const rows = WIZARD_MCP_CLIENTS.length + 1;
+    if (key.upArrow) { setChoice((c) => (c + rows - 1) % rows); return; }
+    if (key.downArrow) { setChoice((c) => (c + 1) % rows); return; }
     const digit = /^[1-9]$/.test(input) ? parseInt(input, 10) - 1 : -1;
     if (digit >= 0 && digit < WIZARD_MCP_CLIENTS.length) { setChoice(digit); return; }
-    if (key.escape) { doSkip(); return; }
+    if (input === '0') { setChoice(MCP_CONTINUE_INDEX); return; }
+    // #4341: no Esc skip; the Continue entry (0) of the list leaves the step.
     if (!key.return) return;
+    if (choice === MCP_CONTINUE_INDEX) { setStatus('skipped'); onNext(); return; }
     if (chosen !== 'claude-desktop') { doClientInstall(chosen); return; }
-    // #2320: when Claude Desktop is not installed, Enter skips -- never call
+    // #2320: when Claude Desktop is not installed, Enter skips; never call
     // doPatch() against a non-existent config file.
     if (!installed) { doSkip(); return; }
     doPatch();
   });
 
+  const fit = (line: string) => fitLine(line, width);
+
+  // #4221 (Design 126 sections 7 and 9): every view of the step hands its
+  // title, key hints and guidance to the wizard frame (SetupStepFrame); the
+  // keys are the central KeyHints line, never words on the screen.
+  const resultKeys: KeyHint[] = [{ key: 'Enter', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
   if (status === 'done' && clientResult !== undefined) {
     const label = WIZARD_MCP_CLIENTS[choice]?.label ?? '';
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">MCP Client Setup: {label}</Text>
-        <Box marginTop={1} flexDirection="column">
+      <SetupStepFrame
+        title={`MCP Client Setup: ${label}`}
+        keys={resultKeys}
+        guidance={{ title: `MCP Client Setup: ${label}`, what: 'The result of the registration. Back in the client list, register another client or choose Continue. Restart the client for the tools to appear.' }}
+      >
+        <Box flexDirection="column" width={width}>
           {[...clientResult.out, ...clientResult.err].map((line, i) => (
-            <Text key={`res-${i}`} color={clientResult.exitCode !== 0 ? 'red' : undefined}>{line}</Text>
+            <Text key={`res-${i}`} {...tone(clientResult.exitCode !== 0 ? 'error' : 'text')} wrap="wrap">{shortenKnownDirs(line)}</Text>
           ))}
           {copyWarning && copyWarning.map((line, i) => (
-            <Text key={`copy-warn-${i}`} color="yellow">{i === 0 ? `Warning: ${line}` : `  ${line}`}</Text>
+            <Text key={`copy-warn-${i}`} {...tone('warning')} wrap="wrap">{shortenKnownDirs(i === 0 ? `Warning: ${line}` : `  ${line}`)}</Text>
           ))}
-          {clientResult.exitCode !== 0 && <Text color="red">The MCP client setup did not finish (see above). Fix the cause, then run swao mcp install --client {chosen}.</Text>}
+          {clientResult.exitCode !== 0 && <Text {...tone('error')} wrap="wrap">The MCP client setup did not finish (see above). Fix the cause, then register the client again (the command is in the guidance).</Text>}
         </Box>
-        <Box marginTop={1}><Text dimColor>Press Enter to continue...</Text></Box>
-      </Box>
+        <Box marginTop={1}><Text {...tone('muted')}>Back in the client list, register another client or choose Continue.</Text></Box>
+      </SetupStepFrame>
     );
   }
 
   if (status === 'done') {
+    const doneGuidance: GuidanceEntry = {
+      title: 'MCP Client Setup',
+      what: 'SWAO is now registered as an MCP server. Restart Claude Desktop to activate the tool registry.',
+      sections: [
+        { label: 'Next step', text: 'Restart Claude Desktop, then open the workspace and type /swao-doctor to verify the connection.' },
+        { label: 'Files', text: outcomes.map((o) => o.path).join('; ') },
+      ],
+    };
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">MCP Client Setup</Text>
-        <Box marginTop={1} flexDirection="column">
-          {/* #3163: one line per config file SWAO touched (path + result). */}
+      <SetupStepFrame title="MCP Client Setup" keys={resultKeys} guidance={doneGuidance}>
+        <Box flexDirection="column" width={width}>
+          {/* #3163: one line per config file SWAO touched (path + result); #4115: fitted to the header width. */}
           {outcomes.map((o) => (
-            <Text key={o.path} color={o.result === 'error' ? 'red' : 'green'}>
-              {o.result === 'patched' ? 'Updated' : o.result === 'already_present' ? 'Already current' : 'Failed to write'}
-              {`  ${o.path}`}{o.effective ? '' : '  (older install, stale SWAO entry refreshed)'}
+            <Text key={o.path} {...tone(o.result === 'error' ? 'error' : 'ok')}>
+              {fit(`${o.result === 'patched' ? 'Updated' : o.result === 'already_present' ? 'Already current' : 'Failed to write'}  ${o.path}${o.effective ? '' : '  (older install, refreshed)'}`)}
             </Text>
           ))}
           {copyWarning && copyWarning.map((line, i) => (
-            <Text key={`copy-warn-${i}`} color="yellow">{i === 0 ? `Warning: ${line}` : `  ${line}`}</Text>
+            <Text key={`copy-warn-${i}`} {...tone('warning')} wrap="wrap">{shortenKnownDirs(i === 0 ? `Warning: ${line}` : `  ${line}`)}</Text>
           ))}
-          {anyPatched && <Text color="yellow">Restart Claude Desktop to load the new tool registry.</Text>}
-          {!anyPatched && !anyError && <Text color="green">SWAO already registered in Claude Desktop.</Text>}
-          {anyError && <Text color="red">Failed to write a config -- add the SWAO entry manually to the file marked above.</Text>}
+          {anyPatched && <Text {...tone('warning')}>Restart Claude Desktop to load the new tool registry.</Text>}
+          {!anyPatched && !anyError && <Text {...tone('ok')}>SWAO already registered in Claude Desktop.</Text>}
+          {anyError && <Text {...tone('error')} wrap="wrap">Failed to write a config: add the SWAO entry manually to the file marked above.</Text>}
         </Box>
-        <Box marginTop={1}><Text dimColor>Press Enter to continue...</Text></Box>
-        <GuidanceBox
-          title="MCP Client Setup"
-          what="SWAO is now registered as an MCP server. Restart Claude Desktop to activate the tool registry."
-          details={[{ label: 'Next step', value: 'Restart Claude Desktop, then open the workspace and type /swao-doctor to verify the connection.' }]}
-          affordances={['Enter -- continue to next step']}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
+        <Box marginTop={1}><Text {...tone('muted')}>Back in the client list, register another client or choose Continue.</Text></Box>
+      </SetupStepFrame>
     );
   }
 
   if (licenceRefusal !== undefined) {
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">MCP Client Setup</Text>
-        <Box marginTop={1} flexDirection="column">
+      <SetupStepFrame
+        title="MCP Client Setup"
+        keys={[{ key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'abort' }]}
+        guidance={{ title: 'MCP Client Setup', what: 'MCP server registration needs the Enterprise tier. This step is skipped; nothing is copied or written.' }}
+      >
+        <Box flexDirection="column" width={width}>
           {licenceRefusal.split('\n').map((line, i) => (
-            <Text key={`lic-${i}`} color={i === 0 ? 'yellow' : undefined}>{line}</Text>
+            <Text key={`lic-${i}`} {...tone(i === 0 ? 'warning' : 'text')} wrap="wrap">{line}</Text>
           ))}
         </Box>
         <Box marginTop={1}>
-          <Text dimColor>Enter / Esc -- skip this step (nothing is copied or written)</Text>
+          <Text {...tone('muted')}>This step is skipped; nothing is copied or written.</Text>
         </Box>
-      </Box>
+      </SetupStepFrame>
     );
   }
 
-  if (!installed) {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">MCP Client Setup</Text>
-        <Box marginTop={1}>
-          <Text color="yellow">No MCP client detected.</Text>
-        </Box>
-        <Text dimColor>SWAO could not find a Claude Desktop config at:</Text>
-        <Text dimColor>  {configPath}</Text>
-        {/* #3386: column layout (Ink rows put hint lines side by side) + name the
-            other supported MCP clients and the HTTP transport for clients with no
-            config file to patch. */}
-        <ClientChoice choice={choice} desktopInstalled={false} />
-        <Box marginTop={1} flexDirection="column">
-          <Text dimColor>Choose Claude Code or Kilo above to configure them (same as swao mcp install --client).</Text>
-          <Text dimColor>For other clients such as VS Code or Cursor, run <Text bold>swao mcp install --client</Text> or <Text bold>swao mcp --http</Text> and point the client at the local SWAO server.</Text>
-          <Text dimColor>If you do not use an MCP client, skip this step. See <Text bold>swao mcp --help</Text> for all transports.</Text>
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>{chosen === 'claude-desktop' ? 'Enter / Esc -- skip this step' : 'Enter -- configure the chosen client  |  Esc -- skip this step'}</Text>
-        </Box>
-        <GuidanceBox
-          title="MCP Client Setup"
-          what="No Claude Desktop config detected. Claude Code and Kilo can be configured here; other clients connect with `swao mcp install --client` or over HTTP via `swao mcp --http`."
-          details={[{ label: 'Manual setup', value: 'Run `swao mcp install --client <name>` (claude-code, kilo, cursor, vscode) or `swao mcp --http`; `swao mcp --help` lists every transport.' }]}
-          affordances={['Up/Down -- choose client  |  Enter -- configure or skip  |  Esc -- skip this step']}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
-    );
-  }
-
+  // #4115: one layout for both cases (Claude Desktop detected or not): a status
+  // line, the client menu, one action line, the guidance. Every line has the
+  // same count for every selection, so moving the selection never reflows.
+  // #4221: the action line says what the highlighted entry does, without key
+  // words; the KeyHints line names Enter (configure the client, or continue on
+  // the Continue entry) and Esc (abort, the wizard's).
+  const chosenLabel = WIZARD_MCP_CLIENTS[choice]?.label ?? '';
+  const onContinue = choice === MCP_CONTINUE_INDEX;
+  const action = onContinue
+    ? `Continue goes on with the setup${registered.size > 0 ? ` (${registered.size} client${registered.size === 1 ? '' : 's'} registered)` : ''}`
+    : chosen !== 'claude-desktop'
+    ? `Selected: configure ${chosenLabel}`
+    : installed ? 'Selected: register SWAO in Claude Desktop' : 'Selected: skip this step';
+  const listKeys: KeyHint[] = [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: onContinue ? 'next' : 'confirm' }, { key: 'Esc', verb: 'abort' }];
+  // #4230: the entry of the highlighted client or of Continue; the box follows the cursor.
+  const listGuidance = mcpClientGuidance(choice, { details: mcpGuidanceDetails(installed, configPath, targets, workDir, width), registered, desktopInstalled: installed });
   return (
-    <Box flexDirection="column">
-      <Text bold color="cyanBright">MCP Client Setup</Text>
-      <Text>Detected Claude Desktop config at: <Text bold color="whiteBright">{configPath}</Text></Text>
-      <ClientChoice choice={choice} desktopInstalled />
-      {chosen !== 'claude-desktop' && (
-        <Box marginTop={1}><Text dimColor>Enter writes the {WIZARD_MCP_CLIENTS[choice]?.label} config and lean agent (same as swao mcp install --client {chosen}).</Text></Box>
-      )}
-      {/* #3163: list every file Enter will write, not only the effective one. */}
-      {targets.length > 1 && (
-        <Box marginTop={1} flexDirection="column">
-          <Text>SWAO will update {targets.length} Claude Desktop configs:</Text>
-          {targets.map((t) => <Text key={t.path} dimColor>  {t.path}{t.effective ? '' : '  (holds an older SWAO entry)'}</Text>)}
-        </Box>
-      )}
-      <Box marginTop={1} flexDirection="column">
-        <Text>SWAO will register itself as an MCP server with this client.</Text>
-        <Text dimColor>After patching, the client can ask SWAO about findings, apps, and reports.</Text>
-      </Box>
-      <Box marginTop={1} flexDirection="column">
-        <Text>  <Text color="cyanBright">Enter</Text>  -- patch config and continue</Text>
-        <Text>  <Text color="cyanBright">Escape</Text> -- skip (add manually later)</Text>
-      </Box>
-      <GuidanceBox
-        title="MCP Client Setup"
-        what="Adds SWAO as an MCP server in Claude Desktop. Restart the client after patching for the tool to appear."
-        details={[{ label: 'Action', value: 'Writes mcpServers entry to Claude Desktop config; preserves existing key name if found' }]}
-        affordances={['Enter -- patch and continue  |  Esc -- skip']}
-        onOpenChange={setWizardGuidanceOpen}
-      />
-    </Box>
+    <SetupStepFrame title="MCP Client Setup" keys={listKeys} guidance={listGuidance}>
+      {installed
+        ? <Text>{`Claude Desktop detected (${targets.length} config${targets.length === 1 ? '' : 's'} to update; paths: Ctrl+G).`}</Text>
+        : <Text {...tone('warning')}>No Claude Desktop config detected. Choose another client or skip.</Text>}
+      <ClientChoice choice={choice} desktopInstalled={installed} width={width} registered={registered} />
+      <Box marginTop={1}><Text {...tone('muted')}>{action}</Text></Box>
+    </SetupStepFrame>
   );
 }
 
-// -- Step 6: Playwright / Chromium (optional) --------------------------------
+/// -- Playwright / Chromium (optional) ----------------------------------------
+
+// #4254 / #4341 / #4230 (Design 126 sections 4.5, 7.7 and 9): the step renders
+// through SetupStepFrame. Without Chromium a numbered menu offers "Continue
+// without the browser", "Check again" and (Windows) "Open a shell here", each
+// with its own guidance; the install command lives in the guidance (CLI line),
+// not on the screen. With Chromium the step asks for the screenshot count of
+// the vision analysis in a text input (#2815). Esc belongs to the wizard.
 
 const DEFAULT_VISION_SCREENS = 2;
 const MIN_VISION_SCREENS = 1;
 const MAX_VISION_SCREENS = 10;
 
-export function PlaywrightStep({ onNext }: { onNext: (visionMaxScreens?: number) => void }) {
+/** #2815: the screen count from the operator's entry; empty or invalid keeps the default, out of range is clamped. */
+export function visionScreens(raw: string): number {
+  const parsed = Number.parseInt(raw.trim(), 10);
+  return Number.isNaN(parsed) ? DEFAULT_VISION_SCREENS : Math.min(MAX_VISION_SCREENS, Math.max(MIN_VISION_SCREENS, parsed));
+}
+
+const CRAWLER_WHAT = 'Headless Chromium captures screenshots and JavaScript execution traces for Pass 10 (dynamic analysis). Without it about 10% of the coverage is lost; all static and LLM passes work without it.';
+const CRAWLER_SECTIONS = [
+  { label: 'Footprint', text: 'About 170 MB downloaded once into the user profile.' },
+  { label: 'After', text: 'The Application health check confirms that Chromium is found.' },
+];
+// The guidance cli line of the step and its entries (Design 126 section 9.3).
+const CRAWLER_CLI_FIELD = { cli: `swao install-playwright (or npx playwright@${PLAYWRIGHT_VERSION} install chromium)` } as const;
+
+/** #4230: the entries of the menu without Chromium, each with its guidance. */
+export function playwrightOptions(platform: NodeJS.Platform = process.platform): SelectOption[] {
+  return [
+    { label: 'Continue without the browser', value: 'continue', guidance: { title: 'Continue without the browser', what: 'Goes on without Chromium. Pass 10 (dynamic analysis) is then skipped, about 10% of the coverage; install it later.', sections: [{ label: 'Later', text: 'This step and the health check show the browser once it is installed.' }, ...CRAWLER_SECTIONS], ...CRAWLER_CLI_FIELD } },
+    { label: 'Check again', value: 'recheck', guidance: { title: 'Check again', what: 'Looks for Chromium again, for example after installing it in another terminal.', sections: CRAWLER_SECTIONS, ...CRAWLER_CLI_FIELD } },
+    ...(platform === 'win32'
+      ? [{ label: 'Open a shell here', value: 'shell', guidance: { title: 'Open a shell here', what: 'Opens a command prompt in a new window to install the browser; come back and choose Check again afterwards.', sections: CRAWLER_SECTIONS, ...CRAWLER_CLI_FIELD } }]
+      : []),
+  ];
+}
+
+export function PlaywrightStep({ onNext, find = findInstalledChromium }: { onNext: (visionMaxScreens?: number) => void; find?: () => string | null }) {
   const [playwrightOk, setPlaywrightOk] = useState<boolean | null>(null);
-  // #2815: when Playwright IS installed, ask for vision_max_screens before advancing.
-  const [visionPhase, setVisionPhase] = useState(false);
-  const [visionInput, setVisionInput] = useState(String(DEFAULT_VISION_SCREENS));
+  const [round, setRound] = useState(0);
+  const { entry, onCursorChange } = useOptionGuidance({ title: 'Dynamic UI crawler (optional)', what: CRAWLER_WHAT, sections: CRAWLER_SECTIONS, ...CRAWLER_CLI_FIELD });
 
   useEffect(() => {
     // #0799: use filesystem-based detection from @swao/core (safe in PKG binaries).
-    // require('playwright') always throws in the binary -- findInstalledChromium()
+    // require('playwright') always throws in the binary; findInstalledChromium()
     // scans %LOCALAPPDATA%\ms-playwright instead, no module import needed.
-    const chromiumPath = findInstalledChromium();
-    setPlaywrightOk(chromiumPath !== null);
-  }, []);
+    let found = false;
+    try { found = find() !== null; } catch { found = false; }
+    setPlaywrightOk(found);
+  }, [round]);
 
-  // #0804: use useRef (not a plain object) so the value persists across
-  // re-renders. A plain `{ current: false }` is recreated on every render,
-  // meaning the GuidanceBox onOpenChange closes over a stale object and the
-  // guard in useInput always reads false even when the panel is open.
-  const playwrightGuidanceOpenRef = useRef(false);
-
-  const commitVisionPhase = () => {
-    const parsed = parseInt(visionInput, 10);
-    const screens = isNaN(parsed)
-      ? DEFAULT_VISION_SCREENS
-      : Math.min(MAX_VISION_SCREENS, Math.max(MIN_VISION_SCREENS, parsed));
-    onNext(screens);
-  };
-
-  useInput((_input, key) => {
-    if (visionPhase) {
-      if (key.return) { commitVisionPhase(); return; }
-      if (key.escape) { onNext(DEFAULT_VISION_SCREENS); return; }
-      if (key.backspace || key.delete) { setVisionInput(v => v.slice(0, -1)); return; }
-      if (/^\d$/.test(_input)) { setVisionInput(v => (v + _input).slice(0, 2)); return; }
-      return;
-    }
-    if ((key.return || key.escape) && !playwrightGuidanceOpenRef.current) {
-      if (playwrightOk) { setVisionPhase(true); } else { onNext(); }
-      return;
-    }
-    if (_input === '9' || _input === 's') {
-      if (process.platform === 'win32') {
-        const child = spawn('cmd', ['/c', 'start', 'cmd'], { detached: true, stdio: ['ignore', 'ignore', 'ignore'] });
-        child.unref();
-      }
-    }
-  });
-
-  // #0761: moved step instructions to GuidanceBox; main area now shows
-  // status line + concise key legend only.
-  const crawlerGuidance = (
-    <GuidanceBox
-      title="Dynamic UI Crawler (optional)"
-      what="Headless Chromium captures screenshots and JS execution traces for Pass 10 (dynamic analysis). Skipping drops ~10% coverage. All 13 static + LLM passes work without it."
-      details={[
-        { label: 'Install',   value: `Run: swao install-playwright  (or manually: npx playwright@${PLAYWRIGHT_VERSION} install chromium)` },
-        { label: 'Footprint', value: '~170 MB download to user profile (one-time)' },
-        { label: 'After',     value: 'Re-run Health Check to confirm Chromium is detected' },
-      ]}
-      affordances={['Enter -- continue  |  Esc -- continue  |  S -- open shell']}
-      onOpenChange={(open) => { playwrightGuidanceOpenRef.current = open; setWizardGuidanceOpen(open); }}
-    />
-  );
-
-  // #2815: vision_max_screens sub-phase (only reached when Playwright is installed).
-  if (visionPhase) {
-    const screens = parseInt(visionInput, 10);
-    const valid = !isNaN(screens) && screens >= MIN_VISION_SCREENS && screens <= MAX_VISION_SCREENS;
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
-        <Text color="green">Chromium is installed.</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text bold>Vision analysis: how many screenshots should SWAO send to the LLM per assessment?</Text>
-          <Text dimColor>More screens = higher coverage + higher LLM cost. Recommended: 2-5.</Text>
-          <Text dimColor>The value is written to .swao.yml as <Text bold>assessment.vision_max_screens</Text> and can be changed anytime.</Text>
-        </Box>
-        <Box marginTop={1}>
-          <Text>  Screens (1-{MAX_VISION_SCREENS}, default {DEFAULT_VISION_SCREENS}): </Text>
-          <Text color={valid ? 'cyanBright' : 'yellow'}>{visionInput || '_'}</Text>
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Enter a number and press <Text bold>Enter</Text>, or press <Text bold>Esc</Text> to use the default ({DEFAULT_VISION_SCREENS}).</Text>
-        </Box>
-      </Box>
-    );
-  }
+  const title = 'Playwright';
+  const subtitle = 'The browser for the dynamic UI crawler (Pass 10), optional.';
 
   if (playwrightOk === null) {
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
-        <Text dimColor>Checking Chromium...</Text>
-        {crawlerGuidance}
-      </Box>
+      <SetupStepFrame title={title} subtitle={subtitle} kind="picker" guidance={entry}>
+        <Text {...tone('progressRunning')}>Checking Chromium...</Text>
+      </SetupStepFrame>
     );
   }
 
+  // #2815: vision_max_screens (only when Chromium is installed).
   if (playwrightOk) {
     return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
-        <Text color="green">Chromium is installed -- the dynamic UI crawler pass is available.</Text>
-        <Text dimColor>SWAO will capture screenshots and analyse web app UI flows during assessments.</Text>
-        <Box marginTop={1}><Text dimColor>Press Enter to configure vision settings and continue...</Text></Box>
-        {crawlerGuidance}
-      </Box>
+      <SetupStepFrame
+        title={title}
+        subtitle={subtitle}
+        kind="textInput"
+        guidance={{
+          title: 'Screenshots per assessment',
+          what: `How many screenshots SWAO sends to the LLM per assessment for the vision analysis. More screens give more coverage and a higher LLM cost; 2 to 5 is recommended. An empty entry keeps ${DEFAULT_VISION_SCREENS}.`,
+          sections: [{ label: 'Saved as', text: 'assessment.vision_max_screens in the workspace .swao.yml; change it at any time.' }, ...CRAWLER_SECTIONS],
+        }}
+      >
+        <Box flexDirection="column">
+          <Text {...tone('ok')}>Chromium is installed; the dynamic UI crawler pass is available.</Text>
+          <Box marginTop={1}>
+            <TextInput
+              key="vision-screens"
+              label={`Screens (${MIN_VISION_SCREENS} to ${MAX_VISION_SCREENS}, default ${DEFAULT_VISION_SCREENS})`}
+              initialValue={String(DEFAULT_VISION_SCREENS)}
+              onSubmit={(v) => onNext(visionScreens(v))}
+            />
+          </Box>
+        </Box>
+      </SetupStepFrame>
     );
   }
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="cyanBright">Dynamic UI Crawler (optional)</Text>
-      <Text color="yellow">Chromium not detected. Press Ctrl+G to see install instructions.</Text>
-      <Box marginTop={1} flexDirection="column">
-        <Text dimColor>  <Text color="cyanBright">S</Text>      -- Open shell here (to run: swao install-playwright)</Text>
-        <Text dimColor>  <Text color="cyanBright">Enter</Text>  -- Continue without Playwright (install later)</Text>
+    <SetupStepFrame title={title} subtitle={subtitle} kind="picker" guidance={entry}>
+      <Box flexDirection="column">
+        <Text {...tone('warning')}>Chromium not found. The install command is in the guidance.</Text>
+        <Box marginTop={1}>
+          <SelectInput
+            label=""
+            options={playwrightOptions()}
+            numbered
+            showKeyHints={false}
+            visibleCount={3}
+            onCursorChange={onCursorChange}
+            onSelect={(v) => {
+              if (v === 'recheck') { setRound((n) => n + 1); return; }
+              if (v === 'shell') {
+                if (process.platform === 'win32') {
+                  const child = spawn('cmd', ['/c', 'start', 'cmd'], { detached: true, stdio: ['ignore', 'ignore', 'ignore'] });
+                  child.unref();
+                }
+                return;
+              }
+              onNext();
+            }}
+          />
+        </Box>
       </Box>
-      {crawlerGuidance}
-    </Box>
+    </SetupStepFrame>
   );
 }

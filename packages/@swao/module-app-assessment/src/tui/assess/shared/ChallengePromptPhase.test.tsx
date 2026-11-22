@@ -25,7 +25,7 @@ import { EventEmitter } from 'node:events';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { render as inkRender, Text, type Instance } from 'ink';
+import { render as inkRender, type Instance } from 'ink';
 import type { ReactElement } from 'react';
 import { ChallengePromptPhase, challengeOfferForApp } from './ChallengePromptPhase.js';
 
@@ -68,7 +68,8 @@ function render(tree: ReactElement): { lastFrame: () => string; stdin: FakeStdin
   return { lastFrame: () => stdout.last, stdin };
 }
 
-const Header = ({ subtitle }: { subtitle?: string }): JSX.Element => <Text>{subtitle ?? ''}</Text>;
+// #4256: the prompt renders in the flow frame of the screen.
+const FRAME = { header: { subtitle: 'Application Assessment', version: '1.6.1', licenseState: { tier: 'enterprise' as const, assessmentCount: 1, firstRun: '2026-01-01' } }, steps: ['Application', 'Run', 'Done'], current: 2, onGuidanceOpenChange: (): void => undefined, dialog: null };
 const OLD_RUN = '2026-10-20T09-00-00';
 const NEW_RUN = '2026-10-22T17-15-00';
 
@@ -98,13 +99,19 @@ describe('ChallengePromptPhase offer (#3427)', () => {
     const offer = challengeOfferForApp(workspace(), 'demo-app', 'application');
     let confirmed = 0;
     const { lastFrame, stdin } = render(
-      <ChallengePromptPhase app="demo-app" type="application" isEnterprise onConfirm={() => { confirmed++; }} onBack={() => undefined} Header={Header} offer={offer} />,
+      <ChallengePromptPhase app="demo-app" type="application" isEnterprise onConfirm={() => { confirmed++; }} onBack={() => undefined} frame={FRAME} offer={offer} />,
     );
     const frame = lastFrame().replace(/\s+/g, ' ');
-    expect(frame).toContain('Assessment complete. Run a Stakeholder Challenge?');
+    // #4256: a ConfirmPanel in the flow frame; the stale note is the risk line, the CLI is in the guidance only.
+    expect(frame).toContain('Run a Stakeholder Challenge?');
+    expect(frame).toContain('The assessment is complete.');
     expect(frame).toContain(`of run ${OLD_RUN}) belongs to another run`);
-    expect(frame).toContain('CLI equivalent: swao challenge --all-agents --app demo-app');
+    expect(frame).not.toContain('CLI equivalent');
+    expect(frame).toContain('Enter confirm');
     await new Promise(r => setTimeout(r, 20));
+    stdin.write('\u0007');
+    await new Promise(r => setTimeout(r, 20));
+    expect(lastFrame().replace(/\s+/g, ' ')).toContain('CLI: swao challenge --all-agents --app demo-app');
     stdin.write('\r');
     await new Promise(r => setTimeout(r, 20));
     expect(confirmed).toBe(1);
@@ -118,8 +125,28 @@ describe('ChallengePromptPhase offer (#3427)', () => {
     const offer = challengeOfferForApp(ws, 'demo-app', 'application');
     expect(offer).toEqual({ freshness: 'current', command: 'swao challenge --all-agents --app demo-app' });
     const { lastFrame } = render(
-      <ChallengePromptPhase app="demo-app" type="application" isEnterprise onConfirm={() => undefined} onBack={() => undefined} Header={Header} offer={offer} />,
+      <ChallengePromptPhase app="demo-app" type="application" isEnterprise onConfirm={() => undefined} onBack={() => undefined} frame={FRAME} offer={offer} />,
     );
     expect(lastFrame()).not.toContain('another run');
+  });
+
+  it('#4230: with the guidance box open Esc closes the box only and Enter still runs the challenge', async () => {
+    let confirmed = 0;
+    let back = 0;
+    const { stdin } = render(
+      <ChallengePromptPhase app="demo-app" type="application" isEnterprise onConfirm={() => { confirmed++; }} onBack={() => { back++; }} frame={FRAME} />,
+    );
+    const wait = (): Promise<void> => new Promise(r => setTimeout(r, 30));
+    await wait();
+    stdin.write('\u0007'); // Ctrl+G opens the box
+    await wait();
+    stdin.write('\u001b'); // Esc closes the box, never leaves the prompt
+    await wait();
+    expect(back).toBe(0);
+    stdin.write('\u0007');
+    await wait();
+    stdin.write('\r');
+    await wait();
+    expect(confirmed).toBe(1);
   });
 });

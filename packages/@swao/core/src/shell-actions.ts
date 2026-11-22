@@ -19,6 +19,7 @@
 // a missing file association or absent xclip never blocks the TUI.
 
 import { spawn, spawnSync } from 'node:child_process';
+import { isPkgBinary } from './self-spawn.js';
 
 /**
  * Open a file with the OS default association (PowerBI Desktop for .pbit
@@ -47,8 +48,7 @@ export function openWithDefaultApp(path: string): boolean {
       // spawn(process.execPath, ['-e', inlineScript]) silently fails because SWAO
       // has no `-e` flag. Use cmd /c start with path via env vars -- same indirection
       // pattern as the dev/test branch below (#0726/#0733).
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isPkg = Object.prototype.hasOwnProperty.call(process, 'pkg');
+      const isPkg = isPkgBinary();
       if (isPkg) {
         if (/\.html?$/i.test(path)) {
           // HTML: encode as file:// URL (spaces -> %20) and pass via env so the

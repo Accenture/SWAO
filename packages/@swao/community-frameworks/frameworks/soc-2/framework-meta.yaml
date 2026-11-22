@@ -1,0 +1,52 @@
+# SWAO community framework metadata (design 029 section 2.3 and section 11; Design 104 section 5.1)
+# Catalogue 2.0.0 (#4061, 2026-11-09): quality review before publication; see controls.yaml header.
+
+framework:
+  id: SOC_2
+  name: "SOC 2 Trust Services Criteria"
+  version: "2017 (revised points of focus 2022)"
+  authority: "American Institute of Certified Public Accountants (AICPA)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - saas
+    - b2b
+    - us_market
+    - cloud_hosted
+    - enterprise_buyer
+  scoring_mode: binary
+  assessment_type_scope: [app, aud]
+  description: >-
+    AICPA Trust Services Criteria (2017, revised points of focus 2022) for SOC 2
+    examinations of service organisations. 61 controls, one per criterion:
+    security, the Common Criteria required in every SOC 2 report (33, CC1 to
+    CC9, CC1 to CC5 based on the COSO 2013 principles), availability (3),
+    processing integrity (5), confidentiality (2) and privacy (18, audit scope
+    only). 18 controls are assessable from workload evidence (3 only from it,
+    15 together with documents); 43 are organisational and need documents in
+    the app's ingestion folder. Cross-mapped to ISO/IEC 27001:2022 Annex A,
+    BSI C5, GDPR (privacy category) and DORA (two-way, #4058).
+  references:
+    - "AICPA, TSP Section 100, 2017 Trust Services Criteria for Security, Availability, Processing Integrity, Confidentiality, and Privacy (revised points of focus, 2022)"
+    - "COSO, Internal Control - Integrated Framework (2013), principles 1 to 17 (basis of CC1 to CC5)"
+    - "Criterion list checked against docs/custom-frameworks/soc-2/research-notes.md (2026-11-09, #4061); a check against the AICPA publication is open for owner sign-off"
+  catalogue_version: "2.0.0"
+  last_reviewed: "2026-11-09"
+  signal_prefix: SOC2
+
+  cross_mapping_hints:
+    target_frameworks:
+      - ISO_27001      # Annex A; CC6, CC7 and CC8 to A.5 and A.8 controls
+      - BSI_C5         # C5:2020 OIS, IDM, CRY, COS, OPS, AVL, DEV, INM, DAT domains
+      - GDPR           # P category to GDPR Art. 5 to 34
+      - DORA           # two-way pairs listed in the DORA README (#4058)
+
+  redistribution_note: >-
+    The Trust Services Criteria are copyrighted by the AICPA and the COSO 2013
+    principles by COSO. This catalogue cites the criterion ids only and
+    describes each criterion in SWAO's own words; no criterion text or point of
+    focus is reproduced. It is not an AICPA publication and does not replace
+    the criteria or a SOC 2 examination by a licensed CPA firm.
+
+  replaces: []

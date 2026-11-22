@@ -42,6 +42,28 @@ function writeSeedManifest(dir: string, m: SeedManifest): void {
   try { writeFileSync(join(dir, SEED_MANIFEST), JSON.stringify(m, null, 2) + '\n', 'utf-8'); } catch { /* non-fatal */ }
 }
 
+/**
+ * #4475: a live model discovery rewrote a workspace connector file. When the
+ * file was an unchanged seed before (its hash matched the seed manifest), the
+ * manifest takes the new hash, so `swao llm-gateway update` still treats the
+ * file as an unchanged seed and replaces it with a newer packaged version (the
+ * next discovery adds the served models again). A file the user edited stays
+ * user-edited. Best-effort, never throws.
+ */
+export function noteDiscoveryRewrite(dir: string, fileName: string, prevHash: string | undefined, newPath: string): void {
+  try {
+    const manifest = readSeedManifest(dir);
+    if (!prevHash || manifest.files[fileName] !== prevHash) return;
+    manifest.files[fileName] = sha256(newPath);
+    writeSeedManifest(dir, manifest);
+  } catch { /* non-fatal */ }
+}
+
+/** #4475: SHA-256 of a file, or undefined when it cannot be read. */
+export function fileSha256(path: string): string | undefined {
+  try { return sha256(path); } catch { return undefined; }
+}
+
 // #3388 (CLAUDE.md 5.7): client-private connectors are never seeded into a
 // workspace. A private connector file marks itself with this comment line
 // (scripts/build-lib.mjs reads the same marker and leaves such files out of
@@ -161,7 +183,7 @@ export interface ConnectorUpdateResult {
  * workspace lacks is added; identical files are left alone. `dryRun` reports the
  * matrix without writing.
  */
-export function updateBundledConnectors(workspaceRoot: string, opts?: { dryRun?: boolean; srcDir?: string }): ConnectorUpdateResult {
+export function updateBundledConnectors(workspaceRoot: string, opts?: { dryRun?: boolean; srcDir?: string; /** #4491: only these file names (the Setup LLM step updates one connector). */ only?: readonly string[] }): ConnectorUpdateResult {
   const result: ConnectorUpdateResult = { added: [], updated: [], keptModified: [], upToDate: [], dir: null };
   const src = opts?.srcDir ?? resolveBundledConnectorsDir();
   if (!src) return result;
@@ -172,7 +194,7 @@ export function updateBundledConnectors(workspaceRoot: string, opts?: { dryRun?:
   const marker = join(dest, '.seeded');
   const seededList = new Set<string>(existsSync(marker) ? readFileSync(marker, 'utf-8').split('\n').filter(Boolean) : []);
 
-  for (const f of readdirSync(src).filter((name) => isSeedableConnectorFile(src, name))) {
+  for (const f of readdirSync(src).filter((name) => isSeedableConnectorFile(src, name) && (!opts?.only || opts.only.includes(name)))) {
     const from = join(src, f);
     const to = join(dest, f);
     const pkgHash = sha256(from);
@@ -286,3 +308,120 @@ export function getConnector(
 ): LoadedConnector | undefined {
   return listConnectors(opts).connectors.find(c => c.file.connector.id === id);
 }
+
+// ---------------------------------------------------------------------------
+// #4491: an outdated workspace seed and the bundled price fallback
+// ---------------------------------------------------------------------------
+
+/** #4491: how a workspace connector file stands against the packaged version. */
+export interface ConnectorSeedStatus {
+  /** current: nothing newer packaged; outdated: an unedited seed with a newer packaged file
+   *  (offer the update); edited: the user edited the file and a newer packaged file exists (notice only);
+   *  none: no packaged file of this id, or no workspace copy. */
+  status: 'current' | 'outdated' | 'edited' | 'none';
+  file: string;
+  workspaceReviewed?: string;
+  bundledReviewed?: string;
+}
+
+function readConnectorFileAt(path: string): ConnectorFile | undefined {
+  try {
+    const parsed = parseConnectorYaml(readFileSync(path, 'utf-8'), path);
+    return parsed.ok ? parsed.file : undefined;
+  } catch { return undefined; }
+}
+
+/** The packaged file name of a connector id ('<id>.yaml' or '<id>.yml'), or undefined. */
+function bundledFileOf(src: string, connectorId: string): string | undefined {
+  for (const f of [`${connectorId}.yaml`, `${connectorId}.yml`]) if (existsSync(join(src, f))) return f;
+  return undefined;
+}
+
+function costKey(c: { input_per_million: number; output_per_million: number } | undefined): string {
+  return c ? `${c.input_per_million}/${c.output_per_million}` : '-';
+}
+
+/**
+ * #4491: is the packaged connector file newer than the workspace copy? Newer
+ * means a later `meta.last_reviewed`, or a curated catalogue entry of the
+ * packaged file (id, price) the workspace copy lacks or prices differently. A
+ * live discovery does not count as an edit (`noteDiscoveryRewrite`), and the
+ * models it added (`discovered: true`) are not compared. An unedited seed is
+ * `outdated` (the update is safe), an edited copy `edited` (notice only).
+ * Never throws; `srcDir` for tests.
+ */
+export function connectorSeedStatus(workspaceRoot: string, connectorId: string, opts?: { srcDir?: string }): ConnectorSeedStatus {
+  const src = opts?.srcDir ?? resolveBundledConnectorsDir();
+  const none = { status: 'none' as const, file: `${connectorId}.yaml` };
+  if (!src) return none;
+  const f = bundledFileOf(src, connectorId);
+  if (!f || !isSeedableConnectorFile(src, f)) return none;
+  const dest = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
+  const ws = join(dest, f);
+  if (!existsSync(ws)) return { ...none, file: f };
+  const pkg = readConnectorFileAt(join(src, f));
+  const mine = readConnectorFileAt(ws);
+  if (!pkg || !mine) return { ...none, file: f };
+  const bundledReviewed = pkg.connector.meta?.last_reviewed;
+  const workspaceReviewed = mine.connector.meta?.last_reviewed;
+  const base = { file: f, ...(bundledReviewed ? { bundledReviewed } : {}), ...(workspaceReviewed ? { workspaceReviewed } : {}) };
+  const laterReview = !!bundledReviewed && (!workspaceReviewed || bundledReviewed > workspaceReviewed);
+  const wsCurated = new Map((mine.connector.models.catalogue ?? []).filter((m) => !m.discovered).map((m) => [m.id, costKey(m.cost)] as const));
+  // A packaged entry without a price is only compared by id (a discovery may have filled a price in).
+  const catalogueDiffers = (pkg.connector.models.catalogue ?? []).some((m) => !wsCurated.has(m.id) || (!!m.cost && wsCurated.get(m.id) !== costKey(m.cost)));
+  if (!laterReview && !catalogueDiffers) return { status: 'current', ...base };
+  const seeded = readSeedManifest(dest).files[f];
+  const unedited = !!seeded && fileSha256(ws) === seeded;
+  return { status: unedited ? 'outdated' : 'edited', ...base };
+}
+
+/** #4491: the outdated or edited workspace connector files of a workspace (Health Check, Review step). */
+export function outdatedWorkspaceConnectors(workspaceRoot: string, opts?: { srcDir?: string; ids?: readonly string[] }): ConnectorSeedStatus[] {
+  const dir = join(workspaceRoot, 'wsp', 'inputs', 'llm-gateway');
+  let ids: string[] = opts?.ids ? [...opts.ids] : [];
+  if (!opts?.ids) {
+    try {
+      ids = readdirSync(dir).filter((x) => (x.endsWith('.yaml') || x.endsWith('.yml')) && !x.startsWith('_')).map((x) => x.replace(/\.ya?ml$/, ''));
+    } catch { return []; }
+  }
+  return ids.map((id) => connectorSeedStatus(workspaceRoot, id, opts)).filter((s) => s.status === 'outdated' || s.status === 'edited');
+}
+
+/**
+ * #4491: the words of an outdated or edited seed. `hint` names where to update it:
+ * 'setup-and-cli' (Health Check, shared by CLI and TUI), 'setup' (TUI screens outside
+ * the Setup LLM step, no CLI syntax on screen), 'none' (the Setup LLM step itself, which
+ * offers the update below the line). `withFile: false` drops the file name for a row
+ * whose label already names it.
+ */
+export function seedStatusText(s: ConnectorSeedStatus, opts: { hint?: 'setup-and-cli' | 'setup' | 'none'; withFile?: boolean } = {}): string {
+  const hint = opts.hint ?? 'setup-and-cli';
+  const subject = opts.withFile === false ? '' : `connector file ${s.file} `;
+  const dates = s.workspaceReviewed || s.bundledReviewed
+    ? ` (reviewed ${s.workspaceReviewed ?? 'unknown'}, packaged ${s.bundledReviewed ?? 'unknown'})`
+    : '';
+  if (s.status !== 'outdated') return `${subject}was edited and a newer packaged version exists${dates}; compare it with the packaged file`;
+  const where = hint === 'none' ? '' : hint === 'setup' ? '; update it in Setup, LLM step' : '; update it in Setup, LLM step, or with swao llm-gateway update';
+  return `${subject}is older than the packaged one${dates}${where}`;
+}
+
+/**
+ * #4491: the curated price of a model in the packaged connector file, for a
+ * served model the workspace file has no price for ("bundled price"). Exact
+ * id, or a dated snapshot of a packaged alias. Undefined when the packaged file
+ * does not list it.
+ */
+export function bundledModelPrice(connectorId: string, modelId: string, opts?: { srcDir?: string }): { input_per_million: number; output_per_million: number } | undefined {
+  // Pickers call this per model and per keystroke: the packaged folder is resolved once.
+  if (opts?.srcDir === undefined && _bundledDirCache === undefined) _bundledDirCache = resolveBundledConnectorsDir();
+  const src = opts?.srcDir ?? _bundledDirCache;
+  if (!src) return undefined;
+  const f = bundledFileOf(src, connectorId);
+  if (!f) return undefined;
+  const cat = _bundledCatalogueCache.get(join(src, f)) ?? (readConnectorFileAt(join(src, f))?.connector.models.catalogue ?? []);
+  _bundledCatalogueCache.set(join(src, f), cat);
+  const hit = cat.find((m) => m.id === modelId) ?? cat.find((m) => modelId.startsWith(`${m.id}-`) && /^\d{8}$/.test(modelId.slice(m.id.length + 1)));
+  return hit?.cost ? { input_per_million: hit.cost.input_per_million, output_per_million: hit.cost.output_per_million } : undefined;
+}
+let _bundledDirCache: string | null | undefined;
+const _bundledCatalogueCache = new Map<string, NonNullable<ConnectorFile['connector']['models']['catalogue']>>();

@@ -45,7 +45,7 @@ describe('scaffoldCatalogs (#0161; sprint-037 #0341 overlay->community)', () => 
     expect(existsSync(result.communityDir)).toBe(true);
   });
 
-  it('copies the 4 default bundled frameworks (#0775); other frameworks install via `swao framework install`', () => {
+  it('copies the 4 default bundled frameworks (#0775); more frameworks are copied from the GitHub repository (#4126)', () => {
     const result = scaffoldCatalogs(tmp);
     // Demo variants ship by default since commit 16e129ed (#0842 COBIT_5 excluded).
     expect(result.copiedFiles).toContain('community/gdpr-demo/');

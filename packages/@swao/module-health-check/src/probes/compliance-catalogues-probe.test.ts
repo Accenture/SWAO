@@ -13,10 +13,11 @@
 //
 // ================================================================
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync, readFileSync } from 'fs';
 import { tmpdir } from 'os';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { load } from 'js-yaml';
 import { buildCommunityFrameworksProbe } from './compliance-catalogues-probe.js';
 
 let tmpRoot: string;
@@ -424,5 +425,259 @@ describe('buildCommunityFrameworksProbe -- #0724 regime resolution warning', () 
     const result = buildCommunityFrameworksProbe(tmpRoot);
     expect(result.status).toBe('ok');
     expect(result.warnings).toHaveLength(0);
+  });
+});
+
+// #3577 (Design 120 §8.2): per-framework service-mapping coverage against the
+// capability tags in use. A framework without service-controls.yaml is not a
+// warning (no framework ships one yet); an invalid file or a mapping of a tag
+// no resolved LZ catalogue uses is.
+describe('buildCommunityFrameworksProbe -- #3577 service-mapping coverage', () => {
+  const TAGS = ['key_vault', 'kubernetes', 'object_storage'];
+  const catalogs = (): string => join(tmpRoot, 'wsp', 'inputs', 'catalogs');
+  const writeMapping = (folder: string, body: string): void => {
+    writeFileSync(join(catalogs(), 'community', folder, 'service-controls.yaml'), body);
+  };
+  const mapping = (id: string, rows: string): string => `schema_version: "0.1"\nframework: ${id}\nmappings:\n${rows}`;
+  const row = (cap: string, ctl: string): string => `  - capability: ${cap}\n    controls: [${ctl}]\n    relevance: configure\n    confidence: curated\n`;
+
+  it('reports absent with zero mapped and no warning when the framework has no service-controls.yaml', () => {
+    writeCommunityFolder(catalogs(), 'gdpr', { id: 'GDPR', contributor: 'Test' });
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: TAGS });
+    expect(result.frameworks[0]!.service_mapping).toEqual({ status: 'absent', mapped: 0, in_use: 3, unused_mappings: [] });
+    expect(result.status).toBe('ok');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('computes mapped / in-use capability tags for a valid mapping', () => {
+    writeCommunityFolder(catalogs(), 'bsi-c5', { id: 'BSI_C5', contributor: 'Test' });
+    writeMapping('bsi-c5', mapping('BSI_C5', row('key_vault', 'BSI_C5_C1') + row('object_storage', 'BSI_C5_C1')));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: TAGS });
+    expect(result.frameworks[0]!.service_mapping).toEqual({ status: 'ok', mapped: 2, in_use: 3, unused_mappings: [] });
+    expect(result.status).toBe('ok');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('warns (not fails) for control ids that the framework controls.yaml does not define', () => {
+    writeCommunityFolder(catalogs(), 'bsi-c5', { id: 'BSI_C5', contributor: 'Test', controls: 2 });
+    writeMapping('bsi-c5', mapping('BSI_C5', row('key_vault', 'BSI_C5_C2, CRY-3') + row('object_storage', 'CRY-3')));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: TAGS });
+    expect(result.status).toBe('warn');
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual(['BSI_C5: service-controls.yaml references control ids not in controls.yaml: CRY-3']);
+    expect(result.frameworks[0]!.service_mapping.status).toBe('ok');
+  });
+
+  it('keeps the framework summaries when the LZ capability-tag scan fails', () => {
+    writeCommunityFolder(catalogs(), 'gdpr', { id: 'GDPR', contributor: 'Test' });
+    writeMapping('gdpr', mapping('GDPR', row('key_vault', 'GDPR_C1')));
+    const result = buildCommunityFrameworksProbe(tmpRoot, {
+      collectCapabilityTags: () => { throw new Error('catalogue unreadable'); },
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.frameworks).toHaveLength(1);
+    expect(result.frameworks[0]!.service_mapping).toEqual({ status: 'ok', mapped: 0, in_use: 0, unused_mappings: ['key_vault'] });
+    expect(result.warnings.filter((w) => w.includes('capability tags could not be read'))).toHaveLength(1);
+  });
+
+  it('warns for an invalid file and for a mapped tag that no LZ catalogue uses', () => {
+    writeCommunityFolder(catalogs(), 'bsi-c5', { id: 'BSI_C5', contributor: 'Test' });
+    writeMapping('bsi-c5', mapping('GDPR', row('key_vault', 'CRY-03')));
+    writeCommunityFolder(catalogs(), 'gdpr', { id: 'GDPR', contributor: 'Test' });
+    writeMapping('gdpr', mapping('GDPR', row('key_vault', 'GDPR_C1') + row('mainframe', 'GDPR_C1')));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: TAGS });
+    const byId = new Map(result.frameworks.map((f) => [f.id, f.service_mapping]));
+    expect(byId.get('BSI_C5')?.status).toBe('invalid');
+    expect(byId.get('GDPR')).toEqual({ status: 'ok', mapped: 1, in_use: 3, unused_mappings: ['mainframe'] });
+    expect(result.status).toBe('warn');
+    expect(result.warnings.some((w) => w.startsWith('BSI_C5: service-controls.yaml is invalid'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes('GDPR: service-controls.yaml maps capability tags no resolved LZ catalogue uses: mainframe'))).toBe(true);
+  });
+
+  it('defaults the capability tags to the LZ catalogues the workspace resolves', () => {
+    writeCommunityFolder(catalogs(), 'gdpr', { id: 'GDPR', contributor: 'Test' });
+    writeMapping('gdpr', mapping('GDPR', row('key_vault', 'GDPR_C1')));
+    const result = buildCommunityFrameworksProbe(tmpRoot);
+    const sm = result.frameworks[0]!.service_mapping;
+    expect(sm.status).toBe('ok');
+    expect(sm.mapped).toBe(1);
+    expect(sm.in_use).toBeGreaterThan(10); // bundled catalogues carry the full tag vocabulary
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3869 (Design 123 section 7.4): policy-baseline.yaml validation.
+// ---------------------------------------------------------------------------
+
+describe('buildCommunityFrameworksProbe -- #3869 policy baseline', () => {
+  const SHIPPED_DIR = join(__dirname, '..', '..', '..', 'community-frameworks', 'frameworks', 'client-lz-policy-baseline');
+  const catalogs = (): string => join(tmpRoot, 'wsp', 'inputs', 'catalogs');
+  const copyDir = (folder = 'client-lz-policy-baseline'): string => join(catalogs(), 'community', folder);
+  const install = (folder = 'client-lz-policy-baseline'): string => {
+    const dir = copyDir(folder);
+    mkdirSync(dirname(dir), { recursive: true });
+    cpSync(SHIPPED_DIR, dir, { recursive: true });
+    return dir;
+  };
+  // Every tag the shipped service-controls.yaml maps plus the rest of the CPB-SVC-02 allow-list,
+  // so neither the service-mapping nor the baseline unused-tag warning fires in the clean cases.
+  const ALL_TAGS = [
+    ...(load(readFileSync(join(SHIPPED_DIR, 'service-controls.yaml'), 'utf-8')) as { mappings: { capability: string }[] }).mappings.map((m) => m.capability),
+    'ci_cd', 'container_orchestration', 'container_registry', 'dns', 'iac', 'metrics', 'vpn',
+  ];
+  const editBaseline = (dir: string, edit: (s: string) => string): void => {
+    const file = join(dir, 'policy-baseline.yaml');
+    writeFileSync(file, edit(readFileSync(file, 'utf-8')));
+  };
+
+  it('accepts the shipped baseline copy: ok, counts, no warning', () => {
+    install();
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.status).toBe('ok');
+    expect(result.frameworks[0]!.policy_baseline).toEqual({
+      status: 'ok', policies: 20, enabled: 17, disabled: 3, not_set: [], catalogue_version: '1.0.0',
+      shipped_version: '1.0.0', stale: false, missing_shipped_ids: [], unused_tags: [],
+    });
+  });
+
+  it('leaves a framework without policy-baseline.yaml unchanged (absent, no warning)', () => {
+    writeCommunityFolder(catalogs(), 'gdpr', { id: 'GDPR', contributor: 'Test' });
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.frameworks[0]!.policy_baseline.status).toBe('absent');
+    expect(result.status).toBe('ok');
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('fails the framework on a schema error', () => {
+    const dir = install();
+    editBaseline(dir, (s) => s.replace('min_days: 180', 'min_days: "180"'));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.status).toBe('fail');
+    expect(result.frameworks[0]!.policy_baseline.status).toBe('invalid');
+    expect(result.errors.join()).toContain('CLIENT_LZ_POLICY_BASELINE: policy-baseline.yaml is invalid (policies.14.params.min_days');
+  });
+
+  it('fails a copy that uses the CPB- prefix for a policy SWAO does not ship (shipped id set passed)', () => {
+    const dir = install();
+    // the control CPB-SVC-03 still exists, so the only error is the reservation
+    editBaseline(dir, (s) => s.replace('  - id: CPB-SVC-03\n', '  - id: CPB-SVC-09\n'));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.status).toBe('fail');
+    expect(result.errors.join()).toContain('"CPB-SVC-09" uses the CPB- prefix reserved for shipped policies');
+  });
+
+  it('warns for not_set policies and lists them', () => {
+    const dir = install();
+    editBaseline(dir, (s) => s
+      .replace(/(id: CPB-COST-01[\s\S]*?state: )enabled/, '$1not_set')
+      .replace(/(id: CPB-PRT-01[\s\S]*?state: )enabled/, '$1not_set'));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.status).toBe('warn');
+    expect(result.frameworks[0]!.policy_baseline.not_set).toEqual(['CPB-COST-01', 'CPB-PRT-01']);
+    expect(result.warnings).toEqual([
+      'CLIENT_LZ_POLICY_BASELINE: policy-baseline.yaml has 2 policies not reviewed (state not_set, not evaluated until reviewed): CPB-COST-01, CPB-PRT-01',
+    ]);
+  });
+
+  it('warns for a stale copy and lists the shipped policies it misses', () => {
+    install();
+    // A newer shipped baseline: 1.1.0 with one more policy.
+    const bundled = join(tmpRoot, 'bundled');
+    const shipped = join(bundled, 'client-lz-policy-baseline');
+    cpSync(SHIPPED_DIR, shipped, { recursive: true });
+    editBaseline(shipped, (s) => s
+      .replace('catalogue_version: "1.0.0"', 'catalogue_version: "1.1.0"')
+      .replace('policies:\n', 'policies:\n  - id: CPB-LOG-03\n    kind: audit_trail\n    category: logging\n    control: CPB-LOG-01\n    state: enabled\n    params:\n      all_regions: true\n    default_source: assumption\n'));
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS, bundledFrameworksDir: bundled });
+    expect(result.status).toBe('warn');
+    const pb = result.frameworks[0]!.policy_baseline;
+    expect(pb).toMatchObject({ stale: true, catalogue_version: '1.0.0', shipped_version: '1.1.0', missing_shipped_ids: ['CPB-LOG-03'] });
+    expect(result.warnings.join()).toContain(
+      'policy-baseline.yaml is stale (catalogue_version 1.0.0 is lower than the shipped 1.1.0); shipped policies missing from the copy: CPB-LOG-03',
+    );
+    // #4126: the hint names no removed command; SWAO never updates the copy (D-07).
+    expect(result.warnings.join()).toContain('SWAO never updates the copy');
+    expect(result.warnings.join()).not.toMatch(/swao framework baseline/);
+  });
+
+  it('warns for capability tags no resolved LZ catalogue uses', () => {
+    install();
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ['postgresql'] });
+    expect(result.frameworks[0]!.policy_baseline.unused_tags).toContain('managed_llm');
+    expect(result.frameworks[0]!.policy_baseline.unused_tags).not.toContain('postgresql');
+    expect(result.warnings.join()).toContain('policy-baseline.yaml names capability tags no resolved LZ catalogue uses: ');
+    expect(result.status).toBe('warn');
+  });
+
+  it('finds the shipped baseline through baseline_of for a renamed second copy', () => {
+    const dir = install('my-high-baseline');
+    for (const f of ['framework-meta.yaml', 'controls.yaml', 'policy-baseline.yaml', 'service-controls.yaml']) {
+      const file = join(dir, f);
+      writeFileSync(file, readFileSync(file, 'utf-8').replace(/^(\s*(?:id|framework)): CLIENT_LZ_POLICY_BASELINE$/gm, '$1: CLIENT_LZ_POLICY_BASELINE_HIGH'));
+    }
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: ALL_TAGS });
+    expect(result.errors).toEqual([]);
+    const pb = result.frameworks.find((f) => f.id === 'CLIENT_LZ_POLICY_BASELINE_HIGH')!.policy_baseline;
+    expect(pb).toMatchObject({ status: 'ok', shipped_version: '1.0.0', stale: false });
+  });
+});
+
+// #4410: on a busy machine the probe took 40 s (1.3 s before) and a slower run
+// passed the 120 s idle watchdog of the Setup Wizard. The probe now has a time
+// budget and parses each catalogue once.
+describe('#4410 community frameworks probe: time budget and single parse', () => {
+  it('past its budget the probe stops validating, warns with the count and still returns', () => {
+    const catalogsDir = join(tmpRoot, 'catalogs');
+    writeRegime(catalogsDir, 'community', 'GDPR', 'gdpr-controls.yaml', 2);
+    writeRegime(catalogsDir, 'community', 'ACME-INTERNAL', 'acme-internal-controls.yaml', 1);
+    let clock = 0;
+    // Every clock read advances 10 s; the budget is 15 s.
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: [], budgetMs: 15_000, now: () => (clock += 10_000) });
+    expect(result.status).toBe('warn');
+    expect(result.warnings.some((w) => /^stopped after 15 s: 1 of 2 frameworks validated/.test(w))).toBe(true);
+    expect(result.frameworks).toHaveLength(1);
+  });
+
+  it('within its budget every framework is validated', () => {
+    const catalogsDir = join(tmpRoot, 'catalogs');
+    writeRegime(catalogsDir, 'community', 'GDPR', 'gdpr-controls.yaml', 2);
+    writeRegime(catalogsDir, 'community', 'ACME-INTERNAL', 'acme-internal-controls.yaml', 1);
+    const result = buildCommunityFrameworksProbe(tmpRoot, { capabilityTags: [] });
+    expect(result.status).toBe('ok');
+    expect(result.frameworks).toHaveLength(2);
+  });
+});
+
+// #4452: a regime of the bundled catalogue (SWAO_APM, written by the service
+// scaffold) counts as loaded; a regime found nowhere is one warning with its
+// app count, without a spaced double hyphen.
+describe('buildCommunityFrameworksProbe: declared regimes resolve through the bundled catalogue (#4452)', () => {
+  function app(id: string, regimes: string[]): void {
+    const dir = join(tmpRoot, 'apps', id);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, '.swao.yml'), `assessment:\n  type: service\n  regimes_active:\n${regimes.map((r) => `    - ${r}\n`).join('')}`);
+  }
+
+  it('SWAO_APM in a service app gives no warning', () => {
+    writeCommunityFolder(join(tmpRoot, 'wsp', 'inputs', 'catalogs'), 'gdpr', { id: 'GDPR', contributor: { name: 'Test' }, controls: 1 });
+    app('svc-a', ['SWAO_APM']);
+    app('svc-b', ['SWAO_APM']);
+    const result = buildCommunityFrameworksProbe(tmpRoot);
+    expect(result.warnings.filter((w) => w.includes('SWAO_APM'))).toHaveLength(0);
+    expect(result.status).toBe('ok');
+  });
+
+  it('an unknown id is one warning naming the app count, without a spaced double hyphen', () => {
+    writeCommunityFolder(join(tmpRoot, 'wsp', 'inputs', 'catalogs'), 'gdpr', { id: 'GDPR', contributor: { name: 'Test' }, controls: 1 });
+    for (const id of ['app-1', 'app-2', 'app-3', 'app-4']) app(id, ['NOT_A_REGIME', 'SWAO_APM']);
+    const result = buildCommunityFrameworksProbe(tmpRoot);
+    const regimeWarnings = result.warnings.filter((w) => w.includes('regime "'));
+    expect(regimeWarnings).toEqual([
+      'regime "NOT_A_REGIME" declared in .swao.yml of 4 apps (apps/app-1, apps/app-2, apps/app-3 and 1 more) is not found in the workspace or the bundled catalogue; the catalogue may not be set up yet',
+    ]);
+    expect(regimeWarnings[0]).not.toContain(' -- ');
+    expect(result.status).toBe('warn');
   });
 });

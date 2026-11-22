@@ -32,66 +32,21 @@
 // the real runForApp + portfolio impls, wire the pdf renderer + portal builder,
 // then register the Enterprise `challenge` command.
 
-import { fileURLToPath } from 'url';
-import { appendFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { buildProgram, communityRenderHtml } from './bootstrap.js';
-import { premiumScreens } from './tui/premium-screens.js';
+//
+// #4387: the Enterprise wiring lives in tiers/enterprise-program.ts (importable
+// by the root help drift test); every command module and tier module loads on
+// first use, so `--version` / `--help` load no command stack.
 
-// #1475: crash telemetry -- capture unhandled rejections and uncaught exceptions
-// to a file in cwd so the root cause survives the terminal close. Both handlers
-// use synchronous I/O to guarantee the write completes before process exit.
-const _crashLog = join(process.cwd(), 'swao-crash.log');
-const _writeCrash = (label: string, detail: string): void => {
-  const line = `[${new Date().toISOString()}] ${label}\n${detail}\n---\n`;
-  try { appendFileSync(_crashLog, line, 'utf-8'); } catch { /* fs failure -- silently skip */ }
-  try { process.stderr.write(line); } catch { /* broken pipe -- silently skip */ }
-};
-process.on('unhandledRejection', (reason) => {
-  _writeCrash('unhandledRejection', reason instanceof Error ? (reason.stack ?? String(reason)) : String(reason));
-});
-process.on('uncaughtException', (err) => {
-  _writeCrash('uncaughtException', err.stack ?? String(err));
-  process.exit(1);
-});
-// #0580: challenge command + ChallengeScreen + persona taxonomy live in
-// @swao/module-challenge (Enterprise tier). The module must not import the
-// sibling @swao/module-llm-providers, so the host injects createLlmProvider into
-// registerChallenge (mirrors the #0573 doctor probe-builder DI pattern).
-import { registerChallenge, ChallengeScreen } from '@swao/module-challenge';
-import { registerUnipipe } from './commands/unipipe.js';
-import { createLlmProvider as _baseLlmProvider, UsageTrackingLlmProvider, getConnector } from '@swao/module-llm-providers';
-import type { LlmProvider } from '@swao/module-llm-providers';
-// #1819: when spawned as a challenge subprocess inside an LLM Assessment leg,
-// wrap createLlmProvider so every challenge LLM call is recorded to the leg sink.
-import { createLegRecorderFromEnv } from '@swao/module-llm-assessment';
-// #0578: generate-tf command (Enterprise roadmap, F-090). registerGenerateTf imports only
-// @swao/core, so the host wires it directly.
-import { registerGenerateTf, GenerateTfScreen } from '@swao/module-terraform';
-// #0872: lz catalogue update command (Consultant+). Must be called after
-// registerLz (via buildProgram) since it attaches to the existing lz catalogue group.
-import { registerLzCatalogueUpdate } from '@swao/module-landing-zone';
-import { registerLlmGateway } from './commands/llm-gateway.js';
-// #0579: portfolio orchestration (Enterprise). The module spawns the swao CLI
-// per app and must not import host code, so the host resolves the CLI invocation
-// once (PortfolioHostDeps, identical to McpHostDeps) and builds the production
-// per-app runForApp + injects the orchestrator entry points.
-import {
-  buildSpawnRunForApp,
-  runPortfolio,
-  formatPortfolioResult,
-  PortfolioScreen,
-  type PortfolioHostDeps,
-} from '@swao/module-portfolio';
+import { fileURLToPath } from 'url';
+import { installCrashHandlers } from './lib/crash-handlers.js';
+import { normaliseNoLlmFlag } from './bootstrap.js';
 import type { McpHostDeps } from './lib/mcp-chat-contract.js';
-import { registerEnterpriseMcpChat } from './tiers/mcp-chat-enterprise.js';
-// #0576: the PDF renderer (Consultant) is wired in here for the full entry.
-import { renderTextReportToPdf, renderLlmComparisonToPdf } from '@swao/module-pdf-report';
-// #0582: the HTML Portal builder (Consultant) -- `publish --site`.
-import { buildPortalSite } from '@swao/module-html-portal';
-// #3353: the Enterprise service export (F-133, `swao service export`) lives in
-// the private @swao/module-service-export; only this entry injects it.
-import { runPortfolioExport } from '@swao/module-service-export';
+import type { PortfolioHostDeps } from '@swao/module-portfolio';
+import { buildEnterpriseProgram } from './tiers/enterprise-program.js';
+
+// #1475: crash telemetry (swao-crash.log in cwd); #4021: an unhandled
+// rejection ends with exit 1 after the crash line. See lib/crash-handlers.ts.
+installCrashHandlers();
 
 // #0574/#0579: resolve the swao CLI invocation once, shared by the MCP server
 // and the portfolio orchestrator (both spawn the CLI). In a pkg binary,
@@ -105,73 +60,12 @@ import { runPortfolioExport } from '@swao/module-service-export';
 process.env['SWAO_BINARY_TIER'] = 'enterprise';
 process.env['NODE_ENV'] = 'production';
 
-// Register premium TUI screens for Enterprise tier (sprint-128 #2132).
-premiumScreens.GenerateTfScreen = GenerateTfScreen;
-premiumScreens.PortfolioScreen  = PortfolioScreen;
-premiumScreens.ChallengeScreen  = ChallengeScreen;
-
 const cliSpawnDescriptor: McpHostDeps & PortfolioHostDeps = (process as { pkg?: unknown }).pkg
   ? { swaoCliPath: process.execPath, cliIsScript: false }
   : { swaoCliPath: fileURLToPath(import.meta.url), cliIsScript: true };
-// Production per-app runner for the general --portfolio dispatch. The
-// orchestrator appends `--workspace <path>` to every per-app invocation, so the
-// spawned run targets the discovered workspace regardless of cwd.
-const portfolioRunForApp = buildSpawnRunForApp(cliSpawnDescriptor);
 
-const program = buildProgram({
-  cliSpawnDescriptor,
-  // #3348 B-01 / B-02: the real MCP server and SWAO Chat (Enterprise only).
-  mcpChat: registerEnterpriseMcpChat(),
-  buildPortal: buildPortalSite,
-  serviceDeps: { runExport: runPortfolioExport },
-  assessDeps: {
-    runForApp: portfolioRunForApp,
-    runPortfolio,
-    formatPortfolioResult,
-  },
-  reportDeps: {
-    runForApp: portfolioRunForApp,
-    renderHtml: communityRenderHtml,
-    renderPdf: renderTextReportToPdf,
-    renderLlmPdf: renderLlmComparisonToPdf,
-    runPortfolio,
-    formatPortfolioResult,
-  },
+void buildEnterpriseProgram(cliSpawnDescriptor).then((program) => {
+  // Normalise --no-llm to --skip-llm; Commander reserves --no-<option> for boolean negation (#1715).
+  normaliseNoLlmFlag();
+  program.parse();
 });
-
-// Enterprise roadmap command: generate-tf (F-090, FEATURE_GATES['generate-tf']).
-registerGenerateTf(program);
-// Consultant command: lz catalogue update (Design 065 §5.6).
-registerLzCatalogueUpdate(program);
-// #3388 (Design 112 D-2): llm-gateway update -- refresh workspace connectors from packaged seeds.
-registerLlmGateway(program);
-// Enterprise roadmap command: unipipe (meshcloud UniPipe stub, #1652; FEATURE_GATES['unipipe']).
-registerUnipipe(program);
-// Enterprise command: challenge (LLM-driven assessment challenge personas).
-// When SWAO_LLM_ASSESSMENT_RECORD is set this process is a challenge subprocess
-// inside an LLM Assessment leg; wrap the factory so every LLM call is recorded
-// to the leg's sink file alongside the standard assessment calls (#1819).
-const _legRecorder = createLegRecorderFromEnv();
-const createLlmProvider: typeof _baseLlmProvider = _legRecorder
-  ? (appId, passName, config): LlmProvider => {
-      const base = _baseLlmProvider(appId, passName, config);
-      const tracking = new UsageTrackingLlmProvider(base);
-      _legRecorder.setPass(passName ?? 'challenge', 'challenge');
-      return _legRecorder.wrap(tracking, () => tracking.snapshot()) as LlmProvider;
-    }
-  : _baseLlmProvider;
-// #3444: the challenge names the credential of a rejected gateway connector
-// (key names only, never values) in its re-authentication guidance.
-registerChallenge(program, {
-  createLlmProvider,
-  describeCredential: (connectorId, workspaceRoot) => {
-    const auth = getConnector(connectorId, { workspaceRoot })?.file.connector.auth;
-    return auth ? { credentialKey: auth.credential_key, envVar: auth.env_var } : undefined;
-  },
-});
-
-// Normalise --no-llm to --skip-llm; Commander reserves --no-<option> for boolean negation (#1715).
-const _noLlmIdx = process.argv.indexOf('--no-llm');
-if (_noLlmIdx !== -1) process.argv.splice(_noLlmIdx, 1, '--skip-llm');
-
-program.parse();

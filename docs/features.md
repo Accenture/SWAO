@@ -10,12 +10,13 @@ portfolio scope, and sector-specific content.
 
 ## Assessment types
 
-SWAO supports four assessment types, all available now.
+SWAO supports five assessment types, all available now.
 
 | Assessment type | Status | What it covers |
 |---|---|---|
 | <FeatureTooltip tip="Analyses application source code across 13 default passes - inventory, SBOM, data classification, compliance evaluation, 7R migration synthesis, and more. Produces signals, a BI export bundle, and an HTML publication.">Application Assessment</FeatureTooltip> | Available | Cloud application source code |
 | <FeatureTooltip tip="Compares your cloud landing zone configuration against the sovereignty requirements derived from the active community framework. Fetches the cloud provider service catalogue and produces a fit/gap report.">Landing Zone Assessment</FeatureTooltip> | Available | Cloud infrastructure configuration |
+| <FeatureTooltip tip="Reads a deployed landing zone (T Cloud Public, AWS, Azure, STACKIT) through the provider's read-only APIs: regions, enabled services, guardrails, resources, quotas and activity, with a read-only gate on every request and credentials kept in the SWAO vault. Run with: swao lz connect, then swao assess --type landing-zone-live">Landing Zone Live Assessment</FeatureTooltip> | Available | Deployed cloud landing zones |
 | <FeatureTooltip tip="Connects to multiple LLM providers simultaneously and benchmarks each against sovereignty criteria: data residency, transparency, safety, cultural fit.">LLM Assessment</FeatureTooltip> | Available | AI model sovereignty benchmarking |
 | <FeatureTooltip tip="Assesses bought, rented, and operated applications (third-party software, COTS, SaaS, legacy servers) from a spreadsheet intake without source code. Researches vulnerabilities and end of life, scores eleven portfolio domains, and recommends a TIME disposition and migration waves.">Service Portfolio Assessment</FeatureTooltip> | Available | Third-party, COTS, and SaaS application portfolio |
 
@@ -28,16 +29,18 @@ SWAO supports four assessment types, all available now.
 | **Assessment** | | | |
 | <FeatureTooltip tip="Runs 13 default analysis passes on your application source code and produces signals, reports, and a BI export bundle.">Application Assessment</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Compares your cloud landing zone against sovereignty requirements and produces a fit/gap report.">Landing Zone Assessment</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="Connect a landing zone and probe its credential (swao lz connect, probe, list, remove) in every edition; the live scan, assessment and publication (swao assess --type landing-zone-live, swao publish --lz-live) need Consultant; merging all landing zones into the multi-cloud portfolio view needs Enterprise.">Landing Zone Live Assessment</FeatureTooltip> | Connect only | Yes | Yes |
 | <FeatureTooltip tip="Benchmarks multiple LLM providers against sovereignty criteria side by side.">LLM Assessment</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Assesses third-party, COTS, and SaaS applications from an Excel intake. HTML publication needs Consultant; the portfolio workbook and star schema need Enterprise.">Service Portfolio Assessment</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Researches vulnerabilities (CVE) and end of life for every service; with a configured LLM also the vendor profile, certifications, data residency, and breach history. Run with: swao service research">Service research (incl. LLM research)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="A second LLM agent independently challenges every finding; surfaces low-confidence assessments. Enterprise edition, requires completed Application Assessment.">Adversarial Challenge Review</FeatureTooltip> | - | - | Yes |
 | **Community frameworks** | | | |
-| <FeatureTooltip tip="21 frameworks in the public community-frameworks directory: 10 Pillars of Secure AI Systems, BSI C5, BSI IT-Grundschutz 2023, COBIT 5, EC Cloud Sovereignty Framework, EU AI Act, EU Cyber Resilience Act, EUCS, GDPR, KRITIS-DE, LLM Selection, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, NIS2, HIPAA / NIST SP 800-66r2, OpenSSF Scorecard, PCI-DSS v4, SAMA CSF v1, SecNumCloud, SWAO APM. Copy into the workspace with swao framework install or download from the SWAO community-frameworks repository on GitHub.">Community framework library (21 frameworks)</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="21 frameworks in the public community-frameworks directory: 10 Pillars of Secure AI Systems, BSI C5, BSI IT-Grundschutz 2023, COBIT 5, EC Cloud Sovereignty Framework, EU AI Act, EU Cyber Resilience Act, EUCS, GDPR, KRITIS-DE, LLM Selection, NCA CCC 2024 (CSP), NCA CCC 2024 (CST), NCA ECC 2024, NIS2, HIPAA / NIST SP 800-66r2, OpenSSF Scorecard, PCI-DSS v4, SAMA CSF v1, SecNumCloud, SWAO APM. Copy a framework folder from the SWAO community-frameworks repository on GitHub into the workspace.">Community framework library (21 frameworks)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Add your own community framework as a YAML file - no coding required. Supports the same controls schema as the community frameworks.">Custom frameworks (YAML)</FeatureTooltip> | Yes | Yes | Yes |
 | **Landing Zone Catalogues** | | | |
-| <FeatureTooltip tip="10 cloud providers covered: STACKIT, OTC (T-Systems), Microsoft Azure EU, Azure Local, AWS eu-central-1, AWS ESC, AWS ISO-E, Google Cloud EU, Delos Cloud, Oracle Cloud (OCI). Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (10 providers)</FeatureTooltip> | Yes | Yes | Yes |
+| <FeatureTooltip tip="10 cloud providers covered: STACKIT, T Cloud Public (T-Systems), Microsoft Azure EU, Azure Local, AWS eu-central-1, AWS ESC, AWS ISO-E, Google Cloud EU, Delos Cloud, Oracle Cloud (OCI). Each provider entry includes readiness checks (blockers, warnings, info items) tailored to that platform's service portfolio and sovereignty evidence.">Built-in LZ catalogue (10 providers)</FeatureTooltip> | Yes | Yes | Yes |
 | <FeatureTooltip tip="Refresh the landing zone service catalogue of a cloud provider (services, regions, VM prices) from the provider's public sources before an engagement. Run with: swao lz catalogue update">LZ catalogue update</FeatureTooltip> | - | Yes | Yes |
+| <FeatureTooltip tip="Update a provider catalogue, or build a new one, from the observed offering of a live landing zone run. Additions only; a simulated run is refused. Run with: swao lz catalogue update --source live --lz LZ_ID">LZ catalogue update from a live run</FeatureTooltip> | - | Yes | Yes |
 | <FeatureTooltip tip="Copy a built-in provider catalogue into the workspace with swao lz catalogue copy, or scaffold a new provider with swao lz catalogue new, and edit the JSON file. Workspace copies are used instead of the built-in entries.">Custom LZ catalogue entries (JSON)</FeatureTooltip> | Yes | Yes | Yes |
 | **AI & LLM** | | | |
 | <FeatureTooltip tip="Use Anthropic Claude, OpenAI GPT, Amazon Bedrock Gateway, or a self-hosted Ollama model. The LLM analyses your code and produces plain-language rationale on every signal.">Bring your own LLM (incl. Bedrock Gateway)</FeatureTooltip> | Yes | Yes | Yes |
@@ -56,6 +59,7 @@ SWAO supports four assessment types, all available now.
 | **Portfolio** | | | |
 | <FeatureTooltip tip="Assess and compare multiple applications in one workspace. Aggregated risk register, cross-app compliance matrix, migration wave planning. Run with: swao assess --portfolio, swao report --portfolio, swao export --portfolio">Multi-app portfolio workspace</FeatureTooltip> | - | - | Yes |
 | <FeatureTooltip tip="Portfolio workbook and BI bundle for a Service Portfolio Assessment. Run with: swao service export">Service portfolio export</FeatureTooltip> | - | - | Yes |
+| <FeatureTooltip tip="Merge the latest live run of every registered landing zone and publish the multi-cloud governance view. Run with: swao assess --portfolio --type landing-zone-live, then swao publish --portfolio --block-profile lz-live-portfolio">Landing zone live portfolio</FeatureTooltip> | - | - | Yes |
 | <FeatureTooltip tip="Sector-specific migration runbook templates, executive briefing formats, and industry-vetted DPA skeletons.">Sector-specific engagement templates</FeatureTooltip> | - | - | Yes |
 | **Advanced delivery** | | | |
 | <FeatureTooltip tip="Generates Terraform module stubs for the recommended landing zone, pre-populated from the landing zone readiness assessment output.">Terraform LZ module stubs (from LZ readiness output)</FeatureTooltip> | - | - | Roadmap |
@@ -75,7 +79,7 @@ and informational items - against your workload's signals and your target cloud'
 | Provider | Type | Sovereignty |
 |---|---|---|
 | STACKIT (Schwarz Group) | Dedicated sovereign | DE / EU |
-| Open Telekom Cloud (T-Systems) | Dedicated sovereign | DE / EU |
+| T Cloud Public (formerly Open Telekom Cloud, T-Systems) | Dedicated sovereign | DE / EU |
 | Microsoft Azure (EU regions) | Hyperscaler EU region | EU |
 | Azure Local (on-premises) | On-premises sovereign | Customer-controlled |
 | AWS eu-central-1 | Hyperscaler EU region | EU |
@@ -100,8 +104,8 @@ Download the latest catalogues from GitHub:
 ## Community Frameworks
 
 SWAO assesses against the frameworks in your workspace `wsp/inputs/catalogs/community/<folder>/`
-directory. Copy a bundled framework there with `swao framework install <ID>`, or download
-community frameworks directly from GitHub and place them there:
+directory. New workspaces contain the demo frameworks; copy further community frameworks from
+GitHub into that directory (`swao framework list` lists the frameworks in the workspace):
 [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
 
 ---

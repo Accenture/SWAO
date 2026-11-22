@@ -116,6 +116,46 @@ export function signalEvidenceKind(s: IntegritySignalInput, sourceRoot?: string)
 }
 
 /**
+ * #3962: the signal cites at least one document outside test folders (a file
+ * with a document extension such as .md, .pdf, .docx or .xlsx). Unlike
+ * signalEvidenceKind, other tokens in the evidence (a regulation number such as
+ * "2024/1772" parsed as a path) do not hide the document. Pass 11 uses it for
+ * the organisational evidence of `layer: governance` controls. With `expected`
+ * (the control's context_input names), the document path must also contain one
+ * of them after normalisation, so an unrelated document does not count.
+ */
+export function citesDocumentEvidence(s: IntegritySignalInput, sourceRoot?: string, expected: readonly string[] = []): boolean {
+  if (s.test_code === true) return false;
+  const keys = expected.map(normaliseDocumentKey).filter((k) => k !== '');
+  return evidenceStrings(s.evidence)
+    .flatMap((e) => evidencePaths(e, sourceRoot))
+    .some((p) => DOCUMENT_EXT_RE.test(p) && !SWAO_ARTEFACT_RE.test(p.replace(/^(?:apps\/[^/]+\/)?wsp\/inputs\//i, '')) && !isTestPath(p)
+      && (keys.length === 0 || keys.some((k) => normaliseDocumentKey(p).includes(k))));
+}
+
+/**
+ * #4050: a document path is named after an expected input (a control's
+ * `context_input`): the same rule as citesDocumentEvidence, so the app
+ * ingestion folder and the landing zone ingestion folder share one naming
+ * rule ("Register-of-Information_v2.xlsx" matches `register_of_information`).
+ */
+export function documentNameMatchesInput(path: string, input: string): boolean {
+  const key = normaliseDocumentKey(input);
+  return key !== '' && normaliseDocumentKey(path).includes(key);
+}
+
+/** Lower case, every run of non-alphanumerics as one `_` ("Incident-Classification Policy.pdf" -> "incident_classification_policy_pdf"). */
+function normaliseDocumentKey(v: string): string {
+  const s = v.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  // Trim the separator by index, not by an anchored regex (CodeQL js/polynomial-redos).
+  let i = 0;
+  let j = s.length;
+  while (i < j && s[i] === '_') i++;
+  while (j > i && s[j - 1] === '_') j--;
+  return s.slice(i, j);
+}
+
+/**
  * Detection method of a signal: the assessor (#0172) and provenance (#0478)
  * first, then the pattern-match pass table, then `unknown` (legacy signal
  * without assessor or provenance, never guessed as deterministic).

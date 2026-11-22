@@ -20,10 +20,12 @@ import { describe, it, expect } from 'vitest';
 import { load } from 'js-yaml';
 import { SwaoYmlSchema } from '../swao-yml.js';
 import {
+  invalidLzTargetEntries,
   parseLzTargetList,
   resolveLzTargets,
   setLzTargetsInSwaoYml,
   lzTargetsFromAssessment,
+  stripCommentedLzTargetsTemplate,
 } from '../lz-targets.js';
 
 const parseYml = (text: string): Record<string, unknown> => {
@@ -138,6 +140,13 @@ describe('resolveLzTargets order (#3281)', () => {
   it('drops malformed pairs and duplicates from a CLI list', () => {
     expect(parseLzTargetList('aws:eu-central-1,nocolon,aws:eu-central-1,:x,azure:')).toEqual([{ provider: 'aws', region: 'eu-central-1' }]);
   });
+
+  it('#4007: accepts the printed provider/region form, the colon form wins, and names the entries that are no target', () => {
+    expect(parseLzTargetList('otc/eu-de, otc:eu-nl,otc/eu-de')).toEqual([{ provider: 'otc', region: 'eu-de' }, { provider: 'otc', region: 'eu-nl' }]);
+    expect(resolveLzTargets({ cliTargets: 'otc/eu-de,otc/eu-nl' })).toEqual({ targets: [{ provider: 'otc', region: 'eu-de' }, { provider: 'otc', region: 'eu-nl' }], source: 'cli:--lz-cat-targets' });
+    expect(invalidLzTargetEntries('otc/eu-de,otc:eu-nl,')).toEqual([]);
+    expect(invalidLzTargetEntries('otc-eu-de, /x ,azure:,otc:eu-de')).toEqual(['otc-eu-de', '/x', 'azure:']);
+  });
 });
 
 describe('setLzTargetsInSwaoYml (TUI persistence, #3281)', () => {
@@ -150,5 +159,39 @@ describe('setLzTargetsInSwaoYml (TUI persistence, #3281)', () => {
     expect(a['landing_zone']).toEqual({ provider: 'stackit', targets: ['azure:germanywestcentral', 'stackit:eu01'] });
     // Round trip: what the TUI writes is what the CLI reads.
     expect(resolveLzTargets({ appAssessment: a }).source).toBe('app:assessment.landing_zone.targets');
+  });
+});
+
+describe('stripCommentedLzTargetsTemplate (#4320)', () => {
+  const WS = [
+    'assessment:',
+    '  landing_zone:',
+    '    targets:',
+    '      - otc:germany',
+    '#   vision_max_screens: 2',
+    '',
+    '# LZ catalogue targets for every app (#3281); nest under assessment: (an app .swao.yml overrides):',
+    '#   landing_zone:',
+    '#     targets: [stackit:eu01, azure:germanywestcentral]  # <provider>:<region>',
+    '',
+  ].join('\n');
+
+  it('removes the workspace template with its explanation line and keeps one blank line and the final newline', () => {
+    expect(stripCommentedLzTargetsTemplate(WS)).toBe(['assessment:', '  landing_zone:', '    targets:', '      - otc:germany', '#   vision_max_screens: 2', ''].join('\n'));
+    const mid = `${WS}other: 1\n`;
+    expect(stripCommentedLzTargetsTemplate(mid)).toContain('#   vision_max_screens: 2\n\nother: 1\n');
+  });
+
+  it('removes the app template inside the live assessment block, also with CRLF; the parsed document is unchanged', () => {
+    const app = 'app_id: demo\nassessment:\n  regimes_active:\n    - GDPR_DEMO\n  # landing_zone:\n  #   targets: [stackit:eu01]  # <provider>:<region>\nsource:\n  path: x\n';
+    const out = stripCommentedLzTargetsTemplate(app);
+    expect(out).toBe('app_id: demo\nassessment:\n  regimes_active:\n    - GDPR_DEMO\nsource:\n  path: x\n');
+    expect(load(out)).toEqual(load(app));
+    expect(stripCommentedLzTargetsTemplate(app.replace(/\n/g, '\r\n'))).toBe(out.replace(/\n/g, '\r\n'));
+  });
+
+  it('leaves text without the template untouched (same string)', () => {
+    const t = 'assessment:\n  # landing_zone is set by the wizard\n  lenses: [x]\n';
+    expect(stripCommentedLzTargetsTemplate(t)).toBe(t);
   });
 });

@@ -38,6 +38,7 @@ import {
   logPortfolio,
 } from '@swao/core';
 import { resolveBundledLzCataloguesDir, discoverLzCatalogues } from '../catalogue/loader.js';
+import { isManualCatalogueFile, runLiveCatalogueUpdate } from '../catalogue/live-update.js';
 import {
   normalizeStackitSkus,
   type StackitSku,
@@ -700,6 +701,79 @@ const UPGRADE_MESSAGE = [
   'Contact: https://github.com/Accenture/SWAO/discussions',
 ].join('\n');
 
+/**
+ * #3582: `swao lz catalogue update --source live` (Design 120 section 10.2),
+ * after the tier gate. Exit 0 written, skipped or dry run; 1 refused (no --lz,
+ * simulated run, bundled target, quality failure, unknown provider). VM prices
+ * are refreshed from the public price APIs as for the internet source
+ * (section 10.3) unless --skip-prices.
+ */
+export async function runLiveCatalogueUpdateCli(opts: {
+  provider: string;
+  new?: string;
+  lz?: string;
+  run?: string;
+  cataloguesDir?: string;
+  dryRun?: boolean;
+  skipPrices?: boolean;
+  azurePriceApi?: string;
+  awsPriceList?: string;
+}, deps: { cwd?: string; out?: (l: string) => void; err?: (l: string) => void; bundledDir?: string | null } = {}): Promise<number> {
+  const out = deps.out ?? ((l: string) => console.log(l));
+  const err = deps.err ?? ((l: string) => console.error(l));
+  if (!opts.lz) {
+    err('[error] --source live needs --lz <lz-id> (a landing zone with a live run)');
+    return 1;
+  }
+  const workspace = findWorkspace(deps.cwd ?? process.cwd());
+  if (!workspace) {
+    err('[error] Cannot find a SWAO workspace (no .swao.yml in current or parent directories).');
+    return 1;
+  }
+  const provider = opts.new === undefined && opts.provider !== 'all' ? opts.provider : undefined;
+  if (opts.new === undefined && !provider) {
+    err('[error] --source live updates one catalogue: name it with --provider <p>, or build one with --new <slug>');
+    return 1;
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const r = runLiveCatalogueUpdate({
+      workspaceRoot: workspace,
+      lzId: opts.lz,
+      ...(opts.run ? { run: opts.run } : {}),
+      ...(provider ? { provider } : {}),
+      ...(opts.new !== undefined ? { newSlug: opts.new } : {}),
+      ...(opts.cataloguesDir ? { cataloguesDir: opts.cataloguesDir } : {}),
+      dryRun: opts.dryRun ?? false,
+      today,
+      ...(deps.bundledDir !== undefined ? { bundledDir: deps.bundledDir } : {}),
+      out,
+    });
+    // Manual skip writes nothing, so it refreshes no prices either.
+    const priceProviders = opts.skipPrices || r.file === '' || !r.diff.confidence.from ? [] : (['azure', 'aws'] as const).filter((x) => x === r.provider);
+    if (priceProviders.length > 0) {
+      await refreshVmPrices({
+        dir: r.dir,
+        providers: [...priceProviders],
+        today,
+        dryRun: opts.dryRun ?? false,
+        ...(opts.azurePriceApi ? { azureBaseUrl: opts.azurePriceApi } : {}),
+        ...(opts.awsPriceList ? { awsBaseUrl: opts.awsPriceList } : {}),
+      });
+    }
+    try {
+      logPortfolio('info', 'lz.catalogue.update.complete', `LZ catalogue update from live run complete (${r.provider}, written: ${r.written})`, {
+        context: { source: 'live', provider: r.provider, lz: opts.lz, written: r.written, dry_run: opts.dryRun ?? false, regions_added: r.diff.regions_added.length, services_added: r.diff.services_added.length, services_absent: r.diff.services_absent.length },
+      });
+    } catch { /* logging is best-effort */ }
+    return 0;
+  } catch (e) {
+    err((e as Error).message);
+    const code = (e as { exitCode?: unknown }).exitCode;
+    return typeof code === 'number' && code > 0 ? code : 1;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // registerLzCatalogueUpdate
 // ---------------------------------------------------------------------------
@@ -740,6 +814,10 @@ export function registerLzCatalogueUpdate(program: Command): void {
     .option('--skip-prices', 'Do not refresh the VM price table of the service cost model (#3288)')
     .option('--azure-price-api <url>', 'Base URL of the Azure Retail Prices API (mirror or proxy; default https://prices.azure.com)')
     .option('--aws-price-list <url>', 'Base URL of the AWS Price List bulk API (mirror or proxy; default https://pricing.us-east-1.amazonaws.com)')
+    .option('--source <type>', 'Source type: internet (public CSP sources, default) or live (the live LZ catalogue of a landing zone run; Design 120 section 10.2)', 'internet')
+    .option('--lz <lz-id>', 'For --source live: the registered landing zone whose live run is the source')
+    .option('--run <ts>', 'For --source live: the live run to use (default latest-lz-live.txt)')
+    .option('--new <slug>', 'With --source live: build a new catalogue <slug>.json for a CSP or private cloud that has none (077 section 3)')
     .action(async (opts: {
       provider: string;
       endpointsPath?: string;
@@ -751,6 +829,10 @@ export function registerLzCatalogueUpdate(program: Command): void {
       skipPrices?: boolean;
       azurePriceApi?: string;
       awsPriceList?: string;
+      source?: string;
+      lz?: string;
+      run?: string;
+      new?: string;
     }) => {
       // --- tier gate (mirrors generate-tf pattern) -------------------------
       let guard;
@@ -772,6 +854,20 @@ export function registerLzCatalogueUpdate(program: Command): void {
           process.exit(2);
         }
         throw e;
+      }
+
+      // #3582 (Design 120 section 10.2): live LZ catalogue as the source.
+      const source = (opts.source ?? 'internet').trim().toLowerCase();
+      if (source !== 'internet' && source !== 'live') {
+        console.error(`[error] --source must be internet or live, not ${opts.source}`);
+        process.exit(1);
+      }
+      if (opts.new !== undefined && source !== 'live') {
+        console.error('[error] --new builds a catalogue from a live run; add --source live --lz <lz-id>');
+        process.exit(1);
+      }
+      if (source === 'live') {
+        process.exit(await runLiveCatalogueUpdateCli(opts));
       }
 
       // #0921: emit catalogue update start event for log consumers.
@@ -951,6 +1047,13 @@ export function registerLzCatalogueUpdate(program: Command): void {
         regions_count: number;
       }> = [];
       const allDiffs: Record<string, CatalogueDiff> = {};
+      // #3582 (077 D-077-04, Q-30): a hand-maintained `manual` catalogue is skipped by every update source.
+      const manualSkipped = (config: { provider: string; outputFile: string }): boolean => {
+        const outPath = join(dir, config.outputFile);
+        if (!isManualCatalogueFile(outPath)) return false;
+        console.log(`${config.provider}: source.mode "manual" (hand-maintained), skipped; ${outPath} is left untouched`);
+        return true;
+      };
 
       // --- process botocore (AWS) partitions --------------------------------
       if (endpointsData) {
@@ -967,6 +1070,8 @@ export function registerLzCatalogueUpdate(program: Command): void {
 
           const config = PARTITION_CONFIG[partitionId]!;
           const outPath = join(dir, config.outputFile);
+          // #3582 (077 D-077-04, Q-30): a hand-maintained manual catalogue is never overwritten.
+          if (manualSkipped(config)) continue;
           const prevCatalogueAws = existsSync(outPath) ? (() => { try { return JSON.parse(readFileSync(outPath, 'utf-8')) as LooseCatalogue; } catch { return null; } })() : null;
           const freshCatalogue = buildCatalogueFromPartition(partitionData, config, today) as LooseCatalogue;
           const catalogue = mergeRetiredServices(freshCatalogue, outPath, today);
@@ -1001,7 +1106,7 @@ export function registerLzCatalogueUpdate(program: Command): void {
       }
 
       // --- process STACKIT partition ----------------------------------------
-      if (stackitSkus !== undefined) {
+      if (stackitSkus !== undefined && !manualSkipped(PARTITION_CONFIG['stackit']!)) {
         const config = PARTITION_CONFIG['stackit']!;
         const outPath = join(dir, config.outputFile);
         const prevCatalogueStackit = existsSync(outPath) ? (() => { try { return JSON.parse(readFileSync(outPath, 'utf-8')) as LooseCatalogue; } catch { return null; } })() : null;
@@ -1036,7 +1141,7 @@ export function registerLzCatalogueUpdate(program: Command): void {
       }
 
       // --- process GCP partition (region-picker products.json) --------------
-      if (gcpProductsData !== undefined) {
+      if (gcpProductsData !== undefined && !manualSkipped(PARTITION_CONFIG[GCP_PARTITION_KEY]!)) {
         const gcpConfig = PARTITION_CONFIG[GCP_PARTITION_KEY]!;
         const outPath = join(dir, gcpConfig.outputFile);
         const prevCatalogueGcp = existsSync(outPath) ? (() => { try { return JSON.parse(readFileSync(outPath, 'utf-8')) as LooseCatalogue; } catch { return null; } })() : null;
@@ -1076,7 +1181,7 @@ export function registerLzCatalogueUpdate(program: Command): void {
       }
 
       // --- process Azure partition (Retail Prices API) ---------------------
-      if (azureRawCatalogue !== undefined) {
+      if (azureRawCatalogue !== undefined && !manualSkipped(PARTITION_CONFIG['azure']!)) {
         const azureConfig = PARTITION_CONFIG['azure']!;
         const outPath = join(dir, azureConfig.outputFile);
         const prevCatalogueAzure = existsSync(outPath) ? (() => { try { return JSON.parse(readFileSync(outPath, 'utf-8')) as LooseCatalogue; } catch { return null; } })() : null;

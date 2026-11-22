@@ -16,13 +16,15 @@
 // #3336: reader for the per-leg challenge passes of an LLM Assessment
 // (assess --type llm, CLI and TUI).
 //
-// Every leg runs `swao challenge` in the MAIN workspace (the leg workspace
-// is a fresh copy without challenge agents, #1774), so every leg challenges
-// the same main run and the `challenged_run` reference (#3330) is identical
-// for all legs. The leg reader therefore ignores the run id BY DESIGN: it does
-// not pair a challenge with a run, it only collects the agent ids the leg's
-// own challenge subprocess produced, for the per-leg call metrics of the
-// comparison report.
+// #4277: every leg runs `swao challenge` in its OWN leg workspace (cwd), never
+// in the main workspace: before #4277 the leg challenge rewrote the app's
+// canonical challenge-app/combined.yaml and added challenge-lz/<ts>/ folders
+// (Design 092 s7: apps/<app>/wsp is never written by an LLM Assessment run).
+// #4291: the stakeholder challenge works on the leg's own application run
+// (passed as `--run`); the orchestrator stages only the main workspace's LZ
+// Catalog run for the LZ challenge. The leg reader therefore ignores the run id BY DESIGN: it does not pair a
+// challenge with a run, it only collects the agent ids the leg's own challenge
+// subprocess produced, for the per-leg call metrics of the comparison report.
 //
 // What it must not do is read a challenge that the leg did not write: before
 // #3336 it took combined.yaml or the newest folder regardless of age, so a
@@ -55,11 +57,40 @@ function parseYaml(path: string): LegChallengeAgent | undefined {
 }
 
 /**
+ * #4277: arguments of a leg challenge (CLI and TUI share them). `runId` is
+ * the leg's own application run (#4291) or, for the LZ challenge, the staged
+ * LZ Catalog run inside the leg workspace (LegChallengeContext).
+ */
+export function legChallengeArgs(
+  kind: 'app' | 'lz',
+  appId: string,
+  leg: { connector: string; model: string },
+  runId?: string,
+): string[] {
+  return [
+    'challenge',
+    ...(kind === 'lz' ? ['--type', 'lz'] : []),
+    '--app', appId, '--all-agents',
+    ...(kind === 'app' ? ['--report'] : []),
+    '--connector', leg.connector,
+    ...(leg.model !== 'default' ? ['--model', leg.model] : []),
+    ...(runId ? ['--run', runId] : []),
+  ];
+}
+
+/** #4277: apps/<app>/wsp of the LEG workspace, where a leg challenge writes. */
+export function legChallengeWspDir(legWorkspaceRoot: string, appId: string): string {
+  return join(legWorkspaceRoot, 'apps', appId, 'wsp');
+}
+
+/**
  * Agents of the challenge a leg's subprocess wrote into `wspDir`
- * (apps/<app>/wsp of the main workspace) at or after `sinceMs`.
+ * (apps/<app>/wsp of the LEG workspace, #4277) at or after `sinceMs`.
  *
- * app: challenge-app/combined.yaml (`--all-agents --report`), else flat
- *      AA_*.yaml, else the newest challenge-app/<ts>/ folder (older layout).
+ * app: challenge-app/combined.yaml (base folder, older layout), else flat
+ *      AA_*.yaml, else the newest challenge-app/<ts>/ folder: its
+ *      combined.yaml `reports` (what `--all-agents --report` writes, #4322),
+ *      else its AA_*.yaml files.
  * lz:  the newest challenge-lz/<ts>/ folder (LZCA_<agent>.yaml).
  */
 export function readLegChallengeAgents(wspDir: string, kind: 'app' | 'lz', sinceMs: number): LegChallengeRead {
@@ -102,6 +133,13 @@ export function readLegChallengeAgents(wspDir: string, kind: 'app' | 'lz', since
   const folder = newestFolderSince(base);
   if (!folder) return { agents: [], source: null };
   const dir = join(base, folder);
+  // #4322: `challenge --all-agents --report` writes only <ts>/combined.yaml
+  // into the dated folder (no AA_ files); its `reports` are the agents.
+  const datedCombined = join(dir, 'combined.yaml');
+  if (existsSync(datedCombined) && writtenSince(datedCombined, sinceMs)) {
+    const reports = (parseYaml(datedCombined) as { reports?: LegChallengeAgent[] } | undefined)?.reports;
+    if (Array.isArray(reports) && reports.length > 0) return { agents: reports, source: datedCombined };
+  }
   const agents = readdirSync(dir)
     .filter(f => f.startsWith('AA_') && f.endsWith('.yaml'))
     .sort()

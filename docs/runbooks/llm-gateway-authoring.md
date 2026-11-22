@@ -61,9 +61,25 @@ OpenRouter, a self-hosted LLMGateway, or any multi-vendor gateway is just a
 connector whose catalogue spans vendors. The bundled `openrouter` seed shows
 the pattern, including:
 
-- `models.discovery_endpoint: /v1/models`: SWAO can refresh the model
-  list AND capture per-model prices from the platform; refreshes are
-  written to your workspace copy, bundled seeds are never modified.
+- Live model discovery is on for every connector: when a model picker
+  opens (Setup, LLM Assessment) and on `swao llm models --connector <id>`,
+  SWAO sends one GET with the connector credential to the list route of the
+  protocol (`/v1/models`; Anthropic `/v1/models`; Ollama `/api/tags`;
+  Bedrock ListFoundationModels and ListInferenceProfiles), through the same
+  proxy and TLS settings as the calls, with a 5 second timeout. The served
+  models are merged into your workspace copy with `models.discovered_at`,
+  catalogue entries the platform no longer serves are marked
+  `served: false`, and prices are captured where the platform publishes
+  them; bundled seeds are never modified.
+  `models.discovery_endpoint` sets another route. For an air-gapped
+  platform, or one without a list route, set `models.discovery: false`:
+  SWAO then sends no list request and the catalogue stays the only source.
+  `SWAO_LLM_DISCOVERY=off` in the environment does the same for every
+  connector on the machine. Batch-only ids (OpenRouter `:batch`) are never
+  listed: the chat route SWAO calls does not serve them.
+  The Setup LLM step sends one test call to the chosen model before it
+  writes it (skipped without a stored key); `SWAO_LLM_MODEL_CHECK=off`
+  turns that test off on the machine.
 - `headers:` for static attribution or routing headers.
 - `request_overrides:` for vendor extensions such as
   `reasoning: {enabled: true}` (reserved keys model/messages/stream are

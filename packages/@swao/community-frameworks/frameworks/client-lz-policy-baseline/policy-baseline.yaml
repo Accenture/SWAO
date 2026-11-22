@@ -1,0 +1,201 @@
+# SWAO Client LZ Policy Baseline: the policies (Design 123 sections 5, 6.2 and 7.2; #3863).
+#
+# Schema: PolicyBaselineSchema 0.1 (@swao/core policy-baseline.ts, #3862).
+# This is the file a client edits in its workspace copy
+# (wsp/inputs/catalogs/community/<folder>/policy-baseline.yaml). Per policy:
+#   state:  enabled (evaluated), disabled (listed, not evaluated) or not_set
+#           (arrived with an upgrade, not reviewed yet, never evaluated; D-10)
+#   params: the parameters of the policy's kind (Design 123 section 5.1)
+#   default_source: the shipped SWAO control ids the default derives from,
+#           with file and line, or "assumption" for a value without a source
+#           in the repository (accepted by the owner, D-05). A mixed row names
+#           its sources and marks the unsourced part as an assumption.
+# Shipped policy ids start with CPB-. A client adds its own policies only of
+# an existing kind, with ids X-<PREFIX>-<CAT>-NN (for example X-ORG-SVC-01,
+# D-09) and a matching control in controls.yaml (Design 123 section 7.3).
+#
+# Default: a standard ruleset for a German public agency (D-02), not an
+# official publication. Germany-only residency (D-04); EU is a one-line change
+# of CPB-RES-01. Fully populated (D-06): every category has a policy with every
+# parameter filled in. CPB-SVC-01 (managed AI and ML), CPB-SVC-02 (allow-list
+# example) and CPB-SVC-03 (PostgreSQL demonstration) ship disabled (D-19); a
+# demo enables them deliberately.
+schema_version: "0.1"
+framework: CLIENT_LZ_POLICY_BASELINE
+baseline_of: CLIENT_LZ_POLICY_BASELINE
+catalogue_version: "1.0.0"
+policies:
+  # ---------------------------------------------------------------- data_residency
+  - id: CPB-RES-01
+    kind: region_residency
+    category: data_residency
+    control: CPB-RES-01
+    state: enabled
+    params:
+      allowed_countries: [DE]
+    default_source: "BSI_C5_DAT-02 data residency (frameworks/bsi-c5/controls.yaml:1165); BSI_OPS22_A3 security requirements for CSPs (frameworks/bsi-grundschutz-2023/controls.yaml:672); place of processing fixed by the buyer under EVB-IT Cloud: assumption (clause text not in the repository); DORA for financial entities (#4058): DORA_Art_30_4 service and data processing locations (frameworks/dora/controls.yaml:1571, Regulation (EU) 2022/2554 Art. 30(2)(b))"
+  - id: CPB-RES-02
+    kind: region_residency
+    category: data_residency
+    control: CPB-RES-02
+    state: enabled
+    params:
+      allowed_operator_jurisdictions: [EU-entity]
+      forbid_exposure: [us_cloud_act, fisa_702]
+    default_source: "SWAO reading of BSI C5 for the sovereignty gate, D-LZ-07 (frameworks/bsi-c5/framework-meta.yaml:39-51); that it applies to every public agency workload: assumption"
+  - id: CPB-RES-03
+    kind: region_residency
+    category: data_residency
+    control: CPB-RES-03
+    state: enabled
+    params:
+      required_certifications: [BSI_C5]
+    default_source: "BSI_C5_COM-03 C5 attestation (frameworks/bsi-c5/controls.yaml:1043); frameworks/bsi-c5/framework-meta.yaml:50-51; Deutsche Verwaltungscloud-Strategie as the basis for C5 as the entry criterion: assumption (strategy text not in the repository)"
+  # ---------------------------------------------------------------- service_control
+  - id: CPB-SVC-01
+    kind: service_deny
+    category: service_control
+    control: CPB-SVC-01
+    state: disabled
+    params:
+      capabilities: [managed_llm, ml_inference, ml_training, ml_speech, ml_translation, ml_vision, ml_nlp]
+    default_source: assumption
+  - id: CPB-SVC-02
+    kind: service_allow_list
+    category: service_control
+    control: CPB-SVC-02
+    state: disabled
+    params:
+      capabilities: [vm_compute, kubernetes, container_orchestration, object_storage, block_storage, file_storage, postgresql, mysql, redis, key_vault, secrets_management, load_balancer, dns, vpn, vpc_networking, waf, network_firewall, identity_management, certificate_management, container_registry, audit_logging, monitoring, log_management, metrics, ci_cd, iac]
+    default_source: assumption
+  - id: CPB-SVC-03
+    kind: service_deny
+    category: service_control
+    control: CPB-SVC-03
+    state: disabled
+    params:
+      capabilities: [postgresql]
+    default_source: assumption
+  # ---------------------------------------------------------------- encryption
+  - id: CPB-ENC-01
+    kind: encryption_at_rest
+    category: encryption
+    control: CPB-ENC-01
+    state: enabled
+    params:
+      min_key_custody: customer-managed
+      applies_to: [object_storage, block_storage, file_storage, postgresql, mysql, nosql_database]
+    default_source: "BSI_C5_CRY-01 key management (frameworks/bsi-c5/controls.yaml:421); BSI_C5_CRY-02 encryption at rest (frameworks/bsi-c5/controls.yaml:442); BSI_CON1_A2 key management (frameworks/bsi-grundschutz-2023/controls.yaml:314); BSI_CON1_A4 protection of stored data (frameworks/bsi-grundschutz-2023/controls.yaml:330); customer-managed rather than byok or hyok: assumption; DORA for financial entities (#4058): DORA_Art_9_2 encryption (frameworks/dora/controls.yaml:366, Regulation (EU) 2022/2554 Art. 9(2), 9(4)(d)); DORA_Art_9_6 key management (frameworks/dora/controls.yaml:485, Regulation (EU) 2022/2554 Art. 9(4)(d))"
+  - id: CPB-ENC-02
+    kind: encryption_in_transit
+    category: encryption
+    control: CPB-ENC-02
+    state: enabled
+    params:
+      min_tls_version: "1.2"
+      applies_to: [load_balancer, api_gateway, cdn]
+    default_source: "BSI_C5_PI-03 encrypted transmission (frameworks/bsi-c5/controls.yaml:1266); version floor 1.2 following BSI TR-02102-2: assumption (TR not in the repository); DORA for financial entities (#4058): DORA_Art_9_2 encryption (frameworks/dora/controls.yaml:366, Regulation (EU) 2022/2554 Art. 9(2), 9(4)(d))"
+  # ---------------------------------------------------------------- network_exposure
+  - id: CPB-NET-01
+    kind: no_public_exposure
+    category: network_exposure
+    control: CPB-NET-01
+    state: enabled
+    params:
+      allow_capabilities: [load_balancer, waf, api_gateway]
+    default_source: "BSI_C5_COS-01 network segmentation (frameworks/bsi-c5/controls.yaml:506); BSI_NET11_A2 segmentation (frameworks/bsi-grundschutz-2023/controls.yaml:1153); DORA for financial entities (#4058): DORA_Art_9_4 network segmentation (frameworks/dora/controls.yaml:427, Regulation (EU) 2022/2554 Art. 9(4)(b))"
+  - id: CPB-NET-02
+    kind: no_open_admin_ingress
+    category: network_exposure
+    control: CPB-NET-02
+    state: enabled
+    params:
+      ports: [22, 3389]
+      forbidden_sources: ["0.0.0.0/0", "::/0"]
+    default_source: "BSI_C5_COS-02 firewall rules (frameworks/bsi-c5/controls.yaml:527); BSI_C5_COS-03 remote access (frameworks/bsi-c5/controls.yaml:546); BSI_NET32_A1 firewall policy (frameworks/bsi-grundschutz-2023/controls.yaml:1185); port list: assumption; DORA for financial entities (#4058): DORA_Art_9_4 network segmentation (frameworks/dora/controls.yaml:427, Regulation (EU) 2022/2554 Art. 9(4)(b))"
+  - id: CPB-NET-03
+    kind: no_open_admin_ingress
+    category: network_exposure
+    control: CPB-NET-03
+    state: enabled
+    params:
+      ports: [1433, 3306, 5432, 6379, 27017]
+      forbidden_sources: ["0.0.0.0/0", "::/0"]
+    default_source: "Sources of CPB-NET-02 plus BSI_APP43_A1 database access control (frameworks/bsi-grundschutz-2023/controls.yaml:952); port list: assumption"
+  # ---------------------------------------------------------------- identity
+  - id: CPB-IAM-01
+    kind: privileged_mfa
+    category: identity
+    control: CPB-IAM-01
+    state: enabled
+    params: {}
+    default_source: "BSI_C5_IDM-02 MFA for privileged access (frameworks/bsi-c5/controls.yaml:326); DORA for financial entities (#4058): DORA_Art_9_5 strong authentication (frameworks/dora/controls.yaml:460, Regulation (EU) 2022/2554 Art. 9(4)(d))"
+  - id: CPB-IAM-02
+    kind: credential_age
+    category: identity
+    control: CPB-IAM-02
+    state: enabled
+    params:
+      max_age_days: 90
+    default_source: "BSI_C5_IDM-05 service accounts (frameworks/bsi-c5/controls.yaml:381); BSI_C5_CRY-03 rotation (frameworks/bsi-c5/controls.yaml:463); 90 days: assumption"
+  # ---------------------------------------------------------------- logging
+  - id: CPB-LOG-01
+    kind: audit_trail
+    category: logging
+    control: CPB-LOG-01
+    state: enabled
+    params:
+      all_regions: true
+    default_source: "BSI_C5_OPS-06 logging and monitoring (frameworks/bsi-c5/controls.yaml:685); BSI_C5_SIM-01 event monitoring (frameworks/bsi-c5/controls.yaml:944); BSI_DER1_A2 central logging (frameworks/bsi-grundschutz-2023/controls.yaml:740); DORA for financial entities (#4058): DORA_Art_10_2 logging (frameworks/dora/controls.yaml:618, Regulation (EU) 2022/2554 Art. 10(3))"
+  - id: CPB-LOG-02
+    kind: log_retention
+    category: logging
+    control: CPB-LOG-02
+    state: enabled
+    params:
+      min_days: 180
+    default_source: "Sources of CPB-LOG-01 for the need; the period of 180 days: assumption (D-05)"
+  # ---------------------------------------------------------------- tagging
+  - id: CPB-TAG-01
+    kind: required_tags
+    category: tagging
+    control: CPB-TAG-01
+    state: enabled
+    params:
+      keys: [owner, data-classification]
+    default_source: "BSI_C5_OPS-04 asset inventory (frameworks/bsi-c5/controls.yaml:645); BSI_C5_DAT-01 classification (frameworks/bsi-c5/controls.yaml:1146); key names: assumption; DORA for financial entities (#4058): DORA_Art_8_1 ICT asset inventory and classification (frameworks/dora/controls.yaml:254, Regulation (EU) 2022/2554 Art. 8(1), 8(4), 8(6))"
+  # ---------------------------------------------------------------- availability
+  - id: CPB-AVL-01
+    kind: min_availability_zones
+    category: availability
+    control: CPB-AVL-01
+    state: enabled
+    params:
+      min: 2
+    default_source: "BSI_C5_AVL-03 geographic redundancy (frameworks/bsi-c5/controls.yaml:744); the number 2: assumption; DORA for financial entities (#4058): DORA_Art_12_5 redundant ICT capacity (frameworks/dora/controls.yaml:830, Regulation (EU) 2022/2554 Art. 12(4), 12(5))"
+  # ---------------------------------------------------------------- resilience
+  - id: CPB-BCK-01
+    kind: backup_configured
+    category: resilience
+    control: CPB-BCK-01
+    state: enabled
+    params:
+      applies_to: [block_storage, postgresql, mysql, nosql_database, file_storage]
+    default_source: "BSI_C5_AVL-04 backup (frameworks/bsi-c5/controls.yaml:763); BSI_CON3_A2 backup concept (frameworks/bsi-grundschutz-2023/controls.yaml:378); DORA for financial entities (#4058): DORA_Art_12_1 backup (frameworks/dora/controls.yaml:729, Regulation (EU) 2022/2554 Art. 12(1), 12(2))"
+  # ---------------------------------------------------------------- cost
+  - id: CPB-COST-01
+    kind: budget_alerts
+    category: cost
+    control: CPB-COST-01
+    state: enabled
+    params:
+      required: true
+    default_source: assumption
+  # ---------------------------------------------------------------- portability
+  - id: CPB-PRT-01
+    kind: documented_exit
+    category: portability
+    control: CPB-PRT-01
+    state: enabled
+    params: {}
+    default_source: "BSI_C5_PSS-01 data export (frameworks/bsi-c5/controls.yaml:1065); BSI_C5_BCP-02 exit strategy (frameworks/bsi-c5/controls.yaml:1124); always not_observable from live data (manual evidence item); DORA for financial entities (#4058): DORA_Art_28_5 exit strategies and exit plans (frameworks/dora/controls.yaml:1425, Regulation (EU) 2022/2554 Art. 28(8), 30(3)(f))"

@@ -23,7 +23,7 @@ import {
   type ToolInputSchema,
 } from '@aws-sdk/client-bedrock-runtime';
 import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion, LlmToolChatParams } from './types.js';
-import { anthropicCostUsd } from './types.js';
+import { anthropicTableRates, ratedUsageCost, type CostRates } from './types.js';
 import { scrubForEgress } from './egress-redaction.js';
 import { LlmToolsUnsupportedError } from './errors.js';
 import { requestLlmWithRetry } from './llm-request.js';
@@ -194,12 +194,14 @@ export class BedrockLlmProvider implements LlmProvider {
           // Cost: prefer explicit connector catalogue cost, fall back to the
           // shared Anthropic price table (strips cross-region prefix like
           // "eu.anthropic." so the model id matches table keys).
-          const cost = this.costOf(inputTok, outputTok);
+          // #4372: configured (list price estimate) or none, never billed.
+          const priced = this.costOf(inputTok, outputTok);
+          const cost = priced.cost_usd;
 
           const usage: LlmUsage = {
             input_tokens: inputTok,
             output_tokens: outputTok,
-            cost_usd: cost,
+            ...priced,
           };
           this.lastUsage = usage;
           return {
@@ -297,7 +299,7 @@ export class BedrockLlmProvider implements LlmProvider {
             return {
               value: out,
               status: out.$metadata?.httpStatusCode ?? 200,
-              okContext: { tokens_in: inTok, tokens_out: outTok, cost_usd: this.costOf(inTok, outTok), stop_reason: out.stopReason },
+              okContext: { tokens_in: inTok, tokens_out: outTok, cost_usd: this.costOf(inTok, outTok).cost_usd, stop_reason: out.stopReason },
             };
           },
         });
@@ -312,7 +314,7 @@ export class BedrockLlmProvider implements LlmProvider {
 
       inTotal += resp.usage?.inputTokens ?? 0;
       outTotal += resp.usage?.outputTokens ?? 0;
-      usage = { input_tokens: inTotal, output_tokens: outTotal, cost_usd: this.costOf(inTotal, outTotal) };
+      usage = { input_tokens: inTotal, output_tokens: outTotal, ...this.costOf(inTotal, outTotal) };
       this.lastUsage = usage;
 
       const content: ContentBlock[] = resp.output?.message?.content ?? [];
@@ -358,11 +360,14 @@ export class BedrockLlmProvider implements LlmProvider {
     return { text: lastText, usage, trace };
   }
 
-  /** Cost: explicit connector catalogue cost, else the shared Anthropic table. */
-  private costOf(inputTok: number, outputTok: number): number {
-    return this.costConfig
-      ? (inputTok * this.costConfig.inputPerMillion + outputTok * this.costConfig.outputPerMillion) / 1_000_000
-      : anthropicCostUsd(this.model.replace(/^(?:[a-z]+\.)?anthropic\./, ''), inputTok, outputTok);
+  /**
+   * Cost: explicit connector catalogue cost, else the shared Anthropic table.
+   * #4372: both are list price estimates (`configured`); a model in neither
+   * is `none` (unpriced), never 0 labelled billed.
+   */
+  private costOf(inputTok: number, outputTok: number): { cost_usd: number; cost_source: 'configured' | 'none' } {
+    const rates: CostRates | undefined = this.costConfig ?? anthropicTableRates(this.model.replace(/^(?:[a-z]+\.)?anthropic\./, ''));
+    return ratedUsageCost(rates, inputTok, outputTok);
   }
 
   /** @deprecated #3301: shared state; read `usage` from the `*Detailed()` result. */

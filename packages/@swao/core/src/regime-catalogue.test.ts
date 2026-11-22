@@ -6,6 +6,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadRegimeCatalogue } from './compliance-registry.js';
+import { RegimeControlSchema, controlIdAliases, resolveControlIdKey } from './regime-catalogue.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FRAMEWORKS = join(here, '..', '..', 'community-frameworks', 'frameworks');
@@ -39,5 +40,31 @@ describe('KRITIS_DE sector controls (#3425)', () => {
       expect(byId.get(id)?.assessment_type_scope).toEqual(['aud']);
     }
     expect(byId.get('KRITIS_DE_SEC_DACHG')?.applies_when).toBeUndefined();
+  });
+});
+
+// #3962: corrected control ids keep the old id resolvable (control-level replaces).
+describe('control-level replaces (#3962)', () => {
+  it('keeps replaces after parsing a control', () => {
+    const c = RegimeControlSchema.parse({ id: 'X_Art_17_1', title: 'Incident process', description: 'An incident management process.', replaces: ['X_Art_15'] });
+    expect(c.replaces).toEqual(['X_Art_15']);
+  });
+
+  it('maps an old id to the current id, case-insensitively', () => {
+    const aliases = controlIdAliases([{ id: 'X_Art_17_1', replaces: ['X_Art_15'] }, { id: 'X_Art_19_1', replaces: ['X_Art_17'] }]);
+    expect(resolveControlIdKey('X_Art_15', aliases)).toBe('x_art_17_1');
+    expect(resolveControlIdKey('x_art_17', aliases)).toBe('x_art_19_1');
+    expect(resolveControlIdKey('X_Art_19_1', aliases)).toBe('x_art_19_1');
+  });
+
+  it('never re-points a current id and keeps the first claim of an old id', () => {
+    const aliases = controlIdAliases([
+      { id: 'A', replaces: ['B', 'OLD'] },
+      { id: 'B' },
+      { id: 'C', replaces: ['OLD', 42] },
+    ]);
+    expect(aliases.has('b')).toBe(false);
+    expect(aliases.get('old')).toBe('a');
+    expect(aliases.size).toBe(1);
   });
 });

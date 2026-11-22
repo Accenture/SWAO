@@ -34,7 +34,7 @@ import {
 } from 'node:fs';
 import { join, basename, relative } from 'node:path';
 import { load, dump } from 'js-yaml';
-import { findWorkspace, redactForReport } from '@swao/core';
+import { findWorkspace, patchSwaoYmlFileOrThrow, redactForReport } from '@swao/core';
 import { classifyFile } from '../normalize/classifier.js';
 import type { FileCategory } from '../normalize/classifier.js';
 import { findExactDuplicates } from '../normalize/dedup.js';
@@ -474,11 +474,10 @@ function updateSwaoYml(
     });
   }
 
-  existing['context_inputs'] = existingInputs;
-
-  const dir = join(swaoYmlPath, '..');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(swaoYmlPath, dump(existing, { lineWidth: 120 }), 'utf-8');
+  // #4283: minimal patch of context_inputs only; comments, key order and the
+  // other keys of the app .swao.yml stay (Design 125 section 7).
+  if (existingInputs.length === 0 && !Array.isArray(existing['context_inputs'])) return;
+  patchSwaoYmlFileOrThrow(swaoYmlPath, [{ path: ['context_inputs'], value: existingInputs }], { createIfMissing: true });
 }
 
 // ---------------------------------------------------------------------------

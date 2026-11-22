@@ -31,7 +31,7 @@ import type { PortfolioLzrSummary } from '../lzr/portfolio-lzr.js';
 // host-side (it is Community).
 import type { PortfolioRunDeps, PortfolioResult } from '@swao/module-portfolio';
 import { buildAuditorReport } from './auditor-report-schema.js';
-import { findWorkspace, setWorkspaceRoot, logPortfolio, normalizeDashes, readRunStatus, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, listLzCatalogueFitFiles, staleChallengeNote, challengeCommand } from '@swao/core';
+import { findWorkspace, setWorkspaceRoot, logPortfolio, normalizeDashes, guardSecretText, guardSecretsDeep, readRunStatus, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, listLzCatalogueFitFiles, staleChallengeNote, challengeCommand } from '@swao/core';
 import type { ChallengeSelection } from '@swao/core';
 // #0583: renderTextReportToPdf lives in @swao/module-pdf-report (Consultant
 // tier). Import the TYPE only (erased by esbuild) and inject the renderer via
@@ -75,6 +75,15 @@ function truncate(s: string, max = 100): string {
 export { normalizeDashes };
 
 /**
+ * #4352: final pass of every text report formatter: masks credential values
+ * and secret shapes (guardSecretText, Design 032 section 11.6), then
+ * normalises dashes. Never logs the text.
+ */
+export function finaliseReportText(text: string): string {
+  return normalizeDashes(guardSecretText(text).text);
+}
+
+/**
  * Wrap text word-by-word so lines stay within maxWidth.
  * firstPrefix is prepended to the first line; contPrefix to all subsequent lines.
  * Returns an array of lines (already including the prefixes).
@@ -103,9 +112,12 @@ function severityLabel(sev: string): string {
   return `[${s.padEnd(8)}]`; // 'critical' and 'positive' are 8 chars
 }
 
+// #4352: every run file a report view reads passes the secret output guard
+// (Design 032 section 11.6), so the persona views, the auditor YAML / JSON and
+// the per-agent PDFs never see a credential value, even before truncation.
 function loadYaml(filePath: string): unknown {
   try {
-    return load(readFileSync(filePath, 'utf-8'));
+    return guardSecretsDeep(load(readFileSync(filePath, 'utf-8'))).value;
   } catch {
     return null;
   }
@@ -113,7 +125,7 @@ function loadYaml(filePath: string): unknown {
 
 function loadJson(filePath: string): unknown {
   try {
-    return JSON.parse(readFileSync(filePath, 'utf-8'));
+    return guardSecretsDeep(JSON.parse(readFileSync(filePath, 'utf-8')) as unknown).value;
   } catch {
     return null;
   }
@@ -195,6 +207,13 @@ function challengeHintFor(appId: string, sel: ChallengeSelection, runDir: string
  * pairing; without it the latest application run pointer decides.
  */
 export function generateReport(workspaceAppDir: string, appId: string, runId?: string): AppReportData {
+  // #4352: output guard (Design 032 section 11.6) on the report data, so the
+  // text, YAML, JSON and PDF reports never carry a credential value even when
+  // a run file escaped the run-dir sweep. Already-masked values pass through.
+  return guardSecretsDeep(buildReportData(workspaceAppDir, appId, runId)).value;
+}
+
+function buildReportData(workspaceAppDir: string, appId: string, runId?: string): AppReportData {
   const latest = resolveRunDirs(workspaceAppDir);
   const wspDir = latest.wspDir;
   const runDir = runId !== undefined ? resolveAppRunDirById(wspDir, runId) : resolveRunDir(wspDir);
@@ -730,7 +749,7 @@ export function formatText(data: AppReportData): string {
   // #2916: stakeholder challenge findings section (conditional -- omit when no challenge run)
   if (archChallenge) lines.push(...formatChallengeSection(archChallenge, data.challengeSource));
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 // #2273: LLM Assessment text report (Community+). Mirrors LZ text report style.
@@ -809,7 +828,7 @@ export function formatLlmText(d: LlmTextReportInput): string {
     lines.push('');
   }
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 export function formatYamlReport(data: ReportData): string {
@@ -970,7 +989,7 @@ export function loadLzCatalogueFits(wspDir: string, selectedRunDir?: string): Ra
   const fits: RawLzCatFit[] = [];
   for (const f of listLzCatalogueFitFiles(runDir)) {
     try {
-      fits.push((load(readFileSync(join(runDir, f), 'utf-8')) ?? {}) as RawLzCatFit);
+      fits.push((guardSecretsDeep(load(readFileSync(join(runDir, f), 'utf-8'))).value ?? {}) as RawLzCatFit);
     } catch { /* skip malformed file */ }
   }
   return fits;
@@ -1031,7 +1050,7 @@ export function formatViewExec(data: ReportData, wspDir: string, runDir?: string
   // #2916: stakeholder challenge findings section
   if (execChallenge) lines.push(...formatChallengeSection(execChallenge, data.challengeSource));
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 export function formatViewCompliance(data: ReportData, wspDir: string, runDir?: string): string {
@@ -1112,7 +1131,7 @@ export function formatViewCompliance(data: ReportData, wspDir: string, runDir?: 
   // #2916: stakeholder challenge findings section
   if (compChallenge) lines.push(...formatChallengeSection(compChallenge, data.challengeSource));
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 export function formatViewFinops(data: ReportData, wspDir: string, runDir?: string): string {
@@ -1188,7 +1207,7 @@ export function formatViewFinops(data: ReportData, wspDir: string, runDir?: stri
   // #2916: stakeholder challenge findings section
   if (finopsChallenge) lines.push(...formatChallengeSection(finopsChallenge, data.challengeSource));
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 export function formatViewMigrationManager(data: ReportData, wspDir: string, runDir?: string): string {
@@ -1299,7 +1318,7 @@ export function formatViewMigrationManager(data: ReportData, wspDir: string, run
   // #2916: stakeholder challenge findings section
   if (pmChallenge) lines.push(...formatChallengeSection(pmChallenge, data.challengeSource));
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 function formatViewLzr(_data: ReportData, wspDir: string, runDir?: string): string {
@@ -1352,7 +1371,7 @@ function formatViewLzr(_data: ReportData, wspDir: string, runDir?: string): stri
     }
   }
   lines.push('');
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 // ---------------------------------------------------------------------------
@@ -1685,7 +1704,7 @@ export function formatViewAuditor(data: ReportData, wspDir: string, runDir?: str
     lines.push('');
   }
 
-  return normalizeDashes(lines.join('\n'));
+  return finaliseReportText(lines.join('\n'));
 }
 
 // #0263 Phase 2 -- read scope_coverage block from wsp-plan.yaml.
@@ -2251,7 +2270,8 @@ export function registerReport(program: Command, deps: ReportDeps): void {
           console.error(`[error] LLM assessment publication model not found: ${pubModelPath}`);
           process.exit(1);
         }
-        const raw      = JSON.parse(readFileSync(pubModelPath, 'utf-8')) as Record<string, unknown>;
+        // #4352: output guard on the LLM publication model before any report format reads it.
+        const raw      = guardSecretsDeep(JSON.parse(readFileSync(pubModelPath, 'utf-8')) as Record<string, unknown>).value;
         const rawFinal = (raw['final'] ?? {}) as { score?: Record<string, number | null>; rank?: Record<string, number | null> };
         const rawRun   = raw['run'] as Record<string, unknown> | undefined;
 

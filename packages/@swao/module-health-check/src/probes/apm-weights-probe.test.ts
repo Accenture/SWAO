@@ -37,6 +37,8 @@ function workspace(opts: { service?: boolean; weights?: Record<string, number> |
     if (opts.weights === null) delete fw['domain_weights'];
     else fw['domain_weights'] = opts.weights;
     writeFileSync(join(dir, 'framework-meta.yaml'), dump({ framework: fw }));
+    // #4286: a workspace framework folder resolves only as a full copy (controls.yaml with regime_meta).
+    writeFileSync(join(dir, 'controls.yaml'), readFileSync(join(apmFrameworkDir()!.dir, 'controls.yaml')));
   }
   return ws;
 }

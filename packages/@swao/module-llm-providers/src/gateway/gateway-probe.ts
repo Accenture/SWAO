@@ -23,9 +23,10 @@ import { join } from 'node:path';
 import { load as loadYaml } from 'js-yaml';
 import type { ProbeContribution } from '@swao/core';
 import { CredentialStore } from '@swao/core';
-import { getConnector, listConnectors } from './connector-loader.js';
-import { createProviderFromConnector } from './resolve.js';
-import { withLlmAttemptLimit } from '../llm-request.js';
+import { getConnector, listConnectors, outdatedWorkspaceConnectors, resolveBundledConnectorsDir, seedStatusText } from './connector-loader.js';
+import { createProviderFromConnector, resolveCredential } from './resolve.js';
+import type { LoadedConnector } from './connector-loader.js';
+import { withLlmAttemptLimit, withLlmCaller } from '../llm-request.js';
 import { resolveModelAlias } from './alias-resolver.js';
 import { scaffoldWorkspaceGateway } from './scaffold.js';
 
@@ -107,58 +108,78 @@ export function classifyPingFailure(rawMessage: string, opts: { credentialKey?: 
   // AWS SDK semantic exception names (#2160): checked before generic HTTP patterns
   // because AWS throws named exceptions, not HTTP status codes.
   if (/AccessDeniedException|UnrecognizedClientException/i.test(rawMessage)) {
-    return 'AWS credentials rejected -- check AWS_PROFILE, aws sso login, or IAM bedrock:InvokeModel permission';
+    return 'AWS credentials rejected; check AWS_PROFILE, aws sso login, or IAM bedrock:InvokeModel permission';
   }
   if (/ValidationException|ResourceNotFoundException/i.test(rawMessage)) {
-    return `model '${opts.model}' not valid for this region -- check the model id and active_env in bedrock.yaml`;
+    return `model '${opts.model}' not valid for this region; check the model id and active_env in bedrock.yaml`;
   }
   if (/ModelNotReadyException/i.test(rawMessage)) {
-    return `model '${opts.model}' not enabled -- request access in the AWS Bedrock Console for your region`;
+    return `model '${opts.model}' not enabled; request access in the AWS Bedrock Console for your region`;
   }
   if (/ThrottlingException/i.test(rawMessage)) {
-    return `AWS throttling -- retries exhausted; check quota or request limit increase in Bedrock Console`;
+    return `AWS throttling; retries exhausted; check quota or request limit increase in Bedrock Console`;
   }
 
   // #2751: 503 classified before the generic timeout check. 503 appears in the
   // LlmConnectivityError message when all retries exhaust on a transient HTTP error.
   if (msg.includes('503') || msg.includes('service unavailable')) {
-    return 'endpoint returned HTTP 503 Service Unavailable -- model may be loading, under maintenance, or overloaded; retry in a few minutes or check with the platform team';
+    return 'endpoint returned HTTP 503 Service Unavailable; model may be loading, under maintenance, or overloaded; retry in a few minutes or check with the platform team';
   }
   if (msg.includes('402') || msg.includes('payment required') || msg.includes('insufficient credits')) {
-    return `platform reports no credits (HTTP 402) -- add prepaid credits on the provider account${keyHint}`;
+    return `platform reports no credits (HTTP 402); add prepaid credits on the provider account${keyHint}`;
   }
   // Check 404 before auth keywords: an OpenRouter 404 "No endpoints found" response
   // can contain "authentication" in its body, causing misclassification (#1816).
   if (msg.includes('404') || msg.includes('no endpoints found') || (msg.includes('model') && (msg.includes('not found') || msg.includes('invalid') || msg.includes('unknown')))) {
-    return `model '${opts.model}' rejected by the platform -- check the model id`;
+    return `model '${opts.model}' rejected by the platform; check the model id`;
   }
   if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('invalid api key') || msg.includes('authentication')) {
     // #2897: ADFS/JWT token expiry -- distinct from a wrong key; re-login is the fix.
     const lc = rawMessage.toLowerCase();
     if (/jwt is expired|token is expired|jwt expired/i.test(rawMessage) ||
         (lc.includes('access token') && lc.includes('expired'))) {
-      return `authentication token expired (JWT) -- re-run 'swao session setup' to refresh the ADFS token${keyHint}`;
+      return `authentication token expired (JWT); re-run 'swao session setup' to refresh the ADFS token${keyHint}`;
     }
     // #2410: detect endpoint/key mismatch -- OpenRouter key used against api.openai.com is the
     // most common operator error (sk-or-v1* keys must go to openrouter.ai, not openai.com).
     if (opts.baseUrl && /openai\.com/i.test(opts.baseUrl) && opts.credentialKey) {
-      return `authentication failed -- endpoint is api.openai.com but the credential key may be an OpenRouter key. If you have an OpenRouter key (sk-or-v1*), set base_url to https://openrouter.ai/api/v1 in the connector${keyHint}`;
+      return `authentication failed; endpoint is api.openai.com but the credential key may be an OpenRouter key. If you have an OpenRouter key (sk-or-v1*), set base_url to https://openrouter.ai/api/v1 in the connector${keyHint}`;
     }
-    return `authentication failed -- API key missing, wrong, or revoked${keyHint}`;
+    return `authentication failed; API key missing, wrong, or revoked${keyHint}`;
   }
   // #2894 Part A: TLS cert errors fail fast (< 2 s); surface before the generic
   // timeout/unreachable check so operators see the real cause, not "35 s timeout".
   if (/ERR_TLS_|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_HAS_EXPIRED|DEPTH_ZERO_SELF_SIGNED|SELF_SIGNED_CERT_IN_CHAIN|UNABLE_TO_GET_ISSUER_CERT/i.test(rawMessage)) {
-    return `TLS certificate error -- endpoint reachable but cert not trusted by Node.js. ` +
+    return `TLS certificate error; endpoint reachable but cert not trusted by Node.js. ` +
       `Fix: set NODE_EXTRA_CA_CERTS=<ca-bundle.pem>, or set tls.reject_unauthorized: false in the connector YAML${keyHint}`;
   }
   if (msg.includes('timed out') || msg.includes('timeout')) {
-    return `no response within ${PING_TIMEOUT_MS / 1000}s -- endpoint unreachable or overloaded`;
+    return `no response within ${PING_TIMEOUT_MS / 1000}s; endpoint unreachable or overloaded`;
   }
   if (msg.includes('econnrefused') || msg.includes('enotfound') || msg.includes('fetch failed') || msg.includes('econnreset')) {
-    return 'endpoint unreachable -- check base_url, network, or proxy settings';
+    return 'endpoint unreachable; check base_url, network, or proxy settings';
   }
   return rawMessage.slice(0, 160);
+}
+
+/**
+ * #4114: a connector whose credential is a session token with a TTL (an ADFS or
+ * SSO token from `auth.token_command`, or a token whose lifetime is declared by
+ * `auth.token_ttl_s`). Only these keep the "stored token may be expired" rule;
+ * any other credential is a static API key.
+ */
+export function isSessionTokenConnector(auth: { token_command?: string; token_ttl_s?: number } | undefined): boolean {
+  return !!auth && (!!auth.token_command || typeof auth.token_ttl_s === 'number');
+}
+
+/** #4114: the vault entry for a credential key, or undefined. The value is never logged. */
+function readVaultKey(credentialKey: string): string | undefined {
+  try {
+    const store = new CredentialStore().loadSync();
+    return (credentialKey in store && store[credentialKey]) || undefined;
+  } catch {
+    return undefined; // vault unavailable
+  }
 }
 
 /** #1410: live connectivity ping of the ACTIVE connector. Sends a minimal
@@ -175,7 +196,7 @@ async function pingActiveConnector(
       .connectors.map(c => c.file.connector.id);
     return {
       ok: false,
-      message: `[WARNING] active connector '${active.connector}' not found -- available: ${available.join(', ') || '(none)'}`,
+      message: `[WARNING] active connector '${active.connector}' not found; available: ${available.join(', ') || '(none)'}`,
     };
   }
   const auth = loaded.file.connector.auth;
@@ -183,29 +204,39 @@ async function pingActiveConnector(
   const envVar = auth?.env_var;
 
   // #2897: env var = live session token; vault = may be expired (ADFS 60-min TTL).
+  // #4114: that rule holds for session-token connectors only. A static API key in
+  // the vault (the wizard pings with it) is used for the live ping, the same
+  // env -> vault order as the provider (resolve.ts resolveCredential).
   // Resolve ~-prefix model aliases before pinging (#1817).
   let apiKey: string | undefined;
   if (envVar) {
     // Env-var-configured connectors: check env var first (#2901 order).
     apiKey = process.env[envVar] || undefined;
     if (!apiKey) {
-      // Env var absent. Check vault -- if vault holds a key it is likely stale (ADFS TTL).
-      // Return ok: null so the operator gets a clear "run session-setup" hint rather than
-      // a misleading 401 that looks like a wrong key.
-      let vaultHasKey = false;
-      if (credentialKey) {
-        try {
-          const store = new CredentialStore().loadSync();
-          vaultHasKey = credentialKey in store && !!store[credentialKey];
-        } catch { /* vault unavailable */ }
+      const vaultKey = credentialKey ? readVaultKey(credentialKey) : undefined;
+      if (isSessionTokenConnector(auth)) {
+        // Session token: a stored vault token is likely stale (ADFS TTL). Return
+        // ok: null so the operator gets a clear "run session-setup" hint rather
+        // than a misleading 401 that looks like a wrong key.
+        const vaultHint = vaultKey
+          ? ` The credential vault holds a stored token that may be expired (session token TTL${auth?.token_ttl_s ? ` ${Math.round(auth.token_ttl_s / 60)} min` : ''}).`
+          : '';
+        return {
+          ok: null,
+          message: `[N/A] ${envVar} not set in this terminal; live ping skipped.${vaultHint} Re-run 'swao session setup' to refresh the token, then run health-check again.`,
+        };
       }
-      const vaultHint = vaultHasKey
-        ? ` The credential vault holds a stored key that may be expired (ADFS token TTL 60 min).`
-        : '';
-      return {
-        ok: null,
-        message: `[N/A] ${envVar} not set in this terminal -- live ping skipped.${vaultHint} Re-run 'swao session setup' to refresh the token, then run health-check again.`,
-      };
+      if (!vaultKey) {
+        return {
+          ok: null,
+          message: credentialKey
+            ? `[N/A] ${envVar} not set in this terminal and credential '${credentialKey}' not in the credential vault; live ping skipped. Store the API key via Credentials (swao setup), then run health-check again.`
+            : `[N/A] ${envVar} not set in this terminal; live ping skipped. Set the API key, then run health-check again.`,
+        };
+      }
+      // Static API key from the vault: ping with it (the provider resolves the
+      // same vault entry when the env var is absent).
+      apiKey = vaultKey;
     }
   } else if (credentialKey) {
     // Vault-only connector (static API key; no env_var configured).
@@ -216,7 +247,7 @@ async function pingActiveConnector(
     if (!apiKey) {
       return {
         ok: null,
-        message: `[N/A] credential '${credentialKey}' not loaded -- run 'swao session setup' to load the API key before the live ping`,
+        message: `[N/A] credential '${credentialKey}' not loaded; run 'swao session setup' to load the API key before the live ping`,
       };
     }
   }
@@ -232,7 +263,8 @@ async function pingActiveConnector(
       // #3284: assessment calls make 6 attempts; the ping keeps 4 so its
       // back-off (3 + 6 + 12 s) stays inside PING_TIMEOUT_MS and the real
       // failure cause is reported instead of the ceiling.
-      withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT)),
+      // #4270: the ping's provider.llm.* lines name their caller.
+      withLlmCaller({ caller: 'health-check.llm_gateway.ping' }, () => withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT))),
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(`live ping timed out after ${PING_TIMEOUT_MS}ms`)), PING_TIMEOUT_MS).unref?.(),
       ),
@@ -243,7 +275,7 @@ async function pingActiveConnector(
       : '';
     return {
       ok: true,
-      message: `[PASS] live ping OK -- connector '${active.connector}', model '${model}'${windowNote}, ${ms} ms round trip`,
+      message: `[PASS] live ping OK; connector '${active.connector}', model '${model}'${windowNote}, ${ms} ms round trip`,
     };
   } catch (err) {
     // #2894 Part A: Node.js fetch() wraps TLS errors as TypeError("fetch failed") with
@@ -265,7 +297,70 @@ async function pingActiveConnector(
   }
 }
 
+/** #4500: the outcome of a test call of one chosen model (the Setup LLM step). */
+export type ConnectorModelCheck =
+  | { status: 'ok'; model: string; ms: number }
+  /** No test call: no stored key yet (first Setup: the Credentials step tests it), a session token or AWS chain, or turned off. */
+  | { status: 'skipped'; reason: 'no-key' | 'session-token' | 'bedrock' | 'off' }
+  /** rejected: the platform does not serve the model (HTTP 404 class); the picker offers another choice. */
+  | { status: 'fail'; model: string; message: string; rejected: boolean };
+
+/** #4500: the test call times out after this long (3 attempts, 3 + 6 s back-off). */
+const CHECK_TIMEOUT_MS = 20_000;
+const CHECK_MAX_ATTEMPTS = 3;
+
+/**
+ * #4500 (Design 090 section 7.4): one test call of a chosen model, with the
+ * same alias resolution (resolveModelAlias) and provider as the Health Check
+ * llm_gateway ping above, so a model the Health Check would reject is caught
+ * before Setup writes it. Never throws. SWAO_LLM_MODEL_CHECK=off skips it (the
+ * swao test setup sets it, so no test reaches a platform).
+ */
+export async function checkConnectorModel(loaded: LoadedConnector, model: string): Promise<ConnectorModelCheck> {
+  if (process.env['SWAO_LLM_MODEL_CHECK'] === 'off') return { status: 'skipped', reason: 'off' };
+  const c = loaded.file.connector;
+  if (c.protocol === 'bedrock') return { status: 'skipped', reason: 'bedrock' };
+  if (isSessionTokenConnector(c.auth)) return { status: 'skipped', reason: 'session-token' };
+  const needsKey = !!(c.auth.credential_key || c.auth.env_var);
+  const apiKey = needsKey ? resolveCredential(c) : undefined;
+  if (needsKey && !apiKey) return { status: 'skipped', reason: 'no-key' };
+  let resolvedModel = model;
+  try {
+    resolvedModel = await resolveModelAlias(model, c, apiKey);
+    const resolved = createProviderFromConnector(loaded, { model: resolvedModel });
+    const started = Date.now();
+    await Promise.race([
+      withLlmCaller({ caller: 'setup.llm.model-check' }, () => withLlmAttemptLimit(CHECK_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT))),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`test call timed out after ${CHECK_TIMEOUT_MS}ms`)), CHECK_TIMEOUT_MS).unref?.()),
+    ]);
+    return { status: 'ok', model: resolvedModel, ms: Date.now() - started };
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    const message = classifyPingFailure(raw, { credentialKey: c.auth.credential_key, model: resolvedModel, baseUrl: c.base_url });
+    return { status: 'fail', model: resolvedModel, message, rejected: /rejected by the platform|not valid for this region/.test(message) };
+  }
+}
+
+/**
+ * #4491: the llm_gateway probe, plus a warning when a workspace connector file is
+ * an unedited seed older than the packaged one (stale prices and models). A
+ * passing probe then reads WARN ([WARNING], ok null: never a failure).
+ */
 export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promise<GatewayProbeContribution> {
+  const result = await buildLlmGatewayProbeCore(workspaceRoot);
+  if (!workspaceRoot || !existsSync(join(workspaceRoot, '.swao.yml'))) return result;
+  let outdated: string[] = [];
+  try { outdated = outdatedWorkspaceConnectors(workspaceRoot).filter((x) => x.status === 'outdated').map((x) => seedStatusText(x)); } catch { /* best-effort */ }
+  if (outdated.length === 0) return result;
+  const note = outdated.join('; ');
+  if (result.ok === true) {
+    const body = result.message.startsWith('[PASS] ') ? result.message.slice('[PASS] '.length) : result.message;
+    return { ok: null, message: `[WARNING] ${body}; ${note}` };
+  }
+  return { ...result, message: `${result.message}; ${note}` };
+}
+
+async function buildLlmGatewayProbeCore(workspaceRoot?: string | null): Promise<GatewayProbeContribution> {
   // #3388: only a real workspace (a `.swao.yml` present) is scaffolded or seeded.
   // health-check resolves workspaceRoot from `process.cwd()` when no `--workspace`
   // is given, so without this guard a run from any directory would write
@@ -286,9 +381,24 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
   const workspace = connectors.length - bundled;
 
   if (connectors.length === 0) {
+    // #4292: outside a workspace no connector is read (Design 112 D-3: connectors live in the
+    // workspace wsp/inputs/llm-gateway/ only); that is info, not a missing build artefact.
+    if (!isRealWorkspace) {
+      return {
+        ok: null,
+        message: '[N/A] not a workspace: connectors are seeded by setup into wsp/inputs/llm-gateway/; run health-check in a workspace or pass --workspace',
+      };
+    }
+    // #4292: the build-artefact message only when the packaged seeds are really absent.
+    if (resolveBundledConnectorsDir() === null) {
+      return {
+        ok: false,
+        message: '[WARNING] no LLM-Gateway connectors discovered; bundled seeds missing from the build (dist/_llm-gateway)',
+      };
+    }
     return {
       ok: false,
-      message: '[WARNING] no LLM-Gateway connectors discovered -- bundled seeds missing from the build (dist/_llm-gateway)',
+      message: '[WARNING] no LLM-Gateway connectors in wsp/inputs/llm-gateway/ and none could be seeded; run swao setup or copy a connector YAML into wsp/inputs/llm-gateway/',
     };
   }
   if (warnings.length > 0) {
@@ -296,7 +406,7 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
     return {
       ok: false,
       message: `[WARNING] ${connectors.length} connector(s) valid (${bundled} bundled, ${workspace} workspace); ` +
-        `${warnings.length} file(s) skipped -- ${first.slice(0, 120)}`,
+        `${warnings.length} file(s) skipped; ${first.slice(0, 120)}`,
     };
   }
 
@@ -306,11 +416,19 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
   // unusable; and probing only primary missed broken secondary/leg keys.
   const activeSpecs = readAllActiveConnectors(workspaceRoot);
   if (activeSpecs.length > 0) {
-    const results: Array<{ label: string; ping: GatewayProbeContribution }> = [];
-    for (const spec of activeSpecs) {
-      const ping = await pingActiveConnector(workspaceRoot, { connector: spec.connector, model: spec.model });
-      results.push({ label: spec.label, ping });
-    }
+    // #4461 (owner dev10: 3 live pings, 12.1 s): the connectors are pinged at
+    // the same time; the models of one connector stay in turn (one credential,
+    // one token refresh). The result order is the order of activeSpecs.
+    const pings = new Array<GatewayProbeContribution>(activeSpecs.length);
+    const byConnector = new Map<string, number[]>();
+    activeSpecs.forEach((s, i) => byConnector.set(s.connector, [...(byConnector.get(s.connector) ?? []), i]));
+    await Promise.all([...byConnector.values()].map(async (indexes) => {
+      for (const i of indexes) {
+        const spec = activeSpecs[i]!;
+        pings[i] = await pingActiveConnector(workspaceRoot, { connector: spec.connector, model: spec.model });
+      }
+    }));
+    const results: Array<{ label: string; ping: GatewayProbeContribution }> = activeSpecs.map((spec, i) => ({ label: spec.label, ping: pings[i]! }));
     // #2897: ok === false = hard failure; ok === null = credential not loaded (SKIP).
     const failed = results.filter(r => r.ping.ok === false);
     const skipped = results.filter(r => r.ping.ok === null);
@@ -341,7 +459,7 @@ export async function buildLlmGatewayProbe(workspaceRoot?: string | null): Promi
         : '';
       return {
         ok: true,
-        message: `${primaryMsg}${suffix}; ${skipped.length} secondary/leg credential(s) not loaded -- run 'swao session setup'; ` +
+        message: `${primaryMsg}${suffix}; ${skipped.length} secondary/leg credential(s) not loaded; run 'swao session setup'; ` +
           `${connectors.length} connector(s) discovered (${bundled} bundled, ${workspace} workspace)`,
       };
     }

@@ -50,6 +50,27 @@ describe('LZ assessment screen persistence (#3281)', () => {
     expect(readConfiguredLzTargets(ws, 'demo')).toEqual(['azure:germanywestcentral', 'stackit:eu01']);
   });
 
+  it('#4320: the commented landing_zone template of the app file (swao init) goes; uncommenting the rest loads strictly', () => {
+    // The app template lines of swao/packages/swao/src/commands/init.ts (appSwaoYmlTemplate, #3281).
+    const app = [
+      'app_id: demo',
+      'assessment:',
+      '  regimes_active:',
+      '    - GDPR_DEMO',
+      '  # pass_profile: []  # optional: pass subset (run swao lenses list for options)',
+      '  # landing_zone:',
+      '  #   targets: [stackit:eu01, azure:germanywestcentral]  # <provider>:<region> or <provider>:<geography> (e.g. azure:Europe)',
+      '',
+    ].join('\n');
+    const ws = workspace(app);
+    persistLzCatTargets(ws, 'demo', ['otc:germany']);
+    const text = readFileSync(join(ws, 'apps', 'demo', '.swao.yml'), 'utf-8');
+    expect(text.split('\n').filter((l) => l.replace('#', ' ').trimStart().startsWith('landing_zone:'))).toHaveLength(1);
+    expect(text).toContain('  # pass_profile: []');
+    const uncommented = text.split('\n').map((l) => l.replace(/^( *)# (?=[a-z_]+:)/, '$1')).join('\n');
+    expect((load(uncommented) as { assessment: { landing_zone: { targets: string[] } } }).assessment.landing_zone.targets).toEqual(['otc:germany']);
+  });
+
   it('pre-selection falls back to the workspace .swao.yml', () => {
     const ws = workspace('app_id: demo\n', 'assessment:\n  landing_zone:\n    targets: [otc:eu-de]\n');
     expect(readConfiguredLzTargets(ws, 'demo')).toEqual(['otc:eu-de']);

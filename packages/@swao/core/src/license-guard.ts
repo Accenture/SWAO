@@ -14,12 +14,13 @@
 // ================================================================
 
 import { createHash, sign as edSign, verify as edVerify, createPrivateKey, createPublicKey } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync } from 'node:fs';
 import { homedir, hostname, platform, networkInterfaces } from 'node:os';
-import { join, dirname, basename } from 'node:path';
+import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { z } from 'zod';
 import { logPortfolio } from './log.js';
+import { writeFileAtomicSync } from './atomic-write.js';
 
 // Build-time constants -- must match the values in @swao/swao's branding.ts.
 // Rotated via `node scripts/license/generate-keypair.mjs`; both files updated atomically.
@@ -86,6 +87,12 @@ export const FEATURE_GATES = {
   'generate-tf':          'enterprise', // F-090 Terraform scaffold, Enterprise roadmap (#3321)
   'unipipe':              'enterprise', // meshcloud integration, Enterprise roadmap (licence tier matrix D-04, #3324)
   'bi-templates':         'consultant', // F-088 Power BI .pbit templates (#3324)
+  // #3590 (Design 120 section 15, owner decision Q-07): Landing Zone Live Assessment.
+  // The lz-live publication reuses 'html-report' and Update LZ Catalogue with
+  // source live reuses 'lz-catalogue-update' (same tiers by design).
+  'lz-live-connect':      'community',  // F-135 swao lz connect / probe; no assessment output
+  'lz-live-assess':       'consultant', // F-136 single-LZ live assessment
+  'lz-live-portfolio':    'enterprise', // F-139 portfolio live merge, lz-live-portfolio, hub tile
 } as const satisfies Record<string, LicenseTier>;
 
 export type FeatureKey = keyof typeof FEATURE_GATES;
@@ -245,31 +252,22 @@ const STATE_RENAME_RETRY_MS = 50;
  * is then renamed over the target: a crash or a full disk mid-write leaves
  * the previous file intact instead of a truncated one. On Windows a rename
  * over a file another process holds open fails with EPERM / EBUSY / EACCES;
- * only the rename is retried, a few times with a short pause, so the
- * read-increment is never repeated and a run cannot be counted twice. The
- * temp file is removed on failure and the error is re-thrown, so a counter
- * write that still fails surfaces as assess.post_run.assessment_counter.failed.
+ * only the rename is retried (#3820: through the shared
+ * writeFileAtomicSync of atomic-write.ts), a few times with a doubling
+ * pause, so the read-increment is never repeated and a run cannot be
+ * counted twice. The temp file is removed on failure and the error is
+ * re-thrown, so a counter write that still fails surfaces as
+ * assess.post_run.assessment_counter.failed.
  */
 function writeStateFileAtomic(state: StateFile): void {
-  const target = _paths.statePath;
-  const tmp = join(dirname(target), `.${basename(target)}.${process.pid}.${Date.now()}.tmp`);
-  try {
-    writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf-8');
-    for (let attempt = 1; ; attempt++) {
-      try {
-        _stateIo.rename(tmp, target);
-        return;
-      } catch (e) {
-        const code = (e as NodeJS.ErrnoException).code;
-        const transient = _stateIo.isWindows() && (code === 'EPERM' || code === 'EBUSY' || code === 'EACCES');
-        if (!transient || attempt >= STATE_RENAME_ATTEMPTS) throw e;
-        _stateIo.sleep(STATE_RENAME_RETRY_MS * attempt);
-      }
-    }
-  } catch (e) {
-    try { rmSync(tmp, { force: true }); } catch { /* best-effort cleanup */ }
-    throw e;
-  }
+  // The seams are read per call so tests can swap them after import.
+  writeFileAtomicSync(_paths.statePath, JSON.stringify(state, null, 2), {
+    platform: _stateIo.isWindows() ? 'win32' : 'linux',
+    attempts: STATE_RENAME_ATTEMPTS,
+    baseDelayMs: STATE_RENAME_RETRY_MS,
+    rename: _stateIo.rename,
+    sleep: _stateIo.sleep,
+  });
 }
 
 /**

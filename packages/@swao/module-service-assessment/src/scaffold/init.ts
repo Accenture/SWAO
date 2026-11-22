@@ -26,7 +26,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from 'node:fs';
 import { basename, isAbsolute, join, relative } from 'node:path';
 import { load as yamlLoad } from 'js-yaml';
-import type { ScaffoldSignal } from '@swao/core';
+import { logPortfolioAt, type ScaffoldSignal } from '@swao/core';
 import { loadInfraCatalogue } from '../catalog/infra-cat.js';
 import { parseIntakeWorkbook, type IntakeParseResult } from '../intake/parser.js';
 import { isPiiHeader, parseColumnMap, type ColumnMap } from '../schema/column-map.schema.js';
@@ -148,6 +148,14 @@ interface ServiceAppYaml {
 }
 
 /** Service apps under apps/ (any intake source), sorted by ID. */
+/** #4489: vendor.name of every service app under apps/ (undefined when absent), for the Health Check probe. */
+export function serviceAppVendorNames(workspacePath: string): Array<string | undefined> {
+  return existingServiceAppIds(workspacePath).map((id) => {
+    const v = (serviceAppDoc(workspacePath, id) as { vendor?: { name?: unknown } } | null)?.vendor?.name;
+    return typeof v === 'string' ? v : undefined;
+  });
+}
+
 export function existingServiceAppIds(workspacePath: string): string[] {
   const appsDir = join(workspacePath, 'apps');
   if (!existsSync(appsDir)) return [];
@@ -217,6 +225,21 @@ export type ServiceInitPlan =
  * and detect a second intake workbook. The TUI uses it to show the app count
  * and the conflict before any child process runs.
  */
+/** #4489: warning text of an intake whose apps carry no vendor name (exported for the probe and tests). */
+export const NO_VENDOR_COLUMN_WARNING_PREFIX = 'no column maps to vendor.name';
+
+/**
+ * #4489 (Design 103 section 21.1): the warning when no app of the intake has a
+ * vendor name: CVE lookups (vendor and product) and the vendor consolidation
+ * stay empty. Null when at least one app has one or the intake has no app.
+ */
+export function vendorCoverageWarning(vendorNames: ReadonlyArray<string | null | undefined>): string | null {
+  if (vendorNames.length === 0) return null;
+  const named = vendorNames.filter((v) => typeof v === 'string' && v.trim() !== '').length;
+  if (named > 0) return null;
+  return `${NO_VENDOR_COLUMN_WARNING_PREFIX}: 0 of ${vendorNames.length} apps have a vendor name; CVE lookups and vendor consolidation need a vendor column (field vendor_name; the product is the app name); map one in the column map`;
+}
+
 export async function planServiceInit(opts: ServiceInitOptions): Promise<ServiceInitPlan> {
   const map = opts.mappingPath ? loadColumnMapFile(opts.mappingPath) : undefined;
   const catalogue = loadInfraCatalogue({
@@ -243,6 +266,9 @@ export async function planServiceInit(opts: ServiceInitOptions): Promise<Service
   const plan = planScaffold(intake.rows, catalogue, { clusterThreshold: threshold, costOptions, glossary });
   const signals = [...intake.signals, ...plan.signals];
   const warnings = [...intake.warnings, ...plan.warnings];
+  // #4489: CVE research and vendor consolidation need vendor names; say so at the import.
+  const vendorGap = vendorCoverageWarning(plan.apps.map((a) => a.config.vendor?.name));
+  if (vendorGap) warnings.push(vendorGap);
 
   // #3521: every app records the workbook it came from (name and hash, never a path).
   const source = intakeSourceId(opts.intakePath);
@@ -272,7 +298,55 @@ export async function planServiceInit(opts: ServiceInitOptions): Promise<Service
   };
 }
 
+/**
+ * #4270: `service init` writes exactly one service.intake.import.start and one
+ * .complete event (portfolio log) with the source workbook (workspace-relative
+ * when inside the workspace, else its file name), the row and app counts and
+ * the duration; a refused or failed import completes with status and reason.
+ */
 export async function runServiceInit(opts: ServiceInitOptions): Promise<ServiceInitResult> {
+  const started = Date.now();
+  // A path outside the workspace is logged by file name only (it can name the operator's profile).
+  const shown = (p: string): string => { const d = displayPath(opts.workspacePath, p); return isAbsolute(d) ? basename(p) : d; };
+  const source = shown(opts.intakePath);
+  const log = (level: 'info' | 'warn' | 'error', code: string, message: string, context: Record<string, unknown>): void => {
+    try { logPortfolioAt(opts.workspacePath, level, code, message, { context }); } catch { /* logging never stops the import */ }
+  };
+  log('info', 'service.intake.import.start', `Service intake import started: ${source}`, {
+    source, mapping: opts.mappingPath ? shown(opts.mappingPath) : null,
+    refresh: opts.refresh ?? false, other_source: opts.otherSource ?? 'refuse',
+  });
+  let result: ServiceInitResult;
+  try {
+    result = await runServiceInitSteps(opts);
+  } catch (e) {
+    const reason = (e instanceof Error ? e.message : String(e)).replace(/\s+/g, ' ').trim().slice(0, 300);
+    log('error', 'service.intake.import.complete', `Service intake import failed: ${reason}`, { source, status: 'failed', reason, duration_ms: Date.now() - started });
+    throw e;
+  }
+  if (result.ok) {
+    const w = result.write;
+    log('info', 'service.intake.import.complete',
+      `Service intake import complete: ${result.rowCount} row(s), ${w.created.length} app(s) created, ${w.refreshed.length} updated, ${w.skippedExisting.length} skipped, ${w.conflicts.length} rejected`, {
+        source, status: 'ok', rows_read: result.rowCount, apps_planned: result.apps.length,
+        apps_created: w.created.length, apps_updated: w.refreshed.length, apps_skipped: w.skippedExisting.length,
+        apps_rejected: w.conflicts.length, apps_not_in_intake: w.notInIntake.length,
+        apps_unclassified: result.unknownAppIds.length, apps_parked: result.parked?.appIds.length ?? 0,
+        apps_kept_other_source: result.keptOtherSource.length, warnings: result.warnings.length,
+        duration_ms: Date.now() - started,
+      });
+  } else {
+    const detail = result.reason === 'duplicate_ids'
+      ? { duplicate_ids: result.duplicateIds.length }
+      : { other_source_apps: result.conflict.appIds.length, apps_planned: result.plannedAppCount };
+    log('warn', 'service.intake.import.complete', `Service intake import refused: ${result.reason}`, {
+      source, status: 'refused', reason: result.reason, ...detail, duration_ms: Date.now() - started,
+    });
+  }
+  return result;
+}
+
+async function runServiceInitSteps(opts: ServiceInitOptions): Promise<ServiceInitResult> {
   const planned = await planServiceInit(opts);
   if (!planned.ok) return planned;
   const { intake, plan, meta, signals, warnings, source, conflict } = planned;

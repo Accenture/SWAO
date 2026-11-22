@@ -16,7 +16,7 @@
 // `swao service` command tree (#3075). The scaffold itself is covered end-to-end in
 // @swao/module-service-assessment/src/__tests__/scaffold-e2e.test.ts.
 import { describe, it, expect, afterAll, afterEach, beforeEach, vi } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,9 @@ import { Command } from 'commander';
 import type { ServiceInitResult } from '@swao/module-service-assessment';
 import type { ServiceResearchResult } from '@swao/module-service-assessment';
 import { runPortfolioExport } from '@swao/module-service-export';
-import { ensureServiceWorkspace, formatServiceInitSummary, formatServiceRank, formatServiceResearchSummary, registerService, resolveResearchLlm, runServiceExportCli, runServiceInitCli, runServiceRankCli, runServiceResearchCli, serviceExportUnavailable } from './service.js';
+import { communityFrameworksDir } from '@swao/community-frameworks';
+import { ensureServiceWorkspace, formatServiceInitSummary, formatServiceRank, formatServiceResearchSummary, registerService, resolveResearchLlm, runServiceExportCli, runServiceInitCli, runServiceRankCli, runServiceResearchCli, runServiceTemplateCli, runServiceAssessCli, serviceExportUnavailable, timedServiceStep } from './service.js';
+import { rankServiceApps } from '@swao/module-service-assessment';
 import { _paths, buildLicenseKey, LicenseGuard, LicenseTierError } from '../license/license-guard.js';
 
 const dirs: string[] = [];
@@ -42,17 +44,19 @@ describe('swao service command tree (#3075)', () => {
   it('registers service with init and research subcommands', () => {
     const service = program().commands.find((c) => c.name() === 'service')!;
     expect(service).toBeDefined();
-    expect(service.commands.map((c) => c.name())).toEqual(['init', 'research', 'export', 'rank']);
+    expect(service.commands.map((c) => c.name())).toEqual(['init', 'research', 'export', 'assess', 'rank']);
     const init = service.commands.find((c) => c.name() === 'init')!;
-    expect(init.options.map((o) => o.long)).toEqual(['--from', '--mapping', '--workspace', '--refresh', '--replace', '--keep', '--cluster-threshold', '--json']);
+    expect(init.options.map((o) => o.long)).toEqual(['--from', '--mapping', '--workspace', '--refresh', '--replace', '--keep', '--cluster-threshold', '--json', '--template']);
     const research = service.commands.find((c) => c.name() === 'research')!;
-    expect(research.options.map((o) => o.long)).toEqual(['--app', '--workspace', '--refresh', '--dry-run', '--skip-llm', '--json']);
+    expect(research.options.map((o) => o.long)).toEqual(['--app', '--workspace', '--refresh', '--dry-run', '--skip-llm', '--model', '--json']);
   });
 
   it('init without --from looks in wsp/inputs/service-intake/ and fails without a prompt when it is empty (#3211)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'swao-svc-nofrom-'));
     dirs.push(dir);
     await expect(runServiceInitCli({ workspace: dir })).rejects.toThrow(/no intake workbook found: put one \.xlsx file into .*service-intake/);
+    // #4225: the error names the blank template.
+    await expect(runServiceInitCli({ workspace: dir })).rejects.toThrow(/or run swao service init --template to copy a blank intake template there/);
     // Nothing is created when the intake is missing.
     expect(existsSync(join(dir, '.swao.yml'))).toBe(false);
   });
@@ -79,7 +83,8 @@ describe('swao service rank (#3165)', () => {
     const text = formatServiceRank([{ id: 'hosapp001', name: 'X', risk_score: 70, fan_in: 2, time_quadrant: 'Migrate', operational_status: 'active', evidence: 'sufficient' }]);
     expect(text).toContain('  1. hosapp001  risk 70  fan-in 2  TIME Migrate');
     expect(text).not.toContain('not assessed');
-    expect(text).toContain('swao assess --app <id> --type service');
+    expect(text).toContain('swao service assess --app <id>'); // #4400: no swao assess --type service in hints (Design 103 section 3.6)
+    expect(text).not.toContain('--type service');
   });
 
   it('marks apps without a service assessment run and keeps their rank (#3290, Design 110 D-24)', () => {
@@ -90,6 +95,176 @@ describe('swao service rank (#3165)', () => {
     expect(text).toContain('  1. hosapp001  risk 70  fan-in 2  TIME Migrate  [not assessed]');
     expect(text).toMatch(/ {2}2\. hosapp002 {2}risk 40 {2}fan-in 0 {2}TIME Tolerate$/m);
     expect(text).toContain('1 app(s) marked [not assessed]: no service assessment run yet');
+  });
+});
+
+describe('swao service assess --top (#3520)', () => {
+  const svcWorkspace = (yml = 'wsp_version: "0.9"\n'): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-svc-assess-'));
+    dirs.push(dir);
+    writeFileSync(join(dir, '.swao.yml'), yml);
+    for (const id of ['hosapp004', 'hosapp002', 'hosapp001', 'hosapp003']) {
+      mkdirSync(join(dir, 'apps', id), { recursive: true });
+      writeFileSync(join(dir, 'apps', id, '.swao.yml'), `app_id: ${id}\napp_name: ${id}\nassessment:\n  type: service\n`);
+    }
+    return dir;
+  };
+
+  it('N=3 assesses exactly the first 3 apps of rankServiceApps(ws, { top: 3 }), in order', () => {
+    const ws = svcWorkspace();
+    const calls: string[][] = [];
+    const r = runServiceAssessCli({ workspace: ws, top: '3' }, (args) => { calls.push(args); return 0; }, () => {});
+    const expected = rankServiceApps(ws, { top: 3 }).map((a) => a.id);
+    expect(expected).toHaveLength(3);
+    expect(r.apps).toEqual(expected);
+    expect(calls).toEqual(expected.map((id) => ['assess', '--app', id, '--type', 'service', '--workspace', ws]));
+    expect(r.failed).toEqual([]);
+  });
+
+  it('defaults N to service_portfolio.assess_top_n and reports failed apps', () => {
+    const ws = svcWorkspace('wsp_version: "0.9"\nservice_portfolio:\n  assess_top_n: 2\n');
+    const r = runServiceAssessCli({ workspace: ws }, (args) => (args[2] === 'hosapp002' ? 1 : 0), () => {});
+    expect(r.apps).toEqual(['hosapp001', 'hosapp002']);
+    expect(r.failed).toEqual(['hosapp002']);
+  });
+
+  it('--dry-run lists without assessing; bad --top and missing workspace are refused', () => {
+    const ws = svcWorkspace();
+    let ran = 0;
+    expect(runServiceAssessCli({ workspace: ws, top: '2', dryRun: true }, () => { ran++; return 0; }, () => {}).apps).toHaveLength(2);
+    expect(ran).toBe(0);
+    expect(() => runServiceAssessCli({ workspace: ws, top: '0' }, () => 0, () => {})).toThrow(/positive integer/);
+    expect(() => runServiceAssessCli({ workspace: ws, top: '2.5' }, () => 0, () => {})).toThrow(/positive integer/);
+    const empty = mkdtempSync(join(tmpdir(), 'swao-svc-assess-none-'));
+    dirs.push(empty);
+    expect(() => runServiceAssessCli({ workspace: empty }, () => 0, () => {})).toThrow(/no SWAO workspace found/);
+  });
+
+  it('--app assesses one service app with SWAO_APM fixed plus the added frameworks (#4400)', () => {
+    const ws = svcWorkspace();
+    mkdirSync(join(ws, 'apps', 'webapp'), { recursive: true });
+    writeFileSync(join(ws, 'apps', 'webapp', '.swao.yml'), `app_id: webapp${String.fromCharCode(10)}`);
+    // #4456: an added framework must be installed in the workspace.
+    cpSync(join(communityFrameworksDir, 'nis2'), join(ws, 'wsp', 'inputs', 'catalogs', 'community', 'nis2'), { recursive: true });
+    const calls: string[][] = [];
+    const r = runServiceAssessCli({ workspace: ws, app: 'hosapp003', regimes: 'NIS2,SWAO_APM' }, (args) => { calls.push(args); return 0; }, () => {});
+    expect(r.apps).toEqual(['hosapp003']);
+    expect(calls).toEqual([['assess', '--app', 'hosapp003', '--type', 'service', '--workspace', ws, '--regimes', 'SWAO_APM,NIS2']]);
+    const plain: string[][] = [];
+    runServiceAssessCli({ workspace: ws, app: 'hosapp001' }, (args) => { plain.push(args); return 0; }, () => {});
+    expect(plain[0]).not.toContain('--regimes');
+    expect(() => runServiceAssessCli({ workspace: ws, app: 'hosapp001', top: '2' }, () => 0, () => {})).toThrow(/exclude each other/);
+    expect(() => runServiceAssessCli({ workspace: ws, app: 'webapp' }, () => 0, () => {})).toThrow(/is an application/);
+    expect(() => runServiceAssessCli({ workspace: ws, app: 'gone' }, () => 0, () => {})).toThrow(/no app "gone"/);
+  });
+
+  it('--regimes refuses a framework that is neither installed nor SWAO_APM, before any run, with the GitHub hint (#4456)', () => {
+    const ws = svcWorkspace();
+    let ran = 0;
+    const refuse = (o: Parameters<typeof runServiceAssessCli>[0]) => () => runServiceAssessCli(o, () => { ran++; return 0; }, () => {});
+    expect(refuse({ workspace: ws, app: 'hosapp001', regimes: 'DORA' })).toThrow('DORA is not installed in this workspace');
+    expect(refuse({ workspace: ws, app: 'hosapp001', regimes: 'DORA' })).toThrow('https://github.com/Accenture/SWAO/tree/main/community-frameworks; copy a framework folder into wsp/inputs/catalogs/community/<folder>/');
+    expect(refuse({ workspace: ws, top: '2', regimes: 'SWAO_APM,DORA,NIS2', dryRun: true })).toThrow(/DORA, NIS2 are not installed/);
+    expect(ran).toBe(0);
+    // SWAO_APM alone is always accepted (it may come from the bundled set).
+    expect(runServiceAssessCli({ workspace: ws, app: 'hosapp001', regimes: 'SWAO_APM', dryRun: true }, () => 0, () => {}).apps).toEqual(['hosapp001']);
+  });
+});
+
+describe('service rank and service assess --top after an App Assessment wrote the summary (#4389)', () => {
+  // An App Assessment rebuilt wsp/portfolio-summary.json (one application row);
+  // service init then scaffolded hosapp001..003 without rebuilding it.
+  const staleSummaryWorkspace = (): string => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-svc-stale-'));
+    dirs.push(dir);
+    writeFileSync(join(dir, '.swao.yml'), 'wsp_version: "0.9"\n');
+    for (const id of ['hosapp003', 'hosapp001', 'hosapp002']) {
+      mkdirSync(join(dir, 'apps', id), { recursive: true });
+      writeFileSync(join(dir, 'apps', id, '.swao.yml'), `app_id: ${id}\napp_name: ${id}\nassessment:\n  type: service\n`);
+    }
+    mkdirSync(join(dir, 'wsp'), { recursive: true });
+    const appRow = {
+      id: 'sovereign-health', name: 'Sovereign Health', time_quadrant: 'Migrate', time_reason: 'x', analyst_time: null, risk_score: 80, health_score: 20,
+      domain_scores: {}, controls_scored: 0, controls_unknown: 0, eol_date: null, cve_critical_count: null, kev_match: false, vendor_canonical_name: null,
+      infra_category: null, site: null, operational_status: 'active', run: null, fan_in: 0, assessment_type: 'application',
+    };
+    writeFileSync(join(dir, 'wsp', 'portfolio-summary.json'), JSON.stringify({
+      generated_at: '2026-11-13T00:00:00Z', framework: { id: 'SWAO_APM', version: 't', status: 't' }, domain_weights: {}, app_count: 1,
+      portfolio_risk_score: 80, time_distribution: { Tolerate: 0, Invest: 0, Migrate: 1, 'Migrate-Critical': 0, Eliminate: 0 }, apps: [appRow],
+    }));
+    return dir;
+  };
+
+  it('swao service rank lists the scaffolded service apps as not assessed and names the cause', () => {
+    const ws = staleSummaryWorkspace();
+    const r = runServiceRankCli({ workspace: ws, top: '5' });
+    expect(r.apps.map((a) => [a.id, a.evidence])).toEqual([['hosapp001', 'not_assessed'], ['hosapp002', 'not_assessed'], ['hosapp003', 'not_assessed']]);
+    expect(r.detail).toMatchObject({ summaryPresent: true, missingFromSummary: ['hosapp001', 'hosapp002', 'hosapp003'] });
+    const text = formatServiceRank(r.apps, r.detail);
+    expect(text).toContain('  1. hosapp001  risk n/a  fan-in 0  TIME n/a  [not assessed]');
+    expect(text).toContain('3 service app(s) are not yet in wsp/portfolio-summary.json');
+    expect(text).toContain('Run swao service research to score them.');
+    // No em or en dash, no double dash in operator text (CLAUDE.md section 5.1).
+    expect(text).not.toMatch(new RegExp(`${String.fromCharCode(0x2014)}|${String.fromCharCode(0x2013)}| -- `));
+  });
+
+  it('swao service assess --top 2 --dry-run selects the first two service apps', () => {
+    const ws = staleSummaryWorkspace();
+    const lines: string[] = [];
+    let ran = 0;
+    const r = runServiceAssessCli({ workspace: ws, top: '2', dryRun: true }, () => { ran++; return 0; }, (l) => lines.push(l));
+    expect(r.apps).toEqual(['hosapp001', 'hosapp002']);
+    expect(ran).toBe(0);
+    expect(lines[0]).toBe('Assessing the top 2 service app(s) by risk: hosapp001, hosapp002');
+    expect(lines.some((l) => l.startsWith('3 service app(s) are not yet in wsp/portfolio-summary.json'))).toBe(true);
+  });
+
+  it('an empty ranking names its cause in rank and assess', () => {
+    const none = mkdtempSync(join(tmpdir(), 'swao-svc-none-'));
+    dirs.push(none);
+    writeFileSync(join(none, '.swao.yml'), 'wsp_version: "0.9"\n');
+    const r = runServiceRankCli({ workspace: none });
+    expect(formatServiceRank(r.apps, r.detail)).toBe('No service apps to assess: none scaffolded under apps/ (run swao service init first).');
+    const lines: string[] = [];
+    expect(runServiceAssessCli({ workspace: none, dryRun: true }, () => 0, (l) => lines.push(l)).apps).toEqual([]);
+    expect(lines).toEqual(['No service apps to assess: none scaffolded under apps/ (run swao service init first).']);
+    const inactive = staleSummaryWorkspace();
+    for (const id of ['hosapp001', 'hosapp002', 'hosapp003']) {
+      writeFileSync(join(inactive, 'apps', id, '.swao.yml'), `app_id: ${id}\nassessment:\n  type: service\ndisposition:\n  operational_status: inactive\n`);
+    }
+    const r2 = runServiceRankCli({ workspace: inactive });
+    expect(formatServiceRank(r2.apps, r2.detail)).toBe('No service apps to assess: all 3 scaffolded service app(s) are decommissioned, unused or inactive.');
+  });
+});
+
+describe('swao service init --template (#4225, D-3, parity with the Setup Intake step)', () => {
+  it('writes the service_portfolio block, copies the blank template and never overwrites it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-svc-tpl-'));
+    dirs.push(dir);
+    const first = await runServiceTemplateCli({ workspace: dir });
+    const tpl = join(dir, 'wsp', 'inputs', 'service-intake', 'service-intake-template.xlsx');
+    expect(first).toEqual({ workspacePath: dir, workspaceCreated: true, templatePath: tpl, created: true, serviceWorkspace: true });
+    expect(existsSync(tpl)).toBe(true);
+    expect(readFileSync(join(dir, '.swao.yml'), 'utf-8')).toMatch(/^service_portfolio:\n {2}intake_folder: wsp\/inputs\/service-intake$/m);
+    writeFileSync(tpl, 'filled in');
+    const second = await runServiceTemplateCli({ workspace: dir });
+    expect(second).toMatchObject({ workspaceCreated: false, created: false, serviceWorkspace: true });
+    expect(readFileSync(tpl, 'utf-8')).toBe('filled in');
+    expect(readFileSync(join(dir, '.swao.yml'), 'utf-8').match(/^service_portfolio:/gm)).toHaveLength(1);
+  });
+
+  it('the command prints the path and the next step, with no prompt', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'swao-svc-tpl-cli-'));
+    dirs.push(dir);
+    const out: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((m: unknown) => { out.push(String(m)); });
+    try {
+      await program().parseAsync(['node', 'swao', 'service', 'init', '--template', '--workspace', dir]);
+    } finally {
+      log.mockRestore();
+    }
+    expect(out.join('\n')).toContain(`Blank intake template copied to ${join(dir, 'wsp', 'inputs', 'service-intake', 'service-intake-template.xlsx')}`);
+    expect(out.join('\n')).toContain('Next: fill in one row per service or server');
   });
 });
 
@@ -360,6 +535,15 @@ describe('resolveResearchLlm (#3289)', () => {
     expect(factory).toHaveBeenCalledWith(undefined, 'service-research', expect.objectContaining({ type: 'anthropic', model: 'm1', workspaceRoot: dir }));
   });
 
+  it('#4236: the research model comes from --model, else service_portfolio.research_model, else the primary', () => {
+    const dir = ws('providers:\n  llm:\n    primary:\n      type: anthropic\n      model: m1\nservice_portfolio:\n  research_model: cheap1\n');
+    const factory = vi.fn(() => fake);
+    resolveResearchLlm(dir, factory as never);
+    expect(factory).toHaveBeenLastCalledWith(undefined, 'service-research', expect.objectContaining({ model: 'cheap1' }));
+    resolveResearchLlm(dir, factory as never, 'cheap2');
+    expect(factory).toHaveBeenLastCalledWith(undefined, 'service-research', expect.objectContaining({ model: 'cheap2' }));
+  });
+
   it('honours SWAO_LLM_PROVIDER without a .swao.yml block', () => {
     process.env['SWAO_LLM_PROVIDER'] = 'ollama';
     const factory = vi.fn(() => fake);
@@ -370,5 +554,25 @@ describe('resolveResearchLlm (#3289)', () => {
     const dir = ws('providers:\n  llm:\n    primary:\n      connector: missing-gw\n');
     const r = resolveResearchLlm(dir, (() => { throw new Error("Unknown LLM connector 'missing-gw'."); }) as never);
     expect(r).toEqual({ llm: null, skipReason: 'llm_unavailable', detail: "Unknown LLM connector 'missing-gw'." });
+  });
+});
+
+// #4457: a long step of a service child logs start and complete (or failed) with its duration.
+describe('timedServiceStep (#4457)', () => {
+  const read = (ws: string) => readFileSync(join(ws, 'wsp', 'logs', `portfolio-events-${new Date().toISOString().slice(0, 7)}.ndjson`), 'utf-8')
+    .split('\n').filter(Boolean).map((l) => JSON.parse(l) as { code: string; level: string; context: Record<string, unknown> });
+
+  it('logs start, then complete with duration_ms and the result context; failed and re-throws on an error', async () => {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-step-'));
+    dirs.push(ws);
+    writeFileSync(join(ws, '.swao.yml'), 'wsp_version: "0.9"\n');
+    const r = await timedServiceStep(ws, 'service.export', 'Portfolio export', async () => ({ appCount: 3 }), (x) => ({ app_count: x.appCount }));
+    expect(r).toEqual({ appCount: 3 });
+    await expect(timedServiceStep(ws, 'service.research.portfolio_summary', 'Rebuild', () => { throw new Error('boom'); })).rejects.toThrow('boom');
+    const ev = read(ws);
+    expect(ev.map((e) => e.code)).toEqual(['service.export.start', 'service.export.complete', 'service.research.portfolio_summary.start', 'service.research.portfolio_summary.failed']);
+    expect(ev[1]!.context).toMatchObject({ app_count: 3 });
+    expect(typeof ev[1]!.context['duration_ms']).toBe('number');
+    expect(ev[3]!.level).toBe('warn');
   });
 });

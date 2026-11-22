@@ -1,631 +1,1622 @@
-# SWAO Community Framework -- DORA (Digital Operational Resilience Act)
-# Sprint-138 #2801: deepened from 5-control PoC stub to full 31-control
-# coverage of DORA Regulation EU 2022/2554 across all 5 pillars.
-# In force: 2025-01-17. Applies to: financial entities under EU FSR.
+# SWAO Community Framework: DORA (Digital Operational Resilience Act)
+#
+# Schema: RegimeCatalogueSchema (design 029 section 4.5; Design 104 section 5.2).
+# Catalogue 2.0.0 (#3962, 2026-11-06): rework of the 31-control catalogue of
+# #2801. Every control cites Regulation (EU) 2022/2554 by article, paragraph
+# and point, and the Level 2 act article where one applies (regulatory_basis).
+#
+# Sources. Each act is cited by its EUR-Lex ELI URL (framework-meta.yaml
+# companion_standards; references below). Every article, paragraph and point
+# was verified on 2026-11-06 against the EUR-Lex text of each act (#3965):
+# Regulation (EU) 2022/2554 and the eight Level 2 acts, read from the EUR-Lex
+# HTML rendering (legal-content/EN/TXT/HTML/?uri=CELEX:...) and the ELI pages.
+#
+# Ids. DORA_Art_<article>[_<n>]: the id names the DORA article; the trailing
+# number is a sequence within that article, not the paragraph. The exact
+# paragraph and point are in regulatory_basis and official_control_id. Seven
+# ids of catalogue 1.0.0 named the wrong article and were corrected; the old id
+# is listed in `replaces:` so earlier assessments still resolve (Design 104
+# section 5.2a). A replaced id is never reused for another control.
+#
+# Numbers. Only values stated in the legal text appear (for example "at least
+# yearly", "every six months", "4 hours"). Where DORA leaves a value to the
+# entity (log retention, backup frequency, patch deadlines, RTO and RPO, exit
+# plan test cadence), the control asks for the entity's documented value.
+#
+# Evidence. Each control carries one tag of the evidence axis:
+#   evidence.workload        assessable from workload or landing zone evidence
+#                            (Pass signals; LZ live posture through service-controls.yaml)
+#   evidence.organisational  organisational documents in the app's ingestion folder
+#                            (layer: governance; no pass without such a document)
+#   evidence.both            either source; the documents complete the technical evidence
+# The context_input names in evidence_basis are the documents the README lists.
+#
+# Tags (#0348 axis form): pillar.<pillar>, evidence.<kind>, level2.<act> per
+# Level 2 act cited.
+#
+# Proportionality. applies_when is used only for the minority regimes:
+# dora_simplified_framework (Art. 16), dora_tlpt_required (Art. 26 and 27),
+# dora_payment_entity (Art. 23). A key that is not set in .swao.yml
+# framework_context makes the control N/A (#3425). Requirements that exclude
+# microenterprises say so in the description.
 
 regime_meta:
   id: DORA
   name: "Digital Operational Resilience Act"
   version: "2025-01-17"
   scope: community
-  authority: "European Union (Regulation EU 2022/2554)"
+  authority: "European Union (Regulation (EU) 2022/2554)"
   contributor:
     name: "SWAO Development Team (Accenture)"
-    url: "https://accenture.example/swao/community-frameworks/dora"
-  catalogue_version: "1.0.0"
+    url: "https://github.com/Accenture/SWAO"
+  catalogue_version: "2.0.0"
   signal_prefix: DORA
-  last_reviewed: "2026-09-21"
+  last_reviewed: "2026-11-06"
+  effective_date: "2025-01-17"
+  next_review_date: "2027-05-06"
   applicability_hints:
     - financial_services
-    - eu_critical_infrastructure
     - banking
     - insurance
     - payment_institution
     - investment_firm
   description: >-
-    EU Regulation 2022/2554 (DORA) in force since 2025-01-17, covering ICT
-    risk management, incident reporting, digital operational resilience testing,
-    third-party ICT risk management, and information sharing for financial
-    entities in the European Union. 31 controls across 5 pillars. Cross-mapped
-    to ISO 27001:2022 and NIS2 (Directive EU 2022/2555).
+    Regulation (EU) 2022/2554 (DORA), applicable from 2025-01-17, with its eight
+    Level 2 acts on ICT risk management, incident classification and reporting,
+    resilience testing, ICT third-party risk and the register of information.
   references:
-    - "EU Regulation 2022/2554 (DORA) -- Official Journal 2022-12-27"
-    - "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2554"
-    - "ENISA DORA Implementation Guide 2024"
-    - "EBA Guidelines on ICT and Security Risk Management (EBA/GL/2019/04)"
+    - "Regulation (EU) 2022/2554, OJ L 333, 27.12.2022, https://eur-lex.europa.eu/eli/reg/2022/2554/oj"
+    - "Text verified against EUR-Lex (CELEX 32022R2554 and the eight Level 2 acts), 2026-11-06 (#3965)"
+  companion_standards:
+    - "Delegated Regulation (EU) 2024/1774 (ICT risk management framework RTS)"
+    - "Delegated Regulation (EU) 2024/1772 (classification of ICT-related incidents RTS)"
+    - "Delegated Regulation (EU) 2024/1773 (policy on ICT services supporting critical or important functions RTS)"
+    - "Delegated Regulation (EU) 2025/301 (content and time limits of incident reports RTS)"
+    - "Delegated Regulation (EU) 2025/532 (subcontracting of ICT services RTS)"
+    - "Delegated Regulation (EU) 2025/1190 (threat-led penetration testing RTS)"
+    - "Implementing Regulation (EU) 2024/2956 (register of information ITS)"
+    - "Implementing Regulation (EU) 2025/302 (incident reporting templates ITS)"
 
 controls:
 
-  # ---------------------------------------------------------------
-  # Pillar 1: ICT Risk Management (Articles 5-14)
-  # ---------------------------------------------------------------
+  # ===========================================================================
+  # Pillar 1: ICT risk management (Chapter II, Art. 5 to 16)
+  # ===========================================================================
 
   - id: DORA_Art_5_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Management body accountability for ICT risk"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Management body responsibility for ICT risk"
     description: >-
-      The management body of the financial entity defines, approves, and oversees
-      the ICT risk management framework. Management body members shall maintain
-      sufficient knowledge and skills to understand and assess ICT risk and its
-      impact on the entity, and dedicate sufficient time to ICT risk oversight.
+      The management body defines, approves, oversees and is responsible for the
+      ICT risk management framework. It bears ultimate responsibility for ICT
+      risk, puts in place policies for the availability, authenticity,
+      integrity and confidentiality of data, and sets clear roles and
+      responsibilities for all ICT-related functions. Its members keep their
+      knowledge and skills to understand and assess ICT risk up to date,
+      including through regular specific training.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 5(1), 5(2) first subparagraph and points (a) to (c), 5(4)"
+    official_control_id: "Art. 5(2)(a)-(c), 5(4)"
     evidence_basis:
-      - context_input: solution_arch
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.1
-      - ISO_27001_A.5.2
+      - context_input: ict_governance_terms_of_reference
+      - context_input: management_body_training_record
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_GOV_1, NIS2_GOV_2, BSI_C5_OIS-02, EUCS_GRC_3, ISO_27001_A.5.2, ISO_27001_A.5.4, BSI_ORP1_A1]
     references:
-      - "DORA Article 5 paragraphs 1-4"
-      - "DORA Recital 45"
+      - "Regulation (EU) 2022/2554 Art. 5 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Record the management body's responsibility for ICT risk in its terms of
+      reference, assign ICT roles in writing and keep a record of the members'
+      ICT risk training; put these documents in the ingestion folder.
 
   - id: DORA_Art_5_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "ICT strategy and budget oversight by management body"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Management body approval of strategy, plans, policies and budget"
     description: >-
-      The management body approves the ICT strategy, defines the entity's ICT
-      risk appetite, and approves the annual ICT budget. A designated member or
-      committee is responsible for overseeing the ICT risk exposure and the
-      measures taken to address it.
+      The management body sets and approves the digital operational resilience
+      strategy and the ICT risk tolerance, approves and periodically reviews the
+      ICT business continuity policy and response and recovery plans, the ICT
+      internal audit plans, the budget for digital operational resilience
+      (including awareness and training) and the policy on ICT services of
+      third-party providers, and has reporting channels on third-party
+      arrangements and major ICT-related incidents.
     severity_default: medium
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 5(2) points (d) to (i)"
+    official_control_id: "Art. 5(2)(d)-(i)"
     evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.1
+      - context_input: management_body_approval_minutes
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_GOV_3, BSI_C5_OIS-04, ISO_27001_A.5.1, BSI_ISMS1_A1]
     references:
-      - "DORA Article 5 paragraphs 2, 9, 10"
+      - "Regulation (EU) 2022/2554 Art. 5(2) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Keep dated approval minutes for the resilience strategy, the continuity
+      and recovery plans, the ICT audit plan, the budget and the third-party
+      policy, with the review interval the entity has set.
 
   - id: DORA_Art_6
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "ICT risk management framework"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Documented ICT risk management framework"
     description: >-
-      Financial entities shall maintain a sound, comprehensive, and well-documented
-      ICT risk management framework as part of their overall risk management system.
-      The framework shall enable them to address ICT risk quickly, efficiently, and
-      comprehensively, and shall be reviewed at least annually or after major ICT
-      incidents.
+      A sound, comprehensive and well-documented ICT risk management framework
+      is part of the overall risk management system. It includes the
+      strategies, policies, procedures, ICT protocols and tools needed to
+      protect all information and ICT assets and the relevant physical
+      components and infrastructure, and to minimise the impact of ICT risk.
+      Complete and current information on ICT risk and the framework is given to
+      the competent authority on request. Entities under Art. 16(1) apply the
+      simplified framework instead (DORA_Art_16_1).
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 6(1) to 6(3); Delegated Regulation (EU) 2024/1774 Art. 1 to 3"
+    official_control_id: "Art. 6(1)-(3)"
     evidence_basis:
-      - context_input: solution_arch
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.35
-      - ISO_27001_A.6.1
+      - context_input: ict_risk_management_framework
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_RSK_1, BSI_C5_OIS-03, EUCS_GRC_2, EUCS_GRC_4, ISO_27001_A.5.1]
     references:
-      - "DORA Article 6"
-      - "EBA/GL/2019/04 Chapter 4"
+      - "Regulation (EU) 2022/2554 Art. 6 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 1 to 3 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Document the ICT risk management framework (scope, policies, procedures,
+      protocols, tools and asset protection) and supply it in the ingestion
+      folder.
+
+  - id: DORA_Art_6_2
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Independent ICT risk control function, framework review and ICT audit"
+    description: >-
+      Entities other than microenterprises assign ICT risk management to an
+      independent control function and segregate management, control and
+      internal audit (three lines of defence or an equivalent model). The
+      framework is reviewed at least once a year (microenterprises
+      periodically) and after major ICT-related incidents, supervisory
+      instructions or conclusions of testing or audits; the review report
+      follows the format of Delegated Regulation (EU) 2024/1774 Art. 27. The
+      framework is audited regularly by qualified, independent internal
+      auditors, with a formal follow-up of critical findings.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 6(4) to 6(7); Delegated Regulation (EU) 2024/1774 Art. 27"
+    official_control_id: "Art. 6(4)-(7)"
+    evidence_basis:
+      - context_input: ict_risk_framework_review_report
+      - context_input: ict_internal_audit_plan
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_RSK_5, BSI_C5_COM-02, EUCS_GRC_8, ISO_27001_A.5.35, ISO_27001_A.5.3]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 6(4) to (7) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 27 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Supply the latest framework review report (at least yearly), the ICT
+      internal audit plan and the follow-up log of critical ICT audit findings.
+
+  - id: DORA_Art_6_3
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Digital operational resilience strategy and ICT risk tolerance"
+    description: >-
+      The framework includes a digital operational resilience strategy that
+      explains how the framework supports the business strategy, sets the ICT
+      risk tolerance and impact tolerance, sets information security objectives
+      with key performance indicators and key risk metrics, explains the ICT
+      reference architecture, outlines detection and protection mechanisms,
+      evidences the current resilience position, and covers testing and
+      incident communication. A multi-vendor strategy is optional (Art. 6(9)).
+    severity_default: medium
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 6(8) points (a) to (h), 6(9)"
+    official_control_id: "Art. 6(8)(a)-(h)"
+    evidence_basis:
+      - context_input: digital_operational_resilience_strategy
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_RSK_6, BSI_C5_OIS-04, EUCS_GRC_2]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 6(8) and (9) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Write the resilience strategy with the eight elements of Art. 6(8),
+      including the entity's documented risk tolerance and KPIs, and supply it.
 
   - id: DORA_Art_7_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "ICT systems hardening and lifecycle management"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Up-to-date, reliable ICT systems with adequate capacity and resilience"
     description: >-
-      Financial entities shall use up-to-date ICT systems, protocols, and tools
-      that are fit for purpose and minimise the impact of ICT risk. ICT systems
-      shall be kept updated, hardened in line with a documented configuration
-      standard, and decommissioned when end-of-life is reached.
+      ICT systems, protocols and tools are kept up to date, are appropriate to
+      the scale of operations, are reliable, have sufficient capacity to process
+      the data needed (including peak volumes) and are technologically
+      resilient under stressed market conditions. Capacity and performance are
+      managed per Delegated Regulation (EU) 2024/1774 Art. 9.
     severity_default: high
+    assessment_type_scope: [app, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 7 points (a) to (d); Delegated Regulation (EU) 2024/1774 Art. 9"
+    official_control_id: "Art. 7(a)-(d)"
     evidence_basis:
+      - signal_prefix: INV
+      - signal_prefix: TF
+      - signal_prefix: SBOM
+      - context_input: capacity_management_plan
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [BSI_C5_OPS-03, EUCS_ASM_3, ISO_27001_A.8.6]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 7 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 9 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: compute and container services through service-controls.yaml"
+    remediation: >-
+      Replace end-of-life runtimes and components, size capacity for peak load
+      with headroom the entity documents, and record capacity monitoring.
+
+  - id: DORA_Art_8_1
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Identification, classification and inventory of functions and ICT assets"
+    description: >-
+      ICT-supported business functions, roles and responsibilities, and the
+      information and ICT assets supporting them, are identified, classified
+      and documented, with their dependencies; the adequacy of the
+      classification is reviewed at least yearly. All information and ICT
+      assets are identified and the critical ones mapped with their
+      configuration and interdependencies; inventories are kept current
+      (Delegated Regulation (EU) 2024/1774 Art. 4 and 5).
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 8(1), 8(4), 8(6); Delegated Regulation (EU) 2024/1774 Art. 4, 5"
+    official_control_id: "Art. 8(1), 8(4), 8(6)"
+    evidence_basis:
+      - signal_prefix: INV
       - signal_prefix: TF
       - context_input: cmdb_export
-    maps_to:
-      - ISO_27001_A.8.8
-      - ISO_27001_A.8.9
+      - context_input: ict_asset_inventory
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [EUCS_ASM_1, EUCS_ASM_2, BSI_C5_OPS-04, ISO_27001_A.5.9, ISO_27001_A.5.12]
     references:
-      - "DORA Article 7 paragraph 1"
+      - "Regulation (EU) 2022/2554 Art. 8 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 4 and 5 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: resource inventory of the scan (estate.resources), required_tags posture kind (Design 123 section 5.1)"
+    remediation: >-
+      Keep an asset inventory (CMDB export) with classification and
+      dependencies, linked to the business functions, and tag cloud resources
+      so the inventory can be reconciled with the landing zone.
 
-  - id: DORA_Art_7_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Network topology and traffic segregation"
+  - id: DORA_Art_8_2
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "ICT risk identification and assessment"
     description: >-
-      Financial entities shall implement network segmentation and segregation
-      controls to minimise ICT risk. Network architectures shall be documented,
-      traffic filtering shall be applied at network boundaries, and sensitive
-      systems shall reside in dedicated network zones.
+      All sources of ICT risk, cyber threats and ICT vulnerabilities relevant
+      to the business functions and assets are identified continuously, and the
+      risk scenarios are reviewed at least yearly. Entities other than
+      microenterprises assess risk on every major change of network,
+      infrastructure or processes, and assess all legacy ICT systems at least
+      yearly and before and after connecting new technologies (Delegated
+      Regulation (EU) 2024/1774 Art. 3).
     severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 8(2), 8(3), 8(7); Delegated Regulation (EU) 2024/1774 Art. 3"
+    official_control_id: "Art. 8(2), 8(3), 8(7)"
+    evidence_basis:
+      - context_input: ict_risk_assessment
+      - context_input: risk_register
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_RSK_2, BSI_C5_OIS-03, EUCS_GRC_2]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 8(2), (3), (7) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the current ICT risk assessment and risk register, dated within
+      the last year, including the legacy system assessment.
+
+  - id: DORA_Art_8_3
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Processes dependent on ICT third-party providers"
+    description: >-
+      All processes that depend on ICT third-party service providers are
+      identified and documented, together with the interconnections with
+      providers that support critical or important functions, and the
+      inventory is updated on every major change.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 8(5), 8(6)"
+    official_control_id: "Art. 8(5)"
+    evidence_basis:
+      - context_input: third_party_dependency_map
+      - context_input: register_of_information
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_SCM_5, BSI_C5_BCP-02, ISO_27001_A.5.21]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 8(5) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Map each business process to the ICT third-party services it uses and
+      mark the interconnections that support critical or important functions.
+
+  - id: DORA_Art_9_1
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Access control and least privilege"
+    description: >-
+      Physical and logical access to information and ICT assets is limited to
+      what legitimate and approved functions require, under an access
+      management policy: need-to-know, need-to-use and least privilege,
+      segregation of duties, identifiable users with limited generic accounts,
+      dedicated administrative accounts, timely withdrawal of rights, and an
+      update of access rights at least once a year, and at least every six
+      months for ICT systems supporting critical or important functions.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(c); Delegated Regulation (EU) 2024/1774 Art. 20, 21 points (a) to (e) and (g)"
+    official_control_id: "Art. 9(4)(c)"
+    evidence_basis:
+      - signal_prefix: IAM
+      - signal_prefix: TF
+      - context_input: access_management_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_HRS_3, NIS2_HRS_4, BSI_C5_IDM-01, BSI_C5_IDM-03, EUCS_IAM_1, EUCS_IAM_4, ISO_27001_A.5.15, ISO_27001_A.5.18, ISO_27001_A.8.2, BSI_ORP4_A1, SOC_2_CC6.1]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 9(4)(c) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 21 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: identity services through service-controls.yaml; credential_age posture kind (Design 123 section 5.1)"
+    remediation: >-
+      Remove standing broad permissions, use dedicated administrator accounts,
+      and record the access recertification at least yearly (six-monthly for
+      systems supporting critical or important functions).
+
+  - id: DORA_Art_9_2
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Encryption of data at rest, in transit and, where necessary, in use"
+    description: >-
+      Data is encrypted on the basis of the approved data classification and
+      ICT risk assessment, under a documented encryption policy covering data
+      at rest and in transit, data in use where necessary, internal network
+      connections and traffic with external parties; criteria for
+      cryptographic techniques follow leading practices and are updated when
+      cryptanalysis requires it, with recorded mitigations where an update is
+      not possible.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(2), 9(4)(d); Delegated Regulation (EU) 2024/1774 Art. 6, 14"
+    official_control_id: "Art. 9(4)(d)"
+    evidence_basis:
+      - signal_prefix: CRYPTO
+      - signal_prefix: TF
+      - context_input: encryption_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_CRY_1, NIS2_CRY_2, BSI_C5_CRY-02, BSI_C5_PI-03, EUCS_CRY_1, EUCS_CRY_2, GDPR_Art_32_a, ISO_27001_A.8.24]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 9(4)(d) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 6 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: encryption_at_rest and encryption_in_transit posture kinds (Design 123 section 5.1); storage and database services through service-controls.yaml"
+    remediation: >-
+      Enable encryption at rest for every storage and database service, enforce
+      TLS on all endpoints at the version the encryption policy sets, and
+      record any exception with its mitigation.
+
+  - id: DORA_Art_9_3
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Vulnerability and patch management"
+    description: >-
+      Documented policies for patches and updates are maintained. Vulnerability
+      management uses current information sources, runs automated
+      vulnerability scans with a frequency matched to asset classification (at
+      least weekly for ICT assets supporting critical or important functions),
+      tracks third-party and open source libraries, prioritises and tracks
+      remediation, and patching uses automated tools where possible, tests
+      patches before deployment, has emergency procedures and sets the
+      entity's own installation deadlines with escalation.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(f); Delegated Regulation (EU) 2024/1774 Art. 10"
+    official_control_id: "Art. 9(4)(f)"
+    evidence_basis:
+      - signal_prefix: SBOM
+      - signal_prefix: TF
+      - signal_prefix: MAL
+      - context_input: patch_management_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_VHR_1, NIS2_VHR_2, NIS2_NSC_2, BSI_C5_OPS-02, EUCS_OPS_2, ISO_27001_A.8.8, BSI_OPS113_A1, KRITIS_DE_AST_4]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 9(4)(f) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 10 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Fix the vulnerable dependencies the assessment lists, schedule automated
+      scans (weekly for critical or important functions) and document the
+      patch deadlines and escalation the entity applies.
+
+  - id: DORA_Art_9_4
+    replaces: [DORA_Art_7_2]
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Network segmentation and network security management"
+    description: >-
+      A risk-based network and infrastructure management structure segments
+      ICT systems and networks by criticality and classification, documents
+      network connections and data flows, uses a dedicated network for
+      administration, secures traffic to the internet and external networks,
+      reviews firewall rules and connection filters regularly (at least every
+      six months for systems supporting critical or important functions) and
+      reviews the network architecture yearly. Network connections can be
+      severed or segmented instantaneously to contain contagion.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(b) and second subparagraph; Delegated Regulation (EU) 2024/1774 Art. 13"
+    official_control_id: "Art. 9(4)(b)"
     evidence_basis:
       - signal_prefix: EGR
       - signal_prefix: TF
-    maps_to:
-      - ISO_27001_A.8.20
-      - ISO_27001_A.8.22
+      - context_input: network_architecture
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_NSC_1, BSI_C5_COS-01, BSI_C5_COS-02, EUCS_OPS_4, ISO_27001_A.8.20, ISO_27001_A.8.22, BSI_NET11_A1, BSI_NET32_A1, KRITIS_DE_AST_2]
     references:
-      - "DORA Article 7 paragraph 4"
+      - "Regulation (EU) 2022/2554 Art. 9(4)(b) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 13 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: no_public_exposure and no_open_admin_ingress posture kinds (Design 123 section 5.1); network services through service-controls.yaml"
+      - "Replaces DORA_Art_7_2 of catalogue 1.0.0, which cited a non-existent Art. 7(4)"
+    remediation: >-
+      Separate production, administration and external zones, close admin
+      ports to the internet, document data flows and record the six-monthly
+      firewall rule review for systems supporting critical or important functions.
 
-  - id: DORA_Art_8_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Identification of ICT-supported business functions"
+  - id: DORA_Art_9_5
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Strong authentication"
     description: >-
-      Financial entities shall identify, classify, and document all ICT-supported
-      business functions, information assets, and ICT assets that support critical
-      or important functions. The dependency mapping shall be reviewed at least
-      annually or following significant changes.
-    severity_default: medium
-    evidence_basis:
-      - context_input: solution_arch
-      - context_input: cmdb_export
-    maps_to:
-      - ISO_27001_A.5.9
-      - ISO_27001_A.5.12
-    references:
-      - "DORA Article 8 paragraphs 1-4"
-
-  - id: DORA_Art_8_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "ICT risk assessment and risk register"
-    description: >-
-      Financial entities shall perform risk assessments on all ICT assets and
-      ICT third-party service providers. A comprehensive risk register shall
-      document identified ICT risks, their likelihood, impact, and risk treatment
-      decisions. The register shall be updated following significant changes.
+      Strong authentication mechanisms based on relevant standards protect at
+      least remote access to the network, privileged access, access to ICT
+      assets supporting critical or important functions and publicly accessible
+      ICT assets; authentication methods are proportionate to the asset
+      classification.
     severity_default: high
-    evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.35
-    references:
-      - "DORA Article 8 paragraphs 5-7"
-
-  - id: DORA_Art_9_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Access control and privileged access management"
-    description: >-
-      Financial entities shall implement access control policies based on
-      least privilege and need-to-know. Privileged access shall be managed
-      through dedicated accounts, subject to multi-factor authentication, and
-      reviewed at least quarterly. Generic and shared accounts shall not be used
-      for privileged operations.
-    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(d); Delegated Regulation (EU) 2024/1774 Art. 21 point (f)"
+    official_control_id: "Art. 9(4)(d)"
     evidence_basis:
       - signal_prefix: IAM
-    maps_to:
-      - ISO_27001_A.5.15
-      - ISO_27001_A.5.16
-      - ISO_27001_A.8.2
-      - ISO_27001_A.8.5
+      - context_input: access_management_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_MFA_1, BSI_C5_IDM-02, EUCS_IAM_3, ISO_27001_A.8.5]
     references:
-      - "DORA Article 9 paragraph 2(a-c)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 21 point (f) (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: privileged_mfa posture kind (Design 123 section 5.1)"
+    remediation: >-
+      Enforce MFA for privileged, remote and critical-function access and for
+      every console user of the landing zone.
 
-  - id: DORA_Art_9_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Encryption of data at rest and in transit"
+  - id: DORA_Art_9_6
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Cryptographic key and certificate management"
     description: >-
-      Financial entities shall apply encryption to sensitive data at rest and
-      in transit using state-of-the-art, approved cryptographic algorithms.
-      Encryption keys shall be managed through a dedicated process with defined
-      key lifecycle controls including rotation and revocation procedures.
+      Cryptographic keys are protected through their whole lifecycle
+      (generation, renewal, storage, backup, archiving, retrieval,
+      transmission, retirement, revocation and destruction) against loss,
+      unauthorised access, disclosure and modification; lost or compromised
+      keys are replaced by procedure; a register of certificates and the
+      devices storing them is kept for assets supporting critical or important
+      functions and certificates are renewed before expiry.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(d); Delegated Regulation (EU) 2024/1774 Art. 7"
+    official_control_id: "Art. 9(4)(d)"
     evidence_basis:
       - signal_prefix: CRYPTO
-    maps_to:
-      - ISO_27001_A.8.24
+      - signal_prefix: TF
+      - context_input: key_management_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_CRY_3, BSI_C5_CRY-01, BSI_C5_CRY-03, BSI_C5_CRY-04, EUCS_CRY_3, ISO_27001_A.8.24, BSI_CON1_A2]
     references:
-      - "DORA Article 9 paragraph 2(d)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 7 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: key management and certificate services through service-controls.yaml"
+    remediation: >-
+      Keep keys in a managed key service or HSM with rotation, keep the
+      certificate register current and alert before certificate expiry.
 
-  - id: DORA_Art_9_3
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Vulnerability and patch management"
+  - id: DORA_Art_9_7
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Information security policy"
     description: >-
-      Financial entities shall establish and implement processes to identify,
-      assess, and address ICT vulnerabilities. Software patches and updates
-      shall be applied within defined timescales based on risk classification.
-      Unpatched critical vulnerabilities shall be tracked, escalated, and
-      compensating controls applied until remediation is complete.
+      An information security policy is developed and documented. It defines
+      rules to protect the availability, authenticity, integrity and
+      confidentiality of data, information assets and ICT assets, including
+      those of customers where applicable, and is part of the ICT security
+      policies, procedures, protocols and tools.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(a); Delegated Regulation (EU) 2024/1774 Art. 2"
+    official_control_id: "Art. 9(4)(a)"
+    evidence_basis:
+      - context_input: information_security_policy
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_RSK_3, BSI_C5_OIS-01, EUCS_GRC_1, ISO_27001_A.5.1, BSI_ISMS1_A3, KRITIS_DE_GOV_5]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 9(4)(a) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the approved information security policy in the ingestion folder.
+
+  - id: DORA_Art_9_8
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "ICT change management"
+    description: >-
+      Documented, risk-based change management covers all changes to software,
+      hardware, firmware, systems and security parameters, so that every change
+      is recorded, tested, assessed, approved, implemented and verified in a
+      controlled manner; approvers are independent of requesters and
+      implementers, fall-back and emergency change procedures exist, and the
+      security impact of each change is assessed.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(4)(e) and third subparagraph; Delegated Regulation (EU) 2024/1774 Art. 17"
+    official_control_id: "Art. 9(4)(e)"
     evidence_basis:
       - signal_prefix: TF
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.8.8
+      - signal_prefix: QUAL
+      - context_input: change_management_procedure
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [BSI_C5_OPS-01, EUCS_OPS_1, ISO_27001_A.8.32, BSI_OPS112_A1, SOC_2_CC8.1]
     references:
-      - "DORA Article 9 paragraph 3"
+      - "Delegated Regulation (EU) 2024/1774 Art. 17 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Route infrastructure and application changes through reviewed pull
+      requests and pipelines with independent approval, and document the
+      emergency change and fall-back procedure.
+
+  - id: DORA_Art_9_9
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Secure configuration baselines and hardening"
+    description: >-
+      Secure baseline configurations are maintained for network components and
+      ICT systems, which are hardened according to vendor instructions,
+      standards and good practice, and inactive sessions are limited, locked
+      and ended after a set period, so that ICT solutions prevent data loss,
+      unauthorised access and technical flaws.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 9(3) points (b) and (c); Delegated Regulation (EU) 2024/1774 Art. 11, 13 points (k) and (l)"
+    official_control_id: "Art. 9(3)(b)-(c)"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: LZR
+      - context_input: configuration_baseline
+    tags: [pillar.ict_risk_management, evidence.workload, level2.rts_2024_1774]
+    maps_to: [NIS2_NSC_5, BSI_C5_OPS-05, EUCS_OPS_3, ISO_27001_A.8.9]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 9(3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 13 points (k) and (l) (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: landing zone checks catalogue and posture kinds through service-controls.yaml"
+    remediation: >-
+      Apply a hardened baseline (for example CIS) through IaC, fix the
+      misconfigurations the assessment lists and enforce session timeouts.
 
   - id: DORA_Art_10_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Detection of anomalous activities and security alerting"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Detection of anomalous activities with alert thresholds"
     description: >-
-      Financial entities shall implement mechanisms to promptly detect anomalous
-      activities, including network issues and ICT-related incidents. Detection
-      mechanisms shall be tested regularly, alerts shall be prioritised and
-      triaged by trained staff, and thresholds shall be tuned to minimise
-      false-positive noise.
+      Mechanisms promptly detect anomalous activities, ICT network performance
+      issues and ICT-related incidents and identify material single points of
+      failure. They provide multiple layers of control, define alert thresholds
+      and criteria that trigger incident response, send automatic alerts to the
+      responsible staff, and are tested regularly; resources are allocated to
+      monitor user activity, anomalies and cyber-attacks.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 10(1) to 10(3); Delegated Regulation (EU) 2024/1774 Art. 23"
+    official_control_id: "Art. 10(1)-(3)"
     evidence_basis:
-      - signal_prefix: OBS
-    maps_to:
-      - ISO_27001_A.8.16
+      - signal_prefix: TF
+      - signal_prefix: STATE
+      - context_input: monitoring_and_alerting_runbook
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_NSC_3, BSI_C5_SIM-01, EUCS_OPS_7, ISO_27001_A.8.16, KRITIS_DE_INC_4]
     references:
-      - "DORA Article 10 paragraphs 1-2"
+      - "Regulation (EU) 2022/2554 Art. 10 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 23 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: monitoring and threat detection services through service-controls.yaml"
+    remediation: >-
+      Define alert thresholds per service, route alerts automatically to the
+      on-call team and test the detection rules.
 
   - id: DORA_Art_10_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Log management and audit trail"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Logging, log protection and clock synchronisation"
     description: >-
-      Financial entities shall maintain audit logs of ICT systems and
-      infrastructure. Logs shall be protected against tampering, retained for
-      at least one year (or longer per supervisory requirements), and shall
-      capture events sufficient to support incident investigation and forensic
-      analysis.
+      Logging procedures define the events logged (access control and identity
+      management, capacity, change, ICT operations and network traffic), the
+      log retention period that the entity sets from its business and security
+      objectives and risk assessment, the protection of logs against tampering,
+      deletion and unauthorised access, detection of logging failures, and
+      synchronisation of all ICT system clocks to a documented reliable time
+      source.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 10(3); Delegated Regulation (EU) 2024/1774 Art. 12"
+    official_control_id: "Art. 10(3)"
     evidence_basis:
-      - signal_prefix: OBS
-    maps_to:
-      - ISO_27001_A.8.15
+      - signal_prefix: TF
+      - signal_prefix: STATE
+      - context_input: logging_policy
+    tags: [pillar.ict_risk_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [BSI_C5_OPS-06, EUCS_OPS_5, ISO_27001_A.8.15, ISO_27001_A.8.17, BSI_DER1_A2]
     references:
-      - "DORA Article 10 paragraph 3"
+      - "Delegated Regulation (EU) 2024/1774 Art. 12 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+      - "LZ live: audit_trail and log_retention posture kinds (Design 123 section 5.1); log services through service-controls.yaml"
+    remediation: >-
+      Turn on the CSP audit trail in every region in use, keep logs for the
+      retention period the logging policy states, protect them against
+      deletion and alert on logging failures.
 
   - id: DORA_Art_11_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "ICT business continuity and disaster recovery plans"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "ICT business continuity policy and response and recovery plans"
     description: >-
-      Financial entities shall put in place comprehensive ICT business continuity
-      policies and ICT response and recovery plans to ensure that critical or
-      important functions can be restored after ICT incidents. Plans shall be
-      documented, reviewed annually, and tested at least annually to verify they
-      achieve defined recovery objectives.
-    severity_default: critical
-    evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.29
-      - ISO_27001_A.5.30
-    references:
-      - "DORA Article 11 paragraphs 1-2"
-
-  - id: DORA_Art_11_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Recovery time and recovery point objectives"
-    description: >-
-      Financial entities shall define and formally approve Recovery Time Objectives
-      (RTO) and Recovery Point Objectives (RPO) for all critical and important
-      functions. RTO/RPO shall be validated through regular recovery tests and
-      adjusted when gaps are identified.
+      A comprehensive ICT business continuity policy, part of the overall
+      business continuity policy, is implemented through documented
+      arrangements, plans and procedures that keep critical or important
+      functions running, contain and resolve incidents, estimate impacts and
+      set crisis communication; ICT response and recovery plans exist (for
+      entities other than microenterprises reviewed by independent internal
+      audit), a crisis management function exists (non-microenterprises) and
+      records of activities during disruptions are kept.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 11(1) to 11(3), 11(7), 11(8); Delegated Regulation (EU) 2024/1774 Art. 24, 26"
+    official_control_id: "Art. 11(1)-(3), (7), (8)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.30
+      - context_input: ict_business_continuity_policy
+      - context_input: ict_response_and_recovery_plan
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_BCM_1, NIS2_BCM_4, BSI_C5_AVL-01, EUCS_BCP_1, ISO_27001_A.5.29, ISO_27001_A.5.30, BSI_DER4_A1, KRITIS_DE_BCM_2]
     references:
-      - "DORA Article 11 paragraph 4"
+      - "Regulation (EU) 2022/2554 Art. 11 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 24 and 26 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Supply the ICT business continuity policy and the response and recovery
+      plans covering this workload's critical or important functions.
+
+  - id: DORA_Art_11_3
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Business impact analysis"
+    description: >-
+      A business impact analysis of the exposure to severe business disruptions
+      assesses impacts with quantitative and qualitative criteria and
+      scenarios, considers the criticality of business functions, processes,
+      third-party dependencies and information assets, and ICT assets are
+      designed and used in line with it, including redundancy of all critical
+      components.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 11(5)"
+    official_control_id: "Art. 11(5)"
+    evidence_basis:
+      - context_input: business_impact_analysis
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [BSI_C5_AVL-01, ISO_27001_A.5.30]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 11(5) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the business impact analysis that covers the functions this
+      workload supports.
+
+  - id: DORA_Art_11_4
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Testing of business continuity and recovery plans"
+    description: >-
+      ICT business continuity and response and recovery plans are tested at
+      least yearly and on substantive changes to systems supporting critical or
+      important functions, and crisis communication plans are tested. For
+      entities other than microenterprises the tests include cyber-attack
+      scenarios and switchovers between primary ICT infrastructure and the
+      redundant capacity, backups and facilities; tests use severe but
+      plausible scenarios, results are documented and deficiencies reported to
+      the management body.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 11(6); Delegated Regulation (EU) 2024/1774 Art. 25"
+    official_control_id: "Art. 11(6)"
+    evidence_basis:
+      - context_input: bcp_dr_test_report
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_BCM_3, BSI_C5_AVL-02, EUCS_BCP_3, GDPR_Art_32_d, ISO_27001_A.5.30, BSI_DER4_A2, SOC_2_A1.3]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 11(6) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Art. 25 (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Supply the latest yearly continuity and recovery test report, including
+      the switchover to redundant capacity and the deficiency follow-up.
 
   - id: DORA_Art_12_1
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Backup policies and immutable storage"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Backup policy and backup systems"
     description: >-
-      Financial entities shall implement backup policies defining backup frequency,
-      retention periods, and storage locations. Backups shall be stored in a
-      location physically separate from the primary system and protected against
-      ransomware or tampering through immutable or air-gapped storage.
+      Backup policies and procedures set the scope of data backed up and the
+      minimum backup frequency, both chosen by the entity from the criticality
+      and confidentiality of the data, together with restoration and recovery
+      procedures; backup systems can be activated without jeopardising the
+      security of systems or the availability, authenticity, integrity and
+      confidentiality of data.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 12(1), 12(2) first and second sentences"
+    official_control_id: "Art. 12(1)-(2)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.8.13
+      - signal_prefix: STATE
+      - signal_prefix: TF
+      - context_input: backup_policy
+    tags: [pillar.ict_risk_management, evidence.both]
+    maps_to: [NIS2_BCM_5, BSI_C5_AVL-04, GDPR_Art_32_c, ISO_27001_A.8.13, BSI_CON3_A1, KRITIS_DE_BCM_4, SOC_2_A1.2]
     references:
-      - "DORA Article 12 paragraphs 1-3"
+      - "Regulation (EU) 2022/2554 Art. 12 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "LZ live: backup_configured posture kind (Design 123 section 5.1); backup services through service-controls.yaml"
+    remediation: >-
+      Configure backups for every stateful resource at the frequency the
+      backup policy sets for its data classification.
 
   - id: DORA_Art_12_2
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Backup restoration testing"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Periodic testing of backup and restoration"
     description: >-
-      Financial entities shall perform restoration tests of backups at least
-      annually, with critical systems tested more frequently. Test results shall
-      be documented and gaps remediated. Restoration procedures shall be validated
-      against defined RTO and RPO objectives.
-    severity_default: high
+      Backup procedures and restoration and recovery procedures and methods are
+      tested periodically, at the interval the entity documents, and recovered
+      data is checked for integrity with multiple checks and reconciliations,
+      including data reconstructed from external stakeholders.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 12(2) third sentence, 12(7)"
+    official_control_id: "Art. 12(2), 12(7)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.8.13
+      - context_input: restore_test_report
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [BSI_C5_AVL-04, NIS2_BCM_5, ISO_27001_A.8.13]
     references:
-      - "DORA Article 12 paragraph 5"
+      - "Regulation (EU) 2022/2554 Art. 12(2) and (7) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the latest restore test report with the integrity checks performed
+      and the test interval the entity has set.
+
+  - id: DORA_Art_12_3
+    replaces: [DORA_Art_11_2]
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Recovery time and recovery point objectives per function"
+    description: >-
+      Recovery time and recovery point objectives are set for each function,
+      taking into account whether it is critical or important and the
+      potential overall impact on market efficiency, and ensure that the
+      agreed service levels are met in extreme scenarios. The values are the
+      entity's own; DORA sets none.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 12(6)"
+    official_control_id: "Art. 12(6)"
+    evidence_basis:
+      - context_input: business_impact_analysis
+      - context_input: ict_response_and_recovery_plan
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [BSI_C5_AVL-02, ISO_27001_A.5.30]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 12(6) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Replaces DORA_Art_11_2 of catalogue 1.0.0, which cited Art. 11(4) (continuity plans)"
+    remediation: >-
+      Record RTO and RPO for each function this workload supports and show
+      that the architecture and backups can meet them.
+
+  - id: DORA_Art_12_4
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Restoration onto segregated systems"
+    description: >-
+      When backup data is restored using own systems, the ICT systems used are
+      physically and logically segregated from the source system, securely
+      protected from unauthorised access and ICT corruption, and allow timely
+      restoration of services from data and system backups.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 12(3) first subparagraph"
+    official_control_id: "Art. 12(3)"
+    evidence_basis:
+      - signal_prefix: TF
+      - context_input: backup_architecture
+    tags: [pillar.ict_risk_management, evidence.both]
+    maps_to: [BSI_C5_AVL-04, GDPR_Art_32_c, ISO_27001_A.8.13]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 12(3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "LZ live: backup services and their target region or account through service-controls.yaml"
+    remediation: >-
+      Keep backups in a separate account, project or vault with its own access
+      control, and restore into an environment segregated from production.
+
+  - id: DORA_Art_12_5
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Redundant ICT capacity"
+    description: >-
+      Entities other than microenterprises maintain redundant ICT capacities
+      with the resources, capabilities and functions to meet business needs;
+      microenterprises assess the need from their risk profile. Central
+      securities depositories keep at least one secondary processing site
+      with a distinct risk profile (Art. 12(5)).
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 12(4), 12(5)"
+    official_control_id: "Art. 12(4)"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: LZR
+      - context_input: solution_arch
+    tags: [pillar.ict_risk_management, evidence.workload]
+    maps_to: [NIS2_BCM_2, BSI_C5_AVL-03, EUCS_BCP_2, EUCS_BCP_4, ISO_27001_A.8.14]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 12(4) and (5) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "LZ live: min_availability_zones posture kind (Design 123 section 5.1); services enabled in more than one region of the scan"
+    remediation: >-
+      Deploy critical components across availability zones or a second region
+      and document the failover capacity.
 
   - id: DORA_Art_13
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Learning, evolving, and threat intelligence integration"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Learning and evolving: threat information and post-incident reviews"
     description: >-
-      Financial entities shall conduct post-incident reviews after major ICT
-      incidents, document root causes, and update controls accordingly.
-      They shall obtain ICT threat intelligence from trusted sources and integrate
-      findings into their risk management and detection processes.
+      Capabilities and staff gather information on vulnerabilities, cyber
+      threats and incidents; post-incident reviews after major ICT-related
+      incidents establish causes and improvements; lessons from testing,
+      incidents and supervisory reviews feed the ICT risk assessment; senior
+      ICT staff report to the management body at least yearly; entities other
+      than microenterprises monitor technological developments continuously.
     severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 13(1) to 13(5), 13(7)"
+    official_control_id: "Art. 13(1)-(5), (7)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.7
+      - context_input: post_incident_review
+      - context_input: threat_intelligence_report
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_INC_6, NIS2_VHR_4, BSI_C5_INM-04, BSI_C5_SIM-03, EUCS_GRC_8, ISO_27001_A.5.7, ISO_27001_A.5.27, SOC_2_CC7.5]
     references:
-      - "DORA Article 13"
+      - "Regulation (EU) 2022/2554 Art. 13 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the latest post-incident reviews and the yearly report of senior
+      ICT staff to the management body.
+
+  - id: DORA_Art_13_2
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "ICT security awareness and resilience training"
+    description: >-
+      ICT security awareness programmes and digital operational resilience
+      training are compulsory modules for all employees and senior management,
+      with complexity matched to their functions, and include ICT third-party
+      service providers where appropriate (Art. 30(2)(i)).
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 13(6)"
+    official_control_id: "Art. 13(6)"
+    evidence_basis:
+      - context_input: training_programme_record
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_HRS_1, BSI_C5_HRS-02, EUCS_HRS_2, ISO_27001_A.6.3]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 13(6) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the training programme and the completion record for staff and
+      senior management.
 
   - id: DORA_Art_14
-    pillar: "Pillar 1 -- ICT Risk Management"
-    category: ICT-RM
-    title: "Crisis communication plan"
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Crisis communication plans and communication policies"
     description: >-
-      Financial entities shall establish a crisis communication plan for ICT
-      incidents covering internal escalation, external communications to affected
-      clients, and disclosures to regulators and supervisors. Communication plans
-      shall be tested at least annually.
+      Crisis communication plans enable responsible disclosure of at least
+      major ICT-related incidents or vulnerabilities to clients, counterparts
+      and the public where appropriate; communication policies for staff and
+      external stakeholders distinguish staff involved in response and
+      recovery from staff to be informed; at least one person implements the
+      incident communication strategy and acts as public and media spokesperson.
     severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 14(1) to 14(3)"
+    official_control_id: "Art. 14(1)-(3)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.26
+      - context_input: crisis_communication_plan
+    tags: [pillar.ict_risk_management, evidence.organisational]
+    maps_to: [NIS2_BCM_4, BSI_C5_BCP-01]
     references:
-      - "DORA Article 14"
+      - "Regulation (EU) 2022/2554 Art. 14 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the crisis communication plan naming the spokesperson.
 
-  # ---------------------------------------------------------------
-  # Pillar 2: ICT Incident Management and Reporting (Articles 15-23)
-  # ---------------------------------------------------------------
-
-  - id: DORA_Art_15
-    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
-    category: INCIDENT
-    title: "ICT incident management process"
+  - id: DORA_Art_16_1
+    pillar: "Pillar 1: ICT risk management (Art. 5 to 16)"
+    title: "Simplified ICT risk management framework"
     description: >-
-      Financial entities shall define, establish, and implement an ICT-related
-      incident management process covering detection, triage, classification,
-      containment, resolution, and post-incident review. The process shall
-      include a formal escalation path and documented roles and responsibilities.
+      Entities under Art. 16(1) (among them small and non-interconnected
+      investment firms, exempted payment and electronic money institutions and
+      small occupational pension institutions), to which Art. 5 to 15 do not
+      apply, keep a sound and documented simplified framework: continuous
+      monitoring, robust and current systems, prompt identification of risk
+      sources and anomalies, key third-party dependencies, business continuity
+      with at least backup and restoration, regular testing and training. It
+      is reviewed periodically and after major ICT-related incidents (Art.
+      16(2)); its content follows Delegated Regulation (EU) 2024/1774 Title
+      III (Art. 28 to 41), the review report its Art. 41.
     severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    layer: governance
+    applies_when:
+      dora_simplified_framework: "true"
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 16(1), 16(2); Delegated Regulation (EU) 2024/1774 Art. 28 to 41"
+    official_control_id: "Art. 16(1)-(2)"
     evidence_basis:
-      - signal_prefix: OBS
-      - context_input: ops_runbooks
-      - context_input: servicenow_tickets
-    maps_to:
-      - ISO_27001_A.5.24
-      - ISO_27001_A.5.25
+      - context_input: simplified_ict_risk_management_framework
+    tags: [pillar.ict_risk_management, evidence.organisational, level2.rts_2024_1774]
+    maps_to: [NIS2_RSK_1, EUCS_GRC_2]
     references:
-      - "DORA Article 15"
+      - "Regulation (EU) 2022/2554 Art. 16 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1774 Title III (https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj)"
+    remediation: >-
+      Supply the simplified ICT risk management framework and its latest
+      review report.
 
-  - id: DORA_Art_16
-    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
-    category: INCIDENT
-    title: "ICT incident classification and major incident determination"
+  # ===========================================================================
+  # Pillar 2: ICT-related incident management, classification and reporting
+  # (Chapter III, Art. 17 to 23)
+  # ===========================================================================
+
+  - id: DORA_Art_17_1
+    replaces: [DORA_Art_15]
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "ICT-related incident management process"
     description: >-
-      Financial entities shall classify ICT incidents using the criteria defined
-      in DORA regulatory technical standards: number of clients affected, data
-      volumes, geographic spread, criticality of services impacted, duration,
-      and potential reputational impact. A major incident classification triggers
-      the regulatory reporting obligation under Article 17.
+      An ICT-related incident management process detects, manages and notifies
+      incidents. All ICT-related incidents and significant cyber threats are
+      recorded, procedures ensure consistent monitoring, handling and
+      follow-up, and root causes are identified, documented and addressed to
+      prevent recurrence (Art. 17(2)). The incident management policy covers
+      the elements of Delegated Regulation (EU) 2024/1774 Art. 22, including
+      the analysis of significant or recurring incidents.
     severity_default: high
+    assessment_type_scope: [app, aud]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 17(1), 17(2); Delegated Regulation (EU) 2024/1774 Art. 22"
+    official_control_id: "Art. 17(1)-(2)"
     evidence_basis:
-      - context_input: ops_runbooks
+      - signal_prefix: STATE
+      - context_input: incident_management_procedure
       - context_input: servicenow_tickets
-    maps_to:
-      - ISO_27001_A.5.25
+    tags: [pillar.incident_management, evidence.both, level2.rts_2024_1774]
+    maps_to: [NIS2_INC_1, BSI_C5_INM-01, EUCS_INC_1, ISO_27001_A.5.24, ISO_27001_A.5.26, BSI_DER21_A1, SOC_2_CC7.4]
     references:
-      - "DORA Article 16"
-      - "DORA RTS on major incident classification (Commission Regulation 2024)"
+      - "Regulation (EU) 2022/2554 Art. 17 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Replaces DORA_Art_15 of catalogue 1.0.0 (Art. 15 is the RTS mandate, not incident management)"
+    remediation: >-
+      Supply the incident management procedure and an incident log export
+      showing recording, root cause and follow-up.
 
-  - id: DORA_Art_17
-    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
-    category: INCIDENT
-    title: "Regulatory reporting of major ICT incidents"
+  - id: DORA_Art_17_2
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Early warning indicators, roles, escalation and incident communication"
     description: >-
-      Financial entities shall report major ICT incidents to the relevant
-      competent authority following a three-step process: initial notification
-      within 4 hours of classification as major (24 hours for certain entities),
-      an intermediate report within 72 hours, and a final report within one month
-      of resolution. Reporting templates are defined in DORA implementing technical
-      standards.
-    severity_default: critical
-    assessment_type_scope: [aud]
-    evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.24
-    references:
-      - "DORA Articles 17-19"
-      - "DORA ITS on supervisory reporting templates"
-
-  - id: DORA_Art_19
-    pillar: "Pillar 2 -- ICT Incident Management and Reporting"
-    category: INCIDENT
-    title: "Harmonised incident reporting using supervisory templates"
-    description: >-
-      Financial entities shall use the standardised reporting templates defined
-      in DORA implementing technical standards for major ICT incident reporting.
-      Reporting processes shall be documented and, where possible, automated to
-      support the tight notification timelines required by Article 17.
+      The incident management process puts in place early warning indicators,
+      procedures to identify, track, log, categorise and classify incidents by
+      priority, severity and service criticality, roles and responsibilities
+      per incident type, communication plans for staff, stakeholders, media and
+      clients, reporting of at least major incidents to senior management and
+      the management body, and response procedures that restore services
+      promptly.
     severity_default: medium
-    assessment_type_scope: [aud]
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 17(3) points (a) to (f)"
+    official_control_id: "Art. 17(3)(a)-(f)"
     evidence_basis:
-      - context_input: ops_runbooks
+      - context_input: incident_management_procedure
+    tags: [pillar.incident_management, evidence.organisational]
+    maps_to: [NIS2_INC_1, BSI_C5_INM-02, ISO_27001_A.5.25, ISO_27001_A.6.8]
     references:
-      - "DORA Article 19"
-      - "DORA ITS on harmonised notification templates (EBA/ITS/2023)"
+      - "Regulation (EU) 2022/2554 Art. 17(3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Add early warning indicators, an escalation matrix and the communication
+      plan to the incident procedure.
 
-  # ---------------------------------------------------------------
-  # Pillar 3: Digital Operational Resilience Testing (Articles 24-27)
-  # ---------------------------------------------------------------
+  - id: DORA_Art_18_1
+    replaces: [DORA_Art_16]
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Classification of ICT-related incidents and major incident determination"
+    description: >-
+      Incidents are classified by the criteria of Art. 18(1) (clients and
+      transactions affected, reputational impact, duration and downtime,
+      geographical spread, data losses, criticality of services, economic
+      impact) with the materiality thresholds of Delegated Regulation (EU)
+      2024/1772. An incident is major when it affects critical services and
+      meets either the threshold of its Art. 9(5)(b) or two other thresholds
+      (Art. 8(1)); recurring incidents with the same apparent root cause within
+      six months are checked monthly (Art. 8(2), not for microenterprises and
+      Art. 16(1) entities).
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 18(1); Delegated Regulation (EU) 2024/1772 Art. 1 to 9"
+    official_control_id: "Art. 18(1)"
+    evidence_basis:
+      - context_input: incident_classification_policy
+    tags: [pillar.incident_management, evidence.organisational, level2.rts_2024_1772]
+    maps_to: [NIS2_INC_2, BSI_C5_INM-02, ISO_27001_A.5.25, BSI_DER21_A2, SOC_2_CC7.3]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 18 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1772 Art. 8 (https://eur-lex.europa.eu/eli/reg_del/2024/1772/oj)"
+      - "Replaces DORA_Art_16 of catalogue 1.0.0 (Art. 16 is the simplified framework)"
+    remediation: >-
+      Supply an incident classification policy that applies the 2024/1772
+      criteria and thresholds and the monthly recurring-incident check.
+
+  - id: DORA_Art_18_2
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Classification of significant cyber threats"
+    description: >-
+      Cyber threats are classified as significant from the criticality of the
+      services at risk, the number and relevance of targeted clients or
+      counterparts and the geographical spread of the areas at risk, using the
+      high materiality thresholds of Delegated Regulation (EU) 2024/1772 Art. 10.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 18(2); Delegated Regulation (EU) 2024/1772 Art. 10"
+    official_control_id: "Art. 18(2)"
+    evidence_basis:
+      - context_input: incident_classification_policy
+    tags: [pillar.incident_management, evidence.organisational, level2.rts_2024_1772]
+    maps_to: [NIS2_VHR_4, BSI_C5_SIM-03]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 18(2) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1772 Art. 10 (https://eur-lex.europa.eu/eli/reg_del/2024/1772/oj)"
+    remediation: >-
+      Extend the classification policy with the significant cyber threat
+      criteria.
+
+  - id: DORA_Art_19_1
+    replaces: [DORA_Art_17]
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Reporting of major ICT-related incidents within the time limits"
+    description: >-
+      Major ICT-related incidents are reported to the relevant competent
+      authority with an initial notification, an intermediate report and a
+      final report (Art. 19(4)). Delegated Regulation (EU) 2025/301 Art. 5 sets
+      the time limits: initial notification within 4 hours of classification
+      as major and no later than 24 hours after becoming aware of the
+      incident; intermediate report within 72 hours of the initial
+      notification; final report within one month of the latest intermediate
+      report; content per its Art. 1 to 4. Reporting may be outsourced, with
+      the entity fully responsible (Art. 19(5)).
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 19(1), 19(4), 19(5); Delegated Regulation (EU) 2025/301 Art. 1 to 5"
+    official_control_id: "Art. 19(1), 19(4)"
+    evidence_basis:
+      - context_input: incident_reporting_procedure
+    tags: [pillar.incident_management, evidence.organisational, level2.rts_2025_301]
+    maps_to: [NIS2_INC_3, NIS2_INC_4, NIS2_INC_5, BSI_C5_INM-03, EUCS_INC_3, GDPR_Art_33]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 19 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2025/301 Art. 5 (https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)"
+      - "Replaces DORA_Art_17 of catalogue 1.0.0 (Art. 17 is the incident management process)"
+    remediation: >-
+      Supply the reporting procedure with the 2025/301 time limits, the
+      competent authority contact and the escalation from classification to
+      notification.
+
+  - id: DORA_Art_19_2
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Client information and voluntary notification of significant cyber threats"
+    description: >-
+      Clients whose financial interests are affected by a major ICT-related
+      incident are informed without undue delay with the mitigation measures;
+      clients potentially affected by a significant cyber threat are told of
+      protection measures they may take. Significant cyber threats may be
+      notified voluntarily to the competent authority, with the content of
+      Delegated Regulation (EU) 2025/301 Art. 6 and the template of
+      Implementing Regulation (EU) 2025/302 Art. 8 and Annex III.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 19(2), 19(3); Delegated Regulation (EU) 2025/301 Art. 6; Implementing Regulation (EU) 2025/302 Art. 8"
+    official_control_id: "Art. 19(2)-(3)"
+    evidence_basis:
+      - context_input: incident_reporting_procedure
+      - context_input: crisis_communication_plan
+    tags: [pillar.incident_management, evidence.organisational, level2.rts_2025_301, level2.its_2025_302]
+    maps_to: [EUCS_INC_2, GDPR_Art_34]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 19(2) and (3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2025/301 Art. 6 (https://eur-lex.europa.eu/eli/reg_del/2025/301/oj)"
+      - "Implementing Regulation (EU) 2025/302 Art. 8, Annex III (https://eur-lex.europa.eu/eli/reg_impl/2025/302/oj)"
+    remediation: >-
+      Add client notification steps and the voluntary threat notification
+      route to the reporting procedure.
+
+  - id: DORA_Art_20_1
+    replaces: [DORA_Art_19]
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Standard reporting templates and secure submission"
+    description: >-
+      Initial notifications and reports use the standard templates of
+      Implementing Regulation (EU) 2025/302 (Annex I, data glossary in Annex
+      II) and are sent through secure electronic channels (its Art. 4); other
+      means are used only in case of technical impossibility (DORA Art. 19(1)
+      fourth subparagraph). Outsourcing of the reporting is notified to the
+      authority (its Art. 6); aggregated reporting follows its Art. 7.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 20, 19(1) fourth subparagraph; Implementing Regulation (EU) 2025/302 Art. 1 to 7"
+    official_control_id: "Art. 20"
+    evidence_basis:
+      - context_input: incident_reporting_procedure
+    tags: [pillar.incident_management, evidence.organisational, level2.its_2025_302]
+    maps_to: [BSI_C5_INM-03, EUCS_INC_3]
+    references:
+      - "Implementing Regulation (EU) 2025/302 (https://eur-lex.europa.eu/eli/reg_impl/2025/302/oj)"
+      - "Replaces DORA_Art_19 of catalogue 1.0.0 (templates are Art. 20)"
+    remediation: >-
+      Prepare the 2025/302 templates and the secure submission channel in the
+      reporting procedure.
+
+  - id: DORA_Art_23_1
+    pillar: "Pillar 2: ICT-related incident management and reporting (Art. 17 to 23)"
+    title: "Operational or security payment-related incidents"
+    description: >-
+      Credit institutions, payment institutions, account information service
+      providers and electronic money institutions apply the incident
+      management, classification and reporting requirements of Chapter III
+      also to operational or security payment-related incidents and major ones,
+      whether or not they are ICT-related.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    applies_when:
+      dora_payment_entity: "true"
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 23"
+    official_control_id: "Art. 23"
+    evidence_basis:
+      - context_input: incident_classification_policy
+      - context_input: incident_reporting_procedure
+    tags: [pillar.incident_management, evidence.organisational]
+    maps_to: [NIS2_INC_1]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 23 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Include payment-related incidents in the classification and reporting
+      procedures.
+
+  # ===========================================================================
+  # Pillar 3: Digital operational resilience testing (Chapter IV, Art. 24 to 27)
+  # ===========================================================================
 
   - id: DORA_Art_24
-    pillar: "Pillar 3 -- Digital Operational Resilience Testing"
-    category: DORT
+    pillar: "Pillar 3: Digital operational resilience testing (Art. 24 to 27)"
     title: "Digital operational resilience testing programme"
     description: >-
-      Financial entities shall maintain a comprehensive digital operational
-      resilience testing programme covering all ICT systems and tools supporting
-      critical and important functions. The programme shall include tests of
-      varying complexity and frequency, reviewed at least annually. A significant
-      incident in a tested area requires an ad-hoc test within three months.
+      Entities other than microenterprises keep a sound and comprehensive
+      testing programme as part of the ICT risk management framework, take a
+      risk-based approach, have tests performed by independent internal or
+      external parties, classify and remediate every issue found with internal
+      validation, and at least yearly carry out appropriate tests on all ICT
+      systems and applications supporting critical or important functions.
     severity_default: high
-    assessment_type_scope: [aud]
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 24(1) to 24(6)"
+    official_control_id: "Art. 24(1)-(6)"
     evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.36
+      - context_input: resilience_testing_programme
+    tags: [pillar.resilience_testing, evidence.organisational]
+    maps_to: [NIS2_NSC_4, BSI_C5_DEV-03, EUCS_OPS_8, GDPR_Art_32_d, ISO_27001_A.8.29]
     references:
-      - "DORA Article 24"
+      - "Regulation (EU) 2022/2554 Art. 24 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the testing programme and the yearly test plan and results for
+      the systems supporting critical or important functions.
 
   - id: DORA_Art_25
-    pillar: "Pillar 3 -- Digital Operational Resilience Testing"
-    category: DORT
-    title: "Vulnerability and penetration testing"
+    pillar: "Pillar 3: Digital operational resilience testing (Art. 24 to 27)"
+    title: "Testing of ICT tools and systems"
     description: >-
-      Financial entities shall conduct vulnerability assessments and penetration
-      tests on ICT systems and network components. Penetration tests shall be
-      performed by qualified testers (internal or third-party). Critical findings
-      shall be remediated and re-tested within defined timescales. Test results
-      shall be documented and retained for at least three years.
+      The testing programme provides for appropriate tests such as
+      vulnerability assessments and scans, open source analyses, network
+      security assessments, gap analyses, physical security reviews,
+      questionnaires and scanning software, source code reviews where
+      feasible, scenario-based, compatibility, performance and end-to-end
+      tests and penetration testing. Central securities depositories and
+      central counterparties run vulnerability assessments before any
+      deployment or redeployment of components supporting critical or
+      important functions.
     severity_default: high
-    assessment_type_scope: [aud]
-    evidence_basis:
-      - context_input: ops_runbooks
-    maps_to:
-      - ISO_27001_A.5.36
-    references:
-      - "DORA Article 25"
-
-  - id: DORA_Art_26
-    pillar: "Pillar 3 -- Digital Operational Resilience Testing"
-    category: DORT
-    title: "Threat-led penetration testing (TLPT)"
-    description: >-
-      Financial entities identified by competent authorities shall carry out
-      Threat-Led Penetration Testing (TLPT) at least every three years, following
-      the TIBER-EU methodology. TLPT shall cover production systems supporting
-      critical functions and shall involve qualified external testers. Results
-      shall be shared only with the management body, competent authority, and
-      designated recipients.
-    severity_default: high
-    assessment_type_scope: [aud]
-    evidence_basis:
-      - context_input: ops_runbooks
-    references:
-      - "DORA Article 26"
-      - "TIBER-EU Framework (ECB 2018)"
-
-  # ---------------------------------------------------------------
-  # Pillar 4: ICT Third-party Risk Management (Articles 28-44)
-  # ---------------------------------------------------------------
-
-  - id: DORA_Art_28_1
-    pillar: "Pillar 4 -- ICT Third-party Risk Management"
-    category: TPP
-    title: "Third-party ICT risk strategy and oversight function"
-    description: >-
-      Financial entities shall adopt and regularly review a strategy on ICT
-      third-party risk, including a policy on the use of ICT services supporting
-      critical or important functions. Entities shall designate a function
-      responsible for ICT third-party risk oversight and due diligence.
-    severity_default: high
-    evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.19
-      - ISO_27001_A.5.22
-    references:
-      - "DORA Article 28 paragraphs 1-2"
-
-  - id: DORA_Art_28_2
-    pillar: "Pillar 4 -- ICT Third-party Risk Management"
-    category: TPP
-    title: "Register of ICT third-party contractual arrangements"
-    description: >-
-      Financial entities shall maintain a comprehensive register of all
-      contractual arrangements with ICT third-party service providers,
-      distinguishing between those supporting critical or important functions
-      and those that do not. The register shall be available to competent
-      authorities upon request.
-    severity_default: medium
-    assessment_type_scope: [aud]
-    evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.19
-    references:
-      - "DORA Article 28 paragraphs 3-4"
-
-  - id: DORA_Art_29
-    pillar: "Pillar 4 -- ICT Third-party Risk Management"
-    category: TPP
-    title: "ICT concentration risk assessment"
-    description: >-
-      Financial entities shall assess and manage ICT concentration risk, including
-      scenarios where a single ICT third-party provider supports multiple critical
-      functions or where several financial entities rely on the same provider.
-      Concentration risk shall factor into exit strategy planning and be reported
-      to competent authorities.
-    severity_default: high
+    assessment_type_scope: [app, aud]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 25(1) to 25(3)"
+    official_control_id: "Art. 25(1)-(3)"
     evidence_basis:
       - signal_prefix: SBOM
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.19
+      - signal_prefix: MAL
+      - signal_prefix: DYN
+      - context_input: penetration_test_report
+    tags: [pillar.resilience_testing, evidence.both]
+    maps_to: [NIS2_NSC_4, NIS2_VHR_1, BSI_C5_DEV-03, EUCS_DEV_2, EUCS_DEV_4, ISO_27001_A.8.8, ISO_27001_A.8.29]
     references:
-      - "DORA Article 29"
+      - "Regulation (EU) 2022/2554 Art. 25 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Run open source, source code and vulnerability scans in the pipeline and
+      supply the latest penetration test report.
+
+  - id: DORA_Art_26
+    pillar: "Pillar 3: Digital operational resilience testing (Art. 24 to 27)"
+    title: "Threat-led penetration testing (TLPT)"
+    description: >-
+      Entities identified by the TLPT authority (Delegated Regulation (EU)
+      2025/1190 Art. 2) carry out TLPT at least every three years unless the
+      authority sets another interval, covering several or all critical or
+      important functions on live production systems, including outsourced
+      ones; the scope is validated by the authority; after the test the
+      summary of findings, remediation plans (within eight weeks, 2025/1190
+      Art. 13) and documentation are submitted and an attestation is issued.
+      The test phases follow 2025/1190 Art. 9 to 12.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    applies_when:
+      dora_tlpt_required: "true"
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 26(1) to 26(8); Delegated Regulation (EU) 2025/1190 Art. 2, 9 to 14"
+    official_control_id: "Art. 26(1)-(8)"
+    evidence_basis:
+      - context_input: tlpt_plan_and_attestation
+    tags: [pillar.resilience_testing, evidence.organisational, level2.rts_2025_1190]
+    maps_to: [EUCS_OPS_8]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 26 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2025/1190 Art. 2 and 13 (https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj)"
+    remediation: >-
+      Supply the TLPT plan, the validated scope, the last attestation and the
+      remediation plan.
+
+  - id: DORA_Art_27_1
+    pillar: "Pillar 3: Digital operational resilience testing (Art. 24 to 27)"
+    title: "Requirements for TLPT testers"
+    description: >-
+      Testers for TLPT are of the highest suitability and reputation, have
+      threat intelligence, penetration and red team expertise, are certified or
+      follow formal codes of conduct, give independent assurance on their risk
+      management and carry professional indemnity insurance. Internal testers
+      need the authority's approval, sufficient resources without conflicts of
+      interest, and an external threat intelligence provider (Art. 27(2));
+      Delegated Regulation (EU) 2025/1190 sets the selection of testers and
+      threat intelligence providers (Art. 7) and the arrangements for internal
+      testers (Art. 15); external testers are contracted every three tests
+      (Art. 26(8)).
+    severity_default: medium
+    assessment_type_scope: [aud]
+    layer: governance
+    applies_when:
+      dora_tlpt_required: "true"
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 27(1) to 27(3), 26(8); Delegated Regulation (EU) 2025/1190 Art. 7, 15"
+    official_control_id: "Art. 27(1)-(3)"
+    evidence_basis:
+      - context_input: tlpt_plan_and_attestation
+    tags: [pillar.resilience_testing, evidence.organisational, level2.rts_2025_1190]
+    maps_to: []
+    references:
+      - "Regulation (EU) 2022/2554 Art. 27 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2025/1190 Art. 7 and 15 (https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj)"
+    remediation: >-
+      Record the tester selection against Art. 27 and the approval for any
+      internal tester.
+
+  # ===========================================================================
+  # Pillar 4: Managing of ICT third-party risk (Chapter V, Art. 28 to 44)
+  # ===========================================================================
+
+  - id: DORA_Art_28_1
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "ICT third-party risk strategy and contractual policy"
+    description: >-
+      ICT third-party risk is managed as part of the framework with full
+      responsibility kept by the entity. Entities other than microenterprises
+      and Art. 16(1) entities adopt and regularly review a strategy on ICT
+      third-party risk with a policy on ICT services supporting critical or
+      important functions (content per Delegated Regulation (EU) 2024/1773),
+      which the management body reviews at least once a year; a role or senior
+      manager monitors the arrangements (Art. 5(3)).
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 28(1), 28(2), 5(3); Delegated Regulation (EU) 2024/1773 Art. 1 to 4"
+    official_control_id: "Art. 28(1)-(2)"
+    evidence_basis:
+      - context_input: third_party_risk_strategy
+      - context_input: ict_services_policy
+    tags: [pillar.third_party_risk, evidence.organisational, level2.rts_2024_1773]
+    maps_to: [NIS2_SCM_1, BSI_C5_OIS-05, EUCS_GRC_7, ISO_27001_A.5.19]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 28 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1773 Art. 3 (https://eur-lex.europa.eu/eli/reg_del/2024/1773/oj)"
+    remediation: >-
+      Supply the third-party risk strategy and the policy on ICT services
+      supporting critical or important functions with its yearly review record.
+
+  - id: DORA_Art_28_2
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Register of information on ICT contractual arrangements"
+    description: >-
+      A register of information on all contractual arrangements for ICT
+      services is kept and updated at entity, sub-consolidated and
+      consolidated level, distinguishing arrangements that support critical or
+      important functions, in the templates of Implementing Regulation (EU)
+      2024/2956; the number of new arrangements and related information is
+      reported to the authority at least yearly, the register is made
+      available on request, and planned arrangements for critical or important
+      functions are notified in a timely manner.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 28(3), 28(9); Implementing Regulation (EU) 2024/2956 Art. 3 to 6"
+    official_control_id: "Art. 28(3)"
+    evidence_basis:
+      - context_input: register_of_information
+    tags: [pillar.third_party_risk, evidence.organisational, level2.its_2024_2956]
+    maps_to: [BSI_C5_OIS-05, ISO_27001_A.5.19]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 28(3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Implementing Regulation (EU) 2024/2956 (https://eur-lex.europa.eu/eli/reg_impl/2024/2956/oj)"
+    remediation: >-
+      Supply the register of information export (2024/2956 templates) with the
+      arrangements of this workload's providers.
+
+  - id: DORA_Art_28_3
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Pre-contract assessment and due diligence of ICT third-party providers"
+    description: >-
+      Before entering an arrangement the entity assesses whether it covers a
+      critical or important function and whether supervisory conditions are
+      met, identifies all relevant risks including concentration risk, carries
+      out due diligence on the provider and identifies conflicts of interest;
+      providers supporting critical or important functions are checked for the
+      most up-to-date and highest quality information security standards
+      (Delegated Regulation (EU) 2024/1773 Art. 5 to 7).
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 28(4), 28(5); Delegated Regulation (EU) 2024/1773 Art. 5 to 7"
+    official_control_id: "Art. 28(4)-(5)"
+    evidence_basis:
+      - context_input: provider_due_diligence_record
+    tags: [pillar.third_party_risk, evidence.organisational, level2.rts_2024_1773]
+    maps_to: [NIS2_SCM_2, BSI_C5_DEV-01, ISO_27001_A.5.19, ISO_27001_A.5.23]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 28(4) and (5) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "Delegated Regulation (EU) 2024/1773 (https://eur-lex.europa.eu/eli/reg_del/2024/1773/oj)"
+    remediation: >-
+      Supply the pre-contract risk assessment and due diligence record for the
+      cloud and ICT providers of this workload.
+
+  - id: DORA_Art_28_4
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Audit of ICT third-party providers and termination rights"
+    description: >-
+      The frequency and areas of audits and inspections of providers are set
+      in advance on a risk-basis with commonly accepted audit standards and
+      skilled auditors, arrangements are monitored (Delegated Regulation (EU)
+      2024/1773 Art. 9), and contracts can be terminated in the cases of Art.
+      28(7): significant breach, circumstances altering performance, evidenced
+      weaknesses in ICT risk management, or impediments to supervision.
+    severity_default: medium
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 28(6), 28(7); Delegated Regulation (EU) 2024/1773 Art. 9"
+    official_control_id: "Art. 28(6)-(7)"
+    evidence_basis:
+      - context_input: provider_audit_plan
+      - context_input: contracts
+    tags: [pillar.third_party_risk, evidence.organisational, level2.rts_2024_1773]
+    maps_to: [EUCS_AUD_1, EUCS_AUD_2, ISO_27001_A.5.22]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 28(6) and (7) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Supply the provider audit plan (or the certifications relied on) and
+      show the termination clauses of Art. 28(7) in the contract.
+
+  - id: DORA_Art_28_5
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Exit strategies and exit plans"
+    description: >-
+      Exit strategies exist for ICT services supporting critical or important
+      functions, covering provider failure, deteriorating quality, disruption
+      and termination, so that the entity can exit without business
+      disruption, loss of compliance or harm to service continuity. Exit plans
+      are comprehensive, documented, sufficiently tested on a proportionate
+      basis and reviewed periodically; alternatives and transition plans
+      exist for moving services and data to another provider or in-house
+      (Delegated Regulation (EU) 2024/1773 Art. 10). The test cadence is the
+      entity's own.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 28(8), 30(3)(f); Delegated Regulation (EU) 2024/1773 Art. 10"
+    official_control_id: "Art. 28(8)"
+    evidence_basis:
+      - signal_prefix: TF
+      - signal_prefix: SYNTH
+      - context_input: exit_plan
+    tags: [pillar.third_party_risk, evidence.both, level2.rts_2024_1773]
+    maps_to: [BSI_C5_BCP-02, BSI_C5_PSS-01, EUCS_DPI_1, EUCS_DPI_4]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 28(8) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "LZ live: documented_exit posture kind (document evidence, Design 123 section 5.1)"
+    remediation: >-
+      Supply the exit plan with the alternative provider or in-house option,
+      the data export path and the last exit test; keep the workload portable
+      through IaC and open formats.
+
+  - id: DORA_Art_29
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "ICT concentration risk assessment"
+    description: >-
+      Before contracting ICT services supporting critical or important
+      functions, the entity considers whether the provider is not easily
+      substitutable and whether several arrangements with the same or closely
+      connected providers arise, weighs alternatives, and for subcontracting
+      weighs the risks of third-country subcontractors, applicable insolvency
+      law, data recovery constraints and long or complex chains. The
+      designation of a provider as critical ICT third-party provider by the
+      ESAs (Art. 31) is an input.
+    severity_default: medium
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 29(1), 29(2), 28(4)(c)"
+    official_control_id: "Art. 29(1)-(2)"
+    evidence_basis:
+      - signal_prefix: INV
+      - signal_prefix: LZR
+      - context_input: concentration_risk_assessment
+      - context_input: register_of_information
+    tags: [pillar.third_party_risk, evidence.both]
+    maps_to: [NIS2_SCM_5, BSI_C5_BCP-02]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 29 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "ESAs designation of critical ICT third-party providers, 18.11.2025 (https://www.esma.europa.eu/press-news/esma-news/european-supervisory-authorities-designate-critical-ict-third-party-providers)"
+      - "LZ live: provider and regions of the scanned landing zones (portfolio)"
+    remediation: >-
+      Supply the concentration risk assessment covering the cloud providers and
+      regions this workload depends on.
 
   - id: DORA_Art_30
-    pillar: "Pillar 4 -- ICT Third-party Risk Management"
-    category: TPP
-    title: "Key contractual provisions and exit strategies"
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Key contractual provisions for ICT services"
     description: >-
-      Contracts with ICT third-party providers supporting critical or important
-      functions shall include: service level descriptions, audit rights, security
-      requirements, incident notification obligations, data location and portability
-      rights, and documented exit strategies. Exit strategies shall be tested
-      annually for providers of critical functions.
+      Contracts for ICT services are in one written document and include at
+      least: a description of functions and services and whether
+      subcontracting is permitted; service and data processing locations;
+      provisions on availability, authenticity, integrity and confidentiality
+      of data; access, recovery and return of data on insolvency, resolution or
+      termination; service level descriptions; assistance in ICT incidents at
+      no or predetermined cost; cooperation with authorities; termination
+      rights and notice periods; and participation in awareness training.
+      Standard contractual clauses of public authorities are considered.
     severity_default: high
-    assessment_type_scope: [aud]
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 30(1), 30(2) points (a) to (i), 30(4); Delegated Regulation (EU) 2024/1773 Art. 8"
+    official_control_id: "Art. 30(1)-(2)"
     evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.20
+      - context_input: contracts
+    tags: [pillar.third_party_risk, evidence.organisational, level2.rts_2024_1773]
+    maps_to: [NIS2_SCM_3, BSI_C5_DAT-04, EUCS_AUD_2, GDPR_Art_28, ISO_27001_A.5.20]
     references:
-      - "DORA Article 30"
+      - "Regulation (EU) 2022/2554 Art. 30 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Check the provider contract against the Art. 30(2) list and supply the
+      contract or a clause mapping.
 
-  - id: DORA_Art_31
-    pillar: "Pillar 4 -- ICT Third-party Risk Management"
-    category: TPP
-    title: "Sub-outsourcing chain and supply chain oversight"
+  - id: DORA_Art_30_2
+    replaces: [DORA_Art_31]
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Conditions for subcontracting ICT services supporting critical functions"
     description: >-
-      Financial entities shall monitor ICT third-party providers' use of
-      sub-contractors. Contracts supporting critical or important functions shall
-      require written consent before material sub-outsourcing and shall include
-      flow-down of security requirements to sub-contractors. Entities shall
-      maintain a record of sub-outsourcing arrangements.
+      The contract states whether and on which conditions ICT services
+      supporting critical or important functions may be subcontracted:
+      provider accountability, monitoring and reporting on subcontractors,
+      location risks, data location, continuity across the chain, security and
+      continuity requirements and audit rights flowing down, advance notice of
+      material changes with a reasonable notice period set in the contract, no
+      implementation before approval or end of the notice period, and
+      termination rights (Delegated Regulation (EU) 2025/532 Art. 3 to 6).
     severity_default: high
-    assessment_type_scope: [aud]
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 30(2)(a), 29(2); Delegated Regulation (EU) 2025/532 Art. 3 to 6"
+    official_control_id: "Art. 30(2)(a)"
     evidence_basis:
-      - context_input: solution_arch
-    maps_to:
-      - ISO_27001_A.5.21
+      - context_input: contracts
+      - context_input: subcontractor_list
+    tags: [pillar.third_party_risk, evidence.organisational, level2.rts_2025_532]
+    maps_to: [BSI_C5_DAT-04, EUCS_GRC_7, GDPR_Art_28, ISO_27001_A.5.21]
     references:
-      - "DORA Article 31"
+      - "Delegated Regulation (EU) 2025/532 Art. 4 and 5 (https://eur-lex.europa.eu/eli/reg_del/2025/532/oj)"
+      - "Replaces DORA_Art_31 of catalogue 1.0.0 (Art. 31 is the designation of critical providers)"
+    remediation: >-
+      Supply the subcontracting clauses and the provider's subcontractor list
+      for the services supporting critical or important functions.
 
-  # ---------------------------------------------------------------
-  # Pillar 5: Information Sharing (Article 45)
-  # ---------------------------------------------------------------
+  - id: DORA_Art_30_3
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Additional contractual provisions for critical or important functions"
+    description: >-
+      Contracts for ICT services supporting critical or important functions
+      also include full service level descriptions with precise quantitative
+      and qualitative performance targets, notice and reporting obligations,
+      the provider's tested business contingency plans and security measures,
+      participation in TLPT, unrestricted rights of access, inspection and
+      audit for the entity and the authorities, and exit strategies with a
+      mandatory adequate transition period.
+    severity_default: high
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 30(3) points (a) to (f)"
+    official_control_id: "Art. 30(3)(a)-(f)"
+    evidence_basis:
+      - context_input: contracts
+    tags: [pillar.third_party_risk, evidence.organisational]
+    maps_to: [EUCS_AUD_2, EUCS_BCP_5, ISO_27001_A.5.20]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 30(3) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Check the contract against Art. 30(3), in particular SLA targets, audit
+      rights and the exit transition period.
+
+  - id: DORA_Art_30_4
+    pillar: "Pillar 4: ICT third-party risk (Art. 28 to 44)"
+    title: "Service and data processing locations"
+    description: >-
+      The regions or countries where contracted functions and ICT services are
+      provided and where data is processed and stored are known and agreed,
+      and the provider notifies the entity in advance before changing them.
+      The landing zone evidence shows the regions actually in use and offered.
+    severity_default: high
+    assessment_type_scope: [app, aud, lz]
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 30(2)(b)"
+    official_control_id: "Art. 30(2)(b)"
+    evidence_basis:
+      - signal_prefix: LZR
+      - signal_prefix: TF
+      - context_input: contracts
+    tags: [pillar.third_party_risk, evidence.both]
+    maps_to: [BSI_C5_DAT-02, GDPR_Art_44, ISO_27001_A.5.23]
+    references:
+      - "Regulation (EU) 2022/2554 Art. 30(2)(b) (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+      - "LZ live: region_residency posture kind (Design 123 section 5.1); regions of the scan"
+    remediation: >-
+      Restrict the landing zone to the agreed regions and record them in the
+      contract and the register of information.
+
+  # ===========================================================================
+  # Pillar 5: Information-sharing arrangements (Chapter VI, Art. 45)
+  # ===========================================================================
 
   - id: DORA_Art_45
-    pillar: "Pillar 5 -- Information Sharing"
-    category: SHARING
-    title: "Voluntary cyber threat information sharing"
+    pillar: "Pillar 5: Information sharing (Art. 45)"
+    title: "Cyber threat information-sharing arrangements"
     description: >-
-      Financial entities may participate in voluntary information sharing
-      arrangements on cyber threats, intelligence, and best practices.
-      Participation shall comply with applicable data protection and competition
-      law. Competent authorities shall be notified of participation in such
-      arrangements.
+      Entities may exchange cyber threat information and intelligence within
+      trusted communities of financial entities, through arrangements that
+      protect sensitive information under rules of conduct on business
+      confidentiality, personal data protection and competition law. Joining
+      and leaving such an arrangement is notified to the competent authority.
     severity_default: low
+    assessment_type_scope: [app, aud]
+    layer: governance
+    regulatory_basis: "Regulation (EU) 2022/2554 Art. 45(1) to 45(3)"
+    official_control_id: "Art. 45(1)-(3)"
     evidence_basis:
-      - context_input: ops_runbooks
+      - context_input: information_sharing_membership
+    tags: [pillar.information_sharing, evidence.organisational]
+    maps_to: [NIS2_VHR_4, BSI_C5_SIM-03, ISO_27001_A.5.6, ISO_27001_A.5.7]
     references:
-      - "DORA Article 45"
+      - "Regulation (EU) 2022/2554 Art. 45 (https://eur-lex.europa.eu/eli/reg/2022/2554/oj)"
+    remediation: >-
+      Record any membership in an information-sharing arrangement and its
+      notification to the competent authority.

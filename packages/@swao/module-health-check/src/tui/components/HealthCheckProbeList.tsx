@@ -13,22 +13,26 @@
 //
 // ================================================================
 
-// Two-column interactive probe list (#0385, sprint-040) shared between the
-// SetupWizard Step 3 Health Check and the main-menu Health Check screen.
+// Interactive probe list (#0385, sprint-040) shared between the SetupWizard
+// Health Check step and the main-menu Health Check screen.
 //
-// Replaces the wall-of-text LiveOutput render with a compact list (probe
-// name | status icon, fixed-width columns) plus a per-cursor GuidanceBox
-// below showing the selected probe's head message, continuation lines,
-// and a business-user-readable next-action paragraph.
+// #4257 (TUI-13, Design 126 mockup M-06, #4235 row 10): one StatusRow per
+// probe: the status word from the central status map, the counter
+// right-aligned ([ 1/15] and [10/15]) so the name column does not shift, and
+// the reason of a warn or fail result on the row's second line. The selected
+// probe's guidance entry goes to the screen's guidance box
+// (`onCursorEntry`); with `guidance="box"` (default, the wizard step) the
+// list renders its own box below the rows.
 //
 // Input: the raw stdout `lines` array streamed from `swao health-check`
 // captured upstream. The list updates live as new probes complete.
 
-import { useState, useEffect, useMemo } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
-import { parseHealthCheckOutput, probeAction, PROBE_DESCRIPTION, type HealthCheckProbe } from './health-check-parse.js';
-import { computeProbeWindow } from './probe-window.js';
-import { GuidanceBox } from '@swao/tui-kit';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Box, Text, useInput, type DOMElement } from 'ink';
+import { parseHealthCheckOutput, probeDetailRows, PROBE_DESCRIPTION, type HealthCheckProbe, type ProbeStatus } from './health-check-parse.js';
+import { tuiRemedyText } from '../../probes/service-probes.js';
+import { computeProbeWindow, withScrollSection, PROBE_LIST_SCROLL_TEXT } from './probe-window.js';
+import { GuidanceBox, GUIDANCE_COLLAPSED_ROWS, StatusRow, statusLabelWidth, statusRowHeight, tone, useHeaderWidth, useListBudget, type GuidanceEntry, type KeyHint, type StatusLevel } from '@swao/tui-kit';
 
 interface HealthCheckProbeListProps {
   lines: ReadonlyArray<string>;
@@ -37,34 +41,51 @@ interface HealthCheckProbeListProps {
   /** #0798: called whenever the GuidanceBox opens or closes. Wire to the parent
    *  screen's escape-guard so navigation does not fire while the panel is open. */
   onGuidanceOpenChange?: (open: boolean) => void;
+  /** `box` (default): the list renders the guidance box of the selected probe;
+   *  `none`: the screen renders it (ScreenLayout block 8) from `onCursorEntry`. */
+  guidance?: 'box' | 'none';
+  /** The guidance entry of the selected probe, on every cursor or result change. */
+  onCursorEntry?: (entry: GuidanceEntry | undefined) => void;
+  /**
+   * #4348: PgUp and PgDn page the list unless this returns false (the screen
+   * passes false while its expanded guidance box pages its sections).
+   */
+  canPage?: () => boolean;
 }
 
-const STATUS_GLYPH: Record<HealthCheckProbe['status'], string> = {
-  ok:   'OK  ',
-  INFO: 'INFO',
-  WARN: 'WARN',
-  FAIL: 'FAIL',
-};
+/** Health check status (ADR-0069 upper case in the CLI) to the central status level (Q-05). */
+export const PROBE_LEVEL: Record<ProbeStatus, StatusLevel> = { ok: 'ok', INFO: 'info', WARN: 'warn', FAIL: 'fail' };
 
-const STATUS_COLOR: Record<HealthCheckProbe['status'], string> = {
-  ok:   'green',
-  INFO: 'cyan',
-  WARN: 'yellow',
-  FAIL: 'red',
-};
+/** The reason shown on the second line of a warn or fail row (#4235 row 10). */
+export function probeReason(probe: HealthCheckProbe): string | undefined {
+  // #4295: CLI remedies of the service probes in TUI wording.
+  return (probe.status === 'WARN' || probe.status === 'FAIL') && probe.headMessage ? tuiRemedyText(probe.headMessage) : undefined;
+}
 
-export function HealthCheckProbeList({ lines, done, active = true, onGuidanceOpenChange }: HealthCheckProbeListProps) {
+/** The guidance entry of one probe: what it checks, then status, result, action and details. */
+export function probeGuidanceEntry(probe: HealthCheckProbe): GuidanceEntry {
+  return {
+    title: probe.name,
+    what: PROBE_DESCRIPTION[probe.name] ?? (tuiRemedyText(probe.headMessage) || 'No detail message reported.'),
+    sections: probeDetailRows(probe).map((r) => ({ label: r.label, text: r.value })),
+    cli: 'swao health-check',
+  };
+}
+
+const LIST_KEYS: readonly KeyHint[] = [{ key: '↑↓', verb: 'select' }, { key: 'PgDn', verb: 'page' }];
+
+export function HealthCheckProbeList({
+  lines, done, active = true, onGuidanceOpenChange, guidance = 'box', onCursorEntry, canPage,
+}: HealthCheckProbeListProps) {
   const probes = useMemo(() => parseHealthCheckOutput(lines), [lines]);
   const [idx, setIdx] = useState(0);
-  const { stdout } = useStdout();
-  const [rows, setRows] = useState(stdout?.rows ?? 30);
-
-  useEffect(() => {
-    if (!stdout) return;
-    const onResize = () => setRows(stdout.rows ?? 30);
-    stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
-  }, [stdout]);
+  const width = useHeaderWidth();
+  // #4348: the rows this list may take on the screen (shared tui-kit height rule).
+  const listRef = useRef<DOMElement>(null);
+  const budget = useListBudget(listRef);
+  const pageSize = useRef(1);
+  // The list's own guidance box pages its sections with PgUp and PgDn while it is open.
+  const ownOpen = useRef(false);
 
   // Clamp the cursor as probes stream in; otherwise an empty list at first
   // render leaves the cursor pointing past the end.
@@ -77,83 +98,59 @@ export function HealthCheckProbeList({ lines, done, active = true, onGuidanceOpe
     if (!active) return;
     if (key.upArrow)   setIdx((i) => Math.max(0, i - 1));
     if (key.downArrow) setIdx((i) => Math.min(Math.max(0, probes.length - 1), i + 1));
+    if ((key.pageUp || key.pageDown) && !ownOpen.current && (canPage?.() ?? true)) {
+      const step = Math.max(1, pageSize.current);
+      setIdx((i) => (key.pageUp ? Math.max(0, i - step) : Math.min(Math.max(0, probes.length - 1), i + step)));
+    }
   });
 
-  if (probes.length === 0) {
+  const selected = probes.length > 0 ? probes[Math.min(idx, probes.length - 1)] : undefined;
+  const entry = useMemo(() => (selected ? withScrollSection(probeGuidanceEntry(selected)) : undefined), [selected]);
+  useEffect(() => { onCursorEntry?.(entry); }, [entry, onCursorEntry]);
+
+  if (probes.length === 0 || !selected) {
     return (
-      <Box marginTop={1}>
-        <Text color="yellow">{done ? 'No probes detected in health-check output.' : 'Probing...'}</Text>
+      <Box ref={listRef}>
+        <Text {...tone(done ? 'warning' : 'muted')}>{done ? 'No probes detected in the health check output.' : 'Probing...'}</Text>
       </Box>
     );
   }
 
-  const selected = probes[Math.min(idx, probes.length - 1)]!;
-  const nameW = Math.max(...probes.map((p) => p.name.length)) + 2;
-
-  // Viewport windowing (#1347, corrected by #1390): useStdout().rows is the
-  // FULL terminal height and the wizard header + step title + guidance box +
-  // footer render in the SAME Ink frame as this list, so the previous 8-row
-  // buffer let the frame overflow the terminal on ~30-row windows -- Ink then
-  // corrupted the render and probes vanished from the MIDDLE of the list with
-  // no paging indicator. computeProbeWindow reserves the same 18-row chrome
-  // budget as the assess pass picker, making paging mandatory whenever the
-  // list does not fit the current window.
-  const MIN_GUIDANCE = 8;
-  const win = computeProbeWindow(idx, probes.length, rows);
-  const visibleProbes = probes.slice(win.start, win.end);
-  const hasAbove = win.aboveCount > 0;
-  const hasBelow = win.belowCount > 0;
-
-  // #0798: cap GuidanceBox expanded height so the total render height (probe list
-  // + GuidanceBox) never exceeds the terminal height.
-  const maxGuidanceRows = Math.max(MIN_GUIDANCE, rows - (win.end - win.start) - 6);
+  // Viewport windowing (#1347, #1390; #4348): the list takes the rows the
+  // screen leaves after its measured chrome and the guidance box, each probe
+  // counted with its real wrapped height. A list that draws its own guidance
+  // box (guidance 'box') keeps room for it collapsed.
+  // #4295 / #4348: the label column widens to the longest probe name ("Vendor catalogue (Tier 2)"), never wraps.
+  const labelWidth = statusLabelWidth(probes.map((p) => p.name), width, { counter: { total: Math.max(...probes.map((p) => p.total)) } });
+  const heights = probes.map((p) => statusRowHeight({ level: PROBE_LEVEL[p.status], label: p.name, detail: probeReason(p), labelWidth, counter: { index: p.num, total: p.total } }, width));
+  const ownBox = guidance === 'box' && entry ? GUIDANCE_COLLAPSED_ROWS + 1 : 0;
+  const win = computeProbeWindow(idx, heights, budget === undefined ? undefined : Math.max(1, budget - ownBox));
+  const { start, end } = win;
+  pageSize.current = end - start;
+  const visibleProbes = probes.slice(start, end);
+  const above = win.aboveCount;
+  const below = win.belowCount;
 
   return (
-    <Box flexDirection="column" marginTop={1}>
-      <Box flexDirection="column">
-        {hasAbove && (
-          <Box><Text color="gray">{`  ^ ${win.aboveCount} more probe${win.aboveCount !== 1 ? 's' : ''} above (arrow up)`}</Text></Box>
-        )}
-        {visibleProbes.map((p, visIdx) => {
-          const i = probes.indexOf(p);
-          const cursor = i === idx;
-          return (
-            <Box key={`${p.num}-${p.name}`}>
-              <Text color={cursor ? 'cyan' : undefined}>
-                {cursor ? '> ' : '  '}
-              </Text>
-              <Text color={cursor ? 'cyan' : undefined}>
-                {`[${visIdx + 1}/${visibleProbes.length}]`.padEnd(8)}
-              </Text>
-              <Text color={cursor ? 'cyan' : undefined}>
-                {p.name.padEnd(nameW)}
-              </Text>
-              <Text color={STATUS_COLOR[p.status]} bold>
-                {STATUS_GLYPH[p.status]}
-              </Text>
-            </Box>
-          );
-        })}
-        {hasBelow && (
-          <Box><Text color="gray">{`  v ${win.belowCount} more probe${win.belowCount !== 1 ? 's' : ''} below (arrow down)`}</Text></Box>
-        )}
-      </Box>
-      <GuidanceBox
-        title={`[${visibleProbes.indexOf(selected) + 1}/${visibleProbes.length}] ${selected.name}`}
-        what={PROBE_DESCRIPTION[selected.name] ?? selected.headMessage ?? 'No detail message reported.'}
-        details={[
-          { label: 'Status', value: selected.status },
-          { label: 'Action', value: probeAction(selected) },
-          // #1580: one entry per detail line so maxRows truncates by line count, not chars
-          ...selected.detailLines.map((line, i) => ({
-            label: i === 0 ? 'Detail' : '  ',
-            value: line,
-          })),
-        ]}
-        affordances={active ? ['Arrows -- highlight a probe', done ? 'Enter -- return to main menu' : 'Probing... wait for completion'] : []}
-        onOpenChange={onGuidanceOpenChange}
-        maxRows={maxGuidanceRows}
-      />
+    <Box ref={listRef} flexDirection="column">
+      {above > 0 && <Box marginLeft={2}><Text {...tone('muted')}>{`↑ ${above} more`}</Text></Box>}
+      {visibleProbes.map((p) => (
+        <StatusRow
+          key={`${p.num}-${p.name}`}
+          level={PROBE_LEVEL[p.status]}
+          label={p.name}
+          detail={probeReason(p)}
+          selected={p === selected}
+          labelWidth={labelWidth}
+          counter={{ index: p.num, total: p.total }}
+        />
+      ))}
+      {below > 0 && <Box marginLeft={2}><Text {...tone('muted')}>{`↓ ${below} more`}</Text></Box>}
+      {guidance === 'box' && entry && (
+        <GuidanceBox entry={entry} keys={active ? LIST_KEYS : []} onOpenChange={(o) => { ownOpen.current = o; onGuidanceOpenChange?.(o); }} />
+      )}
     </Box>
   );
 }
+
+export { PROBE_LIST_SCROLL_TEXT };

@@ -607,7 +607,8 @@ controls:
       processes, and escalation paths are standardised across the organisation.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "https://www.sama.gov.sa/en-US/RulesInstructions/BankingRules/Pages/CyberSecurityFramework.aspx"
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Event monitoring subdomain"
@@ -645,7 +646,8 @@ controls:
     severity_default: critical
     evidence_basis:
       - { context_input: "evidence/SAMA_CSF_OPS_08-incident-management.md" }
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "https://www.sama.gov.sa/en-US/RulesInstructions/BankingRules/Pages/CyberSecurityFramework.aspx"
       - "SAMA CSF v1.0 Domain 3, Cybersecurity Operations -- Incident management subdomain"

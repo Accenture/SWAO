@@ -187,7 +187,7 @@ describe.skipIf(!canRunE2e)('Assessment TUI E2E (#0805)', () => {
 
       // Select Landing Zone Catalog Assessment (key 3)
       proc.write('3');
-      await waitFor(output, 'Select application to assess');
+      await waitFor(output, 'Select app to assess'); // #4255 step title
 
       // Select first app (crm-platform, no New/Delete options in LZ flow)
       proc.write('\r');
@@ -202,12 +202,12 @@ describe.skipIf(!canRunE2e)('Assessment TUI E2E (#0805)', () => {
       proc.write('\r');
 
       // Verify the running phase started -- TUI must not go blank
-      await waitForAny(output, ['Running assessment...', 'Assessment complete', 'Assessment finished']);
+      await waitForAny(output, ['Fitting ', 'Assessment complete', 'Assessment failed']);
       const text = stripAnsi(output());
       expect(
-        text.includes('Running assessment...') ||
+        text.includes('Fitting ') ||
         text.includes('Assessment complete') ||
-        text.includes('Assessment finished'),
+        text.includes('Assessment failed'),
       ).toBe(true);
     } finally {
       kill();
@@ -230,7 +230,7 @@ describe.skipIf(!canRunE2e)('Assessment TUI E2E (#0805)', () => {
 
       // Select Application Assessment (key 1)
       proc.write('1');
-      await waitFor(output, 'Select application to assess');
+      await waitFor(output, 'Select app to assess'); // #4255 step title
 
       // Navigate past "+ New app..." to the first existing app (crm-platform)
       proc.write('\x1b[B'); // Down
@@ -246,17 +246,22 @@ describe.skipIf(!canRunE2e)('Assessment TUI E2E (#0805)', () => {
       await waitFor(output, 'Select passes to run');
       proc.write('\r');
 
-      // Optional LZ provider step -- Escape skips directly to running (#0805)
-      await waitFor(output, 'Target Landing Zone');
-      proc.write('\x1b'); // Escape -> setPhase('running')
+      // #4255: the Run options sub-step; Continue is the first entry.
+      await waitFor(output, 'Run options');
+      proc.write('\r');
+
+      // Optional LZ provider step. #4255 (Design 126 section 7.4): Esc aborts the
+      // flow; Enter with no provider selected goes on without an LZ fit.
+      await waitFor(output, 'Target LZ');
+      proc.write('\r');
 
       // Verify running phase started -- the TUI must not go blank or freeze
-      await waitForAny(output, ['Running assessment...', 'Assessment complete', 'Assessment finished']);
+      await waitForAny(output, ['Assessing ', 'Assessment complete', 'Assessment failed']);
       const text = stripAnsi(output());
       expect(
-        text.includes('Running assessment...') ||
+        text.includes('Assessing ') ||
         text.includes('Assessment complete') ||
-        text.includes('Assessment finished'),
+        text.includes('Assessment failed'),
       ).toBe(true);
     } finally {
       kill();

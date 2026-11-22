@@ -25,7 +25,7 @@ import {
   type LzCatalogueQualityOptions,
   type LzCatalogueQualityReport,
 } from './quality.js';
-import { LZ_SOVEREIGNTY_PINS } from './sovereignty-pins.js';
+import { LZ_SOVEREIGNTY_PINS, LZ_ACCEPTED_UNKNOWN_RESIDENCY } from './sovereignty-pins.js';
 import { LZ_GEOGRAPHY_COUNTRIES } from './geographies.js';
 
 /**
@@ -75,6 +75,30 @@ export function isLzCataloguesDir(dir: string): boolean {
   } catch { /* missing or unreadable */ }
   return false;
 }
+
+/**
+ * #3581 (Design 120 section 10.1, Q-03): true when `dir` is one of the
+ * directories the catalogue resolver reads (candidateDirs, for this
+ * workspace), or already holds provider catalogues. The live LZ catalogue is
+ * never written there, so it can never be picked up as a catalogue.
+ */
+export function isLzCatalogueLookupDir(dir: string, workspaceRoot?: string): boolean {
+  const target = resolve(dir).toLowerCase();
+  if (candidateDirs(undefined, workspaceRoot).some((c) => resolve(c).toLowerCase() === target)) return true;
+  // The run's own artefacts (a rerun into the same folder, #3583) are not
+  // provider catalogues; any other catalogue-shaped file is.
+  try {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isFile() && isLzProviderCatalogueFile(entry.name) && !LZ_LIVE_RUN_ARTEFACT_RE.test(entry.name)) return true;
+      if (entry.isDirectory() && existsSync(join(dir, entry.name, 'index.json'))) return true;
+    }
+  } catch { /* missing or unreadable */ }
+  return false;
+}
+
+/** File names a live scan writes into its run folder (Design 120 section 7.4). */
+// #3956: evidence-refs.json is the run's local evidence map.
+const LZ_LIVE_RUN_ARTEFACT_RE = /^(?:lz-live-catalogue\.json|evidence-refs\.json|.+\.lz-live-scan\.json)$/;
 
 export function resolveLzCataloguesDir(override?: string, workspaceRoot?: string): string | null {
   for (const dir of candidateDirs(override, workspaceRoot)) {
@@ -279,6 +303,7 @@ export function checkLzCatalogueQuality(
     ...opts,
     validate: (raw) => { const r = safeParseLzCatalogue(raw); return r.ok ? [] : r.issues; },
     pins: LZ_SOVEREIGNTY_PINS,
+    acceptedUnknownResidency: LZ_ACCEPTED_UNKNOWN_RESIDENCY, // #4228
     geographies: LZ_GEOGRAPHY_COUNTRIES, // #3281 shared geography model
     validatePriceTable: (raw) => { const r = safeParseVmPriceTable(raw); return r.ok ? [] : r.issues; }, // #3288
   });
@@ -414,4 +439,27 @@ export function resolveProviderCatalogue(
     `No catalogue found for provider "${provider}". ` +
     `Run \`swao lz catalogue list\` to see available providers.`,
   );
+}
+
+/**
+ * SWAO capability tags in use (#3577, Design 120 §8.2): the union of every
+ * service `fulfills` tag over the provider catalogues `resolveProviderCatalogue`
+ * resolves for the workspace (workspace tier first, bundled otherwise). This is
+ * the denominator of the service-mapping coverage per community framework. A
+ * provider whose catalogue fails to load is skipped and named in `skipped`.
+ */
+export function collectLzCapabilityTags(workspaceRoot?: string, override?: string): { tags: string[]; providers: string[]; skipped: string[] } {
+  const tags = new Set<string>();
+  const providers: string[] = [];
+  const skipped: string[] = [];
+  for (const provider of listLzCatalogueProviders(workspaceRoot, override)) {
+    try {
+      const { catalogue } = resolveProviderCatalogue(provider, workspaceRoot, override);
+      for (const region of catalogue.regions) for (const service of region.services) for (const tag of service.fulfills) tags.add(tag);
+      providers.push(provider);
+    } catch {
+      skipped.push(provider);
+    }
+  }
+  return { tags: [...tags].sort(), providers, skipped };
 }

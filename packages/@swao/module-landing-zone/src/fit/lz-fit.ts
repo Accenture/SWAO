@@ -14,9 +14,14 @@
 // ================================================================
 
 import {
+  lzLiveStatusesForRegion,
+  projectLzLiveScan,
   regionFulfills,
   scanFulfills,
+  type LzLiveScan,
+  type LzLiveStatus,
   type LzRegion,
+  type LzRequirementProvenance,
   type LzScanResult,
 } from '@swao/core';
 
@@ -40,7 +45,15 @@ export type LzFitVerdict =
   | 'NOT_AVAILABLE_IN_REGION'
   | 'VERSION_MISMATCH'
   | 'CAPABILITY_MISSING'
-  | 'SOVEREIGNTY_GAP';
+  | 'SOVEREIGNTY_GAP'
+  /** Design 120 section 5.3 (#3569): the tenant's governance (SCP, Azure Policy,
+   *  org policy) denies use of the service itself. Hard blocker; distinct from
+   *  MISCONFIGURED (enabled, but the configuration conflicts with guardrails). */
+  | 'BLOCKED_BY_POLICY'
+  /** Design 120 section 5.3 (#3569): the live scope cannot tell (missing
+   *  permission, API error, expired token). Not a blocker; the overall verdict
+   *  escalates to NEEDS_VERIFICATION. */
+  | 'UNVERIFIED';
 
 export type LzOverallVerdict = 'READY' | 'READY_WITH_CHANGES' | 'NEEDS_VERIFICATION' | 'BLOCKED' | 'SOVEREIGNTY_BLOCKED';
 
@@ -126,6 +139,11 @@ export interface LzFitReport {
   /** #3430: required services the region does not offer (NOT_AVAILABLE_IN_REGION,
    *  CAPABILITY_MISSING, VERSION_MISMATCH), in item order. Present when non-empty. */
   services_not_in_catalogue?: string[];
+  /** #3920 (Design 123 section 9.3): value-level provenance of the merged
+   *  sovereignty requirements (`sovereigntyRequirementProvenance`), present only
+   *  when the caller passes `requirementProvenance` (an app run that selected a
+   *  client policy baseline). Additive; every other fit is unchanged. */
+  requirement_provenance?: LzRequirementProvenance[];
 }
 
 export interface LzFitInput {
@@ -141,6 +159,26 @@ export interface LzFitInput {
    *  appropriate when assessing against a customer-deployed LZ scan where the
    *  service genuinely needs to be provisioned. */
   catalogueMode?: boolean;
+  /** #3609 (Design 120 section 5.3): observed live status per capability tag in
+   *  `region` (`lzLiveStatusesForRegion`). A requirement with an observation is
+   *  judged by the live status (`lzFitVerdictForLiveStatus`); the static
+   *  catalogue and the projected scan decide only where there is none. Use
+   *  `computeLzFitFromLiveScan` to fill it from an `LzLiveScan`. */
+  liveStatus?: ReadonlyMap<string, LzLiveStatus>;
+  /** #3871 (Design 123 sections 8.2 and 8.4, D-12): capability key to the id of the
+   *  enabled Client LZ Policy Baseline service_deny policy that forbids it
+   *  (`baselineServiceDenies`). A needed capability in the map is BLOCKED_BY_POLICY
+   *  with the evidence string `baseline:<policy-id>`, whatever the region offers. */
+  baselineDenies?: ReadonlyMap<string, string>;
+  /** #3920: copied to `requirement_provenance` of the report (an empty list included). */
+  requirementProvenance?: readonly LzRequirementProvenance[];
+}
+
+/** Capability key without its `@version` / `+capability` qualifier. */
+function capabilityBase(code: string): string {
+  const atIdx = code.indexOf('@');
+  const plusIdx = code.indexOf('+');
+  return atIdx !== -1 ? code.slice(0, atIdx) : plusIdx !== -1 ? code.slice(0, plusIdx) : code;
 }
 
 // Baseline service categories every production deployment is expected to cover.
@@ -195,6 +233,20 @@ export function holdsCertification(held: readonly string[], required: string): b
   return held.some((h) => certificationKey(h) === want);
 }
 
+/** EU member states (ISO 3166-1 alpha-2, 27 since 2020-02-01). The value `EU` in an
+ *  allowed residency list accepts a region in any of them (#3871, Design 123 sections
+ *  5.1 and 8.2); a region whose residency fact is the grouping `EU` itself matches `EU`. */
+export const EU_MEMBER_STATES: readonly string[] = [
+  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU',
+  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK',
+];
+
+/** True when residency `country` is in `allowed`, with `EU` expanded to the member states. */
+export function residencyAllowed(country: string, allowed: readonly string[]): boolean {
+  if (allowed.includes(country)) return true;
+  return allowed.includes('EU') && EU_MEMBER_STATES.includes(country);
+}
+
 export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequirements): string[] {
   if (!req) return [];
   const facts = region.sovereignty;
@@ -211,7 +263,7 @@ export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequireme
   }
   if (req.require_residency_country && req.require_residency_country.length > 0) {
     const c = facts?.residency_country;
-    if (!c || !req.require_residency_country.includes(c)) {
+    if (!c || !residencyAllowed(c, req.require_residency_country)) {
       fails.push(`residency ${c ?? 'unknown'} not in [${req.require_residency_country.join(', ')}]`);
     }
   }
@@ -226,8 +278,80 @@ export function sovereigntyFailures(region: LzRegion, req?: SovereigntyRequireme
   return fails;
 }
 
+/**
+ * Item verdicts that block the landing zone (hard blockers). Shared by the
+ * overall verdict below and the narrative (lz-narrative.ts), so both count the
+ * same items. BLOCKED_BY_POLICY (Design 120 section 5.3, #3569) is a hard
+ * blocker; UNVERIFIED is not.
+ */
+export const LZ_HARD_BLOCKING_VERDICTS: ReadonlySet<LzFitVerdict> = new Set<LzFitVerdict>([
+  'NOT_AVAILABLE_IN_REGION',
+  'VERSION_MISMATCH',
+  'CAPABILITY_MISSING',
+  'BLOCKED_BY_POLICY',
+]);
+
 function isHardBlocking(i: LzFitItem): boolean {
-  return i.verdict === 'NOT_AVAILABLE_IN_REGION' || i.verdict === 'VERSION_MISMATCH' || i.verdict === 'CAPABILITY_MISSING';
+  return LZ_HARD_BLOCKING_VERDICTS.has(i.verdict);
+}
+
+/**
+ * Item verdict for an observed live status (Design 120 section 5.3 table, #3569).
+ * A deny on SWAO's own read call is recorded by the driver as `unknown` (never
+ * `restricted`), so it maps to UNVERIFIED, not to BLOCKED_BY_POLICY.
+ */
+export function lzFitVerdictForLiveStatus(status: LzLiveStatus): LzFitVerdict {
+  switch (status) {
+    case 'enabled': return 'SUPPORTED';
+    case 'available_not_enabled': return 'AVAILABLE_NOT_ENABLED';
+    case 'restricted': return 'BLOCKED_BY_POLICY';
+    case 'not_offered': return 'NOT_AVAILABLE_IN_REGION';
+    case 'unknown': return 'UNVERIFIED';
+    default: {
+      const unreachable: never = status;
+      throw new Error(`unhandled live status ${String(unreachable)}`);
+    }
+  }
+}
+
+/**
+ * Overall LZ-fit verdict from the item verdicts (extracted from computeLzFit,
+ * #3569; behaviour for the pre-existing verdicts unchanged). Order: sovereignty
+ * gap, hard blockers (BLOCKED, or NEEDS_VERIFICATION when every hard blocker is
+ * documentation-only, #3497), changes needed, then the NEEDS_VERIFICATION
+ * escalations: an UNVERIFIED item (#3569), no service checks, or an incomplete
+ * baseline (#1506/#1511).
+ */
+export function deriveLzOverallVerdict(input: {
+  items: readonly LzFitItem[];
+  sovereigntyActive: boolean;
+  sovereigntyFailures: readonly string[];
+  coverageWarning: string | undefined;
+}): LzOverallVerdict {
+  const { items, sovereigntyActive, sovereigntyFailures: sovFails, coverageWarning } = input;
+  let overall: LzOverallVerdict = 'READY';
+  if (items.some((i) => i.verdict === 'SOVEREIGNTY_GAP')) overall = 'SOVEREIGNTY_BLOCKED';
+  else if (sovereigntyActive && sovFails.length > 0) overall = 'SOVEREIGNTY_BLOCKED';
+  else if (items.some((i) => isHardBlocking(i) && i.confidence !== 'low')) overall = 'BLOCKED';
+  // #3497: when every hard blocker is evidenced by documentation only (low
+  // confidence), the requirement is unconfirmed: the overall verdict asks for
+  // verification instead of blocking. Each item keeps its own verdict.
+  else if (items.some(isHardBlocking)) overall = 'NEEDS_VERIFICATION';
+  else if (items.some((i) => i.verdict === 'AVAILABLE_NOT_ENABLED' || i.verdict === 'MISCONFIGURED')) overall = 'READY_WITH_CHANGES';
+
+  // #3569: a scope that cannot tell must not read as ready.
+  if ((overall === 'READY' || overall === 'READY_WITH_CHANGES') && items.some((i) => i.verdict === 'UNVERIFIED')) {
+    overall = 'NEEDS_VERIFICATION';
+  }
+
+  // #1506/#1511: a READY verdict without positive service evidence is misleading.
+  // Escalate to NEEDS_VERIFICATION when:
+  //  - no service checks ran at all (catalogue-sovereignty-only mode); OR
+  //  - one or more baseline service categories (compute/network/kms/storage) are absent.
+  if (overall === 'READY' && (items.length === 0 || coverageWarning !== undefined)) {
+    overall = 'NEEDS_VERIFICATION';
+  }
+  return overall;
 }
 
 export function computeLzFit(input: LzFitInput): LzFitReport {
@@ -236,7 +360,7 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
   const items: LzFitItem[] = [];
 
   for (const req of input.requiredServices) {
-    const available = regionFulfills(region, req.code);
+    const live = input.liveStatus?.get(capabilityBase(req.code));
     const enabled   = scanFulfills(scan, req.code);
     const base = {
       service_code: req.code, label: req.label, signalId: req.signalId,
@@ -248,25 +372,74 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
       ? ' The requirement is evidenced by documentation only (low confidence); confirm it before treating this as a blocker.'
       : '';
 
+    // #3871 (D-12): the client baseline forbids the capability; the tenant-governance
+    // meaning of BLOCKED_BY_POLICY is kept apart by the evidence prefix `baseline:`.
+    const deniedBy = input.baselineDenies?.get(capabilityBase(req.code));
+    if (deniedBy !== undefined) {
+      items.push({ ...base, evidence: [...(req.evidence ?? []), `baseline:${deniedBy}`], verdict: 'BLOCKED_BY_POLICY',
+        detail: `${req.code} is forbidden by the client policy baseline (${deniedBy}).${docNote}`,
+        remediation: `Choose an alternative service, or get an approved exception and change ${deniedBy} in the baseline.` });
+      continue;
+    }
+
+    // Distinguish qualifier mismatch (base service present, qualifier fails) from true absence.
+    const atIdx = req.code.indexOf('@');
+    const plusIdx = req.code.indexOf('+');
+    const hasQualifier = atIdx !== -1 || plusIdx !== -1;
+    const qualifierFails = hasQualifier && !regionFulfills(region, req.code)
+      && regionFulfills(region, capabilityBase(req.code));
+    const pushQualifierMismatch = (): void => {
+      const isVersionQualifier = atIdx !== -1;
+      items.push({ ...base,
+        verdict: isVersionQualifier ? 'VERSION_MISMATCH' : 'CAPABILITY_MISSING',
+        detail: isVersionQualifier
+          ? `${req.code.slice(0, atIdx)} is available in ${region.id} but does not meet the minimum version requirement (${req.code}).`
+          : `${req.code.slice(0, plusIdx)} is available in ${region.id} but the required capability (${req.code.slice(plusIdx + 1)}) is not supported.`,
+        remediation: isVersionQualifier
+          ? `Upgrade the ${req.code.slice(0, atIdx)} service to a version that satisfies ${req.code}.`
+          : `Enable the ${req.code.slice(plusIdx + 1)} capability on ${req.code.slice(0, plusIdx)} in this region.`,
+      });
+    };
+
+    if (live !== undefined) {
+      // #3609: observed tenant state decides (Design 120 section 5.3). Version and
+      // capability qualifiers stay catalogue-driven: the live scan carries no
+      // version facts, so a qualifier the catalogue says the region cannot meet
+      // is still reported for a usable service.
+      const verdict = lzFitVerdictForLiveStatus(live);
+      if (verdict === 'NOT_AVAILABLE_IN_REGION') {
+        items.push({ ...base, verdict,
+          detail: `${req.code} is not offered in ${region.id} (observed by the live scan).${docNote}`,
+          remediation: `Choose an alternative service, a region that offers ${req.code}, or accept a sovereignty trade-off.` });
+      } else if (sovFails.length > 0) {
+        items.push({ ...base, verdict: 'SOVEREIGNTY_GAP',
+          detail: `${req.code} is offered in ${region.id} but the region fails sovereignty requirements: ${sovFails.join('; ')}.`,
+          remediation: `Select a region/provider whose sovereignty facts satisfy the active frameworks (${(sov?.derived_from ?? []).join(', ') || 'installed frameworks'}).` });
+      } else if (qualifierFails && (verdict === 'SUPPORTED' || verdict === 'AVAILABLE_NOT_ENABLED')) {
+        pushQualifierMismatch();
+      } else if (verdict === 'BLOCKED_BY_POLICY') {
+        items.push({ ...base, verdict,
+          detail: `${req.code} is offered in ${region.id} but the tenant's governance policy denies its use in this scope (observed by the live scan).${docNote}`,
+          remediation: `Ask the landing-zone owner to lift the policy restriction on ${req.code}, or choose an alternative service.` });
+      } else if (verdict === 'UNVERIFIED') {
+        items.push({ ...base, verdict,
+          detail: `The live scan could not tell whether ${req.code} is usable in ${region.id} (missing read permission or API error).`,
+          remediation: `Grant the read permission for ${req.code} to the assessment login, or confirm its status with the landing-zone owner, then re-run the scan.` });
+      } else if (verdict === 'AVAILABLE_NOT_ENABLED') {
+        items.push({ ...base, verdict,
+          detail: `${req.code} is offered in ${region.id} but not enabled in the scanned scope (observed by the live scan).`,
+          remediation: `Enable + configure ${req.code} in the landing zone.` });
+      } else {
+        items.push({ ...base, verdict: 'SUPPORTED',
+          detail: `${req.code} is enabled in ${region.id} (observed by the live scan).` });
+      }
+      continue;
+    }
+
+    const available = regionFulfills(region, req.code);
     if (!available) {
-      // Distinguish qualifier mismatch (base service present, qualifier fails) from true absence.
-      const atIdx = req.code.indexOf('@');
-      const plusIdx = req.code.indexOf('+');
-      const hasQualifier = atIdx !== -1 || plusIdx !== -1;
-      const basePresent = hasQualifier && regionFulfills(region, atIdx !== -1
-        ? req.code.slice(0, atIdx)
-        : req.code.slice(0, plusIdx));
-      if (hasQualifier && basePresent) {
-        const isVersionQualifier = atIdx !== -1;
-        items.push({ ...base,
-          verdict: isVersionQualifier ? 'VERSION_MISMATCH' : 'CAPABILITY_MISSING',
-          detail: isVersionQualifier
-            ? `${req.code.slice(0, atIdx)} is available in ${region.id} but does not meet the minimum version requirement (${req.code}).`
-            : `${req.code.slice(0, plusIdx)} is available in ${region.id} but the required capability (${req.code.slice(plusIdx + 1)}) is not supported.`,
-          remediation: isVersionQualifier
-            ? `Upgrade the ${req.code.slice(0, atIdx)} service to a version that satisfies ${req.code}.`
-            : `Enable the ${req.code.slice(plusIdx + 1)} capability on ${req.code.slice(0, plusIdx)} in this region.`,
-        });
+      if (qualifierFails) {
+        pushQualifierMismatch();
       } else {
         items.push({ ...base, verdict: 'NOT_AVAILABLE_IN_REGION',
           detail: `${req.code} is not offered in ${region.id}.${docNote}`,
@@ -299,23 +472,9 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
   // Overall verdict: sovereignty gap dominates, then hard unavailability, then changes.
   // #1106: check sovFails directly so SOVEREIGNTY_BLOCKED fires even when requiredServices
   // is empty (catalogue-only run with no prior app assessment produces items:[]).
-  let overall: LzOverallVerdict = 'READY';
-  if (items.some((i) => i.verdict === 'SOVEREIGNTY_GAP')) overall = 'SOVEREIGNTY_BLOCKED';
-  else if (sov && sovFails.length > 0) overall = 'SOVEREIGNTY_BLOCKED';
-  else if (items.some((i) => isHardBlocking(i) && i.confidence !== 'low')) overall = 'BLOCKED';
-  // #3497: when every hard blocker is evidenced by documentation only (low
-  // confidence), the requirement is unconfirmed: the overall verdict asks for
-  // verification instead of blocking. Each item keeps its own verdict.
-  else if (items.some(isHardBlocking)) overall = 'NEEDS_VERIFICATION';
-  else if (items.some((i) => i.verdict === 'AVAILABLE_NOT_ENABLED' || i.verdict === 'MISCONFIGURED')) overall = 'READY_WITH_CHANGES';
-
-  // #1506/#1511: a READY verdict without positive service evidence is misleading.
-  // Escalate to NEEDS_VERIFICATION when:
-  //  - no service checks ran at all (catalogue-sovereignty-only mode); OR
-  //  - one or more baseline service categories (compute/network/kms/storage) are absent.
-  if (overall === 'READY' && (items.length === 0 || coverageWarning !== undefined)) {
-    overall = 'NEEDS_VERIFICATION';
-  }
+  const overall = deriveLzOverallVerdict({
+    items, sovereigntyActive: sov !== undefined, sovereigntyFailures: sovFails, coverageWarning,
+  });
 
   // #1117: catalogue-only scope caveat appended to READY statements so the verdict is
   // not misread as a full production sign-off. #1118: assessment_mode field added.
@@ -361,5 +520,23 @@ export function computeLzFit(input: LzFitInput): LzFitReport {
     ...(coverageWarning ? { coverage_warning: coverageWarning } : {}),
     ...(sov?.derived_from?.length ? { selected_frameworks: sov.derived_from } : {}),
     ...(notInCatalogue.length > 0 ? { services_not_in_catalogue: notInCatalogue } : {}),
+    ...(input.requirementProvenance ? { requirement_provenance: input.requirementProvenance.map((r) => ({ ...r, frameworks: [...r.frameworks] })) } : {}),
   };
+}
+
+/**
+ * Fit for a live scan (#3609, Design 120 sections 5.3 and 7.3): projects the
+ * scan onto the base schema and judges every requirement with an observation in
+ * `region` by its live status. Requirements the scan did not observe fall back
+ * to the static catalogue, as in `computeLzFit`.
+ */
+export function computeLzFitFromLiveScan(
+  input: Omit<LzFitInput, 'scan' | 'liveStatus' | 'catalogueMode'> & { liveScan: LzLiveScan },
+): LzFitReport {
+  const { liveScan, ...rest } = input;
+  return computeLzFit({
+    ...rest,
+    scan: projectLzLiveScan(liveScan),
+    liveStatus: lzLiveStatusesForRegion(liveScan.offering, input.region.id),
+  });
 }

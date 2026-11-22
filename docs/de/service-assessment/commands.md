@@ -7,7 +7,7 @@ Alle Befehle der Service-Portfolio-Bewertung arbeiten auf einem SWAO-Workspace: 
 Legt pro Intake-Zeile einen App-Ordner an.
 
 ```bash
-swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json]
+swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json] [--template]
 ```
 
 | Option | Bedeutung |
@@ -20,6 +20,7 @@ swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--worksp
 | `--keep` | Der Workspace enthält bereits Service-Apps aus einer anderen Intake-Arbeitsmappe: Die Apps dieser Arbeitsmappe werden daneben angelegt. Services, die beide Arbeitsmappen beschreiben, erscheinen dann doppelt. |
 | `--cluster-threshold <n>` | Mindestanzahl identischer Zeilen, die einen Cluster bilden (Standard 3, oder `service_portfolio.cluster_threshold`). |
 | `--json` | Maschinenlesbares Ergebnis. Enthält keine personenbezogenen Werte. |
+| `--template` | Kopiert eine leere Intake-Vorlage (`service-intake-template.xlsx`, die erkannten Spaltennamen in der Kopfzeile, keine Datenzeilen, keine Spalten mit personenbezogenen Daten) nach `wsp/inputs/service-intake/` und endet. Der Workspace erhält den Block `service_portfolio`; eine vorhandene Vorlage bleibt unverändert. Tragen Sie pro Service oder Server eine Zeile ein und führen Sie danach `swao service init` erneut aus. Der Setup-Assistent (Service-Portfolio-Bewertung, Intake Input) bietet dieselbe Kopie an. |
 
 Ablauf in dieser Reihenfolge:
 
@@ -74,13 +75,28 @@ swao service rank [--top <n>] [--workspace <dir>] [--json]
 | `--top <n>` | Nur die ersten n Apps |
 | `--json` | Die gereihten Apps (ID, Name, Risikowert, Fan-in, TIME-Quadrant, Betriebsstatus, Evidenz) als JSON ausgeben |
 
-Die Reihenfolge: höchster SWAO_APM-Risikowert zuerst (Apps ohne Wert zuletzt), dann der höhere Integrations-Fan-in, dann die App-ID. Apps ohne Service-Assessment-Lauf behalten ihren Platz, sind aber mit `[not assessed]` markiert (JSON: `evidence: not_assessed`): Ihr Risikowert und ihr TIME-Quadrant stammen nur aus Intake und Recherche. Apps mit dem Betriebsstatus `decommissioned`, `unused` oder `inactive` werden ausgelassen; sie sind Eliminate-Kandidaten ohne Bewertung. Die Reihung liest `wsp/portfolio-summary.json` und ist daher nach `swao service research` aussagekräftig; ohne Zusammenfassung werden alle Service-Apps in ID-Reihenfolge aufgeführt. Die Terminal-Oberfläche verwendet dieselbe Reihung für ihren Umfang "top 20". In CI durchlaufen Sie das Ergebnis und führen für jede App `swao assess --app <id> --type service` aus:
+Die Reihenfolge: höchster SWAO_APM-Risikowert zuerst (Apps ohne Wert zuletzt), dann der höhere Integrations-Fan-in, dann die App-ID. Apps ohne Service-Assessment-Lauf behalten ihren Platz, sind aber mit `[not assessed]` markiert (JSON: `evidence: not_assessed`): Ihr Risikowert und ihr TIME-Quadrant stammen nur aus Intake und Recherche. Apps mit dem Betriebsstatus `decommissioned`, `unused` oder `inactive` werden ausgelassen; sie sind Eliminate-Kandidaten ohne Bewertung. Die Reihung liest `wsp/portfolio-summary.json` und ist daher nach `swao service research` aussagekräftig; ohne Zusammenfassung werden alle Service-Apps in ID-Reihenfolge aufgeführt. Die Terminal-Oberfläche verwendet dieselbe Reihung für ihren Umfang "Top N nach Risiko", und `swao service assess --top <n>` bewertet die ersten n Apps mit einem Befehl. In CI können Sie auch das Ergebnis durchlaufen und für jede App `swao assess --app <id> --type service` ausführen:
 
 ```bash
 for id in $(swao service rank --top 20 --json | jq -r '.apps[].id'); do
   swao assess --app "$id" --type service
 done
 ```
+
+## swao service assess
+
+Bewertet die ersten n Service-Apps aus `swao service rank` nacheinander mit `swao assess --app <id> --type service`. Das ist der CLI-Weg des Umfangs "Top N nach Risiko" der Terminal-Oberfläche.
+
+```bash
+swao service assess [--top <n>] [--workspace <dir>] [--dry-run]
+```
+
+| Option | Bedeutung |
+|---|---|
+| `--top <n>` | Anzahl der Apps (positive ganze Zahl). Standard: `service_portfolio.assess_top_n` in der Workspace-`.swao.yml`, sonst 20 |
+| `--dry-run` | Die Apps auflisten, die bewertet würden, ohne sie zu bewerten |
+
+Jede App läuft als eigener `swao assess`-Prozess, sodass eine fehlschlagende App die anderen nicht aufhält. Der Befehl endet mit Exit-Code 1, wenn eine App fehlgeschlagen ist, und nennt die betroffenen Apps.
 
 ## swao assess --type service
 

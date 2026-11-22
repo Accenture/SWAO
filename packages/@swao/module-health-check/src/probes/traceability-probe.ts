@@ -220,29 +220,40 @@ function readTargets(workspacePath: string): TraceabilityTargets {
   };
 }
 
-function discoverAppDirs(workspacePath: string): Array<{ appId: string; dir: string }> {
+function discoverAppDirs(workspacePath: string): {
+  portfolio: boolean;
+  apps: Array<{ appId: string; dir: string }>;
+} {
   const apps: Array<{ appId: string; dir: string }> = [];
 
   // Portfolio mode takes priority over single-app mode. A workspace may have a
   // root wsp/ for portfolio-level events while also having per-app wsp/ under
   // apps/<id>/; treating the root wsp/ as a single-app dir is incorrect (#1701).
+  // When apps/ exists the workspace is a portfolio, even with no app in it yet:
+  // the root wsp/ then holds portfolio events and logs, not an app (#4112).
+  // An app is an apps/<id>/ folder with its own .swao.yml, the same rule the
+  // imports probe uses, so the probes agree on the app count.
   const appsRoot = join(workspacePath, 'apps');
   if (existsSync(appsRoot) && statSync(appsRoot).isDirectory()) {
     for (const name of readdirSync(appsRoot)) {
+      if (name.startsWith('.')) continue;
       const dir = join(appsRoot, name);
-      if (statSync(dir).isDirectory() && existsSync(join(dir, 'wsp'))) {
+      try {
+        if (!statSync(dir).isDirectory()) continue;
+      } catch { continue; }
+      if (existsSync(join(dir, '.swao.yml'))) {
         apps.push({ appId: name, dir });
       }
     }
+    return { portfolio: true, apps };
   }
-  if (apps.length > 0) return apps;
 
   // Single-app mode: the workspace root itself is the app directory.
   if (existsSync(join(workspacePath, 'wsp'))) {
     apps.push({ appId: 'workspace', dir: workspacePath });
   }
 
-  return apps;
+  return { portfolio: false, apps };
 }
 
 function checkAgainstTargets(
@@ -274,7 +285,7 @@ function checkAgainstTargets(
 
 export function buildTraceabilityProbe(workspacePath: string): TraceabilityProbeResult {
   const targets = readTargets(workspacePath);
-  const appDirs = discoverAppDirs(workspacePath);
+  const { portfolio, apps: appDirs } = discoverAppDirs(workspacePath);
   const apps: AppTraceabilityResult[] = [];
 
   if (appDirs.length === 0) {
@@ -282,7 +293,9 @@ export function buildTraceabilityProbe(workspacePath: string): TraceabilityProbe
       status: 'absent',
       targets,
       apps,
-      message: 'no app workspaces with wsp/ found',
+      message: portfolio
+        ? 'no apps configured yet (run Assessment to add an app)'
+        : 'no app workspaces with wsp/ found',
     };
   }
 

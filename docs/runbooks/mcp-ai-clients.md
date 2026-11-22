@@ -91,7 +91,7 @@ Options (`--profile` and `--workspace` are the `swao mcp` options and work here 
 
 | Option | Meaning |
 |---|---|
-| `--client <name>` | `claude-code`, `kilo`, `claude-desktop`, `cursor` or `vscode` |
+| `--client <names>` | `claude-code`, `kilo`, `claude-desktop`, `cursor` or `vscode`; several clients comma-separated in one call, for example `claude-desktop,claude-code` |
 | `--scope user` or `--scope project` | user configuration (default) or the configuration in the current folder |
 | `--transport stdio` or `--transport http` | default `http` for Claude Code, `stdio` otherwise |
 | `--url <url>` | with `--transport http`: server URL, default `http://localhost:3737/mcp` |

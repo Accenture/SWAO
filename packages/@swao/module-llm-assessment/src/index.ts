@@ -63,12 +63,14 @@ export {
   DEGENERATE_SPREAD_EPSILON,
   DEFAULT_WEIGHTS,
   WEIGHT_KEY_GROUPS,
+  didNotFinishText,
 } from './comparison-engine.js';
 export type {
   PropertyScore,
   GroupSubResult,
   FinalResult,
   TrafficLight,
+  DidNotFinish,
 } from './comparison-engine.js';
 export {
   CallRecordSchema,
@@ -86,8 +88,9 @@ export {
   detectRefusal,
   detectAlteredMarkers,
   countForeignPaths,
+  callCost,
 } from './recording-provider.js';
-export type { RecorderDeps, RecordingProvider, UsageSnapshot, CallContext } from './recording-provider.js';
+export type { RecorderDeps, RecordingProvider, UsageSnapshot, CallContext, CostSource } from './recording-provider.js';
 export { RunLog, FindingsStore, CORE_FINDING_TYPES } from './run-store.js';
 export type { Finding, FindingSeverity, RunLogEvent } from './run-store.js';
 export {
@@ -110,8 +113,26 @@ export type {
 } from './llm-run-manifest.js';
 export { createLegRecorderFromEnv, LEG_ENV } from './leg-recorder.js';
 export type { LegRecorder } from './leg-recorder.js';
-export { orchestrateLegs, cloneLegWorkspace, assembleGroups, listRunDirs } from './orchestrator.js';
-export type { OrchestratorDeps, OrchestrationResult, ResolvedLeg, LegSpawnResult, ChallengePassResult } from './orchestrator.js';
+export {
+  orchestrateLegs, assembleGroups, listRunDirs, tailLines, reasonFromTail, lastLegPhase,
+  stageChallengeRuns, legOwnRunId, keepLegChallengeOutputs, callTotals, LZ_CHALLENGE_SKIP_MESSAGES, CHALLENGES_FINISHED, statusElapsed,
+  unpricedMessage, legCostUsd, legUnpricedCalls, runCostText, isUnpricedRecord,
+  didNotFinishOf, limitText, LEG_STALL_DEFAULT_MS, LEG_MAX_DEFAULT_MS, LEG_KILL_GRACE_DEFAULT_MS,
+  CHALLENGE_STALL_DEFAULT_MS, CHALLENGE_MAX_DEFAULT_MS,
+} from './orchestrator.js';
+export type {
+  OrchestratorDeps, OrchestrationResult, ResolvedLeg, LegSpawnResult, ChallengePassResult,
+  LegStatus, LlmRunStatus, LegOutcome, LegPreflightResult, SuiteRunRef, LegChallengeContext, CallTotals,
+  StagedChallengeRuns, LzChallengeSkipReason, LegSpawnHooks, LegLimit, ChallengeSpawn,
+} from './orchestrator.js';
+// #4469 / #4470 / #4472: leg activity from the leg's own event log.
+export { LegLogTailer, applyLegEvent, activityFields, retryReasonText } from './leg-activity.js';
+export type { LegLogEvent, LegActivityState, ForwardedLine } from './leg-activity.js';
+// #4243: leg workspace preparation (scoped to source.vcs.subdir) and the async tree hash.
+export { prepareLegWorkspace, PreparationCancelledError } from './leg-workspace.js';
+export type { PreparedLegWorkspace, PrepareLegWorkspaceOptions, PrepareProgress, CopyStats } from './leg-workspace.js';
+export { hashTree } from './tree-hash.js';
+export type { TreeHashResult, TreeHashOptions } from './tree-hash.js';
 
 export const assessmentTypes: AssessmentTypeContribution[] = [llmAssessmentType];
 

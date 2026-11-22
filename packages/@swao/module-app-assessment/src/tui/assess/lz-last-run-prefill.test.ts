@@ -21,7 +21,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { readLastRunLzTargets, readLastRunAppLzTargets } from '../AssessScreen.js';
+import { readLastRunLzTargets, readLastRunAppLzTargets } from '../assess-helpers.js';
 
 const dirs: string[] = [];
 afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });

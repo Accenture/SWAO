@@ -37,5 +37,8 @@ export {
   type AssessmentScopeToken,
   type ApplicabilityContext,
   type ControlApplicability,
+  // #3888: the selection Pass 11 reads, and the baseline regime test (Design 123 section 8.4).
+  loadSelectedRegimes,
+  isPolicyBaselineRegime,
 } from './compliance-evaluator.js';
 export { communityCatalogueContribution, communityFrameworksDir } from './community-catalogue.js';

@@ -13,30 +13,36 @@
 //
 // ================================================================
 
+// #4257 (TUI-13, Design 126 sections 3, 4, 6, 7 and 10): on ScreenLayout. The
+// header subtitle is "Generate Report" (the run type goes to the step title);
+// the app, format and view pickers are the central SelectInput (bounded, the
+// description in the second column, one guidance entry per option); the PDF
+// gate is the LicenseGate content with LICENSE_GATE_KEYS; the written files
+// are full DetailRow paths (drive and file name kept), the output goes through
+// RunOutput, the results and notes are StatusRows; keys per phase through
+// KeyHints, one Esc owner per phase; the CLI only in the guidance `cli` field.
+
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { useInput } from 'ink';
 import { spawn } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
-import { join, relative, dirname } from 'path';
-import { Header } from '../components/Header.js';
-import { TextInput } from '@swao/tui-kit';
-import { SelectInput } from '@swao/tui-kit';
-import { LiveOutput } from '@swao/tui-kit';
-import { LicenseGate, isAllowed } from '@swao/tui-kit';
-import { GuidanceBox } from '@swao/tui-kit';
-import { RunContextPicker } from '@swao/tui-kit';
-import type { SelectedRunContext } from '@swao/tui-kit';
+import { join } from 'path';
+import {
+  DetailRow, KEY_HINTS, LICENSE_GATE_KEYS, LicenseGate, RunContextPicker, RunOutput, ScreenLayout, SelectInput,
+  StatusRow, TextInput, assessedAppOptions, guidanceOwnsKey, isAllowed, licenseGateGuidance, useOptionGuidance,
+  type GuidanceEntry, type KeyHint, type SelectOption, type SelectedRunContext,
+} from '@swao/tui-kit';
 import { findWorkspace } from '@swao/core';
+import { selfSpawnCommand } from '@swao/core';
 import { LicenseGuard } from '../../license/license-guard.js';
 import type { LicenseState } from '../../license/license-guard.js';
+import { reportPathFromLine } from '../../commands/report-written-line.js';
+import { useScreenHeader } from '../components/screen-header.js';
 
-const BIN  = process.execPath;
-// #2576: inside a pkg binary process.argv[1] is the snapshot path, not a valid
-// CLI argument prefix. Mirror the pattern from LicenseScreen (#2589).
-const _isPkg     = Boolean((process as { pkg?: unknown }).pkg);
-const SELF_ARGS: string[] = _isPkg ? [] : [process.argv[1] as string];
+// #2576 / #4241: child processes start through the central self-spawn helper
+// (selfSpawnCommand): the snapshot path is never passed in the binary.
 
-type Phase = 'input-app' | 'pick-run-context' | 'non-app-redirect' | 'input-format' | 'pdf-locked' | 'input-view' | 'running' | 'done';
+export type ReportPhase = 'input-app' | 'pick-run-context' | 'non-app-redirect' | 'input-format' | 'pdf-locked' | 'input-view' | 'running' | 'done';
 
 function getAvailableTypes(wspDir: string): string[] {
   if (!existsSync(wspDir)) return [];
@@ -46,15 +52,111 @@ function getAvailableTypes(wspDir: string): string[] {
     .filter((t): t is string => t !== undefined);
 }
 
-const VIEW_OPTIONS = [
-  { label: 'All views                     -- Generate all 5 stakeholder reports', value: 'all' },
-  { label: 'Business Owner                -- Executive summary', value: 'exec' },
-  { label: 'GRC / Compliance Officer      -- Compliance & data protection', value: 'compliance' },
-  { label: 'FinOps Lead                   -- FinOps & cost analysis', value: 'finops' },
-  { label: 'Migration / Programme Manager -- Migration manager', value: 'migration-manager' },
-  { label: 'Application Architect         -- Full technical report', value: 'technical' },
-  { label: 'Auditor                       -- Traceability + structured payload', value: 'auditor' },
+const PICK_KEYS: readonly KeyHint[] = [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'back' }];
+
+/** The keys per phase (Design 126 section 7.9). */
+export function reportKeys(phase: ReportPhase, appPicker: boolean): readonly KeyHint[] {
+  switch (phase) {
+    case 'input-app': return appPicker ? PICK_KEYS : [{ key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'back' }];
+    case 'pick-run-context':
+    case 'input-format':
+    case 'input-view': return PICK_KEYS;
+    case 'non-app-redirect': return [{ key: 'Esc', verb: 'back' }];
+    case 'pdf-locked': return LICENSE_GATE_KEYS;
+    case 'running': return KEY_HINTS.run;
+    case 'done': return [{ key: 'Enter', verb: 'back' }, { key: 'Esc', verb: 'back' }];
+    default: {
+      const never: never = phase;
+      return never;
+    }
+  }
+}
+
+const VIEW_OPTIONS: SelectOption[] = [
+  { label: 'All views', value: 'all', detail: 'one file per stakeholder audience', guidance: { title: 'All views', what: 'Generates every stakeholder report in one step.' } },
+  { label: 'Business Owner', value: 'exec', detail: 'executive summary', guidance: { title: 'Business Owner', what: 'C-suite: verdicts and recommendations.' } },
+  { label: 'GRC / Compliance Officer', value: 'compliance', detail: 'compliance and data protection', guidance: { title: 'GRC / Compliance Officer', what: 'DPO and CISO: control outcomes and gaps.' } },
+  { label: 'FinOps Lead', value: 'finops', detail: 'FinOps and cost analysis', guidance: { title: 'FinOps Lead', what: 'Cost drivers and FinOps findings.' } },
+  { label: 'Migration / Programme Manager', value: 'migration-manager', detail: 'migration plan', guidance: { title: 'Migration / Programme Manager', what: 'Migration waves, effort and blockers.' } },
+  { label: 'Application Architect', value: 'technical', detail: 'full technical report', guidance: { title: 'Application Architect', what: 'Engineering: full pass-by-pass signals.' } },
+  { label: 'Auditor', value: 'auditor', detail: 'traceability and structured payload', guidance: { title: 'Auditor', what: 'Regulator: structured AuditorReport payload (Enterprise).' } },
 ];
+
+/** The format rows; the PDF row names the tier when the licence lacks it (#2578). */
+export function reportFormatOptions(pdfAllowed: boolean, assessmentType: string): SelectOption[] {
+  return [
+    { label: 'all', value: 'all', detail: pdfAllowed ? 'every format in one step' : 'every format in one step, pdf skipped below Consultant', guidance: { title: 'all', what: 'Generates text, yaml and json in one step, and pdf when the licence allows it.' } },
+    { label: 'text', value: 'text', detail: 'human-readable summary', guidance: { title: 'text', what: assessmentType === 'application' ? 'Five stakeholder views (exec, compliance, migration-manager, finops, technical).' : 'Human-readable summary.' } },
+    { label: 'yaml', value: 'yaml', detail: 'one machine-readable auditor.yaml', guidance: { title: 'yaml', what: 'Machine-readable: one auditor file only (not the audience views), for pipelines and BI.' } },
+    { label: 'json', value: 'json', detail: 'one machine-readable auditor.json', guidance: { title: 'json', what: 'Machine-readable: one auditor file only (not the audience views), for pipelines and BI.' } },
+    {
+      label: 'pdf',
+      value: 'pdf',
+      detail: pdfAllowed ? 'print-quality PDF with a branded header' : 'print-quality PDF, needs a Consultant licence',
+      guidance: { title: 'pdf', what: pdfAllowed ? 'Branded PDF for client handover.' : 'Branded PDF; requires a Consultant licence.' },
+    },
+  ];
+}
+
+const REPORT_GUIDANCE: GuidanceEntry = {
+  title: 'Report generation',
+  what: 'Generates stakeholder reports from the latest assessment of an app.',
+  cli: 'swao report --app <id> --format <format>',
+};
+
+const RUN_CONTEXT_GUIDANCE: GuidanceEntry = {
+  title: 'Select assessment run',
+  what: 'Several assessment types were found for this app. Select the run whose data the report should use.',
+  sections: [
+    { label: 'Application', text: 'Source-code and LLM-pass based analysis' },
+    { label: 'Landing Zone', text: 'CSP service catalogue fit and gap analysis' },
+  ],
+  cli: 'swao report --app <id> --type <type>',
+};
+
+/** The guidance of the finished run. */
+export function reportDoneGuidance(assessmentType: string, ok: boolean): GuidanceEntry {
+  if (!ok) {
+    return {
+      title: 'Generate Report, warnings',
+      what: 'One or more report formats completed with errors. Check the output.',
+      sections: [
+        { label: 'Common cause', text: 'No assessment run found for this app. Run an assessment first.' },
+        { label: 'Tier error', text: 'PDF requires a Consultant licence. Use text, yaml or json at Community tier.' },
+      ],
+      cli: 'swao assess --app <id>',
+    };
+  }
+  return {
+    title: 'Report generated',
+    what: assessmentType === 'landing-zone-catalog'
+      ? 'Landing Zone report written to the app wsp/reports-lz/ folder.'
+      : assessmentType === 'llm'
+        ? 'LLM Assessment report written to the app wsp/reports-llm/ folder.'
+        : 'Report files written to the app wsp/reports-app/ folder.',
+    cli: 'swao report --app <id> --format <format>',
+  };
+}
+
+/** The step title of a phase; the run type of the app goes here, not into the header. */
+function stepTitle(phase: ReportPhase, assessmentType: string): { title: string; subtitle?: string } {
+  const kind = assessmentType === 'landing-zone-catalog' ? 'Landing Zone Assessment'
+    : assessmentType === 'llm' ? 'LLM Assessment' : 'Application Assessment';
+  switch (phase) {
+    case 'input-app': return { title: 'Select application', subtitle: 'Stakeholder reports from the latest assessment of an app.' };
+    case 'pick-run-context': return { title: 'Select assessment run' };
+    case 'non-app-redirect': return { title: 'Report not available for this run type' };
+    case 'input-format': return { title: 'Output format', subtitle: kind };
+    case 'pdf-locked': return { title: 'PDF report', subtitle: 'Consultant licence required' };
+    case 'input-view': return { title: 'Report view', subtitle: kind };
+    case 'running': return { title: 'Generating the report', subtitle: kind };
+    case 'done': return { title: 'Report', subtitle: kind };
+    default: {
+      const never: never = phase;
+      return never;
+    }
+  }
+}
 
 interface ReportScreenProps {
   onBack: () => void;
@@ -63,14 +165,11 @@ interface ReportScreenProps {
 
 export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
   const workspace = findWorkspace(process.cwd());
+  const header = useScreenHeader('Generate Report');
 
   // Load licence state for the per-format gate (M18 #0277 follow-up).
   // PDF format is Consultant-tier-gated; other formats are Community.
-  // The previous version silently fell back to Community on any load
-  // failure, which made "SWAO_LICENSE_SECRET not set in this shell"
-  // indistinguishable from "you genuinely have a Community licence".
-  // We now keep the load error so it can be surfaced on screen.
-  // Licence load failure surfaces in the Header's status line; the
+  // Licence load failure surfaces in the header's status line; the
   // per-format gate uses the resolved state. Falling back to Community
   // here keeps the rest of the screen usable for text/yaml/json
   // formats even if the licence file is corrupt.
@@ -95,30 +194,11 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
     ? VIEW_OPTIONS
     : VIEW_OPTIONS.filter((o) => o.value !== 'auditor');
 
-  // assessmentType must be declared before FORMAT_OPTIONS so the array spread
-  // can filter options based on it.
   const [assessmentType, setAssessmentType] = useState('application');
-
-  // Format menu shape adapts to assessment type and tier.
-  // #2580: all formats (all/yaml/json) are available for LZ reports too.
-  // #2553: 'all' = text + yaml + json in one step.
-  // #2552: labels clarify text=5 views vs yaml/json=1 auditor file.
-  const FORMAT_OPTIONS = [
-    { label: 'all   -- Generate all formats  (pdf skipped if Consultant licence absent)', value: 'all' },
-    { label: 'text  -- Human-readable summary  (5 stakeholder views for App assessment)', value: 'text' },
-    { label: 'yaml  -- 1 machine-readable auditor.yaml  (pipeline / auditor view)', value: 'yaml' },
-    { label: 'json  -- 1 machine-readable auditor.json  (pipeline / auditor view)', value: 'json' },
-    {
-      // #2578: show [Consultant+] badge on PDF option when tier is Community
-      label: pdfAllowed
-        ? 'pdf   -- Print-quality PDF (branded header on Consultant / Enterprise)'
-        : 'pdf   -- Print-quality PDF [Consultant+] -- upgrade to generate',
-      value: 'pdf',
-    },
-  ];
+  const formatOptions = reportFormatOptions(pdfAllowed, assessmentType);
 
   // Apps that have been assessed (app, LZ, or LLM run present).
-  const assessedApps: string[] = workspace && existsSync(join(workspace, 'apps'))
+  const assessedApps: string[] = useMemo(() => (workspace && existsSync(join(workspace, 'apps'))
     ? readdirSync(join(workspace, 'apps'), { withFileTypes: true })
         .filter(d => d.isDirectory() && (
           existsSync(join(workspace, 'apps', d.name, 'wsp', 'latest.txt')) ||
@@ -126,20 +206,25 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
           existsSync(join(workspace, 'apps', d.name, 'wsp', 'run-manifest.json'))
         ))
         .map(d => d.name)
-    : [];
+    : []), [workspace]);
+  // #4213 (gate G-05h): one guidance entry per app: its runs and what the report reads.
+  const appOptions: SelectOption[] = useMemo(() => (workspace ? assessedAppOptions(workspace, assessedApps, 'Generates the stakeholder reports from the latest assessment run of this app.', REPORT_GUIDANCE.cli) : []), [workspace, assessedApps]);
 
-  const [phase, setPhase]             = useState<Phase>('input-app');
+  const [phase, setPhase]             = useState<ReportPhase>('input-app');
   const [app, setApp]                 = useState('');
   const [format, setFormat]           = useState('text');
   const [view, setView]               = useState('all');
-  const [notice, setNotice]           = useState('');
   const [lines, setLines]             = useState<string[]>([]);
-  const [done, setDone]               = useState(false);
   const [code, setCode]               = useState<number | null>(null);
-  const [reportFile,  setReportFile]  = useState('');
   const [reportFiles, setReportFiles] = useState<string[]>([]);
   const [runCtx, setRunCtx]           = useState<SelectedRunContext | null>(null);
   const guidanceOpenRef               = useRef(false);
+  const backRef                       = useRef(false);
+  const formatGuidance = useOptionGuidance({ title: 'Output format', what: 'Choose the format for your audience.', cli: 'swao report --app <id> --format <format>' });
+  const appGuidance = useOptionGuidance(REPORT_GUIDANCE);
+  const viewGuidance = useOptionGuidance({ title: 'Report view', what: 'Select the stakeholder audience. All views emits one file per audience.', cli: 'swao report --app <id> --view <view>' });
+
+  const done = phase === 'done';
 
   const handleAppSelect = (selectedApp: string) => {
     setApp(selectedApp);
@@ -148,7 +233,7 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
     if (types.length > 1) {
       setPhase('pick-run-context');
     } else {
-      // Single type -- set it so the running phase knows which CLI args to use
+      // Single type: set it so the running phase knows which CLI args to use
       const singleType = types[0] ?? 'application';
       setAssessmentType(singleType);
       if (singleType === 'application' || singleType === 'landing-zone-catalog' || singleType === 'llm') {
@@ -172,32 +257,22 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
   useEffect(() => {
     if (phase !== 'running') return;
 
-    setReportFile('');
     setReportFiles([]);
     setLines([]);
 
-    // Workspace parent for computing display-relative paths (e.g. test-7.7\apps\...)
-    const wsParent = workspace ? dirname(workspace) : undefined;
-    const toRelPath = (abs: string) => wsParent ? relative(wsParent, abs) : abs;
-
     const push = (chunk: Buffer) => {
       const text = chunk.toString();
-      // Suppress "[ok] Report written to ..." lines from live output -- paths are
-      // shown in the file list above. Show all other lines (errors, warnings, info).
-      const filtered = text.split('\n')
-        .filter(Boolean)
-        .filter((l) => !/^\[ok\]\s+Report written to\b/.test(l));
-      setLines(prev => [...prev, ...filtered]);
-      // CLI emits one "[ok]  Report written to <path>" line per file.
-      const pathRegex = /\[ok\]\s+Report written to (.+)/g;
-      let match: RegExpExecArray | null;
-      while ((match = pathRegex.exec(text)) !== null) {
-        const p = (match[1] ?? '').trim();
-        if (p) {
-          setReportFile(toRelPath(p));
-          setReportFiles(prev => [...prev, toRelPath(p)]);
-        }
+      // The written files show as path rows; every other line (errors,
+      // warnings, info) goes to the output.
+      const out: string[] = [];
+      const paths: string[] = [];
+      for (const l of text.split('\n')) {
+        if (!l) continue;
+        const p = reportPathFromLine(l);
+        if (p) paths.push(p); else out.push(l);
       }
+      if (out.length > 0) setLines(prev => [...prev, ...out]);
+      if (paths.length > 0) setReportFiles(prev => [...prev, ...paths]);
     };
 
     // Build CLI args for a given format string (used by both single and multi paths).
@@ -219,54 +294,70 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
     };
 
     // #2553: 'all' format = text + yaml + json in sequence via async loop.
-    // #2581: PDF is intentionally excluded from 'all' when tier is Community; it
-    // would also be excluded at Consultant (PDF needs an explicit view selection).
-    // The skip notice is set below via setLines so it appears in the live output.
     // #2619: include pdf in 'all' run when the licence allows it (Consultant+).
     const formatsToRun = format === 'all'
       ? [...['text', 'yaml', 'json'], ...(pdfAllowed ? ['pdf'] : [])]
       : [format];
 
     if (formatsToRun.length === 1) {
-      // Original single-spawn path -- return child.kill() cleanup.
-      const child = spawn(BIN, [...SELF_ARGS, ...buildArgs(formatsToRun[0] ?? format)], {
+      const selfCmd = selfSpawnCommand(buildArgs(formatsToRun[0] ?? format));
+      const child = spawn(selfCmd.command, selfCmd.args, {
         stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, PKG_EXECPATH: '' },
+        env: selfCmd.env,
         cwd: workspace ?? undefined,
       });
       child.stdout.on('data', push);
       child.stderr.on('data', push);
-      child.on('close', (exitCode) => { setCode(exitCode); setDone(true); setPhase('done'); });
+      child.on('close', (exitCode) => { setCode(exitCode); setPhase('done'); });
       return () => { child.kill(); };
     }
 
     // Multi-format path: run each format in sequence, collect all output paths.
     let cancelled = false;
+    let current: ReturnType<typeof spawn> | null = null;
     void (async () => {
       let lastCode: number | null = 0;
       for (const fmt of formatsToRun) {
         if (cancelled) break;
         lastCode = await new Promise<number | null>((resolve) => {
-          const child = spawn(BIN, [...SELF_ARGS, ...buildArgs(fmt)], {
+          const selfCmd = selfSpawnCommand(buildArgs(fmt));
+          const child = spawn(selfCmd.command, selfCmd.args, {
             stdio: ['ignore', 'pipe', 'pipe'],
-            env: { ...process.env, PKG_EXECPATH: '' },
+            env: selfCmd.env,
             cwd: workspace ?? undefined,
           });
+          current = child;
           child.stdout.on('data', push);
           child.stderr.on('data', push);
           child.on('close', resolve);
         });
       }
-      if (!cancelled) { setCode(lastCode); setDone(true); setPhase('done'); }
+      if (!cancelled) { setCode(lastCode); setPhase('done'); }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; (current as ReturnType<typeof spawn> | null)?.kill(); };
   }, [phase]);
 
+  const leave = (): void => {
+    if (backRef.current) return;
+    backRef.current = true;
+    onBack();
+  };
+
   useInput((_input, key) => {
-    if (guidanceOpenRef.current && !key.escape && !key.return && !key.upArrow && !key.downArrow) return;
-    if (done && (key.return || key.escape)) onBack();
-    if (!done && key.escape) onBack();
-    if (phase === 'non-app-redirect' && key.escape) onBack();
+    // Design 126 section 7.8: an open guidance box owns Esc and the pager keys.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
+    switch (phase) {
+      // RunContextPicker and LicenseGate own their Esc (one Esc owner per phase).
+      case 'pick-run-context':
+      case 'pdf-locked':
+        return;
+      case 'done':
+        if (key.return || key.escape) leave();
+        return;
+      default:
+        // Q-09: Esc cancels a running report at once (the unmount stops the child).
+        if (key.escape) leave();
+    }
   });
 
   const handleFormatSelect = (v: string) => {
@@ -274,41 +365,25 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
     // PDF gate (M18 #0277 follow-up): if Community user picks PDF, show the
     // locked panel inline instead of letting the CLI raise the licence error.
     if (v === 'pdf' && !pdfAllowed) {
-      setNotice('');
       setPhase('pdf-locked');
       return;
     }
-    if (assessmentType === 'landing-zone-catalog') {
-      // LZ reports: no view selection, single comprehensive output
-      setNotice('');
-      setPhase('running');
-      return;
-    }
-    if (assessmentType === 'llm') {
-      setNotice('');
+    if (assessmentType === 'landing-zone-catalog' || assessmentType === 'llm') {
+      // LZ and LLM reports: no view selection, single comprehensive output
       setPhase('running');
       return;
     }
     if (v === 'all') {
       // #2553: generate text + yaml + json in one step; no view selection needed
       setView('all');
-      setNotice('');
       setPhase('running');
       return;
     }
     if (v === 'yaml' || v === 'json') {
-      // #2408: JSON/YAML always emits the AuditorReport schema (the only view-
-      // differentiated payload). Skip the view picker to avoid misleading "view: all"
-      // and hard-code auditor. The CLI maps all other views to generic ReportData
-      // snapshots that are byte-for-byte identical, so the view selector has no effect.
+      // #2408: JSON/YAML always emits the AuditorReport schema; skip the view picker.
       setView('auditor');
-      setNotice('');
       setPhase('running');
       return;
-    } else if (v === 'pdf') {
-      setNotice(`PDF reports include a branded header with your licensee name and organisation.`);
-    } else {
-      setNotice('');
     }
     setPhase('input-view');
   };
@@ -318,265 +393,134 @@ export function ReportScreen({ onBack, onOpenLicense }: ReportScreenProps) {
     setPhase('running');
   };
 
+  const ok = done && code === 0;
+  const guidance: GuidanceEntry = phase === 'pick-run-context' ? RUN_CONTEXT_GUIDANCE
+    : phase === 'input-format' ? formatGuidance.entry
+    : phase === 'input-view' ? viewGuidance.entry
+    : phase === 'pdf-locked' ? licenseGateGuidance('consultant', 'PDF reports')
+    : phase === 'non-app-redirect' ? { title: 'Publish instead', what: 'This run type has no stakeholder report here; the HTML publication covers it.', cli: `swao publish --app ${app || '<id>'}` }
+    : done ? reportDoneGuidance(assessmentType, ok)
+    : phase === 'input-app' && assessedApps.length > 0 ? appGuidance.entry
+    : REPORT_GUIDANCE;
+  const runFacts = assessmentType === 'landing-zone-catalog' ? 'LZ Assessment' : (format === 'yaml' || format === 'json' ? 'auditor' : view);
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={phase === 'input-app'
-        ? 'Generate Report'
-        : assessmentType === 'landing-zone-catalog'
-          ? 'Landing Zone Assessment -- Generate Report'
-          : assessmentType === 'llm'
-            ? 'LLM Assessment -- Generate Report'
-            : 'Application Assessment -- Generate Report'} />
-
+    <ScreenLayout
+      header={header}
+      title={stepTitle(phase, assessmentType)}
+      keys={reportKeys(phase, assessedApps.length > 0)}
+      guidance={{ entry: guidance, initiallyCollapsed: true, onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
       {phase === 'input-app' && (
-        <Box flexDirection="column">
-          {workspace
-            ? <Text>Workspace: <Text bold color="whiteBright">{workspace}</Text></Text>
-            : <Text color="yellow">No workspace found -- run Workspace Setup first.</Text>}
-          <Box marginTop={1}>
-            {assessedApps.length > 0 ? (
-              <SelectInput
-                label="Select application"
-                options={assessedApps.map(a => ({ label: a, value: a }))}
-                onSelect={(v) => handleAppSelect(v)}
-                active
-              />
-            ) : (
-              <TextInput
-                key="input-app"
-                label="Application ID"
-                placeholder="sovereign-health"
-                onSubmit={(v) => { if (v) handleAppSelect(v); }}
-                active
-              />
-            )}
-          </Box>
-          <GuidanceBox
-            title="Report generation"
-            what="Generates stakeholder reports from the latest assessment."
-            affordances={['Up/Down -- pick app  |  Enter -- confirm  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
-      )}
-
-      {phase === 'pick-run-context' && workspace && (
-        <Box flexDirection="column">
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          <Box marginTop={1}>
-            <RunContextPicker
-              wspDir={join(workspace, 'apps', app, 'wsp')}
-              onSelect={handleRunCtxSelect}
-              onCancel={onBack}
-            />
-          </Box>
-          <GuidanceBox
-            title="Select assessment run"
-            what="Multiple assessment types were found for this app. Select the run whose data the report should use."
-            details={[
-              { label: 'Application', value: 'Source-code and LLM-pass based analysis' },
-              { label: 'Landing Zone', value: 'CSP service catalog fit/gap analysis' },
-            ]}
-            affordances={['Up/Down -- pick  |  Enter -- confirm  |  Esc -- cancel']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
-      )}
-
-      {phase === 'non-app-redirect' && (
-        <Box flexDirection="column">
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          <Box marginTop={1} flexDirection="column">
-            {runCtx?.assessmentType === 'llm' ? (
-              <>
-                <Text color="yellow" wrap="wrap">LLM Assessment PDF report is coming in a future release.</Text>
-                <Text dimColor wrap="wrap">Use <Text bold>swao html publish --app {app}</Text> to generate an HTML publication from the LLM Assessment results.</Text>
-              </>
-            ) : (
-              <>
-                <Text color="yellow" wrap="wrap">This report view supports Application Assessment only.</Text>
-                <Text dimColor wrap="wrap">For {runCtx?.assessmentType} runs, use <Text bold>swao html publish</Text> to generate a publication.</Text>
-              </>
-            )}
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Press <Text bold>Esc</Text> to go back.</Text>
-          </Box>
-        </Box>
-      )}
-
-      {phase === 'input-format' && (
         <>
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          <Box marginTop={1}>
+          {workspace
+            ? <DetailRow label="Workspace" value={workspace} path />
+            : <StatusRow level="warn" label="Workspace" summary="not found; run Workspace Setup first" />}
+          {assessedApps.length > 0 ? (
             <SelectInput
-              label="Output format"
-              options={FORMAT_OPTIONS}
-              onSelect={handleFormatSelect}
+              label="Application"
+              options={appOptions}
+              visibleCount={Math.min(appOptions.length, 12)}
+              showKeyHints={false}
+              onCursorChange={appGuidance.onCursorChange}
+              onSelect={(v) => handleAppSelect(v)}
               active
             />
-          </Box>
-          <GuidanceBox
-            title="Output format"
-            what="Choose the format for your audience."
-            details={[
-              { label: 'all', value: 'Generate all formats in one step -- pdf is included but skipped if Consultant licence is absent' },
-              { label: 'text', value: assessmentType === 'application' ? '5 stakeholder views (exec, compliance, migration-manager, finops, technical)' : 'Human-readable summary' },
-              { label: 'yaml / json', value: 'Machine-readable: 1 auditor file only (not the 5 audience views) -- for pipelines / BI' },
-              { label: 'pdf', value: pdfAllowed ? 'Branded PDF for client handover' : 'Branded PDF -- requires Consultant licence' },
-            ]}
-            affordances={['Up/Down -- pick  |  Enter -- confirm  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
+          ) : (
+            <TextInput
+              key="input-app"
+              label="Application ID"
+              placeholder="sovereign-health"
+              onSubmit={(v) => { if (v) handleAppSelect(v); }}
+              active
+            />
+          )}
         </>
       )}
 
+      {phase !== 'input-app' && <DetailRow label="App" value={app} />}
+
+      {phase === 'pick-run-context' && workspace && (
+        <RunContextPicker
+          wspDir={join(workspace, 'apps', app, 'wsp')}
+          onSelect={handleRunCtxSelect}
+          onCancel={leave}
+        />
+      )}
+
+      {phase === 'non-app-redirect' && (
+        runCtx?.assessmentType === 'llm'
+          ? <StatusRow level="info" label="LLM report" summary="the LLM Assessment PDF report comes in a future release; Publish HTML covers the results" />
+          : <StatusRow level="info" label="Report" summary={`this view supports Application Assessment only; Publish HTML covers ${runCtx?.assessmentType ?? 'this'} runs`} />
+      )}
+
+      {phase === 'input-format' && (
+        <SelectInput
+          label="Output format"
+          options={formatOptions}
+          visibleCount={formatOptions.length}
+          showKeyHints={false}
+          onCursorChange={formatGuidance.onCursorChange}
+          onSelect={handleFormatSelect}
+          active
+        />
+      )}
+
       {phase === 'pdf-locked' && (
-        <Box flexDirection="column">
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          <Box marginTop={1}>
-            <LicenseGate
-              required="consultant"
-              state={licenseState}
-              feature="swao report --format pdf (print-quality PDF reports)"
-              onOpenLicenseScreen={onOpenLicense ?? onBack}
-              onBack={() => setPhase('input-format')}
-            >
-              <></>
-            </LicenseGate>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Press <Text bold>Esc</Text> to choose a different format (text, YAML, or JSON are available on Community).</Text>
-          </Box>
-          <GuidanceBox
-            title="PDF Report -- Consultant licence required"
-            what="PDF reports are available on Consultant and Enterprise licences. Text, YAML, and JSON formats are available on all tiers."
-            details={[
-              { label: 'Available now',   value: 'text, yaml, json -- press Esc to return to format picker' },
-              { label: 'With Consultant', value: 'pdf -- print-quality branded report with charts and compliance table' },
-            ]}
-            affordances={['Esc -- back to format picker  |  Enter -- open Licence screen']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        <LicenseGate
+          required="consultant"
+          state={licenseState}
+          feature="PDF reports (print quality)"
+          onOpenLicenseScreen={onOpenLicense ?? onBack}
+          onBack={() => setPhase('input-format')}
+        >
+          <></>
+        </LicenseGate>
       )}
 
       {phase === 'input-view' && (
         <>
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          {notice && <Text color="yellow">{notice}</Text>}
-          <Box marginTop={1}>
-            <SelectInput
-              label="Report view"
-              options={effectiveViewOptions}
-              onSelect={handleViewSelect}
-              active
-            />
-          </Box>
-          <GuidanceBox
-            title="Report view"
-            what="Select the stakeholder audience. All views emits one file per audience."
-            details={[
-              { label: 'Business Owner',           value: 'C-suite: verdicts and recommendations' },
-              { label: 'GRC / Compliance Officer', value: 'DPO/CISO: control outcomes and gaps' },
-              { label: 'Application Architect',    value: 'Engineering: full pass-by-pass signals' },
-              { label: 'Auditor',                  value: 'Regulator: structured AuditorReport payload' },
-            ]}
-            affordances={['Up/Down -- pick  |  Enter -- run  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+          {format === 'pdf' && <StatusRow level="info" label="PDF" summary="the report carries a branded header with your licensee name and organisation" />}
+          <SelectInput
+            label="Report view"
+            options={effectiveViewOptions}
+            visibleCount={effectiveViewOptions.length}
+            showKeyHints={false}
+            onCursorChange={viewGuidance.onCursorChange}
+            onSelect={handleViewSelect}
+            active
           />
         </>
       )}
 
-      {(phase === 'running' || phase === 'done') && (
+      {(phase === 'running' || done) && (
         <>
-          <Box>
-            <Text>App: <Text color="cyanBright">{app}</Text></Text>
-            <Text dimColor>  format: {format}{assessmentType === 'landing-zone-catalog' ? '  type: LZ Assessment' : (view ? `  view: ${view}` : '')}</Text>
-          </Box>
-          {notice && <Text color="yellow">{notice}</Text>}
-          {!done && <Text color="yellow">Generating report...</Text>}
-          {done && code === 0 && reportFiles.length === 0 && (
-            <Text color="yellow">
-              Report exited 0 but wrote no files. Check the output below for stub or licence messages.
-            </Text>
+          <DetailRow label="Format" value={`${format}, ${runFacts}`} />
+          {!done && <StatusRow level="waiting" label="Report" summary="generating" />}
+          {ok && reportFiles.length === 0 && (
+            <StatusRow level="warn" label="Report" summary="exited 0 but wrote no files; check the output for stub or licence messages" />
           )}
-          {done && code === 0 && reportFiles.length > 0 && (
-            <Box flexDirection="column">
-              <Text color="green">
-                {assessmentType === 'landing-zone-catalog'
-                  ? `Landing Zone report complete (format=${format}):`
-                  : (view === 'all'
-                    ? `Generated ${reportFiles.length} report${reportFiles.length === 1 ? '' : 's'}:`
-                    : `Report complete (${view} view, format=${format}):`)}
-              </Text>
-              {reportFiles.map((p) => (
-                <Text key={p} color="cyanBright">  {p}</Text>
-              ))}
-            </Box>
+          {ok && reportFiles.length > 0 && (
+            <StatusRow level="ok" label="Report" summary={`${reportFiles.length} file${reportFiles.length === 1 ? '' : 's'} written`} />
           )}
           {done && code !== 0 && (
-            <Text color="yellow">
-              {assessmentType === 'landing-zone-catalog'
-                ? `Landing Zone report completed with warnings.${reportFile ? `  Saved -> ${reportFile}` : ''}`
-                : (view === 'all'
-                  ? `Report completed with warnings.`
-                  : `Report completed with warnings${view !== 'all' ? ` (${view} view)` : ''}.${reportFile ? `  Saved -> ${reportFile}` : ''}`)}
-            </Text>
+            <StatusRow level="warn" label="Report" summary={`completed with warnings${view !== 'all' && assessmentType === 'application' ? ` (${view} view)` : ''}`} />
           )}
-          <LiveOutput lines={lines} maxLines={22} />
-
-          {/* #2600: BI export is Consultant+; suppress hint at Community tier */}
-          {phase === 'done' && code === 0 && format !== 'pdf' && pdfAllowed && (
-            <Box marginTop={1}>
-              <Text dimColor>To produce the BI bundle, return to the main menu and pick "Export BI".</Text>
-            </Box>
+          {reportFiles.map((p, i) => <DetailRow key={`${p}-${i}`} label={i === 0 ? 'Files' : ''} value={p} path />)}
+          {lines.length > 0 && <RunOutput lines={lines} maxLines={22} />}
+          {/* #2600: BI export is Consultant+; no hint at Community tier */}
+          {ok && format !== 'pdf' && pdfAllowed && (
+            <StatusRow level="info" label="BI bundle" summary="Export BI on the main menu produces the BI bundle" />
           )}
-          {phase === 'done' && code === 0 && format === 'pdf' && reportFiles.length === 0 && (
-            <Box marginTop={1}>
-              <Text dimColor>Use Publish to generate the HTML report as an alternative.</Text>
-            </Box>
+          {ok && format === 'pdf' && reportFiles.length === 0 && (
+            <StatusRow level="info" label="HTML" summary="Publish HTML generates the HTML report as an alternative" />
           )}
-
           {/* #2581: format=all skips PDF; inform user so the skip is not a surprise */}
-          {phase === 'done' && code === 0 && format === 'all' && !pdfAllowed && (
-            <Box marginTop={1}>
-              <Text color="yellow">[skip] pdf -- Consultant licence required (skipped at {licenseState.tier} tier)</Text>
-            </Box>
+          {ok && format === 'all' && !pdfAllowed && (
+            <StatusRow level="info" label="pdf" summary={`skipped, Consultant licence required (${licenseState.tier} tier)`} />
           )}
-
-          {phase === 'done' && code === 0 && reportFiles.length > 0 && (
-            <GuidanceBox
-              title="Report generated"
-              what={assessmentType === 'landing-zone-catalog'
-                ? 'Landing Zone report written to the app wsp/reports-lz/ folder.'
-                : assessmentType === 'llm'
-                  ? 'LLM Assessment report written to the app wsp/reports-llm/ folder.'
-                  : 'Report files written to the app wsp/reports-app/ folder.'}
-              affordances={['Enter/Esc -- back to menu']}
-              onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-            />
-          )}
-
-          {/* #2577: GuidanceBox on error completion screen, consistent with other assessment screens */}
-          {phase === 'done' && code !== 0 && (
-            <GuidanceBox
-              title="Generate Report -- Warnings"
-              what="One or more report formats completed with errors. Check the output above."
-              details={[
-                { label: 'Common cause', value: 'No assessment run found for this app. Run swao assess first.' },
-                { label: 'Tier error',   value: 'PDF requires Consultant licence. Use text/yaml/json at Community tier.' },
-              ]}
-              affordances={['Enter/Esc -- back to menu']}
-              onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-            />
-          )}
-
-          <Box marginTop={1}>
-            <Text dimColor>{done ? 'Press Enter or Escape to return to menu...' : 'Escape to cancel...'}</Text>
-          </Box>
         </>
       )}
-    </Box>
+    </ScreenLayout>
   );
 }

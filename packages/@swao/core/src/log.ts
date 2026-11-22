@@ -31,6 +31,7 @@
 
 import { existsSync, mkdirSync, appendFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { normalizeDashes } from './normalize-dashes.js';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'enhancement';
 export type LogScope = 'portfolio' | 'app';
@@ -152,9 +153,12 @@ function consoleMirror(entry: LogEntry): void {
   }
 }
 
-function emit(entry: LogEntry, mirror = true): void {
+function emit(raw: LogEntry, mirror = true, rootOverride?: string): void {
+  // #4462 (CLAUDE.md section 5.1): no em dash, en dash or spaced double hyphen in
+  // any event message, whoever wrote it ('Publish started -- app' gives 'Publish started, app').
+  const entry: LogEntry = { ...raw, message: normalizeDashes(raw.message) };
   if (mirror) consoleMirror(entry);
-  const root = resolveWorkspaceRoot();
+  const root = rootOverride ?? resolveWorkspaceRoot();
   if (!root) return;       // running outside a workspace -- console mirror only
   const path = sinkPath(entry, root);
   const dir = dirname(path);
@@ -222,11 +226,16 @@ export interface AppEventLogOpts extends PortfolioLogOpts {
   mirror?: boolean;
 }
 
+/**
+ * `mirror: false` (#4260) skips the console mirror for a warn or error event
+ * whose content the command already prints (a health-check probe line), so the
+ * terminal shows it once while the NDJSON entry keeps the real level.
+ */
 export function logPortfolio(
   level: LogLevel,
   code: string,
   message: string,
-  opts: PortfolioLogOpts = {},
+  opts: PortfolioLogOpts & { mirror?: boolean } = {},
 ): void {
   emit({
     ts: new Date().toISOString(),
@@ -237,7 +246,34 @@ export function logPortfolio(
     context: opts.context,
     run_id: opts.run_id,
     pass: opts.pass,
-  });
+  }, opts.mirror !== false);
+}
+
+/**
+ * #4128 BC-05 (Design 123 section 17.5.7): a portfolio event written to the
+ * `portfolio-events-<YYYY-MM>.ndjson` of an explicit workspace root. The log
+ * root of logPortfolio is process-global (setWorkspaceRoot), and an MCP tool
+ * call can name another workspace, so its event must go to that workspace.
+ * `mirror: false` skips the console mirror (an MCP stdio server keeps its
+ * terminal quiet).
+ */
+export function logPortfolioAt(
+  workspaceRoot: string,
+  level: LogLevel,
+  code: string,
+  message: string,
+  opts: PortfolioLogOpts & { mirror?: boolean } = {},
+): void {
+  emit({
+    ts: new Date().toISOString(),
+    level,
+    scope: 'portfolio',
+    code,
+    message,
+    context: opts.context,
+    run_id: opts.run_id,
+    pass: opts.pass,
+  }, opts.mirror !== false, workspaceRoot);
 }
 
 export function logApp(

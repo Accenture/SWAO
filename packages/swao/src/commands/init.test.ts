@@ -47,6 +47,19 @@ describe('scaffoldLandingZoneStubs (#1153)', () => {
     expect(existsSync(join(result.importsDir, 'README.md'))).toBe(true);
   });
 
+  it('#4351: the README explains the snapshot, the label selection and the other LZ checks, without a double hyphen separator', () => {
+    const result = scaffoldLandingZoneStubs(tmpDir);
+    const readme = readFileSync(join(result.importsDir, 'README.md'), 'utf-8');
+    expect(readme).toContain("export of the client's target landing zone");
+    expect(readme).toContain('The label you pick selects the file');
+    expect(readme).toContain('LZ catalogue fit');
+    expect(readme).toContain('LZ Live Assessment');
+    expect(readme).not.toContain('Delete the snapshots');
+    // CLI flags (--portfolio) are allowed; a double hyphen used as a separator is not.
+    expect(readme).not.toMatch(/\s--\s/);
+    expect(readme).not.toMatch(/[^-]--$/m);
+  });
+
   it('copies all three snapshot files from examples when source is available', () => {
     // In the dev tree, examples/ exists and the 3 LZ snapshot files are present.
     // If copiedFiles is empty AND warnings are present it means the source was not found,

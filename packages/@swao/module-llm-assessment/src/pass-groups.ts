@@ -47,6 +47,8 @@ export interface PassLegAggregate {
   prompt_tokens_median: number | null;
   completion_tokens_median: number | null;
   cost_usd: number | null;
+  /** #4372: calls of the pass without a price (not in cost_usd); absent on older runs. */
+  unpriced_calls?: number;
   parse_valid_rate: number | null;
   schema_conform_rate: number | null;
   size_bucket: SizeBucket | null;   // median prompt bucket for the pass
@@ -87,6 +89,9 @@ function aggregateLeg(records: CallRecord[]): PassLegAggregate {
       const sum = Math.round(priced.reduce((a, r) => a + (r.cost_usd.computed as number), 0) * 1e6) / 1e6;
       return sum === 0 ? null : sum;
     })(),
+    // #4372: the calls cost_usd leaves out because they have no price (local calls are free);
+    // every call counts, as in the run totals (callTotals) and the leg cost ranking.
+    unpriced_calls: records.filter((r) => r.cost_usd.computed === null && r.cost_usd.source !== 'local').length,
     parse_valid_rate: rate(done.filter((r) => r.quality.parse_valid).length, done.length),
     schema_conform_rate: rate(done.filter((r) => r.quality.schema_conform).length, done.length),
     size_bucket: bucketMedian,
@@ -120,7 +125,9 @@ export function buildPassGroups(records: CallRecord[], legIds: string[]): PassGr
       Object.fromEntries(legIds.map((id) => [id, legs[id]!.calls === 0 ? null : pick(legs[id]!)]));
     if (latencyMetric) scoredProps.push(normaliseProperty(latencyMetric, raw((a) => a.latency_p50_ms)));
     if (parseMetric) scoredProps.push(normaliseProperty(parseMetric, raw((a) => a.parse_valid_rate)));
-    if (costMetric) scoredProps.push(normaliseProperty(costMetric, raw((a) => a.cost_usd)));
+    // #4372 (owner decision 2026-11-14): a pass aggregate with any unpriced call is not
+    // ranked on cost; its cost cell still shows the priced sum plus the unpriced calls.
+    if (costMetric) scoredProps.push(normaliseProperty(costMetric, raw((a) => ((a.unpriced_calls ?? 0) > 0 ? null : a.cost_usd))));
 
     const meanScore: Record<string, number | null> = {};
     for (const id of legIds) {

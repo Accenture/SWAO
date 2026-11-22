@@ -7,6 +7,7 @@ import { dump, load } from 'js-yaml';
 import {
   apmFrameworkDir,
   buildPortfolioSummary,
+  INTAKE_TEMPLATE_FILE,
   loadInfraCatalogue,
   parseIntakeSheets,
   planScaffold,
@@ -28,8 +29,12 @@ import {
   formatServiceProbeLine,
   looksLikePhone,
   PROBE_TOTAL,
+  SERVICE_INTAKE_MISSING,
+  checkRecordedIntake,
+  tuiRemedyText,
 } from './service-probes.js';
 import { buildApmWeightsProbe } from './apm-weights-probe.js';
+import { buildIntakeMappingProbe } from './intake-mapping-probe.js';
 
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
@@ -104,8 +109,8 @@ describe('clean service workspace (#3134)', () => {
     expect(probes).toHaveLength(7);
     expect(PROBE_TOTAL).toBeGreaterThanOrEqual(20);
     expect(buildApmWeightsProbe(ws).status).toBe('ok');
-    expect(formatServiceProbeLine(probes[0]!, 0)).toMatch(/^ {2}\[19\/25\] Service workspace\.{2,} {2}ok {4}\d+ service app/);
-    expect(formatServiceProbeLine(probes[6]!, 6)).toMatch(/\[25\/25\] SWAO_APM controls/);
+    expect(formatServiceProbeLine(probes[0]!, 0)).toMatch(/^ {2}\[19\/26\] Service workspace\.{2,} {2}ok {4}\d+ service app/);
+    expect(formatServiceProbeLine(probes[6]!, 6)).toMatch(/\[25\/26\] SWAO_APM controls/);
   });
 
   it('reports the detected cluster', () => {
@@ -129,6 +134,78 @@ describe('service workspace before init (#3134)', () => {
     expect(workspace!.status).toBe('error');
     expect(research).toMatchObject({ status: 'skip', message: 'no service apps yet (run swao service init)' });
     expect(pii!.status).toBe('skip');
+  });
+});
+
+describe('#4295 intake recorded, no import yet', () => {
+  function intakeOnly(block: string, workbook = 'Application-Portfolio-Demo.xlsx'): string {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-4295-'));
+    dirs.push(ws);
+    writeFileSync(join(ws, '.swao.yml'), `wsp_version: "0.9"\nservice_portfolio:\n${block}`);
+    mkdirSync(join(ws, 'wsp', 'inputs', 'service-intake'), { recursive: true });
+    if (workbook) writeFileSync(join(ws, 'wsp', 'inputs', 'service-intake', workbook), 'x');
+    return ws;
+  }
+
+  it('the service workspace probe is info (next step), and no service-scoped probe fails', () => {
+    const ws = intakeOnly('  intake: "wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx"\n  intake_folder: "wsp/inputs/service-intake"\n');
+    const probes = buildServiceProbes(ws, NOW);
+    expect(probes[0]).toMatchObject({
+      key: 'service_workspace', status: 'info',
+      message: 'intake recorded (wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx); the Service Portfolio Assessment imports it and creates the apps at its first run',
+    });
+    expect(formatServiceProbeLine(probes[0]!, 0)).toMatch(/\[19\/26\] Service workspace\.* {2}INFO {2}intake recorded/);
+    expect(probes.filter((p) => p.status === 'error').map((p) => p.key)).toEqual([]);
+    expect(buildIntakeMappingProbe(ws).status).not.toBe('error');
+    // The SWAO_APM weights probe runs (bundled framework), so the run is not "all skipped" (#4262 warned check).
+    expect(buildApmWeightsProbe(ws).status).toBe('ok');
+  });
+
+  it('with the runner read of the intake: N rows in <file>; unreadable or empty workbooks are errors', async () => {
+    const ws = intakeOnly('  intake: "wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx"\n');
+    const rows = (n: number) => (async () => ({ rows: Array.from({ length: n }, () => ({})) })) as unknown as Parameters<typeof checkRecordedIntake>[1];
+    const ok = await checkRecordedIntake(ws, rows(234));
+    expect(ok).toEqual({ rows: 234 });
+    expect(buildServiceWorkspaceProbe(ws, ok)).toMatchObject({ status: 'info', message: 'intake recorded (234 rows in wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx); the Service Portfolio Assessment imports it and creates the apps at its first run' });
+    const broken = await checkRecordedIntake(ws, (async () => { throw new Error('cannot read intake workbook: End of data reached'); }) as unknown as Parameters<typeof checkRecordedIntake>[1]);
+    expect(buildServiceWorkspaceProbe(ws, broken)).toMatchObject({ status: 'error', message: 'intake wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx cannot be read: cannot read intake workbook: End of data reached' });
+    expect(buildServiceWorkspaceProbe(ws, await checkRecordedIntake(ws, rows(0))).status).toBe('error');
+    const lines: string[] = [];
+    const probes = runServiceProbes(ws, () => {}, (sp, i) => lines.push(formatServiceProbeLine(sp, i)), NOW, Date.now, ok);
+    expect(probes[0]!.message).toContain('234 rows in');
+    // No read once apps exist (the import is done).
+    expect(await checkRecordedIntake(cleanWorkspace(), rows(1))).toBeNull();
+  });
+
+  it('the blank intake template alone is not a recorded intake', () => {
+    const ws = intakeOnly('  intake_folder: "wsp/inputs/service-intake"\n', INTAKE_TEMPLATE_FILE);
+    expect(buildServiceWorkspaceProbe(ws)).toMatchObject({ status: 'error', message: expect.stringContaining('no intake recorded') });
+  });
+
+  it('a single workbook in intake_folder counts as the recorded intake; Office lock files do not', () => {
+    const ws = intakeOnly('  intake_folder: "wsp/inputs/service-intake"\n');
+    writeFileSync(join(ws, 'wsp', 'inputs', 'service-intake', '~$Application-Portfolio-Demo.xlsx'), 'lock');
+    expect(buildServiceWorkspaceProbe(ws)).toMatchObject({ status: 'info', message: expect.stringContaining('intake recorded (wsp/inputs/service-intake/Application-Portfolio-Demo.xlsx)') });
+  });
+
+  it('error stays for a broken state: recorded intake missing, no intake at all, apps without scaffold signals', () => {
+    const gone = intakeOnly('  intake: "wsp/inputs/service-intake/gone.xlsx"\n');
+    expect(buildServiceWorkspaceProbe(gone)).toMatchObject({ status: 'error', message: 'intake wsp/inputs/service-intake/gone.xlsx not found; no service apps under apps/ (copy the workbook back, then run swao service init)' });
+    const none = intakeOnly('  intake_folder: "wsp/inputs/service-intake"\n', '');
+    expect(buildServiceWorkspaceProbe(none).status).toBe('error');
+    expect(buildServiceWorkspaceProbe(none).message).toContain('no intake recorded');
+    const ws = cleanWorkspace();
+    rmSync(join(ws, 'wsp', 'signals', 'scaffold-signals.json'));
+    expect(buildServiceWorkspaceProbe(ws).errors).toContain('wsp/signals/scaffold-signals.json missing (run swao service init)');
+  });
+
+  it('the TUI wording names the TUI path instead of the CLI command', () => {
+    expect(tuiRemedyText('no service apps yet (run swao service init)')).toBe('no service apps yet (start Run Assessment, Service Portfolio Assessment (it imports the intake first))');
+    expect(tuiRemedyText('wsp/signals/scaffold-signals.json missing (run swao service init)')).not.toContain('swao service');
+    expect(tuiRemedyText('Research stub stale (> 30 days) for a - run swao service research --refresh')).toBe('Research stub stale (> 30 days) for a - run Run Assessment, Service Portfolio Assessment again (it refreshes stale research)');
+    expect(tuiRemedyText('scaffold-signals.json unreadable; re-run swao service init')).not.toContain('swao service');
+    expect(tuiRemedyText(SERVICE_INTAKE_MISSING)).toContain('(Setup, Service Portfolio Assessment, Intake Input)');
+    expect(tuiRemedyText('7 service app(s); scaffold signals valid')).toBe('7 service app(s); scaffold signals valid');
   });
 });
 
@@ -261,7 +338,9 @@ describe('framework-controls probe (#3133)', () => {
     mkdirSync(dir, { recursive: true });
     const bundled = apmFrameworkDir()!.dir;
     writeFileSync(join(dir, 'framework-meta.yaml'), readFileSync(join(bundled, 'framework-meta.yaml')));
-    writeFileSync(join(dir, 'controls.yaml'), dump({ controls }));
+    // #4286: a workspace framework folder resolves only with regime_meta in controls.yaml (as in a full copy).
+    const meta = (load(readFileSync(join(bundled, 'controls.yaml'), 'utf-8')) as { regime_meta: unknown }).regime_meta;
+    writeFileSync(join(dir, 'controls.yaml'), dump({ regime_meta: meta, controls }));
   };
   const ctl = (id: string) => ({ id, title: `Control ${id}`, evidence_basis: [{ apm_export: 'x' }] });
   const DOMAINS = ['STR', 'VND', 'TCH', 'SEC', 'DAT', 'SOV', 'BIZ', 'HW', 'INT', 'MIG', 'REG'];

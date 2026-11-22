@@ -356,3 +356,26 @@ describe.skipIf(!existsSync(STANDALONE_DIR))('A9 -- swao/community-frameworks/ m
     expect(found).toEqual([...standaloneDirs].sort());
   });
 });
+
+// ---------------------------------------------------------------------------
+// #4355: a control count in a framework name matches the catalogue
+// ---------------------------------------------------------------------------
+
+describe('#4355: "(N controls)" in a framework name equals the controls.yaml length', () => {
+  for (const dir of frameworkDirs) {
+    it(`community-framework/${dir}`, () => {
+      const ctl = load(readFileSync(join(FRAMEWORKS_DIR, dir, 'controls.yaml'), 'utf-8')) as Record<string, unknown>;
+      const count = Array.isArray(ctl['controls']) ? (ctl['controls'] as unknown[]).length : 0;
+      const names: Array<[string, unknown]> = [['controls.yaml regime_meta.name', (ctl['regime_meta'] as Record<string, unknown> | undefined)?.['name']]];
+      const metaFile = join(FRAMEWORKS_DIR, dir, 'framework-meta.yaml');
+      if (existsSync(metaFile)) {
+        const meta = load(readFileSync(metaFile, 'utf-8')) as Record<string, unknown> | null;
+        names.push(['framework-meta.yaml framework.name', (meta?.['framework'] as Record<string, unknown> | undefined)?.['name']]);
+      }
+      for (const [where, name] of names) {
+        const m = typeof name === 'string' ? /\((\d+) controls\)/.exec(name) : null;
+        if (m) expect(Number(m[1]), `${dir} ${where}`).toBe(count);
+      }
+    });
+  }
+});

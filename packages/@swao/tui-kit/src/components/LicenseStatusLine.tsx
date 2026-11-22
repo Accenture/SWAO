@@ -14,6 +14,7 @@
 // ================================================================
 
 import { Box, Text } from 'ink';
+import { TOKENS, tone, type Token } from '../theme.js';
 
 /**
  * Local view-model of the licence fields this presentational component reads
@@ -52,7 +53,7 @@ export type LicenseColorState = 'gray' | 'green' | 'amber' | 'red';
 
 export interface LicenseStatusColor {
   state: LicenseColorState;
-  /** Ink colour string (or undefined for default). */
+  /** Ink colour of the state's token (section 15.3; undefined for the terminal default). */
   inkColor?: string;
   /** Whether to also render with dimColor. */
   dim: boolean;
@@ -69,6 +70,9 @@ function daysUntilIso(iso: string | undefined): number | null {
   return Math.floor((target - today) / 86_400_000);
 }
 
+/** Token of a licence colour state (Design 126 section 15.3): valid ok, close warning, expired error, Community muted. */
+const LICENSE_TOKEN: Record<LicenseColorState, Token> = { gray: 'muted', green: 'ok', amber: 'warning', red: 'error' };
+
 export function licenseStatusColor(state: LicenseState): LicenseStatusColor {
   // Community -- no cap to warn about, always neutral gray.
   if (state.tier === 'community') {
@@ -79,15 +83,15 @@ export function licenseStatusColor(state: LicenseState): LicenseStatusColor {
 
   // Red: already expired, or within 3 days of expiry.
   if (daysLeft != null && daysLeft <= DAYS_RED) {
-    return { state: 'red', inkColor: 'red', dim: false };
+    return { state: 'red', inkColor: TOKENS.error.color, dim: false };
   }
 
   // Amber: within 14 days of expiry.
   if (daysLeft != null && daysLeft <= DAYS_AMBER) {
-    return { state: 'amber', inkColor: 'yellow', dim: false };
+    return { state: 'amber', inkColor: TOKENS.warning.color, dim: false };
   }
 
-  return { state: 'green', inkColor: 'green', dim: false };
+  return { state: 'green', inkColor: TOKENS.ok.color, dim: false };
 }
 
 /**
@@ -121,6 +125,8 @@ interface LicenseStatusLineProps {
   version?: string;
 }
 
+// #4248 (Design 126 mockup M-01, A-28): the parts are joined with commas; no
+// vertical bar and no spaced double hyphen.
 export function LicenseStatusLine({ state, version }: LicenseStatusLineProps) {
   const color = licenseStatusColor(state);
   const vSuffix = version ? ` v${version}` : '';
@@ -136,9 +142,9 @@ export function LicenseStatusLine({ state, version }: LicenseStatusLineProps) {
     const expired = formatExpiry(state);
     return (
       <Box>
-        <Text color={color.inkColor} dimColor={color.dim}>
-          {tierLabel}  --  Apache 2.0  |  {state.assessmentCount} assessments run since {state.firstRun}
-          {expired && expired.startsWith('previous') ? `  |  ${expired}` : ''}
+        <Text {...tone(LICENSE_TOKEN[color.state])}>
+          {tierLabel}, Apache 2.0, {state.assessmentCount} assessments run since {state.firstRun}
+          {expired && expired.startsWith('previous') ? `, ${expired}` : ''}
         </Text>
       </Box>
     );
@@ -149,8 +155,8 @@ export function LicenseStatusLine({ state, version }: LicenseStatusLineProps) {
   const expiry = formatExpiry(state);
   return (
     <Box>
-      <Text color={color.inkColor} bold={color.state === 'red'}>
-        {tierLabel}  |  {budget}{expiry ? `  |  ${expiry}` : ''}
+      <Text {...tone(LICENSE_TOKEN[color.state], { bold: color.state === 'red' })}>
+        {tierLabel}, {budget}{expiry ? `, ${expiry}` : ''}
       </Text>
     </Box>
   );

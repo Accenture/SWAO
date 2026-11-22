@@ -598,7 +598,8 @@ controls:
       securely in accordance with relevant legislation.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     references:
       - "NCA CCC-2:2024 CSP control 2-11-P-1"
       - "https://cdn.nca.gov.sa/api/files/public/upload/6d5408a3-d8e6-4e96-963b-2c7198e5b7c2_CCC-2-2024-EN-.pdf"

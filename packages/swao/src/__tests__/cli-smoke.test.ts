@@ -97,6 +97,10 @@ describe('CLI smoke -- community binary (#0670 Phase 1)', () => {
     const { stdout, status } = run(['--version']);
     expect(status).toBe(0);
     expect(stdout).toMatch(/SWAO.*v\d+\.\d+\.\d+/);
+    // #4430 (6315b794): a release or edition binary prints the plain version; the
+    // build commit and date show only in the developer binary.
+    expect(stdout).toMatch(/v\d+\.\d+\.\d+ \(Community\)/);
+    expect(stdout).not.toMatch(/\([0-9a-f]{8}(-dirty)?, /);
   });
 
   it.skipIf(!hasBinary)('--help exits 0 and contains "assess"', () => {

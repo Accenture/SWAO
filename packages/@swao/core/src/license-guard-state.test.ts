@@ -50,7 +50,8 @@ beforeEach(() => {
   _paths.licensePath = join(dir, 'licence', 'licence.json');
   _paths.legacyLicencePath = join(dir, 'nonexistent-legacy.json');
   writeFileSync(_paths.statePath, JSON.stringify(STATE, null, 2), 'utf-8');
-  _stateIo.sleep = () => undefined; // no real pauses in tests
+  // #3820: no sleep stub here; the tests on the real filesystem keep the real
+  // retry back-off, and the tests that inject rename failures stub it themselves.
   // Route the structured log into a scratch workspace, never a real one.
   setWorkspaceRoot(ws);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -68,8 +69,12 @@ afterEach(() => {
 
 describe('atomic licence state write (#3440)', () => {
   it('increments through a temp file + rename and leaves no temp file behind', () => {
+    // #3820: record a rename only once it succeeded. Under full-suite load on
+    // Windows a real scanner lock can fail the first attempt, which the retry
+    // path (writeFileAtomicSync) then repeats; counting attempts made this
+    // assertion see 2 renames for the one increment.
     const renames: Array<[string, string]> = [];
-    _stateIo.rename = (from, to) => { renames.push([from, to]); savedIo.rename(from, to); };
+    _stateIo.rename = (from, to) => { savedIo.rename(from, to); renames.push([from, to]); };
     LicenseGuard.load().incrementAssessmentCount();
     expect(count()).toBe(8);
     expect(renames).toHaveLength(1);
@@ -82,7 +87,7 @@ describe('atomic licence state write (#3440)', () => {
   it('creates a missing state file atomically too', () => {
     rmSync(_paths.statePath);
     const renames: string[] = [];
-    _stateIo.rename = (from, to) => { renames.push(to); savedIo.rename(from, to); };
+    _stateIo.rename = (from, to) => { savedIo.rename(from, to); renames.push(to); };
     LicenseGuard.load();
     expect(renames).toEqual([_paths.statePath]);
     expect(count()).toBe(0);
@@ -109,6 +114,7 @@ describe('atomic licence state write (#3440)', () => {
 
   it('gives up after a few attempts, removes the temp file, keeps the old count and throws', () => {
     _stateIo.isWindows = () => true;
+    _stateIo.sleep = () => undefined;
     let attempts = 0;
     _stateIo.rename = () => { attempts++; throw errno('EPERM'); };
     expect(() => LicenseGuard.load().incrementAssessmentCount()).toThrow(/EPERM/);

@@ -14,7 +14,7 @@
 // ================================================================
 
 // TU-MS-01: unselected row shows "[ ]" and no cursor indicator
-// TU-MS-02: cursor row shows "> " cursor indicator and "[x]" when also selected
+// TU-MS-02: cursor row shows the "❯ " cursor indicator (#4249: the one marker of SelectInput) and "[x]" when also selected
 // TU-MS-03: selected-but-not-focused row shows "[x]" without ">" indicator
 // TU-MS-04: cursor moves with arrow keys
 // TU-MS-05: Space key toggles selection state
@@ -31,6 +31,8 @@ import React from 'react';
 import { render } from 'ink-testing-library';
 import { MultiSelect } from '@swao/tui-kit';
 import type { MultiSelectOption } from '@swao/tui-kit';
+
+const MARKER = String.fromCodePoint(0x276f);
 
 const OPTIONS: MultiSelectOption[] = [
   { label: 'Alpha', value: 'alpha' },
@@ -85,7 +87,7 @@ describe('MultiSelect -- TU-MS-01: unselected not-focused row', () => {
 // TU-MS-02: cursor row
 // ---------------------------------------------------------------------------
 describe('MultiSelect -- TU-MS-02: cursor row has ">" indicator', () => {
-  it('shows "> " on the first row when cursor is at index 0', () => {
+  it('shows the cursor marker on the first row when cursor is at index 0', () => {
     const { lastFrame } = render(
       <MultiSelect
         label="Pick options"
@@ -98,8 +100,8 @@ describe('MultiSelect -- TU-MS-02: cursor row has ">" indicator', () => {
     const lines = frame.split('\n');
     const alphaLine = lines.find((l) => l.includes('Alpha'));
     expect(alphaLine).toBeDefined();
-    // The cursor row starts with "> " (within the indent)
-    expect(alphaLine).toContain('> ');
+    // The cursor row starts with the marker (within the indent)
+    expect(alphaLine).toContain(MARKER);
   });
 });
 
@@ -130,7 +132,7 @@ describe('MultiSelect -- TU-MS-03: selected-but-not-focused row shows [x]', () =
     expect(betaLine).not.toMatch(/^\s*>/);
   });
 
-  it('cursor row shows "[x]" AND ">" when cursor is on a selected option', () => {
+  it('cursor row shows "[x]" AND the marker when cursor is on a selected option', () => {
     // Pre-select 'alpha'; cursor starts at index 0 ('alpha'): cursor + selected.
     const { lastFrame } = render(
       <MultiSelect
@@ -145,7 +147,7 @@ describe('MultiSelect -- TU-MS-03: selected-but-not-focused row shows [x]', () =
     const alphaLine = lines.find((l) => l.includes('Alpha'));
     expect(alphaLine).toBeDefined();
     expect(alphaLine).toContain('[x]');
-    expect(alphaLine).toContain('> ');
+    expect(alphaLine).toContain(MARKER);
   });
 });
 
@@ -171,10 +173,10 @@ describe('MultiSelect -- TU-MS-04: cursor moves with arrow keys', () => {
     // After one down-arrow, cursor is on Beta (index 1)
     const betaLine = lines.find((l) => l.includes('Beta'));
     expect(betaLine).toBeDefined();
-    expect(betaLine).toContain('> ');
+    expect(betaLine).toContain(MARKER);
     // Alpha should no longer have the cursor
     const alphaLine = lines.find((l) => l.includes('Alpha'));
-    expect(alphaLine).not.toContain('> ');
+    expect(alphaLine).not.toContain(MARKER);
   });
 });
 
@@ -237,7 +239,7 @@ describe('MultiSelect header rows (#3380)', () => {
     const gerLine = lines.find((l) => l.includes('Germany'));
     expect(gerLine).not.toContain('['); // header: no checkbox
     const euDe = lines.find((l) => l.includes('eu-de'));
-    expect(euDe).toContain('> ');       // cursor started on the first selectable, not the header
+    expect(euDe).toContain(MARKER);       // cursor started on the first selectable, not the header
     expect(euDe).toContain('[ ]');
   });
 
@@ -247,8 +249,8 @@ describe('MultiSelect header rows (#3380)', () => {
     stdin.write('\x1B[B'); // down: eu-de -> eu-nl, skipping the Netherlands header
     await settle();
     const lines = (lastFrame() ?? '').split('\n');
-    expect(lines.find((l) => l.includes('eu-nl'))).toContain('> ');
-    expect(lines.find((l) => l.includes('Netherlands'))).not.toContain('> ');
+    expect(lines.find((l) => l.includes('eu-nl'))).toContain(MARKER);
+    expect(lines.find((l) => l.includes('Netherlands'))).not.toContain(MARKER);
   });
 
   it('A (toggle all) selects only non-header rows', async () => {
@@ -260,5 +262,61 @@ describe('MultiSelect header rows (#3380)', () => {
     stdin.write('\r');      // confirm
     await settle();
     expect(onConfirm).toHaveBeenCalledWith(['otc:eu-de', 'otc:eu-nl']);
+  });
+});
+
+// #4255 (Design 126 section 7.7): "Skip this step" as an action entry, the last row.
+describe('MultiSelect -- TU-MS-ACT: action entry (#4255)', () => {
+  const WITH_SKIP: MultiSelectOption[] = [...OPTIONS, { label: 'Skip this step', value: '__skip__', action: true }];
+  const DOWN = '\u001B[B';
+
+  it('renders the action entry without a checkbox, as the last row', async () => {
+    const { lastFrame } = render(<MultiSelect label="Pick" options={WITH_SKIP} onConfirm={vi.fn()} onAction={vi.fn()} />);
+    await settle();
+    const rows = (lastFrame() ?? '').split('\n').filter((l) => l.trim() !== '');
+    const skip = rows.find((l) => l.includes('Skip this step')) ?? '';
+    expect(skip).not.toContain('[');
+    expect(rows.indexOf(skip)).toBeGreaterThan(rows.findIndex((l) => l.includes('Gamma')));
+  });
+
+  it('Space and A never toggle it; Enter on it runs the action, not the confirmation', async () => {
+    const onConfirm = vi.fn();
+    const onAction = vi.fn();
+    const { stdin, lastFrame } = render(<MultiSelect label="Pick" options={WITH_SKIP} onConfirm={onConfirm} onAction={onAction} allowEmptyConfirm />);
+    await settle();
+    stdin.write('A'); // toggle all: the three options, not the action
+    await settle();
+    expect((lastFrame() ?? '').match(/\[x\]/g)).toHaveLength(3);
+    for (let i = 0; i < 3; i++) { stdin.write(DOWN); await settle(); }
+    expect((lastFrame() ?? '').split('\n').find((l) => l.includes(MARKER))).toContain('Skip this step');
+    stdin.write(' ');
+    await settle();
+    expect((lastFrame() ?? '').match(/\[x\]/g)).toHaveLength(3);
+    stdin.write('\r');
+    await settle();
+    expect(onAction).toHaveBeenCalledWith('__skip__');
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('Enter on a regular option still confirms the selection without the action value', async () => {
+    const onConfirm = vi.fn();
+    const { stdin } = render(<MultiSelect label="Pick" options={WITH_SKIP} onConfirm={onConfirm} onAction={vi.fn()} initialSelected={['beta', '__skip__']} />);
+    await settle();
+    stdin.write('\r');
+    await settle();
+    expect(onConfirm).toHaveBeenCalledWith(['beta']);
+  });
+
+  it('a filter never hides the action entry and does not count it', async () => {
+    const { stdin, lastFrame } = render(<MultiSelect label="Pick" options={WITH_SKIP} onConfirm={vi.fn()} onAction={vi.fn()} filter itemNoun="options" />);
+    await settle();
+    expect(lastFrame()).toContain('type to narrow 3 options'); // #4492: the empty filter field invites typing
+    stdin.write('g');
+    await settle();
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('1 of 3 options');
+    expect(frame).toContain('Gamma');
+    expect(frame).toContain('Skip this step');
+    expect(frame).not.toContain('Alpha');
   });
 });

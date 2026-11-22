@@ -25,6 +25,9 @@
 
 import type { TestCodeSetting } from './test-code.js';
 import type { ResolvedCodeHealthSetting } from './code-health-config.js';
+import type { BaselineControlDecisions } from './baseline-decisions.js';
+
+import type { SetupScope } from './setup-types.js';
 
 // ---------------------------------------------------------------------------
 // Vocabulary
@@ -37,7 +40,7 @@ export type AssessmentType =
   | 'audit'
   | 'landing-zone'
   | 'landing-zone-catalog'
-  | 'landing-zone-customer'
+  | 'landing-zone-live' // #3568, Design 120 section 13.1
   | 'hybrid'
   | 'llm'
   | 'service';
@@ -201,6 +204,25 @@ export interface PassContext {
    *  workspace). Injected by assess.ts; absent means the defaults (top 25,
    *  no allowlist, no external tool). Read by Pass 26. */
   codeHealth?: ResolvedCodeHealthSetting;
+  /** #3888 (Design 123 section 8.4): rule-engine decisions of the Client LZ
+   *  Policy Baseline controls, made by the host against the app's needs and
+   *  the selected LZ source. Read by Pass 11, which never sends a baseline
+   *  control to the LLM. Absent: every baseline control is UNKNOWN by rule. */
+  baselineDecisions?: BaselineControlDecisions;
+  /** #4284 (Design 125 section 5.7): the frameworks (regime ids) chosen for
+   *  this run (`swao assess --regimes`, the TUI framework step). Replaces
+   *  `assessment.regimes_active` of the app (then workspace) .swao.yml for
+   *  this run only; the file is not changed. Absent: the file selection. */
+  regimesActive?: string[];
+  /** #4481 (Design 012 section 5a): the LZ catalogue targets selected for
+   *  this run (the same targets the inline LZ catalogue fit assesses after the
+   *  passes; empty for --no-lz-fit and service runs). Pass 09 matches only
+   *  these. Absent or empty: no landing zone selected, the match is skipped. */
+  lzTargets?: Array<{ provider: string; region: string }>;
+  /** #4481: opt-in market scan over the bundled cloud provider list
+   *  (`swao assess --lz-market-scan`, the TUI Target LZ step). Off by default;
+   *  when on, Pass 09 also scores the bundled list, labelled lower confidence. */
+  lzMarketScan?: boolean;
 }
 
 export interface PassHeader {
@@ -326,6 +348,8 @@ export interface ProbeContribution {
   id: string;
   name: string;
   run: (ctx: WorkspaceContext) => Promise<{ ok: boolean | null; message: string }>;
+  /** #4190 (Design 125 section 6): the setup scopes this probe serves; absent = generic. */
+  applies_to?: readonly SetupScope[];
 }
 
 export interface AssessmentTypeContribution {

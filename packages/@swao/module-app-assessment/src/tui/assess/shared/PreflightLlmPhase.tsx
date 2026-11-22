@@ -19,10 +19,10 @@
 // All subprocess management stays in the parent screen's state machine.
 
 import { useState, useEffect, useRef } from 'react';
-import type { ComponentType } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, useInput } from 'ink';
 import { logPortfolio } from '@swao/core';
-import { GuidanceBox } from '@swao/tui-kit';
+import { DetailRow, PICKER_VISIBLE_COUNT, SelectInput, StatusRow, guidanceOwnsKey, useOptionGuidance, type KeyHint, type SelectOption } from '@swao/tui-kit';
+import { FlowFrame, type FlowFrameBase } from './flow-frame.js';
 import type { LocalConnectorInfo } from './types.js';
 import { buildPreflightRequest, type PreflightRequest } from './preflight-request.js';
 
@@ -44,18 +44,18 @@ export interface PreflightLlmPhaseProps {
   connector: LocalConnectorInfo;
   apiKey: string | undefined;
   app: string;
-  typeLabel: string;
   onPass: () => void;
   onBack: () => void;
   /** #3383: run the deterministic passes only (adds --skip-llm), offered when the
    *  gateway check does not pass. Omit to hide the option (e.g. LZ-only runs). */
   onRunWithoutLlm?: () => void;
-  Header: ComponentType<{ subtitle?: string }>;
+  /** #4256: the flow frame of the screen (header, licence line, step bar on Run). */
+  frame: FlowFrameBase;
 }
 
 // #2328: LLM preflight phase -- pings the active gateway connector before starting the run.
 // Shared by AppAssessmentScreen and LzAssessmentScreen (#2371).
-export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, onBack, onRunWithoutLlm, Header }: PreflightLlmPhaseProps): JSX.Element {
+export function PreflightLlmPhase({ connector, apiKey, app, onPass, onBack, onRunWithoutLlm, frame }: PreflightLlmPhaseProps): JSX.Element {
   const guidanceOpenRef = useRef(false);
   const [results, setResults] = useState<PreflightResult[]>([
     { connectorId: connector.id, status: 'running', message: 'checking...' },
@@ -69,7 +69,7 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
     void (async () => {
       if (!apiKey) {
         if (!cancelled) {
-          setResults([{ connectorId: connector.id, status: 'warn', message: 'no credential stored -- skipping ping' }]);
+          setResults([{ connectorId: connector.id, status: 'warn', message: 'no credential stored, not checked' }]);
           setDone(true);
         }
         return;
@@ -124,54 +124,61 @@ export function PreflightLlmPhase({ connector, apiKey, app, typeLabel, onPass, o
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useInput((input, key) => {
-    if (guidanceOpenRef.current) return;
+  // #4256 (Design 126 sections 4.9 and 7.10): Esc returns to the credentials;
+  // after a check that did not pass, the choices are list entries (was the
+  // letter W and the hand-written "Press Enter or Esc" lines).
+  const needsChoice = done && results.some(r => r.status === 'warn' || r.status === 'fail');
+  useInput((_input, key) => {
+    // #4230: an open guidance box owns Esc, PgUp and PgDn only.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
     if (key.escape) onBack();
-    if (done && key.return) onPass();
-    // #3383: W starts the run without the LLM (deterministic passes only).
-    if (done && onRunWithoutLlm && (input === 'w' || input === 'W') && results.some(r => r.status === 'warn' || r.status === 'fail')) onRunWithoutLlm();
+    if (done && key.return && !needsChoice) onPass();
   });
 
+  const choices: SelectOption[] = [
+    { label: 'Start the run anyway', value: 'start', guidance: { title: 'Start the run anyway', what: 'The passes that need the LLM (synthesis, compliance, blocks) may fail during the run.' } },
+    ...(onRunWithoutLlm ? [{ label: 'Run without the LLM', value: 'no-llm', detail: 'deterministic passes only', guidance: { title: 'Run without the LLM', what: 'Runs the deterministic passes only; context, compliance and block assessments are not produced.', cli: 'swao assess --app <id> --skip-llm' } }] : []),
+    { label: 'Back to the credentials', value: 'back', guidance: { title: 'Back to the credentials', what: 'Check the API key and the connector of this app, then start again.' } },
+  ];
+  const choiceGuidance = useOptionGuidance(choices[0]!.guidance!);
+  const keys: readonly KeyHint[] = needsChoice ? [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'confirm' }, { key: 'Esc', verb: 'back' }] : [{ key: 'Esc', verb: 'back' }];
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={typeLabel} />
-      <Text>App: <Text color="cyanBright">{app}</Text></Text>
-      <Box marginTop={1} flexDirection="column">
-        <Text bold>LLM connectivity check</Text>
-        {results.map(r => {
-          const col = r.status === 'ok' ? 'green' : r.status === 'warn' ? 'yellow' : r.status === 'fail' ? 'red' : 'gray';
-          const icon = r.status === 'ok' ? '[ok]' : r.status === 'warn' ? '[warn]' : r.status === 'fail' ? '[fail]' : '[..]';
-          return (
-            <Text key={r.connectorId}>
-              <Text color={col}>{icon}</Text>{'  '}{r.connectorId}{'  '}<Text dimColor>{r.message}</Text>
-            </Text>
-          );
-        })}
-      </Box>
-      {done && results.some(r => r.status === 'warn' || r.status === 'fail') && (
-        <Box marginTop={1} flexDirection="column">
-          <Text color="yellow">One or more connectors could not be verified.</Text>
-          <Text dimColor>Press <Text color="cyanBright">Enter</Text> to start anyway, or <Text color="cyanBright">Esc</Text> to go back and fix credentials.</Text>
-          {onRunWithoutLlm && (
-            <Text dimColor>Press <Text color="cyanBright">W</Text> to run without the LLM (deterministic passes only; no CTX, compliance or blocks).</Text>
-          )}
-        </Box>
-      )}
-      {!done && (
+    <FlowFrame
+      {...frame}
+      onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; frame.onGuidanceOpenChange(open); }}
+      title="LLM connectivity check"
+      subtitle="A short test prompt to the LLM gateway before the run starts."
+      keys={keys}
+      guidance={{ entry: needsChoice ? choiceGuidance.entry : {
+        title: 'LLM connectivity check',
+        what: 'Sends a minimal test prompt to the LLM gateway connector before the run. A warn or fail result means the synthesis, compliance and block assessment passes may fail during the run.',
+        sections: [{ label: 'Timeout', text: '20 seconds per connector' }, { label: 'Credential', text: 'read from the SWAO vault with the credential key of the connector' }],
+      } }}
+    >
+      <DetailRow label="App" value={app} />
+      {results.map(r => (
+        r.status === 'running'
+          ? <StatusRow key={r.connectorId} level="waiting" label={r.connectorId} summary="checking" />
+          : <StatusRow key={r.connectorId} level={r.status} label={r.connectorId} summary={r.message} />
+      ))}
+      {needsChoice && (
         <Box marginTop={1}>
-          <Text dimColor>Pinging connector...</Text>
+          <SelectInput
+            label="The connector could not be verified"
+            options={choices}
+            visibleCount={PICKER_VISIBLE_COUNT}
+            showKeyHints={false}
+            onCursorChange={choiceGuidance.onCursorChange}
+            onSelect={(v) => {
+              if (v === 'start') onPass();
+              else if (v === 'no-llm') onRunWithoutLlm?.();
+              else onBack();
+            }}
+            active={frame.dialog === null}
+          />
         </Box>
       )}
-      <GuidanceBox
-        title="LLM connectivity check"
-        what="Sends a minimal test prompt to verify the LLM gateway connector is reachable before the assessment run. A warn or fail result means the synthesis, compliance, and block-assessment passes may fail mid-run."
-        details={[
-          { label: 'Timeout', value: '20 seconds per connector' },
-          { label: 'Credential', value: 'Read from the SWAO vault using the connector credential key' },
-        ]}
-        affordances={['Ctrl+G -- close guidance']}
-        onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-      />
-    </Box>
+    </FlowFrame>
   );
 }

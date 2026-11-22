@@ -83,7 +83,8 @@ export interface LlmProviderConfig {
    *  Set to '' to disable path routing (body model field only). */
   modelPrefix?: string;
   /** Optional cost config for on-prem / third-party billing (Design 082 §4.3, D-05).
-   *  When absent, cost_usd is always 0. */
+   *  When absent, cost_usd is 0 (#4372: anthropic and openai fall back to their
+   *  code price tables; a model in neither is reported unpriced, cost_source none). */
   costPerToken?: {
     inputPerMillion: number;
     outputPerMillion: number;
@@ -218,6 +219,8 @@ export function createLlmProvider(
         resolvedConfig?.max_tokens,
         undefined,
         _appId,
+        // #4372: .swao.yml cost_per_token wins over the code price table.
+        resolvedConfig?.costPerToken,
       ));
     case 'openai':
       return withLimit(new OpenAiLlmProvider(
@@ -226,6 +229,8 @@ export function createLlmProvider(
         resolvedConfig?.temperature,
         resolvedConfig?.seed,
         _appId,
+        // #4372: .swao.yml cost_per_token wins over the code price table.
+        resolvedConfig?.costPerToken,
       ));
     case 'open-llm-provider':
       return withLimit(new OpenLlmProvider(

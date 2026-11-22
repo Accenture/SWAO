@@ -108,6 +108,19 @@ SWAO is designed for sovereign and regulated environments. Key security properti
 - **Binary integrity.** Release binaries are distributed with SHA256 checksums in
   `dist-bin/SHA256SUMS` and signed GitHub Releases.
 
+### Release signing keys
+
+| What is signed | Key fingerprint |
+|---|---|
+| Release tags and source sync commits on `Accenture/SWAO` (from the first release after v1.6.1) | `A27D 53EA B935 459A 55AD  6EB1 C8D7 3751 23E1 5D82` (ed25519, account `MyLaserEyes`) |
+| Checksum signatures `SHA256SUMS*.asc` and per-binary `.asc` files | `32CD E2EE 2459 99BE 433A  1445 A925 AF1B 621A 05EB` (rsa4096) |
+
+GitHub shows the tag and commit signatures as Verified; the public key of the first
+row is listed at `https://github.com/MyLaserEyes.gpg`. Tags up to v1.6.1 were signed
+with the checksum key and show Unverified on GitHub; their checksum files remain the
+integrity anchor. Verify a binary with `gpg --verify SHA256SUMS.asc SHA256SUMS` and
+then `sha256sum -c SHA256SUMS --ignore-missing`.
+
 ---
 
 ## Security updates

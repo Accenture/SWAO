@@ -13,8 +13,13 @@
 //
 // ================================================================
 
-import { Box, Text, useInput } from 'ink';
-import { Header } from '../components/Header.js';
+// #4257 (TUI-13, Design 126 sections 3 and 4.8): on ScreenLayout without a
+// guidance box (#2347: the help is the reference); sections as level 2
+// titles, entries as DetailRows that wrap under their label.
+
+import { Text, useInput } from 'ink';
+import { ScreenLayout, StepTitle, DetailRow, type KeyHint } from '@swao/tui-kit';
+import { useScreenHeader } from '../components/screen-header.js';
 import { SWAO_CONTACTS_INLINE, SWAO_LANDING_URL } from '../../branding.js';
 
 interface HelpScreenProps {
@@ -28,10 +33,10 @@ const MENU_ITEMS = [
   { key: '4',      label: 'Generate Report',       when: 'Text / PDF stakeholder reports from latest run' },
   { key: '5',      label: 'Publish HTML',          when: 'HTML report to publications/ folder (Engagement Hub)' },
   { key: '6',      label: 'Export BI',             when: 'Star schema / PowerBI / Tableau bundle' },
-  { key: '7',      label: 'Portfolio Operations  [Enterprise]',  when: 'Multi-app aggregate operations' },
-  { key: '8',      label: 'Generate TF Modules   [Enterprise]',  when: 'Terraform module stubs for sovereign LZ migration (coming soon)' },
+  { key: '7',      label: 'Portfolio Operations [Enterprise]',  when: 'Multi-app aggregate operations' },
+  { key: '8',      label: 'Generate TF Modules [Enterprise]',  when: 'Terraform module stubs for sovereign LZ migration (coming soon)' },
   { key: '9',      label: 'Tools',                 when: 'Licence / Credentials / Ingest / Help' },
-  { key: '  2',    label: 'Credentials',           when: 'Tools (9) -> Credentials (2) -- API keys / VCS tokens' },
+  { key: '9 2',    label: 'Credentials',           when: 'Tools (9), then Credentials (2): API keys and VCS tokens' },
   { key: '0',      label: 'Exit',                  when: 'Close SWAO' },
 ];
 
@@ -44,54 +49,35 @@ const TROUBLESHOOTING = [
   { problem: 'Reports blank / stub data',    fix: 'Confirm API key is set, then run assessment again.' },
   { problem: '"VCS clone failed"',           fix: 'Check repo URL. Set GitHub PAT via Tools (9) -> Credentials.' },
   { problem: 'Pass 04 shows zero imports',   fix: 'Put files in apps/<app-id>/ingestion/ (.md .txt .yaml .json).' },
-  { problem: 'Ingestion exits with code 1',  fix: 'Known issue #1525. Run swao assess directly as workaround.' },
+  { problem: 'Ingestion exits with code 1',  fix: 'Known issue #1525. Start the assessment directly from Run Assessment (3).' },
 ];
 
+const HELP_KEYS: readonly KeyHint[] = [{ key: 'Enter', verb: 'back' }, { key: 'Esc', verb: 'back' }];
+
 export function HelpScreen({ onBack }: HelpScreenProps) {
+  const header = useScreenHeader('SWAO Help');
   useInput((_input, key) => {
     if (key.escape || key.return) onBack();
   });
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="SWAO Help" />
-
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold color="cyanBright">Main menu reference</Text>
-        <Text dimColor>  Quick start: 1 -- Workspace Setup -- 3 -- Run Assessment -- 5 -- Publish HTML</Text>
-        <Box flexDirection="column">
-          {MENU_ITEMS.map(item => (
-            <Box key={item.key}>
-              <Text color="cyanBright">  {item.key}  </Text>
-              <Text bold>{item.label.padEnd(18)}</Text>
-              <Text dimColor>  {item.when}</Text>
-            </Box>
-          ))}
-        </Box>
-      </Box>
-
-      <Box flexDirection="column" marginTop={1}>
-        <Text bold color="cyanBright">Troubleshooting</Text>
-        {TROUBLESHOOTING.map((t, i) => (
-          <Box key={i} flexDirection="row">
-            <Box width={36} flexShrink={0}>
-              <Text color="yellow">  {t.problem}</Text>
-            </Box>
-            <Box flexGrow={1}>
-              <Text dimColor wrap="wrap">  {t.fix}</Text>
-            </Box>
-          </Box>
-        ))}
-      </Box>
-
-      <Box flexDirection="column" marginTop={1}>
-        <Text>  SWAO landing page:  <Text color="cyanBright">{SWAO_LANDING_URL}</Text></Text>
-        <Text>  Contacts:           <Text color="cyanBright">{SWAO_CONTACTS_INLINE}</Text></Text>
-      </Box>
-
-      <Box marginTop={1}>
-        <Text dimColor>Press Escape or Enter to return to menu...</Text>
-      </Box>
-    </Box>
+    <ScreenLayout
+      header={header}
+      title={{ title: 'Main menu reference', subtitle: 'Quick start: 1 Workspace Setup, then 3 Run Assessment, then 5 Publish HTML.' }}
+      keys={HELP_KEYS}
+      guidance={null}
+    >
+      {MENU_ITEMS.map((item) => (
+        <DetailRow key={item.key} label={`${item.key.padEnd(4)}${item.label}`} value={item.when} labelWidth={38} />
+      ))}
+      <Text> </Text>
+      <StepTitle title="Troubleshooting" level={2} />
+      {TROUBLESHOOTING.map((t) => (
+        <DetailRow key={t.problem} label={t.problem} value={t.fix} labelWidth={32} />
+      ))}
+      <Text> </Text>
+      <DetailRow label="Landing page" value={SWAO_LANDING_URL} labelWidth={16} />
+      <DetailRow label="Contacts" value={SWAO_CONTACTS_INLINE} labelWidth={16} />
+    </ScreenLayout>
   );
 }

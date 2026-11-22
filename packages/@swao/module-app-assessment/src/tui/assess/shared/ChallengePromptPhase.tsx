@@ -14,11 +14,11 @@
 // ================================================================
 
 import { useRef } from 'react';
-import type { ComponentType } from 'react';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { Box, Text, useInput } from 'ink';
-import { GuidanceBox } from '@swao/tui-kit';
+import { useInput } from 'ink';
+import { ConfirmPanel, guidanceOwnsKey, type KeyHint } from '@swao/tui-kit';
+import { FlowFrame, type FlowFrameBase } from './flow-frame.js';
 import { challengeOfferForRun, type ChallengeOffer } from '@swao/core';
 
 /**
@@ -52,62 +52,65 @@ export interface ChallengePromptPhaseProps {
   isEnterprise: boolean;
   onConfirm: () => void;
   onBack: () => void;
-  Header: ComponentType<{ subtitle?: string }>;
+  /** #4256: the flow frame of the screen (header, licence line, step bar on Done). */
+  frame: FlowFrameBase;
   /** #3427: freshness note and exact command for the just-finished run. */
   offer?: ChallengeOffer;
 }
 
+/** #4256: Enter starts the challenge, Esc returns to the main menu. */
+export const CHALLENGE_PROMPT_KEYS: readonly KeyHint[] = [{ key: 'Enter', verb: 'confirm' }, { key: 'Esc', verb: 'back' }];
+
 // #0988 Design 074 Step 8: post-assessment challenge prompt (#1109: also for LZ).
 // Shared by AppAssessmentScreen and LzAssessmentScreen (#2371).
-export function ChallengePromptPhase({ app, type, isEnterprise: _isEnterprise, onConfirm, onBack, Header, offer }: ChallengePromptPhaseProps): JSX.Element {
+// #4256 (Design 126 sections 4.4 and 4.7): a ConfirmPanel in the flow frame;
+// the stale challenge note is the risk line, the CLI equivalent is in the
+// guidance only (section 8), no hand-written key lines.
+export function ChallengePromptPhase({ app, type, isEnterprise: _isEnterprise, onConfirm, onBack, frame, offer }: ChallengePromptPhaseProps): JSX.Element {
   const guidanceOpenRef = useRef(false);
   const isLzPrompt = type === 'landing-zone';
+  const name = isLzPrompt ? 'LZ Sovereignty Challenge' : 'Stakeholder Challenge';
 
   useInput((_input, key) => {
-    if (guidanceOpenRef.current) return;
-    if (key.return) onConfirm();
+    // #4230: an open guidance box owns Esc, PgUp and PgDn only; Enter belongs to the ConfirmPanel.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
     if (key.escape) onBack();
   });
 
+  const rows = isLzPrompt
+    ? [
+      { label: 'App', value: app },
+      { label: 'Roles', value: 'Sovereignty and GRC reviewer, LZ architect, procurement and vendor, CISO and security' },
+      { label: 'Output', value: `apps/${app}/wsp/challenge-lz/`, path: true },
+    ]
+    : [
+      { label: 'App', value: app },
+      { label: 'Roles', value: 'Application architect, business owner, GRC compliance officer, FinOps lead, programme manager' },
+      { label: 'Output', value: `apps/${app}/wsp/challenge-app/`, path: true },
+    ];
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={isLzPrompt ? 'LZ Sovereignty Challenge' : 'Stakeholder Challenge'} />
-      <Text>App: <Text color="cyanBright">{app}</Text></Text>
-      <Box marginTop={1} flexDirection="column">
-        <Text bold>{isLzPrompt
-          ? 'Assessment complete. Run an LZ Sovereignty Challenge?'
-          : 'Assessment complete. Run a Stakeholder Challenge?'}
-        </Text>
-        {isLzPrompt ? (
-          <>
-            <Text dimColor>Four AI agent personas challenge the sovereignty verdicts, CSP selection, and contractual basis.</Text>
-            <Text dimColor>Results are saved to wsp/challenge-lz/ (separate from App challenge output).</Text>
-          </>
-        ) : (
-          <>
-            <Text dimColor>A Stakeholder Challenge runs AI-powered agent reviews of the assessment findings.</Text>
-            <Text dimColor>Results are saved to wsp/challenge-app/ alongside the HTML report.</Text>
-          </>
-        )}
-        {/* #3427: say when the challenge on disk belongs to another run; name the CLI equivalent. */}
-        {offer?.note ? <Box marginTop={1}><Text color="yellow">{offer.note}</Text></Box> : null}
-        {offer ? <Text dimColor>CLI equivalent: {offer.command}</Text> : null}
-      </Box>
-      <Box marginTop={2} flexDirection="column">
-        <Text>  <Text color="green" bold>Enter</Text>  Run {isLzPrompt ? 'LZ Sovereignty' : 'Stakeholder'} Challenge</Text>
-        <Text>  <Text color="yellow" bold>Esc</Text>    Skip and return to main menu</Text>
-      </Box>
-      <GuidanceBox
-        title={isLzPrompt ? 'LZ Sovereignty Challenge' : 'Stakeholder Challenge'}
-        what={isLzPrompt
-          ? 'Four AI agent personas challenge the sovereignty verdicts and CSP selection based on your WSP: Sovereignty/GRC Reviewer, LZ Architect, Procurement/Vendor, and CISO/Security.'
-          : 'Five AI agent personas challenge the assessment findings from their stakeholder perspective: Application Architect, Business Owner, GRC Compliance Officer, FinOps Lead, and Programme Manager.'}
-        details={isLzPrompt
-          ? [{ label: 'Output', value: 'apps/<app>/wsp/challenge-lz/<ts>/LZCA_<agent>.yaml' }]
-          : [{ label: 'Output', value: 'apps/<app>/wsp/challenge-app/<ts>/AA_<agent>.yaml' }]}
-        affordances={['Enter -- run challenge  |  Esc -- skip']}
-        onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+    <FlowFrame
+      {...frame}
+      onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; frame.onGuidanceOpenChange(open); }}
+      keys={CHALLENGE_PROMPT_KEYS}
+      guidance={{ entry: {
+        title: name,
+        what: isLzPrompt
+          ? 'Four AI agent roles challenge the sovereignty verdicts, the CSP selection and the contractual basis of this run. The results are saved next to the HTML report, separate from the application challenge.'
+          : 'Five AI agent roles challenge the assessment findings from their stakeholder view. The results are saved next to the HTML report.',
+        ...(offer?.note ? { sections: [{ label: 'Note', text: offer.note }] } : {}),
+        ...(offer ? { cli: offer.command } : {}),
+      } }}
+    >
+      <ConfirmPanel
+        title={`Run a ${name}?`}
+        subtitle="The assessment is complete."
+        rows={rows}
+        {...(offer?.note ? { risk: offer.note } : {})}
+        onConfirm={onConfirm}
+        active={frame.dialog === null}
       />
-    </Box>
+    </FlowFrame>
   );
 }

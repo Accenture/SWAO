@@ -17,7 +17,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { discoverCommunityRegimes, filterRegimesAgainstInstalled } from './AssessScreen.js';
+import { discoverCommunityRegimes, filterRegimesAgainstInstalled } from './assess-helpers.js';
 
 // #0621: the assess framework picker is folder-driven. discoverCommunityRegimes
 // is the unit-testable core of the empty-state detection: it returns [] when no

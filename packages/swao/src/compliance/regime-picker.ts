@@ -13,8 +13,9 @@
 //
 // ================================================================
 
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { load, dump } from 'js-yaml';
+import { existsSync, readFileSync } from 'fs';
+import { load } from 'js-yaml';
+import { patchSwaoYmlFileOrThrow } from '@swao/core';
 import { loadRegimeRegistry } from './registry.js';
 import { resolveCatalogsDir } from '../commands/init.js';
 import type {
@@ -110,18 +111,16 @@ export function writeRegimesActive(swaoYmlPath: string, regimes: string[]): void
   for (const entry of want) {
     if (!merged.some((e) => e?.id === entry.id)) merged.push(entry);
   }
-  providers.regime_catalogs = merged;
-  root.providers = providers;
 
-  const assessment = (root.assessment as Record<string, unknown> | undefined) ?? {};
-  assessment.regimes_active = [...regimes];
-  root.assessment = assessment;
-
-  writeFileSync(
-    swaoYmlPath,
-    dump(root, { lineWidth: 120, noRefs: true }),
-    'utf-8',
-  );
+  // #4283: minimal patch (Design 125 section 7): only the catalogue list (when
+  // an entry is added) and assessment.regimes_active change; comments, key
+  // order and the other keys of the file stay.
+  patchSwaoYmlFileOrThrow(swaoYmlPath, [
+    ...(merged.length !== existingCatalogs.length || !Array.isArray(providers.regime_catalogs)
+      ? [{ path: ['providers', 'regime_catalogs'], value: merged }]
+      : []),
+    { path: ['assessment', 'regimes_active'], value: [...regimes] },
+  ], { createIfMissing: true });
 }
 
 /**

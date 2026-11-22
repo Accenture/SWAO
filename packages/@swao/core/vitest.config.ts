@@ -22,6 +22,6 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     // Set ephemeral Ed25519 keypair before any test module loads license-guard.ts
     // so buildLicenseKey / verifyKey round-trips work without the real signing secret.
-    setupFiles: ['src/__tests__/setup.ts'],
+    setupFiles: ['src/__tests__/sandbox-profile.ts', 'src/__tests__/setup.ts'],
   },
 });

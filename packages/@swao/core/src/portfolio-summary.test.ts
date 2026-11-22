@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect } from 'vitest';
-import { PortfolioAppSchema, PortfolioSummarySchema } from './portfolio-summary.js';
+import { PortfolioAppSchema, PortfolioSummarySchema, LandingZoneLiveSummarySchema } from './portfolio-summary.js';
 
 // A summary written before the engagement-hub fields existed (#3402). It must
 // keep parsing unchanged so older workspaces still load.
@@ -106,5 +106,59 @@ describe('PortfolioAppSchema -- section 6.2 additive fields (#3402)', () => {
       apps: [PRE_HUB_APP],
     });
     expect(r.success).toBe(true);
+  });
+});
+
+describe('PortfolioSummarySchema -- landing_zones[] block (#3569, Design 120 section 11.3)', () => {
+  const BASE = {
+    generated_at: '2026-11-02T00-00-00',
+    framework: { id: 'apm', version: '1.0', status: 'active' },
+    domain_weights: { security: 1 },
+    app_count: 1,
+    portfolio_risk_score: 42,
+    time_distribution: { Tolerate: 0, Invest: 0, Migrate: 1, 'Migrate-Critical': 0, Eliminate: 0 },
+    apps: [PRE_HUB_APP],
+  };
+  const LZ = {
+    lz_id: 'otc-test',
+    provider: 'otc',
+    scopes: [
+      { id: 'platform', kind: 'platform', observed_at: '2026-11-02T10:00:00Z', read_only: 'refused' },
+      { id: 'app-payments', kind: 'application', observed_at: '2026-10-20T10:00:00Z', read_only: 'verified' },
+    ],
+    regions_enabled: 2,
+    services_enabled: 41,
+    iac_full_pct: 73.2,
+    framework_lights: { 'bsi-c5': { green: 20, amber: 10, red: 3, grey: 8 } },
+    checks: { pass: 12, fail: 2, warn: 4 },
+    stale_scopes: ['app-payments'],
+  };
+
+  it('summaries without landing_zones still parse (additive)', () => {
+    const r = PortfolioSummarySchema.safeParse(BASE);
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.landing_zones).toBeUndefined();
+  });
+
+  it('a summary with the block validates', () => {
+    const r = PortfolioSummarySchema.safeParse({ ...BASE, landing_zones: [LZ] });
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.landing_zones?.[0]?.stale_scopes).toEqual(['app-payments']);
+  });
+
+  it('rejects an iac_full_pct above 100, an unknown scope kind and an unknown read-only result', () => {
+    expect(LandingZoneLiveSummarySchema.safeParse({ ...LZ, iac_full_pct: 101 }).success).toBe(false);
+    expect(LandingZoneLiveSummarySchema.safeParse({
+      ...LZ, scopes: [{ ...LZ.scopes[0], kind: 'tenant' }],
+    }).success).toBe(false);
+    expect(LandingZoneLiveSummarySchema.safeParse({
+      ...LZ, scopes: [{ ...LZ.scopes[0], read_only: 'ok' }],
+    }).success).toBe(false);
+  });
+
+  it('rejects a framework light count that is negative', () => {
+    expect(LandingZoneLiveSummarySchema.safeParse({
+      ...LZ, framework_lights: { 'bsi-c5': { green: -1, amber: 0, red: 0, grey: 0 } },
+    }).success).toBe(false);
   });
 });

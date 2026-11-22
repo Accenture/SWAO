@@ -1,11 +1,11 @@
 // useLlmHandlers -- handler functions extracted from LlmAssessmentScreen.tsx (#2376).
 
 import type React from 'react';
-import type { SwaoYmlLlmAssessment } from '@swao/core';
+import { logPortfolioAt, type SwaoYmlLlmAssessment } from '@swao/core';
 import type { ResolvedLeg } from '@swao/module-llm-assessment';
 import type { LoadedConnector } from '@swao/module-llm-providers';
 import type { EligibleApp, PendingLeg } from '../types.js';
-import { writeLlmLegsToSwaoYml, buildResolvedLegs } from '../legPersist.js';
+import { writeLlmLegsToSwaoYml, buildResolvedLegs, legDefsOf } from '../legPersist.js';
 
 const MIN_LEGS = 2;
 const MAX_LEGS = 5;
@@ -21,6 +21,8 @@ interface HandlersCtx {
   healthStatus:       'running' | 'ok' | 'fail' | null;
   healthPermanent:    boolean;
   nextLegRef:         React.RefObject<PendingLeg | null>;
+  /** #4198: the legs preselected from assessment.llm.candidates (Design 125 section 5.7). */
+  defaultLegs?:       PendingLeg[];
   // setters
   setSelectedApp:      (app: EligibleApp | null) => void;
   setCrawlAvailable:   (v: boolean) => void;
@@ -42,6 +44,8 @@ export interface LlmHandlers {
   handleConnectorSelect:   (connectorId: string) => void;
   handleModelSelect:       (model: string) => void;
   handleHealthCheckConfirm: () => void;
+  /** #4198: answer to "Save these legs as the new default?" (default No). */
+  handleSaveDefault:       (save: boolean) => void;
 }
 
 export function useLlmHandlers(ctx: HandlersCtx): LlmHandlers {
@@ -53,7 +57,7 @@ export function useLlmHandlers(ctx: HandlersCtx): LlmHandlers {
     const isCrawlAvailable = ctx.crawlAvailable || hasVaultUrl;
     ctx.setCrawlAvailable(isCrawlAvailable);
     ctx.setIncludeCrawl(isCrawlAvailable);
-    ctx.setPendingLegs([]);
+    ctx.setPendingLegs(ctx.defaultLegs ? [...ctx.defaultLegs] : []);
     ctx.setNextLeg(null);
     ctx.setBuildError('');
     ctx.setStage(ctx.loadedConnectors.length === 0 ? 'no-legs' : 'build-legs');
@@ -84,17 +88,43 @@ export function useLlmHandlers(ctx: HandlersCtx): LlmHandlers {
     ctx.setStage('health-check');
   }
 
+  // #4198 (Design 125 section 5.7, owner decision 2026-11-09): the confirmed
+  // legs are run-time values. They are only written to llm_assessment.legs
+  // when the user answers yes to "Save these legs as the new default?"
+  // (handleSaveDefault); the setup value assessment.llm.candidates is never
+  // written by a run.
   function finaliseLegConfig(legs: PendingLeg[]): void {
     const { legDefs, resolved } = buildResolvedLegs(legs);
-    try {
-      writeLlmLegsToSwaoYml(ctx.workspacePath, legDefs);
-    } catch (err: unknown) {
-      ctx.setErrorMsg(`Could not write .swao.yml: ${err instanceof Error ? err.message : String(err)}`);
-      ctx.setStage('error');
-      return;
-    }
     ctx.setLlmCfg({ legs: legDefs });
     ctx.setResolvedLegs(resolved);
+    ctx.setStage('save-default');
+  }
+
+  // #4403: the answer is logged with the keys it wrote (none on No), so a
+  // change of the workspace .swao.yml before a run can be traced to it.
+  function logSaveAnswer(save: boolean, keysWritten: string[], error?: string): void {
+    const message = !save ? 'Legs used for this run only' : error ? 'Saving the legs as the new default failed' : 'Legs saved as the new default';
+    try {
+      logPortfolioAt(ctx.workspacePath, error ? 'error' : 'info', 'llm_assess.default.saved', message, {
+        context: { answer: save ? 'yes' : 'no', saved: save && !error, keys_written: keysWritten, legs: ctx.resolvedLegs.map((l) => l.id), ...(error ? { error } : {}) },
+        mirror: false,
+      });
+    } catch { /* best-effort */ }
+  }
+
+  function handleSaveDefault(save: boolean): void {
+    if (save) {
+      try {
+        writeLlmLegsToSwaoYml(ctx.workspacePath, legDefsOf(ctx.resolvedLegs));
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logSaveAnswer(true, [], message);
+        ctx.setErrorMsg(`Could not write .swao.yml: ${message}`);
+        ctx.setStage('error');
+        return;
+      }
+    }
+    logSaveAnswer(save, save ? ['llm_assessment.legs'] : []);
     ctx.setStage('review-config');
   }
 
@@ -103,7 +133,7 @@ export function useLlmHandlers(ctx: HandlersCtx): LlmHandlers {
     if (!leg) return;
     if (ctx.healthStatus === 'fail' && ctx.healthPermanent) {
       ctx.setBuildError(
-        `Model permanently unavailable (404 -- model removed from provider). Remove from llm-compare.yaml and pick a different model.`,
+        `Model permanently unavailable (404, the provider removed the model). Remove from llm-compare.yaml and pick a different model.`,
       );
       ctx.setNextLeg(null);
       ctx.setHealthPermanent(false);
@@ -126,5 +156,5 @@ export function useLlmHandlers(ctx: HandlersCtx): LlmHandlers {
     }
   }
 
-  return { handleAppSelect, handleConnectorSelect, handleModelSelect, handleHealthCheckConfirm };
+  return { handleAppSelect, handleConnectorSelect, handleModelSelect, handleHealthCheckConfirm, handleSaveDefault };
 }

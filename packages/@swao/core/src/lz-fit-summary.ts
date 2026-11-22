@@ -17,11 +17,13 @@
  * Shared landing-zone fit classifier so the publication extractor and the
  * portfolio summary count per-region blockers identically (#3402). Vocabulary
  * matches the extractor (extractor.ts lzCatCheckResult): SUPPORTED is a pass,
- * AVAILABLE_NOT_ENABLED is not applicable, everything else is a blocker.
+ * AVAILABLE_NOT_ENABLED and UNVERIFIED (#3569, the live scope cannot tell;
+ * Design 120 section 5.3) are not blockers, everything else is a blocker,
+ * including BLOCKED_BY_POLICY (#3569, hard blocker).
  */
 export function lzCatCheckResult(verdict: string): 'pass' | 'fail' | 'not_applicable' {
   if (verdict === 'SUPPORTED') return 'pass';
-  if (verdict === 'AVAILABLE_NOT_ENABLED') return 'not_applicable';
+  if (verdict === 'AVAILABLE_NOT_ENABLED' || verdict === 'UNVERIFIED') return 'not_applicable';
   return 'fail';
 }
 

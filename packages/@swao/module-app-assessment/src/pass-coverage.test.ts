@@ -64,7 +64,7 @@ describe('one default pass list (#3419)', () => {
     expect(TUI_DEFAULT_PASS_KEYS).not.toContain('dynamic');
   });
 
-  for (const rel of ['tui/AssessScreen.tsx', 'tui/assess/AppAssessmentScreen.tsx']) {
+  for (const rel of ['tui/assess/AppAssessmentScreen.tsx']) {
     it(`${rel} derives its defaults from the orchestrator and offers every default pass`, () => {
       const src = readFileSync(join(HERE, rel), 'utf-8');
       expect(src).not.toMatch(/['"]inv,state,data/);

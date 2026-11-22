@@ -72,19 +72,35 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 const str = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
 
-/** Parse one `provider:region` string; undefined when it has no provider or region. */
+/**
+ * Parse one `provider:region` string; undefined when it has no provider or region.
+ * #4007: `provider/region`, the form SWAO prints (the #3980 seeding notice,
+ * run-context.yaml `seeded_targets` and `lz_targets`, the catalogue labels of
+ * the ranked baseline contributions), is accepted too, so a printed target can
+ * be passed back. The colon wins when both appear (region ids hold neither).
+ */
 export function parseLzTarget(raw: string): LzTargetSpec | undefined {
   const t = raw.trim();
   const colon = t.indexOf(':');
-  if (colon <= 0) return undefined;
-  const provider = t.slice(0, colon).trim();
-  const region = t.slice(colon + 1).trim();
+  const sep = colon >= 0 ? colon : t.indexOf('/');
+  if (sep <= 0) return undefined;
+  const provider = t.slice(0, sep).trim();
+  const region = t.slice(sep + 1).trim();
   return provider && region ? { provider, region } : undefined;
 }
 
 /** Parse a comma-separated `provider:region` list (the --lz-cat-targets form). */
 export function parseLzTargetList(raw: string): LzTargetSpec[] {
   return dedupe(raw.split(',').map(parseLzTarget).filter((t): t is LzTargetSpec => !!t));
+}
+
+/**
+ * #4007: entries of a --lz-cat-targets value that name no target (no
+ * provider, no region or no separator); empty entries of a trailing comma do
+ * not count. The CLI refuses a value with any, instead of dropping them.
+ */
+export function invalidLzTargetEntries(raw: string): string[] {
+  return raw.split(',').map((x) => x.trim()).filter((x) => x !== '' && parseLzTarget(x) === undefined);
 }
 
 /** `provider:region` label used in events, run-status.json and reports. */
@@ -178,4 +194,57 @@ export function setLzTargetsInSwaoYml(yml: Record<string, unknown>, targets: rea
   delete assessment['lz_cat_targets'];
   yml['assessment'] = assessment;
   return yml;
+}
+
+/** `<indent># <spaces><text>`: the indent before `#`, the spaces after it and the text; null for other lines. */
+function commentParts(line: string): { prefix: string; depth: number; text: string } | null {
+  const hash = line.indexOf('#');
+  if (hash < 0 || line.slice(0, hash).trim() !== '') return null;
+  const after = line.slice(hash + 1);
+  const text = after.trimStart();
+  const depth = after.length - text.length;
+  if (depth === 0 || text === '') return null;
+  return { prefix: line.slice(0, hash), depth, text };
+}
+
+function isLandingZoneHeader(text: string): boolean {
+  if (!text.startsWith('landing_zone:')) return false;
+  const rest = text.slice('landing_zone:'.length).trim();
+  return rest === '' || rest.startsWith('#');
+}
+
+/**
+ * #4320 (Design 125 section 7, rule of #4280): the commented
+ * `landing_zone:` template that `swao init` ships (workspace file: `#
+ * landing_zone:` with its `#     targets: [...]` line and the explanation line
+ * above it; app file: `  # landing_zone:` inside the live `assessment:`
+ * block) is removed when a writer sets the live
+ * `assessment.landing_zone.targets`, so uncommenting it can never give a
+ * second `landing_zone` key. Only comment lines are removed (the parsed
+ * document is unchanged); a blank line left doubled is dropped. Any line
+ * endings: lines are split on `\n` and a `\r` stays with its line.
+ */
+export function stripCommentedLzTargetsTemplate(text: string): string {
+  const lines = text.split('\n');
+  const out: string[] = [];
+  let changed = false;
+  for (let i = 0; i < lines.length; i++) {
+    const h = commentParts(lines[i]!);
+    if (!h || !isLandingZoneHeader(h.text)) { out.push(lines[i]!); continue; }
+    let j = i + 1;
+    for (; j < lines.length; j++) {
+      const c = commentParts(lines[j]!);
+      if (!c || c.prefix !== h.prefix || c.depth <= h.depth) break;
+    }
+    const above = out.length > 0 ? commentParts(out[out.length - 1]!) : null;
+    if (above && above.prefix === '' && above.text.startsWith('LZ catalogue targets')) out.pop();
+    // Two blank lines would meet where the template stood: keep one.
+    if (out.length > 0 && out[out.length - 1]!.trim() === '' && j < lines.length && lines[j]!.trim() === '') {
+      if (j < lines.length - 1) j++;
+      else out.pop(); // the template was last: the final newline stays, the blank line before it goes
+    }
+    changed = true;
+    i = j - 1;
+  }
+  return changed ? out.join('\n') : text;
 }

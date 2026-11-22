@@ -55,6 +55,8 @@ export interface McpHostDeps {
   swaoCliPath: string;
   cliIsScript: boolean;
   mainMenu?: () => ReadonlyArray<MainMenuEntry>;
+  /** #4430: version with build, e.g. "1.6.1 (4c8dd01e, 2026-11-14)", for the welcome screen Build line. */
+  buildLabel?: string;
 }
 
 export interface McpInstallBinary {

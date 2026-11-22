@@ -27,6 +27,7 @@ import {
   mergeSignalIndex,
   checkFindingsIntegrity,
   applyFindingsIntegrity,
+  citesDocumentEvidence,
   type SignalIndexEntry,
 } from './finding-integrity.js';
 
@@ -148,5 +149,35 @@ describe('checkFindingsIntegrity (#3418)', () => {
     expect(r.text).toContain('[Findings integrity check]');
     expect(r.text).toContain('severity medium (assessed high, lowered: test code only), confidence medium, detection pattern-match, evidence in test code (src/test/java/HashTest.java:42)');
     expect(applyFindingsIntegrity('No signal here.', index).text).toBe('No signal here.');
+  });
+});
+
+describe('citesDocumentEvidence (#3962)', () => {
+  it('a CTX signal over an ingested document counts even when a regulation number parses as a path', () => {
+    // Live run 2026-11-06: signalEvidenceKind classed this as production because of "2024/1772".
+    const s = { id: 'CTX-06', evidence: [
+      'architecture/incident_classification_policy.md - Article 18(1) criteria listed',
+      'architecture/incident_classification_policy.md - Delegated Regulation (EU) 2024/1772 Article 9(5)(b) threshold referenced',
+    ] };
+    expect(signalEvidenceKind(s)).toBe('production');
+    expect(citesDocumentEvidence(s)).toBe(true);
+  });
+
+  it('accepts wsp/inputs paths, rejects code, test documents, SWAO run artefacts and test_code signals', () => {
+    expect(citesDocumentEvidence({ id: 'CTX-01', evidence: ['wsp/inputs/compliance/register_of_information.xlsx'] })).toBe(true);
+    expect(citesDocumentEvidence({ id: 'OBS-02', evidence: ['src/main/resources/logback.xml'] })).toBe(false);
+    expect(citesDocumentEvidence({ id: 'DATA-01', evidence: ['src/test/resources/users.csv'] })).toBe(false);
+    expect(citesDocumentEvidence({ id: 'CTX-02', evidence: ['wsp/runs/2026-11-06/report.md'] })).toBe(false);
+    expect(citesDocumentEvidence({ id: 'CTX-03', test_code: true, evidence: ['docs/policy.pdf'] })).toBe(false);
+    expect(citesDocumentEvidence({ id: 'CTX-04', evidence: [] })).toBe(false);
+  });
+
+  it('with expected inputs, only a document named after one of them counts', () => {
+    const policy = { id: 'CTX-07', evidence: ['architecture/incident_classification_policy.md - Version 1.0'] };
+    const questionnaire = { id: 'CTX-01', evidence: ['workshops/llm-intake-questionnaire.docx.extracted.md [part 1/5] - all blank'] };
+    expect(citesDocumentEvidence(policy, undefined, ['incident_classification_policy'])).toBe(true);
+    expect(citesDocumentEvidence({ id: 'CTX-09', evidence: ['docs/Incident-Classification-Policy_v2.PDF'] }, undefined, ['incident_classification_policy'])).toBe(true);
+    expect(citesDocumentEvidence(policy, undefined, ['incident_management_procedure'])).toBe(false);
+    expect(citesDocumentEvidence(questionnaire, undefined, ['incident_management_procedure'])).toBe(false);
   });
 });

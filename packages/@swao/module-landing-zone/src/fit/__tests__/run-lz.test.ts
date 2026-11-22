@@ -90,3 +90,37 @@ describe('assembleLzCatalogWsp catalogue resolution (#3155)', () => {
     if (!res.ok) expect(res.error).toMatch(/No catalogue for provider "no-such-csp"/);
   });
 });
+
+// #3920 (Design 123 section 9.3): value-level requirement provenance on the app fit,
+// only when the caller passes it (an app that selected a client policy baseline).
+describe('assembleLzCatalogWsp requirement provenance (#3920)', () => {
+  const decls = [
+    { id: 'CLIENT_LZ_POLICY_BASELINE', sovereignty_requirements: { require_residency_country: ['DE'] } },
+    { id: 'GDPR', sovereignty_requirements: { require_residency_country: ['DE', 'EU'] } },
+  ];
+  const provenance = [
+    { requirement: 'residency_country' as const, value: 'DE', frameworks: ['CLIENT_LZ_POLICY_BASELINE', 'GDPR'] },
+    { requirement: 'residency_country' as const, value: 'EU', frameworks: ['GDPR'] },
+  ];
+
+  it('writes requirement_provenance next to selected_frameworks when passed', () => {
+    const { appDir, catDir } = workspaceWithCopy('aws', customAws);
+    const res = assembleLzCatalogWsp({ workspacePath: appDir, provider: 'aws', regionId: 'workspace-only-region', requiredServices: [], frameworkDecls: decls, cataloguesDir: catDir, assessedAt: '2026-11-07', requirementProvenance: provenance });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const lz = res.wsp['lz'] as { selected_frameworks?: string[]; requirement_provenance?: unknown };
+    expect(lz.selected_frameworks).toEqual(['CLIENT_LZ_POLICY_BASELINE', 'GDPR']);
+    expect(lz.requirement_provenance).toEqual(provenance);
+  });
+
+  it('keeps an empty list (baseline selected, nothing merged) and leaves the field out when not passed', () => {
+    const { appDir, catDir } = workspaceWithCopy('aws', customAws);
+    const base = { workspacePath: appDir, provider: 'aws', regionId: 'workspace-only-region', requiredServices: [], frameworkDecls: decls, cataloguesDir: catDir, assessedAt: '2026-11-07' };
+    const empty = assembleLzCatalogWsp({ ...base, requirementProvenance: [] });
+    const none = assembleLzCatalogWsp(base);
+    expect(empty.ok && none.ok).toBe(true);
+    if (!empty.ok || !none.ok) return;
+    expect((empty.wsp['lz'] as Record<string, unknown>)['requirement_provenance']).toEqual([]);
+    expect(none.wsp['lz'] as Record<string, unknown>).not.toHaveProperty('requirement_provenance');
+  });
+});

@@ -6,7 +6,7 @@ Wählen Sie Option 8 im Hauptmenü (oder führen `swao generate-tf` aus), um Ter
 
 SWAO liest den Fit/Gap-Bericht aus der Landing-Zone-Bewertung und erstellt:
 
-- Terraform-Modul-Stubs für jeden erforderlichen Service auf dem Ziel-Cloud-Anbieter (z.B. STACKIT SKE, OTC OBS, IONOS Kubernetes)
+- Terraform-Modul-Stubs für jeden erforderlichen Service auf dem Ziel-Cloud-Anbieter (z.B. STACKIT SKE, T Cloud Public OBS, IONOS Kubernetes)
 - Variablendatei, vorab befüllt mit Werten aus den Bewertungssignalen
 - README für jedes Modul mit den relevanten LZ-Check-Referenzen
 
@@ -22,6 +22,6 @@ swao generate-tf --app meine-app
 
 ## Unterstützte Anbieter
 
-Die Terraform-Generierung folgt dem Landing-Zone-Katalog: STACKIT, OTC (T-Systems), IONOS Cloud, OVHcloud, Azure (West Europe), AWS (eu-central-1) und Google Cloud EU-Regionen. Benutzerdefinierte Anbietereinträge im Katalog erzeugen generische Stubs.
+Die Terraform-Generierung folgt dem Landing-Zone-Katalog: STACKIT, T Cloud Public (ehemals Open Telekom Cloud), IONOS Cloud, OVHcloud, Azure (West Europe), AWS (eu-central-1) und Google Cloud EU-Regionen. Benutzerdefinierte Anbietereinträge im Katalog erzeugen generische Stubs.
 
 Siehe auch: [Landing-Zone-Bewertung](/de/assessment/landing-zone) | [Funktionen & Editionen](/de/features)

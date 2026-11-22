@@ -17,7 +17,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { load, dump } from 'js-yaml';
 import { computeMigrationScores } from '../scoring/migration-scores.js';
-import { resolveCatalogsDir, loadRegimeCatalogue, WspRiskImportOverlaySchema, WSP_SCHEMA_VERSION, isAbsenceEvidenceRef } from '@swao/core';
+import { resolveCatalogsDir, loadRegimeCatalogue, WspRiskImportOverlaySchema, WSP_SCHEMA_VERSION, isEvidenceNote, evidenceLookupKey, evidenceRefLookupKeys, evidenceCatalogueId, secretScanRefShape, trimPathSlashes } from '@swao/core';
 
 // Derive a minimal wsp-plan.yaml (#0232) from the assessment's emitted
 // signals + the workspace's loaded regime catalogs.
@@ -347,22 +347,22 @@ export function normaliseSourcePath(ref: string, type: string): string {
   return `wsp/inputs/${ref}`;
 }
 
+// #4465: shared with the publication (core evidenceCatalogueId).
 function slugEvidenceRef(ref: string): string | null {
-  if (isAbsenceEvidenceRef(ref)) return null;
-  // Bound the input before the regex chain: evidence refs are short labels, but
-  // they can carry LLM-/source-derived text. The `\([^)]*\)` parenthetical-drop
-  // is O(n^2) over many failing start positions (a string of unmatched '('),
-  // so cap the length first to keep it constant-time (CodeQL js/polynomial-redos).
-  // The slug is capped at 64 below regardless.
-  const slug = (ref.length > 200 ? ref.slice(0, 200) : ref)
-    .replace(/\([^)]*\)/g, '')  // drop parenthetical narrative
-    .replace(/\s+/g, '-')
-    .replace(/[^A-Za-z0-9_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toUpperCase()
-    .slice(0, 64);
-  if (!slug || slug.length < 2) return null;
-  return `EVD-${slug}`;
+  return evidenceCatalogueId(ref);
+}
+
+/**
+ * #4465: source_path of a cited file. A source file of an app with a
+ * `source.vcs.subdir` lives below wsp/inputs/source/<subdir>/.
+ */
+function sourcePathOf(file: string, type: string, sourceSubdir: string | undefined): string {
+  const p = normaliseSourcePath(file, type);
+  const sub = trimPathSlashes(sourceSubdir ?? '');
+  if (sub && p.startsWith('wsp/inputs/source/') && !p.startsWith(`wsp/inputs/source/${sub}/`)) {
+    return `wsp/inputs/source/${sub}/${p.slice('wsp/inputs/source/'.length)}`;
+  }
+  return p;
 }
 
 function summariseRef(ref: string): string {
@@ -490,36 +490,67 @@ export function propagateIngestionEvidence(
   }
 }
 
+/** #4465: options of buildEvidenceCatalogue. */
+export interface EvidenceCatalogueOptions {
+  /** `.swao.yml` `source.vcs.subdir`: source files live under wsp/inputs/source/<subdir>/. */
+  sourceSubdir?: string;
+}
+
+/** #4465: `.swao.yml` `source.vcs.subdir` of an app (the scanned part of the checkout). */
+export function loadSourceSubdir(workspaceAppDir: string): string | undefined {
+  try {
+    const yml = load(readFileSync(join(workspaceAppDir, '.swao.yml'), 'utf-8')) as { source?: { vcs?: { subdir?: unknown } } } | null;
+    const sub = yml?.source?.vcs?.subdir;
+    return typeof sub === 'string' && sub.trim() ? sub.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildEvidenceCatalogue(
   signals: RawSignal[],
   plan: PlanLikeForEvidence,
   assessedAt: string,
+  opts: EvidenceCatalogueOptions = {},
 ): { catalogue: Record<string, EvidenceCatalogueEntry>; index: Record<string, string> } {
   const catalogue = new Map<string, EvidenceCatalogueEntry>();
   const index: Record<string, string> = {};
+  const rel = { sourceSubdir: opts.sourceSubdir };
 
+  // #4465 (Design publication/006 section 9.12): the ref is keyed in its canonical form
+  // (absolute workspace paths relative, evidenceLookupKey) so the catalogue
+  // id and source_path carry no operator path; the raw ref stays an index key
+  // so star.ts and older readers find it as cited. Absence statements and
+  // evidence notes (prose, key=value) are no evidence files and are skipped,
+  // with the same predicates the publication uses.
   function register(ref: string): void {
     if (typeof ref !== 'string' || ref.length === 0) return;
     if (Object.prototype.hasOwnProperty.call(index, ref)) return;
-    const slug = slugEvidenceRef(ref);
+    // #4463: a former rule-first secret-scan ref in the location-first shape.
+    const key = secretScanRefShape(evidenceLookupKey(ref, rel));
+    if (isEvidenceNote(key)) return;
+    const slug = slugEvidenceRef(key);
     if (slug === null) return;  // absence sentinel
     index[ref] = slug;
+    if (key !== ref && !Object.prototype.hasOwnProperty.call(index, key)) index[key] = slug;
     const existing = catalogue.get(slug);
     if (existing) {
-      if (!existing.refs.includes(ref)) existing.refs.push(ref);
+      if (!existing.refs.includes(key)) existing.refs.push(key);
       return;
     }
-    const { type, context_input } = classifyEvidence(ref);
+    // The file the ref cites (location, rule and description removed).
+    const file = evidenceRefLookupKeys(key, rel).at(-1) ?? key;
+    const { type, context_input } = classifyEvidence(key);
     catalogue.set(slug, {
       type,
       // #0267 -- source_path is now uniformly workspace-root relative.
-      source_path: normaliseSourcePath(ref, type),
-      summary: summariseRef(ref),
+      source_path: sourcePathOf(file, type, opts.sourceSubdir),
+      summary: summariseRef(key),
       context_input,
       collected_at: assessedAt,
       date: assessedAt,
       reliability_weight: RELIABILITY_BY_CONTEXT[context_input] ?? 0.5,
-      refs: [ref],
+      refs: [key],
     });
   }
 
@@ -952,7 +983,7 @@ export function derivePlanForRun(
   // for those link tables, so it needs the lookup to translate refs without
   // re-deriving the slug rules here.
   const { catalogue: evidenceCatalogue, index: evidenceIndex } =
-    buildEvidenceCatalogue(signals, plan, assessedAt);
+    buildEvidenceCatalogue(signals, plan, assessedAt, { sourceSubdir: loadSourceSubdir(workspaceAppDir) });
 
   // Fold in MCP-captured evidence from ingestion/evidence/*.yaml (Design 080 §5.2, #1179 AC3).
   // Each record was written by swao_evidence_capture; derive merges it into the catalogue

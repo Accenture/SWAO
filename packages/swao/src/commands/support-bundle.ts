@@ -67,6 +67,7 @@ import { spawnSync } from 'node:child_process';
 import { load as loadYaml } from 'js-yaml';
 import type { LogEntry } from '@swao/core';
 import { LicenseGuard, logPortfolio, resolveWorkspaceRoot, readDefaultWorkspace, _paths as licencePaths, readChallengedRun } from '@swao/core';
+import { isPkgBinary, selfSpawnCommand } from '@swao/core';
 import { listLzCatalogueProviders, loadLzComingSoon, resolveProviderCatalogue } from '@swao/module-landing-zone';
 import { SWAO_VERSION } from '../branding.js';
 import { buildTar } from '../util/tar-write.js';
@@ -79,6 +80,16 @@ import {
 } from './support-bundle-client-ids.js';
 
 export const BUNDLE_VERSION = '2.5';
+
+/** #4257: the CLI line that names the created bundle; the TUI reads the path from it. */
+export const BUNDLE_CREATED_PREFIX = '[ok]  Support bundle created: ';
+
+/** The bundle path of a CLI output line, or undefined when the line names no bundle (#4257). */
+export function bundlePathFromLine(line: string): string | undefined {
+  if (!line.startsWith(BUNDLE_CREATED_PREFIX)) return undefined;
+  const path = line.slice(BUNDLE_CREATED_PREFIX.length).trim();
+  return path === '' ? undefined : path;
+}
 
 /** #3517: entries that carry input file names; they get the file-shape fallback when collection was truncated. */
 const FILE_NAME_FALLBACK_ENTRIES: ReadonlySet<string> = new Set(['execution-trace.ndjson', 'error-context.json', 'run-manifests.json']);
@@ -727,14 +738,13 @@ function buildHealthCheckSnapshot(workspaceRoot: string): unknown {
   // Read the most recent cached entry from wsp/logs/health-check-YYYY-MM.ndjson instead.
   const cached = readLatestHealthCheckNdjson(workspaceRoot);
   if (cached !== null) return { ...cached, source: 'cached-ndjson' };
-  const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-  if (isPkg) return { error: 'health-check-unavailable-in-binary', hint: 'run swao health-check separately to populate the cache' };
-  // Dev (non-pkg): live subprocess fallback.
-  const selfArgs: string[] = [process.argv[1] as string];
+  if (isPkgBinary()) return { error: 'health-check-unavailable-in-binary', hint: 'run swao health-check separately to populate the cache' };
+  // Dev (non-pkg): live subprocess fallback through the central self-spawn helper (#4241).
+  const selfCmd = selfSpawnCommand(['health-check', '--json', '--workspace', workspaceRoot]);
   const result = spawnSync(
-    process.execPath,
-    [...selfArgs, 'health-check', '--json', '--workspace', workspaceRoot],
-    { env: { ...process.env, PKG_EXECPATH: '' }, encoding: 'utf-8', timeout: 30_000 },
+    selfCmd.command,
+    selfCmd.args,
+    { env: selfCmd.env, encoding: 'utf-8', timeout: 30_000 },
   );
   if (result.error) return { error: 'health-check-spawn-failed', exit_code: result.status ?? -1 };
   if (result.stdout) {
@@ -1448,7 +1458,7 @@ export function cmdSupportBundle(opts: { workspace?: string; out?: string }): vo
     } catch { mappingPath = null; }
   }
 
-  console.log(`[ok]  Support bundle created: ${outPath}`);
+  console.log(`${BUNDLE_CREATED_PREFIX}${outPath}`);
   if (mappingPath) console.log(`[ok]  Pseudonym mapping kept locally (do not send): ${mappingPath}`);
   console.log(`[ok]  ${traceEntries.length} event trace entries | ${errorEntries.length} error context entries | ${files.length} log files`);
   console.log(`[ok]  17 diagnostic artefacts (bundle v${BUNDLE_VERSION})`);

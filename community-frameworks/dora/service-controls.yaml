@@ -1,0 +1,329 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: Digital Operational Resilience Act. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; human-reviewed
+# (confidence: curated, Q-23; reviewer and date in each row's source).
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: DORA
+mappings:
+  - capability: key_vault
+    controls: [DORA_Art_9_6, DORA_Art_9_2]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: secrets_management
+    controls: [DORA_Art_9_6, DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: certificate_management
+    controls: [DORA_Art_9_6]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: identity_management
+    controls: [DORA_Art_9_1, DORA_Art_9_5]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: audit_logging
+    controls: [DORA_Art_10_2]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: log_management
+    controls: [DORA_Art_10_2, DORA_Art_10_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: monitoring
+    controls: [DORA_Art_10_1, DORA_Art_7_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: metrics
+    controls: [DORA_Art_10_1, DORA_Art_7_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: threat_detection
+    controls: [DORA_Art_10_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: compliance_monitoring
+    controls: [DORA_Art_9_9, DORA_Art_8_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: waf
+    controls: [DORA_Art_9_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: network_firewall
+    controls: [DORA_Art_9_4]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: backup
+    controls: [DORA_Art_12_1, DORA_Art_12_4, DORA_Art_30_4]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: data_protection
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_9_9]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: systems_management
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_8_1]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: itsm
+    controls: [DORA_Art_17_1, DORA_Art_9_8]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vpn
+    controls: [DORA_Art_9_4, DORA_Art_9_2, DORA_Art_9_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: dedicated_connectivity
+    controls: [DORA_Art_9_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vpc
+    controls: [DORA_Art_9_4]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vpc_networking
+    controls: [DORA_Art_9_4]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: networking
+    controls: [DORA_Art_9_4]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: load_balancer
+    controls: [DORA_Art_12_5, DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: cdn
+    controls: [DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: api_gateway
+    controls: [DORA_Art_9_1, DORA_Art_9_2, DORA_Art_9_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: dns
+    controls: [DORA_Art_9_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: object_storage
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: block_storage
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: file_storage
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: hci_storage
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: postgresql
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_12_5, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: mysql
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_12_5, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: mariadb
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_12_5, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: sql_server
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_12_5, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: nosql_database
+    controls: [DORA_Art_9_2, DORA_Art_12_1, DORA_Art_12_5, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: redis
+    controls: [DORA_Art_9_1, DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: memcached
+    controls: [DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: data_warehouse
+    controls: [DORA_Art_9_2, DORA_Art_9_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: big_data
+    controls: [DORA_Art_9_2, DORA_Art_9_1, DORA_Art_30_4]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: kafka
+    controls: [DORA_Art_9_2, DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: event_streaming
+    controls: [DORA_Art_9_2, DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: queue
+    controls: [DORA_Art_9_2, DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: messaging
+    controls: [DORA_Art_9_2, DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: search
+    controls: [DORA_Art_9_1, DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vm_compute
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: kubernetes
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: container_orchestration
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: container_registry
+    controls: [DORA_Art_9_3]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: serverless_compute
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: paas_compute
+    controls: [DORA_Art_9_3, DORA_Art_9_9, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: batch_compute
+    controls: [DORA_Art_7_1, DORA_Art_9_9, DORA_Art_9_3]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: gpu_compute
+    controls: [DORA_Art_7_1, DORA_Art_9_9, DORA_Art_9_3]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vdi
+    controls: [DORA_Art_9_1, DORA_Art_9_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: ci_cd
+    controls: [DORA_Art_9_8, DORA_Art_9_3]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: vcs
+    controls: [DORA_Art_9_8]
+    relevance: supports
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: iac
+    controls: [DORA_Art_9_8, DORA_Art_28_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: data_migration
+    controls: [DORA_Art_9_2, DORA_Art_28_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: data_integration
+    controls: [DORA_Art_9_2, DORA_Art_28_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: managed_file_transfer
+    controls: [DORA_Art_9_2, DORA_Art_28_5]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: ml_inference
+    controls: [DORA_Art_9_1, DORA_Art_9_2, DORA_Art_7_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: ml_training
+    controls: [DORA_Art_9_1, DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: payment_processing
+    controls: [DORA_Art_9_2]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: data_analytics
+    controls: [DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: bi_analytics
+    controls: [DORA_Art_9_1]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"
+  - capability: iot_platform
+    controls: [DORA_Art_9_1, DORA_Art_9_2, DORA_Art_9_9]
+    relevance: configure
+    confidence: curated
+    source: "human review by owner on 2026-11-06 of the mapping in scripts/service-controls-overrides.yaml (drafted by scripts/draft-service-controls.py)"

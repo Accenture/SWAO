@@ -31,12 +31,18 @@
 // (#3280) only reads usable runs, so a rebuild while the marker still says
 // `started` would miss the run that just finished.
 //
+// #4271: the portfolio_summary start event carries apps_total; a rebuild logs
+// `assess.post_run.portfolio_summary.progress` every 10 s
+// (createPortfolioProgressLogger), and the summary itself reuses unchanged
+// per-app rows from a cache, so a single-app run no longer re-reads the
+// whole portfolio.
+//
 // #3440: a step that throws logs `assess.post_run.<name>.failed` (level warn,
 // status error, error message) instead of `.complete`. The lifetime
 // assessment counter runs through `incrementAssessmentCounterStep`, which
 // attempts the write once and prints one non-fatal operator warning on failure.
 
-import { logApp as coreLogApp, logPortfolio as coreLogPortfolio, type RunStatusValue } from '@swao/core';
+import { formatPostStepLine, logApp as coreLogApp, logPortfolio as coreLogPortfolio, postStepLabel, type RunStatusValue } from '@swao/core';
 
 export type PostRunStepStatus = 'ok' | 'error';
 
@@ -50,6 +56,8 @@ export interface PostRunTimerOptions {
   app: string;
   runId: string;
   assessmentType: string;
+  /** #4498: prints "[post] <Step>" when a step starts (the run screen names it); off when unset. */
+  print?: (line: string) => void;
   /** Injected for tests; defaults to the @swao/core loggers. */
   logApp?: typeof coreLogApp;
   logPortfolio?: typeof coreLogPortfolio;
@@ -64,7 +72,7 @@ export interface PostRunTimer {
    * 'error' (#3440) and re-thrown so the caller's existing try/catch
    * semantics are unchanged.
    */
-  step<T>(name: string, fn: () => T): T;
+  step<T>(name: string, fn: () => T, startContext?: Record<string, unknown>, completeContext?: () => Record<string, unknown>): T;
   /** Time spent in post-pass steps so far, plus the per-step breakdown. */
   summary(): { post_pass_ms: number; post_pass_steps: PostRunStepTiming[] };
 }
@@ -79,10 +87,13 @@ export function createPostRunTimer(opts: PostRunTimerOptions): PostRunTimer {
   const safe = (fn: () => void): void => { try { fn(); } catch { /* logging is best-effort */ } };
 
   return {
-    step<T>(name: string, fn: () => T): T {
+    step<T>(name: string, fn: () => T, startContext?: Record<string, unknown>, completeContext?: () => Record<string, unknown>): T {
       const t0 = now();
+      // #4498: the step by name on stdout, so the run screen does not stand on the last pass.
+      if (opts.print) safe(() => opts.print!(formatPostStepLine(postStepLabel(name))));
+      // #4271: a step may add context to its start event (portfolio_summary: apps_total).
       safe(() => logApp(opts.app, 'info', `assess.post_run.${name}.start`, `Post-pass step ${name} starting`, {
-        context: { ...base, step: name },
+        context: { ...base, step: name, ...(startContext ?? {}) },
       }));
       let status: PostRunStepStatus = 'ok';
       let failure = '';
@@ -98,9 +109,12 @@ export function createPostRunTimer(opts: PostRunTimerOptions): PostRunTimer {
         // #3440: a throwing step logs `.failed` (level warn, with the error
         // message), never `.complete` with status error, so a failure is
         // visible by event name in execution-trace.ndjson.
+        // #4412: a step may add context to its complete event (portfolio_summary: cache and phase timings).
+        let extra: Record<string, unknown> = {};
+        try { extra = completeContext?.() ?? {}; } catch { /* best effort */ }
         const ctx = status === 'ok'
-          ? { ...base, step: name, status, duration_ms }
-          : { ...base, step: name, status, duration_ms, error: failure };
+          ? { ...base, step: name, status, duration_ms, ...extra }
+          : { ...base, step: name, status, duration_ms, error: failure, ...extra };
         const code = `assess.post_run.${name}.${status === 'ok' ? 'complete' : 'failed'}`;
         const level = status === 'ok' ? 'info' : 'warn';
         const message = status === 'ok' ? `Post-pass step ${name} complete` : `Post-pass step ${name} failed`;
@@ -115,6 +129,96 @@ export function createPostRunTimer(opts: PostRunTimerOptions): PostRunTimer {
       };
     },
   };
+}
+
+/** #4498: interval of the portfolio summary progress lines on stdout (the run screen). */
+export const PORTFOLIO_PRINT_INTERVAL_MS = 1_000;
+
+/** #4271: interval of the portfolio summary progress lines (a rebuild over 30 s logs at least one). */
+export const PORTFOLIO_PROGRESS_INTERVAL_MS = 10_000;
+
+export interface PortfolioProgressLoggerOptions {
+  app: string;
+  runId: string;
+  assessmentType: string;
+  intervalMs?: number;
+  /** #4498: prints "[post] Portfolio summary: 106 of 235 apps" for the run screen, at most every printIntervalMs. */
+  print?: (line: string) => void;
+  printIntervalMs?: number;
+  /** Injected for tests; defaults to the @swao/core loggers. */
+  logApp?: typeof coreLogApp;
+  logPortfolio?: typeof coreLogPortfolio;
+  /** Injected for tests; defaults to Date.now. */
+  now?: () => number;
+}
+
+/**
+ * #4271: progress callback for the portfolio summary rebuild. Logs
+ * `assess.post_run.portfolio_summary.progress` (apps processed out of total,
+ * apps served from the row cache) at most once per interval, so a long cold
+ * rebuild is never silent between its start and complete events.
+ */
+export function createPortfolioProgressLogger(opts: PortfolioProgressLoggerOptions): (p: { done: number; total: number; cached: number }) => void {
+  const logApp = opts.logApp ?? coreLogApp;
+  const logPortfolio = opts.logPortfolio ?? coreLogPortfolio;
+  const now = opts.now ?? Date.now;
+  const interval = opts.intervalMs ?? PORTFOLIO_PROGRESS_INTERVAL_MS;
+  const t0 = now();
+  let last = t0;
+  let lastPrint = Number.NEGATIVE_INFINITY;
+  const printInterval = opts.printIntervalMs ?? PORTFOLIO_PRINT_INTERVAL_MS;
+  return (p) => {
+    const t = now();
+    if (opts.print && p.total > 0 && (t - lastPrint >= printInterval || p.done >= p.total)) {
+      lastPrint = t;
+      try { opts.print(formatPostStepLine(postStepLabel('portfolio_summary'), { done: p.done, total: p.total, noun: 'apps' })); } catch { /* best-effort */ }
+    }
+    if (t - last < interval || p.done >= p.total) return;
+    last = t;
+    const context = { run_id: opts.runId, assessment_type: opts.assessmentType, step: 'portfolio_summary', apps_done: p.done, apps_total: p.total, apps_cached: p.cached, elapsed_ms: t - t0 };
+    const message = `Post-pass step portfolio_summary: ${p.done} of ${p.total} apps`;
+    try { logApp(opts.app, 'info', 'assess.post_run.portfolio_summary.progress', message, { context }); } catch { /* best-effort */ }
+    try { logPortfolio('info', 'assess.post_run.portfolio_summary.progress', message, { context: { ...context, app: opts.app } }); } catch { /* best-effort */ }
+  };
+}
+
+/** #4412: a rebuild step at least this long logs its own phase line. */
+export const PORTFOLIO_PHASE_LOG_MS = 1_000;
+
+/**
+ * #4412: phase callback for the portfolio summary rebuild. A step of at least
+ * PORTFOLIO_PHASE_LOG_MS (setup, discover_kinds, service_rows,
+ * application_rows, integration_graph, waves, vendors, write) logs
+ * `assess.post_run.portfolio_summary.phase` with its name and duration, so a
+ * silence between the progress lines and the complete event has a name.
+ * `start(phase)` (wired to `onPhaseStart`, the cross-app steps after the
+ * per-app loop) logs `assess.post_run.portfolio_summary.phase.start` when the
+ * step begins; a step that logged its start always logs its phase line, so
+ * the log names the step while it runs and says when it ended.
+ */
+export type PortfolioPhaseLogger = ((phase: string, durationMs: number) => void) & { start: (phase: string) => void };
+
+export function createPortfolioPhaseLogger(opts: PortfolioProgressLoggerOptions & { minMs?: number }): PortfolioPhaseLogger {
+  const logApp = opts.logApp ?? coreLogApp;
+  const logPortfolio = opts.logPortfolio ?? coreLogPortfolio;
+  const min = opts.minMs ?? PORTFOLIO_PHASE_LOG_MS;
+  const started = new Set<string>();
+  const start = (phase: string): void => {
+    started.add(phase);
+    const context = { run_id: opts.runId, assessment_type: opts.assessmentType, step: 'portfolio_summary', phase };
+    const message = `Post-pass step portfolio_summary: ${phase.replace(/_/g, ' ')} starting`;
+    try { logApp(opts.app, 'info', 'assess.post_run.portfolio_summary.phase.start', message, { context }); } catch { /* best-effort */ }
+    try { logPortfolio('info', 'assess.post_run.portfolio_summary.phase.start', message, { context: { ...context, app: opts.app } }); } catch { /* best-effort */ }
+  };
+  const end = (phase: string, durationMs: number): void => {
+    const wasStarted = started.delete(phase);
+    if (durationMs < min && !wasStarted) return;
+    const context = { run_id: opts.runId, assessment_type: opts.assessmentType, step: 'portfolio_summary', phase, duration_ms: durationMs };
+    const message = `Post-pass step portfolio_summary: ${phase.replace(/_/g, ' ')} took ${Math.round(durationMs / 100) / 10} s`;
+    try { logApp(opts.app, 'info', 'assess.post_run.portfolio_summary.phase', message, { context }); } catch { /* best-effort */ }
+    try { logPortfolio('info', 'assess.post_run.portfolio_summary.phase', message, { context: { ...context, app: opts.app } }); } catch { /* best-effort */ }
+  };
+  return Object.assign(end, { start });
 }
 
 /** Run statuses after which the portfolio summary is rebuilt (#3309). */
@@ -133,10 +237,12 @@ export function rebuildPortfolioSummaryStep<T>(
   status: RunStatusValue | undefined,
   build: () => T,
   warn: (line: string) => void = (line) => console.warn(line),
+  startContext?: Record<string, unknown>,
+  completeContext?: () => Record<string, unknown>,
 ): T | null {
   if (!status || !PORTFOLIO_REBUILD_STATUSES.includes(status)) return null;
   try {
-    return timer.step('portfolio_summary', build);
+    return timer.step('portfolio_summary', build, startContext, completeContext);
   } catch (e) {
     warn(`[warn] Portfolio summary not updated: ${e instanceof Error ? e.message : String(e)}`);
     return null;

@@ -470,3 +470,47 @@ describe('LicenseGuard binary tier cap', () => {
     delete process.env['SWAO_BINARY_TIER'];
   });
 });
+
+describe('Landing Zone Live Assessment gates (#3590, Design 120 section 15)', () => {
+  it('pins the tiers of the three live keys', () => {
+    expect(FEATURE_GATES['lz-live-connect']).toBe('community');
+    expect(FEATURE_GATES['lz-live-assess']).toBe('consultant');
+    expect(FEATURE_GATES['lz-live-portfolio']).toBe('enterprise');
+  });
+
+  it('Community: connect and probe allowed; live assessment and portfolio blocked', () => {
+    const guard = LicenseGuard.load();
+    expect(guard.state.tier).toBe('community');
+    expect(() => guard.requireFeature('lz-live-connect')).not.toThrow();
+    expect(() => guard.requireFeature('lz-live-assess')).toThrow(LicenseTierError);
+    expect(() => guard.requireFeature('lz-live-portfolio')).toThrow(LicenseTierError);
+  });
+
+  it('Consultant: live assessment allowed; portfolio blocked', () => {
+    writeLicenceFile(buildLicenseKey(makePayload({ tier: 'consultant' })));
+    const guard = LicenseGuard.load();
+    expect(() => guard.requireFeature('lz-live-connect')).not.toThrow();
+    expect(() => guard.requireFeature('lz-live-assess')).not.toThrow();
+    expect(() => guard.requireFeature('lz-live-portfolio')).toThrow(LicenseTierError);
+  });
+
+  it('Enterprise: everything allowed', () => {
+    writeLicenceFile(buildLicenseKey(makePayload({ tier: 'enterprise' })));
+    const guard = LicenseGuard.load();
+    for (const key of ['lz-live-connect', 'lz-live-assess', 'lz-live-portfolio'] as const) {
+      expect(() => guard.requireFeature(key)).not.toThrow();
+    }
+  });
+
+  it('the binary tier caps an Enterprise licence (Community binary blocks the live assessment)', () => {
+    writeLicenceFile(buildLicenseKey(makePayload({ tier: 'enterprise' })));
+    process.env['SWAO_BINARY_TIER'] = 'community';
+    try {
+      const guard = LicenseGuard.load();
+      expect(() => guard.requireFeature('lz-live-connect')).not.toThrow();
+      expect(() => guard.requireFeature('lz-live-assess')).toThrow(LicenseTierError);
+    } finally {
+      delete process.env['SWAO_BINARY_TIER'];
+    }
+  });
+});

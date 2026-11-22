@@ -50,7 +50,7 @@ describe('SelectInput -- TU-WHEEL-01: wheel does not move the highlight (#3519)'
     );
     await settle();
     expect(onCursorChange).toHaveBeenCalledTimes(1);
-    expect(onCursorChange).toHaveBeenLastCalledWith('top');
+    expect(onCursorChange).toHaveBeenLastCalledWith('top', expect.objectContaining({ value: 'top' })); // #4249: the option is the second argument
     stdin.write(SGR_WHEEL_DOWN);
     await settle();
     stdin.write(X10_WHEEL_DOWN);
@@ -84,7 +84,7 @@ describe('SelectInput -- TU-WHEEL-03: wheelNavigation opt-in', () => {
     stdin.write(SGR_WHEEL_DOWN);
     await settle();
     expect(cursorLine(lastFrame() ?? '', '❯')).toContain('Assess every app');
-    expect(onCursorChange).toHaveBeenLastCalledWith('all');
+    expect(onCursorChange).toHaveBeenLastCalledWith('all', expect.objectContaining({ value: 'all' }));
   });
 });
 
@@ -98,9 +98,9 @@ describe('MultiSelect -- TU-WHEEL-04: wheel does not move the cursor by default 
     const callsAfterMount = onCursorChange.mock.calls.length;
     stdin.write(SGR_WHEEL_DOWN);
     await settle();
-    expect(cursorLine(lastFrame() ?? '', '>')).toContain('Top 20 apps');
+    expect(cursorLine(lastFrame() ?? '', '❯')).toContain('Top 20 apps');
     expect(onCursorChange.mock.calls.length).toBe(callsAfterMount);
-    expect(onCursorChange).not.toHaveBeenCalledWith('all');
+    expect(onCursorChange).not.toHaveBeenCalledWith('all', expect.anything());
   });
 });
 
@@ -112,6 +112,6 @@ describe('MultiSelect -- TU-WHEEL-05: wheelNavigation opt-in', () => {
     await settle();
     stdin.write(SGR_WHEEL_DOWN);
     await settle();
-    expect(cursorLine(lastFrame() ?? '', '>')).toContain('Assess every app');
+    expect(cursorLine(lastFrame() ?? '', '❯')).toContain('Assess every app');
   });
 });

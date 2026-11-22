@@ -3,8 +3,9 @@
 // is fetch-based); wiring to useLlmPing is deferred to the PreflightLlmPhase (#2369).
 
 import { useState, useEffect, useRef } from 'react';
-import { createProviderFromConnector, classifyPingFailure, withLlmAttemptLimit } from '@swao/module-llm-providers';
+import { createProviderFromConnector, classifyPingFailure, withLlmAttemptLimit, withLlmCaller } from '@swao/module-llm-providers';
 import type { PendingLeg } from '../types.js';
+import { notServedSuggestion } from '../../../model-picker-list.js';
 
 export interface HealthCheckState {
   healthStatus:    'running' | 'ok' | 'fail' | null;
@@ -50,7 +51,7 @@ export function useLlmHealthCheck(stage: string, nextLegRef: React.RefObject<Pen
       try {
         const resolved = createProviderFromConnector(pending.connector, { model: pending.model });
         await Promise.race([
-          withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT)),
+          withLlmCaller({ caller: 'tui.llm-assess.health-check' }, () => withLlmAttemptLimit(PING_MAX_ATTEMPTS, () => resolved.provider.complete(PING_PROMPT))), // #4270
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error(`ping timed out after ${PING_TIMEOUT_MS}ms`)),
@@ -60,7 +61,7 @@ export function useLlmHealthCheck(stage: string, nextLegRef: React.RefObject<Pen
         ]);
         if (!cancelled) {
           setStatusRef.current('ok');
-          setMessageRef.current(`PASS -- ${pending.connectorId} / ${pending.model}`);
+          setMessageRef.current(`Connection verified: ${pending.connectorId} / ${pending.model}`);
         }
       } catch (err) {
         if (!cancelled) {
@@ -70,10 +71,13 @@ export function useLlmHealthCheck(stage: string, nextLegRef: React.RefObject<Pen
             model: pending.model,
             baseUrl: pending.connector.file.connector.base_url,
           });
-          const permanent = /request failed: 4(?!29)\d\d/.test(raw);
+          // #4475: a model the platform does not serve (HTTP 404) names the closest
+          // served ids of the same vendor from the last live discovery.
+          const suggestion = /rejected by the platform/.test(hint) ? notServedSuggestion(pending.model, pending.connector.file.connector) : '';
+          const permanent =/request failed: 4(?!29)\d\d/.test(raw);
           setPermanentRef.current(permanent);
           setStatusRef.current('fail');
-          setMessageRef.current(hint);
+          setMessageRef.current(suggestion ? `${hint}. ${suggestion}` : hint);
         }
       }
     })();

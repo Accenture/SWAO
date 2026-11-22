@@ -1,0 +1,5 @@
+{
+  "gate": "G-13",
+  "rule": "Ink colour literal or direct dimColor outside tui-kit/src/theme.ts",
+  "entries": {}
+}

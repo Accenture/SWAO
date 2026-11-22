@@ -157,6 +157,20 @@ Community-Edition-Funktionen bleiben ohne Lizenzschlüssel verfügbar.
 
 ---
 
+## Windows: Assessment mit neuer Binary deutlich langsamer
+
+**Symptom:** Pass 01 Inventory (und andere dateiintensive Schritte wie die Portfolio-Zusammenfassung) dauert mit einer neu installierten oder neu gebauten `swao-*.exe` mehrere Minuten, während dasselbe Assessment desselben Ordners nach einer Weile oder aus dem Quellcode nur Sekunden dauert. Die Fortschrittszeilen im App-Log zeigen einen langsamen Language Census; auch der erste Start einer neuen Kopie der Binary dauert deutlich länger als spätere Starts.
+
+**Ursache:** Der Endpoint-Schutz prüft eine neue, noch unbekannte ausführbare Datei genauer, einschließlich der Dateien, die sie liest. Die Verlangsamung hängt von der Binary und vom Ordner ab, nicht vom Assessment-Code: In einer Messung auf einem Entwicklerrechner brauchte dieselbe Binary auf demselben Ordner mit 940 Dateien in den ersten beiden Läufen 65 s und 39 s für Pass 01 und ab etwa 15 Minuten später 1 bis 4,5 s; Node.js brauchte auf demselben Ordner durchgehend 2 bis 3,4 s.
+
+**Behebung:**
+
+- Die signierten Release-Binaries verwenden; ihre Reputation ist etabliert, unsignierte Entwickler-Builds starten ohne.
+- Den Administrator des Arbeitsplatzes bitten, den Workspace-Ordner (und den Ordner der Binary) vom Echtzeit-Scan auszunehmen, sofern die Sicherheitsrichtlinie der Organisation das erlaubt.
+- Nach einigen Läufen der Binary erneut messen; die Pass-01-`duration_ms` aus `assessment.pass.complete` im App-Log festhalten.
+
+---
+
 ## swao health-check: LLM-Timeout
 
 **Symptom:** `LLM connectivity: red` oder `yellow` mit Timeout-Fehler; Assessment-Passes hängen sich auf.

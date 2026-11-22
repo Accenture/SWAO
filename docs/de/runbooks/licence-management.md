@@ -14,20 +14,23 @@ SWAO wird in drei Stufen ausgeliefert (Community, Consultant und Enterprise), di
 | Text-, YAML- und JSON-Berichte (`swao report`) | Ja | Ja | Ja |
 | Sternschema-BI-Export: CSV, NDJSON, XLSX (`swao export`) | Ja | Ja | Ja |
 | Auditprotokoll (`swao log`) | Ja | Ja | Ja |
+| Landing-Zone-Live-Verbindungen (`swao lz connect`, `probe`, `list`, `remove`) | Ja | Ja | Ja |
 | HTML-Veröffentlichung (`swao publish --app`, `swao report --format html`) | Nein | Ja | Ja |
 | PDF-Bericht (`swao report --format pdf`) | Nein | Ja | Ja |
 | Power-BI-Dashboard-Vorlagen (.pbit, von `swao export` und `swao init --powerbi` abgelegt) | Nein | Ja | Ja |
-| LZ-Katalog-Aktualisierung (`swao lz catalogue update`) | Nein | Ja | Ja |
+| LZ-Katalog-Aktualisierung (`swao lz catalogue update`, auch `--source live`) | Nein | Ja | Ja |
+| Landing-Zone-Live-Bewertung und -Publikation (`swao lz scan`, `swao lz diff`, `swao assess --type landing-zone-live`, `swao publish --lz-live`) | Nein | Ja | Ja |
 | E-Mail-Support-SLA | Nein | Ja | Ja |
 | Portfolio-Bewertung, -Bericht und -BI-Export (`--portfolio`) | Nein | Nein | Ja |
 | Service-Portfolio-Export (`swao service export`) | Nein | Nein | Ja |
+| Landing-Zone-Live-Portfolio (`swao assess --portfolio --type landing-zone-live`, `swao publish --portfolio --block-profile lz-live-portfolio`) | Nein | Nein | Ja |
 | Adversarielle Challenge-Review (`swao challenge`) | Nein | Nein | Ja |
 | HTML-Editor (interaktiver Evidenz-Editor, `swao publish --edit`) | Nein | Nein | Ja |
 | MCP-Server (`swao mcp`) | Nein | Nein | Ja |
 | SWAO Chat (`swao chat`) | Nein | Nein | Ja |
 | Terraform-Modul-Stubs (`swao generate-tf`) und meshcloud-UniPipe-Integration (`swao unipipe`) | Nein | Nein | Roadmap |
 
-Ein Befehl, der eine höhere Stufe erfordert, gibt einen `[LICENSE]`-Block mit der erforderlichen Lizenz aus und endet mit einem Exit-Code ungleich null. `swao export` schreibt in der Community-Edition das Sternschema und gibt anstelle der Power-BI-Vorlagen einen `[LICENSE]`-Hinweis aus.
+Ein Befehl, der eine höhere Stufe erfordert, gibt einen `[LICENSE]`-Block mit der erforderlichen Lizenz aus und endet mit Exit-Code 2 (eine ungültige Lizenzdatei endet mit 3). `swao export` schreibt in der Community-Edition das Sternschema und gibt anstelle der Power-BI-Vorlagen einen `[LICENSE]`-Hinweis aus.
 
 Die Community-Edition läuft ohne Lizenzschlüssel. Alle Funktionen sind lokal verfügbar, ohne Registrierung.
 

@@ -125,10 +125,11 @@ describe('buildHealthCheckLogContext (#1094)', () => {
       intakeMappingProbe: { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] },
       apmWeightsProbe: { status: 'skip', message: 'not a service workspace', source: null, errors: [], warnings: [] },
       serviceProbes: [],
+      lzConnectionsProbe: { status: 'info', message: 'no live landing zone registered', scopes: [] },
     };
     const ctx = buildHealthCheckLogContext(mockCtx, []);
     expect(ctx['fail_count']).toBe(0);
-    expect(ctx['probe_count']).toBe(25);  // #3127-#3133: probes [19]-[25]
+    expect(ctx['probe_count']).toBe(26);  // #3127-#3133: probes [19]-[25]; #3589: [26] LZ connections
     const probes = ctx['probes'] as Record<string, Record<string, unknown>>;
     expect(probes['license']['status']).toBe('ok');
     expect(probes['playwright']['status']).toBe('ok');
@@ -169,6 +170,7 @@ describe('buildHealthCheckLogContext (#1094)', () => {
       intakeMappingProbe: { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] },
       apmWeightsProbe: { status: 'skip', message: 'not a service workspace', source: null, errors: [], warnings: [] },
       serviceProbes: [],
+      lzConnectionsProbe: { status: 'info', message: 'no live landing zone registered', scopes: [] },
     };
     const failedProbes = ['license', 'playwright', 'community-frameworks'];
     const ctx = buildHealthCheckLogContext(mockCtx, failedProbes);
@@ -233,7 +235,7 @@ describe('swao doctor CLI smoke (#0024)', () => {
     const ctx = completeEvent!['context'] as Record<string, unknown>;
     expect(typeof ctx['fail_count']).toBe('number');
     expect(typeof ctx['probe_count']).toBe('number');
-    expect(ctx['probe_count']).toBe(25);  // #3127-#3133: probes [19]-[25]
+    expect(ctx['probe_count']).toBe(26);  // #3127-#3133: probes [19]-[25]; #3589: [26] LZ connections
 
     // #1094: verify per-probe detail is present (the key addition)
     const probes = ctx['probes'] as Record<string, unknown>;
@@ -242,7 +244,7 @@ describe('swao doctor CLI smoke (#0024)', () => {
       'license', 'playwright', 'mcp', 'community_frameworks',
       'imports', 'traceability', 'bi_export', 'scope',
       'prerequisites', 'vcs_auth', 'ingestion',
-      'iac_toolchain', 'wsp_metadata', 'credential_vault',
+      'iac_toolchain', 'wsp_metadata', 'credential_vault', 'lz_connections',
     ];
     for (const key of probeKeys) {
       expect(probes, `probe '${key}' missing from log context`).toHaveProperty(key);

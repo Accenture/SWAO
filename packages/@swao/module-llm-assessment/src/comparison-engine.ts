@@ -75,6 +75,26 @@ export interface FinalResult {
   /** Legs whose weights were renormalised over a subset of groups
    *  (missing group scores), with the missing groups named. */
   partial: Record<string, MetricGroup[]>;
+  /**
+   * #4474: legs that did not finish (failed or cancelled). They have no
+   * score and no rank and are not part of the normalisation; listed with the
+   * reason and the assessment calls they completed.
+   */
+  did_not_finish?: Record<string, DidNotFinish>;
+}
+
+/** #4474: a leg without a score: why it did not finish and what it completed. */
+export interface DidNotFinish {
+  status: 'failed' | 'cancelled';
+  reason?: string;
+  calls: number;
+}
+
+/** #4474: the operator text of a leg that did not finish ("did not finish: <reason>, 2 calls completed"). */
+export function didNotFinishText(d: DidNotFinish): string {
+  const reason = d.reason ? `: ${d.reason}` : '';
+  const calls = d.reason && /calls completed/.test(d.reason) ? '' : `, ${d.calls} call${d.calls === 1 ? '' : 's'} completed`;
+  return `${d.status === 'cancelled' ? 'cancelled' : 'did not finish'}${reason}${calls}`;
 }
 
 export function trafficLight(score: number | null): TrafficLight {

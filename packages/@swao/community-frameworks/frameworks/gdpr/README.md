@@ -20,7 +20,7 @@
 **Framework ID:** `GDPR`
 **Version:** Regulation (EU) 2016/679 -- in force since 2018-05-25
 **Authority:** European Parliament and Council of the European Union
-**SWAO tier:** Community (install required -- `swao framework install GDPR`)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/gdpr/`)
 **Controls:** 53 controls across Chapters II-V + transfer safeguards
 
 ## What this framework evaluates
@@ -35,7 +35,7 @@ basis register, DPAs, RoPA, DPIAs).
 
 ## How to activate in SWAO
 
-Install the framework with `swao framework install GDPR`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
+Copy this folder from the [GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into the workspace at `wsp/inputs/catalogs/community/gdpr/`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
 assessment:
@@ -69,7 +69,8 @@ Controls are evaluated from:
 Install a local copy to override specific controls for your engagement:
 
 ```bash
-swao framework install GDPR
+# copy this folder from the GitHub repository into the workspace
+cp -r gdpr <workspace>/wsp/inputs/catalogs/community/gdpr
 ```
 
 The installed copy at `wsp/inputs/catalogs/community/gdpr/controls.yaml` overrides the bundled version

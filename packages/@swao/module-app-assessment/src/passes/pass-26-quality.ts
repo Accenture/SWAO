@@ -42,6 +42,7 @@ import {
   detectCodeHealthTools,
   fileBackedToolRunner,
   listSourceFiles,
+  reportPassProgress,
   isEndpointScanCandidate,
   scanEndpoints,
   endpointEvidence,
@@ -192,7 +193,10 @@ export async function runQualityPass(ctx: PassContext, deps: QualityPassDeps = {
   let generatedFiles = 0;
   const records: FileRecord[] = [];
   const languages: Record<string, { files: number; nloc: number }> = {};
+  let walked = 0;
   for (const f of all) {
+    // #4300: synchronous reads, reported per file; the sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase: 'code_health:file_metrics', files: ++walked });
     // Dot-files (`.env`, `.eslintrc.js`) feed the endpoint scan only.
     const lang = f.isHidden ? undefined : CODE_LANGUAGES[f.ext];
     const endpointCandidate = isEndpointScanCandidate(f);

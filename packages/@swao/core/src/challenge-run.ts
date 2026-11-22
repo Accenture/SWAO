@@ -163,14 +163,39 @@ function pairByTimestamp(challengeTs: string, runIds: string[]): string | undefi
 }
 
 /**
- * Pick the challenge that belongs to the reported run (#3330).
+ * #4466: true when a challenge's recorded targets differ from the reported
+ * run's targets. Unknown targets on either side never differ (older files).
+ * Compared as sets, case-insensitive (`otc:eu-de`, `stackit:eu02`).
+ */
+export function challengeTargetsDiffer(challengeTargets: readonly string[] | undefined, runTargets: readonly string[] | undefined): boolean {
+  if (!challengeTargets?.length || !runTargets?.length) return false;
+  const norm = (xs: readonly string[]): string => [...new Set(xs.map(x => x.trim().toLowerCase()))].sort().join('|');
+  return norm(challengeTargets) !== norm(runTargets);
+}
+
+/** Options of selectChallengeForRun. */
+export interface SelectChallengeOptions {
+  /**
+   * #4466: targets of the reported run (run-status.json `targets`). A
+   * challenge whose recorded run has other targets is never selected, also
+   * not as the unscoped newest challenge.
+   */
+  targets?: readonly string[];
+}
+
+/**
+ * Pick the challenge that belongs to the reported run (#3330). One rule for
+ * the application and the LZ challenge (#4466, Design publication/006 section 4.19): a
+ * challenge is shown when it records the reported run (`run-id`), or, for an
+ * older file without a run reference, when it pairs with the run by
+ * timestamp; never when it records other targets than the reported run.
  *
  * @param wspDir  apps/<app>/wsp
  * @param kind    'lz' (challenge-lz) or 'app' (challenge-app)
  * @param runDir  the reported run dir (apps/<app>/wsp/runs/<ts>); when it is
  *                not a runs/<ts> dir the newest challenge is used (`unscoped`)
  */
-export function selectChallengeForRun(wspDir: string, kind: ChallengeKind, runDir: string | undefined): ChallengeSelection {
+export function selectChallengeForRun(wspDir: string, kind: ChallengeKind, runDir: string | undefined, opts: SelectChallengeOptions = {}): ChallengeSelection {
   const base = join(wspDir, subDirName(kind));
   const none: ChallengeSelection = { dir: null, match: 'none', otherRunOmitted: false };
   if (!existsSync(base)) return none;
@@ -213,6 +238,9 @@ export function selectChallengeForRun(wspDir: string, kind: ChallengeKind, runDi
   if (!reportedRunId) {
     const c = candidates[0]!;
     const ref = refOf(c);
+    if (challengeTargetsDiffer(ref?.targets, opts.targets)) {
+      return { dir: null, match: 'none', otherRunOmitted: true, ...(ref ? { otherRunId: ref.run_id } : {}), ...(c.ts ? { otherChallengeTs: c.ts } : {}) };
+    }
     return { dir: c.dir, challengeTs: c.ts || undefined, ...(ref ? { runId: ref.run_id } : {}), match: 'unscoped', otherRunOmitted: false };
   }
 
@@ -230,7 +258,7 @@ export function selectChallengeForRun(wspDir: string, kind: ChallengeKind, runDi
   for (const c of candidates) {
     const ref = refOf(c);
     if (ref) {
-      if (ref.run_id === reportedRunId) {
+      if (ref.run_id === reportedRunId && !challengeTargetsDiffer(ref.targets, opts.targets)) {
         return { dir: c.dir, challengeTs: c.ts || undefined, runId: ref.run_id, match: 'run-id', otherRunOmitted, ...other };
       }
       skip(c.ts, ref.run_id);

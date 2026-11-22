@@ -14,7 +14,7 @@
 // ================================================================
 
 import type { Command } from 'commander';
-import { CredentialStore, logPortfolio } from '@swao/core';
+import { CredentialStore, logPortfolio, parseLzCredentialKey } from '@swao/core';
 import {
   randomBytes,
   scryptSync,
@@ -141,6 +141,7 @@ export function renderCredentialList(names: string[]): string[] {
   const llm: string[] = [];
   const vcs: string[] = [];
   const other: string[] = [];
+  const lz: string[] = [];
   const playwright = new Map<string, string[]>();
 
   for (const name of [...names].sort((a, b) => a.localeCompare(b))) {
@@ -153,6 +154,7 @@ export function renderCredentialList(names: string[]): string[] {
     }
     if (/^vcs-/.test(name) || /^provider:[^:]+:token$/.test(name)) { vcs.push(name); continue; }
     if (/-api-key$/.test(name)) { llm.push(name); continue; }
+    if (parseLzCredentialKey(name)) { lz.push(name); continue; }
     other.push(name);
   }
 
@@ -172,17 +174,33 @@ export function renderCredentialList(names: string[]): string[] {
     }
   }
   section('VCS tokens', vcs);
+  section('Landing zones', lz);
   section('Other', other);
   return lines;
 }
 
+// #3570: `swao credential set <name> -` reads the value from stdin, so scripts
+// (the developer AWS SSO helper of the repository) never pass a secret on the command line,
+// where the process list would show it. One trailing line break is removed.
+export async function readCredentialValueFromStdin(stream: NodeJS.ReadableStream = process.stdin): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk as Buffer);
+  return Buffer.concat(chunks).toString('utf-8').replace(/\r?\n$/, '');
+}
+
 export function registerCredential(program: Command): void {
-  const cmd = program.command('credential').description('Manage SWAO credentials securely (anthropic-api-key, and LZR adapter keys for AWS, Azure, and meshStack).');
+  const cmd = program.command('credential').description('Manage SWAO credentials securely (LLM API keys, VCS tokens, crawler logins, and landing zone keys lz:<lz-id>:<scope-id>:<field>).');
 
   cmd
     .command('set <name> <value>')
-    .description('store a credential (value is not echoed)')
-    .action(async (name: string, value: string) => {
+    .description('store a credential (value is not echoed; use - to read the value from stdin)')
+    .action(async (name: string, rawValue: string) => {
+      const value = rawValue === '-' ? await readCredentialValueFromStdin() : rawValue;
+      if (value === '') {
+        console.error(`[credential] empty value for "${name}"; nothing stored`);
+        process.exitCode = 1;
+        return;
+      }
       const store = new CredentialStore();
       await store.set(name, value);
       console.log(`[credential] stored "${name}"`);

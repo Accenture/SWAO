@@ -129,6 +129,11 @@ const ProvenanceSchema = z.object({
   lzr_snapshot_fabricated: z.boolean().optional(),
   crawl_type: z.enum(['playwright', 'stub', 'none']),
   swao_version: z.string(),
+  // #4430 (v1.7, additive): the build that produced the run, from the bundle's
+  // build-info stamp (@swao/core build-info.ts): short commit with an optional
+  // -dirty suffix, or "source" for an unbundled run; UTC build date or null.
+  build_commit: z.string().optional(),
+  build_date: z.string().nullable().optional(),
   // #0550: LLM-dependent passes that degraded to no_llm_provider skip signals
   // because no LLM provider was configured. Empty / absent when an LLM ran.
   // The HTML report health section surfaces this list.
@@ -149,9 +154,10 @@ export const RunManifestSchema = z.object({
   // schema_version 1.1 retained for back-compat; 1.2 adds llm +
   // files_assessed; 1.3 adds landing_zone_weights; 1.4 adds provenance;
   // 1.5 adds passes_failed (additive, no existing manifests break);
-  // 1.6 adds passes_not_run + passes_degraded (#3419 / #3436, additive).
+  // 1.6 adds passes_not_run + passes_degraded (#3419 / #3436, additive);
+  // 1.7 adds provenance.build_commit + provenance.build_date (#4430, additive).
   schema_version: z.union([
-    z.literal('1.1'), z.literal('1.2'), z.literal('1.3'), z.literal('1.4'), z.literal('1.5'), z.literal('1.6'),
+    z.literal('1.1'), z.literal('1.2'), z.literal('1.3'), z.literal('1.4'), z.literal('1.5'), z.literal('1.6'), z.literal('1.7'),
   ]),
   run_id: z.string(),
   app: z.string(),

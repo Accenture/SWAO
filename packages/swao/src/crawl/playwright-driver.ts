@@ -745,7 +745,8 @@ export class PlaywrightCrawlProvider implements CrawlProvider {
         ...(username && password ? { httpCredentials: { username, password } } : {}),
       });
       if (username && password) {
-        console.warn(`[info] Playwright: httpCredentials active for ${username} -- HTTP Basic Auth 401 challenges handled automatically`);
+        // #4402: the crawl login is not printed (the run log and assess.log keep no login name).
+        console.warn('[info] Playwright: httpCredentials active for the configured crawl login; HTTP Basic Auth 401 challenges are answered automatically');
       }
       const page = await ctx.newPage();
 
@@ -813,14 +814,14 @@ export class PlaywrightCrawlProvider implements CrawlProvider {
             }
             // Signal that the NEXT page's discovered links should be prioritised.
             firstAuthPagePriority = true;
-            console.warn(`[info] Playwright form login succeeded -- ${loginResult.message}`);
+            console.warn(`[info] Playwright form login succeeded, ${loginResult.message}`);
           } else {
             // Form login was attempted but failed. Log clearly so the operator
             // knows screenshots will show unauthenticated content and can diagnose
             // the cause (wrong credentials, app-side error, CAPTCHA, etc.).
             console.warn(
               `[warn] Playwright form login FAILED: ${loginResult.message}` +
-              ` -- verify credentials in vault (playwright-user-<app> / playwright-pass-<app>); crawl continues unauthenticated`,
+              '; verify the credentials in the vault (playwright-user-<app> / playwright-pass-<app>); the crawl continues unauthenticated',
             );
           }
           // Skip tab exploration on the login page -- page state has changed after login
@@ -842,7 +843,9 @@ export class PlaywrightCrawlProvider implements CrawlProvider {
         }
       }
     } finally {
-      await browser?.close();
+      // #4461: closing full Chromium takes 17 to 19 s; wait at most
+      // CRAWL_CLOSE_WAIT_MS, the rest of the close finishes in the background.
+      if (browser) await closeBrowserBounded(browser, CRAWL_CLOSE_WAIT_MS);
     }
 
     return {
@@ -915,19 +918,74 @@ function findChromiumOnFilesystem(): string | null {
   return null;
 }
 
+/**
+ * #4451: the health check's test launch may take this long. A launch that is
+ * still running then, with Chromium found on disk, is a slow machine, not a
+ * missing installation: the probe reports warn, not fail.
+ */
+export const CHROMIUM_PROBE_LAUNCH_TIMEOUT_MS = 15_000;
+
+/**
+ * #4461: the probe waits this long for the test browser to close. Closing the
+ * full Chromium build took about 18 s on the owner machine (launch about 2 s);
+ * the close then finishes in the background while the other probes run, and
+ * Playwright ends the browser when the health check process exits.
+ */
+export const CHROMIUM_PROBE_CLOSE_WAIT_MS = 2_000;
+
+/** #4461: longest wait for the browser close at the end of a Pass 10 crawl. */
+export const CRAWL_CLOSE_WAIT_MS = 5_000;
+
+/** #4461: close a browser, waiting at most waitMs; true when the close finished in time. */
+export async function closeBrowserBounded(browser: { close(): Promise<void> }, waitMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race<boolean>([
+      browser.close().then(() => true, () => true),
+      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), waitMs); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** #4451: why the Playwright probe is not ok (logged with the probe result). */
+export type PlaywrightProbeReason = 'not_found' | 'package_missing' | 'timeout' | 'launch_error';
+
+export interface PlaywrightProbeOutcome {
+  status: 'ok' | 'fail' | 'warn';
+  version: string | null;
+  path: string | null;
+  error: string | null;
+  /** #4451: set when the status is not ok. */
+  reason?: PlaywrightProbeReason;
+  /** Design 126: the raw launch error, for the log only (first line, at most 300 characters); never on screen. */
+  detail?: string;
+  /** #4461: duration of the test launch (absent when no launch ran). */
+  launch_ms?: number;
+  /** #4461: duration of the close; null when it was still running after CHROMIUM_PROBE_CLOSE_WAIT_MS. */
+  close_ms?: number | null;
+}
+
+const INSTALL_HINT = 'run: swao install-playwright';
+
 export async function buildPlaywrightProbe(opts?: {
   executablePath?: string;
   launchTimeoutMs?: number;
-}): Promise<{ status: 'ok' | 'fail' | 'warn'; version: string | null; path: string | null; error: string | null }> {
+  /** #4461: test seam for the close wait. */
+  closeWaitMs?: number;
+  /** Test seam (#4388): replaces chromium.launch so the race runs without a real browser. */
+  launch?: (options: { headless: boolean; executablePath: string }) => Promise<Browser>;
+}): Promise<PlaywrightProbeOutcome> {
   let path: string;
   let fromFilesystemScan = false;
   try {
     path = opts?.executablePath ?? chromium.executablePath();
   } catch {
-    // pkg binary: playwright registry unavailable in virtual snapshot -- scan filesystem
+    // pkg binary: playwright registry unavailable in virtual snapshot; scan the filesystem.
     const fsPath = findChromiumOnFilesystem();
     if (!fsPath) {
-      return { status: 'warn', version: null, path: null, error: 'Chromium not found -- run: swao install-playwright' };
+      return { status: 'warn', version: null, path: null, error: `Chromium not found; ${INSTALL_HINT}`, reason: 'not_found' };
     }
     path = fsPath;
     fromFilesystemScan = true;
@@ -942,7 +1000,7 @@ export async function buildPlaywrightProbe(opts?: {
       const version = buildMatch ? `build-${buildMatch[1]}` : 'detected';
       return { status: 'ok', version, path: fsPath, error: null };
     }
-    return { status: 'fail', version: null, path, error: 'Chromium not found -- run: swao install-playwright' };
+    return { status: 'fail', version: null, path, error: `Chromium not found; ${INSTALL_HINT}`, reason: 'not_found' };
   }
 
   // In pkg binary context, playwright.launch() cannot run inside the virtual snapshot.
@@ -958,36 +1016,77 @@ export async function buildPlaywrightProbe(opts?: {
         status: 'warn',
         version,
         path,
-        error: 'Chromium found but playwright-core npm package missing -- run: swao install-playwright',
+        error: `Chromium found but the playwright-core npm package is missing; ${INSTALL_HINT}`,
+        reason: 'package_missing',
       };
     }
     return { status: 'ok', version, path, error: null };
   }
 
-  // Development / dev-build context: perform a full launch check.
-  const timeoutMs = opts?.launchTimeoutMs ?? 5000;
+  // Development / dev-build context: one full launch check (#4461: never repeated).
+  const timeoutMs = opts?.launchTimeoutMs ?? CHROMIUM_PROBE_LAUNCH_TIMEOUT_MS;
+  const closeWaitMs = opts?.closeWaitMs ?? CHROMIUM_PROBE_CLOSE_WAIT_MS;
+  const launch = opts?.launch ?? ((o: { headless: boolean; executablePath: string }) => chromium.launch(o));
   let browser: Browser | null = null;
+  // #4388: the race timer is cleared as soon as the launch settles, so it no longer
+  // keeps the process alive for up to timeoutMs after the probe result, and a launch
+  // that resolves after the timeout won the race is closed instead of leaking a browser.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  const launchStart = Date.now();
+  const launching = launch({ headless: true, executablePath: path });
+  launching.then(
+    (late) => { if (timedOut) void late.close().catch(() => undefined); },
+    () => undefined,
+  );
+  let outcome: PlaywrightProbeOutcome;
   try {
     browser = await Promise.race<Browser>([
-      chromium.launch({ headless: true, executablePath: path }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Chromium launch timed out after ${timeoutMs}ms`)), timeoutMs),
-      ),
+      launching,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          timedOut = true;
+          reject(new Error(`Chromium launch timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
     ]);
-    const version = browser.version();
-    return { status: 'ok', version, path, error: null };
+    outcome = { status: 'ok', version: browser.version(), path, error: null, launch_ms: Date.now() - launchStart };
   } catch (e) {
+    const launchMs = Date.now() - launchStart;
+    if (timedOut) {
+      // #4451: Chromium is on disk (checked above); the launch was only slow.
+      const seconds = Math.round(timeoutMs / 1000);
+      return {
+        status: 'warn',
+        version: null,
+        path,
+        error: `Chromium installed, the test launch took longer than ${seconds} s (the machine may be busy; run the health check again)`,
+        reason: 'timeout',
+        launch_ms: launchMs,
+      };
+    }
     // If the path exists but launch fails (e.g. pkg binary can't launch from snapshot),
-    // fall back to reporting ok based on file presence -- the actual launch will be
+    // fall back to reporting ok based on file presence; the actual launch will be
     // attempted only when Pass 10 (dynamic analysis) runs.
     const err = (e as Error).message;
     if (err.includes('undefined') || err.includes('snapshot') || err.includes('Cannot find')) {
       const buildMatch = path.match(/chromium-(\d+)/);
       const version = buildMatch ? `build-${buildMatch[1]}` : 'detected';
-      return { status: 'ok', version, path, error: null };
+      return { status: 'ok', version, path, error: null, launch_ms: launchMs };
     }
-    return { status: 'fail', version: null, path, error: err };
+    // Design 126: raw exception text goes to the log (detail), the screen gets the operator sentence.
+    const detail = (err.split(/\r?\n/)[0] ?? '').trim().slice(0, 300);
+    return { status: 'fail', version: null, path, error: 'Chromium launch failed; the error is in the health check log', reason: 'launch_error', detail, launch_ms: launchMs };
   } finally {
-    await browser?.close();
+    clearTimeout(timer);
   }
+  // #4461: the close is bounded; a slow close finishes in the background.
+  const closeStart = Date.now();
+  let closeTimer: ReturnType<typeof setTimeout> | undefined;
+  const closed = await Promise.race<boolean>([
+    browser.close().then(() => true, () => true),
+    new Promise<boolean>((resolve) => { closeTimer = setTimeout(() => resolve(false), closeWaitMs); }),
+  ]);
+  clearTimeout(closeTimer);
+  return { ...outcome, close_ms: closed ? Date.now() - closeStart : null };
 }

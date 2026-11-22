@@ -40,6 +40,8 @@ models:
   default: gpt-4o
 ```
 
+Modellabfrage: Öffnet sich eine Modellauswahl (Setup, LLM Assessment) oder läuft `swao llm models --connector <id>`, fragt SWAO die angebotenen Modelle mit einem GET und dem Connector-Schlüssel live bei der Plattform ab (gleiche Proxy- und TLS-Einstellungen wie die Aufrufe, 5 Sekunden Zeitlimit) und schreibt sie in die Workspace-Kopie des Connectors. Für eine abgeschottete Plattform oder eine ohne Modellliste `models.discovery: false` setzen; dann sendet SWAO keine Abfrage.
+
 ## 4. Testen
 
 ```bash

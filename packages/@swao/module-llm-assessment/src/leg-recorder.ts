@@ -51,6 +51,12 @@ export interface LegRecorder {
   wrap<T extends CompletesLikeProvider>(inner: T, usageSnapshot: () => UsageSnapshot): T;
 }
 
+/** #4476: the model a provider object calls (its `model` property), if it names one. */
+function calledModelOf(inner: unknown): string | undefined {
+  const m = (inner as { model?: unknown }).model;
+  return typeof m === 'string' && m.length > 0 ? m : undefined;
+}
+
 /** Null outside leg mode; the host guards with a single `if`. */
 export function createLegRecorderFromEnv(
   env: Record<string, string | undefined> = process.env,
@@ -66,8 +72,9 @@ export function createLegRecorderFromEnv(
     ...(env[LEG_ENV.CONNECTOR_SHA256] ? { connector_sha256: env[LEG_ENV.CONNECTOR_SHA256] } : {}),
   };
   const rawSource = env[LEG_ENV.COST_SOURCE];
-  const costSource: 'billed' | 'configured' | 'local' =
-    rawSource === 'configured' || rawSource === 'local' ? rawSource : 'billed';
+  // #4372: 'unpriced' passes through to the child process too.
+  const costSource: 'billed' | 'configured' | 'local' | 'unpriced' =
+    rawSource === 'configured' || rawSource === 'local' || rawSource === 'unpriced' ? rawSource : 'billed';
 
   let current = { passId: 'pre-pass', callSite: 'pre-pass' };
 
@@ -82,6 +89,8 @@ export function createLegRecorderFromEnv(
         costSource,
         currentContext: () => current,
         maxTokens: (inner as { maxTokens?: number }).maxTokens,
+        // #4476: the model the provider really calls, next to the leg's model.
+        ...(calledModelOf(inner) ? { calledModel: calledModelOf(inner)! } : {}),
         onRecord: (record) => appendFileSync(sink, JSON.stringify(record) + '\n', 'utf-8'),
       });
       // Preserve the inner provider's shape (name/model props etc.) so pass

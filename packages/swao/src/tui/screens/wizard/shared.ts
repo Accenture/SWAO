@@ -16,16 +16,9 @@
 // Shared constants, types, and mutable state for the SetupWizard step system.
 // All step components import from here to avoid circular dependencies.
 
-// Process-path constants used by CredentialsStep and HealthCheckStep to spawn
-// child processes via the same binary that is currently running.
-export const BIN  = process.execPath;
-// #2576-family: inside a pkg binary process.argv[1] is the snapshot bundle path;
-// Commander.js rejects it as an unknown command. Use SELF_ARGS = [] in pkg, or
-// the real entry script path in dev. Individual step files import SELF_ARGS.
-const _wizIsPkg = Boolean((process as { pkg?: unknown }).pkg);
-export const SELF_ARGS: string[] = _wizIsPkg ? [] : [process.argv[1] as string];
-// Kept for backward compat with CredentialsStep which guards inline.
-export const SELF = process.argv[1] as string;
+// #2576-family / #4241: the steps spawn the running binary through the central
+// self-spawn helper selfSpawnCommand in @swao/core (BIN, SELF_ARGS and SELF
+// were removed from here).
 
 // #1400 sprint-113: `gw:<connector-id>` selects a SWAO LLM-Gateway connector
 // (Design 090); the literal values remain for the legacy fallback path.
@@ -47,13 +40,15 @@ export interface SetupState {
   visionMaxScreens?: number;
   // #3403: assessment.test_code.mode chosen in the test-code step (undefined = kept as is)
   testCodeMode?: 'include' | 'tag' | 'exclude';
+  /**
+   * #4392 (TUI/CLI parity with swao init): the saved default workspace before
+   * the init step replaced it, set only when the step changed it ('' = none
+   * was saved). The Ready step names it.
+   */
+  previousDefaultWorkspace?: string;
   // #3306: LZ catalogue targets written by the LZ targets step ([] = skipped)
   /** #3378: removed from the setup wizard (LZ targets are chosen per assessment). */
 }
 
-// #0760: module-level flag tracks whether any GuidanceBox in the wizard is
-// currently expanded. The root useInput guard reads it to prevent Escape from
-// navigating away when the user intends to close the guidance panel.
-// One SetupWizard renders at a time so a module-level flag is safe here.
-export let _wizardGuidanceOpen = false;
-export const setWizardGuidanceOpen = (open: boolean): void => { _wizardGuidanceOpen = open; };
+// #4394: the guidance box open state has one owner, the tui-kit guidance
+// module (useGuidanceOpen / GuidanceOpenContext, provided by SetupWizard).

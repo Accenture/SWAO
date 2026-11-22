@@ -316,7 +316,7 @@ controls:
       and quality trend reporting.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: QA }
+      - { signal_prefix: QUAL }
     references: []
     overrides: []
     maps_to: [SOC_2_CC8.1]
@@ -356,7 +356,8 @@ controls:
       # item 2). IAM is the primary evidence area; the others are secondary.
       - { signal_prefix: IAM }
       - { signal_prefix: CRYPTO }
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
       - { signal_prefix: EGR }
     references: []
     overrides: []
@@ -429,7 +430,8 @@ controls:
       actions that followed.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [SOC_2_A1.2]
@@ -552,7 +554,8 @@ controls:
       monitoring, and records showing that operational checks are carried out.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [SOC_2_CC7.2]
@@ -604,7 +607,8 @@ controls:
       failover arrangements.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: DR }
+      - { signal_prefix: STATE }
+      - { signal_prefix: TF }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, SOC_2_A1.3]
@@ -625,7 +629,8 @@ controls:
     evidence_basis:
       - { signal_prefix: IAM }
       - { signal_prefix: EGR }
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
       - { signal_prefix: CRYPTO }
     references: []
     overrides: []
@@ -664,7 +669,8 @@ controls:
       corrective actions.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [SOC_2_CC4.1]

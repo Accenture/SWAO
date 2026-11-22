@@ -13,7 +13,8 @@
 //
 // ================================================================
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { LzCredentialExpiredError } from '@swao/core';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -241,8 +242,48 @@ describe('runAwsChecks -- AWS ESC (aws_eu_sovereign)', () => {
 // #0479 live-path tests (mock fetch)
 // ---------------------------------------------------------------------------
 
-describe('runAwsChecks -- live API path (#0479)', () => {
-  afterEach(() => { vi.restoreAllMocks(); });
+describe('runAwsChecks -- live API path (#0479, scoped keys #3570)', () => {
+  // Scoped env overrides (Design 120 section 6.2, Design 121 Q-M5); values are
+  // fake and built at runtime.
+  const SCOPE = { lzId: 'aws-demo', scopeId: 'platform' };
+  const ENV = {
+    ak: 'SWAO_CREDENTIAL_LZ__AWS_DEMO__PLATFORM__ACCESS_KEY_ID',
+    sk: 'SWAO_CREDENTIAL_LZ__AWS_DEMO__PLATFORM__SECRET_ACCESS_KEY',
+    exp: 'SWAO_CREDENTIAL_LZ__AWS_DEMO__PLATFORM__EXPIRES_AT',
+    legacyAk: 'SWAO_CREDENTIAL_AWS_ACCESS_KEY_ID',
+    legacySk: 'SWAO_CREDENTIAL_AWS_SECRET_ACCESS_KEY',
+  };
+  let saved: Record<string, string | undefined>;
+
+  beforeEach(() => {
+    saved = {};
+    for (const k of Object.values(ENV)) { saved[k] = process.env[k]; delete process.env[k]; }
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+  });
+
+  // #3574: real wire formats (the live path now runs on the `aws` driver of
+  // module-landing-zone): EKS REST-JSON, RDS Query XML (the old test answered
+  // RDS with JSON, which the real API never sends).
+  function wire(status: number, body: string, contentType: string) {
+    return Promise.resolve({ ok: status < 300, status, headers: { get: (n: string) => (n.toLowerCase() === 'content-type' ? contentType : null) }, text: async () => body });
+  }
+  function mockAwsFetch() {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      const u = new URL(url);
+      if (u.hostname.startsWith('eks.') && u.pathname === '/clusters') return wire(200, JSON.stringify({ clusters: ['prod-cluster'], nextToken: null }), 'application/json');
+      if (u.hostname.startsWith('eks.') && u.pathname === '/clusters/prod-cluster') return wire(200, JSON.stringify({ cluster: { name: 'prod-cluster', status: 'ACTIVE', version: '1.30' } }), 'application/json');
+      if (u.hostname.startsWith('rds.')) {
+        return wire(200, '<DescribeDBInstancesResponse xmlns="http://rds.amazonaws.com/doc/2014-10-31/"><DescribeDBInstancesResult><DBInstances><DBInstance><DBInstanceIdentifier>db-1</DBInstanceIdentifier><Engine>postgres</Engine><DBInstanceStatus>available</DBInstanceStatus><EngineVersion>16.4</EngineVersion></DBInstance></DBInstances></DescribeDBInstancesResult></DescribeDBInstancesResponse>', 'text/xml');
+      }
+      return wire(404, '<ErrorResponse><Error><Code>UnknownOperation</Code></Error></ErrorResponse>', 'text/xml');
+    });
+    vi.stubGlobal('fetch', mockFetch);
+    return mockFetch;
+  }
 
   it('snapshot path sets input_type: snapshot', async () => {
     const snapshotFile = makeTmpStub(CLEAN_STUB);
@@ -250,48 +291,63 @@ describe('runAwsChecks -- live API path (#0479)', () => {
     expect((result as Record<string, unknown>).input_type).toBe('snapshot');
   });
 
-  it('live path calls EKS and RDS endpoints when no snapshot; sets input_type: live_api', async () => {
-    const mockFetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/clusters') && !url.split('/clusters/')[1]) {
-        return Promise.resolve({ ok: true, json: async () => ({ clusters: ['prod-cluster'] }) });
-      }
-      if (url.includes('/clusters/prod-cluster')) {
-        return Promise.resolve({ ok: true, json: async () => ({ cluster: { name: 'prod-cluster', status: 'ACTIVE', version: '1.30' } }) });
-      }
-      if (url.includes('rds.')) {
-        return Promise.resolve({ ok: true, json: async () => ({ DBInstances: [] }) });
-      }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
-    });
-    vi.stubGlobal('fetch', mockFetch);
-
-    // Provide credentials via env so credentialStore resolves them
-    const origAccessKey = process.env['SWAO_AWS_ACCESS_KEY_ID'];
-    const origSecretKey = process.env['SWAO_AWS_SECRET_ACCESS_KEY'];
-    process.env['SWAO_AWS_ACCESS_KEY_ID'] = 'AKIATEST';
-    process.env['SWAO_AWS_SECRET_ACCESS_KEY'] = 'testsecret';
-
-    try {
-      const result = await runAwsChecks({ ...BASE_CONFIG }, ['kubernetes']);
-      expect((result as Record<string, unknown>).input_type).toBe('live_api');
-      expect(result.overall_verdict).toBeDefined();
-    } finally {
-      if (origAccessKey === undefined) delete process.env['SWAO_AWS_ACCESS_KEY_ID'];
-      else process.env['SWAO_AWS_ACCESS_KEY_ID'] = origAccessKey;
-      if (origSecretKey === undefined) delete process.env['SWAO_AWS_SECRET_ACCESS_KEY'];
-      else process.env['SWAO_AWS_SECRET_ACCESS_KEY'] = origSecretKey;
-    }
+  it('live path reads lz:<lz>:<scope>:* keys and calls EKS and RDS; sets input_type: live_api', async () => {
+    const mockFetch = mockAwsFetch();
+    process.env[ENV.ak] = ['fake', 'ak'].join('-');
+    process.env[ENV.sk] = ['fake', 'sk'].join('-');
+    const result = await runAwsChecks({ ...BASE_CONFIG, credentialScope: SCOPE }, ['kubernetes']);
+    expect((result as Record<string, unknown>).input_type).toBe('live_api');
+    expect(mockFetch).toHaveBeenCalled();
+    expect(mockFetch.mock.calls.some(([u]) => String(u).includes('eks.eu-central-1.amazonaws.com/clusters'))).toBe(true);
+    expect(result.warnings.map((w) => w.check_id)).not.toContain('LZ-WARN-00');
   });
 
-  it('live path returns advisory when credentials absent', async () => {
-    const origAccessKey = process.env['SWAO_AWS_ACCESS_KEY_ID'];
-    delete process.env['SWAO_AWS_ACCESS_KEY_ID'];
-    try {
-      const result = await runAwsChecks({ ...BASE_CONFIG }, []);
-      expect(result.overall_verdict).toBe('advisory');
-      expect((result as Record<string, unknown>).input_type).toBe('live_api');
-    } finally {
-      if (origAccessKey !== undefined) process.env['SWAO_AWS_ACCESS_KEY_ID'] = origAccessKey;
-    }
+  it('#3574: the live path signs with SigV4 through the driver and reads RDS from XML', async () => {
+    const mockFetch = mockAwsFetch();
+    process.env[ENV.ak] = ['fake', 'ak'].join('-');
+    process.env[ENV.sk] = ['fake', 'sk'].join('-');
+    const result = await runAwsChecks({ ...BASE_CONFIG, credentialScope: SCOPE }, ['kubernetes', 'postgresql']);
+    expect(result.service_checks.find((c) => c.service === 'postgresql')).toMatchObject({ status: 'ready', note: 'RDS: db-1 (v16.4)' });
+    expect(result.service_checks.find((c) => c.service === 'kubernetes')).toMatchObject({ status: 'ready' });
+    const rds = mockFetch.mock.calls.find(([u]) => String(u).includes('rds.'));
+    expect(new URL(String(rds?.[0])).searchParams.get('Action')).toBe('DescribeDBInstances');
+    expect(String((rds?.[1] as { headers: Record<string, string> }).headers.authorization)).toMatch(/^AWS4-HMAC-SHA256 Credential=fake-ak\/\d{8}\/eu-central-1\/rds\/aws4_request/);
+  });
+
+  it('#3574: an AWS API error on the live path becomes LZ-WARN-02, never an empty success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(() => wire(403, JSON.stringify({ message: 'denied' }), 'application/json')));
+    process.env[ENV.ak] = ['fake', 'ak'].join('-');
+    process.env[ENV.sk] = ['fake', 'sk'].join('-');
+    const result = await runAwsChecks({ ...BASE_CONFIG, credentialScope: SCOPE }, ['kubernetes']);
+    expect(result.warnings[0]?.check_id).toBe('LZ-WARN-02');
+    expect(result.overall_verdict).toBe('advisory');
+  });
+
+  it('legacy aws-access-key-id keys are no longer read (no dual-read fallback)', async () => {
+    const mockFetch = mockAwsFetch();
+    process.env[ENV.legacyAk] = ['fake', 'ak'].join('-');
+    process.env[ENV.legacySk] = ['fake', 'sk'].join('-');
+    const result = await runAwsChecks({ ...BASE_CONFIG, credentialScope: SCOPE }, []);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result.warnings[0]?.check_id).toBe('LZ-WARN-00');
+  });
+
+  it('without a registered scope the live path returns LZ-WARN-00 and sends nothing', async () => {
+    const mockFetch = mockAwsFetch();
+    process.env[ENV.ak] = ['fake', 'ak'].join('-');
+    process.env[ENV.sk] = ['fake', 'sk'].join('-');
+    const result = await runAwsChecks({ ...BASE_CONFIG }, []);
+    expect(result.overall_verdict).toBe('advisory');
+    expect(result.warnings[0]?.check_id).toBe('LZ-WARN-00');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('an expired expires-at fails fast with LzCredentialExpiredError before any request', async () => {
+    const mockFetch = mockAwsFetch();
+    process.env[ENV.ak] = ['fake', 'ak'].join('-');
+    process.env[ENV.sk] = ['fake', 'sk'].join('-');
+    process.env[ENV.exp] = '2020-01-01T00:00:00+00:00';
+    await expect(runAwsChecks({ ...BASE_CONFIG, credentialScope: SCOPE }, [])).rejects.toBeInstanceOf(LzCredentialExpiredError);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

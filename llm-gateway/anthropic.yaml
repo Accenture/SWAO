@@ -14,13 +14,31 @@ connector:
     header: x-api-key
     scheme: raw
   models:
-    default: claude-haiku-4-5-20251001
+    default: claude-haiku-5-5
+    discovery_endpoint: /v1/models   # #4475: Anthropic Models API (x-api-key, anthropic-version)
+    # Anthropic first-party list prices, USD per 1M tokens (Anthropic model table of 2026-10-06).
+    # Claude Haiku 5.5: the rate applies to prompts up to 100K tokens (0.50 / 2.50 beyond).
     catalogue:
+      - id: claude-opus-5-5
+        context_window: 1000000
+        cost: { input_per_million: 4.0, output_per_million: 20.0 }
+      - id: claude-sonnet-5-5
+        context_window: 1000000
+        cost: { input_per_million: 2.0, output_per_million: 10.0 }
+      - id: claude-haiku-5-5
+        context_window: 1000000
+        cost: { input_per_million: 0.1, output_per_million: 0.5 }
+      - id: claude-fable-5-1
+        context_window: 1000000
+        cost: { input_per_million: 10.0, output_per_million: 50.0 }
       - id: claude-opus-4-7
-        cost: { input_per_million: 15.0, output_per_million: 75.0 }
+        context_window: 1000000
+        cost: { input_per_million: 5.0, output_per_million: 25.0 }
       - id: claude-sonnet-4-6
+        context_window: 1000000
         cost: { input_per_million: 3.0, output_per_million: 15.0 }
       - id: claude-haiku-4-5-20251001
+        context_window: 200000
         cost: { input_per_million: 1.0, output_per_million: 5.0 }
   context_window_k: 200
   defaults:
@@ -32,5 +50,5 @@ connector:
     notes: Verify the data processing addendum and retention terms per engagement.
   meta:
     source: bundled
-    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    last_reviewed: "2026-11-16"   # #4475: ids and prices checked against the Anthropic model table (2026-10-06); same rates in types.ts; served list read live
     contributor: Accenture SWAO team

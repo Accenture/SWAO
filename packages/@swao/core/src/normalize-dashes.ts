@@ -31,7 +31,23 @@
 export function normalizeDashes(text: string): string {
   return replaceEmDashes(text)
     .replace(/\u2013/g, '-')
-    .replace(/ -- /g, ', ');
+    .split(' -- ').reduce(joinWithComma);
+}
+
+/**
+ * #4467: join two pieces at a replaced dash with ", ", or with the blank only
+ * when the left piece already ends with a comma (`NOT NULL,  -- hash` gives
+ * `NOT NULL, hash`, not `NOT NULL, , hash`), or with nothing when the right
+ * piece starts with one. Linear: only the blanks next to the join are read.
+ */
+function joinWithComma(left: string, right: string): string {
+  let end = left.length;
+  while (end > 0 && isBlank(left.charCodeAt(end - 1))) end--;
+  if (end > 0 && left.charCodeAt(end - 1) === 0x2c) return `${left.slice(0, end)} ${right}`;
+  let start = 0;
+  while (start < right.length && isBlank(right.charCodeAt(start))) start++;
+  if (start < right.length && right.charCodeAt(start) === 0x2c) return `${left}${right.slice(start)}`;
+  return `${left}, ${right}`;
 }
 
 const isBlank = (code: number): boolean => code === 0x20 || code === 0x09;
@@ -52,5 +68,5 @@ function replaceEmDashes(text: string): string {
     if (i > 0) while (start < end && isBlank(part.charCodeAt(start))) start++;
     if (i < last) while (end > start && isBlank(part.charCodeAt(end - 1))) end--;
     return part.slice(start, end);
-  }).join(', ');
+  }).reduce(joinWithComma);
 }

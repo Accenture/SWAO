@@ -31,7 +31,7 @@
 // (non-streaming chat/completions) is unchanged.
 
 import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion } from './types.js';
-import { openaiCostUsd } from './types.js';
+import { openaiTableRates, ratedUsageCost, type CostRates } from './types.js';
 import { scrubForEgress } from './egress-redaction.js';
 import { requestLlmWithRetry, LlmHttpStatusError, type AttemptWatchdog, type LlmAttemptResult } from './llm-request.js';
 import { llmLimiterKey, getLlmConcurrencyLimit } from './concurrency.js';
@@ -52,6 +52,8 @@ export class OpenAiLlmProvider implements LlmProvider {
   private readonly temperature: number;
   private readonly seed: number | undefined;
   private readonly appId: string | undefined;
+  /** #4372: rates of this model (.swao.yml cost_per_token, else the code table); undefined = unpriced. */
+  private readonly rates: CostRates | undefined;
   /** Concurrency limiter key (#3284): provider + endpoint origin. */
   readonly concurrencyKey: string;
   private lastUsage: LlmUsage | undefined;
@@ -72,8 +74,10 @@ export class OpenAiLlmProvider implements LlmProvider {
    * @param temperature Optional sampling temperature; defaults to 0 for deterministic output.
    * @param seed        Optional seed for reproducibility (supported by OpenAI).
    * @param appId       Optional app id; events are also written to the app log (#3284).
+   * @param costConfig  #4372: configured rates (.swao.yml cost_per_token); win over
+   *                    OPENAI_PRICING_PER_MTOK. A model in neither is unpriced.
    */
-  constructor(apiKey?: string, model?: string, temperature?: number, seed?: number, appId?: string) {
+  constructor(apiKey?: string, model?: string, temperature?: number, seed?: number, appId?: string, costConfig?: CostRates) {
     const key = apiKey ?? process.env['SWAO_OPENAI_API_KEY'] ?? process.env['OPENAI_API_KEY'];
     if (!key) {
       throw new Error(
@@ -86,6 +90,7 @@ export class OpenAiLlmProvider implements LlmProvider {
     this.temperature = temperature ?? 0;
     this.seed = seed;
     this.appId = appId;
+    this.rates = costConfig ?? openaiTableRates(this.model);
     this.concurrencyKey = llmLimiterKey(this.name, OPENAI_API_URL);
   }
 
@@ -122,7 +127,7 @@ export class OpenAiLlmProvider implements LlmProvider {
     const data = (await wd.race(response.json())) as ChatResponse;
     const inputTokens = data.usage?.prompt_tokens ?? 0;
     const outputTokens = data.usage?.completion_tokens ?? 0;
-    const costUsd = openaiCostUsd(this.model, inputTokens, outputTokens);
+    const costUsd = ratedUsageCost(this.rates, inputTokens, outputTokens).cost_usd;
     return {
       value: data,
       status: response.status,
@@ -134,7 +139,8 @@ export class OpenAiLlmProvider implements LlmProvider {
   private recordUsage(data: ChatResponse): LlmUsage {
     const inputTokens = data.usage?.prompt_tokens ?? 0;
     const outputTokens = data.usage?.completion_tokens ?? 0;
-    const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: openaiCostUsd(this.model, inputTokens, outputTokens) };
+    // #4372: a list price estimate (configured) or none, never billed.
+    const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, ...ratedUsageCost(this.rates, inputTokens, outputTokens) };
     this.lastUsage = usage;
     return usage;
   }

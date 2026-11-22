@@ -1,0 +1,5 @@
+{
+  "gate": "G-07",
+  "rule": "Setup Wizard step draws a frame block itself instead of SetupStepFrame (#4343 B-1)",
+  "entries": {}
+}

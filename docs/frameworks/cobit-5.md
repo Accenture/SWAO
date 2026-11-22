@@ -121,11 +121,11 @@ In addition, the metadata (`cross_mapping_hints`) names these related frameworks
 
 COBIT_5 ships with SWAO again. Its control text was rewritten in original SWAO wording, so the catalogue is part of the binaries and the public source once more. Process IDs and names stay the COBIT 5 identifiers; the ISACA publication is cited as the reference.
 
-`swao framework list` shows COBIT_5, and `swao framework install COBIT_5` copies the `cobit-5` folder (with `framework-meta.yaml`, `controls.yaml` and `evidence/`) into the workspace at `wsp/inputs/catalogs/community/cobit-5/`. You can also copy the folder by hand. To customise the framework for one engagement, edit the workspace copy. SWAO reads catalogues for the compliance evaluation from this directory, so the workspace copy is the one that counts. Keep the `id` in `regime_meta` unchanged so that `regimes_active` still finds it, and check the copy afterwards with the [health check](/health-check).
+Copy the `cobit-5` folder (with `framework-meta.yaml`, `controls.yaml` and `evidence/`) from the [GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into the workspace at `wsp/inputs/catalogs/community/cobit-5/`; `swao framework list` then lists COBIT_5. To customise the framework for one engagement, edit the workspace copy. SWAO reads catalogues for the compliance evaluation from this directory, so the workspace copy is the one that counts. Keep the `id` in `regime_meta` unchanged so that `regimes_active` still finds it, and check the copy afterwards with the [health check](/health-check).
 
 ## How to enable
 
-1. Copy the `cobit-5` folder into `wsp/inputs/catalogs/community/cobit-5/` in the workspace, with `swao framework install COBIT_5` or by hand (see above). After `swao init`, new workspaces contain only the demo frameworks `gdpr-demo`, `ai-10-pillars-demo`, `nist-sp-800-66r2-demo` and `bsi-grundschutz-2023-demo`.
+1. Copy the `cobit-5` folder into `wsp/inputs/catalogs/community/cobit-5/` in the workspace (see above). After `swao init`, new workspaces contain only the demo frameworks `gdpr-demo`, `ai-10-pillars-demo`, `nist-sp-800-66r2-demo` and `bsi-grundschutz-2023-demo`.
 2. Add the framework ID to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
    ```yaml
@@ -142,7 +142,7 @@ Pass 11 reads `regimes_active` from the app's `.swao.yml`. When the app has no l
 
 - The SWAO catalogue models COBIT 5 (2012). If the client works with a later COBIT edition, check the process mapping manually.
 - 27 of the 37 processes depend on governance documents (for example `evidence/edm-01-governance-framework.md`) or manual questionnaires. Expect UNKNOWN for these until the documents are supplied.
-- New workspaces are not seeded with COBIT_5. Copy it into the workspace with `swao framework install COBIT_5` (see above).
+- New workspaces are not seeded with COBIT_5. Copy it into the workspace from the GitHub repository (see above).
 - SWAO cannot rate process capability levels the way a COBIT assessor does.
 - Outcomes come from an LLM that interprets signals and documents. They are a structured starting point for expert review, not an audit opinion or a certification.
 - Control texts are original SWAO descriptions of each process and of the evidence an assessor would look for; they do not reproduce the COBIT 5 publication. ISACA's official material is always authoritative.

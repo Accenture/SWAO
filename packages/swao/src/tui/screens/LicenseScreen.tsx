@@ -14,18 +14,19 @@
 // ================================================================
 
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
+import { Box, Text, useInput } from 'ink';
 import { spawn } from 'child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Header } from '../components/Header.js';
-import { TextInput } from '@swao/tui-kit';
-import { SelectInput } from '@swao/tui-kit';
-import { LiveOutput } from '@swao/tui-kit';
-import { ProgressBar } from '@swao/tui-kit';
-import { GuidanceBox, licenseStatusColor, formatExpiry } from '@swao/tui-kit';
+import {
+  DetailRow, ProgressBar, RunOutput, ScreenLayout, SelectInput, StatusRow, TextInput,
+  formatExpiry, guidanceOwnsKey, licenseStatusColor, tokenColor, tone, useOptionGuidance,
+  type GuidanceEntry, type KeyHint, type SelectOption, type StatusLevel,
+} from '@swao/tui-kit';
 import { LicenseGuard, LicenseInvalidError } from '../../license/license-guard.js';
 import { logPortfolio } from '@swao/core';
+import { selfSpawnCommand } from '@swao/core';
+import { useScreenHeader } from '../components/screen-header.js';
 import type { LicenseState } from '../../license/license-guard.js';
 
 // #0612: licence issuance is OPERATOR-ONLY and lives in the air-gapped
@@ -35,12 +36,14 @@ import type { LicenseState } from '../../license/license-guard.js';
 // see their fingerprint (status panel), request a licence, and activate one.
 // The previous in-TUI 7-step issuance flow was removed (Design 062 split).
 
-const BIN  = process.execPath;
-// #2589: inside a pkg binary process.argv[1] is the snapshot bundle path, not a
-// valid CLI sub-command prefix. Omit it when running packaged; keep it for
-// the dev-time `node dist/...` invocation so Commander can find the entry point.
-const _isPkg     = Boolean((process as { pkg?: unknown }).pkg);
-const SELF_ARGS: string[] = _isPkg ? [] : [process.argv[1] as string];
+// #2589 / #4241: child processes start through the central self-spawn helper
+// (selfSpawnCommand): the snapshot bundle path is never passed in the binary.
+
+// #4257 (TUI-13, Design 126 sections 3, 4, 6 and 7): Licence Management on
+// ScreenLayout. Each sub-screen reports its title, key hints and guidance
+// entry to the one layout; the status panel as DetailRow and StatusRow; the
+// command output through RunOutput (wrapped, never cut); no hand-written key
+// hints and no spaced double hyphens; the CLI only in the guidance `cli` field.
 
 type SubScreen =
   | 'menu'
@@ -53,47 +56,91 @@ type SubScreen =
   | 'remove-confirm'
   | 'remove-running';
 
+const CONTACT = 'swao-tool@accenture.com';
+
 const _binaryTier = process.env['SWAO_BINARY_TIER'];
-const SUB_OPTIONS = [
-  { label: 'Show license status',             value: 'status'         },
-  { label: 'Request a license upgrade',       value: 'request'        },
-  { label: 'Activate a license',              value: 'activate-input' },
-  ...(_binaryTier !== 'community' ? [{ label: 'Remove license from this machine', value: 'remove-confirm' }] : []),
-  { label: 'Back to main menu',               value: 'back'           },
+const SUB_OPTIONS: SelectOption[] = [
+  { label: 'Show license status', value: 'status', guidance: { title: 'Show license status', what: 'The tier, the validity and the machine fingerprint of the licence on this machine.', cli: 'swao license status' } },
+  { label: 'Request a license upgrade', value: 'request', guidance: { title: 'Request a license upgrade', what: 'Generates a signed request token; send it to the SWAO team to receive a key.', cli: 'swao license request --tier <tier>' } },
+  { label: 'Activate a license', value: 'activate-input', guidance: { title: 'Activate a license', what: 'Paste the signed licence key you received by email.', cli: 'swao license activate <key>' } },
+  ...(_binaryTier !== 'community' ? [{ label: 'Remove license from this machine', value: 'remove-confirm', guidance: { title: 'Remove license', what: 'Deletes the licence file of this machine and generates a removal token for the operator.', cli: 'swao license remove' } }] : []),
+  { label: 'Back to main menu', value: 'back', guidance: { title: 'Back', what: 'Leave Licence Management.' } },
 ];
 
-const TIER_OPTIONS = [
-  { label: 'Consultant', value: 'consultant' },
-  { label: 'Enterprise', value: 'enterprise' },
+const TIER_OPTIONS: SelectOption[] = [
+  { label: 'Consultant', value: 'consultant', guidance: { title: 'Consultant', what: 'All Community features plus PDF reports, HTML publication, branded output, NIS2 and EU AI Act frameworks, LZ catalogue updates. Per user, annual.' } },
+  { label: 'Enterprise', value: 'enterprise', guidance: { title: 'Enterprise', what: 'All Consultant features plus portfolio assessment, adversarial challenge, HTML Editor, Power BI templates, Terraform scaffold, FedRAMP, CMMC, TISAX and HITRUST. Per user, annual.' } },
 ];
 
-interface RunOutputProps {
+const MENU_GUIDANCE: GuidanceEntry = {
+  title: 'License',
+  what: 'All tiers run the App, Landing Zone, Service and LLM Assessments. Consultant adds PDF reports, the App Assessment HTML report and LZ catalogue updates. Enterprise adds portfolio runs, the HTML Editor and Portal, challenge, BI export, chat and the MCP server.',
+  sections: [
+    { label: 'Questions', text: 'https://github.com/Accenture/SWAO/discussions' },
+    { label: 'Report a bug', text: 'https://github.com/Accenture/SWAO/issues' },
+    { label: 'Docs', text: 'https://accenture.github.io/SWAO/en/' },
+  ],
+  cli: 'swao license status',
+};
+
+const TIER_GUIDANCE: GuidanceEntry = {
+  title: 'Choose the licence tier',
+  what: 'Select the tier that matches your use case. Community stays free (Apache-2.0) with every assessment pass, the structured reports and the raw BI data export.',
+  cli: 'swao license request --tier <tier>',
+};
+
+const DETAIL_STEPS = ['Your name', 'Contact email', 'Organisation name', 'Organisation id'] as const;
+
+const RUN_DONE_KEYS: readonly KeyHint[] = [{ key: 'Enter', verb: 'back' }, { key: 'Esc', verb: 'back' }];
+const RUN_KEYS: readonly KeyHint[] = [{ key: 'Esc', verb: 'cancel' }];
+
+/** Key hints of a sub-screen (Design 126 section 7.9); `runDone` for the command sub-screens. */
+export function licenseKeys(sub: SubScreen, runDone: boolean): readonly KeyHint[] {
+  switch (sub) {
+    case 'menu':
+      return [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'open' }, { key: 'Esc', verb: 'back' }];
+    case 'request':
+      return [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'back' }];
+    case 'remove-confirm':
+      return [{ key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'confirm' }, { key: 'Esc', verb: 'back' }];
+    case 'request-details':
+      return [{ key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'back' }];
+    case 'activate-input':
+      return [{ key: 'Enter', verb: 'confirm' }, { key: 'Esc', verb: 'back' }];
+    case 'status':
+    case 'request-running':
+    case 'activate-running':
+    case 'remove-running':
+      return runDone ? RUN_DONE_KEYS : RUN_KEYS;
+    default: {
+      const never: never = sub;
+      return never;
+    }
+  }
+}
+
+interface LicenseRunProps {
   args: string[];
   onDone: () => void;
-  /** Optional GuidanceBox shown when the subprocess completes (#2297). */
-  guidanceTitle?: string;
-  guidanceWhat?: string;
-  guidanceDetails?: ReadonlyArray<{ label: string; value: string }>;
-  /** #2654: when true, output lines wrap rather than truncate so long tokens remain copyable. */
-  wrapLiveOutput?: boolean;
+  onFinished?: () => void;
   /** #3048: when set, write all output to this file path on successful completion. */
   saveToFile?: string;
 }
 
-function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails, wrapLiveOutput, saveToFile }: RunOutputProps) {
+/** Runs one `swao license` command; output wrapped (#2654: long tokens stay copyable). */
+function LicenseRun({ args, onDone, onFinished, saveToFile }: LicenseRunProps) {
   const [lines, setLines] = useState<string[]>([]);
   const [done, setDone]   = useState(false);
   const [code, setCode]   = useState<number | null>(null);
   const [savedPath, setSavedPath] = useState<string | null>(null);
-  // #2297: guard Escape/Enter from firing onDone while the GuidanceBox is open.
-  const guidanceOpenRef = useRef(false);
   // #2630: ref to capture the latest lines inside the close handler (state is stale in closure).
   const linesRef = useRef<string[]>([]);
 
   useEffect(() => {
-    const child = spawn(BIN, [...SELF_ARGS, ...args], {
+    const selfCmd = selfSpawnCommand(args);
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, PKG_EXECPATH: '' },
+      env: selfCmd.env,
     });
     const push = (chunk: Buffer) => {
       const newLines = chunk.toString().split('\n').filter(Boolean);
@@ -105,6 +152,7 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
     child.on('close', (exitCode) => {
       setCode(exitCode);
       setDone(true);
+      onFinished?.();
       // #3048: persist output so CTRL+C after completion does not destroy the token.
       if (exitCode === 0 && saveToFile) {
         try {
@@ -113,7 +161,7 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
         } catch { /* best-effort */ }
       }
       if (exitCode !== 0) {
-        // #2636: exit 3 = "no workspace" or "no active licence" -- not an error during healthy use.
+        // #2636: exit 3 = "no workspace" or "no active licence"; not an error during healthy use.
         const logLevel = exitCode === 3 ? 'warn' : 'error';
         const ctx: Record<string, unknown> = { exit_code: exitCode };
         if (args.includes('activate')) {
@@ -127,7 +175,7 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
         try { logPortfolio(logLevel, 'setup.license.error', `License command exited ${exitCode}`, { context: ctx }); } catch { /* best-effort */ }
       } else if (args.includes('request')) {
         // #2562: emit an audit-trail event when a licence request token is generated.
-        // PII (licensee name, email) must NOT be logged -- only tier and timestamp.
+        // PII (licensee name, email) must NOT be logged; only tier and timestamp.
         const tierIdx = args.indexOf('--tier');
         const reqTier = tierIdx >= 0 ? (args[tierIdx + 1] ?? 'unknown') : 'unknown';
         try { logPortfolio('info', 'licence.upgrade_request', 'Licence upgrade request token generated', { context: { requested_tier: reqTier } }); } catch { /* best-effort */ }
@@ -143,42 +191,24 @@ function RunOutput({ args, onDone, guidanceTitle, guidanceWhat, guidanceDetails,
   }, []);
 
   useInput((_input, key) => {
-    if (guidanceOpenRef.current && !done && !key.escape && !key.return && !key.upArrow && !key.downArrow) return;
     if (done && (key.return || key.escape)) onDone();
   });
 
   return (
     <Box flexDirection="column">
-      {!done && <Text color="yellow">Running...</Text>}
-      {done && code === 0 && <Text color="green">Done.</Text>}
-      {done && code !== 0 && <Text color="red">Failed. Check the details above.</Text>}
-      <LiveOutput lines={lines} maxLines={20} wrapMode={wrapLiveOutput ? 'wrap' : 'truncate-end'} />
-      {done && savedPath && (
-        <Text color="green">Saved to: <Text bold>{savedPath}</Text></Text>
-      )}
-      {done && guidanceTitle && (
-        <GuidanceBox
-          title={guidanceTitle}
-          what={guidanceWhat ?? ''}
-          details={guidanceDetails}
-          affordances={['Enter or Esc -- go back']}
-          initiallyCollapsed
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      )}
-      {done && <Text dimColor>Press Enter or Escape to go back...</Text>}
+      {!done && <Text {...tone('muted')}>Running...</Text>}
+      {lines.length > 0 && <RunOutput lines={lines} maxLines={20} />}
+      {done && <StatusRow level={code === 0 ? 'ok' : 'fail'} label="Result" summary={code === 0 ? 'done' : 'failed, see the output above'} />}
+      {done && savedPath && <DetailRow label="Saved to" value={savedPath} path />}
     </Box>
   );
 }
 
 /**
- * Dedicated output component for the `remove-running` sub-screen (#2315).
- * Spawns `swao license remove --json`, streams via LiveOutput, then on
- * completion parses the JSON and shows the removal token prominently along
- * with a brief email template. No GuidanceBox -- the running sub-screen
- * carries live output and does not need one.
+ * The `remove-running` sub-screen (#2315): spawns `swao license remove --json`,
+ * then shows the removal token prominently with a short email template.
  */
-function RemoveRunOutput({ tier, licensee, onDone }: { tier: string; licensee: string; onDone: () => void }) {
+function RemoveRun({ tier, licensee, onDone, onFinished }: { tier: string; licensee: string; onDone: () => void; onFinished?: () => void }) {
   const [lines, setLines] = useState<string[]>([]);
   const [done, setDone]   = useState(false);
   const [code, setCode]   = useState<number | null>(null);
@@ -186,9 +216,10 @@ function RemoveRunOutput({ tier, licensee, onDone }: { tier: string; licensee: s
   const rawRef = useRef('');
 
   useEffect(() => {
-    const child = spawn(BIN, [...SELF_ARGS, 'license', 'remove', '--json'], {
+    const selfCmd = selfSpawnCommand(['license', 'remove', '--json']);
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, PKG_EXECPATH: '' },
+      env: selfCmd.env,
     });
     const push = (chunk: Buffer) => {
       const text = chunk.toString();
@@ -203,9 +234,10 @@ function RemoveRunOutput({ tier, licensee, onDone }: { tier: string; licensee: s
         if (typeof parsed['removal_token'] === 'string') {
           setRemovalToken(parsed['removal_token'] as string);
         }
-      } catch { /* leave removalToken null; raw output shown via LiveOutput */ }
+      } catch { /* leave removalToken null; raw output shown */ }
       setCode(exitCode);
       setDone(true);
+      onFinished?.();
       if (exitCode !== 0) {
         try { logPortfolio('error', 'setup.license.remove.error', `License remove exited ${exitCode}`, { context: { exit_code: exitCode } }); } catch { /* best-effort */ }
       } else {
@@ -224,64 +256,37 @@ function RemoveRunOutput({ tier, licensee, onDone }: { tier: string; licensee: s
 
   return (
     <Box flexDirection="column">
-      {!done && <Text color="yellow">Removing license...</Text>}
-      {done && code === 0  && <Text color="green">Done.</Text>}
-      {done && code !== 0  && <Text color="red">Failed. Check the details above.</Text>}
-      {/* #2585: show a GuidanceBox while the remove is in progress so the screen is not blank. */}
-      {!done && (
-        <GuidanceBox
-          title="Removing Licence"
-          what="SWAO is generating a removal token and clearing the licence file from this machine. The token lets the Accenture team re-issue a seat on a different machine."
-          details={[{ label: 'Next step', value: 'Copy the removal token shown after completion and send it to your SWAO account contact.' }]}
-          affordances={['Please wait -- this takes a few seconds']}
-          initiallyCollapsed={false}
-        />
-      )}
-      {/* #2647: only show raw subprocess output when token parse failed (error path);
-          on success the styled token box below replaces the JSON dump. */}
-      {(!removalToken || code !== 0) && <LiveOutput lines={lines} maxLines={10} />}
+      {!done && <Text {...tone('muted')}>Removing the licence...</Text>}
+      {done && <StatusRow level={code === 0 ? 'ok' : 'fail'} label="Result" summary={code === 0 ? 'licence removed' : 'failed, see the output above'} />}
+      {/* #2647: raw output only when the token parse failed (error path). */}
+      {(!removalToken || code !== 0) && lines.length > 0 && <RunOutput lines={lines} maxLines={10} />}
       {done && removalToken && (
         <>
-          <Box flexDirection="column" borderStyle="double" borderColor="cyanBright" paddingX={1} marginY={1}>
-            <Text bold color="cyanBright">Removal Token</Text>
+          <Box flexDirection="column" borderStyle="double" borderColor={tokenColor('brand')} paddingX={1} marginY={1}>
+            <Text bold {...tone('brand')}>Removal token</Text>
             <Text wrap="wrap">{removalToken}</Text>
           </Box>
-          <GuidanceBox
-            title="Licence Removed"
-            what={`Your ${tierLabel} licence has been removed from this machine. Keep the token above -- it is your proof of removal and lets the operator re-issue a seat on a new machine.`}
-            details={[
-              { label: 'Next step', value: 'Send the email below to swao-tool@accenture.com so the operator can update the registry.' },
-              { label: 'New machine', value: 'Run swao license request on the new machine and send the request token to your SWAO contact.' },
-            ]}
-            affordances={['Enter / Escape -- return to menu']}
-            initiallyCollapsed={false}
-          />
           <Text bold>Send the following email to notify the operator:</Text>
-          <Text dimColor>{`  To:      swao-tool@accenture.com`}</Text>
-          <Text dimColor>{`  Subject: SWAO License Removal -- ${tierLabel}`}</Text>
-          <Text></Text>
-          <Text dimColor>  Hello,</Text>
-          <Text></Text>
-          <Text dimColor>{`  I have removed my ${tierLabel} licence from this machine.`}</Text>
-          {licensee && <Text dimColor>{`  Licensee: ${licensee}`}</Text>}
-          <Text dimColor wrap="wrap">{`  Removal token: ${removalToken}`}</Text>
-          <Text></Text>
-          <Text dimColor>  Thank you.</Text>
+          <DetailRow label="To" value={CONTACT} />
+          <DetailRow label="Subject" value={`SWAO License Removal, ${tierLabel}`} />
+          <Text {...tone('muted')} wrap="wrap">{`I have removed my ${tierLabel} licence from this machine.${licensee ? ` Licensee: ${licensee}.` : ''}`}</Text>
+          <Text {...tone('muted')} wrap="wrap">{`Removal token: ${removalToken}`}</Text>
         </>
       )}
-      {done && <Text dimColor>Press Enter or Escape to return to main menu...</Text>}
     </Box>
   );
 }
 
+/** Status level of the licence colour state (Design 126 section 6). */
+function licenceLevel(state: string): StatusLevel {
+  return state === 'green' ? 'ok' : state === 'amber' ? 'warn' : state === 'red' ? 'fail' : 'info';
+}
+
 /**
- * Rich licence status panel (M18 #0283). Renders tier + budget + expiry
- * with progress bars and colour-coding by `licenseStatusColor`. Also the
- * end user's source of truth for their machine fingerprint (needed when
- * requesting a licence). #0741: width matches the header bar so the panel
- * and guidance box stay aligned.
+ * Licence status panel (M18 #0283): tier, licensee, validity, expiry and the
+ * machine fingerprint (needed when requesting a licence).
  */
-function LicenseStatusPanel({ state, width }: { state: LicenseState; width?: number }) {
+function LicenseStatusPanel({ state }: { state: LicenseState }) {
   const color = licenseStatusColor(state);
   const tierLabel =
     state.tier === 'enterprise' ? 'Enterprise' :
@@ -295,60 +300,43 @@ function LicenseStatusPanel({ state, width }: { state: LicenseState; width?: num
   const validUntilText =
     state.tier === 'community' ? 'Unlimited (free tier)' :
     state.exp == null          ? 'No expiry' :
-    isExpired                  ? `EXPIRED (${state.exp})` :
+    isExpired                  ? `expired (${state.exp})` :
     state.exp;
-  const validUntilColor = isExpired ? ('red' as const) : undefined;
-  // Use the licence's own issuedAt (payload iat) as the period start so the
-  // progress bar shows "days into THIS licence" rather than days since first
-  // machine run. Falls back to firstRun for community or legacy keys without iat.
+  // The licence's own issuedAt (payload iat) as the period start; firstRun for
+  // community or legacy keys without iat.
   const periodStart = state.issuedAt ?? state.firstRun;
   const periodStartDate = new Date(periodStart).getTime();
   const totalDays = expDate != null ? Math.max(1, Math.round((expDate - periodStartDate) / 86_400_000)) : null;
   const daysUsed = expDate != null ? Math.min(totalDays!, Math.max(0, totalDays! - Math.floor((expDate - Date.now()) / 86_400_000))) : null;
+  const expiredTier = state.expiredTier ? state.expiredTier.charAt(0).toUpperCase() + state.expiredTier.slice(1) : '';
 
-  // #0707: compact layout -- single-line fields, no internal blank lines.
   return (
-    <Box flexDirection="column" borderStyle="single" paddingX={1} marginBottom={1} width={width}>
-      <Text bold color={color.inkColor}>Tier: {tierLabel}</Text>
-      {state.licensee && <Text><Text dimColor>Licensee:     </Text><Text>{state.licensee}</Text></Text>}
-      {state.email && <Text><Text dimColor>Email:        </Text><Text>{state.email}</Text></Text>}
-      <Text><Text dimColor>First run:    </Text><Text>{state.firstRun}</Text><Text dimColor>    Fingerprint: </Text><Text>{state.fingerprint.substring(0, 16)}</Text></Text>
-      <Text><Text dimColor>Valid until:  </Text><Text color={validUntilColor}>{validUntilText}</Text></Text>
-
-      {state.tier !== 'community' && expiry && (
-        <Text><Text dimColor>Expiry:       </Text><Text color={color.inkColor}>{expiry}</Text></Text>
-      )}
+    <Box flexDirection="column" marginBottom={1}>
+      <StatusRow level={licenceLevel(color.state)} label="Tier" summary={tierLabel} />
+      {state.licensee && <DetailRow label="Licensee" value={state.licensee} />}
+      {state.email && <DetailRow label="Email" value={state.email} />}
+      <DetailRow label="First run" value={state.firstRun} />
+      <DetailRow label="Fingerprint" value={state.fingerprint.substring(0, 16)} />
+      <DetailRow label="Valid until" value={validUntilText} />
+      {state.tier !== 'community' && expiry && <DetailRow label="Expiry" value={expiry} />}
       {state.tier !== 'community' && expDate != null && totalDays != null && daysUsed != null && (
         <ProgressBar value={daysUsed} total={totalDays} label="days into licence" />
       )}
-
-      {/* #2632: show expiry banner when a paid tier expired and downgraded this session.
-          #2607: distinguish natural expiry (date past) from manual removal (date future). */}
+      {/* #2632 / #2607: expiry or manual removal of a paid tier in this session. */}
       {state.expiredTier && (
-        <Box marginTop={1} borderStyle="single" borderColor="red" paddingX={1}>
-          <Text bold color="red">
-            {isExpired
-              ? `${state.expiredTier.charAt(0).toUpperCase() + state.expiredTier.slice(1)} licence expired on ${state.exp ?? 'unknown date'}. Renew to restore access.`
-              : `${state.expiredTier.charAt(0).toUpperCase() + state.expiredTier.slice(1)} licence removed. Was valid until ${state.exp ?? 'unknown date'}.`
-            }
-          </Text>
-        </Box>
+        <StatusRow level="fail" label="Licence" summary={isExpired
+          ? `${expiredTier} licence expired on ${state.exp ?? 'unknown date'}. Renew to restore access.`
+          : `${expiredTier} licence removed. Was valid until ${state.exp ?? 'unknown date'}.`} />
       )}
       {color.state === 'amber' && !state.expiredTier && (
-        <Text color="yellow">Licence is approaching its limit. Consider renewing.</Text>
+        <StatusRow level="warn" label="Licence" summary="approaching its limit; consider renewing" />
       )}
       {color.state === 'red' && !state.expiredTier && (
-        <Text bold color="red">Licence at or past its limit. Renew before issuing further work.</Text>
+        <StatusRow level="fail" label="Licence" summary="at or past its limit; renew before issuing further work" />
       )}
-      {/* #2608 / #2664: when a Consultant or Enterprise key is installed on a Community
-          binary, state.tier is capped to 'community' and state.exp is a future date.
-          Original condition (assessmentLimit != null) missed Enterprise (unlimited = null). */}
+      {/* #2608 / #2664: a Consultant or Enterprise key on a Community binary is capped to Community. */}
       {state.tier === 'community' && state.exp != null && new Date(state.exp).getTime() > Date.now() && (
-        <Box marginTop={1} flexDirection="column">
-          <Text color="yellow">Higher-tier licence on file -- capped to Community by this binary.</Text>
-          <Text dimColor>Licence expires {state.exp}{state.licensee ? ` (${state.licensee})` : ''}.</Text>
-          <Text dimColor>Use the Consultant or Enterprise binary to activate it.</Text>
-        </Box>
+        <StatusRow level="warn" label="Licence" summary={`Higher-tier licence on file, capped to Community by this binary. Valid until ${state.exp}${state.licensee ? ` (${state.licensee})` : ''}; use the Consultant or Enterprise binary.`} />
       )}
     </Box>
   );
@@ -359,18 +347,12 @@ interface LicenseScreenProps {
 }
 
 export function LicenseScreen({ onBack }: LicenseScreenProps) {
-  const [sub, setSub]     = useState<SubScreen>('menu');
+  const header = useScreenHeader('Licence Management');
+  const [sub, setSubState] = useState<SubScreen>('menu');
+  const [runDone, setRunDone] = useState(false);
   const [tier, setTier]   = useState('consultant');
-  // #0741: match the header bar width so bordered boxes stay aligned.
-  const { stdout } = useStdout();
-  const [cols, setCols] = useState(stdout?.columns ?? 80);
-  useEffect(() => {
-    if (!stdout) return;
-    const onResize = () => setCols(stdout.columns ?? 80);
-    stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
-  }, [stdout]);
-  const headerWidth = Math.min(100, Math.max(63, cols - 2));
+  const setSub = (next: SubScreen): void => { setRunDone(false); setSubState(next); };
+  const finished = (): void => setRunDone(true);
 
   // #0744: guided collection fields for the request token.
   const [reqStep, setReqStep]         = useState(0);
@@ -378,16 +360,18 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
   const [reqEmail, setReqEmail]       = useState('');
   const [reqOrgName, setReqOrgName]   = useState('');
   const [reqOrgId, setReqOrgId]       = useState('');
-  const [reqEvbIt, _setReqEvbIt]      = useState(''); // EVB-IT step removed (#1526); field kept for backend compat
+  const [emailError, setEmailError]   = useState('');
   // #2299: licence activation key (pasted by user in activate-input sub-screen).
   const [activateKey, setActivateKey] = useState('');
   // #2315: capture tier/licensee before transitioning to remove-running.
   const [removeTier, setRemoveTier]       = useState('consultant');
   const [removeLicensee, setRemoveLicensee] = useState('');
+  const menuGuidance = useOptionGuidance(MENU_GUIDANCE);
+  const tierGuidance = useOptionGuidance(TIER_GUIDANCE);
+  // #4213: the highlighted option of the removal confirmation; undefined falls back to the sub-step entry.
+  const [removeOptionEntry, setRemoveOptionEntry] = useState<GuidanceEntry | undefined>(undefined);
 
-  // Load licence state once for the rich-status panel. The state is
-  // re-read on every screen entry (component remount) so a fresh
-  // activation is reflected.
+  // Load licence state for the status panel; re-read after an activation returns to the menu.
   const licenseLoad = useMemo<{ state: LicenseState | null; error: string | null }>(() => {
     try {
       return { state: LicenseGuard.load().state, error: null };
@@ -397,7 +381,7 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
       }
       return { state: null, error: (e as Error).message };
     }
-  }, [sub]);  // re-evaluate after an activation returns to menu
+  }, [sub]);
 
   // #2587: emit structured NDJSON events on licence load and validation failure.
   // #2632: also emit licence.expired when a paid tier was silently downgraded.
@@ -432,12 +416,14 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
   const guidanceOpenRef = useRef(false);
 
   useInput((_input, keyEvt) => {
-    if (guidanceOpenRef.current && !keyEvt.escape && !keyEvt.return && !keyEvt.upArrow && !keyEvt.downArrow) return;
+    // Design 126 section 7.8: an open guidance box owns Esc and the pager keys.
+    if (guidanceOwnsKey(keyEvt, guidanceOpenRef.current)) return;
     if (keyEvt.escape) {
       if (sub === 'menu') {
         onBack();
       } else if (sub === 'request-details') {
-        // Step-back within the details form; exit form on step 0.
+        // Step back within the details form; leave the form on step 0.
+        setEmailError('');
         if (reqStep > 0) { setReqStep(s => s - 1); }
         else { setSub('request'); }
       } else {
@@ -446,275 +432,218 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
     }
   });
 
-  return (
-    <Box key={sub} flexDirection="column" padding={1}>
-      <Header subtitle="Licence Management" hideLicenseStatus />
+  const requestFile = join(process.cwd(), 'swao-license-request.txt');
+  const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
 
-      {/* Rich status panel always visible while in the menu (M18 #0283).
-          When the user explicitly chooses "Show license status" we drop
-          down to the CLI subprocess view for parity with `swao license`
-          text output. */}
-      {sub === 'menu' && licenseLoad.state && (
-        <LicenseStatusPanel state={licenseLoad.state} width={headerWidth} />
-      )}
+  const title = sub === 'menu' ? { title: 'Licence Management', subtitle: 'Status, upgrade request and activation of the licence of this machine.' }
+    : sub === 'status' ? { title: 'Licence status' }
+    : sub === 'request' ? { title: 'Licence tier to request' }
+    : sub === 'request-details' ? { title: `${tierName} licence request`, subtitle: `Step ${Math.min(reqStep, 3) + 1} of 4: ${DETAIL_STEPS[Math.min(reqStep, 3)]}` }
+    : sub === 'request-running' ? { title: `${tierName} licence request` }
+    : sub === 'activate-input' ? { title: 'Activate a license', subtitle: 'Paste your licence key.' }
+    : sub === 'activate-running' ? { title: 'Activating the licence' }
+    : sub === 'remove-confirm' ? { title: 'Remove License', subtitle: 'This permanently removes the licence from this machine.' }
+    : { title: 'Removing the licence' };
+
+  const entry: GuidanceEntry = sub === 'menu' ? menuGuidance.entry
+    : sub === 'request' ? tierGuidance.entry
+    : sub === 'status' ? {
+      title: 'Licence status',
+      what: licenseLoad.state?.tier === 'community'
+        ? 'Community tier is active: free, unlimited assessments. Consultant adds PDF reports and BI export; Enterprise adds portfolio operations and the adversarial challenge.'
+        : 'Your licence is active. The machine fingerprint shown is the identifier of this licence; keep it for renewal requests.',
+      sections: [
+        { label: 'Upgrade', text: 'Choose Request a license upgrade in the Licence menu.' },
+        { label: 'Contact', text: CONTACT },
+      ],
+      cli: 'swao license status',
+    }
+    : sub === 'request-details' ? [
+      { title: 'Your name', what: 'Your full name as it should appear on the licence; pre-filled from an existing licence.', sections: [{ label: 'Example', text: 'Jane Doe' }] },
+      { title: 'Contact email', what: 'The email address the licence key is sent to; pre-filled from an existing licence. Use your organisation email.', sections: [{ label: 'Example', text: 'jane.doe@company.com' }] },
+      { title: 'Organisation name', what: 'The full legal name of your organisation; it appears on the licence and in SWAO reports.', sections: [{ label: 'Example', text: 'Accenture GmbH' }] },
+      { title: 'Organisation id', what: `Short lowercase identifier of your organisation, used for seat grouping in ${tierName} licences.${tier === 'enterprise' ? '' : ' Leave blank to skip.'}`, sections: [{ label: 'Format', text: 'lowercase letters, digits and hyphens, for example accenture-gmbh' }] },
+    ][Math.min(reqStep, 3)]!
+    : sub === 'request-running' ? {
+      title: 'Licence request',
+      what: 'The request token is generated and saved in your working directory. Send it to the SWAO team to receive your signed licence key. The request token itself is not an activation key.',
+      sections: [
+        { label: 'Saved to', text: requestFile },
+        { label: 'Next step', text: 'When you receive the key by email, choose Activate a license in the Licence menu.' },
+        { label: 'Contact', text: CONTACT },
+      ],
+      cli: `swao license request --tier ${tier}`,
+    }
+    : sub === 'activate-input' ? {
+      title: 'Activate a license',
+      what: 'Paste the signed licence key you received by email, in full; a partial key fails verification.',
+      sections: [{ label: 'Contact', text: `${CONTACT} for invalid or expired keys` }],
+      cli: 'swao license activate <key>',
+    }
+    : sub === 'activate-running' ? {
+      title: 'Activation result',
+      what: 'When the activation succeeded, the new licence tier is active; Show license status confirms tier, expiry and budget.',
+      sections: [{ label: 'On error', text: `Check that the key was not cut or changed. Contact ${CONTACT} if the error persists.` }],
+      cli: 'swao license activate <key>',
+    }
+    : sub === 'remove-confirm' ? removeOptionEntry ?? {
+      title: 'Remove License',
+      what: 'Removing the licence deletes the licence file of this machine. A removal token lets the operator verify the removal; to use SWAO with this tier again you request and activate a new key.',
+      sections: [
+        { label: 'After removal', text: 'Choose Request a license upgrade to request a new key.' },
+        { label: 'Contact', text: CONTACT },
+      ],
+      cli: 'swao license remove',
+    }
+    : {
+      title: 'Licence removed',
+      what: 'Keep the removal token: it is the proof of removal and lets the operator re-issue a seat on a new machine.',
+      sections: [
+        { label: 'Next step', text: `Send the email shown to ${CONTACT} so the operator can update the registry.` },
+        { label: 'New machine', text: 'On the new machine, choose Request a license upgrade in the Licence menu and send the request token to your SWAO contact.' },
+      ],
+      cli: 'swao license remove',
+    };
+
+  return (
+    <ScreenLayout
+      header={header}
+      title={title}
+      keys={licenseKeys(sub, runDone)}
+      guidance={{ entry, initiallyCollapsed: true, onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
+      {sub === 'menu' && licenseLoad.state && <LicenseStatusPanel state={licenseLoad.state} />}
       {sub === 'menu' && licenseLoad.error && (
-        <Box flexDirection="column" borderStyle="single" borderColor="red" paddingX={1} marginBottom={1} width={headerWidth}>
-          <Text bold color="red">Licence error</Text>
-          <Text>{licenseLoad.error}</Text>
-        </Box>
+        <Box marginBottom={1}><StatusRow level="fail" label="Licence" summary={licenseLoad.error} /></Box>
       )}
 
       {sub === 'menu' && (
         <SelectInput
           label="Choose an action"
           options={SUB_OPTIONS}
-          onSelect={(v) => {
-            if (v === 'back') {
-              onBack();
-            } else {
-              setSub(v as SubScreen);
-            }
+          showKeyHints={false}
+          onCursorChange={menuGuidance.onCursorChange}
+          onSelect={(v) => { if (v === 'back') onBack(); else setSub(v as SubScreen); }}
+        />
+      )}
+
+      {sub === 'status' && <LicenseRun args={['license', 'status']} onFinished={finished} onDone={() => setSub('menu')} />}
+
+      {sub === 'request' && (
+        <SelectInput
+          label="License tier to request"
+          options={TIER_OPTIONS}
+          showKeyHints={false}
+          onCursorChange={tierGuidance.onCursorChange}
+          onSelect={(v) => { setTier(v); setReqStep(0); setSub('request-details'); }}
+        />
+      )}
+
+      {/* #0744: collect identity fields before generating the request token. */}
+      {sub === 'request-details' && reqStep === 0 && (
+        <TextInput
+          label="Your full name"
+          placeholder={licenseLoad.state?.licensee ?? 'e.g. Jane Doe'}
+          onSubmit={(v) => {
+            setReqLicensee(v.trim() || (licenseLoad.state?.licensee ?? ''));
+            setReqStep(1);
           }}
           active
         />
       )}
-
-      {sub === 'menu' && (
-        <GuidanceBox
-          title="License"
-          what="All tiers run the App, Landing Zone, Service and LLM Assessments. Consultant adds PDF reports, the App Assessment HTML report and LZ catalogue updates. Enterprise adds portfolio runs, the HTML Editor and Portal, challenge, BI export, chat and the MCP server."
-          details={[
-            { label: 'Request',       value: 'Generates a signed request token; send it to the SWAO team to receive a key' },
-            { label: 'Questions',     value: 'https://github.com/Accenture/SWAO/discussions' },
-            { label: 'Report a bug',  value: 'https://github.com/Accenture/SWAO/issues' },
-            { label: 'Docs',          value: 'https://accenture.github.io/SWAO/en/' },
-          ]}
-          affordances={['Up/Down -- pick action  |  Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      )}
-
-      {sub === 'status' && (
-        <RunOutput
-          args={['license', 'status']}
-          onDone={() => setSub('menu')}
-          guidanceTitle="Licence Status"
-          guidanceWhat={licenseLoad.state?.tier === 'community'
-            ? "Community tier is active -- free, unlimited assessments. Consultant adds PDF reports and BI export; Enterprise adds portfolio operations and the adversarial challenge."
-            : "Your licence is active. Your machine fingerprint (shown above) is the unique identifier for this licence -- keep it for renewal requests."}
-          guidanceDetails={[
-            { label: 'Upgrade',  value: "Select 'Request a license upgrade' from the Licence menu" },
-            { label: 'Activate', value: "After receiving your key by email, select 'Activate a license' from the Licence menu" },
-            { label: 'Contact',  value: "swao-tool@accenture.com" },
-          ]}
-        />
-      )}
-
-      {sub === 'request' && (
+      {sub === 'request-details' && reqStep === 1 && (
         <>
-          <SelectInput
-            label="License tier to request"
-            options={TIER_OPTIONS}
-            onSelect={(v) => { setTier(v); setReqStep(0); setSub('request-details'); }}
+          <TextInput
+            label="Contact email"
+            placeholder={licenseLoad.state?.email ?? 'e.g. jane.doe@company.com'}
+            onSubmit={(v) => {
+              const val = v.trim();
+              // #1526: basic format guard: an @ and a dot after the @.
+              if (val && (!val.includes('@') || !val.slice(val.indexOf('@')).includes('.'))) {
+                setEmailError('not an email address');
+                return;
+              }
+              setEmailError('');
+              setReqEmail(val || (licenseLoad.state?.email ?? ''));
+              setReqStep(2);
+            }}
             active
           />
-          {/* #2298: GuidanceBox must render BELOW interactive content, consistent with all other TUI screens. */}
-          <GuidanceBox
-            title="Choose Licence Tier"
-            what="Select the tier that matches your use case. Consultant adds PDF reports, BI export, and advanced features. Enterprise adds portfolio-level assessment and the adversarial challenge."
-            details={[
-              { label: 'Community',   value: 'Free (Apache-2.0). All assessment passes including LLM adapters, structured reports, and raw BI data export (CSV/NDJSON/XLSX). No PDF, HTML publication, or Power BI templates.' },
-              { label: 'Consultant',  value: 'All Community features plus PDF reports, HTML publication, branded output, NIS2/EU AI Act frameworks, LZ catalogue updates. Per-user annual.' },
-              { label: 'Enterprise',  value: 'All Consultant features plus portfolio assessment, adversarial challenge, HTML Editor, Power BI templates, Terraform scaffold, FedRAMP/CMMC/TISAX/HITRUST. Per-user annual.' },
-            ]}
-            affordances={['Up/Down -- pick tier  |  Enter -- confirm  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
+          {emailError && <StatusRow level="fail" label="Email" summary={emailError} />}
         </>
       )}
-
-      {/* #0744: collect identity fields before generating the request token. */}
-      {sub === 'request-details' && (
-        <Box flexDirection="column">
-          <Text>
-            <Text color="cyanBright">{tier.charAt(0).toUpperCase() + tier.slice(1)}</Text>
-            <Text dimColor> license request -- fill in your details (Esc = back one step)</Text>
-          </Text>
-          {reqStep === 0 && (
-            <>
-              <TextInput
-                label="Your full name"
-                placeholder={licenseLoad.state?.licensee ?? 'e.g. Jane Doe'}
-                onSubmit={(v) => {
-                  setReqLicensee(v.trim() || (licenseLoad.state?.licensee ?? ''));
-                  setReqStep(1);
-                }}
-                active
-              />
-              <GuidanceBox
-                title="Step 1 of 4 -- Your name"
-                what="Enter your full name as it should appear on the licence. This is pre-filled from your existing licence if one is present."
-                details={[{ label: 'Example', value: 'Jane Doe' }]}
-                onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-              />
-            </>
-          )}
-          {reqStep === 1 && (
-            <>
-              <TextInput
-                label="Contact email"
-                placeholder={licenseLoad.state?.email ?? 'e.g. jane.doe@company.com'}
-                onSubmit={(v) => {
-                  const val = v.trim();
-                  // #1526: basic format guard -- must contain @ and a dot after @.
-                  if (val && (!val.includes('@') || !val.slice(val.indexOf('@')).includes('.'))) {
-                    return; // reject; user must re-enter
-                  }
-                  setReqEmail(val || (licenseLoad.state?.email ?? ''));
-                  setReqStep(2);
-                }}
-                active
-              />
-              <GuidanceBox
-                title="Step 2 of 4 -- Contact email"
-                what="The email address where your licence key will be sent. Pre-filled from your existing licence if one is present. Use your organisation email, not a personal address."
-                details={[{ label: 'Example', value: 'jane.doe@company.com' }]}
-                onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-              />
-            </>
-          )}
-          {reqStep === 2 && (
-            <>
-              <TextInput
-                label="Organisation name"
-                placeholder="e.g. Accenture GmbH"
-                onSubmit={(v) => { setReqOrgName(v.trim()); setReqStep(3); }}
-                active
-              />
-              <GuidanceBox
-                title="Step 3 of 4 -- Organisation name"
-                what="The full legal name of your organisation. This appears on the licence and in SWAO reports."
-                details={[{ label: 'Example', value: 'Accenture GmbH' }]}
-                onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-              />
-            </>
-          )}
-          {reqStep === 3 && (
-            <>
-              <TextInput
-                label={`Org ID slug${tier === 'enterprise' ? ' (required)' : ' (optional, Enter to skip)'}`}
-                placeholder="e.g. accenture"
-                onSubmit={(v) => { setReqOrgId(v.trim()); setSub('request-running'); }}
-                active
-              />
-              <GuidanceBox
-                title="Step 4 of 4 -- Organisation ID slug"
-                what={`Short lowercase identifier for your organisation. Used for seat grouping in ${tier === 'enterprise' ? 'Enterprise' : 'Consultant'} licences. Leave blank to skip.`}
-                details={[
-                  { label: 'Format',  value: 'Lowercase letters, digits, hyphens only' },
-                  { label: 'Example', value: 'accenture-gmbh' },
-                ]}
-                onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-              />
-            </>
-          )}
-          {reqStep === 4 && (
-            // #1526: EVB-IT step removed from public-facing flow; skip directly to submission.
-            // reqEvbIt stays empty and is not sent in the request token.
-            <>{void 0}</>
-          )}
-        </Box>
+      {sub === 'request-details' && reqStep === 2 && (
+        <TextInput
+          label="Organisation name"
+          placeholder="e.g. Accenture GmbH"
+          onSubmit={(v) => { setReqOrgName(v.trim()); setReqStep(3); }}
+          active
+        />
+      )}
+      {sub === 'request-details' && reqStep === 3 && (
+        <TextInput
+          label={`Org ID slug${tier === 'enterprise' ? ' (required)' : ' (optional)'}`}
+          placeholder="e.g. accenture"
+          onSubmit={(v) => { setReqOrgId(v.trim()); setSub('request-running'); }}
+          active
+        />
       )}
 
       {sub === 'request-running' && (
-        <RunOutput
+        <LicenseRun
           args={[
             'license', 'request', '--tier', tier,
             ...(reqLicensee ? ['--licensee', reqLicensee] : []),
             ...(reqEmail    ? ['--email', reqEmail]       : []),
             ...(reqOrgName  ? ['--org-name', reqOrgName]  : []),
             ...(reqOrgId    ? ['--org-id', reqOrgId]      : []),
-            ...(reqEvbIt    ? ['--evb-it-order-ref', reqEvbIt] : []),
           ]}
+          onFinished={finished}
           onDone={() => setSub('menu')}
-          wrapLiveOutput
-          saveToFile={join(process.cwd(), 'swao-license-request.txt')}
-          guidanceTitle="Licence Request Sent"
-          guidanceWhat="The request token above has been generated and saved to swao-license-request.txt in your working directory. Send the email shown to the SWAO team to receive your signed licence key. Do NOT use the request token itself as the activation key."
-          guidanceDetails={[
-            { label: 'Saved to',  value: join(process.cwd(), 'swao-license-request.txt') },
-            { label: 'Next step', value: "When you receive the key by email, return here and select 'Activate a license'" },
-            { label: 'Contact',   value: "swao-tool@accenture.com" },
-          ]}
+          saveToFile={requestFile}
         />
       )}
 
-      {/* #2299: Activate a license -- key input sub-screen */}
+      {/* #2299: Activate a license, key input. */}
       {sub === 'activate-input' && (
-        <Box flexDirection="column">
-          <Text>
-            <Text color="cyanBright">Activate a license</Text>
-            <Text dimColor> -- paste your licence key (Esc = back)</Text>
-          </Text>
-          <TextInput
-            label="Licence key"
-            placeholder="Paste your key here..."
-            onSubmit={(v) => {
-              const trimmed = v.trim().replace(/\s+/g, '');
-              if (!trimmed) return;
-              setActivateKey(trimmed);
-              setSub('activate-running');
-            }}
-            active
-            labelAbove
-            maxValueWidth={88}
-          />
-          <GuidanceBox
-            title="Activate a License"
-            what="Paste the signed licence key you received by email. The key is a long base64url string. Paste it in full -- partial keys will fail verification."
-            details={[
-              { label: 'Tip',     value: "If the key wraps in your terminal, paste it here in the TUI input field to avoid splitting it across lines." },
-              { label: 'Contact', value: "swao-tool@accenture.com for support with invalid or expired keys." },
-            ]}
-            affordances={['Enter -- submit key  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
-      )}
-
-      {/* #2299: Activate a license -- running sub-screen */}
-      {sub === 'activate-running' && activateKey && (
-        <RunOutput
-          args={['license', 'activate', activateKey]}
-          onDone={() => setSub('menu')}
-          guidanceTitle="Activation Result"
-          guidanceWhat="If activation succeeded, your new licence tier is now active. Run 'Show license status' to confirm the tier, expiry, and budget."
-          guidanceDetails={[
-            { label: 'On error', value: "Check that the key was not truncated or modified. Contact swao-tool@accenture.com if the error persists." },
-          ]}
+        <TextInput
+          label="Licence key"
+          placeholder="Paste your key here..."
+          onSubmit={(v) => {
+            const trimmed = v.trim().replace(/\s+/g, '');
+            if (!trimmed) return;
+            setActivateKey(trimmed);
+            setSub('activate-running');
+          }}
+          active
+          labelAbove
+          maxValueWidth={88}
         />
       )}
 
-      {/* #2315: Remove license -- confirmation sub-screen */}
+      {sub === 'activate-running' && activateKey && (
+        <LicenseRun args={['license', 'activate', activateKey]} onFinished={finished} onDone={() => setSub('menu')} />
+      )}
+
+      {/* #2315: Remove license, confirmation. */}
       {sub === 'remove-confirm' && (
-        <Box flexDirection="column">
-          <Text bold color="red">Remove License</Text>
-          {licenseLoad.state && (
-            <LicenseStatusPanel state={licenseLoad.state} width={headerWidth} />
-          )}
-          {licenseLoad.error && (
-            <Box borderStyle="single" borderColor="red" paddingX={1} marginBottom={1}>
-              <Text color="red">{licenseLoad.error}</Text>
-            </Box>
-          )}
-          <Text color="yellow">WARNING: This will permanently remove the license from this machine.</Text>
-          <Text color="yellow">A removal token will be generated for your records.</Text>
+        <>
+          {licenseLoad.state && <LicenseStatusPanel state={licenseLoad.state} />}
+          {licenseLoad.error && <StatusRow level="fail" label="Licence" summary={licenseLoad.error} />}
+          <StatusRow level="warn" label="Remove" summary="permanently removes the licence from this machine; a removal token is generated for your records" />
           <SelectInput
             label="Confirm removal"
             options={[
-              { label: 'Remove license (generates removal token)', value: 'do-remove' },
-              { label: 'Cancel', value: 'cancel' },
+              {
+                label: 'Remove license',
+                value: 'do-remove',
+                detail: 'generates a removal token',
+                guidance: { title: 'Remove license', what: 'Deletes the licence file of this machine now and shows a removal token; keep the token as the proof of removal.', cli: 'swao license remove' },
+              },
+              { label: 'Cancel', value: 'cancel', guidance: { title: 'Cancel', what: 'Returns to the Licence menu; the licence stays on this machine.' } },
             ]}
+            showKeyHints={false}
+            onCursorChange={(_v, o) => setRemoveOptionEntry(o?.guidance)}
             onSelect={(v) => {
               if (v === 'cancel') {
                 setSub('menu');
@@ -724,31 +653,14 @@ export function LicenseScreen({ onBack }: LicenseScreenProps) {
                 setSub('remove-running');
               }
             }}
-            active
           />
-          <GuidanceBox
-            title="Remove License"
-            what="Removing the license deletes the licence file from this machine. A cryptographically-attributed removal token is generated so the operator can verify the removal. This action cannot be undone -- you would need to request and activate a new key."
-            details={[
-              { label: 'Removal token', value: 'Base64url-encoded JSON signed with an HMAC derived from your licence file.' },
-              { label: 'After removal',  value: "Run 'Request a license upgrade' to request a new key." },
-              { label: 'Contact',        value: 'swao-tool@accenture.com' },
-            ]}
-            affordances={['Up/Down -- select  |  Enter -- confirm  |  Esc -- back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        </>
       )}
 
-      {/* #2315: Remove license -- running sub-screen */}
       {sub === 'remove-running' && (
-        <RemoveRunOutput
-          tier={removeTier}
-          licensee={removeLicensee}
-          onDone={() => setSub('menu')}
-        />
+        <RemoveRun tier={removeTier} licensee={removeLicensee} onFinished={finished} onDone={() => setSub('menu')} />
       )}
-
-    </Box>
+    </ScreenLayout>
   );
 }
+

@@ -21,8 +21,10 @@ import {
   claudeDesktopConfigPath as resolveEffectiveConfigPath,
   SWAO_BIN_RE,
   findSwaoServerKey,
+  selfSpawnEnv,
   type ClaudeDesktopConfigCandidate,
 } from '@swao/core';
+import type { McpHttpProbeResult } from './mcp-http.js';
 
 /** The config Claude Desktop reads (MSIX when present). #3163: delegates to the shared @swao/core resolver. */
 export function claudeDesktopConfigPath(): string {
@@ -50,6 +52,14 @@ export interface McpProbeResult {
   staleEntries?: McpStaleEntry[];
   /** #3163: operator-facing summary of staleEntries. */
   message?: string;
+  /**
+   * #4260: why the `--version` check of the configured binary did not answer
+   * (binary_unreachable): `exit_code_<n>`, `spawn_error_<code>`, or
+   * `not_reported` when an injected runner gives no detail.
+   */
+  reason?: string;
+  /** #4392: the HTTP MCP endpoint (probes/mcp-http.ts); set when the host injects the probe. */
+  http?: McpHttpProbeResult;
 }
 
 /**
@@ -73,11 +83,23 @@ export interface VersionCheckOpts {
 }
 
 /**
- * Run `<binaryPath> --version`. Output is never read, so stdio is ignored (no
+ * Run `<binaryPath> --version` with PKG_EXECPATH cleared (#4241). Output is never read, so stdio is ignored (no
  * pipes for a grandchild to hold open on win32). A timeout is retried once;
  * any other failure is final.
  */
 export function runVersionCheck(binaryPath: string, opts: VersionCheckOpts = {}): VersionCheckOutcome {
+  return runVersionCheckDetail(binaryPath, opts).outcome;
+}
+
+/** #4260: outcome of the `--version` check plus the reason of a failure. */
+export interface VersionCheckDetail {
+  outcome: VersionCheckOutcome;
+  /** Set when outcome is 'failed': `exit_code_<n>` or `spawn_error_<code>`. */
+  reason?: string;
+}
+
+/** runVersionCheck with the failure reason (#4260), used by the MCP probe. */
+export function runVersionCheckDetail(binaryPath: string, opts: VersionCheckOpts = {}): VersionCheckDetail {
   const timeout = opts.timeoutMs ?? VERSION_CHECK_TIMEOUT_MS;
   const attempts = Math.max(1, opts.attempts ?? 2);
   for (let i = 0; i < attempts; i++) {
@@ -86,21 +108,26 @@ export function runVersionCheck(binaryPath: string, opts: VersionCheckOpts = {})
         timeout,
         stdio: 'ignore',
         windowsHide: true,
+        // #4241 / #4260: the checked binary is a pkg binary started without a
+        // script path, so PKG_EXECPATH must be ''. Inherited from a running
+        // binary it made the child load '--version' as a module (false WARN).
+        env: selfSpawnEnv(),
       });
-      const timedOut = (result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT';
-      if (timedOut) continue;
-      return !result.error && result.status === 0 ? 'ok' : 'failed';
-    } catch {
-      return 'failed';
+      const errCode = (result.error as NodeJS.ErrnoException | undefined)?.code;
+      if (errCode === 'ETIMEDOUT') continue;
+      if (result.error) return { outcome: 'failed', reason: `spawn_error_${errCode ?? 'unknown'}` };
+      return result.status === 0 ? { outcome: 'ok' } : { outcome: 'failed', reason: `exit_code_${result.status ?? 'none'}` };
+    } catch (e) {
+      return { outcome: 'failed', reason: `spawn_error_${(e as NodeJS.ErrnoException).code ?? 'unknown'}` };
     }
   }
-  return 'slow';
+  return { outcome: 'slow' };
 }
 
-function toOutcome(v: boolean | VersionCheckOutcome): VersionCheckOutcome {
-  if (v === true) return 'ok';
-  if (v === false) return 'failed';
-  return v;
+function toDetail(v: boolean | VersionCheckOutcome | VersionCheckDetail): VersionCheckDetail {
+  if (v === true) return { outcome: 'ok' };
+  if (v === false) return { outcome: 'failed' };
+  return typeof v === 'string' ? { outcome: v } : v;
 }
 
 export interface BuildMcpProbeOpts {
@@ -114,8 +141,8 @@ export interface BuildMcpProbeOpts {
    * binary" check (dev runs under node, tests).
    */
   runningBinary?: string | null;
-  /** Defaults to runVersionCheck. A boolean is read as ok (true) / failed (false). */
-  versionRunner?: (cmd: string) => boolean | VersionCheckOutcome;
+  /** Defaults to runVersionCheckDetail. A boolean is read as ok (true) / failed (false). */
+  versionRunner?: (cmd: string) => boolean | VersionCheckOutcome | VersionCheckDetail;
 }
 
 /**
@@ -190,7 +217,7 @@ export function buildMcpProbe(opts?: BuildMcpProbeOpts): McpProbeResult {
   const effective = candidates.find((c) => c.effective) ?? candidates[0]!;
   const configPath = effective.path;
 
-  const checkVersion = opts?.versionRunner ?? runVersionCheck;
+  const checkVersion = opts?.versionRunner ?? ((cmd: string) => runVersionCheckDetail(cmd));
   const runningBinary = opts && 'runningBinary' in opts ? (opts.runningBinary ?? null) : defaultRunningBinary();
 
   // #0154: when this probe runs inside a subprocess spawned by the SWAO
@@ -246,9 +273,10 @@ export function buildMcpProbe(opts?: BuildMcpProbeOpts): McpProbeResult {
   if (effectiveEntry.script !== null && !existsSync(effectiveEntry.script)) {
     return { ...base, status: 'binary_not_found', commandPath: effectiveEntry.script };
   }
-  const version = toOutcome(checkVersion(commandPath));
+  const detail = toDetail(checkVersion(commandPath));
+  const version = detail.outcome;
   if (version === 'failed') {
-    return { ...base, status: 'binary_unreachable', commandPath };
+    return { ...base, status: 'binary_unreachable', commandPath, reason: detail.reason ?? 'not_reported' };
   }
   // #3333: a slow binary is still a working binary, so stale entries keep the
   // headline (the verdict no longer flips between runs with machine load);

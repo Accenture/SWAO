@@ -14,15 +14,19 @@
 // ================================================================
 
 import { useState, useEffect } from 'react';
-import { Box, useStdout } from 'ink';
+import { Box } from 'ink';
 import { spawn } from 'child_process';
 import { join } from 'path';
 // Assessment TUI screens relocated to @swao/module-app-assessment (#0553); the
 // host injects the SWAO version + the `swao init` scaffolding functions
 // (branding + workspace-setup are host-only) into the module screens.
-import { AssessmentTypeScreen, AppAssessmentScreen, LzAssessmentScreen, type LzCatalogueHint } from '@swao/module-app-assessment';
+// #4285: the set-up LZ targets for the target pickers, resolved as swao assess resolves them.
+import { setupLzTargetsForPicker } from '../commands/lz-target-config.js';
+import { AssessmentTypeScreen, AppAssessmentScreen, LzAssessmentScreen, LzLiveAssessmentScreen, type LzCatalogueHint } from '@swao/module-app-assessment';
 import { resolveProviderCatalogue, discoverGateCapableFrameworks, listLzCatalogueProviders, isAzurePseudoRegion, lzProviderLabel, lzRegionDisplayLabel } from '@swao/module-landing-zone';
 import { seedBundledConnectors } from '@swao/module-llm-providers';
+import { migrateAssessmentTypes } from '../setup/workspace-state.js';
+import type { SetupRunMode } from '../setup/types.js';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import { resolveCatalogsDir, findWorkspace } from '@swao/core';
 // DoctorScreen relocated to @swao/module-doctor (#0573); the host injects the
@@ -51,6 +55,7 @@ import { LzCatalogueUpdateScreen } from './screens/LzCatalogueUpdateScreen.js';
 import { LlmGatewayUpdateScreen } from './screens/LlmGatewayUpdateScreen.js';
 import { IngestScreen } from './screens/IngestScreen.js';
 import { SupportBundleScreen } from './screens/SupportBundleScreen.js';
+import { LzConnectionsScreen } from './screens/LzConnectionsScreen.js';
 // Publish + Serve screens relocated to @swao/module-html-report (#0575); the
 // host injects the SWAO version (branding is host-only), mirroring the
 // DoctorScreen / AssessScreen wiring.
@@ -58,7 +63,9 @@ import { PublishScreen, ServeScreen } from '@swao/module-html-report';
 import { LlmAssessmentScreen } from './screens/LlmAssessmentScreen.js';
 import { ServiceInitScreen } from './screens/ServiceInitScreen.js';
 import { UpgradePromptScreen } from './screens/UpgradePromptScreen.js';
-import type { LicenseTier } from '@swao/tui-kit';
+import { TerminalFrame, type LicenseTier } from '@swao/tui-kit';
+import { TuiCrashBoundary, setTuiLocation } from './crash-report.js';
+import { CtrlCQuitLine, CtrlCRawMode, useCtrlCArmed } from './ctrl-c-guard.js';
 
 // Build LZ catalogue hint once at startup so provider/region screens show
 // available options as a SelectInput instead of a free-text field.
@@ -106,7 +113,7 @@ function buildLzCatalogueHint(): LzCatalogueHint | null {
 }
 const LZ_CATALOGUE_HINT = buildLzCatalogueHint();
 
-type Screen = 'type-select' | 'main' | 'llm-assess' | 'service-init' | 'upgrade-prompt' | MenuTarget;
+type Screen = 'type-select' | 'main' | 'llm-assess' | 'lz-live-assess' | 'service-init' | 'upgrade-prompt' | MenuTarget;
 
 // Natural next step after completing each screen
 const NEXT_AFTER: Partial<Record<MenuTarget, MenuTarget>> = {
@@ -120,10 +127,14 @@ const NEXT_AFTER: Partial<Record<MenuTarget, MenuTarget>> = {
 
 interface AppProps {
   initialScreen?: Screen;
+  /** #4197: the run of the setup wizard when it opens first (`swao setup --type`). */
+  setupMode?: SetupRunMode;
 }
 
-export function App({ initialScreen = 'main' }: AppProps) {
+export function App({ initialScreen = 'main', setupMode }: AppProps) {
   const [screen, setScreen]           = useState<Screen>(initialScreen);
+  // #4197: `swao setup --type` opens that branch once; Setup from the menu later starts normally.
+  const [pendingSetupMode, setPendingSetupMode] = useState<SetupRunMode | undefined>(setupMode);
   const [suggestedNext, setSuggested] = useState<MenuTarget | undefined>(undefined);
   // #2579: remember the last item used so MainMenu can restore cursor position on return.
   const [lastVisited, setLastVisited] = useState<MenuTarget | undefined>(undefined);
@@ -134,13 +145,14 @@ export function App({ initialScreen = 'main' }: AppProps) {
   const [challengeApp, setChallengeApp] = useState<string>('');
   // #2150: context for the upgrade prompt screen (feature name + required tier).
   const [upgradeCtx, setUpgradeCtx] = useState<{ feature: string; tier: Exclude<LicenseTier, 'community'>; description: string }>({ feature: '', tier: 'consultant', description: '' });
-  // #0825: stable terminal height so the root Box never shrinks when
-  // navigating from a taller screen (LicenseScreen, ToolsMenu) to a shorter
-  // one (MainMenu). Without a fixed height, Ink moves the cursor up by the
-  // shorter screen's height and leaves stale lines from the taller screen
-  // visible above the new header (ghost text). Setting height=rows forces
-  // Ink to always paint the same number of rows; shorter screens pad with
-  // blank space at the bottom instead of shrinking the render region.
+  // #0825 / #4123: stable frame height. The root used to be a Box of height
+  // stdout.rows. That has two faults: a rows-tall frame always hits Ink's
+  // clear-terminal path (ink/build/ink.js:157-160, outputHeight >= rows) which
+  // bypasses log-update, and when a screen is taller than the terminal (an
+  // expanded guidance box) yoga compresses the children of the fixed-height
+  // box, so header lines, menu items and box rows overlap or vanish (#4123,
+  // #4111). TerminalFrame (@swao/tui-kit) renders exactly rows - 1 lines with
+  // non-shrinking content clipped at the bottom.
   // #3388 (Design 112, D-3): the LLM gateway folder is the single source (no
   // runtime bundled fallback), so seed the packaged connectors into the
   // workspace once at TUI startup. Idempotent, respects the .seeded marker, and
@@ -149,17 +161,11 @@ export function App({ initialScreen = 'main' }: AppProps) {
     try {
       const ws = findWorkspace(process.cwd());
       if (ws) seedBundledConnectors(ws);
+      // #4191 (Design 125 section 10): record the assessment types an existing
+      // workspace already uses, once, so Setup shows them per type.
+      if (ws) migrateAssessmentTypes(ws);
     } catch { /* best-effort */ }
   }, []);
-
-  const { stdout } = useStdout();
-  const [termRows, setTermRows] = useState(stdout?.rows ?? 30);
-  useEffect(() => {
-    if (!stdout) return;
-    const onResize = () => setTermRows(stdout.rows ?? 30);
-    stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
-  }, [stdout]);
 
   const goMain = (from?: MenuTarget) => {
     setSuggested(from ? NEXT_AFTER[from] : undefined);
@@ -183,8 +189,17 @@ export function App({ initialScreen = 'main' }: AppProps) {
   // Wrappers for the in-Tools navigation.
   const setToolsScreen = (s: Screen) => { setScreen(s); };
 
+  // #4345: the screen goes into the tui.crash record; a render error of the
+  // screen shows the ErrorPanel (Back to the main menu) instead of ending SWAO.
+  useEffect(() => { setTuiLocation({ screen, step: undefined }); }, [screen]);
+  // #4379: the Ctrl+C quit prompt on the last row of the frame (Design 126 section 7.11).
+  const ctrlCArmed = useCtrlCArmed();
+
   return (
-    <Box flexDirection="column" height={termRows}>
+    <TerminalFrame statusLine={ctrlCArmed ? <CtrlCQuitLine /> : undefined}>
+    <CtrlCRawMode />
+    <TuiCrashBoundary key={screen} where="screen" onBack={() => goMain()}>
+    <Box flexDirection="column">
       {screen === 'type-select' && (
         <AssessmentTypeScreen
           version={SWAO_VERSION}
@@ -199,6 +214,8 @@ export function App({ initialScreen = 'main' }: AppProps) {
             } else if (type === 'landing-zone-catalog') {
               setAssessmentType('landing-zone');
               setScreen('assess');
+            } else if (type === 'landing-zone-live') {
+              setScreen('lz-live-assess'); // #3588
             } else if (type === 'llm') {
               setScreen('llm-assess');
             } else if (type === 'service') {
@@ -208,10 +225,11 @@ export function App({ initialScreen = 'main' }: AppProps) {
         />
       )}
       {screen === 'main'        && <MainMenu        onSelect={handleSelect} suggestedNext={suggestedNext} lastVisited={lastVisited} onUpgradeNeeded={(feature, tier, description) => { setUpgradeCtx({ feature, tier, description }); setScreen('upgrade-prompt'); }} />}
-      {screen === 'setup'       && <SetupWizard      onBack={() => goMain('setup')} />}
+      {screen === 'setup'       && <SetupWizard      onBack={() => { setPendingSetupMode(undefined); goMain('setup'); }} {...(pendingSetupMode ? { mode: pendingSetupMode } : {})} />}
       {screen === 'doctor'      && <HealthCheckScreen onBack={() => goMain('doctor')} version={SWAO_VERSION} />}
-      {screen === 'assess' && assessmentType === 'application' && <AppAssessmentScreen onBack={() => { setScreen('type-select'); }} onChallenge={(a: string) => { setChallengeApp(a); setToolsScreen('challenge'); }} version={SWAO_VERSION} scaffold={{ imports: scaffoldImports, ingestion: scaffoldIngestion, source: scaffoldSource, landingZoneStubs: scaffoldLandingZoneStubs, appYmlTemplate: appSwaoYmlTemplate, lzCatalogueHint: LZ_CATALOGUE_HINT, lenses: listLenses(), readWorkspaceLenses: (wp) => readWorkspaceLenses(join(wp, '.swao.yml')), saveWorkspaceLenses: (wp, ids) => writeWorkspaceLenses(join(wp, '.swao.yml'), ids), discoverLzGateFrameworks: (wp, _appId) => discoverGateCapableFrameworks(resolveCatalogsDir(wp), communityFrameworksDir), bundledCommunityDir: communityFrameworksDir }} />}
-      {screen === 'assess' && assessmentType === 'landing-zone' && <LzAssessmentScreen onBack={() => { setScreen('type-select'); }} onLzChallenge={(a: string) => { setLzChallengeApp(a); setToolsScreen('lz-challenge'); }} version={SWAO_VERSION} scaffold={{ imports: scaffoldImports, ingestion: scaffoldIngestion, source: scaffoldSource, landingZoneStubs: scaffoldLandingZoneStubs, appYmlTemplate: appSwaoYmlTemplate, lzCatalogueHint: LZ_CATALOGUE_HINT, lenses: listLenses(), readWorkspaceLenses: (wp) => readWorkspaceLenses(join(wp, '.swao.yml')), saveWorkspaceLenses: (wp, ids) => writeWorkspaceLenses(join(wp, '.swao.yml'), ids), discoverLzGateFrameworks: (wp, _appId) => discoverGateCapableFrameworks(resolveCatalogsDir(wp), communityFrameworksDir), bundledCommunityDir: communityFrameworksDir }} />}
+      {screen === 'assess' && assessmentType === 'application' && <AppAssessmentScreen onBack={() => { setScreen('type-select'); }} onChallenge={(a: string) => { setChallengeApp(a); setToolsScreen('challenge'); }} version={SWAO_VERSION} scaffold={{ imports: scaffoldImports, ingestion: scaffoldIngestion, source: scaffoldSource, landingZoneStubs: scaffoldLandingZoneStubs, appYmlTemplate: appSwaoYmlTemplate, lzCatalogueHint: LZ_CATALOGUE_HINT, lenses: listLenses(), readWorkspaceLenses: (wp) => readWorkspaceLenses(join(wp, '.swao.yml')), saveWorkspaceLenses: (wp, ids) => writeWorkspaceLenses(join(wp, '.swao.yml'), ids), discoverLzGateFrameworks: (wp, _appId) => discoverGateCapableFrameworks(resolveCatalogsDir(wp), communityFrameworksDir), bundledCommunityDir: communityFrameworksDir, resolveSetupLzTargets: setupLzTargetsForPicker }} />}
+      {screen === 'assess' && assessmentType === 'landing-zone' && <LzAssessmentScreen onBack={() => { setScreen('type-select'); }} onLzChallenge={(a: string) => { setLzChallengeApp(a); setToolsScreen('lz-challenge'); }} version={SWAO_VERSION} scaffold={{ imports: scaffoldImports, ingestion: scaffoldIngestion, source: scaffoldSource, landingZoneStubs: scaffoldLandingZoneStubs, appYmlTemplate: appSwaoYmlTemplate, lzCatalogueHint: LZ_CATALOGUE_HINT, lenses: listLenses(), readWorkspaceLenses: (wp) => readWorkspaceLenses(join(wp, '.swao.yml')), saveWorkspaceLenses: (wp, ids) => writeWorkspaceLenses(join(wp, '.swao.yml'), ids), discoverLzGateFrameworks: (wp, _appId) => discoverGateCapableFrameworks(resolveCatalogsDir(wp), communityFrameworksDir), bundledCommunityDir: communityFrameworksDir, resolveSetupLzTargets: setupLzTargetsForPicker }} />}
+      {screen === 'lz-live-assess' && <LzLiveAssessmentScreen onBack={() => { setScreen('type-select'); }} onManageConnections={() => { setScreen('lz-connections'); }} version={SWAO_VERSION} />}
       {screen === 'report'      && <ReportScreen     onBack={() => goMain('report')} onOpenLicense={() => setToolsScreen('license')} />}
       {screen === 'publish'     && <PublishScreen    onBack={() => goMain('publish')} version={SWAO_VERSION} />}
       {screen === 'serve'       && <ServeScreen      onBack={() => goMain()} version={SWAO_VERSION} />}
@@ -236,6 +254,8 @@ export function App({ initialScreen = 'main' }: AppProps) {
       {screen === 'llm-gateway-update' && <LlmGatewayUpdateScreen onBack={() => setToolsScreen('tools')} />}
       {/* #0967 -- Ingest Files pre-processor; reached via Tools submenu. */}
       {screen === 'ingest' && <IngestScreen onBack={() => setToolsScreen('tools')} />}
+      {/* #3589 / #4127 -- Landing Zone Connections; opened from step 1 of the LZ Live Assessment (no longer a Tools item). */}
+      {screen === 'lz-connections' && <LzConnectionsScreen onBack={() => { setScreen('lz-live-assess'); }} />}
       {/* #1515 -- Support diagnostic bundle; reached via Tools submenu. */}
       {screen === 'support-bundle' && <SupportBundleScreen onBack={() => setToolsScreen('tools')} />}
       {/* #1427 -- LLM Assessment: app picker, leg review, run progress, ranked result. */}
@@ -246,5 +266,7 @@ export function App({ initialScreen = 'main' }: AppProps) {
       {/* #2778 -- Chat with Portfolio: Enterprise-gated; reached via Tools submenu. */}
       {screen === 'chat' && premiumScreens.ChatScreen && <premiumScreens.ChatScreen onBack={() => setToolsScreen('tools')} />}
     </Box>
+    </TuiCrashBoundary>
+    </TerminalFrame>
   );
 }

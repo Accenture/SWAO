@@ -21,7 +21,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { PassContext, LlmProvider } from '@swao/core';
-import { runCtxPass } from '../passes/pass-04-ctx.js';
+import { runCtxPass, isStructuralEvidenceValue, isExternalEvidenceUrl, externalEvidenceUrlOf, isEvidenceNote } from '../passes/pass-04-ctx.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -293,6 +293,132 @@ describe('CTX pass -- graceful skip when no LLM configured', () => {
       expect(result.assessment['skipped']).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4401: empty or structural evidence values and external URLs
+// ---------------------------------------------------------------------------
+
+describe('CTX evidence references (#4401)', () => {
+  it('an empty or structural value is no reference', () => {
+    for (const v of ['files: []', '[]', '', '  ', '{}', 'documents: {}', 'null', 'files:[]']) expect(isStructuralEvidenceValue(v)).toBe(true);
+    for (const v of ['context.md', 'cmdb/export.csv:row 3', 'https://example.org/x', 'No application code provided']) expect(isStructuralEvidenceValue(v)).toBe(false);
+  });
+
+  it('only http and https URLs are external', () => {
+    expect(isExternalEvidenceUrl('https://endoflife.example/windows-server')).toBe(true);
+    expect(isExternalEvidenceUrl('http://vendor.example/advisory?id=1')).toBe(true);
+    expect(isExternalEvidenceUrl('ftp://vendor.example/x')).toBe(false);
+    expect(isExternalEvidenceUrl('javascript:alert(1)')).toBe(false);
+    expect(isExternalEvidenceUrl('context.md')).toBe(false);
+  });
+
+  it('drops a structural value and keeps a URL without a warning or false-positive flag', async () => {
+    const ws = makeWorkspace({ 'context.md': '# Context\nService on a server.' });
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...a: unknown[]) => { warnings.push(a.map(String).join(' ')); };
+    try {
+      const llm = stubLlm({
+        signals: [
+          { id: 'CTX-01', severity: 'medium', title: 'No files cited', evidence: ['files: []'] },
+          { id: 'CTX-02', severity: 'low', title: 'End of life', evidence: ['https://endoflife.example/windows-server', 'context.md'] },
+          { id: 'CTX-03', severity: 'low', title: 'Missing file', evidence: ['gone.md'] },
+        ],
+        assessment: { context_inputs_found: 1, contradictions_detected: 0 },
+      });
+      const result = await runCtxPass(makeCtx(ws, llm));
+      const byId = new Map(result.signals.map((s) => [s.id, s]));
+      expect(byId.get('CTX-01')!.evidence).toEqual([]);
+      expect(byId.get('CTX-01')!.false_positive_flag).toBeFalsy();
+      expect(byId.get('CTX-02')!.evidence).toEqual(['https://endoflife.example/windows-server', 'context.md']);
+      expect(byId.get('CTX-02')!.false_positive_flag).toBeFalsy();
+      expect(byId.get('CTX-03')!.false_positive_flag).toBe(true);
+      const unresolved = warnings.filter((w) => w.includes('could not be resolved'));
+      expect(unresolved).toHaveLength(1);
+      expect(unresolved[0]).toContain('gone.md');
+    } finally {
+      console.warn = origWarn;
+      rmSync(ws, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4455, #4445: prose, key=value and key-prefixed URL evidence entries
+// ---------------------------------------------------------------------------
+
+const EM_DASH = String.fromCharCode(0x2014);
+
+describe('CTX evidence notes and key-prefixed URLs (#4455, #4445)', () => {
+  it('a key-prefixed https URL is an external link', () => {
+    expect(externalEvidenceUrlOf('evidence_url: https://endoflife.example/windows-server')).toBe('https://endoflife.example/windows-server');
+    expect(externalEvidenceUrlOf('https://endoflife.example/x')).toBe('https://endoflife.example/x');
+    expect(externalEvidenceUrlOf('context.md')).toBeNull();
+    expect(externalEvidenceUrlOf('cmdb/export.csv:row 3')).toBeNull();
+    expect(externalEvidenceUrlOf('source: javascript:alert(1)')).toBeNull();
+  });
+
+  it('prose and key=value strings are notes; path shapes are not', () => {
+    for (const v of [
+      `Chunks available: 4 ${EM_DASH} all terraform/ snapshots and README`,
+      'msi_skipped_reason=no_msi_inputs',
+      'topics: eol-status=high, others=null',
+      'see https://vendor.example/advisory for details',
+      'Several words without any path',
+    ]) expect(isEvidenceNote(v)).toBe(true);
+    for (const v of [
+      'context.md',
+      'cmdb/export.csv:row 3',
+      'other/doc.md section 1 & 11',
+      'architecture/overview.md: section 2',
+      'terraform/main.tf',
+      'README',
+      'config/app.env=x',
+      'Architecture Overview v2.docx',
+      'see the runbook in Operations Manual.pdf',
+    ]) expect(isEvidenceNote(v)).toBe(false);
+  });
+
+  it('does not flag the three monitor strings nor the prose sentence, and normalises the dash of a warning', async () => {
+    const ws = makeWorkspace({ 'context.md': '# Context\nService on a server.' });
+    const warnings: string[] = [];
+    const infos: string[] = [];
+    const origWarn = console.warn;
+    const origLog = console.log;
+    console.warn = (...a: unknown[]) => { warnings.push(a.map(String).join(' ')); };
+    console.log = (...a: unknown[]) => { infos.push(a.map(String).join(' ')); };
+    try {
+      const prose = `Chunks available: 4 ${EM_DASH} all terraform/ snapshots and README`;
+      const llm = stubLlm({
+        signals: [
+          { id: 'CTX-01', severity: 'low', title: 'EOL', evidence: ['evidence_url: https://endoflife.example/windows-server'] },
+          { id: 'CTX-02', severity: 'low', title: 'MSI', evidence: ['msi_skipped_reason=no_msi_inputs', 'topics: eol-status=high, others=null'] },
+          { id: 'CTX-03', severity: 'low', title: 'Prose', evidence: [prose, 'context.md'] },
+          { id: 'CTX-04', severity: 'low', title: 'Missing', evidence: [`gone${EM_DASH}file.md`] },
+        ],
+        assessment: { context_inputs_found: 1, contradictions_detected: 0 },
+      });
+      const result = await runCtxPass(makeCtx(ws, llm));
+      const byId = new Map(result.signals.map((s) => [s.id, s]));
+      expect(byId.get('CTX-01')!.evidence).toEqual(['https://endoflife.example/windows-server']);
+      for (const id of ['CTX-01', 'CTX-02', 'CTX-03']) expect(byId.get(id)!.false_positive_flag).toBeFalsy();
+      expect(byId.get('CTX-02')!.evidence).toHaveLength(2);
+      expect(byId.get('CTX-03')!.evidence).toEqual([prose, 'context.md']);
+      expect(byId.get('CTX-04')!.false_positive_flag).toBe(true);
+      const unresolved = warnings.filter((w) => w.includes('could not be resolved'));
+      expect(unresolved).toHaveLength(1);
+      expect(unresolved[0]).toContain('CTX-04');
+      expect(unresolved[0]).not.toContain(EM_DASH);
+      const notes = infos.filter((l) => l.includes('evidence note'));
+      expect(notes).toHaveLength(3);
+      for (const l of notes) expect(l).not.toContain(EM_DASH);
+    } finally {
+      console.warn = origWarn;
+      console.log = origLog;
+      rmSync(ws, { recursive: true, force: true });
     }
   });
 });

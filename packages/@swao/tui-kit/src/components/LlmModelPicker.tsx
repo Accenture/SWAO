@@ -25,8 +25,11 @@
  */
 
 import { Box, Text } from 'ink';
-import { SelectInput } from './SelectInput.js';
+import { SelectInput, type SelectOption } from './SelectInput.js';
 import { GuidanceBox } from './GuidanceBox.js';
+import { useOptionGuidance, type GuidanceEntry } from './guidance-entry.js';
+import type { KeyHint } from './KeyHints.js';
+import { tone } from '../theme.js';
 
 export interface LlmModelPickerProps {
   app: string;
@@ -39,12 +42,25 @@ export interface LlmModelPickerProps {
 // Exported utilities (tested without rendering)
 // ---------------------------------------------------------------------------
 
-/** Canonical LLM provider options for the TUI picker. */
-export const LLM_PROVIDER_OPTIONS: Array<{ label: string; value: string }> = [
+/** What each provider option means (#4230: the guidance box follows the highlighted option). */
+const LLM_PROVIDER_WHAT: Readonly<Record<string, string>> = {
+  'workspace-default': 'Removes the override of this app, so its assessments use the LLM provider of the workspace again.',
+  anthropic: 'Anthropic Claude through the Anthropic Messages API. Needs an Anthropic API key in the credential store.',
+  openai: 'OpenAI through the OpenAI API. Needs an OpenAI API key in the credential store.',
+  ollama: 'A local Ollama server on this machine. No API key; the model runs locally and no code leaves the machine.',
+};
+
+/** Canonical LLM provider options for the TUI picker, each with its guidance entry. */
+export const LLM_PROVIDER_OPTIONS: SelectOption[] = [
   { label: 'Use workspace default (remove override)',  value: 'workspace-default' },
   { label: 'Anthropic Claude',                         value: 'anthropic'         },
   { label: 'OpenAI',                                   value: 'openai'            },
-  { label: 'Ollama (local)',                            value: 'ollama'            },
+  { label: 'Ollama (local)',                           value: 'ollama'            },
+].map((o) => ({ ...o, guidance: { title: o.label, what: LLM_PROVIDER_WHAT[o.value] ?? o.label } }));
+
+/** Keys of the per-app LLM picker, shown in the expanded guidance box. */
+export const LLM_MODEL_PICKER_KEYS: readonly KeyHint[] = [
+  { key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'confirm' }, { key: '←', verb: 'back' }, { key: 'Esc', verb: 'abort' }, // #4255 (Design 126 section 7.4)
 ];
 
 /**
@@ -70,28 +86,32 @@ export function LlmModelPicker({
   onSelect,
   onGuidanceOpenChange,
 }: LlmModelPickerProps): JSX.Element {
+  // #4230: the step entry, followed by the entry of the highlighted provider.
+  const sections = [
+    { label: 'Current', text: currentLabel },
+    { label: 'Storage', text: `apps/${app}/.swao.yml  (providers.llm.primary)` },
+  ];
+  const stepEntry: GuidanceEntry = {
+    title: 'Per-app LLM override',
+    what: 'Override the workspace-level LLM provider for this specific app. The selected provider is saved to the app .swao.yml and used for all future assessments of this app.',
+    sections,
+  };
+  const { entry, onCursorChange } = useOptionGuidance(stepEntry);
+  const shown: GuidanceEntry = entry === stepEntry ? entry : { ...entry, sections: [...(entry.sections ?? []), ...sections] };
   return (
     <Box flexDirection="column">
-      <Text>App: <Text color="cyanBright">{app}</Text></Text>
-      <Text dimColor>Current LLM: <Text color="cyanBright">{currentLabel}</Text></Text>
+      <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+      <Text {...tone('muted')}>Current LLM: <Text {...tone('accent')}>{currentLabel}</Text></Text>
       <Box marginTop={1}>
         <SelectInput
           label="LLM provider for this app"
           options={LLM_PROVIDER_OPTIONS}
           onSelect={onSelect}
+          onCursorChange={onCursorChange}
           active
         />
       </Box>
-      <GuidanceBox
-        title="Per-app LLM override"
-        what="Override the workspace-level LLM provider for this specific app. The selected provider is saved to the app .swao.yml and used for all future assessments of this app."
-        details={[
-          { label: 'Current', value: currentLabel },
-          { label: 'Storage', value: `apps/${app}/.swao.yml  (providers.llm.primary)` },
-        ]}
-        affordances={['Up/Down -- pick  |  Enter -- save and return  |  Esc -- cancel']}
-        onOpenChange={onGuidanceOpenChange}
-      />
+      <GuidanceBox entry={shown} keys={LLM_MODEL_PICKER_KEYS} onOpenChange={onGuidanceOpenChange} />
     </Box>
   );
 }

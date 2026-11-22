@@ -23,6 +23,6 @@ export default defineConfig({
     // M18 #0271 / #0573 -- set the test signing secret before any test module
     // loads @swao/core's license-guard so the relocated doctor.test.ts can
     // round-trip signed keys (mirrors @swao/swao's vitest setup).
-    setupFiles: ['src/__tests__/setup.ts'],
+    setupFiles: ['src/__tests__/sandbox-profile.ts', 'src/__tests__/setup.ts'],
   },
 });

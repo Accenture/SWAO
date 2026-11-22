@@ -317,13 +317,13 @@ export function runLzProviderFits<R>(args: {
     }
     const overall = outcome.overall;
     try {
-      logPortfolio('info', 'lz.assessment.provider.complete', `LZ fit complete: ${lzP}/${lzR} -- ${overall}`, {
+      logPortfolio('info', 'lz.assessment.provider.complete', `LZ fit complete: ${lzP}/${lzR}, ${overall}`, {
         context: { app: args.app, provider: lzP, region: lzR, verdict: overall, duration_ms: fitMs, elapsed_ms: fitMs },
       });
     } catch { /* best-effort */ }
     // #2288: mirror provider.complete to app-events for cross-file correlation.
     try {
-      logApp(args.app, 'info', 'lz.assessment.provider.complete', `LZ fit complete: ${lzP}/${lzR} -- ${overall}`, {
+      logApp(args.app, 'info', 'lz.assessment.provider.complete', `LZ fit complete: ${lzP}/${lzR}, ${overall}`, {
         context: { app_id: args.app, provider: lzP, region: lzR, verdict: overall, elapsed_ms: fitMs },
       });
     } catch { /* best-effort */ }

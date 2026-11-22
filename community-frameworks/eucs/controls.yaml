@@ -56,6 +56,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.1
       - BSI_C5_OIS-01
+      - DORA_Art_9_7
     references:
       - "EUCS GRC section -- governance requirements"
 
@@ -75,6 +76,9 @@ controls:
     maps_to:
       - ISO_27001_A.5.35
       - BSI_C5_OIS-02
+      - DORA_Art_6
+      - DORA_Art_6_3
+      - DORA_Art_8_2
     references:
       - "EUCS GRC section -- risk management"
 
@@ -95,6 +99,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.2
       - BSI_C5_OIS-02
+      - DORA_Art_5_1
     references:
       - "EUCS GRC section -- roles and responsibilities"
 
@@ -113,6 +118,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.35
+      - DORA_Art_6
     references:
       - "EUCS GRC section -- ISMS requirement"
       - "ISO/IEC 27001:2022 -- Information security management systems"
@@ -171,6 +177,8 @@ controls:
     maps_to:
       - ISO_27001_A.5.19
       - BSI_C5_OIS-05
+      - DORA_Art_28_1
+      - DORA_Art_30_2
     references:
       - "EUCS DEV section -- supply chain governance"
 
@@ -189,6 +197,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.7
+      - DORA_Art_13
     references:
       - "EUCS GRC section -- continual improvement"
 
@@ -232,6 +241,7 @@ controls:
     maps_to:
       - ISO_27001_A.6.3
       - BSI_C5_HRS-02
+      - DORA_Art_13_2
     references:
       - "EUCS HRS section -- security training"
 
@@ -294,6 +304,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.9
       - BSI_C5_OIS-04
+      - DORA_Art_8_1
     references:
       - "EUCS ASM section -- asset inventory"
 
@@ -313,6 +324,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.12
       - BSI_C5_DAT-01
+      - DORA_Art_8_1
     references:
       - "EUCS ASM section -- data classification"
 
@@ -394,6 +406,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.15
       - BSI_C5_IDM-01
+      - DORA_Art_9_1
     references:
       - "EUCS IAM section -- access control policy"
 
@@ -432,6 +445,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.5
       - BSI_C5_IDM-01
+      - DORA_Art_9_5
     references:
       - "EUCS IAM section -- multi-factor authentication"
 
@@ -451,6 +465,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.2
       - BSI_C5_IDM-02
+      - DORA_Art_9_1
     references:
       - "EUCS IAM section -- privileged access"
 
@@ -551,6 +566,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.24
       - BSI_C5_CRY-01
+      - DORA_Art_9_2
     references:
       - "EUCS CRY section -- data at rest encryption"
       - "BSI TR-02102-1 -- Cryptographic Mechanisms"
@@ -572,6 +588,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.24
       - BSI_C5_CRY-02
+      - DORA_Art_9_2
     references:
       - "EUCS CRY section -- data in transit encryption"
       - "BSI TR-02102-2 -- TLS/DTLS"
@@ -592,6 +609,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.24
       - BSI_C5_CRY-03
+      - DORA_Art_9_6
     references:
       - "EUCS CRY section -- key management"
 
@@ -781,6 +799,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.32
       - BSI_C5_OPS-01
+      - DORA_Art_9_8
     references:
       - "EUCS OPS section -- change management"
 
@@ -800,6 +819,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.8
       - BSI_C5_OPS-02
+      - DORA_Art_9_3
     references:
       - "EUCS OPS section -- vulnerability management"
 
@@ -819,6 +839,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.9
       - BSI_C5_OPS-03
+      - DORA_Art_9_9
     references:
       - "EUCS OPS section -- configuration management"
 
@@ -839,6 +860,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.20
       - BSI_C5_COS-01
+      - DORA_Art_9_4
     references:
       - "EUCS OPS section -- network security"
 
@@ -854,10 +876,12 @@ controls:
       completeness shall be verified monthly.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.15
       - BSI_C5_SIM-01
+      - DORA_Art_10_2
     references:
       - "EUCS OPS section -- log management"
 
@@ -892,10 +916,12 @@ controls:
       measured: critical alerts within 15 minutes; high within 1 hour.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.16
       - BSI_C5_SIM-02
+      - DORA_Art_10_1
     references:
       - "EUCS OPS section -- SIEM (High level)"
 
@@ -917,6 +943,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.36
       - BSI_C5_OPS-06
+      - DORA_Art_24
     references:
       - "EUCS OPS section -- penetration testing (High level)"
 
@@ -940,6 +967,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.29
       - BSI_C5_AVL-01
+      - DORA_Art_11_1
     references:
       - "EUCS BCP section -- business continuity"
 
@@ -959,6 +987,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.30
       - BSI_C5_AVL-03
+      - DORA_Art_12_5
     references:
       - "EUCS BCP section -- disaster recovery"
 
@@ -978,6 +1007,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.30
+      - DORA_Art_11_4
     references:
       - "EUCS BCP section -- BCP/DR testing"
 
@@ -997,6 +1027,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.30
       - BSI_C5_AVL-02
+      - DORA_Art_12_5
     references:
       - "EUCS BCP section -- multi-region (High level)"
 
@@ -1014,6 +1045,8 @@ controls:
     assessment_type_scope: [aud]
     evidence_basis:
       - context_input: solution_arch
+    maps_to:
+      - DORA_Art_30_3
     references:
       - "EUCS BCP section -- SLA commitments (High level)"
 
@@ -1033,11 +1066,13 @@ controls:
       defined severity levels and response time targets for each level.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.24
       - BSI_C5_INM-01
+      - DORA_Art_17_1
     references:
       - "EUCS INC section -- incident management"
 
@@ -1058,6 +1093,7 @@ controls:
     maps_to:
       - ISO_27001_A.5.24
       - BSI_C5_INM-02
+      - DORA_Art_19_2
     references:
       - "EUCS INC section -- customer notification"
 
@@ -1077,6 +1113,7 @@ controls:
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.24
+      - DORA_Art_19_1
     references:
       - "EUCS INC section -- regulatory reporting"
       - "NIS2 Art. 23 -- incident notification"
@@ -1095,7 +1132,8 @@ controls:
     severity_default: high
     assessment_type_scope: [aud]
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
       - context_input: ops_runbooks
     maps_to:
       - ISO_27001_A.5.28
@@ -1142,6 +1180,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.30
       - BSI_C5_DEV-03
+      - DORA_Art_25
     references:
       - "EUCS DEV section -- software composition"
 
@@ -1181,6 +1220,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.26
       - BSI_C5_DEV-02
+      - DORA_Art_25
     references:
       - "EUCS DEV section -- code review (High level)"
 
@@ -1224,6 +1264,7 @@ controls:
       - context_input: solution_arch
     maps_to:
       - BSI_C5_DAT-02
+      - DORA_Art_28_5
     references:
       - "EUCS DPI section -- data portability"
 
@@ -1278,6 +1319,8 @@ controls:
     assessment_type_scope: [aud]
     evidence_basis:
       - context_input: solution_arch
+    maps_to:
+      - DORA_Art_28_5
     references:
       - "EUCS DPI section -- lock-in prevention"
 
@@ -1301,6 +1344,7 @@ controls:
       - context_input: solution_arch
     maps_to:
       - BSI_C5_OIS-04
+      - DORA_Art_28_4
     references:
       - "EUCS AUD section -- third-party attestation"
 
@@ -1320,6 +1364,9 @@ controls:
       - context_input: solution_arch
     maps_to:
       - BSI_C5_OIS-03
+      - DORA_Art_28_4
+      - DORA_Art_30
+      - DORA_Art_30_3
     references:
       - "EUCS AUD section -- audit rights"
 

@@ -13,68 +13,71 @@
 //
 // ================================================================
 
-import { useRef } from 'react';
-import type { ComponentType } from 'react';
-import { Box, Text, useInput } from 'ink';
-import { ProgressBar, LiveOutput, GuidanceBox } from '@swao/tui-kit';
-import { PASS_DESCRIPTIONS } from './passDescriptions.js';
+// The run screen of the Application and LZ Catalog flows (#2371), shared by
+// AppAssessmentScreen and LzAssessmentScreen. All subprocess management stays
+// in the parent screen's state machine; this view only draws.
+//
+// #4256 (TUI-12, Design 126 sections 4.6 and 7.6, A-20): FlowFrame (header,
+// licence line, step bar on Run) with RunPanel as the content: the title says
+// what the run does, the stage line names the pass or target that runs now,
+// the output is titled and wrapped, and the guidance box follows the run state
+// (runGuidance). Keys: `Esc cancel` only; RunPanel asks with the AbortDialog
+// first and then calls onCancel, where the screen stops the child process and
+// returns to the step that started the run. An open guidance box takes Esc
+// first, so the panel gets the box state as React state.
+
+import { useEffect, useState } from 'react';
+import { RunPanel, RUN_PANEL_KEYS } from '@swao/tui-kit';
+import { FlowFrame, type FlowHeader } from './flow-frame.js';
+import { runGuidance, runStage, runTitle, type RunState } from './run-view.js';
 
 export interface RunningPhaseProps {
-  progressValue: number;
-  progressLabel: string;
-  totalPasses: number;
-  liveLines: string[];
-  passName: string;
-  typeLabel: string;
-  onBack: () => void;
-  Header: ComponentType<{ subtitle?: string }>;
+  header: FlowHeader;
+  steps: readonly string[];
+  /** The Run step of the step bar. */
+  current: number;
+  run: RunState;
+  /** Run output, oldest first. */
+  lines: readonly string[];
+  /** Called once after the operator confirmed the cancel. */
+  onCancel(): void;
+  /** Keeps the screen's guidance ref in step with the box. */
+  onGuidanceOpenChange?(open: boolean): void;
+  /** Output lines shown (default 5, so the guidance box stays on screen). */
+  maxLines?: number;
+  /** Start of the run (epoch ms); default the mount time. */
+  startedAt?: number;
+  env?: Readonly<Record<string, string | undefined>>;
 }
 
-// Active running phase -- shown while the assessment subprocess is running.
-// Shared by AppAssessmentScreen and LzAssessmentScreen (#2371).
-// All subprocess management stays in the parent screen's state machine.
-export function RunningPhase({ progressValue, progressLabel, totalPasses, liveLines, passName, typeLabel, onBack, Header }: RunningPhaseProps): JSX.Element {
-  const guidanceOpenRef = useRef(false);
-  const passInfoVisible = !!passName && PASS_DESCRIPTIONS[passName] !== undefined;
-  const startPanelVisible = !passName;
-
-  useInput((_input, key) => {
-    if (guidanceOpenRef.current) return;
-    if (key.escape) onBack();
-  });
-
+export function RunningPhase({ header, steps, current, run, lines, onCancel, onGuidanceOpenChange, maxLines = 5, startedAt, env }: RunningPhaseProps): JSX.Element {
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const [start] = useState(() => startedAt ?? Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  // Heartbeat: the child is silent for minutes during LLM passes (#3169).
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={typeLabel} />
-      <ProgressBar
-        value={progressValue}
-        total={totalPasses}
-        label={progressLabel || undefined}
-        color="cyan"
+    <FlowFrame
+      header={header}
+      steps={steps}
+      current={current}
+      keys={RUN_PANEL_KEYS}
+      guidance={{ entry: runGuidance(run), initiallyCollapsed: true }}
+      onGuidanceOpenChange={(open) => { setGuidanceOpen(open); onGuidanceOpenChange?.(open); }}
+      dialog={null}
+    >
+      <RunPanel
+        title={runTitle(run)}
+        progress={runStage(run, Math.max(0, now - start))}
+        lines={lines}
+        maxLines={maxLines}
+        onCancel={onCancel}
+        guidanceOpen={guidanceOpen}
+        {...(env ? { env } : {})}
       />
-      <Text color="yellow">Running assessment...</Text>
-      {/* #2546: maxLines reduced from 5 to 4 to budget for wrapped content rows */}
-      <LiveOutput lines={liveLines} maxLines={4} label="Output" />
-      {/* #1676: Pass description panel always visible when running */}
-      <Box marginTop={1}>
-        <GuidanceBox
-          title={passInfoVisible ? `Pass info -- ${passName.replace(/_/g, ' ')}` : 'Assessment in Progress'}
-          what={passInfoVisible
-            ? PASS_DESCRIPTIONS[passName]!.summary
-            : (startPanelVisible
-              ? 'Cloning source repository and preparing analysis passes...'
-              : 'Assessment running. Each pass analyses a different workload dimension.')}
-          details={passInfoVisible && PASS_DESCRIPTIONS[passName]!.tip
-            ? [{ label: 'Tip', value: PASS_DESCRIPTIONS[passName]!.tip! }]
-            : undefined}
-          affordances={['Ctrl+G -- toggle this panel', 'Esc -- cancel assessment']}
-          initiallyCollapsed
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
-      <Box marginTop={1}>
-        <Text dimColor>Escape to cancel...</Text>
-      </Box>
-    </Box>
+    </FlowFrame>
   );
 }

@@ -154,8 +154,8 @@ export const RegimeControlSchema = z.object({
   // Sprint-038 #0348: secondary categorisation axis orthogonal to `pillar`.
   // Tag taxonomies live in each framework's controls.yaml (not in source);
   // see design 029 §13.7-§13.10 for the per-framework conventions. The
-  // CLI `swao framework info <id>` surfaces tags to the operator; PowerBI
-  // slicers are a sprint-039 follow-up.
+  // PowerBI slicers are a sprint-039 follow-up (the framework info command
+  // was removed in #4126).
   tags: z.array(z.string()).default([]),
   // Design 104 §5.2: extended control fields (sprint-138 #2817). All optional
   // / defaulted so existing controls.yaml files without these fields continue
@@ -176,6 +176,10 @@ export const RegimeControlSchema = z.object({
   official_control_id: z.string().optional(),
   reliability: z.enum(['automated', 'verified', 'self-asserted']).optional(),
   layer: z.enum(['runtime', 'devops', 'governance']).optional(),
+  // #3962: earlier ids of this control (a corrected id keeps the old one
+  // resolvable, e.g. for publications of earlier assessments). Resolved by
+  // controlIdAliases(); an old id must not be the id of another control.
+  replaces: z.array(z.string().min(1).max(80)).optional(),
 });
 
 export const RegimeCatalogueSchema = z.object({
@@ -206,3 +210,31 @@ export type RegimeControl = z.infer<typeof RegimeControlSchema>;
 export type RegimeCatalogue = z.infer<typeof RegimeCatalogueSchema>;
 export type RegimeIndex = z.infer<typeof RegimeIndexSchema>;
 export type RegimeIndexEntry = z.infer<typeof IndexEntrySchema>;
+
+/**
+ * #3962: old control id -> current control id (both lower-case) from the
+ * control-level `replaces:` lists of one catalogue. Takes raw parsed YAML
+ * (non-string entries are skipped). An old id that is still the id of a
+ * control of the catalogue is ignored, so a current id never resolves to
+ * another control; when two controls claim the same old id the first wins.
+ */
+export function controlIdAliases(controls: ReadonlyArray<{ id?: unknown; replaces?: unknown }>): Map<string, string> {
+  const current = new Set(controls.map((c) => (typeof c.id === 'string' ? c.id.toLowerCase() : '')).filter((x) => x !== ''));
+  const out = new Map<string, string>();
+  for (const c of controls) {
+    if (typeof c.id !== 'string' || !Array.isArray(c.replaces)) continue;
+    for (const old of c.replaces) {
+      if (typeof old !== 'string' || old === '') continue;
+      const k = old.toLowerCase();
+      if (current.has(k) || out.has(k)) continue;
+      out.set(k, c.id.toLowerCase());
+    }
+  }
+  return out;
+}
+
+/** #3962: the current id key (lower-case) of a control id, following `replaces:` aliases. */
+export function resolveControlIdKey(id: string, aliases: ReadonlyMap<string, string>): string {
+  const k = id.toLowerCase();
+  return aliases.get(k) ?? k;
+}

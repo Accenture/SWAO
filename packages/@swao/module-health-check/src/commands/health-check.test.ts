@@ -26,7 +26,7 @@ import type { LicensePayload } from '@swao/core';
 // binary-excluded); its test moved to the host's crawl/playwright-driver.test.ts
 // (#0573). The PlaywrightProbeResult type-shape assertions stay here because the
 // type is defined in this module.
-import { type LicenseProbeResult, type PlaywrightProbeResult, buildLicenseProbe, checkLlmProviderConfig, checkLzrSnapshots, checkLlmTemperature, checkLlmContextWindow, checkPlaceholderInputs, checkLzrCoveragePerApp, formatLlmGatewayLine, checkContextConfig, checkImageSidecars, seedIngestionSidecarExample } from './health-check.js';
+import { type LicenseProbeResult, type PlaywrightProbeResult, playwrightProbeLogFields, buildLicenseProbe, checkLlmProviderConfig, checkLzrSnapshots, checkLlmTemperature, checkLlmContextWindow, checkPlaceholderInputs, checkLzrCoveragePerApp, formatLlmGatewayLine, checkContextConfig, checkImageSidecars, seedIngestionSidecarExample } from './health-check.js';
 
 function isoInDays(days: number): string {
   const d = new Date();
@@ -634,5 +634,16 @@ describe('seedIngestionSidecarExample (#2956)', () => {
     writeFileSync(destPath, 'existing content', 'utf-8');
     seedIngestionSidecarExample(tmpRoot);
     expect(readFileSync(destPath, 'utf-8')).toBe('existing content');
+  });
+});
+
+// #4451 (from #4431): a warn or fail of the Playwright probe logs its reason and message.
+describe('playwrightProbeLogFields (#4451)', () => {
+  it('logs reason, message and launch time of a slow launch', () => {
+    const fields = playwrightProbeLogFields({ status: 'warn', version: null, path: '/x/chrome', error: 'Chromium installed, the test launch took longer than 15 s', reason: 'timeout', launch_ms: 15003 });
+    expect(fields).toEqual({ message: 'Chromium installed, the test launch took longer than 15 s', reason: 'timeout', launch_ms: 15003 });
+  });
+  it('logs no message for an ok probe, only the timings', () => {
+    expect(playwrightProbeLogFields({ status: 'ok', version: '148', path: '/x/chrome', error: null, launch_ms: 1800, close_ms: null })).toEqual({ launch_ms: 1800, close_ms: null });
   });
 });

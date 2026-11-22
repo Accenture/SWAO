@@ -175,7 +175,8 @@ controls:
       vulnerabilities (prompt-injection attempts, jailbreaks, exfiltration).
     severity_default: medium
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     references: []
     overrides: []
 

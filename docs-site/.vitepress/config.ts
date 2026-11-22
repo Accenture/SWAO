@@ -39,6 +39,7 @@ const frameworks: Entry[] = [
   { en: 'BSI C5', de: 'BSI C5', link: '/frameworks/bsi-c5' },
   { en: 'BSI IT-Grundschutz 2023', de: 'BSI IT-Grundschutz 2023', link: '/frameworks/bsi-grundschutz-2023' },
   { en: 'BSI Grundschutz++', de: 'BSI Grundschutz++', link: '/frameworks/bsi-grundschutz-plus-plus' },
+  { en: 'Client LZ Policy Baseline', de: 'Client LZ Policy Baseline', link: '/frameworks/client-lz-policy-baseline' },
   { en: 'COBIT 5', de: 'COBIT 5', link: '/frameworks/cobit-5' },
   { en: 'DORA', de: 'DORA', link: '/frameworks/dora' },
   { en: 'EC Cloud Sovereignty Framework', de: 'EC Cloud Sovereignty Framework', link: '/frameworks/ec-csf' },
@@ -79,7 +80,7 @@ const lzCatalogues: Entry[] = [
   { en: 'Delos Cloud', de: 'Delos Cloud', link: '/lz-catalogues/delos' },
   { en: 'Google Cloud Platform', de: 'Google Cloud Platform', link: '/lz-catalogues/gcp' },
   { en: 'Oracle Cloud Infrastructure', de: 'Oracle Cloud Infrastructure', link: '/lz-catalogues/oci' },
-  { en: 'Open Telekom Cloud / T Cloud Public', de: 'Open Telekom Cloud / T Cloud Public', link: '/lz-catalogues/otc' },
+  { en: 'T Cloud Public', de: 'T Cloud Public', link: '/lz-catalogues/otc' },
   { en: 'STACKIT', de: 'STACKIT', link: '/lz-catalogues/stackit' },
 ]
 
@@ -121,6 +122,7 @@ const sidebar: Entry[] = [
       },
       { en: '3. Landing Zone Catalog Assessment', de: '3. Landing-Zone-Katalog-Bewertung', link: '/assessment/landing-zone' },
       { en: '4. LLM Assessment', de: '4. LLM-Bewertung', link: '/assessment/llm' },
+      { en: '5. Landing Zone Live Assessment', de: '5. Landing-Zone-Live-Bewertung', link: '/assessment/landing-zone-live' },
     ],
   },
   {
@@ -147,6 +149,7 @@ const sidebar: Entry[] = [
       { en: 'Portfolio operations', de: 'Portfolio-Betrieb', link: '/portfolio' },
       { en: 'Generate TF modules', de: 'TF-Module erstellen', link: '/generate-tf' },
       { en: 'Tools', de: 'Werkzeuge', link: '/tools' },
+      { en: 'Keys in the TUI', de: 'Tasten in der TUI', link: '/tui-keys' },
       {
         en: 'Installation', de: 'Installation', collapsed: true,
         items: [

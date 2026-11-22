@@ -30,7 +30,7 @@
 // image bytes (CLAUDE.md section 5.7).
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { logPortfolio, logApp } from '@swao/core';
+import { logPortfolio, logApp, llmCallContextFields, recordLlmCallUsage, withLlmCallContext, recordLlmAttempt, recordLlmRetry } from '@swao/core';
 import { acquireLlmSlot } from './concurrency.js';
 
 /** Loop bound for retries; every log line counts "attempt N/LLM_MAX_ATTEMPTS". */
@@ -54,6 +54,24 @@ export const DEFAULT_LLM_IDLE_TIMEOUT_MS = 120000;
  * (undici's own default headers timeout, the effective limit before #3284).
  */
 export const NON_STREAMING_HEADERS_FLOOR_MS = 300000;
+/**
+ * #4471: cap of the growing body idle limit. A non-streaming call receives
+ * its body only when the model has finished, so after a body idle timeout
+ * each further attempt waits one more base limit (120, 240, 360 s ...), up
+ * to this cap (below LLM_TOTAL_TIMEOUT_MS).
+ */
+export const LLM_IDLE_GROWTH_CAP_MS = 360000;
+
+/**
+ * #4471: idle limit of the next attempt of a non-streaming call after
+ * `bodyIdleTimeouts` body idle timeouts of the same call: the base limit
+ * times (timeouts + 1), capped at LLM_IDLE_GROWTH_CAP_MS (never below the base).
+ */
+export function growingIdleLimitMs(baseMs: number, bodyIdleTimeouts: number): number {
+  if (bodyIdleTimeouts <= 0) return baseMs;
+  return Math.max(baseMs, Math.min(baseMs * (bodyIdleTimeouts + 1), LLM_IDLE_GROWTH_CAP_MS));
+}
+
 /** Interval of `waiting` events while an attempt is outstanding (#3225). */
 export const WAITING_EVENT_INTERVAL_MS = 60000;
 
@@ -301,6 +319,11 @@ function isRetryableNetworkError(err: Error): boolean {
     || err.message === 'terminated';
 }
 
+/** #4469: retry counting is best-effort, like logging (a core test double may lack it). */
+function safeCount(fn: () => void): void {
+  try { fn(); } catch { /* no counter, or a core test double without it */ }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -309,6 +332,26 @@ function sleep(ms: number): Promise<void> {
 const MAX_IMMEDIATE_RESENDS = 2;
 
 const attemptLimit = new AsyncLocalStorage<number>();
+
+// #4270: the caller context is best-effort, like logging: a host (or a test
+// double of @swao/core) without it must never fail an LLM call.
+function callerContextFields(): { caller?: string; app_id?: string } {
+  try { return llmCallContextFields(); } catch { return {}; }
+}
+function recordCallerUsage(costUsd: unknown): void {
+  try { recordLlmCallUsage(costUsd); } catch { /* no caller context */ }
+}
+
+/**
+ * #4270: run `fn` as `caller` (and for `appId`), so its provider.llm.* events
+ * say who made the call. The provider-module entry point to
+ * withLlmCallContext; without the core context (a test double) it runs `fn` as is.
+ */
+export function withLlmCaller<T>(scope: { caller: string; appId?: string }, fn: () => Promise<T>): Promise<T> {
+  let wrap: typeof withLlmCallContext | undefined;
+  try { wrap = withLlmCallContext; } catch { wrap = undefined; }
+  return typeof wrap === 'function' ? wrap(scope, () => fn()) : fn();
+}
 
 /**
  * Run `fn` with a lower attempt limit for every LLM request it issues: the
@@ -336,10 +379,19 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
     ? { kind, image_count: spec.imageCount ?? 0 }
     : { kind };
   const kindLabel = kind === 'vision' ? ' vision' : kind === 'tools' ? ' tool-call' : '';
-  const idleMs = spec.idleTimeoutMs ?? resolveLlmIdleTimeoutMs();
-  const headersIdleMs = spec.streaming ? idleMs : Math.max(idleMs, NON_STREAMING_HEADERS_FLOOR_MS);
+  const baseIdleMs = spec.idleTimeoutMs ?? resolveLlmIdleTimeoutMs();
+  // #4471: body idle timeouts of this call so far (non-streaming calls only).
+  let bodyIdleTimeouts = 0;
   const transientStatus = spec.isTransientStatus ?? isTransientHttpStatus;
-  const base = { provider, model, ...kindCtx };
+  // #4270: caller and app_id of the enclosing withLlmCallContext (service research
+  // topic, challenge agent, connectivity check) on every event of this call; the
+  // spec's own app id wins for app_id.
+  const callerCtx = callerContextFields();
+  const base = {
+    provider, model, ...kindCtx,
+    ...(callerCtx.caller ? { caller: callerCtx.caller } : {}),
+    ...(appId ? { app_id: appId } : callerCtx.app_id ? { app_id: callerCtx.app_id } : {}),
+  };
   // One count per call: LLM_MAX_ATTEMPTS unless a probe lowered it.
   const maxAttempts = attemptLimit.getStore() ?? LLM_MAX_ATTEMPTS;
 
@@ -370,6 +422,7 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
       emit('warn', 'retry',
         `${label}${kindLabel} attempt ${attempt}/${maxAttempts} failed (${lastError.message}${causeStr}), retrying in ${delayMs / 1000}s as attempt ${attempt + 1}/${maxAttempts}`,
         { ...base, attempt, next_attempt: attempt + 1, max_attempts: maxAttempts, reason: lastReason, delay_ms: delayMs });
+      safeCount(() => recordLlmRetry());
       await sleep(delayMs);
     }
 
@@ -378,6 +431,10 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
     const slot = await acquireLlmSlot(spec.limiterKey);
     const attemptNo = attempt + 1;
     const attemptStartedAt = Date.now();
+    // #4471: a non-streaming call gets a longer body idle limit after each body idle timeout.
+    const idleMs = spec.streaming ? baseIdleMs : growingIdleLimitMs(baseIdleMs, bodyIdleTimeouts);
+    const headersIdleMs = spec.streaming ? idleMs : Math.max(idleMs, NON_STREAMING_HEADERS_FLOOR_MS);
+    safeCount(() => recordLlmAttempt());
     emit('info', 'attempt', `${label} ${model}${kindLabel} call attempt ${attemptNo}/${maxAttempts}`, {
       ...base,
       endpoint: spec.endpoint,
@@ -385,6 +442,9 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
       max_attempts: maxAttempts,
       prompt_chars: spec.promptChars,
       idle_timeout_ms: idleMs,
+      // #4471: the idle limit in use for this attempt (grows after a body idle timeout).
+      idle_limit_ms: idleMs,
+      ...(idleMs !== baseIdleMs ? { idle_limit_base_ms: baseIdleMs } : {}),
       queued_ms: slot.queuedMs,
       ...(spec.attemptContext ?? {}),
     });
@@ -398,13 +458,15 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
         {
           ...base, attempt: attemptNo, max_attempts: maxAttempts,
           phase: st.phase, elapsed_ms: st.elapsedMs, ms_since_data: st.msSinceData,
-          bytes_received: st.bytes, idle_timeout_ms: idleMs, streaming: spec.streaming,
+          bytes_received: st.bytes, idle_timeout_ms: idleMs, idle_limit_ms: idleMs, streaming: spec.streaming,
         });
     }, headersIdleMs);
 
     try {
       const result = await spec.run(wd);
       const latencyMs = Date.now() - attemptStartedAt;
+      // #4270: the caller's call count and cost (sum over a batch = sum of the ok events).
+      recordCallerUsage(result.okContext['cost_usd']);
       emit('info', 'ok', `${label} ${model}${kindLabel} -> ${result.status} in ${latencyMs}ms`, {
         ...base,
         attempt: attemptNo,
@@ -450,6 +512,7 @@ export async function requestLlmWithRetry<T>(spec: LlmCallSpec<T>): Promise<T> {
           });
         lastError = err;
         lastReason = `timeout_${err.limit}_${err.phase}`;
+        if (err.limit === 'idle' && err.phase === 'body') bodyIdleTimeouts += 1;
         continue;
       }
 

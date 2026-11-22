@@ -358,6 +358,25 @@ Dadurch entsteht der Workspace-Ordner mit, unter anderem, folgendem Inhalt:
                 └── source/      # hier legen Sie den Quellcode der Anwendung ab
 ```
 
+#### Die Bewertungsarten einrichten, die Sie ausführen werden
+
+Nach dem Workspace-Teil fragt das Setup, welche Bewertungen Sie ausführen
+werden, und richtet jede mit eigenen Schritten, eigenem Health Check und
+eigener Zusammenfassung Fertig ein ([Workspace-Setup](/de/workspace-setup)).
+Über die Kommandozeile:
+
+| Bewertungsart | Einrichten und prüfen |
+|---|---|
+| Application Assessment (dieser Leitfaden) | `swao setup --type application` |
+| Service Portfolio Assessment | `swao setup --type service` (braucht die Intake-Arbeitsmappe im Portfolio-Ingestion-Ordner) |
+| Landing Zone Catalog Assessment | `swao setup --type lz-catalog` (Kataloge und Ziele) |
+| Landing Zone Live Assessment | `swao setup --type lz-live` (Landing Zones und Scopes; Consultant) |
+| LLM Assessment | `swao setup --type llm` (zwei bis fünf LLM-Konnektoren; braucht ein abgeschlossenes Application Assessment) |
+
+Mit `--non-interactive` gibt SWAO das Ergebnis des Health Checks und die
+fehlenden Punkte aus, ohne den Assistenten zu öffnen. Was ein Setup
+speichert, ist beim Ausführen der Bewertung vorausgewählt.
+
 ### Schritt 2: Quellcode bereitstellen
 
 Klonen oder kopieren Sie den Quellcode der Anwendung in den Ordner `source/`

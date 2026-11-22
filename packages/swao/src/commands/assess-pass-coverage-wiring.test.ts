@@ -36,8 +36,8 @@ describe('swao assess pass coverage wiring (#3419 / #3436)', () => {
     expect(src).toContain('if (passOutcome.degraded) passesDegraded.push(passOutcome.degraded);');
   });
 
-  it('writes run-manifest v1.6 with passes_not_run and passes_degraded', () => {
-    expect(src).toMatch(/schema_version: '1\.6'/);
+  it('writes run-manifest v1.7 (#4430 build fields) with passes_not_run and passes_degraded', () => {
+    expect(src).toMatch(/schema_version: '1\.7'/);
     expect(src).toContain('{ passes_not_run: [...passesNotRun] }');
     expect(src).toContain('{ passes_degraded: [...passesDegraded] }');
   });

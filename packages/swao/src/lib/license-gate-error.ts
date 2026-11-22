@@ -45,7 +45,8 @@ export function formatLicenseGateError(
 }
 
 /**
- * Print a tier-gate error to stderr and exit 1.
+ * Print a tier-gate error to stderr and exit 2 (ADR-0055 section 3; #3844
+ * owner decision 2026-11-05: a refused licence tier exits 2 everywhere).
  *
  * Output format:
  *   [LICENSE] <feature> requires a/an <Required> licence.
@@ -62,8 +63,8 @@ export function printLicenseGateError(
   const article = required === 'enterprise' ? 'an' : 'a';
   const label = required.charAt(0).toUpperCase() + required.slice(1);
   console.error(formatLicenseGateError(feature, required, current));
-  try { logPortfolio('error', 'licence.gate.error', `${feature} requires ${article} ${label} licence`, { context: { feature, required, current, code: 1 } }); } catch { /* best-effort */ }
-  process.exit(1);
+  try { logPortfolio('error', 'licence.gate.error', `${feature} requires ${article} ${label} licence`, { context: { feature, required, current, code: 2 } }); } catch { /* best-effort */ }
+  process.exit(2);
 }
 
 /**

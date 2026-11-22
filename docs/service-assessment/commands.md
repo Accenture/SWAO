@@ -7,7 +7,7 @@ All Service Portfolio Assessment commands work on a SWAO workspace: a folder wit
 Scaffolds one app folder per intake row.
 
 ```bash
-swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json]
+swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--workspace <dir>] [--refresh] [--replace | --keep] [--cluster-threshold <n>] [--json] [--template]
 ```
 
 | Option | Meaning |
@@ -20,6 +20,7 @@ swao service init [--from <intake.xlsx>] [--mapping <column-map.yaml>] [--worksp
 | `--keep` | The workspace already holds service apps from another intake workbook: add the apps of this workbook next to them. Services that both workbooks describe are then listed twice. |
 | `--cluster-threshold <n>` | Minimum number of identical rows that form a cluster (default 3, or `service_portfolio.cluster_threshold`). |
 | `--json` | Machine-readable result. Contains no PII values. |
+| `--template` | Copy a blank intake workbook template (`service-intake-template.xlsx`, the recognised column names in the header row, no data rows, no personal-data columns) into `wsp/inputs/service-intake/` and stop. The workspace gets the `service_portfolio` block; an existing template is kept. Fill in one row per service or server, then run `swao service init` again. The Setup Wizard (Service Portfolio Assessment, Intake Input) offers the same copy. |
 
 What it does, in order:
 
@@ -74,13 +75,28 @@ swao service rank [--top <n>] [--workspace <dir>] [--json]
 | `--top <n>` | Only the first n apps |
 | `--json` | Print the ranked apps (ID, name, risk score, fan-in, TIME quadrant, operational status, evidence) as JSON |
 
-The order is the highest SWAO_APM risk score first (apps without a score last), then the higher integration fan-in, then the app ID. Apps without a service assessment run keep their place but are marked `[not assessed]` (JSON: `evidence: not_assessed`): their risk score and TIME come from the intake and research only. Apps with the operational status `decommissioned`, `unused`, or `inactive` are left out; they are Eliminate candidates without an assessment. The ranking reads `wsp/portfolio-summary.json`, so it is meaningful after `swao service research`; without a summary all service apps are listed in ID order. The terminal interface uses the same ranking for its "top 20" scope. In CI, loop over the result and run `swao assess --app <id> --type service` for each app:
+The order is the highest SWAO_APM risk score first (apps without a score last), then the higher integration fan-in, then the app ID. Apps without a service assessment run keep their place but are marked `[not assessed]` (JSON: `evidence: not_assessed`): their risk score and TIME come from the intake and research only. Apps with the operational status `decommissioned`, `unused`, or `inactive` are left out; they are Eliminate candidates without an assessment. The ranking reads `wsp/portfolio-summary.json`, so it is meaningful after `swao service research`; without a summary all service apps are listed in ID order. The terminal interface uses the same ranking for its "Top N by risk" scope, and `swao service assess --top <n>` assesses the first n apps in one command. In CI you can also loop over the result and run `swao assess --app <id> --type service` for each app:
 
 ```bash
 for id in $(swao service rank --top 20 --json | jq -r '.apps[].id'); do
   swao assess --app "$id" --type service
 done
 ```
+
+## swao service assess
+
+Assesses the first n service apps of `swao service rank`, one after another, with `swao assess --app <id> --type service`. This is the CLI path of the "Top N by risk" scope in the terminal interface.
+
+```bash
+swao service assess [--top <n>] [--workspace <dir>] [--dry-run]
+```
+
+| Option | Meaning |
+|---|---|
+| `--top <n>` | Number of apps (positive integer). Default: `service_portfolio.assess_top_n` in the workspace `.swao.yml`, else 20 |
+| `--dry-run` | List the apps that would be assessed, without assessing |
+
+Each app runs as its own `swao assess` process, so a failing app does not stop the others. The command exits 1 when any app failed and names the failed apps.
 
 ## swao assess --type service
 

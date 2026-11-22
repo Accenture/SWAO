@@ -15,8 +15,8 @@
 
 import type { Command } from 'commander';
 import { resolve, join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { load, dump } from 'js-yaml';
+import { existsSync } from 'fs';
+import { patchSwaoYmlFileOrThrow } from '@swao/core';
 import { render } from 'ink';
 import { createElement } from 'react';
 import {
@@ -27,15 +27,9 @@ import {
 import { resolveCatalogsDir } from './init.js';
 import { RegimeSelectorScreen } from '../tui/screens/RegimeSelectorScreen.js';
 
+/** #4283: minimal patch of assessment.regimes_active in the app .swao.yml; comments and other keys stay. */
 export function writeAppRegimesActive(appSwaoYmlPath: string, regimes: string[]): void {
-  const existing = existsSync(appSwaoYmlPath)
-    ? (load(readFileSync(appSwaoYmlPath, 'utf-8')) as Record<string, unknown> | null) ?? {}
-    : {};
-  const root: Record<string, unknown> = { ...existing };
-  const assessment = (root['assessment'] as Record<string, unknown> | undefined) ?? {};
-  assessment['regimes_active'] = [...regimes];
-  root['assessment'] = assessment;
-  writeFileSync(appSwaoYmlPath, dump(root, { lineWidth: 120, noRefs: true }), 'utf-8');
+  patchSwaoYmlFileOrThrow(appSwaoYmlPath, [{ path: ['assessment', 'regimes_active'], value: [...regimes] }], { createIfMissing: true });
 }
 
 async function runInteractivePicker(workspacePath: string, hints: string[]): Promise<void> {

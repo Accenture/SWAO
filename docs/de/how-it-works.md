@@ -35,19 +35,22 @@ Community  v0.11.2
 
 ### Workspace-Setup-Assistent
 
-Wählen Sie **1. Workspace Setup**. Der Assistent führt durch sieben Schritte:
+Wählen Sie **1. Workspace Setup**. Der Assistent führt durch neun Schritte:
 
 1. **Workspace**: Engagement-Name, Kundenkürzel, verantwortliche Person und Workspace-Verzeichnis.
 2. **LLM-Anbieter**: Anthropic Claude, OpenAI, Amazon Bedrock Gateway, ein lokales Ollama-Modell oder ein
    deterministischer Platzhalter für den Offline-Betrieb.
 3. **Zugangsdaten**: der API-Schlüssel des gewählten Anbieters, abgelegt im SWAO-Credential-Store.
-4. **Health Check**: ein erster Lauf der Vorabprüfungen.
-5. **Claude Desktop** und 6. **Playwright**: optionale Integrationen (MCP-Server, Browser für die dynamische Analyse).
-7. **Fertig**: eine Zusammenfassung der nächsten Schritte.
+4. **LZ-Verbindungen**: optional eine Live-Landing-Zone registrieren.
+5. **MCP-Client** und 6. **Playwright**: optionale Integrationen (MCP-Server für Claude Desktop, Claude Code, Kilo,
+   Cursor oder VS Code; Browser für die dynamische Analyse).
+7. **Testcode**: wie Bewertungen Testcode behandeln.
+8. **Health Check**: die Vorabprüfungen der fertigen Konfiguration.
+9. **Fertig**: das Ergebnis des Health Checks und eine Zusammenfassung der nächsten Schritte.
 
 Neue Workspaces enthalten die vier Demo-Rahmenwerke (`GDPR_DEMO`, `AI_10_PILLARS_DEMO`,
-`NIST_SP_800_66R2_DEMO`, `BSI_GRUNDSCHUTZ_2023_DEMO`). Weitere kopieren Sie jederzeit mit
-`swao framework install <ID>` in den Workspace; `swao framework list` zeigt die IDs. Die Rahmenwerke je App
+`NIST_SP_800_66R2_DEMO`, `BSI_GRUNDSCHUTZ_2023_DEMO`). Weitere kopieren Sie jederzeit von
+[GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) nach `wsp/inputs/catalogs/community/`; `swao framework list` listet die Rahmenwerke im Workspace. Die Rahmenwerke je App
 wählen Sie beim Ausführen der Bewertung.
 
 ### Health Check (Systemprüfung)

@@ -13,14 +13,19 @@
 //
 // ================================================================
 
-// #2150 -- Tier upgrade prompt shown when a Community-tier user activates a
+// #2150: Tier upgrade prompt shown when a Community-tier user activates a
 // gated menu item. Replaces the old "disabled: true / [coming soon]" treatment.
+// #4257 (TUI-13, Design 126 sections 3, 6 and 7): on ScreenLayout; the
+// requirement and the expiry as StatusRows, the current tier as a DetailRow,
+// the actions as a numbered menu (open the Licence screen, back) instead of
+// the letter L named only in the text; the request command only in the
+// guidance `cli` field; theme tokens only.
 
-import { useMemo, useState, useEffect } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
+import { useMemo, useRef } from 'react';
+import { Text, useInput } from 'ink';
 import type { LicenseTier } from '@swao/tui-kit';
-import { GuidanceBox } from '@swao/tui-kit';
-import { Header } from '../components/Header.js';
+import { DetailRow, SelectInput, ScreenLayout, StatusRow, guidanceOwnsKey, tone, useOptionGuidance, type GuidanceEntry, type KeyHint, type SelectOption } from '@swao/tui-kit';
+import { useScreenHeader } from '../components/screen-header.js';
 import { LicenseGuard } from '../../license/license-guard.js';
 
 /** Tiers that can appear as a requirement (Community is never a gate). */
@@ -33,7 +38,7 @@ const TIER_INFO: Record<GatedTier, { label: string; includes: string[] }> = {
     label: 'Consultant',
     includes: [
       'All Community features',
-      'HTML publication (swao publish --app, report --format html)',
+      'HTML publication of assessment runs and HTML reports',
       'PDF report generation',
       'Power BI dashboard templates (.pbit)',
       'LZ catalogue update',
@@ -46,12 +51,40 @@ const TIER_INFO: Record<GatedTier, { label: string; includes: string[] }> = {
       'Portfolio Operations (multi-app aggregation)',
       'Service portfolio export',
       'Stakeholder Challenge agents',
-      'HTML Editor (swao publish --edit)',
-      'MCP server integration (Claude Desktop / Claude Code)',
+      'HTML Editor',
+      'MCP server integration (Claude Desktop, Claude Code)',
       'SWAO Chat',
     ],
   },
 };
+
+/** The keys of the screen: a numbered menu of two actions. */
+export const UPGRADE_PROMPT_KEYS: readonly KeyHint[] = [
+  { key: '↑↓', verb: 'select' }, { key: 'Enter', verb: 'open' }, { key: 'Esc', verb: 'back' },
+];
+
+/** The guidance of the prompt: what the tier adds and the request command. */
+export function upgradeGuidance(feature: string, requiredTier: GatedTier, description?: string): GuidanceEntry {
+  return {
+    title: feature,
+    what: description ?? `${feature} needs a ${TIER_INFO[requiredTier].label} licence. Request one on the Licence screen.`,
+    sections: [{ label: 'Request', text: 'Licence screen, "Request a licence"' }],
+    cli: `swao license request --tier ${requiredTier}`,
+  };
+}
+
+/** The two actions: open the Licence screen or go back. */
+export function upgradeOptions(requiredTier: GatedTier): SelectOption[] {
+  const label = TIER_INFO[requiredTier].label;
+  return [
+    {
+      label: 'Open the Licence screen',
+      value: 'license',
+      guidance: { title: 'Open the Licence screen', what: `Run "Request a licence" there to request a ${label} licence.`, cli: `swao license request --tier ${requiredTier}` },
+    },
+    { label: 'Back', value: 'back', guidance: { title: 'Back', what: 'Return to the previous menu without a change.' } },
+  ];
+}
 
 export interface UpgradePromptScreenProps {
   feature: string;
@@ -62,19 +95,16 @@ export interface UpgradePromptScreenProps {
 }
 
 export function UpgradePromptScreen({ feature, requiredTier, description, onBack, onOpenLicenseScreen }: UpgradePromptScreenProps) {
-  const { stdout } = useStdout();
-  const [cols, setCols] = useState(stdout?.columns ?? 80);
-  useEffect(() => {
-    if (!stdout) return;
-    const onResize = () => setCols(stdout.columns ?? 80);
-    stdout.on('resize', onResize);
-    return () => { stdout.off('resize', onResize); };
-  }, [stdout]);
-  const width = Math.min(98, Math.max(61, cols - 2));
+  const header = useScreenHeader('Upgrade Required');
+  const guidanceOpenRef = useRef(false);
+  const options = useMemo(() => upgradeOptions(requiredTier), [requiredTier]);
+  // #4213 (Design 126 section 9): the guidance box follows the highlighted action.
+  const actionGuidance = useOptionGuidance(upgradeGuidance(feature, requiredTier, description));
 
-  useInput((input, key) => {
-    if (input === 'l' || input === 'L') { onOpenLicenseScreen(); return; }
-    if (key.escape || input === 'q' || input === 'Q' || key.return) onBack();
+  useInput((_input, key) => {
+    // Design 126 section 7.8: an open guidance box owns Esc and the pager keys.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
+    if (key.escape) onBack();
   });
 
   // #2617: load licence state to detect expiry-driven downgrade.
@@ -85,53 +115,40 @@ export function UpgradePromptScreen({ feature, requiredTier, description, onBack
   const info = TIER_INFO[requiredTier];
   const expiredTier = licenseState?.expiredTier;
   const expiredAt   = licenseState?.exp;
+  const expired = Boolean(expiredTier && TIER_ORDER[expiredTier as GatedTier] >= TIER_ORDER[requiredTier]);
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="Upgrade Required" />
-
-      {/* #2616: consistent yellow-box styling matching LicenseGate width + content. */}
-      <Box flexDirection="column" marginTop={1} borderStyle="single" borderColor="yellow" paddingX={1} width={width}>
-        <Text bold color="yellow">
-          {feature} requires a {info.label} licence.
-        </Text>
-        {/* #2617: show expiry context when the downgrade was caused by licence expiry. */}
-        {expiredTier && TIER_ORDER[expiredTier as GatedTier] >= TIER_ORDER[requiredTier] && (
-          <Box marginTop={1}>
-            <Text color="red">
-              Your {TIER_INFO[expiredTier as GatedTier]?.label ?? expiredTier} licence expired on {expiredAt ?? 'unknown date'} -- renew to restore access.
-            </Text>
-          </Box>
-        )}
-        <Box marginTop={1}>
-          <Text dimColor>Your current effective tier: <Text color="cyanBright">Community</Text> (free, unlimited assessments).</Text>
-        </Box>
-
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold>{info.label} tier includes:</Text>
-          {info.includes.map((line, i) => (
-            <Text key={i}>  - {line}</Text>
-          ))}
-        </Box>
-
-        <Box flexDirection="column" marginTop={1}>
-          <Text>To request an upgrade:</Text>
-          <Text dimColor>  Press <Text bold>L</Text> -- open the Licence screen and run "Request a licence".</Text>
-          <Text dimColor>  Or run on the command line: <Text color="cyanBright">swao license request --tier {requiredTier}</Text></Text>
-        </Box>
-
-        <Box marginTop={1}>
-          <Text dimColor>Press <Text bold>Esc</Text> or <Text bold>q</Text> to go back.</Text>
-        </Box>
-      </Box>
-
-      {description && (
-        <GuidanceBox
-          title={feature}
-          what={description}
-          initiallyCollapsed={true}
+    <ScreenLayout
+      header={header}
+      title={{ title: `${feature} requires a ${info.label} licence` }}
+      keys={UPGRADE_PROMPT_KEYS}
+      guidance={{ entry: actionGuidance.entry, initiallyCollapsed: true, onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
+      <StatusRow level="warn" label={feature} summary={`needs a ${info.label} licence`} />
+      {/* #2617: show expiry context when the downgrade was caused by licence expiry. */}
+      {expired && (
+        <StatusRow
+          level="fail"
+          label="Licence"
+          summary={`your ${TIER_INFO[expiredTier as GatedTier]?.label ?? expiredTier} licence expired on ${expiredAt ?? 'an unknown date'}; renew it to restore access`}
         />
       )}
-    </Box>
+      <DetailRow label="Your tier" value="Community (free, unlimited assessments)" />
+      <Text> </Text>
+      <Text {...tone('text', { bold: true })}>{info.label} tier includes:</Text>
+      {info.includes.map((line) => (
+        <Text key={line} {...tone('muted')}>{`  ${line}`}</Text>
+      ))}
+      <Text> </Text>
+      <SelectInput
+        label="Next"
+        options={options}
+        numbered
+        visibleCount={options.length}
+        showKeyHints={false}
+        onCursorChange={actionGuidance.onCursorChange}
+        onSelect={(value) => { if (value === 'license') onOpenLicenseScreen(); else onBack(); }}
+      />
+    </ScreenLayout>
   );
 }

@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { isAlias, resolveModelAlias } from './alias-resolver.js';
+import { isAlias, pickBestModel, resolveModelAlias } from './alias-resolver.js';
 import type { Connector } from './connector-schema.js';
 
 const MOCK_CONNECTOR: Connector = {
@@ -75,8 +75,8 @@ describe('resolveModelAlias (#1817)', () => {
   it('resolves ~deepseek/deepseek-v4-flash-latest to the newest matching concrete id', async () => {
     mockDiscovery(DISCOVERY_MODELS);
     const result = await resolveModelAlias('~deepseek/deepseek-v4-flash-latest', MOCK_CONNECTOR, 'sk-or-test');
-    // deepseek/deepseek-v4-flash:free sorts after deepseek/deepseek-v4-flash
-    expect(result).toBe('deepseek/deepseek-v4-flash:free');
+    // #4500: the plain id wins over its variants (deepseek/deepseek-v4-flash:free sorts after it)
+    expect(result).toBe('deepseek/deepseek-v4-flash');
   });
 
   it('resolves ~x-ai/grok-latest to x-ai/grok-4.6 (highest)', async () => {
@@ -115,5 +115,30 @@ describe('resolveModelAlias (#1817)', () => {
     mockDiscovery(DISCOVERY_MODELS);
     const result = await resolveModelAlias('~google/gemini-flash-latest', MOCK_CONNECTOR, 'sk-or-test');
     expect(result).toBe('google/gemini-2.5-flash');
+  });
+});
+
+describe('alias resolution skips batch-only ids (#4500)', () => {
+  const OPENROUTER_SONNET = [
+    'anthropic/claude-sonnet-4.6',
+    'anthropic/claude-sonnet-5.5',
+    'anthropic/claude-sonnet-5.5:batch',
+    'anthropic/claude-sonnet-5.5:thinking',
+    'anthropic/claude-sonnet-5:batch',
+  ];
+
+  it('resolves ~anthropic/claude-sonnet-latest to the newest chat model, never the :batch variant', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: true, json: async () => ({ data: OPENROUTER_SONNET.map((id) => ({ id })) }) }));
+    const result = await resolveModelAlias('~anthropic/claude-sonnet-latest', MOCK_CONNECTOR, 'sk-or-test');
+    expect(result).toBe('anthropic/claude-sonnet-5.5');
+  });
+
+  it('takes a non-batch variant when no plain id matches; only batch ids give no match', () => {
+    expect(pickBestModel('~vendor/model-latest', ['vendor/model-2:batch', 'vendor/model-2:thinking'])).toBe('vendor/model-2:thinking');
+    expect(pickBestModel('~vendor/model-latest', ['vendor/model-2:batch'])).toBeNull();
+  });
+
+  it('other protocols are not filtered (a colon is an Ollama tag there)', () => {
+    expect(pickBestModel('~llama3.3-latest', ['llama3.3:batch'], 'ollama')).toBe('llama3.3:batch');
   });
 });

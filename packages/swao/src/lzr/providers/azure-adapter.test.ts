@@ -13,7 +13,7 @@
 //
 // ================================================================
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, mkdirSync } from 'fs';
@@ -237,5 +237,70 @@ describe('runAzureChecks -- network', () => {
     const result = await runAzureChecks({ ...BASE_CONFIG, snapshotFile }, []);
     const net = result.network_checks.find((n) => n.check_id === 'LZ-NET-01');
     expect(net?.status).toBe('pass');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #3570: live path reads scoped keys only
+// ---------------------------------------------------------------------------
+
+describe('runAzureChecks -- scoped live credentials (#3570)', () => {
+  const NAMES = ['TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET'].map((f) => `SWAO_CREDENTIAL_LZ__AZ_DEMO__PLATFORM__${f}`);
+  const LEGACY = ['TENANT_ID', 'CLIENT_ID', 'CLIENT_SECRET'].map((f) => `SWAO_CREDENTIAL_AZURE_${f}`);
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => { for (const k of [...NAMES, ...LEGACY]) { saved[k] = process.env[k]; delete process.env[k]; } });
+  afterEach(() => { for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } });
+
+  // #3575: the live path runs on the `azure` driver transport: client
+  // credentials token (RFC 6749 form body) and one Resource Graph query;
+  // wire formats as the spec-derived mock serves them (Design 121 section 8.2).
+  afterEach(() => { vi.unstubAllGlobals(); });
+  function wire(status: number, body: unknown) {
+    const text = JSON.stringify(body);
+    return Promise.resolve({ ok: status < 300, status, headers: { get: () => null }, text: async () => text });
+  }
+  const ROWS = [
+    { id: '/subscriptions/s/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/aks-1', name: 'aks-1', type: 'microsoft.containerservice/managedclusters', properties: { provisioningState: 'Succeeded', kubernetesVersion: '1.30.4' } },
+    { id: '/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/v', name: 'v', type: 'microsoft.network/virtualnetworks', properties: {} },
+  ];
+  function stubAzure(argStatus = 200) {
+    const f = vi.fn().mockImplementation((url: string, init?: { method?: string; body?: string }) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/oauth2/v2.0/token')) return wire(200, { token_type: 'Bearer', expires_in: 3599, access_token: 'a.b.c' });
+      if (u.pathname === '/providers/Microsoft.ResourceGraph/resources' && init?.method === 'POST') return argStatus === 200 ? wire(200, { totalRecords: 2, count: 2, data: ROWS, resultTruncated: 'false' }) : wire(argStatus, { error: { code: 'X', message: 'y' } });
+      return wire(404, { error: { code: 'X', message: 'no route' } });
+    });
+    vi.stubGlobal('fetch', f);
+    return f;
+  }
+
+  it('resolves lz:<lz>:<scope>:tenant-id, client-id, client-secret and reads AKS and VNets through the azure driver (live_api)', async () => {
+    for (const k of NAMES) process.env[k] = ['fake', k.length].join('-');
+    const f = stubAzure();
+    const result = await runAzureChecks({ ...BASE_CONFIG, credentialScope: { lzId: 'az-demo', scopeId: 'platform' } }, ['kubernetes']);
+    expect((result as Record<string, unknown>).input_type).toBe('live_api');
+    expect(result.service_checks[0]).toMatchObject({ service: 'kubernetes', status: 'ready' });
+    expect(result.network_checks[0]).toMatchObject({ check_id: 'LZ-NET-01', status: 'pass' });
+    expect(result.policy_checks).toEqual([]);
+    expect(result.warnings.map((w) => w.check_id)).toEqual(['LZ-WARN-03']);
+    const urls = f.mock.calls.map((c) => String(c[0]));
+    expect(urls[0]).toMatch(/^https:\/\/login\.microsoftonline\.com\/.+\/oauth2\/v2\.0\/token$/);
+    expect(urls[1]).toMatch(/^https:\/\/management\.azure\.com\/providers\/Microsoft\.ResourceGraph\/resources\?api-version=2024-04-01$/);
+    expect(JSON.parse(String(f.mock.calls[1]?.[1]?.body))).toMatchObject({ subscriptions: ['sub-ghostfolio-001'] });
+    expect(LandingZoneReadinessResultSchema.safeParse(result).success).toBe(true);
+  });
+
+  it('turns an ARM error on the live path into LZ-WARN-02, never an empty success', async () => {
+    for (const k of NAMES) process.env[k] = ['fake', k.length].join('-');
+    stubAzure(503);
+    const result = await runAzureChecks({ ...BASE_CONFIG, credentialScope: { lzId: 'az-demo', scopeId: 'platform' } }, ['kubernetes']);
+    expect(result.warnings[0]?.check_id).toBe('LZ-WARN-02');
+    expect(result.overall_verdict).toBe('advisory');
+  });
+
+  it('refuses legacy azure-* keys and a missing scope', async () => {
+    for (const k of LEGACY) process.env[k] = ['fake', k.length].join('-');
+    await expect(runAzureChecks({ ...BASE_CONFIG, credentialScope: { lzId: 'az-demo', scopeId: 'platform' } }, [])).rejects.toThrow(/lz:az-demo:platform:tenant-id/);
+    await expect(runAzureChecks({ ...BASE_CONFIG }, [])).rejects.toThrow(/registered landing zone scope/);
   });
 });

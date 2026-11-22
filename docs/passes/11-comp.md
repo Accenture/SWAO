@@ -22,7 +22,7 @@ It takes every signal produced by the earlier passes of the same run and asks an
 | Input | Where | Notes |
 |---|---|---|
 | Active frameworks | `assessment.regimes_active` in the app `.swao.yml`, or in the workspace `.swao.yml` when the app has no list | Without a list the pass returns status `not_applicable` |
-| Framework catalogues | `wsp/inputs/catalogs/` at workspace level (standard and community catalogues) | Installed by `swao init` and `swao framework install <id>` |
+| Framework catalogues | `wsp/inputs/catalogs/` at workspace level (standard and community catalogues) | Demo frameworks seeded by `swao init`; further frameworks copied from GitHub into `wsp/inputs/catalogs/community/<folder>/` |
 | An LLM provider | `providers.llm` in `.swao.yml`, `--llm` or `--model` | Without an LLM every control is `UNKNOWN` |
 | Signals from earlier passes | Written automatically in the same run | The more passes run, the better the evidence |
 | For the `LLM_SELECTION` framework | Provider documents (model card, DPA, conformity assessment) in `apps/<app>/context/` | Otherwise SWAO adds an informational warning signal |

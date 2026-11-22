@@ -76,14 +76,16 @@ export function buildIngestionProbe(workspacePath: string): IngestionProbeResult
 
   if (!existsSync(ingestionDir)) {
     if (appsWithIngestion.length > 0) {
+      // #4261: file_count is the drop-zone count (0 here); the per-app counts
+      // are named as ingested files so the message and file_count agree.
       const summary = appsWithIngestion
-        .map(id => `${id}(${perAppFileCounts[id]} files)`)
+        .map(id => `${id} (${perAppFileCounts[id]} ingested file(s))`)
         .join(', ');
       return {
         status: 'processed',
         file_count: 0,
         has_manifest: false,
-        message: `Context ingested into ${appsWithIngestion.length} app(s): ${summary}. Drop zone (workspace/ingestion/) is clear.`,
+        message: `Context ingested into ${appsWithIngestion.length} app(s): ${summary}. Drop zone (workspace/ingestion/) is clear: 0 file(s) waiting.`,
         apps_with_ingestion: appsWithIngestion,
         per_app_file_counts: perAppFileCounts,
       };

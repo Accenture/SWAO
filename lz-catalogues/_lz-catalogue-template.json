@@ -4,8 +4,8 @@
   "meta": {
     "_comment_meta": "Catalogue-level metadata. All fields are required unless noted.",
 
-    "schema_version": "0.1",
-    "_comment_schema_version": "Always '0.1' for the current schema generation. Do not change.",
+    "schema_version": "0.2",
+    "_comment_schema_version": "'0.1' or '0.2'. Schema 0.2 is additive: it adds the optional per-service iac block and canonical_code, the source modes live-api and manual, the confidence operator-declared and the service status check-availability. Every 0.1 file stays valid; files that use a 0.2 field should state '0.2'.",
 
     "name": "My Private Cloud service catalogue",
     "_comment_name": "Human-readable name shown in 'swao lz catalogue list'; the TUI provider lists show it without the trailing 'service catalogue'.",
@@ -20,7 +20,7 @@
       "_comment_source": "Provenance block. Describes where the data came from.",
 
       "mode": "curated",
-      "_comment_mode": "Closed enum: api | scrape | curated | botocore-endpoints | pim-api-stackit. Use 'curated' for hand-authored files.",
+      "_comment_mode": "Closed enum: api | scrape | curated | botocore-endpoints | pim-api-stackit | live-api | manual. Use 'curated' for hand-authored files, 'manual' for a hand-maintained custom catalogue that catalogue updates must leave alone (Design 077 D-077-04), 'live-api' for a live landing zone catalogue (Design 120 section 10.1).",
 
       "operator": "Your Name",
       "_comment_operator": "Name of the person or team who authored/maintains this catalogue.",
@@ -30,7 +30,7 @@
     },
 
     "confidence": "medium",
-    "_comment_confidence": "Enum: high | medium | low. high = machine-sourced, verified. medium = hand-curated from authoritative docs. low = partial / unverified.",
+    "_comment_confidence": "Enum: high | medium | low | operator-declared. high = machine-sourced, verified. medium = hand-curated from authoritative docs. low = partial / unverified. operator-declared = facts declared by the operator of a custom or on-premises catalogue (Design 077).",
 
     "regions_count": 2,
     "_comment_regions_count": "Number of region objects in the regions array. Must match."
@@ -76,7 +76,7 @@
           "_comment_name": "Optional human-readable name. Can be the same as code or more descriptive.",
 
           "status": "ga",
-          "_comment_status": "Enum: ga (generally available) | preview (limited availability, no SLA) | announced (on roadmap, not yet orderable) | retired (previously available, now discontinued).",
+          "_comment_status": "Enum: ga (generally available) | preview (limited availability, no SLA) | announced (on roadmap, not yet orderable) | retired (previously available, now discontinued) | check-availability (listed by a template; the operator must confirm it before it counts as available, Design 077).",
 
           "fulfills": ["vm_compute"],
           "_comment_fulfills": "SWAO assessment vocabulary -- what workload capability this service provides. Multiple values allowed. Common values: vm_compute, kubernetes, container_orchestration, serverless_compute, batch_compute, object_storage, block_storage, file_storage, postgresql, mysql, sql_server, nosql_database, redis, search, key_vault, secrets_management, identity_management, vpc_networking, load_balancer, dedicated_connectivity, vpn, waf, dns, cdn, monitoring, audit_logging, threat_detection, compliance_monitoring, backup, data_analytics, data_warehouse, ml_training, ml_inference, managed_llm, queue, messaging, event_streaming, data_integration, big_data, bi_analytics, api_gateway, container_registry, vdi. Use [] if no standard vocabulary match exists -- add capabilities instead.",
@@ -91,7 +91,21 @@
           "_comment_last_verified": "ISO-8601 date when this service entry was last manually confirmed against provider documentation.",
 
           "source": "curated",
-          "_comment_source": "Source of this specific service entry. For hand-authored files use 'curated'. Automated adapters stamp their source tool here."
+          "_comment_source": "Source of this specific service entry. For hand-authored files use 'curated'. Automated adapters stamp their source tool here.",
+
+          "canonical_code": "vsphere.virtual-machine",
+          "_comment_canonical_code": "Optional (schema 0.2). Stable identifier that survives product renames, for example the provider API namespace when code is a marketing name.",
+
+          "iac": {
+            "tool": ["terraform", "opentofu"],
+            "provider": "vsphere",
+            "level": "full",
+            "resources": ["vsphere_virtual_machine"],
+            "data_sources": ["vsphere_virtual_machine"],
+            "source": "curated",
+            "last_verified": "2026-08-11"
+          },
+          "_comment_iac": "Optional (schema 0.2, Design 120 section 9). Terraform / OpenTofu automatability. level: full (managed resource exists) | read (data source only) | none | n/a. level full: provider, at least one tool and at least one resource; level read: provider, at least one tool, at least one data source and no resource; level none (no Terraform / OpenTofu coverage exists) and n/a (IaC does not apply): no resources and no data sources, provider and tool optional. source provider-schema also needs provider_version; last_verified is YYYY-MM-DD. source: provider-schema | curated. Example values only."
         },
         {
           "_comment_service_2": "Example: managed Kubernetes service.",

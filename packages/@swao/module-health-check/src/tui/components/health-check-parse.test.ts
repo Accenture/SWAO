@@ -14,7 +14,8 @@
 // ================================================================
 
 import { describe, it, expect } from 'vitest';
-import { parseHealthCheckOutput } from './health-check-parse.js';
+import { parseHealthCheckOutput, probeDetailRows } from './health-check-parse.js';
+import { probeReason } from './HealthCheckProbeList.js';
 
 // Regression test for #0671: probe names containing spaces were silently dropped
 // by the HEADER_RE because [^\s.]*? excluded whitespace. The fix uses [^.]+?
@@ -170,10 +171,10 @@ const SAMPLE_LINES_13_WITH_COMMUNITY = [
   '  [2/13] Playwright / Chromium..  ok    Chromium installed',
   '  [3/13] SWAO-MCP...........  ok    MCP server reachable',
   '  [4/13] Community frameworks..  ok    4 community  no integrity issues',
-  '  ..........................  [ok] community/gdpr -- contributor=accenture, 45 controls',
-  '  ..........................  [ok] community/ai_10_pillars -- contributor=accenture, 60 controls',
-  '  ..........................  [ok] community/nist_sp_800_66r2 -- contributor=accenture, 55 controls',
-  '  ..........................  [ok] community/ai_act -- contributor=accenture, 48 controls',
+  '  ..........................  [ok] community/gdpr: contributor=accenture, 45 controls',
+  '  ..........................  [ok] community/ai_10_pillars: contributor=accenture, 60 controls',
+  '  ..........................  [ok] community/nist_sp_800_66r2: contributor=accenture, 55 controls',
+  '  ..........................  [ok] community/ai_act: contributor=accenture, 48 controls',
   '  [5/13] Import templates...  INFO  1 app(s) configured; none have context_inputs registered yet',
   '  [6/13] Traceability.......  INFO  no apps configured yet',
   '  [7/13] BI export..........  INFO  no BI bundle under wsp/exports/ yet',
@@ -293,5 +294,42 @@ describe('parseHealthCheckOutput (14-probe output -- current format v0.10.7+, #1
     const probes = parseHealthCheckOutput(SAMPLE_LINES_14);
     const allDetail = probes.flatMap((p) => p.detailLines);
     expect(allDetail).not.toContain('All probes passed.');
+  });
+});
+
+describe('#4295 TUI wording of the service remedies', () => {
+  it('the reason line and the guidance rows name the TUI path, never swao service init', () => {
+    const [p] = parseHealthCheckOutput([
+      '  [19/26] Service workspace...  FAIL  wsp/signals/scaffold-signals.json missing (run swao service init)',
+      '          no service apps yet (run swao service init)',
+    ]);
+    expect(probeReason(p!)).toBe('wsp/signals/scaffold-signals.json missing (start Run Assessment, Service Portfolio Assessment (it imports the intake first))');
+    const text = probeDetailRows(p!).map((r) => r.value).join(' ');
+    expect(text).toContain('Run Assessment, Service Portfolio Assessment');
+    expect(text).not.toContain('swao service init');
+  });
+});
+
+// #4451: a slow test launch is a warn without an install remedy; a launch error names the error.
+describe('Playwright probe guidance (#4451)', () => {
+  it('a slow test launch tells the operator to run the check again, not to install Chromium', () => {
+    const [p] = parseHealthCheckOutput([
+      '  [2/26] Playwright / Chromium..  WARN  Chromium installed, the test launch took longer than 15 s (the machine may be busy; run the health check again)',
+    ]);
+    expect(p!.status).toBe('WARN');
+    const text = probeDetailRows(p!).map((r) => r.value).join(' ');
+    expect(text).toContain('Run the health check again');
+    expect(text).not.toContain('Install Chromium');
+  });
+
+  it('a launch error points to the log, not the raw error', () => {
+    const [p] = parseHealthCheckOutput([
+      '  [2/26] Playwright / Chromium..  FAIL  Chromium launch failed; the error is in the health check log',
+    ]);
+    expect(p!.status).toBe('FAIL');
+    const text = probeDetailRows(p!).map((r) => r.value).join(' ');
+    expect(text).toContain('did not start');
+    // Design 126: the raw error stays in the log.
+    expect(text).toContain('error_detail');
   });
 });

@@ -29,9 +29,10 @@
 // checks the LZ targets configured in .swao.yml. A bundled catalogue that fails to load is a warning naming file and reason (it used to
 // be skipped silently). Any finding makes the probe WARN; the probe never FAILs.
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { load } from 'js-yaml';
+import { listAppConfigs } from '../app-config-walk.js';
 import {
   isLzCataloguesDir,
   listLzCatalogueProviders,
@@ -61,6 +62,76 @@ export interface LzCatalogueQualityProbeDetail {
   errors: number;
   warnings: number;
   findings: LzCatalogueQualityFinding[];
+  /**
+   * #4228: workspace catalogue files identical to the bundled file of the same
+   * name (workspace-relative); their findings repeat the bundled ones and are
+   * reported once, under the bundled catalogue.
+   */
+  identical_copies?: string[];
+}
+
+/** #4228: catalogue file names in `dir` whose content equals the bundled file of the same name. */
+export function identicalCatalogueFiles(dir: string, bundledDir: string): Set<string> {
+  const same = new Set<string>();
+  const norm = (path: string): string | null => {
+    try {
+      const raw = readFileSync(path, 'utf-8');
+      try { return JSON.stringify(JSON.parse(raw)); } catch { return raw; }
+    } catch { return null; }
+  };
+  let names: string[] = [];
+  try { names = readdirSync(dir).filter((n) => n.endsWith('.json')); } catch { return same; }
+  for (const name of names) {
+    const other = join(bundledDir, name);
+    if (!existsSync(other)) continue;
+    const a = norm(join(dir, name));
+    if (a !== null && a === norm(other)) same.add(name);
+  }
+  return same;
+}
+
+/**
+ * #4113: one named quality finding group (catalogue, rule, short text) carried in
+ * the probe result, the NDJSON log and the TUI detail. Findings of one rule in one
+ * catalogue file are grouped; `regions` names the affected regions (capped).
+ */
+export interface LzCatalogueQualityFindingSummary {
+  catalogue: string;
+  rule: string;
+  severity: 'error' | 'warn' | 'info';
+  /** Number of findings in the group (one per region, or 1 for a file-level finding). */
+  count: number;
+  /** Affected region ids, first LZ_QUALITY_SUMMARY_REGIONS_MAX only. */
+  regions: string[];
+  text: string;
+}
+
+/** #4113: groups carried in `quality_findings`; the rest are counted in `quality_findings_more`. */
+export const LZ_QUALITY_SUMMARY_MAX = 20;
+const LZ_QUALITY_SUMMARY_REGIONS_MAX = 12;
+
+/**
+ * #4113: group the quality findings per severity, rule and catalogue file, errors
+ * first, then warnings, then info; capped at `max` groups with a count of the rest.
+ */
+export function summariseLzQualityFindings(
+  findings: readonly LzCatalogueQualityFinding[],
+  max = LZ_QUALITY_SUMMARY_MAX,
+): { findings: LzCatalogueQualityFindingSummary[]; more: number } {
+  const groups = new Map<string, LzCatalogueQualityFindingSummary>();
+  for (const f of findings) {
+    const key = `${f.severity}|${f.rule}|${f.file}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { catalogue: f.file, rule: f.rule, severity: f.severity, count: 0, regions: [], text: f.message };
+      groups.set(key, g);
+    }
+    g.count += 1;
+    if (f.region && g.regions.length < LZ_QUALITY_SUMMARY_REGIONS_MAX) g.regions.push(f.region);
+  }
+  const order = { error: 0, warn: 1, info: 2 } as const;
+  const all = [...groups.values()].sort((a, b) => order[a.severity] - order[b.severity]);
+  return { findings: all.slice(0, max), more: Math.max(0, all.length - max) };
 }
 
 export interface LzCatalogueCoverageProbeResult {
@@ -72,6 +143,10 @@ export interface LzCatalogueCoverageProbeResult {
   detail_lines?: string[];
   /** #3282: catalogue quality rule results (absent only in hand-built fixtures). */
   quality?: LzCatalogueQualityProbeDetail;
+  /** #4113: the quality findings by name (grouped, capped), for the log and the TUI. */
+  quality_findings?: LzCatalogueQualityFindingSummary[];
+  /** #4113: finding groups beyond the cap (the full list is in `quality.findings`). */
+  quality_findings_more?: number;
 }
 
 export interface LzCatalogueCoverageProbeOptions {
@@ -83,28 +158,24 @@ export interface LzCatalogueCoverageProbeOptions {
   maxAgeDays?: number;
 }
 
-/** Workspace and app .swao.yml files, workspace first. */
-function swaoYmlFiles(workspacePath: string): string[] {
-  const files = [join(workspacePath, '.swao.yml')];
-  const appsDir = join(workspacePath, 'apps');
-  if (existsSync(appsDir)) {
-    try {
-      for (const name of readdirSync(appsDir).sort()) {
-        const p = join(appsDir, name, '.swao.yml');
-        try { if (statSync(join(appsDir, name)).isDirectory() && existsSync(p)) files.push(p); } catch { /* skip */ }
-      }
-    } catch { /* unreadable apps dir */ }
-  }
-  return files.filter((f) => existsSync(f));
-}
-
-/** Every configured LZ target (read-only; an unparsable .swao.yml is left to other probes). */
+/**
+ * Every configured LZ target (read-only; an unparsable .swao.yml is left to other probes).
+ * The workspace .swao.yml first, then the app configs in name order; #4461: the
+ * app configs come from the shared walk (one read per health check).
+ */
 export function readWorkspaceLzTargets(workspacePath: string): LzConfiguredTarget[] {
   const targets: LzConfiguredTarget[] = [];
-  for (const file of swaoYmlFiles(workspacePath)) {
+  const wsFile = join(workspacePath, '.swao.yml');
+  if (existsSync(wsFile)) {
     let parsed: unknown;
-    try { parsed = load(readFileSync(file, 'utf-8')); } catch { continue; }
-    targets.push(...readLzConfiguredTargets(parsed, relative(workspacePath, file).replace(/\\/g, '/')));
+    let parsedOk = true;
+    try { parsed = load(readFileSync(wsFile, 'utf-8')); } catch { parsedOk = false; /* unparsable: left to other probes */ }
+    if (parsedOk) targets.push(...readLzConfiguredTargets(parsed, relative(workspacePath, wsFile).split(sep).join('/')));
+  }
+  const apps = [...listAppConfigs(workspacePath)].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const cfg of apps) {
+    if (cfg.parseError) continue;
+    targets.push(...readLzConfiguredTargets(cfg.doc, relative(workspacePath, cfg.configPath).split(sep).join('/')));
   }
   return targets;
 }
@@ -124,6 +195,11 @@ export function buildLzCatalogueCoverageProbe(
     join(workspacePath, 'wsp', 'inputs', 'catalogs', 'lz-catalogues'),
     join(workspacePath, 'lz-catalogues'),
   ].filter((d) => isLzCataloguesDir(d)); // #3298: catalogue files are the marker, not index.json
+  // #4228: a workspace copy identical to the bundled catalogue repeats its
+  // findings; each is reported once (under the bundled catalogue).
+  const bundledFindingKeys = new Set<string>();
+  const findingKey = (f: LzCatalogueQualityFinding): string => `${f.file}|${f.rule}|${f.severity}|${f.region ?? ''}|${f.message}`;
+  const identicalCopies: string[] = [];
   for (const dir of [bundled, ...workspaceDirs]) {
     if (!dir || dirsChecked.includes(dir)) continue;
     // Workspace folders are overlays (#1437): only the refreshed providers live
@@ -140,7 +216,13 @@ export function buildLzCatalogueCoverageProbe(
     rulesChecked = report.rules_checked;
     maxAgeDays = report.max_age_days;
     const scope = dir === bundled ? 'bundled' : relative(workspacePath, dir).replace(/\\/g, '/');
-    for (const f of report.findings) findings.push({ ...f, file: `${scope}/${f.file}` });
+    const identical = dir !== bundled && bundled ? identicalCatalogueFiles(dir, bundled) : new Set<string>();
+    for (const name of identical) identicalCopies.push(`${scope}/${name}`);
+    for (const f of report.findings) {
+      if (dir === bundled) bundledFindingKeys.add(findingKey(f));
+      else if (identical.has(f.file) && bundledFindingKeys.has(findingKey(f))) continue;
+      findings.push({ ...f, file: `${scope}/${f.file}` });
+    }
   }
 
   // --- Structural validity through the layered resolver (#1698 / #3155).
@@ -187,6 +269,12 @@ export function buildLzCatalogueCoverageProbe(
     errors: findings.filter((f) => f.severity === 'error').length,
     warnings: findings.filter((f) => f.severity === 'warn').length,
     findings,
+    ...(identicalCopies.length > 0 ? { identical_copies: identicalCopies } : {}),
+  };
+  const summary = summariseLzQualityFindings(findings);
+  const named = {
+    quality_findings: summary.findings,
+    ...(summary.more > 0 ? { quality_findings_more: summary.more } : {}),
   };
 
   if (providers.length === 0) {
@@ -196,6 +284,7 @@ export function buildLzCatalogueCoverageProbe(
       detail: '',
       gaps_count: 0,
       quality,
+      ...named,
     };
   }
 
@@ -215,6 +304,7 @@ export function buildLzCatalogueCoverageProbe(
       ...(infoLines.length > 0 ? { detail_lines: infoLines } : {}),
       gaps_count: 0,
       quality,
+      ...named,
     };
   }
 
@@ -227,5 +317,6 @@ export function buildLzCatalogueCoverageProbe(
     detail_lines: [...invalid.map((l) => `[WARN] ${l}`), ...formatLzQualityFindings(findings)],
     gaps_count: invalid.length,
     quality,
+    ...named,
   };
 }

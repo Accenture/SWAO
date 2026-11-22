@@ -105,6 +105,12 @@ swao init --reconfigure    :: refresh the workspace framework mirror only
 `--name <app-id>` it also refreshes that app's scaffold without
 overwriting its `.swao.yml`.
 
+`swao init` makes the workspace the saved default workspace
+(`~/.config/swao/config.json`, the last fallback of the MCP server and
+of commands run outside a workspace) and prints a line when that changes
+the saved default (old path to new path). `--no-save-default` leaves the
+saved default as it is, for example for a test or sandbox workspace.
+
 Pairs with `setup`: they overlap on functionality. `init` is the
 non-interactive script-friendly path; `setup` is the guided TUI.
 
@@ -120,7 +126,15 @@ when handing the binary to a new consultant.
 
 ```cmd
 swao setup
+swao setup --type lz-live                     :: open one assessment type's setup
+swao setup --type service --non-interactive   :: check one type, no wizard (exit 1 = needs attention)
 ```
+
+`--type` takes `application`, `service`, `lz-catalog`, `lz-live` or
+`llm`. `--non-interactive` (or no terminal) runs the health check of that
+type, saves its state in `workspace.setup_state`, prints the failed and
+warned probes and the missing items; `--json` prints the result as JSON.
+See [Workspace Setup](/workspace-setup).
 
 ### `swao health-check`
 
@@ -147,6 +161,7 @@ install, new licence, new catalogue overlay).
 ```cmd
 swao health-check
 swao health-check --format json   :: machine-readable for CI
+swao health-check --type llm      :: generic probes plus one assessment type
 ```
 
 ### `swao assess`
@@ -278,6 +293,10 @@ the engagement needs portfolio mode, PDF export, Terraform
 generation, or `--challenge`. Enterprise / Consultant limits are
 machine-bound.
 
+**Exit codes of licence gates.** A command that needs a higher tier prints the
+`[LICENSE]` block naming the required licence and exits 2 (ADR-0055). An exhausted
+assessment budget also exits 2; an invalid licence file exits 3.
+
 ```cmd
 swao license status
 swao license request
@@ -358,6 +377,26 @@ previous copy registered.
 swao mcp           :: typically auto-launched by Claude Desktop
 swao mcp --http --port 3737   :: HTTP transport on localhost for Claude Code
 swao mcp install   :: write or refresh the SWAO entry in the Claude Desktop config(s)
+```
+
+### `swao lz`
+
+**Purpose.** Landing zones: the bundled and workspace catalogues, and live landing zones.
+`swao lz catalogue list|show|copy|new|update` works with the catalogues (see
+[Landing Zone Catalog Assessment](/assessment/landing-zone)).
+`swao lz connect|probe|list|remove` registers a deployed landing zone, stores its
+credentials in the vault as `lz:<lz-id>:<scope-id>:<field>` and checks that they are
+read-only. `swao lz scan --mode live` reads its scopes into a folder and `swao lz diff`
+compares two live runs (both Consultant).
+
+**Typical use.** Connect a landing zone once, then run
+`swao assess --type landing-zone-live --lz <lz-id>` and `swao publish --lz-live <lz-id>`.
+See [Landing Zone Live Assessment](/assessment/landing-zone-live).
+
+```cmd
+swao lz connect otc-prod --provider otc --scope platform --kind platform --auth iam-password-token --region eu-de --credentials-file otc-prod.creds
+swao lz list
+swao lz probe otc-prod
 ```
 
 ### `swao credential`

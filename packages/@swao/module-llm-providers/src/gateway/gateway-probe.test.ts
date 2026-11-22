@@ -13,11 +13,26 @@
 //
 // ================================================================
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildLlmGatewayProbe, classifyPingFailure } from './gateway-probe.js';
+
+// #4292: per-test overrides of the connector discovery; undefined = the real function.
+const loaderOverride = vi.hoisted(() => ({
+  bundledDir: undefined as string | null | undefined,
+  noConnectors: false,
+}));
+vi.mock('./connector-loader.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./connector-loader.js')>();
+  return {
+    ...actual,
+    resolveBundledConnectorsDir: () => (loaderOverride.bundledDir === undefined ? actual.resolveBundledConnectorsDir() : loaderOverride.bundledDir),
+    listConnectors: (...args: Parameters<typeof actual.listConnectors>) =>
+      (loaderOverride.noConnectors ? { connectors: [], warnings: [] } : actual.listConnectors(...args)),
+  };
+});
 
 describe('classifyPingFailure (#1410)', () => {
   const opts = { credentialKey: 'openrouter-api-key', model: 'deepseek/deepseek-v4-flash' };
@@ -218,6 +233,7 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
       '    env_var: SWAO_OPEN_LLM_API_KEY',
       '    header: Authorization',
       '    scheme: bearer',
+      '    token_ttl_s: 3600',   // #4114: a session token; static keys are pinged from the vault
       '  models:',
       '    default: /Llama-3.3-70B',
       '  meta:',
@@ -288,5 +304,100 @@ describe('buildLlmGatewayProbe active-connector resolution (#1410)', () => {
     // `dir` has no .swao.yml.
     await buildLlmGatewayProbe(dir);
     expect(existsSync(join(dir, 'wsp'))).toBe(false);
+  });
+});
+
+// #4461 (owner dev10: 3 live pings, 12.1 s): the active connectors are pinged at the same time.
+describe('LLM gateway probe pings the connectors concurrently (#4461)', () => {
+  let dir: string;
+  const savedConnector = process.env['SWAO_LLM_CONNECTOR'];
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'swao-gwpar-')); delete process.env['SWAO_LLM_CONNECTOR']; });
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedConnector === undefined) delete process.env['SWAO_LLM_CONNECTOR'];
+    else process.env['SWAO_LLM_CONNECTOR'] = savedConnector;
+  });
+
+  it('two connectors answer in about one ping time, in the order of the workspace slots', async () => {
+    const { createServer } = await import('node:http');
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const server = createServer((req, res) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      req.resume();
+      setTimeout(() => {
+        inFlight -= 1;
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ id: 'x', object: 'chat.completion', model: 'test-model', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }));
+      }, 500);
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    const port = (server.address() as { port: number }).port;
+    try {
+      writeFileSync(join(dir, '.swao.yml'), ['providers:', '  llm:', '    primary:', '      connector: slow-a', '      model: test-model', '    secondary:', '      connector: slow-b', '      model: test-model', ''].join(String.fromCharCode(10)), 'utf-8');
+      const gwDir = join(dir, 'wsp', 'inputs', 'llm-gateway');
+      const { mkdirSync } = await import('node:fs');
+      mkdirSync(gwDir, { recursive: true });
+      for (const id of ['slow-a', 'slow-b']) {
+        writeFileSync(join(gwDir, id + '.yaml'), ['schema_version: "1.0"', 'connector:', '  id: ' + id, '  name: Slow ' + id, '  protocol: openai-chat', '  base_url: http://127.0.0.1:' + port + '/v1', '  auth: {}', '  models:', '    default: test-model', '  meta:', '    source: user', ''].join(String.fromCharCode(10)), 'utf-8');
+      }
+      const r = await buildLlmGatewayProbe(dir);
+      expect(r.ok).toBe(true);
+      expect(r.message).toContain('2 connectors checked: primary, secondary');
+      expect(maxInFlight).toBe(2);
+    } finally {
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  }, 30_000);
+});
+
+describe('LLM gateway probe without connectors (#4292)', () => {
+  let dir: string;
+  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'swao-gw-4292-')); });
+  afterEach(() => {
+    loaderOverride.bundledDir = undefined;
+    loaderOverride.noConnectors = false;
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('outside a workspace the probe is info (not a workspace), not a failure, and writes nothing', async () => {
+    const r = await buildLlmGatewayProbe(dir);
+    expect(r.ok).toBeNull();
+    expect(r.message).toMatch(/^\[N\/A\] not a workspace: connectors are seeded by setup/);
+    expect(r.message).not.toContain('bundled seeds missing');
+    expect(existsSync(join(dir, 'wsp'))).toBe(false);
+    expect((await buildLlmGatewayProbe(null)).ok).toBeNull();
+  });
+
+  it('outside a workspace it stays info even when the bundled seeds are absent', async () => {
+    loaderOverride.bundledDir = null;
+    const r = await buildLlmGatewayProbe(dir);
+    expect(r.ok).toBeNull();
+    expect(r.message).not.toContain('bundled seeds missing');
+  });
+
+  it('in a workspace the build-artefact message appears only when resolveBundledConnectorsDir() returns null', async () => {
+    writeFileSync(join(dir, '.swao.yml'), 'name: demo\n');
+    loaderOverride.noConnectors = true;
+    loaderOverride.bundledDir = null;
+    const missing = await buildLlmGatewayProbe(dir);
+    expect(missing.ok).toBe(false);
+    expect(missing.message).toContain('bundled seeds missing from the build');
+
+    loaderOverride.bundledDir = join(dir, 'seeds');
+    const present = await buildLlmGatewayProbe(dir);
+    expect(present.ok).toBe(false);
+    expect(present.message).not.toContain('bundled seeds missing');
+    expect(present.message).toContain('none could be seeded');
+  });
+
+  it('no probe message carries a double hyphen separator', async () => {
+    const opts = { credentialKey: 'k', model: 'm', baseUrl: 'https://api.openai.com/v1' };
+    const raws = ['AccessDeniedException', 'ValidationException', 'ModelNotReadyException', 'ThrottlingException', 'HTTP 503', 'HTTP 402',
+      'HTTP 404', 'HTTP 401 jwt is expired', 'HTTP 401', 'ERR_TLS_CERT_ALTNAME_INVALID', 'request timed out', 'fetch failed'];
+    for (const raw of raws) expect(classifyPingFailure(raw, opts)).not.toContain(' -- ');
+    expect(classifyPingFailure('HTTP 401', { model: 'm' })).not.toContain(' -- ');
+    expect((await buildLlmGatewayProbe(dir)).message).not.toContain(' -- ');
   });
 });

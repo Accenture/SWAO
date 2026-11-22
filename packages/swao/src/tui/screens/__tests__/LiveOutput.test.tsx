@@ -19,7 +19,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { LiveOutput } from '@swao/tui-kit';
+import { LiveOutput, headerRuleWidth } from '@swao/tui-kit';
 
 const LONG_LINE = 'A'.repeat(200);
 
@@ -42,5 +42,17 @@ describe('LiveOutput -- TU-LO-02: wrapMode=wrap preserves full content', () => {
     // Count 'A' characters in the frame to confirm no truncation.
     const aCount = (frame.match(/A/g) ?? []).length;
     expect(aCount).toBe(200);
+  });
+});
+
+// #4110: run output never ends right of the header rule (98 columns at the
+// 100-column test terminal), truncated or wrapped, without a maxWidth.
+describe('LiveOutput -- TU-LO-03: lines stay within the header rule (#4110)', () => {
+  const PASS_LINE = `[pass 07] ${'x'.repeat(300)}`;
+  it('truncate-end and wrap both stay within headerRuleWidth', () => {
+    for (const wrapMode of [undefined, 'wrap'] as const) {
+      const { lastFrame } = render(<LiveOutput lines={[PASS_LINE, PASS_LINE]} wrapMode={wrapMode} />);
+      for (const line of (lastFrame() ?? '').split('\n')) expect(line.trimEnd().length).toBeLessThanOrEqual(headerRuleWidth(100));
+    }
   });
 });

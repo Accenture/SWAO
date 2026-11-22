@@ -37,8 +37,13 @@ import { join } from 'node:path';
 /** Default age threshold for `meta.last_updated` (proposal in #3282; owner may tune). */
 export const LZ_CATALOGUE_MAX_AGE_DAYS = 90;
 
-/** Fixed confidence vocabulary (`LzCatalogueMetaSchema.confidence`). */
-export const LZ_CATALOGUE_CONFIDENCE_VOCABULARY: readonly string[] = ['high', 'medium', 'low'];
+/**
+ * Fixed confidence vocabulary (`LzCatalogueMetaSchema.confidence`, kept equal to
+ * `LZ_CATALOGUE_CONFIDENCES` in @swao/core by a unit test; this file cannot
+ * import it at runtime, see above). `operator-declared` marks a hand-maintained
+ * custom catalogue (077 §4, schema 0.2).
+ */
+export const LZ_CATALOGUE_CONFIDENCE_VOCABULARY: readonly string[] = ['high', 'medium', 'low', 'operator-declared'];
 
 /** The four D-LZ-07 sovereignty fact fields every region must carry. */
 export const LZ_SOVEREIGNTY_FACT_FIELDS: readonly string[] = [
@@ -123,7 +128,7 @@ export const LZ_CATALOGUE_QUALITY_RULES: readonly LzQualityRule[] = [
   { id: 'regions-count', severity: 'error', summary: 'meta.regions_count equals the number of regions' },
   { id: 'region-id-duplicate', severity: 'error', summary: 'region ids are unique within a provider catalogue' },
   { id: 'sovereignty-shape', severity: 'error', summary: 'every region carries all four sovereignty facts (residency_country, operator_jurisdiction, extraterritorial_exposure, certifications); an operator-site region states residency_country OPERATOR_SITE, which is valid only with operator_jurisdiction operator-site' },
-  { id: 'confidence-vocabulary', severity: 'error', summary: 'meta.confidence is one of high, medium, low' },
+  { id: 'confidence-vocabulary', severity: 'error', summary: `meta.confidence is one of ${LZ_CATALOGUE_CONFIDENCE_VOCABULARY.join(', ')}` },
   { id: 'certification-vocabulary', severity: 'warn', summary: `every region certification is in the template vocabulary (${LZ_CERTIFICATION_VOCABULARY.join(', ')})` },
   { id: 'source-missing', severity: 'error', summary: 'every catalogue names a source (meta.source.mode)' },
   { id: 'date-format', severity: 'error', summary: 'meta.last_updated is a valid YYYY-MM-DD date' },
@@ -188,6 +193,12 @@ export interface LzCatalogueQualityOptions {
    * keeps no local imports). Without it the geography-coverage rule is skipped.
    */
   geographies?: Readonly<Record<string, readonly string[]>>;
+  /**
+   * #4228: accepted UNKNOWN residencies, `<provider>/<region id>` -> decision
+   * (`LZ_ACCEPTED_UNKNOWN_RESIDENCY` from ./sovereignty-pins.ts). Such a region
+   * is reported as info naming the decision instead of a facts-unsourced warning.
+   */
+  acceptedUnknownResidency?: Readonly<Record<string, { decision: string; note: string }>>;
 }
 
 export interface LzCatalogueQualityReport {
@@ -345,7 +356,7 @@ export function checkLzCatalogueDir(dir: string, opts: LzCatalogueQualityOptions
   // #3298: the shared discovery (flat files; per-provider copies are checked by the resolver).
   const catalogueFiles = scanLzCatalogueFiles(dir, { flat: true }).map((r) => r.file);
   for (const file of catalogueFiles) {
-    checkCatalogueFile(dir, file, { add, checkDate, templateMetaKeys, pins, now, maxAgeDays, validate: opts.validate });
+    checkCatalogueFile(dir, file, { add, checkDate, templateMetaKeys, pins, now, maxAgeDays, validate: opts.validate, acceptedUnknownResidency: opts.acceptedUnknownResidency ?? {} });
     if (opts.geographies) checkGeographyCoverage(dir, file, opts.geographies, add);
   }
 
@@ -396,6 +407,7 @@ interface FileCheckCtx {
   now: Date;
   maxAgeDays: number;
   validate: LzCatalogueValidator;
+  acceptedUnknownResidency: Readonly<Record<string, { decision: string; note: string }>>;
 }
 
 function checkCatalogueFile(dir: string, file: string, ctx: FileCheckCtx): void {
@@ -501,7 +513,11 @@ function checkCatalogueFile(dir: string, file: string, ctx: FileCheckCtx): void 
       if (drift.length > 0) add({ rule: 'pin-drift', file, provider, region: id, message: `sovereignty facts differ from the refresh overlay pin: ${drift.join('; ')}` });
     }
 
-    if (sov['residency_country'] === LZ_UNKNOWN_RESIDENCY) {
+    const accepted = ctx.acceptedUnknownResidency[`${provider}/${id}`];
+    if (sov['residency_country'] === LZ_UNKNOWN_RESIDENCY && accepted) {
+      // #4228: an accepted unknown is recorded with its decision and reported as info.
+      add({ rule: 'facts-unsourced', severity: 'info', file, provider, region: id, message: `residency_country "${LZ_UNKNOWN_RESIDENCY}" accepted by decision ${accepted.decision}: ${accepted.note}` });
+    } else if (sov['residency_country'] === LZ_UNKNOWN_RESIDENCY) {
       add({ rule: 'facts-unsourced', file, provider, region: id, message: `residency_country is the "${LZ_UNKNOWN_RESIDENCY}" placeholder (region not in the refresh overlay pins); facts are refresh defaults` });
     } else if (!pin && !sourceNote) {
       add({ rule: 'facts-unsourced', file, provider, region: id, message: providerPins ? 'region has no refresh overlay pin and the catalogue has no meta.source.source_note' : 'catalogue has no meta.source.source_note backing its sovereignty facts' });

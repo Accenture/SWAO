@@ -207,7 +207,9 @@ Press `Ctrl+G` to collapse it.
 ![SWAO TUI Workspace Setup wizard step 1 of 7](./11-tui-workspace-setup.png)
 
 The Workspace Setup wizard (menu item 1) at **Step 1 of 7**. The progress dots at the top
-show the full journey: Init, LLM, Credentials, Health Check, MCP Client, Playwright, Ready.
+show the journey of that version: Init, LLM, Credentials, Health Check, MCP Client, Playwright, Ready.
+The current wizard has nine steps and runs the health check last, directly before Ready: Init, LLM,
+Credentials, LZ Connections, MCP Client, Playwright, Test Code, Health Check, Ready.
 Step 1 asks for the workspace directory: pressing Enter accepts the current directory;
 existing workspaces are detected and reused automatically. The guidance box (Ctrl+G to
 collapse) explains each field. Escape returns to the main menu at any point.

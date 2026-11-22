@@ -23,6 +23,7 @@ const FILES = [
   { src: 'portfolio.md', dst: 'portfolio.md' },
   { src: 'generate-tf.md', dst: 'generate-tf.md' },
   { src: 'tools.md', dst: 'tools.md' },
+  { src: 'tui-keys.md', dst: 'tui-keys.md' },
   { src: 'malware-scanning.md', dst: 'malware-scanning.md' },
   { src: 'assessment-dimension-catalogue.md', dst: 'assessment-dimension-catalogue.md' },
   // README.md -> index.md: VitePress routes directory root from index.md
@@ -39,6 +40,7 @@ const FILES = [
   { src: 'de/portfolio.md', dst: 'de/portfolio.md' },
   { src: 'de/generate-tf.md', dst: 'de/generate-tf.md' },
   { src: 'de/tools.md', dst: 'de/tools.md' },
+  { src: 'de/tui-keys.md', dst: 'de/tui-keys.md' },
   { src: 'de/getting-started.md', dst: 'de/getting-started.md' },
   { src: 'de/malware-scanning.md', dst: 'de/malware-scanning.md' },
   { src: 'de/assessment-dimension-catalogue.md', dst: 'de/assessment-dimension-catalogue.md' },

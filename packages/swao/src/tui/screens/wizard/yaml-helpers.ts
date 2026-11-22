@@ -19,6 +19,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { load as yamlLoad } from 'js-yaml';
+import { patchSwaoYmlFile } from '@swao/core';
 import { z } from 'zod';
 import { listConnectors, type LoadedConnector } from '@swao/module-llm-providers';
 import type { LlmProvider } from './shared.js';
@@ -186,23 +187,9 @@ export function writeLlmToYaml(
 export function writeVisionMaxScreensToYaml(workDir: string, maxScreens: number): void {
   const yamlPath = join(workDir, '.swao.yml');
   if (!existsSync(yamlPath)) return;
-  try {
-    let yaml = readFileSync(yamlPath, 'utf-8');
-    const valueStr = `assessment:\n  vision_max_screens: ${maxScreens}\n`;
-    if (/^assessment:/m.test(yaml)) {
-      // Replace or insert the vision_max_screens line inside the existing block.
-      if (/^ {2}vision_max_screens: \d+/m.test(yaml)) {
-        yaml = yaml.replace(/^ {2}vision_max_screens: \d+/m, `  vision_max_screens: ${maxScreens}`);
-      } else {
-        yaml = yaml.replace(/^(assessment:\n)/m, `$1  vision_max_screens: ${maxScreens}\n`);
-      }
-    } else {
-      // Remove existing commented-out assessment block before appending the live one.
-      yaml = yaml.replace(/^# assessment:\n(?:^#.*\n)*/m, '');
-      yaml = yaml.trimEnd() + '\n\n' + valueStr;
-    }
-    writeFileSync(yamlPath, yaml, 'utf-8');
-  } catch { /* non-fatal */ }
+  // #4280 / #4281: the minimal-patch writer (#4283); the commented `# assessment:`
+  // template of `swao init` is adopted in place with its inline comments.
+  patchSwaoYmlFile(yamlPath, [{ path: ['assessment', 'vision_max_screens'], value: maxScreens }], { adoptCommentedTemplates: true });
 }
 
 // #3403: assessment.test_code.mode in the workspace .swao.yml (the CLI reads
@@ -226,44 +213,32 @@ export function readTestCodeModeFromYaml(workDir: string): WizardTestCodeMode | 
   return undefined;
 }
 
+/** #4475: the stored LLM slot of the workspace .swao.yml (providers.llm.primary or secondary): connector and model. */
+export function readLlmSlotFromYaml(workDir: string, slot: 'primary' | 'secondary'): { connector?: string; model?: string } {
+  const yamlPath = join(workDir, '.swao.yml');
+  if (!existsSync(yamlPath)) return {};
+  try {
+    const doc = yamlLoad(readFileSync(yamlPath, 'utf-8')) as Record<string, unknown> | null;
+    const llm = (doc?.['providers'] as Record<string, unknown> | undefined)?.['llm'] as Record<string, unknown> | undefined;
+    const s = llm?.[slot] as Record<string, unknown> | undefined;
+    return {
+      ...(typeof s?.['connector'] === 'string' ? { connector: s['connector'] } : {}),
+      ...(typeof s?.['model'] === 'string' ? { model: s['model'] } : {}),
+    };
+  } catch { return {}; }
+}
+
 export function writeTestCodeModeToYaml(workDir: string, mode: WizardTestCodeMode): void {
   const yamlPath = join(workDir, '.swao.yml');
   if (!existsSync(yamlPath)) return;
-  try {
-    const lines = readFileSync(yamlPath, 'utf-8').replace(/\r\n/g, '\n').split('\n');
-    const start = lines.findIndex((l) => /^assessment:\s*(#.*)?$/.test(l));
-    if (start < 0) {
-      while (lines.length > 0 && lines[lines.length - 1]!.trim() === '') lines.pop();
-      lines.push('', 'assessment:', '  test_code:', `    mode: ${mode}`, '');
-      writeFileSync(yamlPath, lines.join('\n'), 'utf-8');
-      return;
-    }
-    let end = start + 1;
-    while (end < lines.length && (lines[end]!.trim() === '' || lines[end]!.startsWith(' '))) end++;
-    const block = lines.slice(start + 1, end).filter((l) => !/^ {2}exclude_test_code:/.test(l));
-    const tc = block.findIndex((l) => /^ {2}test_code:/.test(l));
-    if (tc < 0) {
-      block.unshift('  test_code:', `    mode: ${mode}`);
-    } else if (/^ {2}test_code:\s*(#.*)?$/.test(block[tc]!)) {
-      let i = tc + 1;
-      let modeAt = -1;
-      while (i < block.length && (block[i]!.startsWith('    ') || block[i]!.trim() === '')) {
-        if (/^ {4}mode:/.test(block[i]!)) modeAt = i;
-        i++;
-      }
-      if (modeAt >= 0) block[modeAt] = `    mode: ${mode}`;
-      else block.splice(tc + 1, 0, `    mode: ${mode}`);
-    } else {
-      // Flow style (`test_code: { ... }`): rewrite as a block, keeping the patterns.
-      const parsed = yamlLoad(block[tc]!.trim()) as { test_code?: Record<string, unknown> } | null;
-      const keep = ['extra_patterns', 'keep_patterns']
-        .filter((k) => Array.isArray(parsed?.test_code?.[k]))
-        .map((k) => `    ${k}: ${JSON.stringify(parsed!.test_code![k])}`);
-      block.splice(tc, 1, '  test_code:', `    mode: ${mode}`, ...keep);
-    }
-    lines.splice(start + 1, end - start - 1, ...block);
-    writeFileSync(yamlPath, lines.join('\n'), 'utf-8');
-  } catch { /* non-fatal */ }
+  // #4280 / #4281: the minimal-patch writer (#4283). The legacy
+  // `exclude_test_code` key goes; `test_code.mode` is set, keeping the other
+  // test_code keys (a flow-style test_code is re-emitted with them); the
+  // commented `# assessment:` template is adopted in place with its comments.
+  patchSwaoYmlFile(yamlPath, [
+    { path: ['assessment', 'exclude_test_code'], value: undefined },
+    { path: ['assessment', 'test_code', 'mode'], value: mode },
+  ], { adoptCommentedTemplates: true });
 }
 
 // #1768: write providers.llm.secondary block to .swao.yml.

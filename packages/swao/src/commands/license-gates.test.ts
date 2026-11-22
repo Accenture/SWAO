@@ -212,16 +212,17 @@ describe('export --portfolio enterprise gate -- source integrity (#2648)', () =>
     expect(src).toMatch(/logPortfolio\(\s*'error'\s*,\s*'licence\.gate\.error'/);
   });
 
-  it('export.ts contains process.exit(1) in the licence gate catch block', () => {
+  it('export.ts contains process.exit(2) in the licence gate catch block (ADR-0055, #3844)', () => {
     const src = readFileSync(
       join(__dirname, '../../../@swao/module-powerbi/src/export.ts'),
       'utf-8',
     );
     expect(src).toMatch(/LicenseTierError/);
-    expect(src).toMatch(/process\.exit\(1\)/);
+    expect(src).toMatch(/process\.exit\(2\); \/\/ ADR-0055 section 3, #3844/);
   });
 
-  // NOTE: on Windows+pkg the child subprocess exit 1 is masked to exit 7 by the pkg
+  // NOTE: on Windows+pkg the child subprocess exit code (2 for a refused tier,
+  // #3844) can be masked to exit 7 by the pkg
   // prelude cleanup (ENOTEMPTY when parent holds the same temp dir open). PortfolioScreen.tsx
   // maps exit 7 to the "Enterprise licence required" message to compensate.
   // This cannot be asserted here because it requires a live pkg binary. Tracked: #2648.
@@ -327,6 +328,9 @@ describe('FEATURE_GATES registry (the SWAO licence tier matrix)', () => {
     'generate-tf':          'enterprise', // F-090 Enterprise roadmap (#3321)
     'unipipe':              'enterprise', // F-094 / D-04 Enterprise roadmap (#3324)
     'bi-templates':         'consultant', // F-088 (#3324)
+    'lz-live-connect':      'community',  // F-135 (#3590)
+    'lz-live-assess':       'consultant', // F-136 (#3590)
+    'lz-live-portfolio':    'enterprise', // F-139 (#3590)
   };
 
   it('has no keys beyond the expected set (a new key needs a licence tier matrix row first)', () => {
@@ -400,9 +404,9 @@ describe('printLicenseGateError (#2184)', () => {
     expect(stderrLines[0]).toContain('github.com/Accenture/SWAO/discussions');
   });
 
-  it('exits with code 1', () => {
+  it('exits with code 2 (ADR-0055, #3844)', () => {
     expect(() => printLicenseGateError('swao assess --portfolio', 'enterprise', 'community')).toThrow();
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(2);
   });
 
   it('uses "an" article before Enterprise', () => {

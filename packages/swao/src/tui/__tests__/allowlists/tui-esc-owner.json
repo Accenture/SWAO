@@ -1,0 +1,5 @@
+{
+  "gate": "G-09",
+  "rule": "wizard step reads the Esc key itself",
+  "entries": {}
+}

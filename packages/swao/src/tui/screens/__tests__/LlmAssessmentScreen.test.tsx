@@ -113,6 +113,8 @@ describe('LlmAssessmentScreen -- TU-LLM-01: no eligible apps', () => {
     await new Promise<void>((r) => setTimeout(r, 100));
     const frame = lastFrame() ?? '';
     expect(frame).toContain('No eligible applications found');
+    // #4255 (Design 126 section 4.5): the step bar of the flow, on its first step.
+    expect(frame).toMatch(/Application\s+.*LLM Providers\s+.*Check\s+.*Review\s+.*Run\s+.*Done/);
   });
 });
 
@@ -197,6 +199,11 @@ describe('LlmResultTable -- TU-LLM-03: renders synthetic result', () => {
       partial: {},
     },
     findingsCount: 3,
+    status: 'complete',
+    legs: [
+      { id: legA, status: 'complete', exit: 0, calls: 0, wall_clock_ms: 1000 },
+      { id: legB, status: 'complete', exit: 0, calls: 0, wall_clock_ms: 1000 },
+    ],
   };
 
   it('renders group names, FINAL row, and ranked scores', () => {

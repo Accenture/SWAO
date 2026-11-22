@@ -20,11 +20,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { CredentialStore } from '@swao/core';
+import { CredentialStore, LEGACY_LZ_CREDENTIAL_KEYS, parseLzCredentialKey } from '@swao/core';
 
 export type CredentialVaultProbeStatus = 'ok' | 'warn' | 'fail';
 
-export type CredentialVaultCategory = 'llm' | 'vcs' | 'playwright' | 'playwright-mfa';
+export type CredentialVaultCategory = 'llm' | 'vcs' | 'playwright' | 'playwright-mfa' | 'lz';
 
 export interface CredentialVaultProbeResult {
   status: CredentialVaultProbeStatus;
@@ -32,6 +32,9 @@ export interface CredentialVaultProbeResult {
   decryptable: boolean;
   keyCount: number;
   categories: CredentialVaultCategory[];
+  // #3570: Pass 23 keys (aws-access-key-id, ..., azure-client-secret) still in
+  // the vault; no longer read, to be moved to lz:<lz-id>:<scope-id>:<field>.
+  legacyLzKeyCount: number;
   message: string;
 }
 
@@ -45,6 +48,7 @@ function categoriseKeys(keys: string[]): CredentialVaultCategory[] {
     if (k === 'vcs-token' || /^provider:.+:token$/.test(k)) found.add('vcs');
     if (/^playwright-(url|user|pass)-/.test(k)) found.add('playwright');
     if (k.startsWith('playwright-mfa-'))        found.add('playwright-mfa');
+    if (parseLzCredentialKey(k) !== null)       found.add('lz');
   }
   return [...found].sort();
 }
@@ -66,6 +70,7 @@ export function buildCredentialVaultProbe(configDir?: string): CredentialVaultPr
       decryptable: false,
       keyCount: 0,
       categories: [],
+      legacyLzKeyCount: 0,
       message: 'Credential vault not found (no credentials stored yet). Needed for LLM, VCS or crawler credentials: run `swao credential set` or the Setup Wizard.',
     };
   }
@@ -82,12 +87,18 @@ export function buildCredentialVaultProbe(configDir?: string): CredentialVaultPr
       decryptable: false,
       keyCount: 0,
       categories: [],
+      legacyLzKeyCount: 0,
       message: 'Credential vault exists but could not be decrypted. It may be corrupt or from a different machine.',
     };
   }
 
   const categories = categoriseKeys(keys);
   const hasLlm = categories.includes('llm');
+  // #3570 (Design 120 section 6.2): count only, never the key names.
+  const legacyLzKeyCount = keys.filter((k) => k in LEGACY_LZ_CREDENTIAL_KEYS).length;
+  const legacyNote = legacyLzKeyCount > 0
+    ? ` ${legacyLzKeyCount} legacy landing zone credential${legacyLzKeyCount === 1 ? '' : 's'} (Pass 23 AWS / Azure keys) found; they are no longer read. Register the landing zone and move them to scoped keys with \`swao lz connect\`.`
+    : '';
 
   if (!hasLlm) {
     return {
@@ -96,7 +107,20 @@ export function buildCredentialVaultProbe(configDir?: string): CredentialVaultPr
       decryptable: true,
       keyCount: keys.length,
       categories,
-      message: 'Credential vault is accessible but contains no LLM API key. At least one connector must have an API key for assessments to run. Run the Setup Wizard (Step 2 LLM) or use `swao credential set` to add a key.',
+      legacyLzKeyCount,
+      message: 'Credential vault is accessible but contains no LLM API key. At least one connector must have an API key for assessments to run. Run the Setup Wizard (Step 2 LLM) or use `swao credential set` to add a key.' + legacyNote,
+    };
+  }
+
+  if (legacyLzKeyCount > 0) {
+    return {
+      status: 'warn',
+      vaultExists: true,
+      decryptable: true,
+      keyCount: keys.length,
+      categories,
+      legacyLzKeyCount,
+      message: `Credential vault OK -- ${keys.length} credential${keys.length === 1 ? '' : 's'} stored.` + legacyNote,
     };
   }
 
@@ -106,6 +130,7 @@ export function buildCredentialVaultProbe(configDir?: string): CredentialVaultPr
     decryptable: true,
     keyCount: keys.length,
     categories,
+    legacyLzKeyCount,
     message: `Credential vault OK -- ${keys.length} credential${keys.length === 1 ? '' : 's'} stored.`,
   };
 }

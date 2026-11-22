@@ -31,6 +31,7 @@
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 import { listSourceFiles, type SourceFile } from './source-scope.js';
+import { reportPassProgress } from './pass-progress.js';
 
 // ---------------------------------------------------------------------------
 // Languages
@@ -252,7 +253,11 @@ export function computeLanguageCensus(
   let generated = 0;
   let tooLarge = 0;
   const files: SourceFile[] = listSourceFiles(root, { purpose: 'code', extensions: Object.keys(LANGUAGE_BY_EXTENSION) });
+  let seen = 0;
   for (const f of files) {
+    // #4266 / #4300: every file is read and reported; the progress sink of
+    // `swao assess` writes by elapsed time (20 s), not by a file count.
+    reportPassProgress({ phase: 'language_census', files: ++seen });
     const lang = LANGUAGE_BY_EXTENSION[f.ext];
     if (!lang) continue;
     if (f.isGenerated) { generated++; continue; }

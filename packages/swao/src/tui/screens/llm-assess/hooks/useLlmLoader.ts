@@ -10,16 +10,23 @@ import { findWorkspace, SwaoYmlSchema, credentialStore } from '@swao/core';
 import type { SwaoYmlLlmAssessment } from '@swao/core';
 import { checkAppAssessmentPrecondition } from '@swao/module-llm-assessment';
 import { listConnectors, type LoadedConnector } from '@swao/module-llm-providers';
-import type { EligibleApp } from '../types.js';
+import type { EligibleApp, UnavailableApp } from '../types.js';
+import { subjectReasonText } from '../../../../setup/llm-values.js';
+import { readLlmDefaults, type LlmDefaults } from '../../../../setup/defaults.js';
+import { orderAppsWithDefault } from '../preselect.js';
 
 interface LoadedState {
   workspacePath: string;
   eligibleApps: EligibleApp[];
+  /** #4242: apps without a completed Application Assessment run, with the reason. */
+  unavailableApps: UnavailableApp[];
   llmCfg: SwaoYmlLlmAssessment | null;
   loadedConnectors: LoadedConnector[];
   configuredCredKeys: Set<string>;
   crawlAvailable: boolean;
   includeCrawlInitial: boolean;
+  /** #4198 (Design 125 section 5.7): candidates and subject app stored by the LLM setup branch. */
+  defaults: LlmDefaults;
 }
 
 interface UseLlmLoaderParams {
@@ -50,10 +57,21 @@ export function useLlmLoader({ stage, workspacePathProp, onDone, onError }: UseL
       const appsDir = join(wp, 'apps');
       const appNames: string[] = existsSync(appsDir) ? (readdirSync(appsDir) as string[]) : [];
       const eligible: EligibleApp[] = [];
+      const unavailable: UnavailableApp[] = [];
       for (const appId of appNames) {
         try {
           const pre = checkAppAssessmentPrecondition(wp, appId);
-          if (pre.ok) eligible.push({ id: appId, passCount: pre.latestRun?.passStats?.length ?? 0 });
+          // #4242: the suite is the newest APPLICATION run, not the newest run of any type.
+          if (pre.ok && pre.latestRun) {
+            eligible.push({
+              id: appId,
+              passCount: pre.latestRun.passCount,
+              suiteRun: { runTs: pre.latestRun.runTs, passCount: pre.latestRun.passCount, finishedAt: pre.latestRun.finishedAt },
+              applicationRunCount: pre.applicationRuns?.length ?? 1,
+            });
+          } else if (!pre.ok && pre.reason !== 'no-app') {
+            unavailable.push({ id: appId, reason: `${subjectReasonText(pre.reason)}${pre.detail ? `: ${pre.detail}` : ''}` });
+          }
         } catch { /* skip */ }
       }
 
@@ -65,14 +83,17 @@ export function useLlmLoader({ stage, workspacePathProp, onDone, onError }: UseL
         credKeys = new Set(Object.keys(creds));
       } catch { /* no connectors */ }
 
+      const defaults = readLlmDefaults(wp);
       onDone(eligible.length === 0, {
         workspacePath: wp,
-        eligibleApps: eligible,
+        eligibleApps: orderAppsWithDefault(eligible, defaults.subjectApp),
+        unavailableApps: unavailable,
         llmCfg: parsedCfg,
         loadedConnectors: connectors,
         configuredCredKeys: credKeys,
         crawlAvailable: hasCrawlYamlUrl,
         includeCrawlInitial: hasCrawlYamlUrl,
+        defaults,
       });
     } catch (err: unknown) {
       onError(err instanceof Error ? err.message : String(err));

@@ -22,6 +22,12 @@ what you get back, and how the types combine in a typical engagement.
 | **LLM** | Recommended. Static passes run without one; `data`, `ctx`, `synth`, `comp` and `blocks` need it | Recommended for the context, synthesis and compliance passes; intake, research and scoring are deterministic | Not used. The fit is fully deterministic | Required: the LLMs under comparison are the subject of the assessment |
 | **Licence tier** | All tiers. Portfolio-wide runs (`--portfolio`) are Enterprise | All tiers. The portfolio workbook (`swao service export`) is Enterprise | All tiers. `swao lz catalogue update` is Consultant and above | All tiers (see the [LLM page](/assessment/llm#licence-tier)) |
 
+A fifth type, the [Landing Zone Live Assessment](/assessment/landing-zone-live)
+(`swao assess --type landing-zone-live --lz <lz-id>`), reads a deployed landing zone
+through the provider's read-only APIs instead of an application. It needs a landing zone
+registered with `swao lz connect` and its credentials in the SWAO vault, uses no LLM, and
+needs Consultant or above (connecting and probing work in every edition).
+
 SWAO does not publish fixed durations for any type. Run time depends on the size of the
 source tree or portfolio, the passes you select, the LLM provider and its rate limits.
 `swao assess --stats` prints a per-pass timing table after each run so you can plan

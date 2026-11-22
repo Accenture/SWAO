@@ -45,13 +45,18 @@ export type MenuTarget =
   | 'llm-gateway-update'  // #3388 -- refresh workspace LLM gateway connectors; Tools submenu
   | 'ingest'              // #0967 -- Pre-process ingestion/ folder; reached via Tools submenu
   | 'support-bundle'     // #1515 -- PII-free diagnostic bundle; reached via Tools submenu
-  | 'chat';              // #2778 -- Multi-turn portfolio chat; reached via Tools submenu (Enterprise)
+  | 'chat'               // #2778 -- Multi-turn portfolio chat; reached via Tools submenu (Enterprise)
+  | 'lz-connections';    // #3589 / #4127 -- Landing Zone Connections; Landing Zone Live setup and LZ Live Assessment step 1
+  // #4126: 'frameworks' (#3875 Tools > Frameworks) removed, owner decision 2026-11-08.
   // lz-catalogue-manage removed: auto-seeded during init (#1522)
 
 export interface MenuItem {
   key: string;
   label: string;
+  /** #4122: short plain description on the menu line; never CLI syntax. */
   detail: string;
+  /** #4122: CLI equivalent, shown in the guidance box. */
+  cli?: string;
   target: MenuTarget;
   /** If set, item is visible but requires this tier or higher to activate. */
   tierRequired?: Exclude<LicenseTier, 'community'>;
@@ -70,13 +75,13 @@ export interface MenuInfo {
 // Exit stays on `0` so muscle memory survives the change.
 export const ITEMS: MenuItem[] = [
   { key: '1', label: 'Workspace Setup',     detail: 'init + LLM + credentials wizard',         target: 'setup'       },
-  { key: '2', label: 'Health Check',        detail: 'swao health-check',                       target: 'doctor'      },
+  { key: '2', label: 'Health Check',        detail: 'licence, LLM, tools and inputs ready',   cli: 'swao health-check', target: 'doctor'      },
   { key: '3', label: 'Run Assessment',      detail: 'Application / Service Portfolio / Landing Zone Catalog / LLM', target: 'assess'      },
-  { key: '4', label: 'Generate Report',     detail: 'swao report (text / PDF)',                target: 'report'      },
-  { key: '5', label: 'Publish HTML',        detail: 'swao publish -- publications/ folder (HTML)', target: 'publish',     tierRequired: 'consultant' as const },
+  { key: '4', label: 'Generate Report',     detail: 'text and PDF report of a run',            cli: 'swao report', target: 'report'      },
+  { key: '5', label: 'Publish HTML',        detail: 'HTML publications of assessment runs',   cli: 'swao publish', target: 'publish',     tierRequired: 'consultant' as const },
   { key: '6', label: 'Export BI',           detail: 'PowerBI (Application Assessment only)',   target: 'export-bi'   },
   { key: '7', label: 'Portfolio Operations', detail: 'multi-app aggregate',                    target: 'portfolio',   tierRequired: 'enterprise' as const },
-  { key: '8', label: 'Generate TF Modules', detail: 'swao generate-tf',                        target: 'generate-tf', tierRequired: 'enterprise' as const, comingSoon: true as const },
+  { key: '8', label: 'Generate TF Modules', detail: 'Terraform modules for the landing zone',  cli: 'swao generate-tf', target: 'generate-tf', tierRequired: 'enterprise' as const, comingSoon: true as const },
   { key: '9', label: 'Tools',               detail: 'lenses / license / credentials / help',   target: 'tools'       },
   ...(process.platform === 'win32'
     ? [{ key: 's', label: 'Open Shell Here', detail: 'open command prompt in workspace', target: 'shell' as MenuTarget }]
@@ -90,7 +95,7 @@ export const MENU_INFO: Record<MenuTarget, MenuInfo> = {
     output: '.swao.yml  |  apps/ structure  |  Claude Desktop config',
   },
   doctor: {
-    what:   'Environment health check -- verifies licence, LLM, Playwright, MCP, and inputs.',
+    what:   'Environment health check: verifies licence, LLM, Playwright, MCP, and inputs.',
     use:    'Run before an assessment or after any configuration change.',
     output: 'Health report on screen. Exit 0 = ok, 1 = warning.',
   },
@@ -101,12 +106,12 @@ export const MENU_INFO: Record<MenuTarget, MenuInfo> = {
   },
   report: {
     what:   'Generate stakeholder reports (text / PDF) from the latest assessment.',
-    use:    'Run after swao assess. Choose "All views" or a specific audience.',
+    use:    'Run after an assessment. Choose "All views" or a specific audience.',
     output: 'wsp/reports-app/<ts>-{technical,exec,compliance,finops,migration-manager}.txt',
   },
   publish: {
     what:   'Single-file HTML publication from the latest assessment (search + compliance).',
-    use:    'Run after swao assess. Select the app ID. EN/DE language switcher included.',
+    use:    'Run after an assessment. Select the app ID. EN/DE language switcher included.',
     output: 'apps/<id>/wsp/publications/<ts>-<id>.html  (< 2 MB)',
   },
   'export-bi': {
@@ -121,7 +126,7 @@ export const MENU_INFO: Record<MenuTarget, MenuInfo> = {
   },
   'generate-tf': {
     what:   'Generate Terraform module stubs for the target sovereign landing zone. Coming soon.',
-    use:    'Enterprise. Run after assessment. Feature is in development -- not yet available.',
+    use:    'Enterprise. Run after assessment. Feature is in development and not yet available.',
     output: 'Terraform module stubs for the migration engineer.',
   },
   tools: {
@@ -185,7 +190,7 @@ export const MENU_INFO: Record<MenuTarget, MenuInfo> = {
   // #0967 -- Pre-process ingestion/ folder; reached via Tools submenu.
   ingest: {
     what:   'Pre-process the ingestion/ folder: classify files by content, extract text from PDF/DOCX/XLSX/PPTX, and write the SHA-256 manifest.',
-    use:    'Via Tools (9 -> 5). Run before swao assess when you have a large document collection.',
+    use:    'Via Tools (9 -> 5). Run before an assessment when you have a large document collection.',
     output: 'wsp/inputs/<category>/ routed files  |  companion extracted-text files  |  ingestion/ingestion-manifest.json.',
   },
   // #1515 -- PII-free diagnostic bundle; reached via Tools submenu.
@@ -199,6 +204,12 @@ export const MENU_INFO: Record<MenuTarget, MenuInfo> = {
     what:   'Multi-turn LLM conversation about the portfolio assessment results.',
     use:    'Via Tools (9 -> 6). Enterprise only. Requires a configured LLM gateway. MCP server auto-starts for context.',
     output: 'wsp/chat/<ts>.ndjson  |  conversation history preserved across sessions.',
+  },
+  // #3589 / #4127 -- Landing Zone Connections (Design 120 section 14.2); not a Tools item since #4127.
+  'lz-connections': {
+    what:   'Register live landing zones and scopes, store their credentials in the vault, probe read-only + coverage, migrate legacy LZR credentials, remove a scope or landing zone.',
+    use:    'Via the Landing Zone Live setup or step 1 of the Landing Zone Live Assessment (a).',
+    output: '.swao.yml landing_zones[]  |  vault keys lz:<lz-id>:<scope-id>:<field> (values never shown).',
   },
 };
 

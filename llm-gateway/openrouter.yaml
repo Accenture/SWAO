@@ -15,11 +15,29 @@ connector:
     HTTP-Referer: https://github.com/Accenture/SWAO
     X-Title: SWAO
   models:
-    default: mistralai/mistral-large
+    default: mistralai/mistral-large-2512
+    # #4475: served ids, prices (USD per million tokens) and context windows from the
+    # public OpenRouter /v1/models list of 2026-11-16. The pickers read the live list
+    # on open and mark an entry the platform no longer serves.
     catalogue:
-      - id: mistralai/mistral-large
-      - id: anthropic/claude-sonnet-4
+      - id: mistralai/mistral-large-2512
+        context_window: 262144
+        cost: { input_per_million: 0.5, output_per_million: 1.5 }
+      - id: mistralai/mistral-large-4-0
+        context_window: 1048576
+        cost: { input_per_million: 0.7, output_per_million: 2.1 }
+      - id: anthropic/claude-sonnet-5.5
+        context_window: 1000000
+        cost: { input_per_million: 2.0, output_per_million: 10.0 }
+      - id: anthropic/claude-haiku-5.5
+        context_window: 1000000
+        cost: { input_per_million: 0.1, output_per_million: 0.5 }
+      - id: anthropic/claude-opus-5.5
+        context_window: 1000000
+        cost: { input_per_million: 4.0, output_per_million: 20.0 }
       - id: meta-llama/llama-3.3-70b-instruct
+        context_window: 131072
+        cost: { input_per_million: 0.71, output_per_million: 0.71 }
     discovery_endpoint: /v1/models
   defaults:
     temperature: 0
@@ -30,5 +48,5 @@ connector:
     notes: Routing metadata traverses the aggregator; verify residency and retention per engagement.
   meta:
     source: bundled
-    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    last_reviewed: "2026-11-16"   # SWAO team review date, not the user install date (#4475)
     contributor: Accenture SWAO team

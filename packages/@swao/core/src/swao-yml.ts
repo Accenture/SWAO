@@ -15,6 +15,8 @@
 
 import { z } from 'zod';
 import { isValidEndpointAllowEntry } from './endpoint-scanner.js';
+import { maskSecretShapes } from './secret-mask.js';
+import { SetupAssessmentTypeSchema, SetupStateRecordSchema } from './setup-types.js';
 import {
   CODE_HEALTH_ALLOWLIST_MAX,
   CODE_HEALTH_TOOL_TIMEOUT_MAX_S,
@@ -200,11 +202,38 @@ export const SwaoYmlCodeHealthSchema = z.object({
   tool_timeout_seconds: z.number().int().min(CODE_HEALTH_TOOL_TIMEOUT_MIN_S).max(CODE_HEALTH_TOOL_TIMEOUT_MAX_S).optional(),
 }).passthrough();
 
+// #4190 (Design 125 section 5.7): the LLM branch stores the 2 to 5 candidate
+// connectors and the assessed app; the LLM Assessment preselects them. The older
+// llm_assessment.legs / llm_assessment.default_app (Design 092) mean the same and
+// stay valid; readers prefer assessment.llm and fall back to them, except that
+// saved llm_assessment.legs win over the candidates (#4403, Design 092 section 4).
+export const SwaoYmlAssessmentLlmCandidateSchema = z.object({
+  connector: z.string().min(1),
+  model: z.string().min(1).optional(),
+}).passthrough();
+export const SwaoYmlAssessmentLlmSchema = z.object({
+  // 2 to 5 at run time (the LLM Assessment refuses fewer than 2); the schema
+  // accepts 0 to 5 so a half-finished setup never makes the whole file invalid.
+  candidates: z.array(SwaoYmlAssessmentLlmCandidateSchema).max(5).optional(),
+  subject_app: z.string().min(1).optional(),
+}).passthrough();
+
+// #4190 (Design 125 section 5.7): the service branch stores the intake workbook
+// and the optional column mapping file. `source` is the workbook recorded by
+// `swao service init` (#3521); readers prefer `intake` and fall back to it.
+// `swao service init` writes `mapping: null` when there is no column map, so
+// every field accepts null (an existing service workspace must keep parsing).
+export const SwaoYmlServicePortfolioSchema = z.object({
+  source: z.string().nullish(),
+  intake: z.string().min(1).nullish(),
+  mapping: z.string().min(1).nullish(),
+}).passthrough();
+
 export const SwaoYmlAssessmentSchema = z.object({
   // WHICH assessment kind (default: application when absent). Deprecated aliases
   // accepted here and normalised by the assess router: `source-code` ->
   // `application` (am.3), `human` -> `audit` (am.4).
-  type: z.enum(['application', 'audit', 'landing-zone', 'landing-zone-catalog', 'landing-zone-customer', 'hybrid', 'llm', 'service', 'source-code', 'human']).optional(),
+  type: z.enum(['application', 'audit', 'landing-zone', 'landing-zone-catalog', 'landing-zone-live', 'hybrid', 'llm', 'service', 'source-code', 'human']).optional(),
   // WHAT: community frameworks to evaluate (alias for top-level regimes:)
   frameworks: z.array(z.string()).optional(),
   // WHICH: analysis pass profiles to run (source-code mode only)
@@ -235,6 +264,8 @@ export const SwaoYmlAssessmentSchema = z.object({
   test_code: SwaoYmlTestCodeSchema.optional(),
   // #3487: Pass 26 code health settings (see SwaoYmlCodeHealthSchema).
   code_health: SwaoYmlCodeHealthSchema.optional(),
+  // #4190 (Design 125 section 5.7): LLM Assessment defaults set up by the LLM branch.
+  llm: SwaoYmlAssessmentLlmSchema.optional(),
 }).passthrough().superRefine((a, ctx) => {
   // #3403: a contradictory pair is an operator error, not a silent pick.
   const mode = a.test_code?.mode;
@@ -253,6 +284,10 @@ export const SwaoYmlWorkspaceSchema = z.object({
   run_retention: z.object({
     keep_latest: z.number().int().positive().optional(),
   }).optional(),
+  // #4190 / #4191 (Design 125 section 7): the assessment types chosen in the
+  // setup, and the state of each type's setup branch from its scoped health check.
+  assessment_types: z.array(SetupAssessmentTypeSchema).optional(),
+  setup_state: SetupStateRecordSchema.optional(),
 }).passthrough();
 
 // #3474: MCP tool profile of the workspace (Design 116 REQ-08.3). Either a
@@ -260,9 +295,15 @@ export const SwaoYmlWorkspaceSchema = z.object({
 // env (SWAO_MCP_PROFILE / SWAO_MCP_TOOLS) beat this block; tool names are
 // checked against the listed tools when the MCP server starts.
 export const SWAO_MCP_PROFILE_NAMES = ['starter', 'assess', 'full'] as const;
+// #4128 BC-05 (Design 123 section 17.5.3): who confirms a baseline write over
+// MCP. elicitation (default): the client UI asks the user; client-approval:
+// also clients without elicitation write, relying on their own tool approval
+// (provisional O-1 default: opt-in, off by default); disabled: never.
+export const SWAO_MCP_BASELINE_WRITE_MODES = ['elicitation', 'client-approval', 'disabled'] as const;
 export const SwaoYmlMcpSchema = z.object({
   profile: z.enum(SWAO_MCP_PROFILE_NAMES).optional(),
   tools: z.array(z.string().min(1)).min(1).optional(),
+  baseline_write: z.enum(SWAO_MCP_BASELINE_WRITE_MODES).optional(),
 }).passthrough().refine((m) => !(m.profile !== undefined && m.tools !== undefined), {
   message: 'mcp.profile and mcp.tools are mutually exclusive',
 });
@@ -366,6 +407,191 @@ export const SwaoYmlProvidersSchema = z
   })
   .passthrough();
 
+// #3567: workspace `landing_zones[]` (Design 120 section 6.1). Registers the
+// live landing zones and their scopes as durable topology; per-run choices
+// (frameworks) stay out of the file (ADR-0067). The block holds no secret,
+// tenant id or user name (Design 120 section 6.2, Design 016 section 9):
+// objects are strict, so a `password:` or `tenant_id:` key is a parse error,
+// and every string value runs through the secret-shape detector of the
+// output guard (secret-mask.ts) plus a high-entropy token check. Credentials
+// live in the vault under `lz:<lz-id>:<scope-id>:<field>`.
+export const LZ_REGISTRATION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Catalogue provider ids follow the 077 slug rule (otc, aws, azure, stackit,
+// onprem-<slug>, ...); the schema checks the shape only, the driver registry
+// decides at run time whether a provider is supported.
+export const LZ_PROVIDER_ID_PATTERN = /^[a-z][a-z0-9-]{1,40}$/;
+const LZ_AUTH_METHOD_PATTERN = /^[a-z][a-z0-9-]{1,40}$/;
+const lzRegistrationId = (what: string) => z.string().regex(LZ_REGISTRATION_ID_PATTERN, {
+  message: `${what} must be kebab-case (lowercase letters, digits and single hyphens), for example otc-prod`,
+});
+
+// Scope locator inside the landing zone (Design 120 section 5.2): a project,
+// subscription, account, resource group or folder name. Keys are fixed so the
+// block cannot carry identity data.
+export const SwaoYmlLzScopeTargetSchema = z.object({
+  project: z.string().min(1).optional(),
+  subscription: z.string().min(1).optional(),
+  account: z.string().min(1).optional(),
+  resource_group: z.string().min(1).optional(),
+  folder: z.string().min(1).optional(),
+}).strict();
+
+/** #4459: an AWS config profile name (`[profile <name>]`), 1 to 128 characters. */
+export const LZ_AWS_PROFILE_PATTERN = /^[A-Za-z0-9_.+=@,-]{1,128}$/;
+
+/** #3975: what a scope is registered for besides its kind (Design 120 section 6.1). */
+export const LZ_SCOPE_PURPOSES = ['log-archive'] as const;
+export type LzScopePurpose = (typeof LZ_SCOPE_PURPOSES)[number];
+
+export const SwaoYmlLzScopeSchema = z.object({
+  id: lzRegistrationId('landing_zones[].scopes[].id'),
+  kind: z.enum(['platform', 'application']),
+  // Driver-specific auth method (Design 120 section 7.1), e.g. iam-password-token.
+  auth: z.string().regex(LZ_AUTH_METHOD_PATTERN, {
+    message: 'landing_zones[].scopes[].auth must be a driver auth method id, for example iam-password-token',
+  }),
+  regions: z.array(z.string().regex(/^[a-z0-9-]+$/, {
+    message: 'landing_zones[].scopes[].regions[] must be a CSP region id (lowercase letters, digits and hyphens), for example eu-de',
+  })).optional(),
+  target: SwaoYmlLzScopeTargetSchema.optional(),
+  // Optional link to apps/<id> (Design 120 section 7.4).
+  app: lzRegistrationId('landing_zones[].scopes[].app').optional(),
+  // #3975 (Design 120 section 6.1, Design 123 section 5.4): the scope is the
+  // landing zone's log archive (an application scope). The other scopes read
+  // the audit log store their trails deliver to (an organisation trail's
+  // bucket) through its login.
+  purpose: z.enum(LZ_SCOPE_PURPOSES).optional(),
+  // #4459 (Design 120 section 6.1): the SSO profile of the AWS config file
+  // that `swao lz credentials refresh` signs in with. A name only, never a
+  // credential; the secret-shape check of the block applies to it as well.
+  aws_profile: z.string().regex(LZ_AWS_PROFILE_PATTERN, {
+    message: 'landing_zones[].scopes[].aws_profile must be an AWS profile name (letters, digits and _ - . + = @ ,), for example prod-readonly',
+  }).optional(),
+}).strict();
+
+export const SwaoYmlLzRegistrationSchema = z.object({
+  id: lzRegistrationId('landing_zones[].id'),
+  provider: z.string().regex(LZ_PROVIDER_ID_PATTERN, {
+    message: 'landing_zones[].provider must be a catalogue provider id, for example otc',
+  }),
+  display: z.string().min(1).optional(),
+  scopes: z.array(SwaoYmlLzScopeSchema).min(1),
+  // #4190 (Design 125 section 5.7): frameworks the LZ Live Assessment
+  // preselects for this landing zone, for example CLIENT_LZ_POLICY_BASELINE.
+  frameworks: z.array(z.string().min(1)).optional(),
+}).strict().superRefine((lz, ctx) => {
+  const seen = new Set<string>();
+  lz.scopes.forEach((s, i) => {
+    if (seen.has(s.id)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scopes', i, 'id'], message: `landing zone ${lz.id}: duplicate scope id ${s.id}` });
+    }
+    seen.add(s.id);
+  });
+  // #4459: aws_profile names a profile of the AWS config file; other providers have none.
+  if (lz.provider !== 'aws') {
+    lz.scopes.forEach((s, i) => {
+      if (s.aws_profile !== undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scopes', i, 'aws_profile'], message: `landing zone ${lz.id}: aws_profile is for AWS landing zones only (provider ${lz.provider})` });
+      }
+    });
+  }
+  const platforms = lz.scopes.filter((s) => s.kind === 'platform').length;
+  if (platforms > 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scopes'], message: `landing zone ${lz.id}: at most one platform scope is allowed (found ${platforms})` });
+  }
+  // #3975: one log archive per landing zone, and it is an account of the
+  // organisation (application), never the platform scope that reads through it.
+  const archives = lz.scopes.filter((s) => s.purpose === 'log-archive');
+  if (archives.length > 1) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scopes'], message: `landing zone ${lz.id}: at most one log-archive scope is allowed (found ${archives.length})` });
+  }
+  lz.scopes.forEach((s, i) => {
+    if (s.purpose === 'log-archive' && s.kind !== 'application') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['scopes', i, 'purpose'], message: `landing zone ${lz.id}: the log-archive scope ${s.id} must be kind application` });
+    }
+  });
+});
+
+// A bare value (no keyword context) counts as key material when it is a long
+// unbroken high-entropy token that mixes digits and letters. The charset covers
+// hex, base64 and the extra characters of AWS secret access keys (`/`, `+`) and
+// Azure client secrets (`~`, `.`); base rule as the LLM gateway connector
+// refusal (connector-schema.ts). Identifier-shaped values (lowercase letters,
+// digits, `_` and `-` with at least one separator, for example
+// eu-de_payments-platform-shared-services-2024) and 32-character lowercase hex
+// ids (OTC project and domain ids) are locators, not secrets, and are exempt.
+const LZ_IDENTIFIER_SHAPED_RE = /^[a-z0-9_-]+$/;
+const LZ_HEX32_ID_RE = /^[0-9a-f]{32}$/;
+// #4459: the AWS CLI names an SSO profile `<RoleName>-<12-digit account id>`
+// (`aws configure sso`), for example AdministratorAccess-123456789012; a
+// locator, not a secret. The account id suffix is exempt from the entropy
+// heuristic; the role name part is still checked, so a random token with an
+// account id appended is refused. The key shapes (AKIA/ASIA, PEM) and the
+// output-guard detector still apply.
+const LZ_AWS_ROLE_ACCOUNT_PROFILE_RE = /^([A-Za-z][A-Za-z0-9_.+=@,]*)-[0-9]{12}$/;
+function looksHighEntropyToken(value: string): boolean {
+  const roleAccount = LZ_AWS_ROLE_ACCOUNT_PROFILE_RE.exec(value);
+  if (roleAccount) return looksHighEntropyToken(roleAccount[1] ?? '');
+  if ((LZ_IDENTIFIER_SHAPED_RE.test(value) && /[_-]/.test(value)) || LZ_HEX32_ID_RE.test(value)) return false;
+  if (!/^[A-Za-z0-9+/=_.~-]{32,}$/.test(value)) return false;
+  if (!/[0-9]/.test(value) || !/[A-Za-z]/.test(value)) return false;
+  const freq = new Map<string, number>();
+  for (const ch of value) freq.set(ch, (freq.get(ch) ?? 0) + 1);
+  let bits = 0;
+  for (const count of freq.values()) {
+    const p = count / value.length;
+    bits -= p * Math.log2(p);
+  }
+  return bits >= 4.0;
+}
+
+// Key shapes the shared output guard does not cover: AWS temporary access key
+// ids (ASIA, next to AKIA), OTC access keys (20 upper-case alphanumerics with
+// digits and letters) and a PEM private key header without a complete body.
+const LZ_AWS_KEY_ID_RE = /(?:AKIA|ASIA)[0-9A-Z]{16}/;
+const LZ_OTC_AK_RE = /^[A-Z0-9]{20}$/;
+const LZ_PEM_HEADER_RE = /-----BEGIN [A-Z ]{0,20}PRIVATE KEY-----/;
+function looksKeyShaped(value: string): boolean {
+  if (LZ_AWS_KEY_ID_RE.test(value) || LZ_PEM_HEADER_RE.test(value)) return true;
+  return LZ_OTC_AK_RE.test(value) && /[0-9]/.test(value) && /[A-Z]/.test(value);
+}
+
+// Exported for the policy-baseline.yaml loader (#3862, Design 123 section 7.2):
+// the same secret-shape refusal for framework content. Returns paths only; a
+// caller reports the path, never the value (CLAUDE.md section 5.7).
+export function collectSecretShapedPaths(node: unknown, path: (string | number)[], hits: (string | number)[][]): void {
+  if (typeof node === 'string') {
+    if (maskSecretShapes(node).count > 0 || looksKeyShaped(node) || looksHighEntropyToken(node)) hits.push(path);
+    return;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((v, i) => collectSecretShapedPaths(v, [...path, i], hits));
+    return;
+  }
+  if (node && typeof node === 'object') {
+    for (const [k, v] of Object.entries(node)) collectSecretShapedPaths(v, [...path, k], hits);
+  }
+}
+
+export const SwaoYmlLandingZonesSchema = z.array(SwaoYmlLzRegistrationSchema).superRefine((lzs, ctx) => {
+  const seen = new Set<string>();
+  lzs.forEach((lz, i) => {
+    if (seen.has(lz.id)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'id'], message: `duplicate landing zone id ${lz.id}` });
+    }
+    seen.add(lz.id);
+  });
+  const hits: (string | number)[][] = [];
+  collectSecretShapedPaths(lzs, [], hits);
+  for (const p of hits) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: p,
+      message: 'landing_zones: secret-shaped value refused; credentials belong in the SWAO credential vault (lz:<lz-id>:<scope-id>:<field>), never in .swao.yml',
+    });
+  }
+});
+
 export const SwaoYmlSchema = z
   .object({
     source: z
@@ -395,6 +621,8 @@ export const SwaoYmlSchema = z
     context: SwaoYmlContextSchema.optional(),
     providers: SwaoYmlProvidersSchema.nullish(),
     mcp: SwaoYmlMcpSchema.optional(), // #3474
+    landing_zones: SwaoYmlLandingZonesSchema.optional(), // #3567, Design 120 section 6.1
+    service_portfolio: SwaoYmlServicePortfolioSchema.optional(), // #4190, Design 125 section 5.7
   })
   .passthrough();
 
@@ -403,8 +631,13 @@ export type SwaoYmlCrawl = z.infer<typeof SwaoYmlCrawlSchema>;
 export type SwaoYmlMcp = z.infer<typeof SwaoYmlMcpSchema>;
 export type SwaoYmlAssessment = z.infer<typeof SwaoYmlAssessmentSchema>;
 export type SwaoYmlLandingZone = z.infer<typeof SwaoYmlLandingZoneSchema>;
+export type SwaoYmlLzRegistration = z.infer<typeof SwaoYmlLzRegistrationSchema>;
+export type SwaoYmlLzScope = z.infer<typeof SwaoYmlLzScopeSchema>;
 export type SwaoYmlPublication = z.infer<typeof SwaoYmlPublicationSchema>;
 export type SwaoYmlWorkspace = z.infer<typeof SwaoYmlWorkspaceSchema>;
 export type SwaoYmlIac = z.infer<typeof SwaoYmlIacSchema>;
 export type SwaoYmlLlmAssessment = z.infer<typeof SwaoYmlLlmAssessmentSchema>;
 export type SwaoYmlLlmAssessmentLeg = z.infer<typeof SwaoYmlLlmAssessmentLegSchema>;
+export type SwaoYmlAssessmentLlm = z.infer<typeof SwaoYmlAssessmentLlmSchema>;
+export type SwaoYmlAssessmentLlmCandidate = z.infer<typeof SwaoYmlAssessmentLlmCandidateSchema>;
+export type SwaoYmlServicePortfolio = z.infer<typeof SwaoYmlServicePortfolioSchema>;

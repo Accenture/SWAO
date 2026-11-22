@@ -25,6 +25,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { readRunStatus } from '@swao/core';
 
 /** Minimal manifest shape the gate needs; tolerant of older manifests. */
 interface RunManifestLite {
@@ -40,19 +41,61 @@ interface RunManifestLite {
   }>;
 }
 
-export type PreconditionFailure = 'no-app' | 'no-runs' | 'no-completed-run';
+export type PreconditionFailure = 'no-app' | 'no-runs' | 'no-completed-run' | 'no-application-run';
+
+/** #4242: one completed Application Assessment run (newest first in applicationRuns). */
+export interface ApplicationRunRef {
+  runTs: string;
+  manifestPath: string;
+  /** Passes the run executed (the suite the LLM comparison refers to). */
+  passCount: number;
+  finishedAt: string;
+}
 
 export interface PreconditionResult {
   ok: boolean;
   reason?: PreconditionFailure;
   /** Operator-facing message; names the fix (092 s3.0). */
   message?: string;
-  /** Latest completed run -- the cost-preview token-history source. */
+  /** #4242: plain detail for the picker (which run type blocked the app). */
+  detail?: string;
+  /** Latest completed APPLICATION run (#4242): the suite reference and cost-preview history. */
   latestRun?: {
     runTs: string;
     manifestPath: string;
     passStats: NonNullable<RunManifestLite['pass_stats']>;
+    /** #4242: always 'application'; LZ Catalog, LZ Live, service and challenge runs are skipped. */
+    assessmentType: 'application';
+    passCount: number;
+    finishedAt: string;
   };
+  /** #4242: every completed application run, newest first. */
+  applicationRuns?: ApplicationRunRef[];
+}
+
+/**
+ * #4242: assessment type of a run directory. run-status.json first, then
+ * run-context.yaml (`assessment_type:`), then the run's files: wsp.yaml
+ * marks an application run, lz fit pass files an LZ Catalog run. A run
+ * without any marker counts as an application run (oldest layouts).
+ */
+export function runAssessmentType(runDir: string, manifest?: RunManifestLite | null): string {
+  try {
+    const st = readRunStatus(runDir);
+    if (st?.assessment_type) return st.assessment_type;
+  } catch { /* fall through */ }
+  try {
+    const ctx = readFileSync(join(runDir, 'run-context.yaml'), 'utf-8');
+    const m = ctx.match(/^assessment_type:\s*['"]?([A-Za-z-]+)/m);
+    if (m?.[1]) return m[1];
+  } catch { /* no run-context.yaml */ }
+  if (existsSync(join(runDir, 'wsp.yaml'))) return 'application';
+  try {
+    if (readdirSync(join(runDir, 'passes')).some((f) => /^lz-(catalogue-)?fit/.test(f))) return 'landing-zone-catalog';
+  } catch { /* no passes dir */ }
+  const executed = manifest?.passes_executed ?? [];
+  if (executed.length > 0 && executed.every((p) => /^lz[_-]/.test(p))) return 'landing-zone-catalog';
+  return 'application';
 }
 
 function readManifest(path: string): RunManifestLite | null {
@@ -106,20 +149,35 @@ export function checkAppAssessmentPrecondition(
   }
 
   // Run directories are ISO-timestamp-named; lexicographic sort = newest last.
+  // #4242: only APPLICATION runs count. An LZ Catalog run after the
+  // application run must not become the suite (2 lz_fit passes instead of 14).
+  const applicationRuns: ApplicationRunRef[] = [];
+  let latest: NonNullable<PreconditionResult['latestRun']> | undefined;
+  let newestOther: { runTs: string; type: string } | undefined;
   for (const runTs of [...runDirs].sort().reverse()) {
     const manifestPath = join(runsDir, runTs, 'run-manifest.json');
     if (!existsSync(manifestPath)) continue;
     const manifest = readManifest(manifestPath);
-    if (isCompleted(manifest)) {
-      return {
-        ok: true,
-        latestRun: {
-          runTs,
-          manifestPath,
-          passStats: manifest.pass_stats ?? [],
-        },
-      };
+    if (!isCompleted(manifest)) continue;
+    const type = runAssessmentType(join(runsDir, runTs), manifest);
+    if (type !== 'application') {
+      newestOther ??= { runTs, type };
+      continue;
     }
+    const ref: ApplicationRunRef = {
+      runTs, manifestPath, passCount: manifest.passes_executed?.length ?? 0, finishedAt: manifest.finished_at ?? '',
+    };
+    applicationRuns.push(ref);
+    latest ??= { ...ref, passStats: manifest.pass_stats ?? [], assessmentType: 'application' };
+  }
+  if (latest) return { ok: true, latestRun: latest, applicationRuns };
+  if (newestOther) {
+    return {
+      ok: false,
+      reason: 'no-application-run',
+      detail: `only ${newestOther.type} runs (newest ${newestOther.runTs})`,
+      message: `App "${appId}" has no completed Application Assessment run; its newest completed run (${newestOther.runTs}) is a ${newestOther.type} run. Run \`swao assess --app ${appId}\` first: the LLM Assessment compares the providers on the application pass suite (Design 092 s3.0).`,
+    };
   }
 
   return {

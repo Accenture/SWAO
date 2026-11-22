@@ -28,6 +28,8 @@ service_portfolio:
   glossary:                          # optional: Intake-Begriff -> englischer Begriff
     Sonderbereich Nord: Special Unit North
     Radiologie: Diagnostic Imaging   # überschreibt den Produktstandard (Radiology)
+  assess_top_n: 20                   # optional: Standardwert N für "Top N nach Risiko"
+  confirm_small_scope: true          # optional: false überspringt die Bestätigung für N <= 20
 ```
 
 | Schlüssel | Bedeutung |
@@ -37,8 +39,10 @@ service_portfolio:
 | `cost.currency` | Berichtswährung der Kostenschätzungen. Standard `EUR`; `USD` funktioniert ohne weitere Angaben (EZB-Referenzkurs). |
 | `cost.exchange_rates` | Weitere Währungen als Einheiten pro 1 EUR. Eine Währung ohne Kurs bricht den Scaffold mit einer klaren Fehlermeldung ab. Die Preise stammen aus der VM-Preistabelle, siehe [Kostenpreise](#kostenpreise). |
 | `glossary` | Optional. Ordnet Fachbereichs- und Funktionsbegriffe aus dem Intake englischen Begriffen zu (Intake-Begriff -> englischer Begriff). Siehe [Intake-Begriffe auf Englisch](#intake-begriffe-auf-englisch). |
+| `assess_top_n` | Optional. Standardwert N für "Top N nach Risiko" in der Terminal-Oberfläche und für `swao service assess` ohne `--top` (positive ganze Zahl; Standard 20). |
+| `confirm_small_scope` | Optional. `false` überspringt den Bestätigungsschritt für Top N mit N bis 20 und für "nur anlegen und recherchieren". "Alle Apps bewerten" und N über 20 werden immer bestätigt. |
 
-`swao service init` schreibt in diesem Block nur die Intake-Metadaten neu. Von Ihnen ergänzte Schlüssel, `cost` und `glossary`, bleiben bei einem erneuten Scaffold-Lauf erhalten.
+`swao service init` schreibt in diesem Block nur die Intake-Metadaten neu. Von Ihnen ergänzte Schlüssel wie `cost`, `glossary`, `assess_top_n` und `confirm_small_scope` bleiben bei einem erneuten Scaffold-Lauf erhalten.
 
 Das Vorhandensein des Blocks `service_portfolio:` kennzeichnet den Workspace als Service-Workspace: Davon hängen die Health-Check-Probes 19 bis 25, die Service-Artefakte im Support-Bundle sowie die TIME-, CVE- und EoL-Kennzeichen im Engagement-Hub ab.
 

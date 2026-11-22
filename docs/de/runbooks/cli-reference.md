@@ -14,6 +14,7 @@ Schnellreferenz für alle SWAO-Befehle. Jeder Abschnitt enthält die Syntax, wic
 | `swao publish` | Berichtsgalerie im Browser öffnen oder als HTML exportieren |
 | `swao init` | Neuen Workspace oder neue App scaffolden |
 | `swao mcp` | MCP-HTTP-Server starten |
+| `swao lz` | Landing-Zone-Kataloge und Live-Landing-Zones (verbinden, prüfen, scannen) |
 | `swao license` | Lizenzschlüssel und Stufenstatus verwalten |
 | `swao migrate-config` | `.swao.yml` auf eine neuere Schema-Version migrieren |
 
@@ -39,6 +40,7 @@ swao health-check [--verbose]
 | Flag | Beschreibung |
 |---|---|
 | `--verbose` | Detaillierte Prüfpunkt-Ausgabe einschließlich Teilprüfungen ausgeben |
+| `--type <art>` | Nur die allgemeinen Prüfungen und die einer Bewertungsart: `generic`, `application`, `service`, `lz-catalog`, `lz-live`, `llm` |
 
 ```bash
 # Basic health check
@@ -46,6 +48,19 @@ swao health-check
 
 # With expanded probe output
 swao health-check --verbose
+
+# Eine Bewertungsart
+swao health-check --type lz-live
+```
+
+## swao setup
+
+Öffnet den Setup-Assistenten. `--type <art>` öffnet das Setup einer Bewertungsart; mit `--non-interactive` (oder ohne Terminal) führt SWAO den Health Check dieser Art aus, speichert ihren Zustand in `workspace.setup_state`, gibt die fehlgeschlagenen und gewarnten Prüfungen und die fehlenden Punkte aus und endet mit Exit-Code 1, wenn die Art Aufmerksamkeit braucht. Siehe [Workspace-Setup](/de/workspace-setup).
+
+```bash
+swao setup
+swao setup --type application
+swao setup --type service --non-interactive --json
 ```
 
 Eine vollständige Erklärung der einzelnen Prüfpunkte findet sich unter [Doctor-Ausgabe verstehen](./doctor-output.md).
@@ -146,6 +161,7 @@ swao init [--app <id>] [--workspace <path>]
 | `--workspace <path>` | Zielverzeichnis (Standard: aktuelles Verzeichnis) |
 | `--interactive` | Interaktiven TUI-Setup-Assistenten starten |
 | `--reconfigure` | Workspace-Scaffolds auffrischen (Community-Framework-Spiegel, Power-BI-Vorlagen sofern lizenziert, `.gitignore`); ohne `--name` bleibt `apps/` unverändert und es wird keine App angelegt. Mit `--name <app-id>` wird zusätzlich das Scaffold dieser App aufgefrischt, ohne ihre `.swao.yml` zu überschreiben |
+| `--no-save-default` | Den Workspace nicht als gespeicherten Standard-Workspace eintragen (`~/.config/swao/config.json`, letzter Rückfall des MCP-Servers); ohne die Option meldet `swao init` eine Änderung des Standards (alter Pfad -> neuer Pfad) |
 
 ```bash
 # Scaffold a new workspace in the current directory
@@ -250,9 +266,34 @@ Den vollständigen Einrichtungsleitfaden finden Sie unter [MCP-Server-Integratio
 
 ---
 
+## swao lz
+
+Landing Zones: die mitgelieferten und Workspace-Kataloge sowie Live-Landing-Zones.
+`swao lz catalogue list|show|copy|new|update` arbeitet mit den Katalogen (siehe
+[Landing-Zone-Katalog-Bewertung](/de/assessment/landing-zone)).
+`swao lz connect|probe|list|remove` registriert eine bereitgestellte Landing Zone,
+speichert ihre Zugangsdaten im Vault als `lz:<lz-id>:<scope-id>:<feld>` und prüft, dass sie
+nur lesen können. `swao lz scan --mode live` liest ihre Scopes in einen Ordner, und
+`swao lz diff` vergleicht zwei Live-Läufe (beide Consultant). Danach folgen `swao assess --type landing-zone-live --lz <lz-id>` und
+`swao publish --lz-live <lz-id>`; siehe
+[Landing-Zone-Live-Bewertung](/de/assessment/landing-zone-live).
+
+```bash
+swao lz connect otc-prod --provider otc --scope platform --kind platform --auth iam-password-token --region eu-de --credentials-file otc-prod.creds
+swao lz list
+swao lz probe otc-prod
+```
+
+---
+
 ## swao license
 
 Lizenzschlüssel verwalten und Stufenstatus prüfen.
+
+Exit-Codes der Lizenzsperren: Ein Befehl, der eine höhere Stufe braucht, gibt den
+`[LICENSE]`-Block mit der nötigen Lizenz aus und endet mit Exit-Code 2 (ADR-0055). Ein
+ausgeschöpftes Bewertungskontingent endet ebenfalls mit 2, eine ungültige Lizenzdatei
+mit 3.
 
 ```
 swao license <subcommand> [options]

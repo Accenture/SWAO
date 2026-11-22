@@ -185,3 +185,34 @@ describe('HealthCheckScreen -- TU-06: failing check visibility', () => {
     expect(lastFrame() ?? '').toContain('git');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #4230 (Design 126 section 7.8): an open guidance box owns Esc only
+// ---------------------------------------------------------------------------
+describe('HealthCheckScreen -- #4230: keys with the guidance box open', () => {
+  let fakeChild: ReturnType<typeof makeFakeChild>;
+
+  beforeEach(() => {
+    fakeChild = makeFakeChild();
+    vi.mocked(cp.spawn).mockReturnValue(fakeChild as unknown as ReturnType<typeof cp.spawn>);
+  });
+
+  it('Esc closes the open box first; Enter finishes with the box open', async () => {
+    const onBack = vi.fn();
+    const { stdin } = render(<HealthCheckScreen onBack={onBack} version="0.0.0-test" />);
+    await new Promise<void>(r => setTimeout(r, 60));
+    fakeChild.stdout.emit('data', Buffer.from(ALL_GREEN_LINES));
+    fakeChild.emit('close', 0);
+    await new Promise<void>(r => setTimeout(r, 100));
+    stdin.write('\u0007'); // Ctrl+G opens the box
+    await new Promise<void>(r => setTimeout(r, 80));
+    stdin.write('\u001B'); // the box takes Esc
+    await new Promise<void>(r => setTimeout(r, 80));
+    expect(onBack).not.toHaveBeenCalled();
+    stdin.write('\u0007'); // open again
+    await new Promise<void>(r => setTimeout(r, 80));
+    stdin.write('\r'); // Enter reaches the screen
+    await new Promise<void>(r => setTimeout(r, 80));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+});

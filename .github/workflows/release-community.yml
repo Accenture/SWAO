@@ -16,7 +16,7 @@ permissions:
 jobs:
   attach-community-assets:
     name: Attach Community binaries to GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned (#3845): release job; images move only by a planned change
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -105,7 +105,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
+          - runner: ubuntu-24.04  # pinned (#3845): release job; images move only by a planned change
             platform: linux/amd64
             arch: amd64
             binary: swao-community-linux-x64
@@ -158,7 +158,7 @@ jobs:
 
   publish-docker-community-manifest:
     needs: publish-docker-community
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned (#3845): release job; images move only by a planned change
     timeout-minutes: 5
     permissions:
       contents: read

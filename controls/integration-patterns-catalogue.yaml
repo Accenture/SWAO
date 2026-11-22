@@ -18,10 +18,10 @@ brokers:
     type: event_streaming
     sovereignty: available
     sovereign_equivalent:
-      - "Self-hosted Kafka on STACKIT CCE / OTC CCE"
-      - "OTC DMS Kafka (managed Kafka service)"
+      - "Self-hosted Kafka on STACKIT CCE / T Cloud Public CCE"
+      - "T Cloud Public DMS Kafka (managed Kafka service)"
     migration_effort: moderate
-    notes: "Kafka is open source (Apache 2.0). Self-hosted on sovereign Kubernetes is straightforward. OTC DMS provides a managed Kafka-compatible service."
+    notes: "Kafka is open source (Apache 2.0). Self-hosted on sovereign Kubernetes is straightforward. T Cloud Public DMS provides a managed Kafka-compatible service."
 
   - name: rabbitmq
     display_name: "RabbitMQ"
@@ -45,7 +45,7 @@ brokers:
     type: async_queue
     sovereignty: available
     sovereign_equivalent:
-      - "BullMQ on STACKIT Redis / OTC DCS Valkey"
+      - "BullMQ on STACKIT Redis / T Cloud Public DCS Valkey"
     migration_effort: trivial
     notes: "Bull/BullMQ is Redis-backed. Migrates transparently to any Redis-compatible service (Valkey, STACKIT Redis). No broker replacement required."
 
@@ -58,10 +58,10 @@ brokers:
     type: managed_queue
     sovereignty: not_available
     sovereign_equivalent:
-      - "OTC DMS (Distributed Message Service)"
+      - "T Cloud Public DMS (Distributed Message Service)"
       - "Self-hosted RabbitMQ or Kafka"
     migration_effort: moderate
-    notes: "AWS SQS/SNS are proprietary managed services. Code must be refactored to use a sovereign-compatible message broker. OTC DMS provides Kafka-compatible APIs."
+    notes: "AWS SQS/SNS are proprietary managed services. Code must be refactored to use a sovereign-compatible message broker. T Cloud Public DMS provides Kafka-compatible APIs."
 
   - name: azure_service_bus
     display_name: "Azure Service Bus"
@@ -72,7 +72,7 @@ brokers:
     sovereignty: not_available
     sovereign_equivalent:
       - "Self-hosted RabbitMQ or Kafka"
-      - "OTC DMS"
+      - "T Cloud Public DMS"
     migration_effort: moderate
     notes: "Azure Service Bus is a proprietary managed service. Code must be refactored. AMQP 1.0 compatibility may reduce effort with RabbitMQ target."
 
@@ -85,7 +85,7 @@ brokers:
     sovereignty: not_available
     sovereign_equivalent:
       - "Self-hosted Kafka"
-      - "OTC DMS Kafka"
+      - "T Cloud Public DMS Kafka"
     migration_effort: moderate
     notes: "Google Pub/Sub is US-controlled. No sovereign equivalent. Refactor to Kafka or RabbitMQ required."
 
@@ -99,7 +99,7 @@ brokers:
     sovereign_equivalent:
       - "VM-based IBM MQ BYOL on sovereign IaaS"
     migration_effort: high
-    notes: "IBM MQ is a tier_1_blocker (legacy-indicators-catalogue). Commercial licence required. No managed sovereign equivalent. VM BYOL on OTC/STACKIT IaaS is the only sovereign path. Migration to Kafka or RabbitMQ requires significant refactor."
+    notes: "IBM MQ is a tier_1_blocker (legacy-indicators-catalogue). Commercial licence required. No managed sovereign equivalent. VM BYOL on T Cloud Public/STACKIT IaaS is the only sovereign path. Migration to Kafka or RabbitMQ requires significant refactor."
     tier: tier_1_blocker
 
   - name: tibco
@@ -152,7 +152,7 @@ esbs:
     sovereign_equivalent:
       - "Self-hosted Apache Camel on sovereign Kubernetes (Camel K)"
     migration_effort: low
-    notes: "Apache Camel is Apache-2.0 licensed. Camel K (Kubernetes operator) allows self-hosted deployment on OTC/STACKIT CCE."
+    notes: "Apache Camel is Apache-2.0 licensed. Camel K (Kubernetes operator) allows self-hosted deployment on T Cloud Public/STACKIT CCE."
 
   - name: wso2
     display_name: "WSO2 API Manager / ESB"

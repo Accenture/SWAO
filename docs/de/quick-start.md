@@ -38,7 +38,7 @@ Verifizieren:
 
 ```bash
 swao --version
-# SWAO -- Sovereign Workload Assessment & Onboarding v0.11.2 (Community)
+# SWAO, Sovereign Workload Assessment and Onboarding v0.11.2 (Community)
 ```
 
 ---
@@ -78,10 +78,11 @@ Wählen Sie **1. Workspace Setup**. Der Assistent führt durch diese Schritte:
 1. **Workspace**: Engagement-Name, Kundenkürzel, verantwortliche Person und Workspace-Verzeichnis (z.B. `mein-engagement`)
 2. **LLM-Anbieter**: Anthropic, OpenAI, Amazon Bedrock Gateway, Ollama oder Offline-Stub
 3. **Zugangsdaten**: der API-Schlüssel des gewählten Anbieters
-4. **Health Check**, danach die optionalen Integrationen **Claude Desktop** und **Playwright**
+4. Die optionalen Schritte **LZ-Verbindungen**, **MCP-Client** und **Playwright** sowie die Einstellung **Testcode**
+5. **Health Check** der fertigen Konfiguration, danach **Fertig** mit dem Ergebnis
 
-Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere kopieren Sie jederzeit mit
-`swao framework install <ID>` in den Workspace (`swao framework list` zeigt die IDs); die Rahmenwerke je App
+Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere kopieren Sie jederzeit von
+[GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) nach `wsp/inputs/catalogs/community/` (`swao framework list` listet die Rahmenwerke im Workspace); die Rahmenwerke je App
 wählen Sie beim Ausführen der Bewertung.
 
 ### Schritt 2: Health Check
@@ -127,7 +128,8 @@ In Power BI Desktop öffnen, `SWAOExportPath` auf den `star/`-Ordner setzen, **L
 ```bash
 swao init --name meine-app
 swao credential set anthropic-api-key <ihr-api-schluessel>
-swao framework install GDPR
+# Ordner gdpr von github.com/Accenture/SWAO/tree/main/community-frameworks
+# nach wsp/inputs/catalogs/community/gdpr/ kopieren
 swao regime-select --app meine-app --regimes GDPR
 swao health-check
 swao assess --app meine-app

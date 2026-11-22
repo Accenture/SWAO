@@ -208,7 +208,7 @@ providers:
   # ---------------------------------------------------------------------------
 
   - id: otc_de_sovereign
-    name: "Open Telekom Cloud (T-Systems / Deutsche Telekom)"
+    name: "T Cloud Public, formerly Open Telekom Cloud (T-Systems / Deutsche Telekom)"
     type: dedicated_sovereign
     jurisdiction: DE
     description: >
@@ -315,13 +315,13 @@ providers:
       proprietary_apis:
         - service: serverless
           risk: medium
-          migration_path: "FunctionGraph uses OpenFaaS-inspired but OTC-specific trigger model; rewrite to standard container or Knative required"
+          migration_path: "FunctionGraph uses an OpenFaaS-inspired trigger model specific to T Cloud Public; rewrite to standard container or Knative required"
         - service: secrets_management
           risk: low
-          migration_path: "DEW Secret Manager API is OTC-specific; migrating to HashiCorp Vault or another KMS requires SDK swap"
+          migration_path: "DEW Secret Manager API is specific to T Cloud Public; migrating to HashiCorp Vault or another KMS requires SDK swap"
       data_egress_risk: low
       notes: >
-        OTC is built on OpenStack; most IaaS APIs are OpenStack-standard. S3-compatible
+        T Cloud Public is built on OpenStack; most IaaS APIs are OpenStack-standard. S3-compatible
         object storage and standard K8s reduce lock-in significantly. FunctionGraph is the
         main proprietary surface. Broader PaaS breadth than STACKIT means more services
         to migrate if switching providers, but each is individually interoperable.
@@ -439,7 +439,7 @@ providers:
       supported: true
       platform_identifier: "ionos-de-fra-01"
       building_blocks_available: [kubernetes, postgresql, networking]
-      notes: "Partial integration; fewer Building Blocks than STACKIT or OTC"
+      notes: "Partial integration; fewer Building Blocks than STACKIT or T Cloud Public"
 
     vendor_lock_in:
       overall_risk: low
@@ -1283,7 +1283,7 @@ providers:
       exclusive_capabilities:
         - capability: "Amazon Comprehend Medical"
           risk: critical
-          note: "The only managed medical NLP service available in eu-central-1 with HIPAA BAA. No equivalent exists on any EU sovereign provider. Workloads depending on Comprehend Medical CANNOT migrate to STACKIT, OTC, or any dedicated sovereign provider without a full ML rearchitect or self-hosted model deployment."
+          note: "The only managed medical NLP service available in eu-central-1 with HIPAA BAA. No equivalent exists on any EU sovereign provider. Workloads depending on Comprehend Medical CANNOT migrate to STACKIT, T Cloud Public, or any dedicated sovereign provider without a full ML rearchitect or self-hosted model deployment."
         - capability: "Amazon Bedrock (foundation model API)"
           risk: high
           note: "AWS-exclusive managed foundation model API covering multiple LLM providers (Anthropic, Meta, Mistral) under AWS contract terms. No equivalent managed model gateway on EU sovereign providers."
@@ -1912,14 +1912,14 @@ providers:
       - "https://contabo.com/en/legal/gdpr/"
 
   - id: t_systems_de_sovereign
-    name: "T-Systems Open Telekom Cloud (OTC) -- Deutsche Telekom Sovereign"
+    name: "T-Systems T Cloud Public, formerly Open Telekom Cloud: Deutsche Telekom Sovereign"
     type: dedicated_sovereign
     jurisdiction: DE
     description: >
       T-Systems International (wholly owned Deutsche Telekom subsidiary) offers a
-      sovereign variant of Open Telekom Cloud (OTC) with enhanced compliance features
+      sovereign variant of T Cloud Public (formerly Open Telekom Cloud) with enhanced compliance features
       for German federal government and regulated industries. BSI C5 Type II attested.
-      This entry covers the T-Systems Sovereign variant; the base OTC entry covers
+      This entry covers the T-Systems Sovereign variant; the base T Cloud Public entry covers
       the standard public cloud.
 
     residency:

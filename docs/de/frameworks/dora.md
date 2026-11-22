@@ -8,108 +8,105 @@ Diese Seite beschreibt das Community-Rahmenwerk `DORA`, wie es mit SWAO ausgelie
 |---|---|
 | Framework-ID (für `regimes_active`) | `DORA` |
 | Herausgeber | Europäische Union (Verordnung (EU) 2022/2554) |
-| Version | 2025-01-17 |
-| Status | Im Katalog nicht deklariert |
-| SWAO-Katalogversion | 1.0.0 |
-| Controls gesamt | 31 |
+| Version | 2025-01-17 (Geltungsbeginn) |
+| Abgedeckte Level-2-Rechtsakte | Delegierte Verordnungen (EU) 2024/1774, 2024/1772, 2024/1773, 2025/301, 2025/532, 2025/1190; Durchführungsverordnungen (EU) 2024/2956, 2025/302 |
+| SWAO-Katalogversion | 2.0.0 |
+| Controls gesamt | 55 |
 | Bewertungsmodus | `binary` (deklariert) |
-| Assessment-Typen (Metadaten) | `app`, `aud` |
-| Lizenz und Weiterverbreitung | DORA ist ein EU-Rechtsakt und gemäß den EUR-Lex-Bedingungen weiterverwendbar. Die Control-Beschreibungen geben die Verordnung sinngemäß wieder und sind keine Rechtsberatung; ziehen Sie Rechtsberatung und Ihre zuständige Aufsichtsbehörde hinzu. |
-| Zuletzt geprüft | 2026-09-21 |
+| Assessment-Typen (Metadaten) | `app`, `aud`, `lz` |
+| Lizenz und Weiterverbreitung | DORA und die Level-2-Rechtsakte sind EU-Rechtsakte und gemäß den EUR-Lex-Bedingungen weiterverwendbar. Die Control-Beschreibungen geben den Rechtstext sinngemäß wieder und sind keine Rechtsberatung; ziehen Sie Rechtsberatung und Ihre zuständige Aufsichtsbehörde hinzu. |
+| Zuletzt geprüft | 2026-11-06 |
 | Ordner | `dora` |
 
 ## Worum es geht
 
-DORA (Verordnung (EU) 2022/2554) ist eine EU-Verordnung zur digitalen operationalen Resilienz des Finanzsektors. Sie gilt seit dem 17. Januar 2025 und ist in allen Mitgliedstaaten unmittelbar verbindlich. Sie umfasst IKT-Risikomanagement, Behandlung und Meldung IKT-bezogener Vorfälle, Tests der digitalen operationalen Resilienz, Management des IKT-Drittparteienrisikos und Informationsaustausch.
+DORA (Verordnung (EU) 2022/2554) ist eine EU-Verordnung zur digitalen operationalen Resilienz des Finanzsektors. Sie ist am 16. Januar 2023 in Kraft getreten, gilt seit dem 17. Januar 2025 und ist in allen Mitgliedstaaten unmittelbar verbindlich. Sie umfasst IKT-Risikomanagement, Behandlung und Meldung IKT-bezogener Vorfälle, Tests der digitalen operationalen Resilienz, das IKT-Drittparteienrisiko und den Informationsaustausch. Acht Level-2-Rechtsakte regeln die Einzelheiten; der SWAO-Katalog zitiert sie dort, wo sie gelten.
 
-Der SWAO-Katalog enthält 31 Controls in den fünf Säulen von DORA, benannt nach Artikeln (zum Beispiel `DORA_Art_9_1` für Artikel 9).
+Jedes Control zitiert Artikel, Absatz und Buchstaben der DORA (`regulatory_basis`, `official_control_id`) und, wo einschlägig, den Artikel des Level-2-Rechtsakts. Die IDs nennen den Artikel (`DORA_Art_<Artikel>_<n>`); die Zahl am Ende ist eine laufende Nummer, nicht der Absatz.
 
 ## Wer es in SWAO einsetzt und wann
 
-- Banken, Versicherer, Wertpapierfirmen, Zahlungsinstitute und andere Finanzunternehmen in der EU (Hinweise im Katalog: `financial_services`, `banking`, `insurance`, `payment_institution`, `investment_firm`, `eu_critical_infrastructure`).
+- Banken, Versicherer, Wertpapierfirmen, Zahlungsinstitute und andere Finanzunternehmen in der EU (Hinweise im Katalog: `financial_services`, `banking`, `insurance`, `payment_institution`, `investment_firm`).
 - IKT-Drittdienstleister, die EU-Finanzunternehmen bedienen und die Übereinstimmung mit den DORA-Pflichten ihrer Kunden zeigen müssen.
-- DORA-Readiness- und Gap-Analysen für Workloads, die in die Cloud wechseln.
+- DORA-Readiness- und Gap-Analysen für Workloads, die in die Cloud wechseln, und für deren Landing Zone.
 
 ## Was SWAO prüft
 
-Die Controls werden in [Pass 11 (Compliance-Bewertung)](/de/passes/11-comp) bewertet. Der Pass liest die Liste `assessment.regimes_active` aus der `.swao.yml` der App, lädt den Katalog und sendet die Controls in Paketen zu je 20 an das konfigurierte LLM. Für jedes Control erhält das LLM ID, Titel, Beschreibung und Standard-Schweregrad sowie alle Signale, die die vorherigen Passes dieses Laufs erzeugt haben. Das LLM gibt je Control eines von fünf Ergebnissen zurück:
+Die Controls werden in [Pass 11 (Compliance-Bewertung)](/de/passes/11-comp) bewertet. Der Pass liest `assessment.regimes_active` aus der `.swao.yml` der App, lädt den Katalog und sendet die Controls in Paketen zu je 20 zusammen mit den Signalen des Laufs an das konfigurierte LLM. Je Control ergibt sich `SATISFIED`, `PARTIAL`, `GAP`, `UNKNOWN` oder `N_A`. Controls, deren `applies_when` nicht zum `framework_context` der App passt, sind per Regel N/A.
 
-| Ergebnis | Bedeutung |
-|---|---|
-| `SATISFIED` | Die Signale bestätigen, dass das Control erfüllt ist. |
-| `PARTIAL` | Einige Elemente sind vorhanden, es bleiben Lücken. |
-| `GAP` | Die Signale zeigen, dass das Control nicht erfüllt ist. |
-| `UNKNOWN` | Kein Signal spricht für oder gegen das Control. |
-| `N_A` | Das Control gilt für diesen Workload nicht (mit Begründung). |
+### Nachweise: Workload, Landing Zone und organisatorische Dokumente
 
-Zitierte Signal-IDs werden gegen die tatsächlich vorhandenen Signale geprüft; erfundene IDs werden verworfen. Ohne konfigurierten LLM-Anbieter wird jedes Control als `UNKNOWN` ausgewiesen.
+| Nachweisart (Tag) | Controls | Bedeutung |
+|---|---|---|
+| `evidence.workload` | 2 | Code-, Konfigurations- oder Landing-Zone-Nachweise |
+| `evidence.both` | 18 | Technische Nachweise, ergänzt durch Dokumente |
+| `evidence.organisational` | 35 | Nur Dokumente (`layer: governance`) |
 
-### Welche Nachweise die Controls erwarten
+Organisatorische Controls beziehen ihre Nachweise aus dem Ingestion-Ordner der App. Legen Sie die Dokumente in `apps/<app-id>/ingestion/` ab; Pass 00 kopiert sie nach `wsp/inputs/` und extrahiert den Text, und [Pass 04 (CTX)](/de/passes/04-ctx) macht daraus Signale, die die Datei zitieren. Ein Control mit `layer: governance` ist nur dann `SATISFIED` oder `PARTIAL`, wenn ein zitiertes Signal eines der Dokumente zitiert, die das Control erwartet; sonst ist es `UNKNOWN` (nicht bewertet, unzureichende Nachweise) mit der Liste der erwarteten Dokumente. Fehlende Nachweise ergeben nie ein Bestanden.
 
-Jedes Control deklariert im Feld `evidence_basis`, auf welcher Art von Nachweis es beruht. Diese Angabe beschreibt den erwarteten Nachweis für die prüfende Person; das Ergebnis selbst bestimmt das LLM anhand der Signale. Für dieses Rahmenwerk ergibt sich folgende Aufteilung:
-
-| Nachweisart | Controls |
-|---|---|
-| Nur Code- und Konfigurationssignale (`signal_prefix`, `local_signal_regex`) | 5 |
-| Signale und Dokumente kombiniert | 4 |
-| Nur Dokumente oder Fragebögen (`context_input`, `manual_questionnaire`) | 22 |
-| Davon als reines Audit-Control gekennzeichnet (`assessment_type_scope: [aud]`) | 8 |
-| Als Verantwortung des Cloud-Anbieters gekennzeichnet (`csp_inherited: true`) | 0 |
+Ein Dokument gilt als erwartet, wenn sein Dateiname den Namen des erwarteten Inputs enthält, unabhängig von Groß- und Kleinschreibung und Trennzeichen, zum Beispiel `incident_classification_policy.pdf` oder `register_of_information.xlsx`. Die README des Rahmenwerks listet, welches Dokument welches Control erfüllt (`ict_risk_management_framework`, `incident_reporting_procedure`, `register_of_information`, `exit_plan`, `tlpt_plan_and_attestation` und weitere).
 
 ### Referenzierte Signalbereiche
 
-| Präfix | Controls | Quelle |
-|---|---|---|
-| `TF` | 3 | [Pass 06 (TF)](/de/passes/06-tf) |
-| `OBS` | 3 | Nachweisbereich Beobachtbarkeit, Logging und Monitoring; kein SWAO-Analysepass erzeugt Signale mit diesem Präfix |
-| `EGR` | 1 | [Pass 07 (EGR)](/de/passes/07-egr) |
-| `IAM` | 1 | Nachweisbereich Identität und Zugriff; kein SWAO-Analysepass erzeugt Signale mit diesem Präfix |
-| `CRYPTO` | 1 | [Pass 08 (CRYPTO)](/de/passes/08-crypto) |
-| `SBOM` | 1 | [Pass 05 (SBOM)](/de/passes/05-sbom) |
+| Präfix | Controls |
+|---|---|
+| `TF` | 16 |
+| `STATE` | 4 |
+| `LZR` | 4 |
+| `INV` | 3 |
+| `SBOM` | 3 |
+| `IAM` | 2 |
+| `CRYPTO` | 2 |
+| `MAL` | 2 |
+| `EGR`, `QUAL`, `DYN`, `SYNTH` | je 1 |
 
-### Beispiele
+### Landing-Zone-Assessments
 
-Controls mit Code- oder Konfigurationsnachweis:
-
-- `DORA_Art_7_1` ICT systems hardening and lifecycle management (`TF`)
-- `DORA_Art_7_2` Network topology and traffic segregation (`EGR`, `TF`)
-- `DORA_Art_9_1` Access control and privileged access management (`IAM`)
-
-Controls, die Dokumente benötigen:
-
-- `DORA_Art_5_1` Management body accountability for ICT risk
-- `DORA_Art_5_2` ICT strategy and budget oversight by management body
-
-Beispiele für reine Audit-Controls: `DORA_Art_17`, `DORA_Art_19`, `DORA_Art_24`.
-
-Dokumente legen Sie im Ordner `apps/<app-id>/wsp/inputs/` ab, damit [Pass 04 (CTX)](/de/passes/04-ctx) sie einliest und als Signale bereitstellt; siehe auch [Workspace einrichten](/de/workspace-setup). Fehlen sie, ist für dokumentenbasierte Controls `UNKNOWN` zu erwarten.
+DORA steht im Landing Zone Live Assessment zur Verfügung (`swao assess --type landing-zone-live --frameworks DORA`). Dort wird es je Service über `service-controls.yaml` bewertet: 18 Controls sind Capability-Tags zugeordnet (Verschlüsselung, Schlüssel und Zertifikate, Identitäten, Protokollierung und Überwachung, Netzsegmentierung, Backup und Wiederherstellung, Redundanz, Orte der Datenverarbeitung, Patching und Härtung, Änderungsmanagement, Exit). Die 8 organisatorischen Controls mit Bewertungstyp `lz` (DORA_Art_5_1, 5_2, 6, 6_3, 9_7, 11_1, 11_4, 16_1) werden aus den Dokumenten im Ingestion-Ordner der Landing Zone entschieden, `landing-zones/<lz-id>/ingestion/`, benannt nach den erwarteten Inputs wie bei einer App. Die Entscheidung beruht auf Namen und Lesbarkeit der Dokumente, nicht auf dem Inhalt: dokumentiert, teilweise dokumentiert oder nicht bewertet (siehe [Organisatorische Kontrollen](/de/assessment/landing-zone-live#organisatorische-kontrollen-ingestion-ordner)). Ein Application Assessment prüft den Inhalt und entscheidet die übrigen 27 organisatorischen Controls, die Anwendungs- und Audit-Bewertungen zugeordnet sind. Die 64 Zuordnungszeilen wurden am 2026-11-06 von einem Menschen geprüft (`confidence: curated`), einschließlich der KI-Capability-Tags `ml_training` und `ml_inference`.
 
 ## Aufbau der Controls
 
-Gruppenbezeichnungen und Control-Titel werden wie im Katalog (Englisch) wiedergegeben.
-
-| Gruppe | Controls | Beispiel-Controls |
+| Säule | Artikel | Controls |
 |---|---|---|
-| Pillar 1: ICT Risk Management | 18 | `DORA_Art_5_1` Management body accountability for ICT risk; `DORA_Art_5_2` ICT strategy and budget oversight by management body |
-| Pillar 2: ICT Incident Management and Reporting | 4 | `DORA_Art_15` ICT incident management process; `DORA_Art_16` ICT incident classification and major incident determination |
-| Pillar 3: Digital Operational Resilience Testing | 3 | `DORA_Art_24` Digital operational resilience testing programme; `DORA_Art_25` Vulnerability and penetration testing |
-| Pillar 4: ICT Third-party Risk Management | 5 | `DORA_Art_28_1` Third-party ICT risk strategy and oversight function; `DORA_Art_28_2` Register of ICT third-party contractual arrangements |
-| Pillar 5: Information Sharing | 1 | `DORA_Art_45` Voluntary cyber threat information sharing |
-| **Summe** | **31** | |
+| IKT-Risikomanagement | Art. 5 bis 16 | 32 |
+| Behandlung und Meldung IKT-bezogener Vorfälle | Art. 17 bis 23 | 8 |
+| Tests der digitalen operationalen Resilienz | Art. 24 bis 27 | 4 |
+| IKT-Drittparteienrisiko | Art. 28 bis 44 | 10 |
+| Informationsaustausch | Art. 45 | 1 |
+| **Gesamt** | | **55** |
 
-Standard-Schweregrade: critical 2, high 22, medium 6, low 1.
+Standard-Schweregrade: hoch 38, mittel 16, niedrig 1.
+
+Zahlen in den Controls stammen aus dem Rechtstext, zum Beispiel die Meldefristen der Delegierten Verordnung (EU) 2025/301 Art. 5 (Erstmeldung binnen 4 Stunden nach Einstufung als schwerwiegend und spätestens 24 Stunden nach Kenntnis, Zwischenmeldung binnen 72 Stunden, Abschlussmeldung binnen eines Monats nach der letzten Zwischenmeldung). Wo DORA einen Wert dem Unternehmen überlässt (Aufbewahrung von Protokollen, Backup-Häufigkeit, Patch-Fristen, RTO und RPO, Tests der Exit-Pläne), fragt das Control nach dem dokumentierten Wert des Unternehmens.
+
+### Verhältnismäßigkeit
+
+Drei Gruppen von Controls gelten nur für bestimmte Unternehmen und sind N/A, solange `framework_context` in der `.swao.yml` der App nichts anderes sagt:
+
+```yaml
+framework_context:
+  dora_simplified_framework: "true"   # Unternehmen nach Art. 16 Abs. 1: DORA_Art_16_1
+  dora_tlpt_required: "true"          # zu TLPT verpflichtete Unternehmen: DORA_Art_26, DORA_Art_27_1
+  dora_payment_entity: "true"         # Kredit-, Zahlungs-, Kontoinformations- und E-Geld-Institute: DORA_Art_23_1
+```
+
+### Korrigierte IDs (Katalog 1.0.0 zu 2.0.0)
+
+Sieben IDs des Katalogs 1.0.0 nannten den falschen Artikel. Sie wurden korrigiert; die neuen Controls führen die alte ID in `replaces:`, sodass Publikationen früherer Assessments sie weiter auflösen: `DORA_Art_7_2` zu `DORA_Art_9_4`, `DORA_Art_11_2` zu `DORA_Art_12_3`, `DORA_Art_15` zu `DORA_Art_17_1`, `DORA_Art_16` zu `DORA_Art_18_1`, `DORA_Art_17` zu `DORA_Art_19_1`, `DORA_Art_19` zu `DORA_Art_20_1`, `DORA_Art_31` zu `DORA_Art_30_2`.
 
 ## Cross-Mapping
 
-28 von 31 Controls tragen `maps_to`-Verweise auf Controls anderer Rahmenwerke. Die folgende Tabelle zählt die Verweise je Zielrahmenwerk. "Aufgelöst" bedeutet, dass die Ziel-ID als Control in einem mitgelieferten SWAO-Katalog existiert; "nicht aufgelöst" bedeutet, dass der Verweis auf Artikel- oder Klauselebene zielt oder eine ID-Schreibweise verwendet, die kein Katalog enthält.
+54 von 55 Controls tragen `maps_to`-Verweise. Alle Ziele existieren als Controls in den mitgelieferten Katalogen.
 
-| Zielrahmenwerk | Aufgelöste Verweise | Nicht aufgelöste Verweise |
+| Ziel-Rahmenwerk | Verweise | Verschiedene Ziel-Controls |
 |---|---|---|
-| `ISO_27001` | 39 | 0 |
+| `BSI_C5` | 55 | 40 |
+| `NIS2` | 48 | 38 |
+| `EUCS` | 46 | 37 |
+| `GDPR` | 10 | 7 |
+| `ISO_27001` (Anhang A; nicht im öffentlichen Download) | 56 | 39 |
 
-Umgekehrt verweisen Controls dieser Rahmenwerke auf Controls von DORA: `COBIT_5` (2).
-
-Zusätzlich nennen die Metadaten (`cross_mapping_hints`) folgende verwandte Rahmenwerke: `ISO_27001`, `NIS2`, `BSI_C5`, `SOC_2`, `GDPR`. Diese Liste ist ein Hinweis auf thematische Überschneidung, kein Control-Mapping.
+In der Gegenrichtung verweist `COBIT_5` auf `DORA_Art_6` und `DORA_Art_30`.
 
 ## Demo-Variante
 
@@ -118,25 +115,20 @@ Zusätzlich nennen die Metadaten (`cross_mapping_hints`) folgende verwandte Rahm
 | Framework-ID | `DORA_DEMO` |
 | Ordner | `dora-demo` |
 | Controls | 12 |
-| Katalogversion | 0.1.0 |
-| Zuletzt geprüft | 2026-09-21 |
 | In neuen Workspaces vorinstalliert | Nein |
 
-Die Demo-Variante enthält 12 Controls aus allen fünf Säulen und verwendet die artikelbasierten IDs des vollständigen Rahmenwerks (zum Beispiel `DORA_Art_9_1`, `DORA_Art_17`, `DORA_Art_30`). Sie ist für Live-Präsentationen gedacht; für echte Assessments verwenden Sie das vollständige DORA-Rahmenwerk. Die Demo-Controls enthalten keine `maps_to`-Einträge und keine `aud`-Kennzeichnung.
-
-Die Demo-Variante ist für Workshops, Schulungen und Präsentationen gedacht, bei denen ein kurzer Bericht wichtiger ist als vollständige Abdeckung. Aktivieren Sie sie mit ihrer eigenen ID, zum Beispiel `regimes_active: [DORA_DEMO]`.
+Die Demo-Variante ist eine Auswahl von 12 Controls für Live-Präsentationen; sie verwendet noch IDs des Katalogs 1.0.0. Für echte Assessments verwenden Sie das vollständige DORA-Rahmenwerk.
 
 ## Rahmenwerk beziehen oder anpassen
 
 - Quelle zum Ansehen und Kopieren: [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/dora](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/dora)
-- Demo-Variante: [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/dora-demo](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/dora-demo)
 - Übersicht aller Community-Rahmenwerke: [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
 
-Um das Rahmenwerk für ein einzelnes Projekt anzupassen, kopieren Sie den Ordner `dora` (mit `framework-meta.yaml` und `controls.yaml`) in den Workspace nach `wsp/inputs/catalogs/community/dora/` und bearbeiten Sie dort die Kopie. SWAO liest Kataloge für die Compliance-Bewertung aus diesem Verzeichnis; die Workspace-Kopie ist damit maßgeblich. Behalten Sie die `id` in `regime_meta` bei, damit `regimes_active` sie weiterhin findet, und prüfen Sie die Kopie anschließend mit dem [Health Check](/de/health-check).
+Kopieren Sie den Ordner `dora` aus dem [GitHub-Repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) nach `wsp/inputs/catalogs/community/dora/`. SWAO liest Kataloge aus diesem Verzeichnis; die Workspace-Kopie ist damit maßgeblich. Behalten Sie die `id` in `regime_meta` bei und prüfen Sie die Kopie mit dem [Health Check](/de/health-check).
 
 ## Aktivieren
 
-1. Stellen Sie sicher, dass der Ordner `dora` unter `wsp/inputs/catalogs/community/` im Workspace liegt (siehe oben). Neue Workspaces enthalten nach `swao init` nur die Demo-Rahmenwerke `gdpr-demo`, `ai-10-pillars-demo`, `nist-sp-800-66r2-demo` und `bsi-grundschutz-2023-demo`.
+1. Kopieren Sie den Ordner `dora` aus dem GitHub-Repository nach `wsp/inputs/catalogs/community/dora/` im Workspace.
 2. Tragen Sie die Framework-ID in die `.swao.yml` der App ein (`apps/<app-id>/.swao.yml`):
 
    ```yaml
@@ -144,18 +136,15 @@ Um das Rahmenwerk für ein einzelnes Projekt anzupassen, kopieren Sie den Ordner
      regimes_active: [DORA]
    ```
 
-   Mehrere Rahmenwerke werden als Liste angegeben, zum Beispiel `regimes_active: [DORA, GDPR]`. Alternativ schreibt `swao regime-select --app app-crm-01 --regimes "DORA"` denselben Eintrag.
-3. Führen Sie das [Application Assessment](/de/assessment/application) mit einem konfigurierten LLM aus.
-
-Pass 11 liest `regimes_active` aus der `.swao.yml` der App. Hat die App keine Liste, verwendet er die Liste in der `.swao.yml` im Workspace-Stammverzeichnis (die `swao regime-select` ohne `--app` schreibt); eine Liste in der App hat immer Vorrang. Fehlt der Katalog, erzeugt Pass 11 ein Signal `COMP-NN` mit dem Hinweis, dass kein Katalog gefunden wurde.
+3. Legen Sie die organisatorischen Dokumente, benannt nach den erwarteten Inputs, in `apps/<app-id>/ingestion/` ab.
+4. Führen Sie das [Application Assessment](/de/assessment/application) mit einem konfigurierten LLM aus. Für eine Landing Zone führen Sie das Landing Zone Live Assessment mit `--frameworks DORA` aus.
 
 ## Grenzen und Hinweise
 
-- Aufsichtliche Meldungen (Art. 17, 19), Resilienztests einschließlich TLPT (Art. 24 bis 26) sowie das Informationsregister und die Vertragsbestimmungen für IKT-Dienstleister (Art. 28 Abs. 2, 30, 31) sind als `aud` gekennzeichnet. SWAO kann sie im Code nicht beobachten; sie erfordern Prüfungs- oder Aufsichtsnachweise.
-- Die technischen Regulierungs- und Durchführungsstandards (RTS/ITS) der Europäischen Aufsichtsbehörden sind nicht als eigene Controls modelliert.
-- Säule 5 ist nur durch ein Control (Art. 45, Informationsaustausch) vertreten.
+- Jede Fundstelle wurde am 2026-11-06 gegen den EUR-Lex-Text der Verordnung und ihrer acht Level-2-Rechtsakte geprüft.
+- In Landing-Zone-Läufen werden organisatorische Controls nur nach Namen und Lesbarkeit der Dokumente entschieden (`landing-zones/<lz-id>/ingestion/`); den Inhalt prüft das Application Assessment.
 - Die Ergebnisse stammen von einem LLM, das Signale und Dokumente auswertet. Sie sind ein strukturierter Ausgangspunkt für die Prüfung durch Fachleute, kein Prüfurteil und keine Zertifizierung.
-- Die Control-Texte sind sinngemäße Zusammenfassungen. Maßgeblich ist immer die offizielle Quelle des Herausgebers.
+- Die Control-Texte sind sinngemäße Zusammenfassungen. Maßgeblich ist immer der amtliche Rechtstext.
 - Diese Seite und die SWAO-Ergebnisse sind keine Rechtsberatung.
 
 ## Verwandte Seiten

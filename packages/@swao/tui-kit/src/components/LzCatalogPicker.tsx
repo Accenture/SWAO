@@ -25,10 +25,13 @@
  * Unified label format + cursor-driven GuidanceBox (#1769).
  */
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Box, Text } from 'ink';
-import { MultiSelect } from './MultiSelect.js';
+import { MultiSelect, type MultiSelectOption } from './MultiSelect.js';
 import { GuidanceBox } from './GuidanceBox.js';
+import { useOptionGuidance, type GuidanceEntry } from './guidance-entry.js';
+import type { KeyHint } from './KeyHints.js';
+import { tone } from '../theme.js';
 
 export interface LzPickerOption {
   label: string;
@@ -105,6 +108,33 @@ export function applyLzCuratedLabels(
   });
 }
 
+/** Keys of the sovereignty framework picker, shown in the expanded guidance box. */
+export const LZ_FRAMEWORK_PICKER_KEYS: readonly KeyHint[] = [
+  { key: '↑↓', verb: 'select' }, { key: 'Space', verb: 'toggle' }, { key: 'A', verb: 'toggle', object: 'all' },
+  { key: 'Enter', verb: 'next' }, { key: '←', verb: 'back', object: 'to provider' }, { key: 'Esc', verb: 'abort' }, // #4255 (Design 126 section 7.4)
+];
+
+/** The step entry of the sovereignty framework picker (no framework highlighted). */
+export const LZ_FRAMEWORKS_STEP_GUIDANCE: GuidanceEntry = {
+  title: 'Sovereignty Frameworks',
+  what: 'Select which sovereignty frameworks to apply as a gate. Frameworks with sovereignty requirements (BSI C5, GDPR, HIPAA) actively block regions that do not meet their operator, residency, or certification rules. Frameworks without sovereignty requirements are included as compliance context gates but do not block any region. Enter with nothing selected to run without a gate (catalogue-level fit/gap only).',
+};
+
+/** #4230: the guidance entry of one sovereignty framework row. */
+export function lzFrameworkGuidanceEntry(o: LzPickerOption): GuidanceEntry {
+  return {
+    title: `${o.value}: ${o.name ?? o.value}`,
+    what: o.description ?? 'No description available in framework-meta.yaml.',
+    sections: [
+      { label: 'Authority', text: o.authority ?? 'not specified' },
+      { label: 'Controls', text: o.controlsCount != null ? `${o.controlsCount}` : 'unknown' },
+      { label: 'Sovereignty gate', text: o.gate_summary ?? 'no sovereignty requirements defined' },
+      { label: 'Folder', text: `community/${o.slug ?? o.value.toLowerCase()}/` },
+      ...(o.contributorName ? [{ label: 'Contributor', text: o.contributorName }] : []),
+    ],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -117,52 +147,30 @@ export function LzCatalogPicker({
   onGuidanceOpenChange,
   visibleCount,
 }: LzCatalogPickerProps): JSX.Element {
-  const [cursor, setCursor] = useState<string>('');
-  const activeFw = options.find(o => o.value === cursor);
+  // #4230: one box that follows the highlighted framework (per-option entries).
+  const { entry, onCursorChange } = useOptionGuidance(LZ_FRAMEWORKS_STEP_GUIDANCE);
+  const pickerOptions = useMemo<MultiSelectOption[]>(
+    () => options.map((o) => ({ label: o.label, value: o.value, guidance: lzFrameworkGuidanceEntry(o) })),
+    [options],
+  );
 
   return (
     <Box flexDirection="column">
-      <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
+      <Text>App: <Text {...tone('accent')}>{app}</Text> | CSP(s): <Text {...tone('accent')}>{providerLabel}</Text></Text>
       <Box marginTop={1}>
         <MultiSelect
-          label="Sovereignty frameworks (optional -- Enter with none selected = no gate)"
-          options={options}
+          label="Sovereignty frameworks (optional, Enter with none selected runs without a gate)"
+          options={pickerOptions}
           allowEmptyConfirm
           visibleCount={visibleCount}
-          onCursorChange={setCursor}
+          onCursorChange={onCursorChange}
           onConfirm={onConfirm}
         />
       </Box>
-      {options.length > 0 && !activeFw && (
-        <Box>
-          <Text dimColor>All installed community frameworks are listed. Frameworks with sovereignty requirements (e.g. BSI C5, GDPR) block non-compliant regions; others apply as compliance gates without regional blocking.</Text>
-        </Box>
-      )}
       {options.length === 0 && (
-        <Text color="yellow">No sovereignty frameworks found in wsp/inputs/catalogs/community/ -- press Enter to run without a gate.</Text>
+        <Text {...tone('warning')}>No sovereignty frameworks found in wsp/inputs/catalogs/community/; the run goes on without a gate.</Text>
       )}
-      {!activeFw ? (
-        <GuidanceBox
-          title="Sovereignty Frameworks"
-          what="Select which sovereignty frameworks to apply as a gate. Frameworks with sovereignty requirements (BSI C5, GDPR, HIPAA) actively block regions that do not meet their operator, residency, or certification rules. Frameworks without sovereignty requirements are included as compliance context gates but do not block any region. Enter with nothing selected to run without a gate (catalogue-level fit/gap only)."
-          affordances={['Up/Down -- move  |  Space -- toggle  |  A -- all  |  Enter -- confirm  |  Esc -- back to provider']}
-          onOpenChange={onGuidanceOpenChange}
-        />
-      ) : (
-        <GuidanceBox
-          title={`${activeFw.value} -- ${activeFw.name ?? activeFw.value}`}
-          what={activeFw.description ?? 'No description available in framework-meta.yaml.'}
-          details={[
-            { label: 'Authority',       value: activeFw.authority ?? 'not specified' },
-            { label: 'Controls',        value: activeFw.controlsCount != null ? `${activeFw.controlsCount}` : 'unknown' },
-            { label: 'Sovereignty gate', value: activeFw.gate_summary ?? 'no sovereignty requirements defined' },
-            { label: 'Folder',          value: `community/${activeFw.slug ?? activeFw.value.toLowerCase()}/` },
-            ...(activeFw.contributorName ? [{ label: 'Contributor', value: activeFw.contributorName }] : []),
-          ]}
-          affordances={['Space -- toggle  |  A -- all  |  Enter -- confirm  |  Esc -- back to provider']}
-          onOpenChange={onGuidanceOpenChange}
-        />
-      )}
+      <GuidanceBox entry={entry} keys={LZ_FRAMEWORK_PICKER_KEYS} onOpenChange={onGuidanceOpenChange} />
     </Box>
   );
 }

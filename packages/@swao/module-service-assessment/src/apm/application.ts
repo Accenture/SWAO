@@ -32,7 +32,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
-import { isRunUsable, readRunStatus, countSignalsBySeverity, sortSignalsBySeverity, normaliseComplianceOutcome, complianceScore, CodeHealthKpisSchema, type CodeHealthKpis, type TimeQuadrant } from '@swao/core';
+import { isRunUsable, readRunStatus, countSignalsBySeverity, sortSignalsBySeverity, normaliseComplianceOutcome, complianceScore, CodeHealthKpisSchema, sevenRToTime, type CodeHealthKpis, type TimeQuadrant } from '@swao/core';
 import { APM_DOMAINS, type ApmDomain, type ApmFramework } from './framework.js';
 
 type Rec = Record<string, any>;
@@ -323,23 +323,9 @@ export function scoreApplicationApp(e: ApplicationEvidence, fw: ApmFramework): {
 
 // ---------------------------------------------------------------- TIME (Design 103 §22.3)
 
-/** 7R verdict to TIME quadrant. Keys are normalised (lower case, letters only). */
-export const SEVEN_R_TIME: Readonly<Record<string, TimeQuadrant>> = {
-  retire: 'Eliminate',
-  retain: 'Tolerate',
-  rehost: 'Migrate',
-  relocate: 'Migrate',
-  replatform: 'Migrate',
-  repurchase: 'Migrate',
-  refactor: 'Invest',
-  rearchitect: 'Invest',
-  rebuild: 'Invest',
-};
-
-export function sevenRToTime(label: string | null | undefined): TimeQuadrant | null {
-  if (!label) return null;
-  return SEVEN_R_TIME[label.toLowerCase().replace(/[^a-z]/g, '')] ?? null;
-}
+// #4287 (D-9): the 7R to TIME matching lives in @swao/core (seven-r-time.ts), the
+// single source for every artefact; re-exported here for existing importers.
+export { SEVEN_R_TIME, sevenRToTime } from '@swao/core';
 
 /** Evidence the application TIME decision rests on; `seven_r` missing makes it insufficient on its own. */
 export function applicationEvidenceGaps(e: ApplicationEvidence): string[] {

@@ -146,6 +146,7 @@ controls:
       - ISO_27001_A.5.1
       - BSI_C5_OIS-01
       - BSI_C5_OIS-03
+      - DORA_Art_9_7
     references:
       - "BSI Orientierungshilfe §8a BSIG"
 
@@ -210,6 +211,7 @@ controls:
       - ISO_27001_A.8.20
       - ISO_27001_A.8.22
       - BSI_C5_COS-04
+      - DORA_Art_9_4
     references:
       - "BSI Orientierungshilfe §8a BSIG -- Network Security"
 
@@ -252,6 +254,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.8
       - BSI_C5_OPS-02
+      - DORA_Art_9_3
     references:
       - "BSI Orientierungshilfe §8a BSIG -- Patch Management"
 
@@ -344,11 +347,13 @@ controls:
       analysts with documented response procedures and defined escalation paths.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.15
       - ISO_27001_A.8.16
       - BSI_C5_SIM-01
+      - DORA_Art_10_1
     references:
       - "BSI Orientierungshilfe §8a BSIG -- Monitoring and Detection"
 
@@ -364,7 +369,8 @@ controls:
       forensic investigation.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.15
       - BSI_C5_SIM-02
@@ -525,6 +531,7 @@ controls:
       - ISO_27001_A.5.29
       - ISO_27001_A.5.30
       - BSI_C5_AVL-01
+      - DORA_Art_11_1
     references:
       - "BSIG §8a -- state of the art"
       - "KRITIS-DachG §13 -- Resilience planning"
@@ -562,6 +569,7 @@ controls:
     maps_to:
       - ISO_27001_A.8.13
       - BSI_C5_AVL-04
+      - DORA_Art_12_1
     references:
       - "BSI Orientierungshilfe §8a BSIG -- Backup"
 
@@ -794,6 +802,7 @@ controls:
       - context_input: solution_arch
     maps_to:
       - ISO_27001_A.5.35
+      - DORA_Art_6
     references:
       - "§54 ZAG -- Zahlungsdiensteaufsichtsgesetz"
       - "EBA/GL/2019/04 -- ICT and Security Risk Management"

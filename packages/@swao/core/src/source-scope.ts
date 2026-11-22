@@ -46,6 +46,7 @@
 import { readdirSync, readFileSync, statSync, type Dirent } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import { isTestRuleBuildFile, rulesFromPatterns, testRulesFromBuildFile, type TestCodeRule } from './test-code.js';
+import { reportPassProgress } from './pass-progress.js';
 
 /** What a pass reads the files for. Drives hidden-file and test-code defaults. */
 export type SourcePurpose = 'code' | 'config' | 'manifest' | 'docs' | 'secrets';
@@ -232,6 +233,8 @@ export class SourceScope {
   private readonly files: SourceFile[] = [];
   private readonly excludedDirNames: Record<string, number> = {};
   private dirsExcluded = 0;
+  /** #4266: directories walked (the root included). */
+  private dirsWalked = 0;
   private symlinks = 0;
   private truncated = false;
   /** #3403: extra rules (operator + build files) and keep rules of this walk. */
@@ -283,6 +286,9 @@ export class SourceScope {
   private walk(dir: string, rel: string, depth: number): void {
     let entries: Dirent[];
     try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    this.dirsWalked++;
+    // #4266: the walk is synchronous; the progress sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase: 'source_walk', files: this.files.length, dirs: this.dirsWalked });
     let binIsOutput: boolean | null = null;
     for (const e of entries) {
       if (this.files.length >= SOURCE_SCOPE_MAX_FILES) { this.truncated = true; return; }
@@ -308,6 +314,8 @@ export class SourceScope {
       const abs = join(dir, name);
       let sizeBytes = 0;
       try { sizeBytes = statSync(abs).size; } catch { continue; }
+      // #4300: every file; the sink decides by elapsed time (a slow stat must not hide the next line).
+      reportPassProgress({ phase: 'source_walk', files: this.files.length, dirs: this.dirsWalked });
       this.files.push({
         abs,
         rel: childRel,
@@ -353,6 +361,21 @@ export class SourceScope {
       if (best.depth === 0) break;
     }
     return best;
+  }
+
+  /**
+   * #4266: cost of the walk for the Pass 01 completion event: files in scope
+   * (non-hidden, as summary().files_scanned), directories walked and the
+   * bytes of the files in scope.
+   */
+  walkStats(): { files_scanned: number; dirs_scanned: number; bytes_scanned: number } {
+    let files = 0; let bytes = 0;
+    for (const f of this.files) {
+      if (f.isHidden) continue;
+      files++;
+      bytes += f.sizeBytes;
+    }
+    return { files_scanned: files, dirs_scanned: this.dirsWalked, bytes_scanned: bytes };
   }
 
   summary(): SourceScopeSummary {
@@ -508,6 +531,8 @@ export interface ListInputFilesOptions {
   skipTopLevelDirs?: Iterable<string>;
   /** Directory names skipped at any depth (service passes: SWAO-generated input folders). */
   skipDirNames?: Iterable<string>;
+  /** #4266: directories skipped by their path relative to the root, forward slashes (a source clone under wsp/inputs/). */
+  skipRelDirs?: Iterable<string>;
 }
 
 /**
@@ -518,16 +543,19 @@ export interface ListInputFilesOptions {
 export function listInputFiles(root: string, opts: ListInputFilesOptions = {}): InputFile[] {
   const top = new Set(opts.skipTopLevelDirs ?? []);
   const any = new Set(opts.skipDirNames ?? []);
+  const relSkip = new Set([...(opts.skipRelDirs ?? [])].map((r) => trimSlashes(r.replace(/\\/g, '/'))));
   const out: InputFile[] = [];
+  let dirs = 0;
   const walk = (dir: string, rel: string, depth: number): void => {
     let entries: Dirent[];
     try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    reportPassProgress({ phase: 'input_walk', files: out.length, dirs: ++dirs });
     entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     for (const e of entries) {
       if (e.isSymbolicLink()) continue;
       const childRel = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) {
-        if (any.has(e.name) || (depth === 0 && top.has(e.name))) continue;
+        if (any.has(e.name) || (depth === 0 && top.has(e.name)) || relSkip.has(childRel)) continue;
         if (depth + 1 > SOURCE_SCOPE_MAX_DEPTH) continue;
         walk(join(dir, e.name), childRel, depth + 1);
         continue;
@@ -537,8 +565,19 @@ export function listInputFiles(root: string, opts: ListInputFilesOptions = {}): 
       let sizeBytes = 0;
       try { sizeBytes = statSync(abs).size; } catch { continue; }
       out.push({ abs, rel: childRel, name: e.name, ext: extname(e.name).toLowerCase(), depth, sizeBytes });
+      // #4300: every file; the sink decides by elapsed time.
+      reportPassProgress({ phase: 'input_walk', files: out.length, dirs });
     }
   };
   walk(root, '', 0);
   return out;
+}
+
+/** Strips leading and trailing slashes without a regular expression (CodeQL js/polynomial-redos). */
+function trimSlashes(s: string): string {
+  let a = 0;
+  let b = s.length;
+  while (a < b && s[a] === '/') a++;
+  while (b > a && s[b - 1] === '/') b--;
+  return s.slice(a, b);
 }

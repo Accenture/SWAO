@@ -73,7 +73,7 @@ describe('AssessmentTypeRouter', () => {
   it('returns coming-soon for a known but unregistered type', () => {
     const router = new AssessmentTypeRouter();
     router.register(applicationContribution);
-    for (const t of ['llm', 'audit', 'landing-zone-catalog', 'landing-zone-customer', 'hybrid'] as const) {
+    for (const t of ['llm', 'audit', 'landing-zone-catalog', 'landing-zone-live', 'hybrid'] as const) {
       const decision = router.route(t);
       expect(decision.kind).toBe('coming-soon');
       if (decision.kind === 'coming-soon') {

@@ -32,7 +32,7 @@
 // before records are persisted.
 
 import { createHash } from 'node:crypto';
-import { guardSecretText } from '@swao/core';
+import { guardSecretText, withLlmRetryCounter, type LlmRetryCounter } from '@swao/core';
 import type { CallRecord, SizeBucket } from './call-record.js';
 import { sizeBucket } from './call-record.js';
 import { detectPiiReproduction } from './security-pii-redaction.js';
@@ -54,6 +54,34 @@ export interface CallUsage {
   input_tokens: number;
   output_tokens: number;
   cost_usd: number;
+  /** #4372: billed (gateway response), configured (connector rates), none (no price). */
+  cost_source?: 'billed' | 'configured' | 'none';
+}
+
+/** #4372: cost source of a leg or call record. */
+export type CostSource = 'billed' | 'configured' | 'local' | 'unpriced';
+
+/**
+ * #4372: the cost_usd block of one call record.
+ * - local leg: null, local (092 s4).
+ * - the driver names the source: billed / configured keep the value; none
+ *   records null, unpriced (never 0 labelled billed).
+ * - the driver says nothing: a call with tokens but a cost of exactly 0 had
+ *   no price row, so it is null, unpriced; otherwise the leg's source.
+ */
+export function callCost(
+  legSource: CostSource, usage: CallUsage | undefined, costDelta: number, tokens: number,
+): { computed: number | null; source: CostSource } {
+  if (legSource === 'local') return { computed: null, source: 'local' };
+  const value = Math.max(0, Math.round(costDelta * 1e6) / 1e6);
+  switch (usage?.cost_source) {
+    case 'billed': return { computed: value, source: 'billed' };
+    case 'configured': return { computed: value, source: 'configured' };
+    case 'none': return { computed: null, source: 'unpriced' };
+    case undefined:
+      if (legSource === 'unpriced' || (value === 0 && tokens > 0)) return { computed: null, source: 'unpriced' };
+      return { computed: value, source: legSource };
+  }
 }
 
 /** Result of one call with its own usage (#3301). */
@@ -78,11 +106,13 @@ export interface CallContext {
 
 export interface RecorderDeps {
   leg: { id: string; connector: string; model: string; connector_sha256?: string };
+  /** #4476: the model the wrapped provider calls (recorded as model_called). */
+  calledModel?: string;
   /** Cumulative usage from the host's tracking wrapper; deltas per call. */
   usageSnapshot: () => UsageSnapshot;
   /** True when the leg has a price row (billed/configured); false = local
    *  unpriced -- cost records null, never zero (092 s4). */
-  costSource: 'billed' | 'configured' | 'local';
+  costSource: CostSource;
   /** Set by the orchestrator before each pass dispatch. */
   currentContext: () => CallContext;
   /** Known workspace paths for the foreign-path heuristic; optional. */
@@ -167,6 +197,36 @@ export function countForeignPaths(response: string, isKnownPath?: (p: string) =>
   return new Set(candidates.filter((p) => !isKnownPath(p))).size;
 }
 
+/**
+ * #4469: run one provider call with a retry counter of @swao/core (bumped by
+ * the shared request helper per attempt and per retry). Without the counter
+ * (a host or test double of @swao/core) the call runs as is.
+ */
+function countedCall<T>(fn: () => Promise<T>): { result: Promise<T>; counter: () => LlmRetryCounter | undefined } {
+  let ref: LlmRetryCounter | undefined;
+  let result: Promise<T>;
+  try {
+    result = withLlmRetryCounter((c) => { ref = c; return fn(); });
+  } catch {
+    result = fn();
+  }
+  return { result, counter: () => ref };
+}
+
+/**
+ * #4469: retries of one call. The counted retries when the request helper
+ * counted attempts; else "after N attempts" of an exhausted call's error
+ * (N - 1); else the successful-call delta of the usage snapshot.
+ */
+export function callRetries(counter: LlmRetryCounter | undefined, callCountDelta: number, err?: unknown): number {
+  if (counter && counter.attempts > 0) return counter.retries;
+  if (err !== undefined) {
+    const m = /after (\d+) attempts/.exec(err instanceof Error ? err.message : String(err));
+    if (m) return Math.max(0, parseInt(m[1]!, 10) - 1);
+  }
+  return Math.max(0, callCountDelta - 1);
+}
+
 export interface RecordingProvider {
   complete(prompt: string): Promise<string>;
   /** complete() returning the call's own usage (#3301). */
@@ -230,6 +290,7 @@ export function createRecordingProvider(
 
       const base = {
         leg: { ...deps.leg },
+        ...(deps.calledModel ? { model_called: deps.calledModel } : {}),
         pass_id: passId,
         call_site: callSite,
         call_index: callIndex,
@@ -241,8 +302,9 @@ export function createRecordingProvider(
         },
       };
 
+      const counted = countedCall(() => innerText(prompt));
       try {
-        const { text: response, usage: callUsage } = await innerText(prompt);
+        const { text: response, usage: callUsage } = await counted.result;
         const after = deps.usageSnapshot();
         const totalMs = now() - t0;
         // #3301: this call's own usage; the cumulative delta can include
@@ -257,7 +319,7 @@ export function createRecordingProvider(
           ? Math.max(0, after.reasoning_tokens - before.reasoning_tokens)
           : undefined;
         const costDelta = callUsage ? callUsage.cost_usd : after.cost_usd - before.cost_usd;
-        const retries = Math.max(0, after.call_count - before.call_count - 1);
+        const retries = callRetries(counted.counter(), after.call_count - before.call_count);
 
         // #1696: detect output-token ceiling hit. Prefer deps.maxTokens (the
         // provider's actual max_tokens, e.g. 32768 for Anthropic claude-sonnet-4-*).
@@ -281,10 +343,8 @@ export function createRecordingProvider(
             completion: completionTok,
             ...(reasoningTok !== undefined ? { reasoning: reasoningTok } : {}),
           },
-          cost_usd: {
-            computed: deps.costSource === 'local' ? null : Math.max(0, Math.round(costDelta * 1e6) / 1e6),
-            source: deps.costSource,
-          },
+          // #4372: unpriced calls record null, billed gateway cost is kept.
+          cost_usd: callCost(deps.costSource, callUsage, costDelta, promptTok + completionTok),
           quality: {
             parse_valid: parseValid,
             // Amended by the orchestrator after pass-schema validation.
@@ -318,10 +378,10 @@ export function createRecordingProvider(
           ...base,
           timing: { started, total_ms: now() - t0 },
           tokens: { prompt: tokensEst, completion: 0 },
-          cost_usd: { computed: deps.costSource === 'local' ? null : Math.max(0, Math.round((after.cost_usd - before.cost_usd) * 1e6) / 1e6), source: deps.costSource },
+          cost_usd: callCost(deps.costSource, undefined, after.cost_usd - before.cost_usd, 0),
           quality: { parse_valid: false, schema_conform: false, truncated: false, refusal_detected: false },
           reliability: {
-            retries: Math.max(0, after.call_count - before.call_count - 1),
+            retries: callRetries(counted.counter(), after.call_count - before.call_count, err),
             rate_limited: /429|rate.?limit/i.test((err as Error).message ?? ''),
             error: safeErrorMessage(err),
             dnf: true,
@@ -362,6 +422,7 @@ export function createRecordingProvider(
 
       const base = {
         leg: { ...deps.leg },
+        ...(deps.calledModel ? { model_called: deps.calledModel } : {}),
         pass_id: passId,
         call_site: callSite,
         call_index: callIndex,
@@ -376,8 +437,9 @@ export function createRecordingProvider(
         },
       };
 
+      const counted = countedCall(() => innerVision(prompt, images));
       try {
-        const { text: response, usage: callUsage } = await innerVision(prompt, images);
+        const { text: response, usage: callUsage } = await counted.result;
         const after = deps.usageSnapshot();
         const totalMs = now() - t0;
         // #3301: this call's own usage; the cumulative delta is the fallback.
@@ -397,7 +459,7 @@ export function createRecordingProvider(
           ? Math.max(0, after.reasoning_tokens - before.reasoning_tokens)
           : undefined;
         const costDelta = callUsage ? callUsage.cost_usd : after.cost_usd - before.cost_usd;
-        const retries = Math.max(0, after.call_count - before.call_count - 1);
+        const retries = callRetries(counted.counter(), after.call_count - before.call_count);
         // #2015: use deps.maxTokens (provider actual) before env var fallback; default 32768.
         const CEILING = deps.maxTokens ?? parseInt(process.env['SWAO_TOKEN_CEILING'] ?? '32768', 10);
         const ceilingHit = completionTok > 0 && completionTok >= CEILING;
@@ -412,10 +474,8 @@ export function createRecordingProvider(
             ...(reasoningTok !== undefined ? { reasoning: reasoningTok } : {}),
             ...(completionEstimated ? { completion_estimated: true as const } : {}),
           },
-          cost_usd: {
-            computed: deps.costSource === 'local' ? null : Math.max(0, Math.round(costDelta * 1e6) / 1e6),
-            source: deps.costSource,
-          },
+          // #4372: unpriced calls record null, billed gateway cost is kept.
+          cost_usd: callCost(deps.costSource, callUsage, costDelta, promptTok + completionTok),
           quality: {
             parse_valid: parseValid,
             schema_conform: parseValid,
@@ -448,10 +508,10 @@ export function createRecordingProvider(
           ...base,
           timing: { started, total_ms: now() - t0 },
           tokens: { prompt: tokensEst, completion: 0 },
-          cost_usd: { computed: deps.costSource === 'local' ? null : Math.max(0, Math.round((after.cost_usd - before.cost_usd) * 1e6) / 1e6), source: deps.costSource },
+          cost_usd: callCost(deps.costSource, undefined, after.cost_usd - before.cost_usd, 0),
           quality: { parse_valid: false, schema_conform: false, truncated: false, refusal_detected: false },
           reliability: {
-            retries: Math.max(0, after.call_count - before.call_count - 1),
+            retries: callRetries(counted.counter(), after.call_count - before.call_count, err),
             rate_limited: /429|rate.?limit/i.test((err as Error).message ?? ''),
             error: safeErrorMessage(err),
             dnf: true,

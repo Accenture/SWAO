@@ -1,6 +1,6 @@
 # 2. Health Check
 
-Führen Sie `swao health-check` aus (oder wählen Sie Option 2 im Hauptmenü), um zu prüfen, ob Ihr Workspace bereit für eine Bewertung ist. Er führt 25 Prüfungen aus; die Prüfungen 17 bis 25 gelten für Service-Portfolio-Workspaces und zeigen sonst INFO. Beheben Sie vor einer Bewertung jedes FAIL; WARN und INFO sind Hinweise.
+Führen Sie `swao health-check` aus (oder wählen Sie Option 2 im Hauptmenü), um zu prüfen, ob Ihr Workspace bereit für eine Bewertung ist. Er führt 26 Prüfungen aus; die Prüfungen 17 bis 25 gelten für Service-Portfolio-Workspaces und zeigen sonst INFO, Prüfung 26 prüft die Verbindungen zu Live-Landing-Zones. Beheben Sie vor einer Bewertung jedes FAIL; WARN und INFO sind Hinweise.
 
 ## Prüfungen
 
@@ -14,6 +14,8 @@ Führen Sie `swao health-check` aus (oder wählen Sie Option 2 im Hauptmenü), u
 | Nachvollziehbarkeit | Audit-konforme Signalfelder aktiviert |
 | BI-Exportpaket | Integrität des letzten Exports (beim ersten Lauf übersprungen) |
 | LZ-Katalog (Prüfung 15) | Jeder LZ-Katalog, den die Fit-Bewertung auflösen kann, lädt und ist schemagültig; die folgenden Katalog-Qualitätsregeln sind für die mitgelieferten Kataloge (und für einen Workspace-Katalogordner, der Katalogdateien enthält) erfüllt; die in `.swao.yml` konfigurierten LZ-Ziele nennen einen bekannten Provider und eine bekannte Region oder Geografie. Jeder Fehler- oder Warnbefund ist ein WARN; die Prüfung schlägt nie fehl |
+| Community-Rahmenwerke, Service-Zuordnung (Prüfung 4) | Je Community-Rahmenwerk eine Zeile mit der Abdeckung der Service-Zuordnung: die Capability-Tags, die seine `service-controls.yaml` zuordnet, von den Tags, die die aufgelösten LZ-Kataloge verwenden (`no service mapping`, wenn die Datei fehlt; dann ist jeder Dienst eines Landing Zone Live Assessment für dieses Rahmenwerk grau) |
+| LZ-Verbindungen (Prüfung 26) | Für jeden in der `.swao.yml` (`landing_zones[]`) registrierten Landing-Zone-Scope: der Live-Treiber ist in diesem Build enthalten, die Felder der Zugangsdaten liegen im Vault (nur Feldnamen) und ein Token mit `expires-at` ist nicht abgelaufen; sind die Zugangsdaten vollständig, die zuletzt gespeicherte Nur-Lese-Prüfung des Scopes (von `swao lz probe`, dem Setup-Schritt Probe, `swao lz connect` oder einem LZ-Live-Lauf; kein Aufruf beim Provider) mit Ergebnis, Abdeckung und Zeitpunkt (veraltet nach 7 Tagen), die Namen der gespeicherten Zugangsdatenfelder sowie die Dienste und Ressourcen, die der letzte Lauf gelesen hat. `verified` überall und nicht veraltet ist ok; schreibfähig, unverifiable, Anmeldung fehlgeschlagen, nicht geprüft, fehlende Zugangsdaten, abgelaufen oder veraltet ist WARN mit den Ursachen. Die Prüfung lässt den Health Check nie fehlschlagen, weil ein schreibfähiger Operator-Login die erwartete Einrichtung eines Test-Tenants ist; ein Lauf fragt eigens nach der Bestätigung (`--accept-write-capable-credentials`). INFO, wenn keine Landing Zone registriert ist |
 
 ## Qualitätsregeln für LZ-Kataloge
 
@@ -28,7 +30,7 @@ Das SWAO-Team verantwortet die mitgelieferten LZ-Kataloge (`lz-catalogues/`: ein
 | `regions-count` | Fehler | `meta.regions_count` entspricht der Anzahl der Regionen |
 | `region-id-duplicate` | Fehler | Regions-IDs sind je Provider eindeutig |
 | `sovereignty-shape` | Fehler | Jede Region führt `residency_country`, `operator_jurisdiction`, `extraterritorial_exposure` und `certifications`; eine Region, deren Standort der Kunde wählt, führt `residency_country: OPERATOR_SITE`, das nur zusammen mit `operator_jurisdiction: operator-site` gültig ist |
-| `confidence-vocabulary` | Fehler | `meta.confidence` ist `high`, `medium` oder `low` |
+| `confidence-vocabulary` | Fehler | `meta.confidence` ist `high`, `medium`, `low` oder `operator-declared` (eigener Katalog, Schema 0.2) |
 | `certification-vocabulary` | Warnung | Jede Zertifizierung einer Region gehört zum Vokabular der Vorlage: `BSI_C5`, `ISO_27001`, `SOC_2`, `TISAX_L3`, `PCI_DSS`, `FedRAMP_High`, `MAS_TRM`, `IRAP` |
 | `source-missing` | Fehler | Jeder Katalog nennt eine Quelle (`meta.source.mode`) |
 | `date-format` | Fehler | `meta.last_updated` ist ein gültiges Datum im Format `YYYY-MM-DD` |
@@ -76,6 +78,10 @@ Nur FAIL-Ergebnisse zählen als Fehler. Die Zusammenfassungszeile (`All probes p
 ```bash
 swao health-check
 swao health-check --verbose
+swao health-check --type lz-live          # eine Bewertungsart
+swao health-check --type service --json
 ```
+
+`--type` (`generic`, `application`, `service`, `lz-catalog`, `lz-live` oder `llm`) führt die allgemeinen Prüfungen (Lizenz, Engagement-Metadaten, Credential-Vault, LLM-Gateway, MCP, Community-Rahmenwerke) und die Prüfungen dieser Bewertungsart aus. Die übrigen Prüfungen werden weder ausgeführt noch aufgelistet, die Zeilen sind innerhalb der Art nummeriert, und Protokoll und JSON-Ausgabe enthalten nur diese Art. Das Setup jeder Bewertungsart führt diese Prüfung an seinem Ende aus ([Workspace-Setup](/de/workspace-setup)). Ohne `--type` laufen alle Prüfungen.
 
 Siehe auch: [Workspace-Setup](/de/workspace-setup) | [Fehlerbehebungs-Runbook](/de/runbooks/troubleshooting)

@@ -59,7 +59,7 @@ controls:
       - { context_input: "evidence/ois-01-security-policy.md" }
     references:
       - "BSI C5:2020 OIS-01"
-    maps_to: [BSI_ISMS1_A3, ISO_27001_A.5.1, GDPR_Art_24]
+    maps_to: [BSI_ISMS1_A3, ISO_27001_A.5.1, GDPR_Art_24, DORA_Art_9_7]
     remediation: >-
       Draft and publish an information security policy with explicit management
       sign-off; establish an annual review cycle; provide all staff with
@@ -79,7 +79,7 @@ controls:
       - { context_input: "evidence/ois-02-roles-responsibilities.md" }
     references:
       - "BSI C5:2020 OIS-02"
-    maps_to: [BSI_ORP1_A1, ISO_27001_A.5.2, ISO_27001_A.5.3]
+    maps_to: [BSI_ORP1_A1, ISO_27001_A.5.2, ISO_27001_A.5.3, DORA_Art_5_1]
     remediation: >-
       Document an RACI matrix for information security roles covering the cloud
       service; publish it to all staff; update when organisational structure
@@ -100,7 +100,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 OIS-03"
-    maps_to: [BSI_ISMS1_A6, ISO_27001_A.6.1, ISO_27001_A.8.2]
+    maps_to: [BSI_ISMS1_A6, ISO_27001_A.6.1, ISO_27001_A.8.2, DORA_Art_6, DORA_Art_8_2]
     remediation: >-
       Establish a risk register for the cloud service; assign ownership of each
       risk; review the register at least annually and after significant changes.
@@ -118,7 +118,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 OIS-04"
-    maps_to: [BSI_ISMS1_A1, ISO_27001_A.5.1]
+    maps_to: [BSI_ISMS1_A1, ISO_27001_A.5.1, DORA_Art_5_2, DORA_Art_6_3]
     remediation: >-
       Define measurable security objectives tied to the cloud service; include
       them in management reporting; review progress at least quarterly.
@@ -137,7 +137,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 OIS-05"
-    maps_to: [BSI_OPS22_A1, ISO_27001_A.5.19, ISO_27001_A.5.20]
+    maps_to: [BSI_OPS22_A1, ISO_27001_A.5.19, ISO_27001_A.5.20, DORA_Art_28_1]
     remediation: >-
       Establish a supplier register with security risk classification; include
       security requirements in all supplier contracts; conduct periodic reviews
@@ -257,7 +257,7 @@ controls:
       - { context_input: "evidence/hrs-02-awareness-training.md" }
     references:
       - "BSI C5:2020 HRS-02"
-    maps_to: [BSI_ISMS1_A8, ISO_27001_A.6.3, GDPR_Art_29]
+    maps_to: [BSI_ISMS1_A8, ISO_27001_A.6.3, GDPR_Art_29, DORA_Art_13_2]
     remediation: >-
       Implement a mandatory annual security awareness programme; track completion
       rates; include phishing simulation for staff with elevated access.
@@ -318,7 +318,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 IDM-01"
-    maps_to: [BSI_ORP4_A1, ISO_27001_A.5.15, ISO_27001_A.5.18]
+    maps_to: [BSI_ORP4_A1, ISO_27001_A.5.15, ISO_27001_A.5.18, DORA_Art_9_1]
     remediation: >-
       Document IAM policies covering provisioning, recertification, and
       de-provisioning; enforce least privilege; publish to all staff.
@@ -336,7 +336,7 @@ controls:
       - { signal_prefix: IAM }
     references:
       - "BSI C5:2020 IDM-02"
-    maps_to: [BSI_ORP4_A2, ISO_27001_A.8.5, ISO_27001_A.5.17]
+    maps_to: [BSI_ORP4_A2, ISO_27001_A.8.5, ISO_27001_A.5.17, DORA_Art_9_5]
     remediation: >-
       Enable MFA on all privileged accounts; enforce via identity provider
       policy; audit for exceptions monthly.
@@ -355,7 +355,7 @@ controls:
       - { signal_prefix: IAM }
     references:
       - "BSI C5:2020 IDM-03"
-    maps_to: [ISO_27001_A.5.18, ISO_27001_A.8.2]
+    maps_to: [ISO_27001_A.5.18, ISO_27001_A.8.2, DORA_Art_9_1]
     remediation: >-
       Conduct quarterly access recertification campaigns; automate revocation
       on non-response; document results and exceptions.
@@ -433,7 +433,7 @@ controls:
     references:
       - "BSI C5:2020 CRY-01"
       - "BSI TR-02102-1"
-    maps_to: [BSI_CON1_A1, ISO_27001_A.8.24]
+    maps_to: [BSI_CON1_A1, ISO_27001_A.8.24, DORA_Art_9_6]
     remediation: >-
       Document a cryptography policy aligned to BSI TR-02102; enforce approved
       algorithms at the platform level; review and update when TR-02102 is
@@ -455,7 +455,7 @@ controls:
     references:
       - "BSI C5:2020 CRY-02"
       - "BSI TR-02102-1"
-    maps_to: [BSI_CON1_A2, ISO_27001_A.8.24]
+    maps_to: [BSI_CON1_A2, ISO_27001_A.8.24, DORA_Art_9_2]
     remediation: >-
       Enable encryption at rest for all storage containing sensitive or personal
       data; ensure keys are held in a managed key store separate from the data.
@@ -474,7 +474,7 @@ controls:
       - { signal_prefix: CRYPTO }
     references:
       - "BSI C5:2020 CRY-03"
-    maps_to: [BSI_CON1_A4, ISO_27001_A.8.24]
+    maps_to: [BSI_CON1_A4, ISO_27001_A.8.24, DORA_Art_9_6]
     remediation: >-
       Configure automated key rotation in the key management service; define
       rotation intervals per key type; test rotation procedures annually.
@@ -494,7 +494,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 CRY-04"
-    maps_to: [ISO_27001_A.8.24, ISO_27001_A.5.20]
+    maps_to: [ISO_27001_A.8.24, ISO_27001_A.5.20, DORA_Art_9_6]
     remediation: >-
       Deploy certificate inventory monitoring with alerting 30 days before
       expiry; automate renewal where possible; review self-signed certificate
@@ -518,7 +518,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 COS-01"
-    maps_to: [BSI_NET11_A1, ISO_27001_A.8.20, ISO_27001_A.8.22]
+    maps_to: [BSI_NET11_A1, ISO_27001_A.8.20, ISO_27001_A.8.22, DORA_Art_9_4]
     remediation: >-
       Define and implement network security zones; enforce zone boundaries with
       firewalls or security groups; document the zone architecture and review
@@ -538,7 +538,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 COS-02"
-    maps_to: [BSI_NET32_A1, ISO_27001_A.8.20, ISO_27001_A.8.23]
+    maps_to: [BSI_NET32_A1, ISO_27001_A.8.20, ISO_27001_A.8.23, DORA_Art_9_4]
     remediation: >-
       Conduct firewall rule reviews at least twice per year; document the review
       process; automate detection of unused rules.
@@ -573,7 +573,8 @@ controls:
       alerted and investigated.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 COS-04"
     maps_to: [BSI_SYS11_A2, ISO_27001_A.8.7]
@@ -598,7 +599,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 OPS-01"
-    maps_to: [BSI_OPS112_A1, ISO_27001_A.8.32]
+    maps_to: [BSI_OPS112_A1, ISO_27001_A.8.32, DORA_Art_9_8]
     remediation: >-
       Implement a change management workflow with mandatory approval gates;
       enforce through the CI/CD pipeline; retain change records for audit.
@@ -618,7 +619,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 OPS-02"
-    maps_to: [BSI_OPS113_A1, ISO_27001_A.8.8, ISO_27001_A.8.19]
+    maps_to: [BSI_OPS113_A1, ISO_27001_A.8.8, ISO_27001_A.8.19, DORA_Art_9_3]
     remediation: >-
       Establish patch SLAs by severity (critical: 72 hours, high: 7 days);
       automate patch deployment where possible; track exceptions in the risk
@@ -634,10 +635,11 @@ controls:
       identified and addressed before they affect service availability.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 OPS-03"
-    maps_to: [BSI_OPS112_A3, ISO_27001_A.8.6]
+    maps_to: [BSI_OPS112_A3, ISO_27001_A.8.6, DORA_Art_7_1]
     remediation: >-
       Implement capacity monitoring dashboards with alerting at defined
       thresholds; conduct quarterly capacity reviews; document forecasts.
@@ -656,7 +658,7 @@ controls:
       - { signal_prefix: INV }
     references:
       - "BSI C5:2020 OPS-04"
-    maps_to: [BSI_OPS22_A2, ISO_27001_A.5.9, ISO_27001_A.5.10]
+    maps_to: [BSI_OPS22_A2, ISO_27001_A.5.9, ISO_27001_A.5.10, DORA_Art_8_1]
     remediation: >-
       Implement a CMDB or equivalent asset register covering all cloud service
       components; update it on every infrastructure change; review completeness
@@ -674,10 +676,10 @@ controls:
     severity_default: high
     evidence_basis:
       - { signal_prefix: TF }
-      - { signal_prefix: OBS }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 OPS-05"
-    maps_to: [BSI_SYS11_A1, ISO_27001_A.8.9, ISO_27001_A.8.8]
+    maps_to: [BSI_SYS11_A1, ISO_27001_A.8.9, ISO_27001_A.8.8, DORA_Art_9_9]
     remediation: >-
       Define hardening baselines per system type; enforce via IaC; run
       continuous compliance scanning and alert on drift.
@@ -693,10 +695,11 @@ controls:
       and security dimensions.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 OPS-06"
-    maps_to: [BSI_DER1_A1, ISO_27001_A.8.15, ISO_27001_A.8.16]
+    maps_to: [BSI_DER1_A1, ISO_27001_A.8.15, ISO_27001_A.8.16, DORA_Art_10_2]
     remediation: >-
       Define logging requirements per event category; centralise logs in a
       tamper-evident store; configure retention per regulatory requirements;
@@ -718,7 +721,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 AVL-01"
-    maps_to: [BSI_DER4_A1, ISO_27001_A.5.29, ISO_27001_A.5.30]
+    maps_to: [BSI_DER4_A1, ISO_27001_A.5.29, ISO_27001_A.5.30, DORA_Art_11_1]
     remediation: >-
       Author and maintain a cloud-specific BCP; test it at least annually
       through a tabletop exercise; document and act on test findings.
@@ -736,7 +739,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 AVL-02"
-    maps_to: [BSI_DER4_A2, ISO_27001_A.5.30]
+    maps_to: [BSI_DER4_A2, ISO_27001_A.5.30, DORA_Art_11_4, DORA_Art_12_3]
     remediation: >-
       Document RTO and RPO per service tier; conduct recovery tests at least
       annually; close gaps between tested recovery times and defined objectives.
@@ -754,7 +757,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 AVL-03"
-    maps_to: [ISO_27001_A.5.30, ISO_27001_A.8.14]
+    maps_to: [ISO_27001_A.5.30, ISO_27001_A.8.14, DORA_Art_12_5]
     remediation: >-
       Deploy across at least two availability zones in a compliant geographic
       region; test failover annually; confirm data residency alignment with
@@ -773,7 +776,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 AVL-04"
-    maps_to: [BSI_CON3_A1, ISO_27001_A.8.13]
+    maps_to: [BSI_CON3_A1, ISO_27001_A.8.13, DORA_Art_12_1, DORA_Art_12_2]
     remediation: >-
       Implement automated backup with offsite or cross-account storage; test
       restores quarterly; document the backup schedule and retain test results.
@@ -833,7 +836,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 DEV-03"
-    maps_to: [BSI_APP31_A2, ISO_27001_A.8.26, ISO_27001_A.8.29]
+    maps_to: [BSI_APP31_A2, ISO_27001_A.8.26, ISO_27001_A.8.29, DORA_Art_25]
     remediation: >-
       Gate releases on SAST scan completion; block critical findings; retain
       scan artefacts in the release record.
@@ -875,7 +878,7 @@ controls:
       - { context_input: "evidence/inm-01-incident-response-plan.md" }
     references:
       - "BSI C5:2020 INM-01"
-    maps_to: [BSI_DER21_A1, ISO_27001_A.5.26, ISO_27001_A.5.24]
+    maps_to: [BSI_DER21_A1, ISO_27001_A.5.26, ISO_27001_A.5.24, DORA_Art_17_1]
     remediation: >-
       Author and publish an incident response plan; identify and train the
       incident response team; conduct a tabletop exercise at least annually.
@@ -893,7 +896,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 INM-02"
-    maps_to: [BSI_DER21_A2, ISO_27001_A.5.25, ISO_27001_A.5.26]
+    maps_to: [BSI_DER21_A2, ISO_27001_A.5.25, ISO_27001_A.5.26, DORA_Art_17_2, DORA_Art_18_1]
     remediation: >-
       Define and publish an incident classification matrix; train all staff
       on the reporting path; include classification in incident response
@@ -913,7 +916,7 @@ controls:
       - { context_input: "evidence/inm-03-bsi-notification.md" }
     references:
       - "BSI C5:2020 INM-03"
-    maps_to: [BSI_DER21_A3, GDPR_Art_33, ISO_27001_A.5.26]
+    maps_to: [BSI_DER21_A3, GDPR_Art_33, ISO_27001_A.5.26, DORA_Art_19_1]
     remediation: >-
       Document the incident reporting obligations to BSI; assign the
       notification owner; include BSI notification in incident response plan
@@ -933,7 +936,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 INM-04"
-    maps_to: [ISO_27001_A.5.27, ISO_27001_A.5.26]
+    maps_to: [ISO_27001_A.5.27, ISO_27001_A.5.26, DORA_Art_13]
     remediation: >-
       Mandate post-incident reviews for all P1 and P2 incidents; publish
       lessons learned internally; track improvement actions in the risk register.
@@ -951,10 +954,11 @@ controls:
       be routed to a team with the capability to triage and respond.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 SIM-01"
-    maps_to: [BSI_DER1_A2, ISO_27001_A.8.15, ISO_27001_A.8.16]
+    maps_to: [BSI_DER1_A2, ISO_27001_A.8.15, ISO_27001_A.8.16, DORA_Art_10_1]
     remediation: >-
       Deploy a SIEM or equivalent; define detection rules for high-priority
       attack scenarios; assign on-call triage responsibilities; review alert
@@ -971,7 +975,8 @@ controls:
       be documented.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 SIM-02"
@@ -992,10 +997,11 @@ controls:
       must be assessed for applicability to the cloud service.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references:
       - "BSI C5:2020 SIM-03"
-    maps_to: [BSI_DER1_A3, ISO_27001_A.5.7]
+    maps_to: [BSI_DER1_A3, ISO_27001_A.5.7, DORA_Art_13, DORA_Art_45]
     remediation: >-
       Subscribe to BSI-CERT advisories and relevant threat intelligence feeds;
       review and apply actionable intelligence within defined SLAs.
@@ -1034,7 +1040,7 @@ controls:
       - { context_input: "evidence/com-02-audit-programme.md" }
     references:
       - "BSI C5:2020 COM-02"
-    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36]
+    maps_to: [ISO_27001_A.5.35, ISO_27001_A.5.36, DORA_Art_6_2]
     remediation: >-
       Define an annual audit plan covering C5 domains; track findings to
       closure; report results to management; use findings to prioritise
@@ -1075,7 +1081,7 @@ controls:
       - { context_input: "evidence/pss-01-data-portability.md" }
     references:
       - "BSI C5:2020 PSS-01"
-    maps_to: [GDPR_Art_20, ISO_27001_A.5.10]
+    maps_to: [GDPR_Art_20, ISO_27001_A.5.10, DORA_Art_28_5]
     remediation: >-
       Document supported export formats and procedures; provide a self-service
       export mechanism; test export completeness at least annually.
@@ -1116,7 +1122,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 BCP-01"
-    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30]
+    maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, DORA_Art_14]
     remediation: >-
       Author a crisis communication plan; pre-define notification templates;
       include communication in BCP exercises.
@@ -1134,7 +1140,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 BCP-02"
-    maps_to: [BSI_OPS22_A4, ISO_27001_A.5.21, ISO_27001_A.5.22]
+    maps_to: [BSI_OPS22_A4, ISO_27001_A.5.21, ISO_27001_A.5.22, DORA_Art_8_3, DORA_Art_28_5, DORA_Art_29]
     remediation: >-
       Maintain a supplier dependency map; define exit criteria and transition
       plans for critical suppliers; review annually and after supply chain
@@ -1177,7 +1183,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 DAT-02"
-    maps_to: [GDPR_Art_46, GDPR_Art_49, ISO_27001_A.5.33]
+    maps_to: [GDPR_Art_46, GDPR_Art_49, ISO_27001_A.5.33, DORA_Art_30_4]
     remediation: >-
       Document data residency locations in the service description; enforce
       via infrastructure policy; alert on violations; disclose any cross-border
@@ -1216,7 +1222,7 @@ controls:
       - { context_input: ops_runbooks }
     references:
       - "BSI C5:2020 DAT-04"
-    maps_to: [GDPR_Art_28, ISO_27001_A.5.19]
+    maps_to: [GDPR_Art_28, ISO_27001_A.5.19, DORA_Art_30_2]
     remediation: >-
       Maintain an up-to-date subprocessor list; ensure DPAs are in place for
       all data-handling subprocessors; notify customers before adding new
@@ -1277,7 +1283,7 @@ controls:
       - { signal_prefix: TF }
     references:
       - "BSI C5:2020 PI-03"
-    maps_to: [BSI_NET33_A1, ISO_27001_A.8.24]
+    maps_to: [BSI_NET33_A1, ISO_27001_A.8.24, DORA_Art_9_2]
     remediation: >-
       Enforce TLS 1.2+ on all public endpoints; disable weak cipher suites;
       scan for unencrypted transmission paths quarterly.

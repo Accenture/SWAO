@@ -357,7 +357,7 @@ Binary einer Edition überschreibt nie das Binary einer anderen) mit `args`
 mit dem Skriptpfad und `mcp` als `args` (die Quellcode-Variante oben), wobei
 keine Kopie angelegt wird. Die Registrierung ist nur mit Enterprise möglich:
 Community- und Consultant-Binary oder eine niedrigere Lizenz erhalten die
-`[LICENSE]`-Meldung (Exit-Code 1), und es wird nichts kopiert oder geschrieben. `swao health-check` (Probe 3, SWAO-MCP) warnt, wenn
+`[LICENSE]`-Meldung (Exit-Code 2), und es wird nichts kopiert oder geschrieben. `swao health-check` (Probe 3, SWAO-MCP) warnt, wenn
 ein SWAO-Eintrag in einer der beiden Dateien auf ein Binary verweist, das nicht
 mehr existiert oder nicht das laufende SWAO-Binary ist.
 

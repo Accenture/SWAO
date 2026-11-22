@@ -22,7 +22,7 @@ import { basename, dirname, join } from 'path';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { load as loadYaml, dump } from 'js-yaml';
 import type { ReportData, EngagementMeta, SignalEntry, ChallengeAgentFinding } from '@swao/core';
-import { readRunStatus, normalizeDashes, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, staleChallengeNote, challengeCommand } from '@swao/core';
+import { readRunStatus, normalizeDashes, guardSecretsDeep, guardSecretText, selectChallengeForRun, challengeSourceLabel, CHALLENGE_OTHER_RUN_NOTE, staleChallengeNote, challengeCommand } from '@swao/core';
 import { wrapLines } from './report.js';
 
 // ---------------------------------------------------------------------------
@@ -176,6 +176,11 @@ export function resolveLzRunDirById(wspDir: string, runId: string): string {
  * pointer decides (resolveLzRunDir). The challenge is paired with the selected run.
  */
 export function generateLzReport(workspaceAppDir: string, appId: string, runId?: string): LzReportData {
+  // #4352: output guard (Design 032 section 11.6) for every LZ report format.
+  return guardSecretsDeep(buildLzReportData(workspaceAppDir, appId, runId)).value;
+}
+
+function buildLzReportData(workspaceAppDir: string, appId: string, runId?: string): LzReportData {
   const wspDir = join(workspaceAppDir, 'wsp');
   const runDir = runId !== undefined ? resolveLzRunDirById(wspDir, runId) : resolveLzRunDir(wspDir);
 
@@ -442,7 +447,8 @@ export function formatLzText(data: LzReportData): string {
     }
   }
 
-  return lines.join('\n');
+  // #4352: final output guard of the LZ text report (Design 032 section 11.6).
+  return guardSecretText(lines.join('\n')).text;
 }
 
 /** #3281: skipped targets of a partial run and resolved geographies (text report). */

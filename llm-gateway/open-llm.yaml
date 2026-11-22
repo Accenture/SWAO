@@ -18,6 +18,7 @@ connector:
     scheme: bearer
   models:
     default: served-model
+    discovery_endpoint: /v1/models   # #4475: OpenAI-compatible model list
   defaults:
     temperature: 0
   cost_per_token:

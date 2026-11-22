@@ -29,6 +29,7 @@ import { z } from 'zod';
 // #0576: ReportData moved to @swao/core. Import direct (not via ./report.js)
 // to avoid a latent cycle -- report.ts imports buildAuditorReport from here.
 import type { ReportData } from '@swao/core';
+import { guardSecretsDeep } from '@swao/core';
 
 export const SIGNAL_OUTCOMES = ['positive', 'negative', 'neutral', 'indeterminate'] as const;
 export const SIGNAL_SEVERITIES = ['critical', 'high', 'medium', 'low', 'informational'] as const;
@@ -160,11 +161,12 @@ interface RawManifest {
 }
 
 function loadYamlFile(p: string): unknown {
-  try { return load(readFileSync(p, 'utf-8')); } catch { return null; }
+  // #4352: secret output guard on every run file the auditor report reads.
+  try { return guardSecretsDeep(load(readFileSync(p, 'utf-8'))).value; } catch { return null; }
 }
 
 function loadJsonFile(p: string): unknown {
-  try { return JSON.parse(readFileSync(p, 'utf-8')); } catch { return null; }
+  try { return guardSecretsDeep(JSON.parse(readFileSync(p, 'utf-8')) as unknown).value; } catch { return null; }
 }
 
 function resolvePassesAndManifest(wspDir: string, runDir?: string): { passesDir: string; runManifestPath: string } {

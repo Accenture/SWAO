@@ -2,7 +2,7 @@
 
 Ein Landing-Zone-Katalog beschreibt einen Cloud-Anbieter so, wie SWAO ihn sieht: seine Regionen, die Souveränitätsmerkmale jeder Region (Residenzland, Rechtsraum des Betreibers, extraterritoriale Zugriffsrechte, Zertifizierungen) und die Plattformdienste je Region, mit den Fähigkeiten, die sie abdecken, und den unterstützten Modellen der Schlüsselverwaltung. Jeder Katalog ist eine JSON-Datei, `lz-catalogues/<provider>.json`, mit einem `meta`-Block (Name, letzte Aktualisierung, Quelle, Konfidenz, Anzahl der Regionen) und einer Liste `regions`.
 
-SWAO liefert **10 Kataloge** aus: vier Hyperscaler-Kataloge (AWS, Microsoft Azure, Google Cloud, Oracle Cloud Infrastructure), drei souveräne Angebote von Hyperscalern (AWS European Sovereign Cloud, AWS ISOE Europe, Azure Local) und drei europäische Anbieter (Delos Cloud, Open Telekom Cloud / T Cloud Public, STACKIT).
+SWAO liefert **10 Kataloge** aus: vier Hyperscaler-Kataloge (AWS, Microsoft Azure, Google Cloud, Oracle Cloud Infrastructure), drei souveräne Angebote von Hyperscalern (AWS European Sovereign Cloud, AWS ISOE Europe, Azure Local) und drei europäische Anbieter (Delos Cloud, T Cloud Public (ehemals Open Telekom Cloud), STACKIT).
 
 ## Wie SWAO einen Katalog nutzt
 
@@ -35,7 +35,7 @@ Um einen Fakt zu korrigieren, eine Region zu ergänzen oder eine private Cloud z
 | [Delos Cloud](/de/lz-catalogues/delos) | `delos` | Unternehmen in der EU | 1 | kuratiert | niedrig | 2026-08-11 |
 | [Google Cloud Platform](/de/lz-catalogues/gcp) | `gcp` | Unternehmen in den USA | 42 | automatisiert | mittel | 2026-09-04 |
 | [Oracle Cloud Infrastructure](/de/lz-catalogues/oci) | `oci` | Unternehmen in den USA, Unternehmen in der EU | 6 | kuratiert | mittel | 2026-09-20 |
-| [Open Telekom Cloud / T Cloud Public](/de/lz-catalogues/otc) | `otc` | Unternehmen in der EU | 2 | kuratiert | mittel | 2026-08-11 |
+| [T Cloud Public](/de/lz-catalogues/otc) | `otc` | Unternehmen in der EU | 2 | kuratiert | mittel | 2026-08-11 |
 | [STACKIT](/de/lz-catalogues/stackit) | `stackit` | Unternehmen in der EU | 2 | automatisiert | mittel | 2026-09-04 |
 
 <!-- lz-catalogue-facts:end -->

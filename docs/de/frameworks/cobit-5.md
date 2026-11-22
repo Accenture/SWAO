@@ -123,11 +123,11 @@ Zusätzlich nennen die Metadaten (`cross_mapping_hints`) folgende verwandte Rahm
 
 COBIT_5 wird wieder mit SWAO ausgeliefert. Die Control-Texte wurden in eigenen SWAO-Formulierungen neu geschrieben; der Katalog ist damit wieder Teil der Binaries und der öffentlichen Quellen. Prozess-IDs und Prozessnamen bleiben die COBIT-5-Bezeichner; die ISACA-Publikation ist als Referenz angegeben.
 
-`swao framework list` führt COBIT_5 auf, und `swao framework install COBIT_5` kopiert den Ordner `cobit-5` (mit `framework-meta.yaml`, `controls.yaml` und `evidence/`) in den Workspace nach `wsp/inputs/catalogs/community/cobit-5/`. Sie können den Ordner auch von Hand kopieren. Um das Rahmenwerk für ein einzelnes Projekt anzupassen, bearbeiten Sie die Workspace-Kopie. SWAO liest Kataloge für die Compliance-Bewertung aus diesem Verzeichnis; die Workspace-Kopie ist damit maßgeblich. Behalten Sie die `id` in `regime_meta` bei, damit `regimes_active` sie weiterhin findet, und prüfen Sie die Kopie anschließend mit dem [Health Check](/de/health-check).
+Kopieren Sie den Ordner `cobit-5` (mit `framework-meta.yaml`, `controls.yaml` und `evidence/`) aus dem [GitHub-Repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) in den Workspace nach `wsp/inputs/catalogs/community/cobit-5/`; `swao framework list` führt COBIT_5 danach auf. Um das Rahmenwerk für ein einzelnes Projekt anzupassen, bearbeiten Sie die Workspace-Kopie. SWAO liest Kataloge für die Compliance-Bewertung aus diesem Verzeichnis; die Workspace-Kopie ist damit maßgeblich. Behalten Sie die `id` in `regime_meta` bei, damit `regimes_active` sie weiterhin findet, und prüfen Sie die Kopie anschließend mit dem [Health Check](/de/health-check).
 
 ## Aktivieren
 
-1. Kopieren Sie den Ordner `cobit-5` nach `wsp/inputs/catalogs/community/cobit-5/` im Workspace, mit `swao framework install COBIT_5` oder von Hand (siehe oben). Neue Workspaces enthalten nach `swao init` nur die Demo-Rahmenwerke `gdpr-demo`, `ai-10-pillars-demo`, `nist-sp-800-66r2-demo` und `bsi-grundschutz-2023-demo`.
+1. Kopieren Sie den Ordner `cobit-5` nach `wsp/inputs/catalogs/community/cobit-5/` im Workspace (siehe oben). Neue Workspaces enthalten nach `swao init` nur die Demo-Rahmenwerke `gdpr-demo`, `ai-10-pillars-demo`, `nist-sp-800-66r2-demo` und `bsi-grundschutz-2023-demo`.
 2. Tragen Sie die Framework-ID in die `.swao.yml` der App ein (`apps/<app-id>/.swao.yml`):
 
    ```yaml
@@ -144,7 +144,7 @@ Pass 11 liest `regimes_active` aus der `.swao.yml` der App. Hat die App keine Li
 
 - Der SWAO-Katalog bildet COBIT 5 (2012) ab. Arbeitet der Kunde mit einer späteren COBIT-Ausgabe, prüfen Sie die Prozesszuordnung manuell.
 - 27 der 37 Prozesse hängen von Governance-Dokumenten (zum Beispiel `evidence/edm-01-governance-framework.md`) oder manuellen Fragebögen ab. Bis diese Dokumente vorliegen, ist UNKNOWN zu erwarten.
-- Neue Workspaces werden nicht mit COBIT_5 befüllt. Kopieren Sie es mit `swao framework install COBIT_5` in den Workspace (siehe oben).
+- Neue Workspaces werden nicht mit COBIT_5 befüllt. Kopieren Sie es aus dem GitHub-Repository in den Workspace (siehe oben).
 - SWAO kann Prozessfähigkeitsstufen nicht so bewerten wie ein COBIT-Assessor.
 - Die Ergebnisse stammen von einem LLM, das Signale und Dokumente auswertet. Sie sind ein strukturierter Ausgangspunkt für die Prüfung durch Fachleute, kein Prüfurteil und keine Zertifizierung.
 - Die Control-Texte sind eigene SWAO-Beschreibungen des jeweiligen Prozesses und der Nachweise, auf die eine prüfende Person achten würde; sie geben die COBIT-5-Publikation nicht wieder. Maßgeblich ist immer das offizielle Material von ISACA.

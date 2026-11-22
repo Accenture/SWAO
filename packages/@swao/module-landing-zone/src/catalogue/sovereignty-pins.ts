@@ -172,6 +172,21 @@ export const AZURE_SOVEREIGNTY_PINS: Record<string, LzSovereigntyPin> = {
   'saudiarabiaeast':     { residency_country: 'SA', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
   'southeastasia3':      { residency_country: 'MY', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
   'perth':               { residency_country: 'AU', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  // #4060 (2026-11-08): residency from the country code that prefixes the
+  // region's `location` label in the Microsoft Azure Retail Prices API (the
+  // convention holds for every pinned region, e.g. germanywestcentral is
+  // "DE West Central"); sources in LZ_SOVEREIGNTY_PIN_SOURCES. The other facts
+  // are the refresh defaults the catalogue already carried. portland stays
+  // UNKNOWN: its label carries no country code and no Microsoft page names it.
+  'israelnorthwest':    { residency_country: 'IL', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'malaysiasouth':      { residency_country: 'MY', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'northeastus5':       { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southcentralus2':    { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southeastus':        { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southeastus3':       { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southeastus5':       { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'southwestus':        { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
+  'westcentralusfre':   { residency_country: 'US', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -278,5 +293,33 @@ export const LZ_SOVEREIGNTY_PIN_SOURCES: Record<string, LzSovereigntyPinSource> 
   'azure/saudiarabiaeast': { url: 'https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/', retrieved: '2026-10-25', note: 'Saudi Arabia East listed under the Saudi Arabia geography (regions footnote: available or coming soon)' },
   'azure/southeastasia3': { url: 'https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/', retrieved: '2026-10-25', note: 'Southeast Asia 3 card: intent to deliver a second datacenter region in Malaysia, called Southeast Asia 3' },
   'azure/perth': { url: 'https://news.microsoft.com/en-au/2024/12/11/microsoft-extends-azure-cloud-infrastructure-to-western-australia/', retrieved: '2026-10-25', note: 'Microsoft Australia news (2024-12-11): Azure Extended Zone deployed to Perth, Western Australia; an extended zone, not a full region' },
+  'azure/israelnorthwest': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27israelnorthwest%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "IL Northwest" (country code IL prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.israelnorthwest?view=azure-dotnet)' },
+  'azure/malaysiasouth': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27malaysiasouth%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "MY South" (country code MY prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.malaysiasouth?view=azure-dotnet)' },
+  'azure/northeastus5': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27northeastus5%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US Northeast 5" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.northeastus5?view=azure-dotnet)' },
+  'azure/southcentralus2': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27southcentralus2%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US South Central 2" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.southcentralus2?view=azure-dotnet)' },
+  'azure/southeastus': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27southeastus%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US Southeast" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.southeastus?view=azure-dotnet)' },
+  'azure/southeastus3': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27southeastus3%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US Southeast 3" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.southeastus3?view=azure-dotnet)' },
+  'azure/southeastus5': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27southeastus5%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US Southeast 5" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.southeastus5?view=azure-dotnet)' },
+  'azure/southwestus': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27southwestus%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US Southwest" (country code US prefixes the label, as for every pinned region); region also named in the Azure Cosmos DB SDK reference (https://learn.microsoft.com/en-us/dotnet/api/microsoft.azure.cosmos.regions.southwestus?view=azure-dotnet)' },
+  'azure/westcentralusfre': { url: 'https://prices.azure.com/api/retail/prices?$filter=armRegionName%20eq%20%27westcentralusfre%27', retrieved: '2026-11-08', note: 'Azure Retail Prices API location label "US West Central FRE" (country code US prefixes the label, as for every pinned region); no Microsoft Learn page names this region' },
   'gcp/europe-north2': { url: 'https://docs.cloud.google.com/compute/docs/regions-zones', retrieved: '2026-10-17', note: 'Zones europe-north2-a/b/c: Stockholm, Sweden, Europe' },
+};
+
+// ---------------------------------------------------------------------------
+// #4228: regions whose residency stays UNKNOWN by an owner decision, keyed
+// `<catalogue provider>/<region id>`. Kept apart from the pins (the refresh
+// writes pins into the catalogue, whose sovereignty block is strict, and an
+// accepted unknown has no country to pin). The LZ catalogue quality rules
+// (quality.ts facts-unsourced) report an accepted unknown as info naming the
+// decision; any other UNKNOWN residency still warns.
+// ---------------------------------------------------------------------------
+export interface LzAcceptedUnknownResidency {
+  /** Tracker reference of the decision. */
+  decision: string;
+  /** Why the residency stays UNKNOWN. */
+  note: string;
+}
+
+export const LZ_ACCEPTED_UNKNOWN_RESIDENCY: Record<string, LzAcceptedUnknownResidency> = {
+  'azure/portland': { decision: '#4067', note: 'no official Microsoft source names the country of portland; its Retail Prices API label carries no country code' },
 };

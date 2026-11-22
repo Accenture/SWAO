@@ -25,11 +25,11 @@
 // Exported pure functions allow direct unit testing without child_process.
 
 import type { Command } from 'commander';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, dump } from 'js-yaml';
-import { findWorkspace } from '@swao/core';
+import { load } from 'js-yaml';
+import { findWorkspace, patchSwaoYmlFileOrThrow } from '@swao/core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -150,7 +150,9 @@ export function showLens(lensId: string, lensesDir: string = DEFAULT_LENSES_DIR)
  */
 export function readWorkspaceLenses(swaoYmlPath: string): string[] {
   if (!existsSync(swaoYmlPath)) return [];
-  const raw = load(readFileSync(swaoYmlPath, 'utf-8')) as {
+  const text = readFileSync(swaoYmlPath, 'utf-8');
+  if (text.trim() === '') return []; // an empty file (all lenses removed) is no document for js-yaml
+  const raw = load(text) as {
     assessment?: { lenses?: unknown };
   } | null;
   if (!raw) return [];
@@ -160,29 +162,33 @@ export function readWorkspaceLenses(swaoYmlPath: string): string[] {
 }
 
 /**
- * Write an updated assessment.lenses array back to a .swao.yml file.
- * Other fields are preserved. Creates a minimal .swao.yml if the file
- * does not exist.
+ * Write assessment.lenses of a .swao.yml through the minimal-patch writer of
+ * @swao/core (#4283, Design 125 section 7): only the lenses line changes;
+ * comments, quoting, blank lines and the flow-style workspace lines stay.
+ * An empty selection removes the key (no lens = the default), so it is never
+ * written as `lenses: []`, and nothing is written when no key existed. A
+ * missing file is created only for a non-empty selection. Returns true when
+ * the file changed; throws when the file cannot be patched safely.
  */
-export function writeWorkspaceLenses(swaoYmlPath: string, lenses: string[]): void {
-  let existing: Record<string, unknown> = {};
-  if (existsSync(swaoYmlPath)) {
-    const parsed = load(readFileSync(swaoYmlPath, 'utf-8')) as unknown;
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      existing = parsed as Record<string, unknown>;
-    }
+export function writeWorkspaceLenses(swaoYmlPath: string, lenses: string[]): boolean {
+  const ids = Array.from(new Set(lenses));
+  if (ids.length === 0 && !existsSync(swaoYmlPath)) return false;
+  return patchSwaoYmlFileOrThrow(
+    swaoYmlPath,
+    [{ path: ['assessment', 'lenses'], value: ids.length > 0 ? ids : undefined }],
+    { createIfMissing: true },
+  );
+}
+
+/** Runs a lens write for the CLI: an error is one line and exit code 1, never a stack trace. */
+function cliWriteLenses(swaoYmlPath: string, ids: string[], done: string): void {
+  try {
+    writeWorkspaceLenses(swaoYmlPath, ids);
+    console.log(done);
+  } catch (err) {
+    console.error(`[error] ${(err as Error).message}`);
+    process.exitCode = 1;
   }
-
-  // Merge: preserve existing assessment fields, update lenses.
-  const assessment = (existing['assessment'] && typeof existing['assessment'] === 'object' && !Array.isArray(existing['assessment']))
-    ? { ...(existing['assessment'] as Record<string, unknown>) }
-    : {};
-  assessment['lenses'] = lenses;
-  existing['assessment'] = assessment;
-
-  const dir = dirname(swaoYmlPath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(swaoYmlPath, dump(existing, { lineWidth: 120 }), 'utf-8');
 }
 
 // ---------------------------------------------------------------------------
@@ -268,8 +274,7 @@ export function registerLenses(program: Command): void {
       const swaoYmlPath = resolveSwaoYml() ?? join(process.cwd(), '.swao.yml');
       const current = readWorkspaceLenses(swaoYmlPath);
       const merged = Array.from(new Set([...current, ...ids]));
-      writeWorkspaceLenses(swaoYmlPath, merged);
-      console.log(`assessment.lenses set to: ${ merged.join(', ') }`);
+      cliWriteLenses(swaoYmlPath, merged, `assessment.lenses set to: ${ merged.join(', ') }`);
     });
 
   // ------------------------------------------------------------------
@@ -280,8 +285,7 @@ export function registerLenses(program: Command): void {
     .description('Replace assessment.lenses entirely')
     .action((ids: string[]) => {
       const swaoYmlPath = resolveSwaoYml() ?? join(process.cwd(), '.swao.yml');
-      writeWorkspaceLenses(swaoYmlPath, ids);
-      console.log(`assessment.lenses set to: ${ ids.join(', ') }`);
+      cliWriteLenses(swaoYmlPath, ids, `assessment.lenses set to: ${ ids.join(', ') }`);
     });
 
   // ------------------------------------------------------------------
@@ -298,7 +302,6 @@ export function registerLenses(program: Command): void {
         console.warn(`Lens '${ id }' is not in assessment.lenses -- nothing to remove.`);
         return;
       }
-      writeWorkspaceLenses(swaoYmlPath, updated);
-      console.log(`assessment.lenses set to: ${ updated.length > 0 ? updated.join(', ') : '(empty)' }`);
+      cliWriteLenses(swaoYmlPath, updated, `assessment.lenses set to: ${ updated.length > 0 ? updated.join(', ') : '(none, the default applies)' }`);
     });
 }

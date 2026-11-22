@@ -26,8 +26,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { isDeepStrictEqual } from 'util';
-import { load, dump } from 'js-yaml';
-import { resolveLzTargets, lzTargetLabel, setLzTargetsInSwaoYml } from '@swao/core';
+import { load } from 'js-yaml';
+import { patchSwaoYmlText, resolveLzTargets, lzTargetLabel, setLzTargetsInSwaoYml, stripCommentedLzTargetsTemplate } from '@swao/core';
 import {
   LZ_GEOGRAPHIES,
   lzGeographyDefaultRegion,
@@ -81,61 +81,50 @@ export function readWorkspaceLzTargets(workDir: string): string[] {
   }
 }
 
-const ROOT_KEY = /^[^\s#]/;
+/** #4495: the explanation line of the `swao init` LZ targets template (the hint the owner keeps). */
+const LZ_HINT_PREFIX = '# LZ catalogue targets for every app';
 
 /**
- * Text edit that keeps every comment of the file: sets
- * assessment.landing_zone.targets and drops a single-line
- * assessment.lz_cat_targets. Returns null when the layout is not one it
- * understands (the caller falls back to a parsed rewrite).
+ * #4495: puts the hint `comment` (the explanation line of the LZ targets
+ * template) directly above the live `  landing_zone:` key of the top-level
+ * `assessment:` block, unless a line above it already holds it. Comment
+ * lines only: the parsed document is unchanged.
  */
-function editTargetsText(text: string, targets: readonly string[]): string | null {
+function keepLzHintAboveLiveKey(text: string, comment: string): string {
   const lines = text.split('\n');
-  const targetLines = ['    targets:', ...targets.map((t) => `      - ${t}`)];
-  const start = lines.findIndex((l) => /^assessment:\s*(#.*)?$/.test(l));
-  if (start < 0) {
-    if (lines.some((l) => /^assessment\s*:/.test(l))) return null; // flow or inline value
-    const body = text.replace(/\s*$/, '');
-    return `${body}\n\nassessment:\n  landing_zone:\n${targetLines.join('\n')}\n`;
-  }
-  let end = lines.length;
+  const start = lines.findIndex((l) => l === 'assessment:' || l.startsWith('assessment: ') || l.startsWith('assessment:#') || l.startsWith('assessment:\r'));
+  if (start < 0) return text;
   for (let i = start + 1; i < lines.length; i++) {
-    if (ROOT_KEY.test(lines[i]!)) { end = i; break; }
+    const l = lines[i]!;
+    if (l !== '' && l[0] !== ' ' && l[0] !== '#' && l[0] !== '\r') break; // next top-level key
+    if (!l.startsWith('  landing_zone:')) continue;
+    const prev = i > 0 ? lines[i - 1]!.trim() : '';
+    if (prev.startsWith(LZ_HINT_PREFIX)) return text;
+    lines.splice(i, 0, `  ${comment}`);
+    return lines.join('\n');
   }
-  const block = lines.slice(start + 1, end).filter((l) => !/^ {2}lz_cat_targets:/.test(l));
-  const lzIdx = block.findIndex((l) => /^ {2}landing_zone:\s*(#.*)?$/.test(l));
-  if (lzIdx < 0) {
-    if (block.some((l) => /^ {2}landing_zone\s*:/.test(l))) return null;
-    block.unshift('  landing_zone:', ...targetLines);
-  } else {
-    let lzEnd = block.length;
-    for (let i = lzIdx + 1; i < block.length; i++) {
-      const l = block[i]!;
-      if (l.trim() !== '' && !l.trimStart().startsWith('#') && !/^ {3,}/.test(l)) { lzEnd = i; break; }
-    }
-    const lzBody = block.slice(lzIdx + 1, lzEnd);
-    const kept: string[] = [];
-    for (let i = 0; i < lzBody.length; i++) {
-      const l = lzBody[i]!;
-      if (/^ {4}targets\s*:/.test(l)) {
-        // Skip the key and its block-list items (deeper indent or `- ` at the same level).
-        while (i + 1 < lzBody.length && (/^ {5,}\S/.test(lzBody[i + 1]!) || /^ {4}- /.test(lzBody[i + 1]!))) i++;
-        continue;
-      }
-      kept.push(l);
-    }
-    block.splice(lzIdx, lzEnd - lzIdx, '  landing_zone:', ...targetLines, ...kept);
-  }
-  return [...lines.slice(0, start + 1), ...block, ...lines.slice(end)].join('\n');
+  return text;
 }
 
 /**
  * Write `targets` to assessment.landing_zone.targets of the workspace
  * .swao.yml. The expected document comes from setLzTargetsInSwaoYml (core,
- * the same helper the LZ assessment screen uses); a comment-preserving text
- * edit is used when it parses to exactly that document, otherwise the
- * document is rewritten from the parsed object. Line endings are kept.
+ * the same helper the LZ assessment screen uses) and is written by the
+ * minimal-patch writer of @swao/core (comments kept). Line endings are kept.
  * Returns false when the file is missing or unreadable.
+ *
+ * #4320 (rule of #4280): the file keeps one place for `landing_zone`. The
+ * commented LZ targets template of `swao init` is removed when the live key
+ * is written (stripCommentedLzTargetsTemplate), and a file without a live
+ * `assessment:` block adopts its commented `# assessment:` template in place
+ * (patchSwaoYmlText with adoptCommentedTemplates) instead of appending a
+ * second `assessment:` block.
+ *
+ * #4495 (regression of #4280 criterion 2): the write goes through the
+ * central minimal-patch writer only; the explanation line of the removed
+ * template (`# LZ catalogue targets for every app ...`) stays as the hint,
+ * directly above the live `landing_zone:` key. The commented example keys
+ * still go, so uncommenting never gives a second `landing_zone`.
  */
 export function writeLzTargetsToYaml(workDir: string, targets: readonly string[]): boolean {
   const yamlPath = join(workDir, '.swao.yml');
@@ -143,19 +132,23 @@ export function writeLzTargetsToYaml(workDir: string, targets: readonly string[]
   try {
     const raw = readFileSync(yamlPath, 'utf-8');
     const crlf = raw.includes('\r\n');
-    const text = crlf ? raw.replace(/\r\n/g, '\n') : raw;
+    const lf = crlf ? raw.replace(/\r\n/g, '\n') : raw;
+    const hint = lf.split('\n').map((l) => l.trim()).find((l) => l.startsWith(LZ_HINT_PREFIX));
+    const text = stripCommentedLzTargetsTemplate(lf);
     const parsed = (load(text) ?? {}) as Record<string, unknown>;
     const expected = setLzTargetsInSwaoYml(structuredClone(parsed), targets);
     const wanted = ((expected['assessment'] as Record<string, unknown>)['landing_zone'] as Record<string, unknown>)['targets'] as string[];
-    let next = editTargetsText(text, wanted);
-    if (next !== null) {
-      try {
-        if (!isDeepStrictEqual(load(next), expected)) next = null;
-      } catch {
-        next = null;
-      }
+    // #4283 / #4495: the central minimal-patch writer, never a whole-file dump or a text edit of its own.
+    const r = patchSwaoYmlText(text, [
+      { path: ['assessment', 'landing_zone', 'targets'], value: wanted },
+      { path: ['assessment', 'lz_cat_targets'], value: undefined },
+    ], { adoptCommentedTemplates: true });
+    if (!r.ok) return false;
+    let next = r.text;
+    if (hint) {
+      const withHint = keepLzHintAboveLiveKey(next, hint);
+      try { if (isDeepStrictEqual(load(withHint), load(next))) next = withHint; } catch { /* keep the patch without the hint */ }
     }
-    if (next === null) next = dump(expected, { lineWidth: 120 });
     writeFileSync(yamlPath, crlf ? next.replace(/\n/g, '\r\n') : next, 'utf-8');
     return true;
   } catch {

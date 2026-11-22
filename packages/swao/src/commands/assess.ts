@@ -18,11 +18,14 @@ import { homedir } from 'os';
 import { createHash } from 'crypto';
 import { join, resolve, isAbsolute, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { spawn, spawnSync } from 'child_process';
-import { registerChild } from '../tui/child-process-registry.js';
-import { dump, load } from 'js-yaml';
+import { spawnSync } from 'child_process';
+import { createLegPreflight, LEG_PREFLIGHT_OK_MARKER } from './llm-leg-preflight.js';
+import { spawnLegProcess } from './llm-leg-spawn.js';
+import { runLegChallenge } from './llm-challenge-spawn.js'; // #4478
+import { legCostSource, legPriceWarning } from './llm-leg-cost.js';
+import { dump, load, YAMLException } from 'js-yaml';
 import { listLenses, readWorkspaceLenses } from './lenses.js';
-import type { Command } from 'commander';
+import { Option, type Command } from 'commander';
 import { CredentialStore, credentialStore } from '@swao/core';
 import { resolveVcsToken } from '../credential/vcs-credential.js';
 import { LicenseGuard, LicenseTierError, LicenseLimitError, LicenseInvalidError } from '@swao/core';
@@ -43,13 +46,14 @@ import type { PortfolioRunDeps, PortfolioResult } from '@swao/module-portfolio';
 // handler defers it to the Pass 10 dynamic-crawl path only.
 // import { PlaywrightCrawlProvider } from '../crawl/playwright-driver.js';
 import { writeParityBaseline } from '../crawl/parity-baseline.js';
-import { findWorkspace, setWorkspaceRoot } from '@swao/core';
+import { findWorkspace, invalidLzTargetEntries, setWorkspaceRoot, lzCatalogueFitFileName } from '@swao/core';
+import { providerLabel } from '@swao/core';
 // Pass 10 (DYNAMIC) and Pass 23 (LZR) are dispatched directly (they take
 // orchestrator-supplied inputs beyond PassContext). The 12 uniform passes are
 // looked up via AssessOrchestrator (#0549).
 import { runDynamicPass, runLzrPass, findLzrInputFiles } from '../passes/index.js';
 import { computeContextBudget } from '../passes/context-budget.js';
-import { assessOrchestrator, appAssessmentType, runIngestPrePass, derivePlanForRun, loadAcceptedRun, loadPriorSignals } from '@swao/module-app-assessment';
+import { assessOrchestrator, appAssessmentType, runIngestPrePass, listIngestedDocuments, derivePlanForRun, loadAcceptedRun, loadPriorSignals, loadLzrChecksCatalogue } from '@swao/module-app-assessment';
 // #3152 / #3158: pass order, aliases, lens expansion and --skip-llm live in the module (unit-tested there).
 import { DEFAULT_PASS_KEYS, INDIVIDUAL_PASS_KEYS, sortPassesCanonical, normaliseRequestedPasses, applySkipLlm, expandPassProfile, filterByPassProfile, markSkippedByFlag, INVALID_LLM_RESPONSE_REASON, passesNotScheduled, classifyPassOutcome, passDegradedLogEvent } from '@swao/module-app-assessment';
 import type { PassNotRunEntry, PassDegradedEntry } from '@swao/core';
@@ -59,30 +63,36 @@ import type { PassNotRunEntry, PassDegradedEntry } from '@swao/core';
 // type:llm -- LLM Assessment for SWAO (Design 092, #1419/#1420). Gates run
 // first (Consultant/Enterprise tier + completed-App-Assessment precondition);
 // the run-loop engine lands with #1421..#1426.
-import { llmAssessmentType, runLlmAssessment, LlmAssessmentGateError, EnginePendingError, createLegRecorderFromEnv, orchestrateLegs } from '@swao/module-llm-assessment';
+import { llmAssessmentType, runLlmAssessment, LlmAssessmentGateError, EnginePendingError, createLegRecorderFromEnv, orchestrateLegs, runCostText } from '@swao/module-llm-assessment';
 import type { ResolvedLeg, ChallengePassResult } from '@swao/module-llm-assessment';
-import { serviceAssessmentType, planServicePasses, buildServiceScopeCoverage, formatSkippedSummary, buildPortfolioSummary, discoverApplicationApps, runBinaryAnalysis, type ServicePassPlan } from '@swao/module-service-assessment';
+import { serviceAssessmentType, planServicePasses, buildServiceScopeCoverage, formatSkippedSummary, buildPortfolioSummary, alignServiceRunSevenR, countPortfolioApps, discoverApplicationApps, runBinaryAnalysis, type ServicePassPlan, type PortfolioBuildStats } from '@swao/module-service-assessment';
 import { SwaoYmlLlmAssessmentSchema } from '@swao/core';
-import { landingZoneAssessmentType, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, generateLzNarrative, resolveProviderCatalogue, toLzRequiredServices } from '@swao/module-landing-zone';
+import { runLzLiveAssessCli, runLzLivePortfolioCli, landingZoneAssessmentType, assembleLzCatalogWsp, readFrameworkSovereigntyDecls, generateLzNarrative, resolveProviderCatalogue, toLzRequiredServices } from '@swao/module-landing-zone';
 import { communityFrameworksDir } from '@swao/community-frameworks';
 import type { LzFitReport, LzVerdictNarrative } from '@swao/module-landing-zone';
 import { createLzRunLifecycle, runLzProviderFits } from './lz-run-lifecycle.js';
 import { createRunLifecycle } from './run-lifecycle.js';
-import { readLegChallengeAgents, type LegChallengeAgent } from './llm-leg-challenge.js';
 import { assessChallengeOfferLines } from './assess-challenge-offer.js'; // #3427
 import { applyRunRetention } from './run-retention.js';
-import { resolveRunLzTargets, readWorkspaceAssessment } from './lz-target-config.js';
-import { RunContextSchema, lzTargetLabel, type WspResult } from '@swao/core';
+import { frameworkSelection, frameworkSelectionLine, serviceBaselineAdded, serviceRunRegimes, SERVICE_BASELINE_FRAMEWORK } from './framework-selection.js';
+import { effectiveCatalogueTargets, resolveRunLzTargets, readWorkspaceAssessment, attributeLzTargets, configuredRunLzTargets } from './lz-target-config.js';
+import { lzLiveAppRequiredServices } from './lz-live-app-fit.js';
+import { resolveLzSource, resolveLzTargets, parseLzTargetList, seedLinkedCatalogueTargets, isLzCatalogueSeedSource, lzAppLinks, describeLzAppLinks, type LzCatalogueSeed, type LzAppLink, LZ_LIVE_LINK_CATALOGUE_NOTICE, LZ_LIVE_LINK_NO_TARGETS_NOTICE, LZ_LIVE_LINK_NO_LZ_FIT_NOTICE, SwaoYmlLandingZonesSchema, type LzSourceSelection, type SwaoYmlLzRegistration } from '@swao/core';
+import { RunContextSchema, lzTargetLabel, type RunContext, type WspResult } from '@swao/core';
 // COMP (Pass 11) lives in @swao/module-framework (#0570). It left the
 // app-assessment orchestrator (a module may not import another module), so the
 // host dispatches it directly, like Pass 10 (DYNAMIC) and Pass 23 (LZR).
-import { runCompliancePass } from '@swao/module-framework';
+import { runCompliancePass, loadSelectedRegimes } from '@swao/module-framework';
+import { appBaselineDecisions, appNeededCapabilities, baselineRequirementProvenance, persistBaselineDecisions, selectedBaselineDenies, selectedPolicyBaselines } from './app-baseline-decisions.js';
 import { AssessmentTypeRouter, UnknownAssessmentTypeError, deriveConstraints, resolveCatalogsDir } from '@swao/core';
 import { createLlmProvider, getLastGatewayProvenance, LlmCacheLayer, UsageTrackingLlmProvider, mergeUsage, LlmConnectivityError, getConnector, resolveModelAlias } from '@swao/module-llm-providers';
 import type { LlmProviderConfig } from '@swao/module-llm-providers';
 import { preflightLlmProvider, llmUnavailableWarning } from './assess-llm-preflight.js';
 import { setAllowlist, setScrubPersonName } from '../util/redact-pre-llm.js';
 import { beginRun as beginRedactionRun, flushRedactionReport } from '@swao/core';
+import { shortenProfilePath, formatPassMarker, passMarkersEnabled, passLabel as passLineLabel, type PassMarker } from '@swao/core';
+import { formatLzPassStart, formatLzPassDone, formatLzTargetVerdict, formatLzVerdict } from '@swao/core';
+import { setPassProgressSink, createRunHeartbeat, appSourceRoot, type PassProgress } from '@swao/core';
 import { beginSourceScopeRun, endSourceScopeRun, getSourceScope, listInputFiles, sourceTreeHasFiles } from '@swao/core'; // #3428
 import { scopeTestCodeMode, applyTestCodeMarker } from '@swao/core'; // #3403
 import { readRunCodeHealthSetting, readRunTestCodeSetting, testCodeFilesAssessed } from './assess-test-code.js'; // #3403, #3487
@@ -91,16 +101,26 @@ import { writeMaskedLlmTrace } from '../util/llm-trace-writer.js';
 import { buildAuthenticatedCloneUrl, diagnoseCloneFailure, type VcsTokenScheme } from '../providers/vcs/auth.js';
 import { buildCloneArgs, buildCloneEnv, runGitClone, redactVcsUrl, cloneTimeoutMsFromVcs } from '../providers/vcs/clone.js';
 import { logApp, logPortfolio } from '@swao/core';
-import { createPostRunTimer, rebuildPortfolioSummaryStep, incrementAssessmentCounterStep } from './post-run-timing.js';
+import { buildFindingsDoc } from './findings-doc.js';
+import { lzCompletionSummary } from './lz-verdict-counts.js';
+import { createPostRunTimer, rebuildPortfolioSummaryStep, incrementAssessmentCounterStep, createPortfolioProgressLogger, createPortfolioPhaseLogger } from './post-run-timing.js';
 import { findInstalledChromium, isPlaywrightPackageInstalled } from '@swao/core';
 import type { AccumulatedUsage } from '@swao/module-llm-providers';
 import type { PassContext, PassResult } from '@swao/core';
 import { enrichSignals } from '@swao/core';
 import { PassFileSchema, RunManifestSchema, SwaoYmlSchema } from '../schema/index.js';
 import type { PassStat, RunManifest, DataSource } from '../schema/index.js';
+import { formatPassStatsTable, passSignalsEmitted } from './pass-stats-table.js';
 import { DEFAULT_WEIGHTS } from '../catalogue/cloud-provider-catalogue.js';
 import type { CrawlConfig } from '../crawl/types.js';
-import { SWAO_VERSION } from '../branding.js';
+import { SWAO_BUILD, SWAO_VERSION } from '../branding.js';
+import { resolveAssessDefaults, readLlmDefaults } from '../setup/defaults.js';
+
+// #4266: run heartbeat interval, and the minimum gap between a heartbeat or
+// progress line and the next assessment.pass.progress line of synchronous pass
+// work; together at least one line with the pass_id per 30 s of a long pass.
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+export const PASS_PROGRESS_MIN_GAP_MS = 20_000;
 
 // Committed fixture cassettes shipped with SWAO for CI/offline replay without
 // real LLM credentials. Resolved from this host file's location so it survives
@@ -122,21 +142,28 @@ const FIXTURE_CASSETTES_DIR = join(
 // (DYNAMIC) and Pass 23 (LZR) are dispatched separately below, as before.
 type PassKey = string;
 
-// Map internal provider IDs (lowercase slugs) to user-facing display names (#1001).
-// Internal YAML keys and code identifiers remain lowercase; only log output uses these.
-const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-  stackit:   'STACKIT',
-  gcp:       'GCP',
-  aws:       'AWS',
-  'aws-esc': 'AWS ESC',
-  'aws-iso-e': 'AWS ISO-E',
-  azure:     'Azure',
-  otc:       'OTC',
-  ionos:     'IONOS',
-  ovhcloud:  'OVHcloud',
-};
+// #1001 / #4296: user-facing provider names come from the one map in
+// @swao/core (abbreviation plus full name, "OTC, T Cloud Public"). Internal
+// YAML keys and code identifiers stay the lowercase id; only log lines and
+// human display text use these labels.
 function providerDisplayName(id: string): string {
-  return PROVIDER_DISPLAY_NAMES[id.toLowerCase()] ?? id;
+  return providerLabel(id, 'pair');
+}
+/** `OTC, T Cloud Public: eu-de`, the provider-and-region form of #4296. */
+function providerRegionLabel(provider: string, region: string): string {
+  return `${providerDisplayName(provider)}: ${region}`;
+}
+
+/**
+ * #4443: run-manifest provenance.crawl_type from the crawl Pass 10 actually
+ * ran, not from a top-level crawl key of .swao.yml (the crawl configuration
+ * may come from the vault or the TUI). A Playwright crawl that completed is
+ * 'playwright' (the CI crawl stub is 'stub'); no crawl, or vision on parity-baseline
+ * screenshots only, is 'none'.
+ */
+export function provenanceCrawlType(crawl: { engineVersion?: string } | undefined): 'playwright' | 'stub' | 'none' {
+  if (crawl === undefined || crawl.engineVersion === 'parity-baseline') return 'none';
+  return crawl.engineVersion === 'stub' ? 'stub' : 'playwright';
 }
 
 // Written by writeCrawlSection() called from AssessScreen.tsx input-playwright-password phase.
@@ -337,7 +364,7 @@ async function cloneIfNeeded(
   if (treeMatch) {
     const recovered = `wsp/inputs/source/${(treeMatch[1] ?? '').replace(/\/+$/, '')}`;
     console.warn(
-      `[warn] source.path in .swao.yml contained an embedded tree URL -- self-healing.\n` +
+      `[warn] source.path in .swao.yml contained an embedded tree URL, self-healing.\n` +
       `  was: ${rawPath}\n` +
       `  now: ${recovered}\n` +
       `  (Update apps/${appId ?? '<id>'}/.swao.yml to make this permanent.)`,
@@ -452,16 +479,16 @@ async function cloneIfNeeded(
     console.error(
       '[error] git is not installed or not on PATH.\n' +
       '  SWAO requires git to clone source.vcs repositories. Options:\n\n' +
-      '  Option A -- Portable Git (no admin rights needed):\n' +
+      '  Option A: Portable Git (no admin rights needed):\n' +
       '    1. Download from https://git-scm.com/download/win\n' +
       '       Choose "64-bit Git for Windows Portable" (PortableGit-*.exe)\n' +
       `    2. Run the .exe and extract to e.g. ${homedir()}\\PortableGit\\\n` +
       '    3. Add to PATH for this session:\n' +
       `       $env:PATH = "${homedir()}\\PortableGit\\cmd;$env:PATH"\n` +
       `    4. Re-run: swao assess --app ${appRef}\n\n` +
-      '  Option B -- winget (requires Windows 10 1709+):\n' +
+      '  Option B: winget (requires Windows 10 1709+):\n' +
       '    winget install Git.Git\n\n' +
-      '  Option C -- manual source (no git required):\n' +
+      '  Option C: manual source (no git required):\n' +
       `    Remove source.vcs: from apps/${appRef}/.swao.yml\n` +
       `    Place source code at: apps/${appRef}/source/\n` +
       `    Re-run: swao assess --app ${appRef}`,
@@ -475,7 +502,7 @@ async function cloneIfNeeded(
   const gitProxy = vcs?.git_proxy as string | undefined;
   const sslVerify = vcs?.ssl_verify as boolean | undefined;
   if (sslVerify === false) {
-    console.warn('[warn] source.vcs.ssl_verify: false -- TLS certificate verification disabled for git clone. Not recommended outside trusted environments.');
+    console.warn('[warn] source.vcs.ssl_verify: false: TLS certificate verification disabled for git clone. Not recommended outside trusted environments.');
   }
   const gitConfigEnv = buildGitConfigEnv(gitProxy, sslVerify);
 
@@ -506,7 +533,7 @@ async function cloneIfNeeded(
       // #3439: name the knob when the deadline, not git, ended the clone.
       (result.timedOut ? `  Deadline: ${Math.round(cloneTimeoutMs / 60_000)} min; raise source.vcs.clone_timeout_minutes (1 to 240) in apps/${appId ?? '<id>'}/.swao.yml for large repositories.\n` : '') +
       `\n${diagnosis.hint}\n` +
-      `\nStructured event logged as ${diagnosis.logCode} -- see\n` +
+      `\nStructured event logged as ${diagnosis.logCode}; see\n` +
       `  swao log tail --level error\n`,
     );
     process.exit(1);
@@ -535,18 +562,10 @@ export function resolveSourcePath(
   cliSourcePath: string | undefined,
 ): string {
   if (cliSourcePath) return isAbsolute(cliSourcePath) ? cliSourcePath : resolve(cliSourcePath);
-  const src = swaoYml.source as Record<string, unknown> | undefined;
-  const srcPath = src?.path;
-  const base = typeof srcPath === 'string' && srcPath.length > 0
-    ? resolve(workspaceAppDir, srcPath)
-    : resolve(workspaceAppDir, 'source');
   // #1499: when vcs.subdir is configured, scope every analysis pass to that
   // subdirectory so mono-repo clones do not produce cross-app findings.
-  const vcsSubdir = (src?.vcs as Record<string, unknown> | undefined)?.subdir;
-  if (typeof vcsSubdir === 'string' && vcsSubdir.length > 0) {
-    return join(base, vcsSubdir);
-  }
-  return base;
+  // #4266: the one helper of #4243 (the leg copy and source_hash use it too).
+  return appSourceRoot(workspaceAppDir, swaoYml).root;
 }
 
 // #0516: returns true when dir contains at least one non-README source file.
@@ -584,32 +603,8 @@ function msToHuman(ms: number): string {
 }
 
 function printStatsTable(stats: PassStat[], totalMs: number, totalSignals: number): void {
-  const COL_PASS = 34;
-  const COL_SIG = 8;
-  const COL_MS = 10;
-  const sep = '-'.repeat(COL_PASS + COL_SIG + COL_MS + 4);
-
-  console.log('');
-  console.log('Pass statistics');
-  console.log(sep);
-  console.log(
-    `${'Pass'.padEnd(COL_PASS)}  ${'Items'.padStart(COL_SIG)}  ${'Wall clock'.padStart(COL_MS)}`,
-  );
-  console.log(sep);
-  for (const s of stats) {
-    const label = `Pass ${s.num} -- ${s.pass}`;
-    // #0846: use items_emitted (signals OR blocks evaluated OR malware items) when available;
-    // fall back to signals_emitted so older manifests still display correctly.
-    const displayed = s.items_emitted ?? s.signals_emitted;
-    console.log(
-      `${label.padEnd(COL_PASS)}  ${String(displayed).padStart(COL_SIG)}  ${msToHuman(s.wall_clock_ms).padStart(COL_MS)}`,
-    );
-  }
-  console.log(sep);
-  console.log(
-    `${'Total'.padEnd(COL_PASS)}  ${String(totalSignals).padStart(COL_SIG)}  ${msToHuman(totalMs).padStart(COL_MS)}`,
-  );
-  console.log('');
+  // #4464: Signals and Items in separate columns (pass-stats-table.ts).
+  for (const line of formatPassStatsTable(stats, totalMs, totalSignals)) console.log(line);
 }
 
 /**
@@ -638,16 +633,28 @@ export interface AssessDeps {
   formatPortfolioResult?: (result: PortfolioResult) => string;
 }
 
+
+/**
+ * #4008: one-line error for a `.swao.yml` that js-yaml cannot parse: the file,
+ * the 1-based line and column and the parser's reason, no stack trace.
+ */
+export function swaoYmlParseErrorLine(path: string, err: unknown): string {
+  if (err instanceof YAMLException) {
+    const at = err.mark ? ` at line ${err.mark.line + 1}, column ${err.mark.column + 1}` : '';
+    return `[error] ${path}: not valid YAML${at}: ${err.reason}; fix the file and run again`;
+  }
+  return `[error] ${path}: cannot be read: ${err instanceof Error ? err.message : String(err)}`;
+}
 export function registerAssess(program: Command, deps: AssessDeps): void {
   program
     .command('assess')
     .description('Run WSP assessment passes against a workspace app (inv, state, data, ctx, sbom, tf, egr, crypto, synth, comp, blocks, scope). Pass 11 (comp) and Pass 12 (blocks) require an LLM key. Use --portfolio to assess all apps in one run (Enterprise).')
     .option('--app <appId>', 'Application ID to assess (required unless --portfolio)')
-    .option('--type <type>', 'Assessment type: application (default), service, landing-zone-catalog, llm. Overrides assessment.type in .swao.yml. For Service Portfolio Assessment use the swao service command. Use landing-zone (deprecated) as alias for landing-zone-catalog. Legacy types (audit, hybrid) print a coming-soon notice.')
+    .option('--type <type>', 'Assessment type: application (default), service, landing-zone-catalog, landing-zone-live (with --lz), llm. Overrides assessment.type in .swao.yml. For Service Portfolio Assessment use the swao service command. Use landing-zone (deprecated) as alias for landing-zone-catalog. Legacy types (audit, hybrid) print a coming-soon notice.')
     .option('--workspace <path>', 'Portfolio workspace directory (default: cwd)')
     .option(
       '--passes <list>',
-      `Comma-separated pass list: ${DEFAULT_PASS_KEYS.join(',')} (default: all ${DEFAULT_PASS_KEYS.length}). The list is a set; passes always run in canonical order. Pass \`dynamic\` to opt into the Playwright crawl; exclude it for fast static-only runs. \`secrets\` is the default Pass 14 secret scan (Gitleaks on PATH). Opt-in extras (not in default): malware (full Pass 14: Gitleaks + OSV-Scanner + ClamAV + YARA -- install tools to PATH first; replaces \`secrets\`). Pass 23 (LZR) runs via --lzr.`,
+      `Comma-separated pass list: ${DEFAULT_PASS_KEYS.join(',')} (default: all ${DEFAULT_PASS_KEYS.length}). The list is a set; passes always run in canonical order. Pass \`dynamic\` to opt into the Playwright crawl; exclude it for fast static-only runs. \`secrets\` is the default Pass 14 secret scan (Gitleaks on PATH). Opt-in extras (not in default): malware (full Pass 14: Gitleaks + OSV-Scanner + ClamAV + YARA; install tools to PATH first; replaces \`secrets\`). Pass 23 (LZR) runs via --lzr.`,
       DEFAULT_PASS_KEYS.join(','),
     )
     .option('--source-path <path>', 'Override source code path (overrides .swao.yml source.path)')
@@ -657,15 +664,33 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
     .option('--iter <n>', 'Iteration number', '1')
     .option('--stats', 'Print per-pass timing table after run', false)
     .option('--no-crawl', 'Skip dynamic analysis (Playwright crawl)')
-    .option('--lzr <landingZoneId>', 'Run Pass 23 (LZR) for the specified landing zone ID')
+    .option('--lzr <landingZoneId>', 'Run Pass 23 (LZR) for the specified landing zone ID; with --portfolio, lz-meshstack-01, lz-aws-01, lz-azure-01 or lz-terraform-01 picks the snapshot evaluated, live:<lz-id> the newest LZ Live run of a registered landing zone')
     .option('--lzr-fail-on-blocked', 'Exit 4 when LZR overall_verdict is blocked', false)
+    .option('--lenses <list>', 'Comma-separated lenses chosen for this run (#4283); recorded as lenses_used in run-context.yaml instead of the workspace assessment.lenses default. The pass set still comes from --passes and the app assessment.lenses. The value none records no lens.')
+    .option('--regimes <ids>', 'For app assessment: comma-separated frameworks (regime ids) chosen for this run (#4284); replaces assessment.regimes_active of apps/<id>/.swao.yml for this run only, the file is not changed. The value none evaluates no framework.')
+    .option('--llm-provider <type>', 'For this run: LLM provider type (anthropic, openai, ollama) instead of providers.llm.primary in .swao.yml (#4284); workspace-default ignores the app override. The file is not changed.')
     .option('--lz-provider <provider>', 'For --type landing-zone-catalog: CSP catalogue provider (aws, azure, stackit, ...). Falls back to assessment.landing_zone.provider in .swao.yml.')
     .option('--lz-region <regionId>', 'For --type landing-zone-catalog: catalogue region id (e.g. eu-central-1). Falls back to assessment.landing_zone.region in .swao.yml.')
     .option('--lz-cat-provider <provider>', 'For app assessment: run inline LZ catalogue fit against this CSP provider. Overrides assessment.landing_zone.provider in .swao.yml.')
     .option('--lz-cat-region <regionId>', 'For app assessment: run inline LZ catalogue fit against this region. Overrides assessment.landing_zone.region in .swao.yml.')
-    .option('--lz-cat-targets <pairs>', 'For app assessment: comma-separated provider:region pairs for multiple LZ catalogue fits (e.g. aws-esc:eusc-de-east-1,azure:westeurope). Supersedes --lz-cat-provider/--lz-cat-region.')
+    .option('--lz-cat-targets <pairs>', 'For app assessment: comma-separated provider:region pairs (provider/region accepted) for multiple LZ catalogue fits (e.g. aws-esc:eusc-de-east-1,azure:westeurope). Supersedes --lz-cat-provider/--lz-cat-region.')
+    // #3980 seeding: internal TUI marker, hidden from --help. A CLI user gets the
+    // seed from the link default without it (CLI and TUI select the same
+    // source); it only tells the CLI that --lz-cat-targets is the unedited TUI
+    // pre-fill, which the CLI verifies against its own seed.
+    .addOption(new Option('--lz-cat-targets-seeded <source>', 'Internal (TUI): --lz-cat-targets is the unedited seed of the linked landing zone (swao-yml-scope-regions or live-run-regions-in-use)').hideHelp())
+    // #4244: internal (LLM Assessment leg preflight, commands/llm-leg-preflight.ts), hidden from --help.
+    .addOption(new Option('--preflight', 'Internal (LLM Assessment): run the checks of assess --app that come before the run folder, print the preflight result and stop; nothing is cloned or written').hideHelp())
     .option('--no-lz-fit', 'For app assessment: run NO inline LZ catalogue fit for this run, even if assessment.landing_zone.targets is set in .swao.yml (#3378, ADR-0067). The TUI passes this when the operator selects no LZ targets.')
+    .option('--lz-market-scan', 'For app and service assessment: also score the bundled cloud provider list in Pass 09 (market scan, lower confidence, its own publication section; providers not reviewed within 180 days are listed without a fit score). Off by default: Pass 09 uses only the LZ targets selected for the run (#4481, Design 012 section 5a)')
     .option('--lz-frameworks <ids>', 'Comma-separated community framework IDs to activate sovereignty gate for LZ assessment (e.g. BSI_C5,GDPR). Falls back to frameworks in .swao.yml.')
+    .option('--lz-source <source>', 'For app assessment: LZ evidence of the inline fit, catalogue (static LZ catalogue, the only source). live is refused: live landing-zone data is used only by --type landing-zone-live (#4244). Design 123 section 8.4')
+    .option('--lz <lz-id>', 'For --type landing-zone-live: the registered landing zone (landing_zones[] in .swao.yml; Design 120 section 13.2)')
+    .option('--scope <scope-id>', 'For --type landing-zone-live: scope to run (repeatable; default all registered scopes)', (v: string, prev: string[] = []) => [...prev, v])
+    .option('--frameworks <ids>', 'For --type landing-zone-live only: comma-separated community framework ids installed in the workspace (default assessment.frameworks, else regimes_active); an app run selects frameworks in apps/<id>/.swao.yml and refuses this flag')
+    .option('--accept-unverified-read-only', 'For --type landing-zone-live: continue when read-only cannot be verified (this run only)')
+    .option('--accept-write-capable-credentials', 'For --type landing-zone-live: continue with a write-capable credential (this run only; SWAO still only reads)')
+    .option('--include-simulated', 'For --portfolio --type landing-zone-live: use scopes served by a mock CSP too (marked [SIM]; Design 121 section 10)')
     .option('--portfolio', 'Assess all apps in the workspace (Enterprise feature)', false)
     .option('--malware-fail-on-detection', 'Exit 5 when a MAL-01 or MAL-03 detection is present in the malware pass', false)
     .option('--fail-on <condition>', 'Exit 6 when any signal matches the condition (e.g. severity=critical, severity=high). Checks all completed passes.')
@@ -699,12 +724,19 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         crawl: boolean;
         lzr?: string;
         lzrFailOnBlocked: boolean;
+        lenses?: string;
+        regimes?: string; // #4284 run-time framework selection
+        llmProvider?: string; // #4284 run-time LLM provider override
         lzProvider?: string;
         lzRegion?: string;
         lzCatProvider?: string;
         lzCatRegion?: string;
         lzCatTargets?: string;
         lzFit?: boolean; // #3378: commander maps --no-lz-fit to lzFit=false
+        lzMarketScan?: boolean; // #4481: opt-in market scan of Pass 09
+        lzSource?: string; // #3887
+        lzCatTargetsSeeded?: string; // #3980 seeding (internal TUI marker)
+        preflight?: boolean; // #4244 LLM leg preflight (internal)
         lzFrameworks?: string;
         portfolio: boolean;
         malwareFailOnDetection: boolean;
@@ -712,7 +744,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         model?: string;
         llm?: string;
         skipLlm: boolean;
-      }) => {
+        lz?: string;
+        scope?: string[];
+        frameworks?: string;
+        acceptUnverifiedReadOnly?: boolean;
+        acceptWriteCapableCredentials?: boolean;
+        includeSimulated?: boolean;
+      }, cmd?: Command) => {
         // #0137 / #2185: resolve via --workspace or walk up. Exit early if not found.
         const workspaceRoot = opts.workspace
           ? resolve(opts.workspace)
@@ -723,6 +761,70 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           process.exit(1);
         }
         setWorkspaceRoot(workspaceRoot);
+
+        // #4198 (Design 125 section 5.7): values stored by the setup are the
+        // defaults of omitted flags (app, landing zone, LZ live frameworks);
+        // explicit flags win and nothing is written back.
+        {
+          const d = resolveAssessDefaults(workspaceRoot, { type: opts.type, app: opts.app, lz: opts.lz, frameworks: opts.frameworks, portfolio: opts.portfolio });
+          if (d.app !== undefined) opts.app = d.app;
+          if (d.lz !== undefined) opts.lz = d.lz;
+          if (d.frameworks !== undefined) opts.frameworks = d.frameworks;
+          for (const n of d.notes) console.log(`[info] ${n}`);
+        }
+
+        // #3766 (Design 120 section 13.2): Landing Zone Live Assessment. Runs on a
+        // registered landing zone, not on an app, so it is dispatched before the
+        // --app handling; the runner writes landing-zones/<lz-id>/wsp/runs/<ts>/.
+        if ((opts.type ?? '').trim().toLowerCase() === 'landing-zone-live') {
+          // #3584 (Design 120 sections 11.2, 13.2): the portfolio merge across every
+          // registered landing zone; the summary is rebuilt by the one aggregator.
+          if (opts.portfolio) {
+            const code = runLzLivePortfolioCli({ includeSimulated: opts.includeSimulated === true }, {
+              cwd: workspaceRoot,
+              rebuildSummary: (ws) => { buildPortfolioSummary(ws); },
+              // #3822: the app's required services, as the LZ catalogue fit derives them (latest run signals).
+              requiredServicesFor: (ws, appId) => lzLiveAppRequiredServices(ws, appId),
+            });
+            process.exit(code);
+          }
+          if (!opts.lz) {
+            console.error('[error] --type landing-zone-live requires --lz <lz-id> (a landing zone registered with swao lz connect)');
+            process.exit(1);
+          }
+          const code = await runLzLiveAssessCli(opts.lz, {
+            scope: opts.scope,
+            frameworks: opts.frameworks,
+            acceptUnverifiedReadOnly: opts.acceptUnverifiedReadOnly,
+            acceptWriteCapableCredentials: opts.acceptWriteCapableCredentials,
+          }, {
+            checks: loadLzrChecksCatalogue(), swaoVersion: SWAO_VERSION, cwd: workspaceRoot,
+            // #4050 (Design 120 section 8.4): landing-zones/<lz-id>/ingestion/ through the Pass 00 routing.
+            ingestOrganisationalDocuments: async (lzDir) => listIngestedDocuments(await runIngestPrePass({ workspacePath: lzDir, assessedAt: new Date().toISOString() }), lzDir),
+          });
+          process.exit(code);
+        }
+
+        // #4007: a --lz-cat-targets entry that names no target is refused (exit 1,
+        // invalid input as the other option checks of this command), never dropped;
+        // provider:region and the printed provider/region are both accepted (core lz-targets.ts).
+        if (opts.lzCatTargets !== undefined) {
+          const invalid = invalidLzTargetEntries(opts.lzCatTargets);
+          if (invalid.length > 0) {
+            console.error(`[error] --lz-cat-targets: ${invalid.map((x) => `"${x}"`).join(', ')} ${invalid.length === 1 ? 'is' : 'are'} not a target; use provider:region (or provider/region), comma-separated, for example otc:eu-de,otc:eu-nl`);
+            process.exit(1);
+          }
+        }
+
+        // #4009 (Design 123 sections 9.4 and 9.6): --frameworks selects the
+        // frameworks of a Landing Zone Live Assessment only; an app run selects them
+        // in apps/<id>/.swao.yml (assessment.regimes_active), which Pass 11 and every
+        // later consumer read (a run-level override would have to reach all of them). Refused (exit 1, invalid input) instead of ignored;
+        // the MCP tool swao_assess refuses the same input with the same wording.
+        if (opts.frameworks !== undefined) {
+          console.error('[error] --frameworks is for --type landing-zone-live; an app run selects frameworks in apps/<id>/.swao.yml (assessment.regimes_active, swao regime-select --app <id>)');
+          process.exit(1);
+        }
 
         // #3158: an explicit --passes overrides lens/pass_profile opt-in additions.
         // Compared as a set: callers may still send the previous default order.
@@ -813,8 +915,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           console.error(
             `[error] App '${opts.app}' not found in workspace.\n` +
             `  Expected: ${workspaceAppDir}\n` +
-            `  -- Run 'swao setup' if you have not configured a workspace yet, or\n` +
-            `  -- cd into your workspace directory and try again.\n` +
+            `  - Run 'swao setup' if you have not configured a workspace yet, or\n` +
+            `  - cd into your workspace directory and try again.\n` +
             `  Workspace searched: ${workspaceRoot}`,
           );
           process.exit(1);
@@ -850,8 +952,21 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
         const swaoYmlPath = join(workspaceAppDir, '.swao.yml');
         let swaoYml: Record<string, unknown> = {};
+        // #4008: a .swao.yml that is no YAML (app or workspace) ends the run with
+        // one [error] line naming the file and line and exit 1, never a stack
+        // trace (the unguarded load ended in an unhandledRejection with exit 0).
+        const yamlOrExit = (path: string): unknown => {
+          try {
+            return load(readFileSync(path, 'utf-8'));
+          } catch (err) {
+            console.error(swaoYmlParseErrorLine(path, err));
+            process.exit(1);
+          }
+        };
+        const wsYmlForParse = join(workspaceRoot, '.swao.yml');
+        if (wsYmlForParse !== swaoYmlPath && existsSync(wsYmlForParse)) yamlOrExit(wsYmlForParse);
         if (existsSync(swaoYmlPath)) {
-          const raw = load(readFileSync(swaoYmlPath, 'utf-8')) ?? {};
+          const raw = yamlOrExit(swaoYmlPath) ?? {};
           const parsed = SwaoYmlSchema.safeParse(raw);
           if (!parsed.success) {
             const firstIssue = parsed.error.issues[0];
@@ -869,6 +984,34 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // pass loop below (which owns the LLM factory + WSP I/O); other types
         // route through their registered AssessmentTypeContribution, and
         // known-but-unimplemented types print a coming-soon notice and exit 0.
+        // #4284 (Design 125 section 5.7): --regimes, the frameworks chosen for this
+        // run (the TUI framework step), replaces assessment.regimes_active for this
+        // run only: in memory here (the LZ fit sovereignty declarations and
+        // run-context.yaml read assessmentCfg) and through PassContext.regimesActive
+        // (Pass 03, Pass 11). The .swao.yml is never written.
+        const requestedRegimes: string[] | undefined = opts.regimes === undefined ? undefined
+          : opts.regimes.trim() === 'none' ? []
+            : [...new Set(opts.regimes.split(',').map((r) => r.trim()).filter((r) => r !== ''))];
+        if (requestedRegimes !== undefined && requestedRegimes.length === 0 && opts.regimes?.trim() !== 'none') {
+          console.error('[error] --regimes needs comma-separated framework ids (or none); see swao regime-select --list');
+          process.exit(1);
+        }
+        // #4400 (Design 103 section 7): every service run evaluates SWAO_APM, and a
+        // run selection adds to the app default (owner decision 2026-11-15).
+        const runType = opts.type ?? ((swaoYml.assessment as Record<string, unknown> | undefined)?.['type'] as string | undefined);
+        const runRegimes = serviceRunRegimes(runType, requestedRegimes, loadSelectedRegimes(workspaceAppDir));
+        if (serviceBaselineAdded(runType, requestedRegimes, loadSelectedRegimes(workspaceAppDir))) console.log(`[info] ${SERVICE_BASELINE_FRAMEWORK} added to the frameworks of this run: every service run evaluates it`);
+        // #4284: --llm-provider is validated here, before the run folder exists.
+        if (opts.llmProvider !== undefined && opts.llmProvider.trim() !== 'workspace-default' && !/^[a-z][a-z0-9-]*$/.test(opts.llmProvider.trim())) {
+          console.error(`[error] --llm-provider must be a provider type (anthropic, openai, ollama) or workspace-default, not "${opts.llmProvider.trim()}"`);
+          process.exit(1);
+        }
+        // #4269: the app default before a run-time selection replaces it in memory.
+        const frameworksSel = frameworkSelection(loadSelectedRegimes(workspaceAppDir), runRegimes);
+        if (runRegimes !== undefined) {
+          const { frameworks: _fileFrameworks, ...rest } = (swaoYml.assessment ?? {}) as Record<string, unknown>;
+          swaoYml.assessment = { ...rest, regimes_active: runRegimes };
+        }
         const assessmentCfg = swaoYml.assessment as Record<string, unknown> | undefined;
         const requestedType = opts.type ?? (assessmentCfg?.['type'] as string | undefined);
         const assessRouter = new AssessmentTypeRouter();
@@ -885,6 +1028,12 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             process.exit(1);
           }
           throw err;
+        }
+        // #4244: the LLM leg preflight checks an application (or service) run;
+        // every other route would leave before the checks or write elsewhere.
+        if (opts.preflight && (routeDecision.kind === 'coming-soon' || (routeDecision.type !== 'application' && routeDecision.type !== 'service'))) {
+          console.error(`[error] preflight: the leg command would run a ${routeDecision.type} assessment of app ${opts.app}, not an application assessment (assessment.type in apps/${opts.app}/.swao.yml)`);
+          process.exit(1);
         }
         if (routeDecision.kind === 'coming-soon') {
           console.log(`[assess] ${routeDecision.message}`);
@@ -919,16 +1068,22 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               process.exit(1);
             }
             const llmCfg = llmCfgParse.data;
-            if (!llmCfg.legs || llmCfg.legs.length < 2) {
-              console.error('[error] LLM Assessment needs 2..5 legs in the portfolio .swao.yml, e.g.:');
-              console.error('  llm_assessment:');
-              console.error('    legs:');
-              console.error('      - { connector: openrouter, model: anthropic/claude-sonnet-4, primary: true }');
-              console.error('      - { connector: openrouter, model: deepseek/deepseek-v4-flash }');
+            // #4198 (Design 125 section 5.7): the candidates stored by the LLM setup
+            // (assessment.llm.candidates) win over the Design 092 llm_assessment.legs.
+            const llmDefaults = readLlmDefaults(workspaceRoot);
+            const legDefs: Array<{ connector: string; model?: string | undefined; primary?: boolean | undefined }> | undefined =
+              llmDefaults.candidatesFrom === 'assessment.llm' ? llmDefaults.candidates : llmCfg.legs;
+            if (!legDefs || legDefs.length < 2) {
+              console.error('[error] LLM Assessment needs 2..5 candidates in the workspace .swao.yml (set them up with swao setup --type llm), e.g.:');
+              console.error('  assessment:');
+              console.error('    llm:');
+              console.error('      candidates:');
+              console.error('        - { connector: openrouter, model: anthropic/claude-sonnet-5.5 }');
+              console.error('        - { connector: openrouter, model: deepseek/deepseek-v4-flash }');
               process.exit(1);
             }
             // Resolve ~-prefix model aliases before running legs (#1817).
-            const legs: ResolvedLeg[] = await Promise.all(llmCfg.legs.map(async (l, i) => {
+            const legs: ResolvedLeg[] = await Promise.all(legDefs.map(async (l, i) => {
               let model = l.model ?? 'default';
               if (model.startsWith('~')) {
                 const loaded = getConnector(l.connector, { workspaceRoot, seedIfEmpty: true });
@@ -949,10 +1104,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 connector: l.connector,
                 model,
                 primary: l.primary ?? i === 0,
-                // Cost source refinement (configured prices, sha256 capture)
-                // lands with the L4 cost preview; local connectors are the
-                // ones with no platform billing.
-                costSource: l.connector === 'ollama' ? 'local' : 'billed',
+                // #4372: shared with the TUI; unpriced calls are detected per call
+                // (cost_usd.source unpriced), local connectors have no billing.
+                costSource: legCostSource(l.connector),
               };
             }));
             const result = await runLlmAssessment(
@@ -965,11 +1119,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 // resolved inside the leg CHILD processes.
                 core: undefined as never,
               },
-              async () => {
+              async (pre) => {
                 const orchestration = await orchestrateLegs({
                   workspaceRoot,
                   appId: llmAppId,
                   legs,
+                  // #4242: the application run the comparison refers to.
+                  ...(pre.latestRun ? { suiteRun: { runTs: pre.latestRun.runTs, assessmentType: pre.latestRun.assessmentType, passCount: pre.latestRun.passCount } } : {}),
                   execution: llmCfg.execution ?? 'serial',
                   repeat: llmCfg.repeat ?? 1,
                   weights: {
@@ -982,30 +1138,36 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                   keepLegWsp: llmCfg.keep_leg_wsp ?? false,
                   passSuiteVersion: SWAO_VERSION,
                   onProgress: (m) => console.log(`[llm-assessment] ${m}`),
+                  // #4453 (TUI parity): one line per synthesis step; the
+                  // elapsed-time ticks and the copy progress stay screen-only.
+                  onStatus: ((): ((line: string | null) => void) => {
+                    let lastStep = '';
+                    return (line) => {
+                      const step = line?.startsWith('Synthesising: ') ? line.replace(/, \d+(m \d+)?s$/, '') : '';
+                      if (step === '' || step === lastStep) return;
+                      lastStep = step;
+                      console.log(`[llm-assessment] ${step}`);
+                    };
+                  })(),
+                  // #4244 (Design 092 section 7.2a): the leg command is checked with
+                  // `assess --preflight` in the main workspace before its leg workspace
+                  // is copied; a failure ends the leg with the real reason.
+                  preflightLeg: createLegPreflight({ workspaceRoot, appId: llmAppId, crawl: opts.crawl !== false }),
+                  // #4372: warn before the run about candidates without a price.
+                  pricePreflight: (leg) => legPriceWarning(leg, workspaceRoot),
                   // #1587: invoke challenge prompts per leg using the leg's own
                   // provider connector and model. Enterprise-gated via the outer
                   // `assess --type llm` requirement (lines 582-593). Each leg runs
                   // its own adversarial challenge against its own App Assessment
                   // findings so cross-leg resilience scores are non-degenerate.
-                  spawnChallenge: async (leg, _legWorkspaceRoot, legEnv): Promise<ChallengePassResult> => {
-                    const challengeStarted = Date.now();
-
+                  // #4277: the challenge runs in the LEG workspace (cwd) on the leg's own
+                  // application run (ctx.runId, #4291); apps/<app>/wsp of the main workspace is never written.
+                  spawnChallenge: async (leg, legWorkspaceRoot, legEnv, ctx, signal, hooks): Promise<ChallengePassResult> => {
                     logApp(llmAppId, 'info', 'assess.pass.challenge.start',
                       `Challenge starting for leg ${leg.id} (${leg.connector}/${leg.model})`, {
                         context: { leg_id: leg.id, connector: leg.connector, model: leg.model },
                       });
 
-                    const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-                    const cmd = process.execPath;
-                    const baseArgs = isPkg ? [] : [process.argv[1] ?? ''];
-                    // Pass --connector and --model so challenge uses this leg's
-                    // provider, not the workspace default (#1587).
-                    const challengeArgs = [
-                      ...baseArgs,
-                      'challenge', '--app', llmAppId, '--all-agents', '--report',
-                      '--connector', leg.connector,
-                      ...(leg.model !== 'default' ? ['--model', leg.model] : []),
-                    ];
                     // #2901: inject the parent's live token so the challenge subprocess
                     // does not re-read an expired vault entry. The parent's token (loaded
                     // at session start) is valid; the vault copy may be expired by the time
@@ -1027,56 +1189,24 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                         if (liveToken) challengeTokenEnv[cAuth.env_var] = liveToken;
                       }
                     }
-                    const spawnResult = await new Promise<{ exitCode: number | null }>((res) => {
-                      const child = spawn(
-                        cmd,
-                        challengeArgs,
-                        {
-                          // Run from the MAIN workspace -- the leg workspace is a
-                          // fresh temp copy that has no challenge agents configured
-                          // (#1774). The main workspace carries the .swao.yml
-                          // challenge section and any prior combined.yaml artefacts.
-                          cwd: workspaceRoot,
-                          // Forward SWAO_LLM_ASSESSMENT_* so challenge
-                          // subprocess streams CallRecords to the leg sink (#1819).
-                          env: { ...process.env, ...legEnv, ...challengeTokenEnv, PKG_EXECPATH: '' },
-                          stdio: 'ignore',
-                          windowsHide: true,
-                        },
-                      );
-                      registerChild(child);
-                      child.on('error', () => res({ exitCode: null }));
-                      child.on('exit', (code) => res({ exitCode: code }));
+                    // #4241 / #4478: the shared challenge spawn (CLI and TUI): self-spawn with
+                    // --connector / --model of this leg (#1587) in the leg workspace (#4277,
+                    // ctx.runId is the leg's own application run, #4291), the leg env so the
+                    // challenge streams CallRecords to the leg sink (#1819), both pipes drained
+                    // (#4323), the PID to the orchestrator, and the challenge signal (cancel or a
+                    // fired challenge limit) stops the process tree by PID. It reads only the
+                    // challenge this leg wrote (#3336) and normalises the no-agents exit 2 (#2283).
+                    const run = await runLegChallenge({
+                      kind: 'app', appId: llmAppId, leg, legWorkspaceRoot, legEnv, ctx, extraEnv: challengeTokenEnv,
+                      ...(signal ? { signal } : {}), ...(hooks ? { hooks } : {}),
                     });
-
-                    const durationMs = Date.now() - challengeStarted;
-                    // Read the challenge this leg's subprocess wrote (#3336): files
-                    // older than the spawn are ignored; the run id is ignored by
-                    // design (every leg challenges the main run, see llm-leg-challenge.ts).
-                    type AgentEntry = LegChallengeAgent;
-                    const legRead = readLegChallengeAgents(join(workspaceRoot, 'apps', llmAppId, 'wsp'), 'app', challengeStarted);
-                    const agentData: Array<AgentEntry> = legRead.agents;
-                    if (legRead.source && agentData.length > 0 && !legRead.source.endsWith('combined.yaml')) {
+                    const { result, durationMs, noAgentsConfigured } = run;
+                    if (run.source && run.agents.length > 0 && !run.source.endsWith('combined.yaml')) {
                       logApp(llmAppId, 'info', 'challenge.input.loaded',
-                        `Challenge data loaded from ${legRead.source} (combined.yaml absent)`, {
-                          context: { leg_id: leg.id, source_dir: legRead.source, agent_count: agentData.length },
+                        `Challenge data loaded from ${run.source} (combined.yaml absent)`, {
+                          context: { leg_id: leg.id, source_dir: run.source, agent_count: run.agents.length },
                         });
                     }
-                    // #2283: exit code 2 from the challenge subprocess = no agents configured
-                    // (clean skip, not an error). Normalise to 0 so downstream tooling treats
-                    // it as a successful no-op rather than an error condition.
-                    const noAgentsConfigured = spawnResult.exitCode === 2 && agentData.length === 0;
-                    const effectiveExitCode = noAgentsConfigured ? 0 : spawnResult.exitCode;
-                    const result: ChallengePassResult = {
-                      completed_at: new Date().toISOString(),
-                      agents: agentData.map((a) => ({
-                        agent_id: String(a['agent_id'] ?? 'unknown'),
-                        calls: 1,
-                        dnf: effectiveExitCode !== 0,
-                        duration_ms: Math.round(durationMs / Math.max(agentData.length, 1)),
-                      })),
-                      exit_code: effectiveExitCode,
-                    };
 
                     const agentsCompleted = result.agents.filter(a => !a.dnf).length;
                     if (noAgentsConfigured) {
@@ -1085,7 +1215,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                           context: { leg_id: leg.id, connector: leg.connector, model: leg.model, duration_ms: durationMs },
                         });
                     } else {
-                      logApp(llmAppId, 'info', 'assess.pass.challenge.complete',
+                      // #4323: a non-zero exit is a warning.
+                      logApp(llmAppId, result.exit_code === 0 ? 'info' : 'warn', 'assess.pass.challenge.complete',
                         `Challenge complete for leg ${leg.id}: ${agentsCompleted}/${result.agents.length} agents`, {
                           context: {
                             leg_id: leg.id, connector: leg.connector, model: leg.model,
@@ -1099,58 +1230,25 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
                     return result;
                   },
-                  spawnLeg: (leg, legWorkspaceRoot, legEnv) =>
-                    new Promise((resolveSpawn) => {
-                      const started = Date.now();
-                      // Self-spawn: pkg binary spawns itself; dev spawns
-                      // node + the CLI entry. PKG_EXECPATH must be cleared
-                      // (#0807-P3) or the pkg spawn patch injects the parent
-                      // binary path into the child.
-                      const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-                      const cmd = process.execPath;
-                      const baseArgs = isPkg ? [] : [process.argv[1] ?? ''];
-                      const child = spawn(
-                        cmd,
-                        // Only suppress crawl in legs when the parent was also called
-                        // with --no-crawl; if the app has dynamic in its pass profile
-                        // the leg should honour it too (#1818).
-                        [...baseArgs, 'assess', '--app', llmAppId, '--llm', `${leg.connector}:${leg.model}`, '--no-cache', ...(opts.crawl === false ? ['--no-crawl'] : [])],
-                        {
-                          cwd: legWorkspaceRoot,
-                          env: { ...process.env, ...legEnv, PKG_EXECPATH: '' },
-                          stdio: ['ignore', 'pipe', 'pipe'],
-                          windowsHide: true,
-                        },
-                      );
-                      registerChild(child);
-                      let tail = '';
-                      const keepTail = (d: Buffer) => { tail = (tail + d.toString()).slice(-4000); };
-                      child.stdout?.on('data', keepTail);
-                      child.stderr?.on('data', keepTail);
-                      child.on('error', () => resolveSpawn({ exitCode: null, durationMs: Date.now() - started }));
-                      child.on('exit', (code) => {
-                        if (code !== 0) console.error(`[llm-assessment] leg ${leg.id} output tail:\n${tail.slice(-1500)}`);
-                        resolveSpawn({ exitCode: code, durationMs: Date.now() - started });
-                      });
-                    }),
+                  // Self-spawn through the central helper (#4241), the same argv as
+                  // the leg preflight (#4244); crawl is suppressed in legs only when
+                  // the parent ran with --no-crawl (#1818). #4470: the PID goes to the
+                  // orchestrator and the leg signal (cancel or a fired leg limit)
+                  // stops the leg process tree by PID; this path ignored it before.
+                  spawnLeg: (leg, legWorkspaceRoot, legEnv, signal, hooks) => spawnLegProcess({
+                    appId: llmAppId, leg, legWorkspaceRoot, legEnv, crawl: opts.crawl !== false,
+                    ...(signal ? { signal } : {}), ...(hooks ? { hooks } : {}),
+                    // #4243: the tail goes back to the orchestrator; the console keeps a short excerpt.
+                    onExit: (code, tail) => { if (code !== 0) console.error(`[llm-assessment] leg ${leg.id} output tail:\n${tail.slice(-1500)}`); },
+                  }),
                   // #1820: LZ sovereignty challenge per leg -- mirrors spawnChallenge
                   // but invokes `swao challenge --lz --all-agents`. Results produce
                   // C2-namespace PassGroups in the comparison report.
-                  spawnLzChallenge: async (leg, _legWorkspaceRoot, legEnv): Promise<ChallengePassResult> => {
-                    const lzStarted = Date.now();
+                  spawnLzChallenge: async (leg, legWorkspaceRoot, legEnv, ctx, signal, hooks): Promise<ChallengePassResult> => {
                     logApp(llmAppId, 'info', 'assess.pass.challenge-lz.start',
                       `LZ Challenge starting for leg ${leg.id} (${leg.connector}/${leg.model})`, {
                         context: { leg_id: leg.id, connector: leg.connector, model: leg.model },
                       });
-                    const isPkgLz = Boolean((process as { pkg?: unknown }).pkg);
-                    const cmdLz = process.execPath;
-                    const baseArgsLz = isPkgLz ? [] : [process.argv[1] ?? ''];
-                    const challengeLzArgs = [
-                      ...baseArgsLz,
-                      'challenge', '--type', 'lz', '--app', llmAppId, '--all-agents',
-                      '--connector', leg.connector,
-                      ...(leg.model !== 'default' ? ['--model', leg.model] : []),
-                    ];
                     // #2901: same live-token injection as spawnChallenge.
                     const lzLoaded = getConnector(leg.connector, { workspaceRoot, seedIfEmpty: true });
                     const lzTokenEnv: Record<string, string> = {};
@@ -1169,39 +1267,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                         if (lzLiveToken) lzTokenEnv[lzAuth.env_var] = lzLiveToken;
                       }
                     }
-                    const spawnResultLz = await new Promise<{ exitCode: number | null }>((res) => {
-                      const childLz = spawn(
-                        cmdLz,
-                        challengeLzArgs,
-                        {
-                          cwd: workspaceRoot,
-                          env: { ...process.env, ...legEnv, ...lzTokenEnv, PKG_EXECPATH: '' },
-                          stdio: 'ignore',
-                          windowsHide: true,
-                        },
-                      );
-                      registerChild(childLz);
-                      childLz.on('error', () => res({ exitCode: null }));
-                      childLz.on('exit', (code) => res({ exitCode: code }));
+                    // #4478: the shared challenge spawn, as for the app challenge; it reads the
+                    // LZCA_*.yaml of the challenge-lz/<ts>/ folder this leg wrote (#3336).
+                    const lzRun = await runLegChallenge({
+                      kind: 'lz', appId: llmAppId, leg, legWorkspaceRoot, legEnv, ctx, extraEnv: lzTokenEnv,
+                      ...(signal ? { signal } : {}), ...(hooks ? { hooks } : {}),
                     });
-                    const durationMsLz = Date.now() - lzStarted;
-                    // LZCA_*.yaml of the challenge-lz/<ts>/ folder this leg wrote (#3336;
-                    // folders older than the spawn are ignored, run id ignored by design).
-                    const lzAgentData = readLegChallengeAgents(join(workspaceRoot, 'apps', llmAppId, 'wsp'), 'lz', lzStarted).agents
-                      .map(a => ({ agent_id: String(a.agent_id ?? 'unknown') }));
-                    // #2283: exit code 2 = no LZ agents configured (clean skip).
-                    const noLzAgentsConfigured = spawnResultLz.exitCode === 2 && lzAgentData.length === 0;
-                    const effectiveLzExitCode = noLzAgentsConfigured ? 0 : spawnResultLz.exitCode;
-                    const lzResult: ChallengePassResult = {
-                      completed_at: new Date().toISOString(),
-                      agents: lzAgentData.map((a) => ({
-                        agent_id: String(a.agent_id),
-                        calls: 1,
-                        dnf: effectiveLzExitCode !== 0,
-                        duration_ms: Math.round(durationMsLz / Math.max(lzAgentData.length, 1)),
-                      })),
-                      exit_code: effectiveLzExitCode,
-                    };
+                    const { result: lzResult, durationMs: durationMsLz, noAgentsConfigured: noLzAgentsConfigured } = lzRun;
                     const lzCompleted = lzResult.agents.filter(a => !a.dnf).length;
                     if (noLzAgentsConfigured) {
                       logApp(llmAppId, 'info', 'assess.pass.challenge-lz.skip',
@@ -1209,7 +1281,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                           context: { leg_id: leg.id, connector: leg.connector, model: leg.model, duration_ms: durationMsLz },
                         });
                     } else {
-                      logApp(llmAppId, 'info', 'assess.pass.challenge-lz.complete',
+                      // #4323: a non-zero exit is a warning.
+                      logApp(llmAppId, lzResult.exit_code === 0 ? 'info' : 'warn', 'assess.pass.challenge-lz.complete',
                         `LZ Challenge complete for leg ${leg.id}: ${lzCompleted}/${lzResult.agents.length} agents`, {
                           context: {
                             leg_id: leg.id, connector: leg.connector, model: leg.model,
@@ -1224,7 +1297,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                   },
                 });
                 console.log('');
-                console.log(`[llm-assessment] complete: ${orchestration.records.length} calls across ${legs.length} legs, ${orchestration.findingsCount} finding(s)`);
+                // #4243: a run with a failed leg never reports "complete".
+                console.log(`[llm-assessment] ${orchestration.status}: ${orchestration.records.length} calls across ${legs.length} legs, ${orchestration.findingsCount} finding(s)`);
+                // #4372 follow-up: the run cost says how many calls had no price.
+                if (orchestration.totals) console.log(`[llm-assessment] cost: ${runCostText(orchestration.totals)}`);
+                for (const o of orchestration.legs.filter((l) => l.status !== 'complete')) {
+                  console.error(`[llm-assessment]   ${o.id}: ${o.status}${o.reason ? `, ${o.reason}` : ''}${o.workspace ? ` (workspace kept: ${o.workspace})` : ''}`);
+                }
+                if (orchestration.status !== 'complete') console.error('[llm-assessment] the comparison is incomplete; see log.ndjson and calls/<leg>.stderr.log in the run folder');
                 const ranks = Object.entries(orchestration.final.rank)
                   .filter((e): e is [string, number] => e[1] !== null)
                   .sort((a, b) => a[1] - b[1]);
@@ -1344,6 +1424,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
           });
           const lzRawTargets: { provider: string; region: string }[] = lzTargetConfig.targets;
+          // #4285 (#4289): targets the TUI passes that equal the set-up targets after
+          // geography resolution keep the set-up origin and its resolution, so
+          // run-status.json records resolved_targets as for a flag-free run.
+          const lzTargetAttr = attributeLzTargets(lzTargetConfig, configuredRunLzTargets({
+            app: opts.app, workspaceRoot, cataloguesDir: lzCataloguesDir,
+            appAssessment: assessmentCfg, workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
+          }));
+          try { logApp(opts.app, 'info', 'lz.assessment.targets.source', `LZ targets from ${lzTargetAttr.source}`, { context: { app_id: opts.app, source: lzTargetAttr.source, targets: lzRawTargets.map(lzTargetLabel), resolved: lzTargetAttr.resolved } }); } catch { /* best-effort */ }
           if (lzRawTargets.length === 0) {
             console.error('[error] --type landing-zone-catalog requires targets: --lz-cat-targets, --lz-provider and --lz-region, or assessment.landing_zone.targets in .swao.yml. Run `swao lz catalogue list` to see providers.');
             process.exit(1);
@@ -1355,7 +1443,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // plus run-status.json in the run dir (started -> complete | failed | aborted).
           const lzLifecycle = createLzRunLifecycle({
             app: opts.app, runDir: lzRunDir, startedAt: lzStart, targets: lzRawTargets, swaoVersion: SWAO_VERSION,
-            resolvedTargets: lzTargetConfig.resolved,
+            resolvedTargets: lzTargetAttr.resolved, // #4285
           });
           lzLifecycle.markStarted();
           lzLifecycle.installProcessGuards();
@@ -1388,7 +1476,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // a uniform envelope regardless of assessment type.
           try {
             logPortfolio('info', 'swao.run.start', 'LZ Catalog Assessment started', {
-              context: { type: 'lz-catalog', app: opts.app, swao_version: SWAO_VERSION, provider_count: lzRawTargets.length },
+              context: { type: 'lz-catalog', app: opts.app, swao_version: SWAO_VERSION, ...SWAO_BUILD, provider_count: lzRawTargets.length }, // #4430: build_commit, build_date
             });
           } catch { /* best-effort */ }
           try {
@@ -1416,10 +1504,15 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // ok:false (e.g. unknown region `azure:Europe`) or throws is logged
           // (provider.error + [warning]) and skipped; the run continues and closes
           // as `partial`, or fails (exit 1) only when every target failed.
+          // #4506: the LZ Catalog run screen opts in with SWAO_PASS_MARKERS=1; a terminal never sees the markers.
+          const lzMarkers = passMarkersEnabled();
+          const lzMark = (line: string): void => { if (lzMarkers) console.log(line); };
           const lzLoop = runLzProviderFits({
             app: opts.app,
             targets: lzRawTargets,
             fit: ({ provider: lzP, region: lzR }) => {
+              lzMark(formatLzPassStart(lzP, lzR));
+              try {
               const assembled = assembleLzCatalogWsp({
                 workspacePath: workspaceAppDir,
                 provider: lzP,
@@ -1442,6 +1535,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               }
               const lzReport = assembled.wsp['lz'] as Record<string, unknown>;
               return { ok: true, value: { wsp: assembled.wsp, lzReport }, overall: (lzReport['overall'] as string) ?? 'UNKNOWN' };
+              } finally { lzMark(formatLzPassDone(lzP, lzR)); }
             },
           });
           const lzFailedTargets = lzLoop.failures;
@@ -1466,7 +1560,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // landing zone immediately from the gap report.
           const lzReadyRegions = lzFitBuffer
             .filter(e => e.overall === 'READY')
-            .map(e => `${providerDisplayName(e.provider)}/${e.region}`);
+            .map(e => providerRegionLabel(e.provider, e.region));
           if (lzReadyRegions.length > 0) {
             const altSuffix = ` In this assessment, ${lzReadyRegions.join(' and ')} satisfies all sovereignty requirements and is available as a sovereign-compliant alternative.`;
             for (const exec of lzFitBuffer) {
@@ -1507,7 +1601,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             lzTotalSignals += wsp.signals.length;
             lzTargetResults.push({ provider: lzP, region: lzR, overall, signals: wsp.signals.length, passName, fileName, fitMs });
             console.log(
-              `[ok]  Landing-zone fit complete  ${providerDisplayName(lzP)}/${lzR}  verdict: ${overall}  ` +
+              `[ok]  Landing-zone fit complete  ${providerRegionLabel(lzP, lzR)}  verdict: ${overall}  ` +
               `${wsp.signals.length} gap(s)  ->  wsp/runs/${lzRunTs}/passes/${fileName}`,
             );
           }
@@ -1518,7 +1612,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             generateLzNarrative({
               lz_id: `${exec.provider}/${exec.region}`,
               region_id: exec.region,
-              display: `${providerDisplayName(exec.provider)} / ${exec.region}`,
+              display: providerRegionLabel(exec.provider, exec.region),
               fit: exec.lzReport as unknown as LzFitReport,
               evidence_files: [exec.fileName],
             }),
@@ -1560,6 +1654,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               lzr_input_type: 'catalogue',
               crawl_type: 'none',
               swao_version: SWAO_VERSION,
+              ...SWAO_BUILD, // #4430
             },
             lz_catalogues: Object.keys(lzCatalogueMap).length > 0 ? lzCatalogueMap : undefined,
           };
@@ -1613,6 +1708,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             }
             console.log(`\n  Overall: ${lzOverallVerdict}  (${lzTargetResults.length} CSP/region target(s) assessed)`);
           }
+          // #4506: the verdicts of the run for the Done screen (single and multi target).
+          for (const r of lzTargetResults) lzMark(formatLzTargetVerdict(`${r.provider}/${r.region}`, r.overall, r.signals));
+          lzMark(formatLzVerdict(lzOverallVerdict));
           // #3223: partial run -- name the skipped targets once more after the summary.
           const lzPartial = lzFailedTargets.length > 0;
           const lzRunStatus = lzPartial ? 'partial' : 'complete';
@@ -1632,9 +1730,12 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // Before the close events so assess.post_run.* precedes swao.run.complete (#3224); the
           // summary reads latest-lz-primary.yaml only, not this run's marker.
           try {
+            // #4506: [post] lines name the step and its progress on the run screen (as #4498 for the app run).
+            const lzPostLog = { app: opts.app!, runId: lzStart.toISOString(), assessmentType: 'landing-zone-catalog' };
+            const lzPostRun = createPostRunTimer({ ...lzPostLog, print: (line) => console.log(line) });
+            const lzPortfolioProgress = createPortfolioProgressLogger({ ...lzPostLog, print: (line) => console.log(line) });
             if (discoverApplicationApps(workspaceRoot).some((a) => a.appId === opts.app)) {
-              const lzPostRun = createPostRunTimer({ app: opts.app!, runId: lzStart.toISOString(), assessmentType: 'landing-zone-catalog' });
-              if (rebuildPortfolioSummaryStep(lzPostRun, lzRunStatus, () => buildPortfolioSummary(workspaceRoot))) {
+              if (rebuildPortfolioSummaryStep(lzPostRun, lzRunStatus, () => buildPortfolioSummary(workspaceRoot, { onProgress: lzPortfolioProgress }), undefined, { apps_total: countPortfolioApps(workspaceRoot) })) {
                 console.log('[ok]  SWAO_APM: landing zone fit updated  ->  wsp/portfolio-summary.json');
               }
             }
@@ -1653,12 +1754,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 status: lzRunStatus,
                 ...lzPartialCtx,
                 exit_code: 0,
-                overall_verdict: lzOverallVerdict,
-                targets: lzTargetResults.map(r => ({
-                  target: `${r.provider}:${r.region}`,
-                  verdict: r.overall,
-                  gaps: r.signals,
-                })),
+                // #4274: the same summary as the portfolio event (overall verdict, per-verdict counts, targets).
+                ...lzCompletionSummary(lzOverallVerdict, lzTargetResults),
               },
             });
           } catch { /* logging is best-effort */ }
@@ -1673,8 +1770,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 exit_code: 0,
                 providers_run: lzRawTargets.length,
                 providers_failed: lzFailedTargets.length,
-                ready: lzTargetResults.filter(r => r.overall === 'READY').length,
-                blocked: lzTargetResults.filter(r => r.overall !== 'READY').length,
+                // #4274: one count per verdict (NEEDS_VERIFICATION is not blocked), same fields as the app event.
+                ...lzCompletionSummary(lzOverallVerdict, lzTargetResults),
                 duration_ms: lzElapsedMs,
                 elapsed_ms: lzElapsedMs,
               },
@@ -1719,7 +1816,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const effectiveAssessmentType = routeDecision.type;
 
         // Auto-clone from vcs.url when source/ is absent and no CLI override
-        if (!opts.sourcePath && !isService) {
+        // #4244: the preflight never clones (the clone is the leg's cost, and it writes the source folder).
+        if (!opts.sourcePath && !isService && !opts.preflight) {
           await cloneIfNeeded(workspaceAppDir, swaoYml, opts.app);
         }
 
@@ -1733,7 +1831,11 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         }
 
         // #0516: abort before any pass when source is empty or README-only.
-        if (!isService && !checkSourceNonEmpty(sourcePath)) {
+        const preflightVcsUrl = ((swaoYml.source as Record<string, unknown> | undefined)?.vcs as Record<string, unknown> | undefined)?.url;
+        if (opts.preflight && !isService && !checkSourceNonEmpty(sourcePath) && typeof preflightVcsUrl === 'string' && preflightVcsUrl.trim() !== '') {
+          // #4244: a source the leg clones from source.vcs.url itself is resolvable.
+          console.log('[info] preflight: the source is not present; the leg clones it from source.vcs.url');
+        } else if (!isService && !checkSourceNonEmpty(sourcePath)) {
           console.error(
             `[error] Source directory has no file to assess: it is empty, holds only README files,\n` +
             `[error] or its files sit only in excluded folders (node_modules/, target/, dist/, .git/, ...).\n` +
@@ -1749,6 +1851,12 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const assessedAt = startedAt.toISOString().slice(0, 10);
         const runId = startedAt.toISOString();
         const runTs = startedAt.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+        // #4267 (Design 098 section 4.1): [pass-start] / [pass-done] stdout markers for a
+        // parent process that opts in with SWAO_PASS_MARKERS=1 (the TUI Assess screen).
+        const writePassMarkers = passMarkersEnabled();
+        const passMarker = (m: Omit<PassMarker, 'run_id'>): void => {
+          if (writePassMarkers) console.log(formatPassMarker({ ...m, run_id: runId }));
+        };
 
         // #3158: resolve aliases (mal, dyn) and drop lzr, which the TUI may write
         // from a lens; Pass 23 is driven by --lzr <landingZoneId>.
@@ -1770,17 +1878,19 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // playwrightReadyForCrawl=false gates the live-crawl branch below while leaving
         // the parity-baseline fallback intact.
         let playwrightReadyForCrawl = true;
+        // #4272: the Chromium found here is logged with dynamic.start when Pass 10
+        // actually crawls (inside the run), not at this pre-run probe.
+        let chromiumPath: string | null = null;
         if (includeDynamic && inBinary) {
-          const chromiumPath = findInstalledChromium();
+          chromiumPath = findInstalledChromium();
           const pkgInstalled  = isPlaywrightPackageInstalled();
           if (!chromiumPath || !pkgInstalled) {
             const missing = !chromiumPath ? 'Chromium browser' : 'playwright-core npm package';
-            console.warn(`[warn] Pass 10 live crawl unavailable -- ${missing} not found. Parity-baseline vision active if screenshots exist. Run: swao install-playwright to enable live crawl.`);
+            console.warn(`[warn] Pass 10 live crawl unavailable: ${missing} not found. Parity-baseline vision active if screenshots exist. Run: swao install-playwright to enable live crawl.`);
             logApp(opts.app, 'warn', 'dynamic.playwright-absent', `Pass 10 playwright absent: ${missing}; parity-baseline active`, { context: { chromium_found: chromiumPath !== null, pkg_installed: pkgInstalled } });
             playwrightReadyForCrawl = false;
           } else {
-            console.log(`[info] Pass 10 (dynamic_analysis): Chromium at ${chromiumPath}, playwright-core installed.`);
-            logApp(opts.app, 'info', 'dynamic.start', 'Pass 10 dynamic_analysis starting', { context: { chromium_path: chromiumPath } });
+            console.log(`[info] Pass 10 (dynamic_analysis): Chromium at ${shortenProfilePath(chromiumPath)}, playwright-core installed.`);
           }
         }
         // #1054: dedup after lowercasing -- TUI may write both 'data' and 'DATA' when a
@@ -1800,7 +1910,17 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // No profile configured -> no filtering (acceptance criterion: JP-04).
         // #3158: lens pass codes go through the same alias map as individual
         // entries (MAL -> malware; LZR -> Pass 23, driven by --lzr).
-        const activeProfile = (assessmentCfg?.['lenses'] ?? assessmentCfg?.['pass_profile']) as string[] | undefined;
+        // #4284: assessment.pass_profile is the saved default pass set; a --passes
+        // typed on the command line (the TUI passes its run-time pass choice this
+        // way) is the choice of this run and is not narrowed by it, as --regimes
+        // wins over assessment.regimes_active. assessment.lenses still filters.
+        const passesFromCli = cmd?.getOptionValueSource?.('passes') === 'cli';
+        const profileIsSavedPasses = assessmentCfg?.['lenses'] === undefined && Array.isArray(assessmentCfg?.['pass_profile']);
+        if (passesFromCli && profileIsSavedPasses) {
+          console.log('[info] --passes given: assessment.pass_profile (the saved default) does not narrow this run');
+        }
+        const activeProfile = (passesFromCli && profileIsSavedPasses ? undefined
+          : (assessmentCfg?.['lenses'] ?? assessmentCfg?.['pass_profile'])) as string[] | undefined;
         if (activeProfile && activeProfile.length > 0) {
           const allLenses = listLenses();
           const expansion = expandPassProfile(activeProfile, allLenses);
@@ -1827,13 +1947,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const servicePassStatuses: Record<string, string> = {};
         if (isService) {
           // Pass 25 BINARY first: CRYPTO reads its certificate data (Design 103 §6.3).
-          try {
+          // #4244: a preflight runs no pass (Pass 25 writes wsp/inputs/binary/).
+          if (!opts.preflight) try {
             const bin = runBinaryAnalysis(workspaceRoot, opts.app);
             console.log(bin.analysis.skipped_reason
-              ? '[info] Pass 25 -- binary: no binary inputs (ingestion/binary/)'
-              : `[ok]  Pass 25 -- binary  ${bin.analysis.files.length} file(s), ${bin.signals.length} BINARY signal(s)  ->  wsp/inputs/binary/binary-analysis.json`);
+              ? '[info] Pass 25, binary: no binary inputs (ingestion/binary/)'
+              : `[ok]  Pass 25, binary  ${bin.analysis.files.length} file(s), ${bin.signals.length} BINARY signal(s)  ->  wsp/inputs/binary/binary-analysis.json`);
           } catch (e) {
-            console.warn(`[warn] Pass 25 -- binary analysis failed: ${(e as Error).message}`);
+            console.warn(`[warn] Pass 25, binary analysis failed: ${(e as Error).message}`);
           }
           servicePlan = planServicePasses(workspaceAppDir, requestedPasses, swaoYml as Record<string, unknown>);
           requestedPasses = servicePlan.run as PassKey[];
@@ -1864,10 +1985,159 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const notScheduledKeys = passesNotRun.map((e) => e.pass);
         const passesDegraded: PassDegradedEntry[] = [];
 
+        // #3887, #4244 (owner decision 2026-11-09, Design 123 section 8.4): the LZ
+        // evidence of an app run is always the static LZ catalogue; live landing-zone
+        // data is used only by the LZ Live Assessment (--type landing-zone-live).
+        // Resolved before any pass runs, so a refused --lz-source live, --lz or
+        // --scope stops here with exit 1 and nothing is written. --no-lz-fit keeps
+        // meaning "no inline fit".
+        let lzSourceSel: LzSourceSelection = { source: 'catalogue', origin: 'default' };
+        // #3980, #4244: set when a linked app was assessed against the catalogue (warning, run-context.yaml).
+        let lzLinkFallback: RunContext['lz_source_reason'] | undefined;
+        // #3980 seeding: catalogue targets seeded from the linked scope regions (empty when configured targets exist).
+        let lzLinkSeedTargets: { provider: string; region: string }[] = [];
+        if (!isService) {
+          let landingZones: SwaoYmlLzRegistration[] = [];
+          try {
+            const wsDoc = (load(readFileSync(join(workspaceRoot, '.swao.yml'), 'utf-8')) ?? {}) as Record<string, unknown>;
+            const parsedLzs = SwaoYmlLandingZonesSchema.safeParse(wsDoc['landing_zones'] ?? []);
+            if (parsedLzs.success) landingZones = parsedLzs.data;
+          } catch { /* no workspace .swao.yml landing zones: catalogue only */ }
+          const lzSel = resolveLzSource({
+            appId: opts.app!,
+            ...(opts.lzSource !== undefined ? { cliSource: opts.lzSource } : {}),
+            ...(opts.lz !== undefined ? { cliLz: opts.lz } : {}),
+            cliScopes: opts.scope ?? [],
+            cliCatalogueTargets: Boolean(opts.lzCatTargets || opts.lzCatProvider || opts.lzCatRegion),
+            landingZones,
+          });
+          if (!lzSel.ok) { console.error(`[error] ${lzSel.error}`); process.exit(1); }
+          lzSourceSel = lzSel.value;
+          // #3980 seeding, narrowed by #4244: the linked scope regions in .swao.yml,
+          // kept to the regions of the static catalogue, so the fit never skips a
+          // seeded target (the TUI offers only catalogue regions too). Shared by the
+          // link default and the TUI seed marker (--lz-cat-targets-seeded).
+          type CatalogueSeedOf = { raw: LzCatalogueSeed | null; seed: LzCatalogueSeed | null; kept: string[]; dropped: string[] };
+          const NO_SEED: CatalogueSeedOf = { raw: null, seed: null, kept: [], dropped: [] };
+          const catalogueSeedOf = (lzReg: SwaoYmlLzRegistration, scopeIds: readonly string[]): CatalogueSeedOf => {
+            const raw = seedLinkedCatalogueTargets(lzReg, scopeIds);
+            if (!raw) return NO_SEED;
+            const wsCatDir = join(workspaceRoot, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+            let ids: ReadonlySet<string>;
+            try { ids = new Set(resolveProviderCatalogue(raw.provider, workspaceRoot, existsSync(wsCatDir) ? wsCatDir : undefined).catalogue.regions.map((r) => r.id)); } catch { ids = new Set(); }
+            const kept = raw.regions.filter((r) => ids.has(r));
+            return { raw, seed: kept.length > 0 ? raw : null, kept, dropped: raw.regions.filter((r) => !ids.has(r)) };
+          };
+          const liveHint = (links: readonly LzAppLink[]): string => `for live results: ${links.map((l) => `swao assess --type landing-zone-live --lz ${l.lz_id}`).join(', ')}`;
+          const links = lzSourceSel.linked ?? [];
+          // #4321: explicit catalogue targets (CLI flags, or the confirmed targets the TUI
+          // passes as --lz-cat-targets) for a linked app record the notice as well; the
+          // unedited TUI seed below records it with its seed provenance instead.
+          let explicitLinkPending = opts.lzFit !== false && links.length > 0 && lzSourceSel.origin === 'cli';
+          const recordExplicitLink = (appLinks: readonly LzAppLink[]): void => {
+            const linkText = describeLzAppLinks(appLinks);
+            lzLinkFallback = { requested: 'live', origin: 'swao-yml', lz_id: appLinks[0]!.lz_id, linked: linkText, reason: 'lz-live-assessment-only', notice: LZ_LIVE_LINK_CATALOGUE_NOTICE };
+            console.warn(`[warn] ${LZ_LIVE_LINK_CATALOGUE_NOTICE} (app ${opts.app} is linked in .swao.yml: ${linkText}; catalogue targets chosen for this run; ${liveHint(appLinks)})`);
+            try { logApp(opts.app!, 'warn', 'assess.lz_source.fallback', LZ_LIVE_LINK_CATALOGUE_NOTICE, { context: { lz_id: appLinks[0]!.lz_id, linked: linkText, reason: 'lz-live-assessment-only', via: 'explicit-targets' }, mirror: false }); } catch { /* best-effort */ }
+          };
+          if (opts.lzFit !== false && links.length > 0 && lzSourceSel.origin !== 'cli') {
+            // #4244: where the link selected the live source before, the app is
+            // assessed against the catalogue with a warning on every tier, recorded in
+            // run-context.yaml (lz_source_reason). Configured targets win; without
+            // them the targets are seeded from the linked scope regions in .swao.yml.
+            const configured = resolveLzTargets({ appAssessment: assessmentCfg ?? null, workspaceAssessment: readWorkspaceAssessment(workspaceRoot) ?? null }).targets;
+            const lzReg = links.length === 1 ? landingZones.find((l) => l.id === links[0]!.lz_id) : undefined;
+            const { raw: rawSeed, seed, kept: seedKept, dropped: seedDropped } = configured.length === 0 && lzReg ? catalogueSeedOf(lzReg, links[0]!.scope_ids) : NO_SEED;
+            lzLinkSeedTargets = seed ? seedKept.map((region) => ({ provider: seed.provider, region })) : [];
+            const noTargets = configured.length === 0 && lzLinkSeedTargets.length === 0;
+            const recordedNotice = noTargets ? LZ_LIVE_LINK_NO_TARGETS_NOTICE : LZ_LIVE_LINK_CATALOGUE_NOTICE;
+            const linkText = describeLzAppLinks(links);
+            lzLinkFallback = {
+              requested: 'live', origin: 'swao-yml', lz_id: links[0]!.lz_id, linked: linkText, reason: 'lz-live-assessment-only', notice: recordedNotice,
+              ...(seed ? { seeded_targets: lzLinkSeedTargets.map((t) => `${t.provider}/${t.region}`), seed_source: seed.source } : {}),
+              ...(noTargets ? { no_targets: true } : {}),
+            };
+            const where = `app ${opts.app} is linked in .swao.yml: ${linkText}`;
+            const dropped = seedDropped.length > 0 && rawSeed ? `; not in the static catalogue, left out: ${seedDropped.map((r) => `${rawSeed.provider}/${r}`).join(', ')}` : '';
+            console.warn(noTargets
+              ? `[warn] ${recordedNotice} (${where}; no catalogue targets are configured and none could be seeded${dropped}: set assessment.landing_zone.targets or landing_zones[].scopes[].regions; ${liveHint(links)})`
+              : seed
+                ? `[warn] ${recordedNotice} (${where}; targets ${lzLinkFallback.seeded_targets!.join(', ')} seeded from landing_zones[].scopes[].regions in .swao.yml${dropped}; ${liveHint(links)})`
+                : `[warn] ${recordedNotice} (${where}; configured targets; ${liveHint(links)})`);
+            try { logApp(opts.app!, 'warn', 'assess.lz_source.fallback', recordedNotice, { context: { lz_id: links[0]!.lz_id, linked: linkText, reason: 'lz-live-assessment-only', ...(seed ? { seed_source: seed.source, seeded_targets: lzLinkFallback.seeded_targets } : {}), ...(noTargets ? { no_targets: true } : {}) }, mirror: false }); } catch { /* best-effort */ }
+          } else if (opts.lzFit === false && links.length > 0) {
+            // #3980, #4244: --no-lz-fit (also the TUI Esc on the target LZ step) for a linked app: say that nothing was assessed.
+            console.warn(`[warn] ${LZ_LIVE_LINK_NO_LZ_FIT_NOTICE} (app ${opts.app} is linked in .swao.yml: ${describeLzAppLinks(links)}; ${liveHint(links)})`);
+          }
+          // #3980 seeding, TUI parity: the TUI passes the seeded pre-fill as
+          // --lz-cat-targets plus the internal marker --lz-cat-targets-seeded
+          // <source>. The CLI never trusts the marker: it recomputes the seed and
+          // records the run as the linked-app fallback only when the passed targets
+          // are exactly that seed; an edited pre-fill stays an explicit choice.
+          if (opts.lzCatTargetsSeeded !== undefined && opts.lzFit !== false) {
+            const marker = opts.lzCatTargetsSeeded;
+            if (!isLzCatalogueSeedSource(marker)) { console.error(`[error] --lz-cat-targets-seeded must be swao-yml-scope-regions or live-run-regions-in-use, not "${marker}"`); process.exit(1); }
+            const appLinks = lzAppLinks(landingZones, opts.app!);
+            const lzReg = appLinks.length === 1 ? landingZones.find((l) => l.id === appLinks[0]!.lz_id) : undefined;
+            if (lzReg && opts.lzCatTargets && lzSourceSel.origin === 'cli') {
+              const { seed, kept } = catalogueSeedOf(lzReg, appLinks[0]!.scope_ids);
+              const passed = new Set(parseLzTargetList(opts.lzCatTargets).map((t) => `${t.provider}/${t.region}`));
+              const seeded = seed ? kept.map((r) => `${seed.provider}/${r}`) : [];
+              const same = seed !== null && seed.source === marker && seeded.length === passed.size && seeded.every((t) => passed.has(t));
+              if (same && seed) {
+                explicitLinkPending = false;
+                const linkText = describeLzAppLinks(appLinks);
+                lzLinkSeedTargets = kept.map((region) => ({ provider: seed.provider, region }));
+                lzLinkFallback = {
+                  requested: 'live', origin: 'swao-yml', lz_id: lzReg.id, linked: linkText, reason: 'lz-live-assessment-only', notice: LZ_LIVE_LINK_CATALOGUE_NOTICE,
+                  seeded_targets: seeded, seed_source: seed.source,
+                };
+                lzSourceSel = { source: 'catalogue', origin: 'swao-yml', linked: appLinks };
+                console.warn(`[warn] ${LZ_LIVE_LINK_CATALOGUE_NOTICE} (app ${opts.app} is linked in .swao.yml: ${linkText}; targets ${seeded.join(', ')} seeded from landing_zones[].scopes[].regions in .swao.yml, pre-filled in the terminal interface; ${liveHint(appLinks)})`);
+                try { logApp(opts.app!, 'warn', 'assess.lz_source.fallback', LZ_LIVE_LINK_CATALOGUE_NOTICE, { context: { lz_id: lzReg.id, linked: linkText, reason: 'lz-live-assessment-only', seed_source: seed.source, seeded_targets: seeded, via: 'tui-prefill' }, mirror: false }); } catch { /* best-effort */ }
+              } else {
+                console.log(`[info] --lz-cat-targets differ from the targets seeded from landing zone ${lzReg.id}; recorded as an explicit catalogue choice`);
+              }
+            }
+          }
+          if (explicitLinkPending) recordExplicitLink(links);
+        }
+
+        // #4244 (Design 092 section 7.2a): the LLM leg preflight stops here, after
+        // every check that comes before the run folder. The --llm connector is
+        // resolved after this point, so its existence is checked here (lookup
+        // only, no provider is built and no LLM is called).
+        if (opts.preflight) {
+          if (opts.llm) {
+            const preflightConnector = String(opts.llm).split(':')[0] ?? '';
+            if (!getConnector(preflightConnector, { workspaceRoot, seedIfEmpty: true })) {
+              console.error(`[error] preflight: LLM connector "${preflightConnector}" is not known (bundled connectors and wsp/inputs/llm-gateway/); choose the candidates again with swao setup --type llm`);
+              process.exit(1);
+            }
+          }
+          console.log(`${LEG_PREFLIGHT_OK_MARKER} assess --app ${opts.app} can start (${requestedPasses.length} passes; no run folder created)`);
+          process.exit(0);
+        }
         const wspDir = join(workspaceAppDir, 'wsp');
         const runDir = join(wspDir, 'runs', runTs);
         const passesDir = join(runDir, 'passes');
         mkdirSync(passesDir, { recursive: true });
+        // #4481 (Design 012 section 5a): the LZ catalogue targets selected for this
+        // run, the same rule as the inline fit after the passes (--no-lz-fit and a
+        // service run: none). Pass 09 matches only these.
+        const synthLzTargets = (): Array<{ provider: string; region: string }> => {
+          // #4511: a service run passes its selected targets as an application run does: the
+          // inline catalogue fit runs for it too, so Pass 09 and the publication name the same target.
+          if (opts.lzFit === false) return [];
+          const dirCandidate = join(workspaceRoot, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+          try {
+            return effectiveCatalogueTargets(resolveRunLzTargets({
+              app: opts.app!, workspaceRoot, cataloguesDir: existsSync(dirCandidate) ? dirCandidate : undefined,
+              cliTargets: opts.lzCatTargets, cliProvider: opts.lzCatProvider, cliRegion: opts.lzCatRegion,
+              appAssessment: assessmentCfg, workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
+            }).targets, lzLinkSeedTargets);
+          } catch { return []; }
+        };
         // latest.txt is written AFTER run-manifest.json at completion to avoid
         // pointing at an incomplete run if the process aborts (#1023).
 
@@ -1878,12 +2148,19 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           logApp(opts.app!, 'info', 'swao.run.start', `SWAO ${SWAO_VERSION} (${startGuard.state.tier ?? 'community'})`, {
             context: {
               swao_version: SWAO_VERSION,
+              ...SWAO_BUILD, // #4430: build_commit, build_date
               license_tier: startGuard.state.tier ?? 'community',
               machine_fingerprint: (startGuard.state.fingerprint ?? '').substring(0, 8),
             },
             run_id: runId,
           });
         } catch { /* diagnostics log is best-effort; never block an assessment run */ }
+        // #4269: the framework selection of this run (default, chosen, source), once at start.
+        {
+          const line = frameworkSelectionLine(frameworksSel);
+          if (line) console.log(line);
+          try { logApp(opts.app!, 'info', 'assess.frameworks.selected', `Frameworks for this run: ${frameworksSel.chosen.join(', ') || 'none'} (${frameworksSel.source})`, { context: { ...frameworksSel }, run_id: runId }); } catch { /* best-effort */ }
+        }
 
         // #3283: run-status.json for application and service runs (shared lifecycle,
         // generalised from the LZ one). Marker `started` now; closed on every exit
@@ -1891,6 +2168,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // any process exit before completion, aborted on SIGINT / SIGTERM. Each failing
         // close emits swao.run.aborted (#2391, kept for log consumers) and
         // swao.run.complete with status + exit_code.
+        // #4266: the running pass, named by the heartbeat and the progress events.
+        let currentPass: { key: string; num: string; name: string; passId: string; startedAt: number } | undefined;
         const runLifecycle = createRunLifecycle({
           assessmentType: isService ? 'service' : 'application',
           app: opts.app!,
@@ -1899,7 +2178,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           runId,
           swaoVersion: SWAO_VERSION,
           onFail: (failure, { elapsedMs }) => {
-            clearInterval(_heartbeatTimer);
+            runHeartbeat.stop();
+            setPassProgressSink(null);
             // swao.run.aborted keeps its #2391 meaning: SIGINT, SIGTERM or an uncaught
             // exception only. Gate exits and other failures are carried by
             // swao.run.complete (status + exit_code) below.
@@ -1930,14 +2210,46 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
         // #2248: whole-run heartbeat so the log monitor never sees >2 min silence
         // during long passes (dynamic analysis / Playwright crawl, context ingestion).
-        // Fires every 90 s; cleared at normal completion and on abort.
-        const _heartbeatTimer = setInterval(() => {
-          try {
-            logApp(opts.app!, 'info', 'assessment.heartbeat', 'Assessment in progress', {
-              context: { run_id: runId, elapsed_ms: Date.now() - startedAt.getTime() },
-            });
-          } catch { /* best-effort; never block the assessment */ }
-        }, 90_000);
+        // #4266: every 30 s from run start, independent of pass boundaries, with the
+        // pass_id of the running pass. A timer cannot fire inside synchronous pass work
+        // (the source walk, the language census), so that work reports through the
+        // core progress sink, which writes assessment.pass.progress when 20 s passed
+        // since the last heartbeat or progress line. Cleared at completion and on abort.
+        // #4300: the loops report every file; the sink writes by elapsed time (progress
+        // every 20 s) and writes the overdue heartbeat itself when the timer is blocked.
+        const runHeartbeat = createRunHeartbeat({
+          intervalMs: HEARTBEAT_INTERVAL_MS,
+          progressGapMs: PASS_PROGRESS_MIN_GAP_MS,
+          heartbeat: () => {
+            try {
+              logApp(opts.app!, 'info', 'assessment.heartbeat', 'Assessment in progress', {
+                context: {
+                  run_id: runId, elapsed_ms: Date.now() - startedAt.getTime(),
+                  ...(currentPass ? { pass: currentPass.key, pass_id: currentPass.passId, pass_elapsed_ms: Date.now() - currentPass.startedAt } : {}),
+                },
+                run_id: runId,
+              });
+            } catch { /* best-effort; never block the assessment */ }
+          },
+          progress: (p: PassProgress) => {
+            if (!currentPass) return;
+            try {
+              logApp(opts.app!, 'info', 'assessment.pass.progress', `Pass ${currentPass.num} ${currentPass.name} in progress: ${p.phase}`, {
+                context: {
+                  pass: currentPass.key, num: currentPass.num, name: currentPass.name, pass_id: currentPass.passId,
+                  phase: p.phase,
+                  ...(typeof p.files === 'number' ? { files: p.files } : {}),
+                  ...(typeof p.dirs === 'number' ? { dirs: p.dirs } : {}),
+                  pass_elapsed_ms: Date.now() - currentPass.startedAt,
+                  elapsed_ms: Date.now() - startedAt.getTime(),
+                },
+                run_id: runId,
+              });
+            } catch { /* best-effort; never block the assessment */ }
+          },
+        });
+        setPassProgressSink(runHeartbeat.sink);
+        runHeartbeat.start();
 
         // PII pre-flight (#0354, design 032). Reset the redaction sink for
         // this run, load the optional workspace allowlist, honour the
@@ -2037,6 +2349,21 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               return readLlmSecondaryConfig(wsRaw);
             } catch { return undefined; }
           })();
+        // #4284: --llm-provider, the LLM provider chosen for this run in the TUI
+        // (app LLM override step); the .swao.yml is not changed. workspace-default
+        // ignores the app's providers.llm.primary and uses the workspace block.
+        if (opts.llmProvider !== undefined) {
+          const choice = opts.llmProvider.trim();
+          if (choice === 'workspace-default') {
+            llmProviderConfig = undefined;
+            const wsYmlPath = join(workspaceRoot, '.swao.yml');
+            if (existsSync(wsYmlPath)) {
+              try { llmProviderConfig = readLlmPrimaryConfig((load(readFileSync(wsYmlPath, 'utf-8')) ?? {}) as Record<string, unknown>); } catch { /* unreadable: env detection */ }
+            }
+          } else {
+            llmProviderConfig = { type: choice } as typeof llmProviderConfig; // validated before the run folder exists
+          }
+        }
         if (!llmProviderConfig && opts.llm) llmProviderConfig = {};
 
         // #1401: gateway workspace discovery -- workspace connectors under
@@ -2115,6 +2442,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const allPlaceholderInputs: string[] = [];
         const cassetteHits: string[] = [];
         let totalFpFlags = 0;
+        // #4443: the crawl Pass 10 completed, for provenance.crawl_type.
+        let completedCrawl: { engineVersion?: string } | undefined;
         // #0550: LLM-dependent passes that degraded to no_llm_provider skip
         // signals. Surfaced in run-manifest.provenance.llm_skipped_passes and
         // the HTML report health section.
@@ -2197,7 +2526,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           process.exit(1);
         }
         const runLzrStep = async (landingZoneId: string): Promise<void> => {
-          console.log(`[info] Running Pass 23 -- lzr (landing_zone_readiness) for "${landingZoneId}"...`);
+          // #4267: Pass 23 carries the assessment.pass.* events and markers of every other pass.
+          const lzrPassId = `${runTs}-p23-lzr`;
+          passMarker({ kind: 'start', num: '23', key: 'lzr', name: 'landing_zone_readiness', pass_id: lzrPassId });
+          currentPass = { key: 'lzr', num: '23', name: 'landing_zone_readiness', passId: lzrPassId, startedAt: Date.now() };
+          logApp(opts.app!, 'info', 'assessment.pass.start', 'Pass 23 landing_zone_readiness starting', {
+            context: { pass: 'lzr', num: '23', name: 'landing_zone_readiness', pass_id: lzrPassId },
+          });
+          console.log(`[info] Running Pass 23, lzr (landing_zone_readiness) for "${landingZoneId}"...`);
           const lzrStart = Date.now();
           const lzrCtx: PassContext = {
             appId: opts.app!,
@@ -2214,7 +2550,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             configuredProvider: opts.lzCatProvider ?? (typeof configuredLzProvider === 'string' ? configuredLzProvider : undefined),
           });
           if (lzrResultRaw.assessment['provider_id_source'] === 'default') {
-            console.warn(`[warn] Pass 23 -- could not derive the provider for landing zone "${landingZoneId}"; using ${lzrResultRaw.lzrResult.provider_id}. Name the provider in the landing-zone ID or set assessment.landing_zone.provider.`);
+            console.warn(`[warn] Pass 23, could not derive the provider for landing zone "${landingZoneId}"; using ${lzrResultRaw.lzrResult.provider_id}. Name the provider in the landing-zone ID or set assessment.landing_zone.provider.`);
           }
           // v0.10 auditor enrichment for the LZR pass.
           const lzrResult = {
@@ -2240,8 +2576,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // Pass-23 (Terraform) doesn't set it; fall back to 'terraform'.
           lzrInputType = ((lzrResult.lzrResult as unknown as Record<string, unknown>)['input_type'] as typeof lzrInputType) ?? 'terraform';
           console.log(
-            `[ok]  Pass 23 -- lzr  ${lzrResult.signals.length} signals  verdict: ${verdict.toUpperCase()}  provider: ${lzrResult.lzrResult.provider_id}  ->  wsp/runs/${runTs}/passes/23-lzr.yaml  [${lzrMs}ms]`,
+            `[ok]  Pass 23, lzr  ${lzrResult.signals.length} signals  verdict: ${verdict.toUpperCase()}  provider: ${lzrResult.lzrResult.provider_id}  ->  wsp/runs/${runTs}/passes/23-lzr.yaml  [${lzrMs}ms]`,
           );
+          logApp(opts.app!, 'info', 'assessment.pass.complete', 'Pass 23 landing_zone_readiness complete', {
+            context: { pass: 'lzr', num: '23', name: 'landing_zone_readiness', signals: lzrResult.signals.length, duration_ms: lzrMs, pass_id: lzrPassId },
+          });
+          passMarker({ kind: 'done', num: '23', key: 'lzr', name: 'landing_zone_readiness', pass_id: lzrPassId, status: 'ok', duration_ms: lzrMs, signals: lzrResult.signals.length });
+          currentPass = undefined;
           if (verdict === 'blocked') lzrBlockedBlockers = lzrResult.lzrResult.blockers.length;
         };
 
@@ -2259,6 +2600,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             // streams and portfolio-events are not silent during the dynamic phase.
             // #2286: renamed to assessment.pass.start for consistency with portfolio-events.
             // #2231: pass_id added for cross-log correlation.
+            passMarker({ kind: 'start', num: '10', key: 'dynamic', name: 'dynamic_analysis', pass_id: `${runTs}-p10-dynamic` });
+            currentPass = { key: 'dynamic', num: '10', name: 'dynamic_analysis', passId: `${runTs}-p10-dynamic`, startedAt: Date.now() };
             logApp(opts.app!, 'info', 'assessment.pass.start', 'Pass 10 dynamic_analysis starting', {
               context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', pass_id: `${runTs}-p10-dynamic` },
             });
@@ -2300,7 +2643,13 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             // Cloud vision (any provider except ollama) is blocked unless allow_cloud_vision: true.
             const allowCloudVision = (swaoYml.assessment as Record<string, unknown> | undefined)?.['allow_cloud_vision'] === true;
             if (crawlConfig) {
-              console.log('[info] Running Pass 10 -- dynamic_analysis (Playwright crawl)...');
+              console.log('[info] Running Pass 10, dynamic_analysis (Playwright crawl)...');
+              // #4272: dynamic.start only when the crawl runs, inside the run; closed by
+              // dynamic.complete or dynamic.error below (the no-crawl branch logs dynamic.skip).
+              logApp(opts.app, 'info', 'dynamic.start', 'Pass 10 dynamic_analysis starting', {
+                context: { ...(chromiumPath ? { chromium_path: shortenProfilePath(chromiumPath) } : {}) },
+                run_id: runId,
+              });
               const crawlStart = Date.now();
               try {
                 const { PlaywrightCrawlProvider } = await import('../crawl/playwright-driver.js');
@@ -2337,9 +2686,9 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                     } else {
                       if (isCloud) {
                         console.warn(
-                          '[SOVEREIGNTY WARNING] Pass 10 dynamic_analysis -- Playwright screenshots will be sent to ' +
+                          '[SOVEREIGNTY WARNING] Pass 10 dynamic_analysis: Playwright screenshots will be sent to ' +
                           `the configured ${visionLlm.name} cloud connector for vision analysis. Screenshots may contain ` +
-                          'PII from authenticated app screens. allow_cloud_vision is set -- proceeding.',
+                          'PII from authenticated app screens. allow_cloud_vision is set, proceeding.',
                         );
                         logApp(opts.app, 'warn', 'dynamic.vision.cloud', 'Pass 10 cloud vision enabled via allow_cloud_vision', {
                           context: { provider: visionLlm.name },
@@ -2362,7 +2711,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                     effectiveVisionLlm = undefined;
                   }
                 } else {
-                  console.warn('[warn] Pass 10 dynamic_analysis: no LLM provider configured -- vision analysis skipped.');
+                  console.warn('[warn] Pass 10 dynamic_analysis: no LLM provider configured, vision analysis skipped.');
                   logApp(opts.app, 'warn', 'dynamic.vision.skipped', 'Pass 10 vision analysis skipped: no LLM configured', {});
                 }
                 const dynamicCtx: PassContext = {
@@ -2390,21 +2739,25 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                     context: { screens_analysed: visionScreens, max_screens: visionMaxScreens, provider: visionLlm.name, wall_clock_ms: crawlMs },
                   });
                 }
-                console.log(`[ok]  Pass 10 -- dynamic_analysis  ${dynamicResult.signals.length} signals  ${crawlResult.screenCount} screens  ->  wsp/runs/${runTs}/passes/10-dynamic.yaml  [${msToHuman(crawlMs)}]`);
-                logApp(opts.app, 'info', 'dynamic.complete', 'Pass 10 dynamic_analysis complete', { context: { signals: dynamicResult.signals.length, screens: crawlResult.screenCount, vision_screens_analysed: visionScreens, wall_clock_ms: crawlMs } });
+                completedCrawl = crawlResult;
+                console.log(`[ok]  Pass 10, dynamic_analysis  ${dynamicResult.signals.length} signals  ${crawlResult.screenCount} screens  ->  wsp/runs/${runTs}/passes/10-dynamic.yaml  [${msToHuman(crawlMs)}]`);
+                logApp(opts.app, 'info', 'dynamic.complete', 'Pass 10 dynamic_analysis complete', { context: { signals: dynamicResult.signals.length, screens: crawlResult.screenCount, vision_screens_analysed: visionScreens, wall_clock_ms: crawlMs }, run_id: runId });
               } catch (e) {
                 const err = e as Error;
-                console.warn(`[warn] Dynamic analysis failed: ${err.message} -- continuing without crawl`);
-                logApp(opts.app, 'warn', 'dynamic.error', `Pass 10 dynamic_analysis failed: ${err.message}`, { context: { error: err.message } });
+                console.warn(`[warn] Dynamic analysis failed: ${err.message}; continuing without crawl`);
+                logApp(opts.app, 'warn', 'dynamic.error', `Pass 10 dynamic_analysis failed: ${err.message}`, { context: { error: err.message }, run_id: runId });
                 if (process.env['SWAO_DEBUG']) console.warn(err.stack ?? '(no stack)');
               }
             } else {
               if (!opts.crawl) {
-                console.log('[info] --no-crawl -- skipping live crawl; parity-baseline vision will run if available');
-                logApp(opts.app, 'info', 'dynamic.skip', 'Pass 10 live crawl skipped (--no-crawl); parity-baseline vision fallback active', {});
+                console.log('[info] --no-crawl: skipping live crawl; parity-baseline vision will run if available');
+                logApp(opts.app, 'info', 'dynamic.skip', 'Pass 10 live crawl skipped (--no-crawl); parity-baseline vision fallback active', { context: { reason: 'no_crawl' }, run_id: runId });
+              } else if (!playwrightReadyForCrawl) {
+                // #4272: the pre-run probe already warned (dynamic.playwright-absent); close Pass 10 here.
+                logApp(opts.app, 'info', 'dynamic.skip', 'Pass 10 live crawl skipped: Playwright or Chromium not installed', { context: { reason: 'playwright_absent' }, run_id: runId });
               } else {
-                console.log('[info] crawl.target_url not set in .swao.yml -- skipping live crawl; parity-baseline vision will run if available');
-                logApp(opts.app, 'info', 'dynamic.skip', 'Pass 10 skipped -- crawl.target_url not configured', {});
+                console.log('[info] crawl.target_url not set in .swao.yml, skipping live crawl; parity-baseline vision will run if available');
+                logApp(opts.app, 'info', 'dynamic.skip', 'Pass 10 live crawl skipped: crawl.target_url not configured', { context: { reason: 'no_target_url' }, run_id: runId });
               }
               // #1952: Fall back to parity-baseline screenshots for vision analysis
               // when no live crawl ran. Runs vision pass only (no DOM/a11y signals).
@@ -2488,16 +2841,21 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             // which the TUI polling timer does not handle).
             // #2286: renamed to assessment.pass.complete for consistency with portfolio-events.
             // #2231: pass_id matches assessment.pass.start for cross-log correlation.
+            // #4464: Pass 10 reports its signals like every other pass.
+            const dynamicSignals = passSignalsEmitted(passStats, '10');
             logApp(opts.app!, 'info', 'assessment.pass.complete', 'Pass 10 dynamic_analysis complete', {
-              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', wall_clock_ms: Date.now() - dynamicPassStart, duration_ms: Date.now() - dynamicPassStart, pass_id: `${runTs}-p10-dynamic` },
+              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', wall_clock_ms: Date.now() - dynamicPassStart, duration_ms: Date.now() - dynamicPassStart, pass_id: `${runTs}-p10-dynamic`, signals_emitted: dynamicSignals },
             });
             // #2390: mirror pass.complete to the portfolio event log (same pattern as
             // logPortfolio at line ~2384 for the standard pass loop).
             logPortfolio('info', 'assessment.pass.complete', 'Pass 10 dynamic_analysis complete', {
-              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', status: 'ok', duration_ms: Date.now() - dynamicPassStart, elapsed_ms: Date.now() - dynamicPassStart, app: opts.app, pass_id: `${runTs}-p10-dynamic` },
+              context: { pass: 'dynamic', num: '10', name: 'dynamic_analysis', status: 'ok', duration_ms: Date.now() - dynamicPassStart, elapsed_ms: Date.now() - dynamicPassStart, app: opts.app, pass_id: `${runTs}-p10-dynamic`, signals_emitted: dynamicSignals },
             });
+            const dynamicWrote = existsSync(join(passesDir, '10-dynamic.yaml'));
+            passMarker({ kind: 'done', num: '10', key: 'dynamic', name: 'dynamic_analysis', pass_id: `${runTs}-p10-dynamic`, status: dynamicWrote ? 'ok' : 'skip', duration_ms: Date.now() - dynamicPassStart, signals: dynamicSignals });
+            currentPass = undefined;
             // #3419: Pass 10 wrote no result (no crawl and no parity-baseline screenshots).
-            if (!existsSync(join(passesDir, '10-dynamic.yaml'))) {
+            if (!dynamicWrote) {
               passesNotRun.push({
                 pass: 'dynamic', num: '10', name: 'dynamic_analysis', reason: 'not_applicable',
                 detail: canLiveCrawl ? 'no crawl target configured and no parity-baseline screenshots' : 'live crawl disabled (--no-crawl or Playwright absent) and no parity-baseline screenshots',
@@ -2513,7 +2871,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             passDef = { num: '11', name: 'compliance_evaluation', runner: runCompliancePass, llmPassName: 'comp' };
           }
           if (!passDef) {
-            console.warn(`[warn] Unknown pass "${passKey}" -- skipping`);
+            console.warn(`[warn] Unknown pass "${passKey}", skipping`);
             continue;
           }
           // ADR-0064: service-mode runner for passes whose application runner needs a source tree.
@@ -2560,13 +2918,38 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             assessmentType: effectiveAssessmentType, // #3425: routed type, honours --type
             testCode: testCodeSetting.mode, // #3403: LLM prompt marker (tag mode)
             codeHealth: codeHealthSetting, // #3487: Pass 26 top_n, allowlist, opt-in tools
+            ...(runRegimes !== undefined ? { regimesActive: runRegimes } : {}), // #4284: frameworks chosen for this run
+            // #4481: Pass 09 matches only the selected LZ targets; the market scan is opt-in.
+            ...(passKey === 'synth' ? { lzTargets: synthLzTargets(), ...(opts.lzMarketScan ? { lzMarketScan: true } : {}) } : {}),
+            // #3888 (Design 123 section 8.4): baseline controls decided by rule before Pass 11, never by the LLM.
+            // #3981: the decisions are also written to the run as baseline-decisions.json.
+            ...(passKey === 'comp' ? persistBaselineDecisions(runDir, (() => {
+              const baselines = selectedPolicyBaselines(workspaceRoot, runRegimes ?? loadSelectedRegimes(workspaceAppDir));
+              if (baselines.length === 0) return {};
+              const needs = appNeededCapabilities(workspaceAppDir, passesDir);
+              if (isService) return { baselineDecisions: appBaselineDecisions({ workspaceRoot, baselines, needs, source: { kind: 'none', reason: 'a service assessment has no LZ source' } }) };
+              if (opts.lzFit === false) return { baselineDecisions: appBaselineDecisions({ workspaceRoot, baselines, needs, source: { kind: 'none', reason: 'the inline LZ fit is off (--no-lz-fit)' } }) };
+              const dirCandidate = join(workspaceRoot, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+              const cataloguesDir = existsSync(dirCandidate) ? dirCandidate : undefined;
+              // #4006: the seeded targets of the #3980 fallback reach Pass 11 like configured ones (same rule as the inline fit).
+              const targets = effectiveCatalogueTargets(resolveRunLzTargets({
+                app: opts.app!, workspaceRoot, cataloguesDir, cliTargets: opts.lzCatTargets, cliProvider: opts.lzCatProvider, cliRegion: opts.lzCatRegion,
+                appAssessment: assessmentCfg, workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
+              }).targets, lzLinkSeedTargets);
+              if (targets.length === 0) return { baselineDecisions: appBaselineDecisions({ workspaceRoot, baselines, needs, source: { kind: 'none', reason: 'no LZ target region (assessment.landing_zone.targets or --lz-cat-targets)' } }) };
+              return { baselineDecisions: appBaselineDecisions({ workspaceRoot, baselines, needs, source: { kind: 'catalogue', targets, ...(cataloguesDir ? { cataloguesDir } : {}) } }) };
+            })()) : {}),
           };
 
-          console.log(`[info] Running Pass ${passDef.num} -- ${passDef.name}...`);
-          // #1687: app-events entry so the support bundle shows pass execution.
-          // #2286: renamed to assessment.pass.start for consistency with portfolio-events.
           // #2231: pass_id added for cross-log correlation.
           const passId = `${runTs}-p${passDef.num}-${passKey}`;
+          // #4267: the marker precedes the operator line, so a parent attributes
+          // "Running Pass NN" to pass NN.
+          passMarker({ kind: 'start', num: passDef.num, key: passKey, name: passDef.name, pass_id: passId });
+          currentPass = { key: passKey, num: passDef.num, name: passDef.name, passId, startedAt: Date.now() };
+          console.log(`[info] Running ${passLineLabel(passDef.num, passDef.name)}...`);
+          // #1687: app-events entry so the support bundle shows pass execution.
+          // #2286: renamed to assessment.pass.start for consistency with portfolio-events.
           logApp(opts.app!, 'info', 'assessment.pass.start', `Pass ${passDef.num} ${passDef.name} starting`, {
             context: { pass: passKey, num: passDef.num, name: passDef.name, pass_id: passId },
           });
@@ -2602,7 +2985,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                       secondary_connector: llmSecondaryConfig.connector ?? llmSecondaryConfig.type ?? 'unknown',
                     },
                   });
-                  console.warn(`[warn] Primary LLM connectivity failure on pass ${passKey} -- trying secondary connector (${llmSecondaryConfig.connector ?? llmSecondaryConfig.type})`);
+                  console.warn(`[warn] Primary LLM connectivity failure on pass ${passKey}; trying secondary connector (${llmSecondaryConfig.connector ?? llmSecondaryConfig.type})`);
                   const secondaryTracking = new UsageTrackingLlmProvider(secondaryRaw);
                   const secondaryCtx: PassContext = { ...ctx, llm: secondaryTracking };
                   result = await passDef.runner(secondaryCtx);
@@ -2780,7 +3163,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               ...result,
               signals: result.signals.map((s) => ({
                 ...s,
-                provenance: { source: provSource, run_id: runId, cassette_hit: isCacheHit, assessed_at: assessedAt },
+                // #4286: a signal the pass decided by rule (assessor rule_engine) never carries LLM provenance.
+                provenance: { source: s.assessor === 'rule_engine' ? 'rule_engine' : provSource, run_id: runId, cassette_hit: isCacheHit, assessed_at: assessedAt },
               })),
             };
           }
@@ -2859,18 +3243,27 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
           const passLabel = result.pass.status === 'not_applicable' ? '[skip]' : '[ok]';
           console.log(
-            `${passLabel}  Pass ${passDef.num} -- ${passDef.name}  ${itemSummary}  ->  wsp/runs/${runTs}/passes/${passDef.num}-${passKey === 'state' ? 'state' : passKey}.yaml  [${msToHuman(passMs)}]`,
+            `${passLabel}  ${passLineLabel(passDef.num, passDef.name)}  ${itemSummary}  ->  wsp/runs/${runTs}/passes/${passDef.num}-${passKey === 'state' ? 'state' : passKey}.yaml  [${msToHuman(passMs)}]`,
           );
           // #1687: app-events pass completion entry.
           // #2286: renamed to assessment.pass.complete for consistency with portfolio-events.
           // #2231: pass_id matches assessment.pass.start for cross-log correlation.
+          // #4266: Pass 01 pays the run's source walk (memoised for every later pass); its
+          // completion names the cost (no re-walk: the scope of this run is cached).
+          const walkCost = passKey === 'inv' && existsSync(ctx.sourcePath) ? getSourceScope(ctx.sourcePath).walkStats() : undefined;
           logApp(opts.app!, 'info', 'assessment.pass.complete', `Pass ${passDef.num} ${passDef.name} complete`, {
-            context: { pass: passKey, num: passDef.num, name: passDef.name, signals: result.signals.length, items: itemsEmitted, wall_clock_ms: passMs, duration_ms: passMs, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
+            context: { pass: passKey, num: passDef.num, name: passDef.name, signals: result.signals.length, items: itemsEmitted, wall_clock_ms: passMs, duration_ms: passMs, pass_id: passId, ...(walkCost ?? {}), ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
           });
+          passMarker({
+            kind: 'done', num: passDef.num, key: passKey, name: passDef.name, pass_id: passId,
+            status: result.pass.status === 'not_applicable' ? 'skip' : passOutcome.degraded ? 'degraded' : 'ok',
+            duration_ms: passMs, signals: result.signals.length,
+          });
+          currentPass = undefined;
           // #1769: unconditional portfolio-events for monitoring / audit trail.
           // #3436: `status: 'ok'` stays (log monitors parse it); `degraded: true` is additive.
           logPortfolio('info', 'assessment.pass.complete', `Pass ${passDef.num} ${passDef.name} complete`, {
-            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, duration_ms: passMs, elapsed_ms: passMs, app: opts.app, pass_id: passId, ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
+            context: { pass: passKey, num: passDef.num, name: passDef.name, status: 'ok', signals_emitted: result.signals.length, duration_ms: passMs, elapsed_ms: passMs, app: opts.app, pass_id: passId, ...(walkCost ?? {}), ...(passUsage?.call_count ? { llm_calls: passUsage.call_count } : {}), ...(passOutcome.degraded ? { degraded: true } : {}) },
           });
           // #3436: structured event + console line when the pass ran but is not
           // fully evaluated (Pass 11: controls without a model verdict).
@@ -2947,6 +3340,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         }
 
         let inlineLzTargets: Array<{ provider: string; region: string }> = [];
+        let inlineLzTargetsOrigin: { source: string; resolved: Array<{ requested: string; resolved: string; geography: string }> } | null = null; // #4285
         // LZ Catalogue fit (all tiers, inline during App assessment).
         // Runs when targets are configured (#3281: --lz-cat-targets, --lz-cat-provider/
         // --lz-cat-region, or assessment.landing_zone.targets / provider + region in the
@@ -2974,8 +3368,20 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           });
           // #3378 (ADR-0067): --no-lz-fit forces no inline fit for this run, even
           // when assessment.landing_zone.targets is set in .swao.yml.
-          const lzCatTargets = opts.lzFit === false ? [] : lzCatTargetConfig.targets;
+          // #3980 seeding: the linked-app fallback without configured targets uses the seeded ones.
+          const lzCatTargets = opts.lzFit === false ? []
+            : effectiveCatalogueTargets(lzCatTargetConfig.targets, lzLinkSeedTargets);
           inlineLzTargets = lzCatTargets;
+          // #4285: origin of the inline fit targets (run-context.yaml lz_targets_source).
+          const lzCatTargetAttr = attributeLzTargets(lzCatTargetConfig, configuredRunLzTargets({
+            app: opts.app!, workspaceRoot, cataloguesDir: lzCatCataloguesDir,
+            appAssessment: assessmentCfg, workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
+          }));
+          inlineLzTargetsOrigin = lzCatTargets.length === 0 ? null
+            : lzCatTargetConfig.targets.length === 0 && lzLinkSeedTargets.length > 0 ? { source: 'linked-lz-seed', resolved: [] } : lzCatTargetAttr;
+          if (inlineLzTargetsOrigin) {
+            try { logApp(opts.app!, 'info', 'assess.lz.targets.source', `LZ targets from ${inlineLzTargetsOrigin.source}`, { context: { app_id: opts.app, source: inlineLzTargetsOrigin.source, targets: lzCatTargets.map(lzTargetLabel), resolved: inlineLzTargetsOrigin.resolved } }); } catch { /* best-effort */ }
+          }
           const lzCatSignals = lzCatTargets.length > 0 ? loadPriorSignals(workspaceAppDir) : null;
           const lzCatRequired = lzCatSignals
             ? toLzRequiredServices(deriveConstraints(lzCatSignals).requiredServices) // #3430
@@ -2986,6 +3392,11 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             ?? (assessmentCfg?.['regimes_active'] as string[] | undefined)
             ?? [];
           const lzCatFrameworkDecls = readFrameworkSovereigntyDecls(lzCatFwIds, resolveCatalogsDir(workspaceAppDir), communityFrameworksDir);
+          // #3888 (D-12): the enabled service_deny policies of the baselines Pass 11 evaluates (same selection).
+          const lzCatBaselines = selectedPolicyBaselines(workspaceRoot, runRegimes ?? loadSelectedRegimes(workspaceAppDir)); // #4284
+          const lzCatBaselineDenies = selectedBaselineDenies(lzCatBaselines);
+          // #3920 (Design 123 section 9.3): value-level requirement provenance on the fit, baseline selected only.
+          const lzCatProvenance = baselineRequirementProvenance(lzCatBaselines, lzCatFrameworkDecls);
           // #1009: track per-target verdicts for the aggregate summary after the loop.
           // Two-phase: compute all fits first, patch SOVEREIGNTY_GAP remediation when
           // READY alternatives exist in the same run (#1352), then write all files.
@@ -3005,7 +3416,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             app: opts.app!,
             targets: lzCatTargets,
             fit: ({ provider: lzCatProvider, region: lzCatRegion }) => {
-              console.log(`[info] LZ Catalogue fit -- ${providerDisplayName(lzCatProvider)}/${lzCatRegion}...`);
+              console.log(`[info] LZ Catalogue fit, ${providerRegionLabel(lzCatProvider, lzCatRegion)}...`);
               const lzCatResult = assembleLzCatalogWsp({
                 workspacePath: workspaceAppDir,
                 provider: lzCatProvider,
@@ -3014,6 +3425,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
                 frameworkDecls: lzCatFrameworkDecls,
                 cataloguesDir: lzCatCataloguesDir,
                 assessedAt,
+                ...(lzCatBaselineDenies ? { baselineDenies: lzCatBaselineDenies } : {}), // #3888 (D-12)
+                ...(lzCatProvenance ? { requirementProvenance: lzCatProvenance } : {}), // #3920
               });
               if (!lzCatResult.ok) {
                 let validRegions: string[] | undefined;
@@ -3030,15 +3443,14 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             },
           });
           for (const { target: { provider: lzCatProvider, region: lzCatRegion }, value: lzCatReport, overall, fitMs } of lzCatLoop.results) {
-            const fitFileName = lzCatTargets.length === 1
-              ? 'lz-catalogue-fit.yaml'
-              : `lz-catalogue-fit-${lzCatProvider}-${lzCatRegion.replace(/[^a-zA-Z0-9-]/g, '-')}.yaml`;
+            // #4481: one naming rule with the fit file Pass 09 records (core lz-fit-files.ts).
+            const fitFileName = lzCatalogueFitFileName(lzCatProvider, lzCatRegion, lzCatTargets.length);
             lzCatFitBuffer.push({ provider: lzCatProvider, region: lzCatRegion, lzReport: lzCatReport, fitFileName, verdict: overall, fitMs });
           }
           if (lzCatTargets.length > 0) {
             runLifecycle.recordTargets({
               targets: lzCatTargets.map(lzTargetLabel),
-              resolvedTargets: lzCatTargetConfig.resolved,
+              resolvedTargets: inlineLzTargetsOrigin?.resolved ?? lzCatTargetConfig.resolved, // #4285
               failedTargets: lzCatLoop.failures,
             });
           }
@@ -3046,7 +3458,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           // Patch SOVEREIGNTY_GAP remediation with passing alternatives (#1352).
           const lzCatReadyRegions = lzCatFitBuffer
             .filter(e => e.verdict === 'READY')
-            .map(e => `${providerDisplayName(e.provider)}/${e.region}`);
+            .map(e => providerRegionLabel(e.provider, e.region));
           if (lzCatReadyRegions.length > 0) {
             const catAltSuffix = ` In this assessment, ${lzCatReadyRegions.join(' and ')} satisfies all sovereignty requirements and is available as a sovereign-compliant alternative.`;
             for (const exec of lzCatFitBuffer) {
@@ -3064,7 +3476,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           for (const exec of lzCatFitBuffer) {
             writeFileSync(join(runDir, exec.fitFileName), dump(exec.lzReport as object, { lineWidth: 120 }), 'utf-8');
             lzCatVerdicts.push(exec.verdict);
-            console.log(`[ok]  LZ Catalogue fit  ${providerDisplayName(exec.provider)}/${exec.region}  verdict: ${exec.verdict}  [${exec.fitMs}ms]`);
+            console.log(`[ok]  LZ Catalogue fit  ${providerRegionLabel(exec.provider, exec.region)}  verdict: ${exec.verdict}  [${exec.fitMs}ms]`);
           }
           // Narrative WSP file: lz-narratives.json (#1358).
           // Template-based plain-language summaries for the standalone landing-zone-catalog type.
@@ -3073,7 +3485,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               generateLzNarrative({
                 lz_id: `${exec.provider}/${exec.region}`,
                 region_id: exec.region,
-                display: `${providerDisplayName(exec.provider)} / ${exec.region}`,
+                display: providerRegionLabel(exec.provider, exec.region),
                 fit: exec.lzReport as unknown as LzFitReport,
                 evidence_files: [exec.fitFileName],
               }),
@@ -3094,7 +3506,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               ? fwsWithSovereignty.join(', ')
               : lzCatFwIds.join(', ') || '(no framework)';
             console.warn(
-              `[warn] LZ Catalogue: all ${lzCatVerdicts.length} target(s) SOVEREIGNTY_BLOCKED -- ` +
+              `[warn] LZ Catalogue: all ${lzCatVerdicts.length} target(s) SOVEREIGNTY_BLOCKED: ` +
               `no selected region satisfies sovereignty requirements for [${fwStr}]. ` +
               `Run \`swao lz catalogue list\` for alternatives.`
             );
@@ -3109,7 +3521,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // #3224: every post-pass step logs start/complete with duration_ms, and
         // swao.run.complete reports total wall clock (run-manifest.json keeps
         // the pass-phase duration because it is written before these steps).
-        const postRun = createPostRunTimer({ app: opts.app!, runId, assessmentType: isService ? 'service' : 'application' });
+        // #4498: each post-pass step prints its name ("[post] Portfolio summary") for the run screen.
+        const postRun = createPostRunTimer({ app: opts.app!, runId, assessmentType: isService ? 'service' : 'application', print: (line) => console.log(line) });
 
         // v1.3 stats: provider + model come from the actual LLM instance
         // used during the pass loop (#0217). Previously this read from env
@@ -3121,7 +3534,7 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         const inventoryCount = passStats.find((s) => s.num === '01')?.signals_emitted;
 
         const manifest: RunManifest = {
-          schema_version: '1.6', // #3419 / #3436: passes_not_run + passes_degraded
+          schema_version: '1.7', // #3419 / #3436: passes_not_run + passes_degraded; #4430: provenance build_commit + build_date
           run_id: runId,
           app: opts.app,
           iter,
@@ -3187,12 +3600,16 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
             placeholder_inputs: [...new Set(allPlaceholderInputs)],
             false_positive_flags: totalFpFlags,
             lzr_input_type: lzrInputType,
-            crawl_type: opts.crawl && (swaoYml as Record<string, unknown>)['crawl'] ? 'playwright' : 'none',
+            crawl_type: provenanceCrawlType(completedCrawl), // #4443
             swao_version: SWAO_VERSION,
+            ...SWAO_BUILD, // #4430
             ...(llmSkippedPasses.length > 0 ? { llm_skipped_passes: [...llmSkippedPasses] } : {}),
             // #0989 Design 074 §3.3: record active lenses from workspace .swao.yml.
+            // #4283: --lenses (the TUI choice for this run) wins over the workspace default.
             ...((() => {
-              const wsLenses = readWorkspaceLenses(join(workspaceRoot, '.swao.yml'));
+              const wsLenses = opts.lenses !== undefined
+                ? opts.lenses.split(',').map((l) => l.trim()).filter((l) => l !== '' && l !== 'none')
+                : readWorkspaceLenses(join(workspaceRoot, '.swao.yml'));
               return wsLenses.length > 0 ? { lenses_used: wsLenses } : {};
             })()),
           },
@@ -3229,13 +3646,34 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
           swao_version: SWAO_VERSION,
           ...(_excludedPasses.length > 0 ? { excluded_passes: _excludedPasses } : {}),
           ...(_lzTargets.length > 0 ? { lz_targets: _lzTargets } : {}),
+          ...(_lzTargets.length > 0 && inlineLzTargetsOrigin ? { lz_targets_source: inlineLzTargetsOrigin.source, ...(inlineLzTargetsOrigin.resolved.length > 0 ? { lz_targets_resolved: inlineLzTargetsOrigin.resolved } : {}) } : {}), // #4285
           ...(_activeFrameworks.length > 0 ? { active_frameworks: _activeFrameworks } : {}),
+          frameworks_selection: frameworksSel, // #4269
+          // #3887: the LZ evidence source of the inline fit (Design 123 section 8.4).
+          ...(_lzTargets.length > 0 || lzLinkFallback ? { lz_source: lzSourceSel.source } : {}),
+          // #3980: why a linked app was assessed against the catalogue.
+          ...(lzLinkFallback ? { lz_source_reason: lzLinkFallback } : {}),
         });
         postRun.step('run_context', () => writeFileSync(join(runDir, 'run-context.yaml'), dump(appRunCtx), 'utf-8'));
         if (servicePlan) {
           const plan = servicePlan;
           postRun.step('scope_coverage', () => writeFileSync(join(runDir, 'scope-coverage.json'), JSON.stringify(buildServiceScopeCoverage(plan, servicePassStatuses), null, 2), 'utf-8'));
           // The SWAO_APM summary is rebuilt after the run closes (#3309), see below.
+        }
+
+        // #4287 (D-9): a service run's synthesis verdict goes through the 7R to TIME
+        // matching before wsp.yaml and wsp-plan.yaml are derived from the synthesis
+        // pass, so every artefact of the run shows the verdict the portfolio summary
+        // shows. Best effort: a failure leaves the synthesis pass unchanged.
+        if (isService) {
+          try {
+            const sr = postRun.step('seven_r_alignment', () => alignServiceRunSevenR(workspaceRoot, opts.app!, runDir));
+            if (sr?.changed && sr.synthesis && sr.synthesis !== sr.label) {
+              console.log(`[info] 7R: ${sr.label} (TIME ${sr.time}); the synthesis verdict ${sr.synthesis} does not match TIME ${sr.time} and is kept as seven_r_synthesis`);
+            }
+          } catch (e) {
+            console.warn(`[warn] 7R alignment skipped: ${(e as Error).message}`);
+          }
         }
 
         // Derive wsp-plan.yaml + wsp.yaml + wsp-evidence.yaml (#0232).
@@ -3254,18 +3692,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
               const planRaw = load(readFileSync(r.planPath, 'utf-8')) as {
                 compliance?: { regimes?: Array<{ id?: string; controls?: Array<Record<string, unknown>> }> };
               } | null;
-              const regimes = planRaw?.compliance?.regimes ?? [];
-              const flatFindings = regimes.flatMap(regime =>
-                (regime.controls ?? []).map(ctrl => ({
-                  id: ctrl['id'],
-                  title: ctrl['title'] ?? '',
-                  severity: ctrl['severity'] ?? 'medium',
-                  outcome: ctrl['outcome'] ?? 'UNKNOWN',
-                  regime: regime.id ?? '',
-                  assessed_at: String(ctrl['assessed_at'] ?? assessedAt),
-                })),
-              );
-              writeFileSync(join(runDir, 'findings.yaml'), dump({ findings: flatFindings }), 'utf-8');
+              // #4286: zero evaluated frameworks write an explicit reason, never a silent empty list.
+              writeFileSync(join(runDir, 'findings.yaml'), dump(buildFindingsDoc(planRaw?.compliance?.regimes ?? [], assessedAt, runDir)), 'utf-8');
             });
           } catch (findingsErr) {
             console.warn(`[warn] findings.yaml write failed: ${(findingsErr as Error).message}`);
@@ -3327,7 +3755,8 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
 
         // #2391: assessment completed normally -- stop the heartbeat; the lifecycle
         // close below (#3283) removes the abort / exit guards.
-        clearInterval(_heartbeatTimer);
+        runHeartbeat.stop();
+        setPassProgressSink(null);
 
         // #0921: emit swao.run.complete so log consumers can calculate duration and confirm normal exit.
         // #1702: warn when mandatory passes were dropped due to LLM connectivity failure.
@@ -3352,7 +3781,19 @@ export function registerAssess(program: Command, deps: AssessDeps): void {
         // summary after every application or service run that closed complete or partial.
         // After the close because the summary reads usable runs only (#3283); best effort,
         // the exit code is never changed.
-        const portfolioSummary = rebuildPortfolioSummaryStep(postRun, runLifecycle.status, () => buildPortfolioSummary(workspaceRoot));
+        // #4271: unchanged apps come from the row cache; progress every 10 s; apps_total on start.
+        // #4288: only this run's folder gets a fresh apm-score.json.
+        const portfolioLogOpts = { app: opts.app!, runId, assessmentType: isService ? 'service' : 'application' };
+        const portfolioProgress = createPortfolioProgressLogger({ ...portfolioLogOpts, print: (line) => console.log(line) });
+        // #4412: a rebuild step of 1 s or more logs its own phase line; the complete event
+        // carries the cache state (warm or cold and why), the recomputed rows by cause and
+        // the wall clock of every step.
+        const portfolioPhase = createPortfolioPhaseLogger(portfolioLogOpts);
+        let portfolioStats: PortfolioBuildStats | null = null;
+        const portfolioSummary = rebuildPortfolioSummaryStep(postRun, runLifecycle.status,
+          () => buildPortfolioSummary(workspaceRoot, { apmScoreFor: opts.app, onProgress: portfolioProgress, onPhase: portfolioPhase, onPhaseStart: portfolioPhase.start, onStats: (s) => { portfolioStats = s; } }),
+          undefined, { apps_total: countPortfolioApps(workspaceRoot) },
+          () => (portfolioStats ? { ...portfolioStats } : {}));
         if (portfolioSummary) {
           const me = portfolioSummary.apps.find((a) => a.id === opts.app);
           console.log(`[ok]  SWAO_APM: TIME ${me?.time_quadrant ?? 'n/a'} (${me?.time_reason ?? ''}), risk ${me?.risk_score ?? 'n/a'}  ->  wsp/portfolio-summary.json`);

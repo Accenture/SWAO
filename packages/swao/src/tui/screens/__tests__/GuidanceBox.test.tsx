@@ -24,7 +24,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { render } from 'ink-testing-library';
-import { GuidanceBox } from '@swao/tui-kit';
+import { GuidanceBox, GUIDANCE_CLOSE_HINT } from '@swao/tui-kit';
 
 const DETAILS = [
   { label: 'Input',  value: 'apps/<app>/ingestion/' },
@@ -105,7 +105,7 @@ describe('GuidanceBox -- TU-GB-02: expanded when initiallyCollapsed=false', () =
       />,
     );
     const frame = lastFrame() ?? '';
-    expect(frame).toContain('Ctrl+G -- close guidance');
+    expect(frame).toContain(GUIDANCE_CLOSE_HINT);
   });
 });
 

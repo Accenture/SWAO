@@ -514,7 +514,7 @@ export function finalSecretPass(name: string, text: string, knownSecrets: readon
     counts.secrets_masked += g.count;
     return g.value;
   };
-  let out = text;
+  let out: string;
   if (name.endsWith('.json')) {
     try { out = `${JSON.stringify(deep(JSON.parse(text)), null, 2)}\n`; } catch { out = scrubPlain(text); }
   } else if (name.endsWith('.ndjson')) {

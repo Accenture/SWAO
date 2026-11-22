@@ -131,11 +131,9 @@ Enable only one of the two in an application, because they evaluate the same con
 The framework source (`framework-meta.yaml`, `controls.yaml` and any supporting files) is public. You can view it on GitHub and copy and paste it:
 
 - Framework source: <https://github.com/Accenture/SWAO/tree/main/community-frameworks/nist-sp-800-66r2-hipaa>
-- Demo variant `NIST_SP_800_66R2_DEMO`: <https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/nist-sp-800-66r2-demo>
-- Demo variant `NIST_HIPAA_DEMO`: <https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/nist-hipaa-demo>
 - Overview of all community frameworks: <https://github.com/Accenture/SWAO/tree/main/community-frameworks>
 
-To customise the framework for one engagement, copy the folder `nist-sp-800-66r2-hipaa` into your workspace at `wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework info NIST_SP_800_66R2` prints the bundled metadata.
+To customise the framework for one engagement, copy the folder `nist-sp-800-66r2-hipaa` into your workspace at `wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework list` lists the frameworks in the workspace.
 
 ## Limitations and notes
 

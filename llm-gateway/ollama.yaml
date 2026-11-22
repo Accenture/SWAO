@@ -9,6 +9,7 @@ connector:
   auth: {}
   models:
     default: llama3.3
+    discovery_endpoint: /api/tags    # #4475: the models pulled on the local daemon
     catalogue:
       - id: llama3.3
       - id: mistral-small
@@ -21,5 +22,5 @@ connector:
     notes: Fully local inference; suitable for air-gapped assessments (Design 046).
   meta:
     source: bundled
-    last_reviewed: "2026-08-05"   # SWAO team review date -- not the user install date
+    last_reviewed: "2026-11-16"   # #4475: library names; the served list is read from the local daemon
     contributor: Accenture SWAO team

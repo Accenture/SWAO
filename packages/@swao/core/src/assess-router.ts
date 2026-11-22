@@ -39,7 +39,7 @@ export const KNOWN_ASSESSMENT_TYPES: readonly AssessmentType[] = [
   'application',
   'audit',
   'landing-zone-catalog',
-  'landing-zone-customer',
+  'landing-zone-live',
   'hybrid',
   'llm',
   'service',
@@ -68,7 +68,9 @@ const DEPRECATED_TYPE_ALIASES: Readonly<Record<string, AssessmentType>> = {
 const DEFAULT_COMING_SOON: Readonly<Partial<Record<AssessmentType, string>>> = {
   audit: 'Assessment type "audit" (controls + evidence audit) is coming soon.',
   'landing-zone-catalog': 'Assessment type "landing-zone-catalog" (CSP service catalog fit/gap) is coming soon.',
-  'landing-zone-customer': 'Assessment type "landing-zone-customer" (customer landing zone) is coming soon.',
+  // #3568 (Design 120 section 13.1): `landing-zone-live` replaces the former
+  // reserved customer landing zone token (ADR-0051), which never produced output.
+  'landing-zone-live': 'Assessment type "landing-zone-live" (Landing Zone Live Assessment, Design 120) is coming soon.',
   hybrid: 'Assessment type "hybrid" (combined source + human evidence) is coming soon.',
   llm: 'Assessment type "llm" (LLM Assessment for SWAO, Design 092) requires @swao/module-llm-assessment; this build has no registered engine for it.',
   service: 'Assessment type "service" (Service Portfolio Assessment, Design 103) has no registered engine in this build yet.',

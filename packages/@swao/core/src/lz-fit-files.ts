@@ -61,3 +61,16 @@ export function listLzFitPassFiles(passesDir: string): string[] {
 export function listLzCatalogueFitFiles(runDir: string): string[] {
   return listMatching(runDir, LZ_CATALOGUE_FIT_FILE_RE);
 }
+
+/**
+ * #4481: run-root file name of the LZ catalogue fit of one target, by the
+ * rule of the inline fit in assess.ts: a run with one target writes
+ * lz-catalogue-fit.yaml, a run with several writes
+ * lz-catalogue-fit-<provider>-<region>.yaml (region characters other than
+ * letters, digits and hyphens become hyphens). Pass 09 records the name
+ * before the fit runs, so both sides use this one function.
+ */
+export function lzCatalogueFitFileName(provider: string, region: string, targetCount: number): string {
+  if (targetCount === 1) return 'lz-catalogue-fit.yaml';
+  return `lz-catalogue-fit-${provider}-${region.replace(/[^a-zA-Z0-9-]/g, '-')}.yaml`;
+}

@@ -18,13 +18,12 @@ import { Box, Text, useInput } from 'ink';
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { resolve, join } from 'path';
-import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
-import { logPortfolio } from '@swao/core';
+import { load as yamlLoad } from 'js-yaml';
+import { logPortfolio, patchSwaoYmlFileOrThrow } from '@swao/core';
 import { seedBundledConnectors } from '@swao/module-llm-providers';
 import { buildWorkspaceSwaoYml, runWorkspaceScaffolders, validateIso8601Date } from '../../../../commands/init.js';
-import { TextInput } from '@swao/tui-kit';
-import { GuidanceBox } from '@swao/tui-kit';
-import { _wizardGuidanceOpen, setWizardGuidanceOpen } from '../shared.js';
+import { DetailRow, SelectInput, TextInput, tone, useOptionGuidance, type FlowStepKind, type GuidanceEntry, type SelectOption } from '@swao/tui-kit';
+import { SetupStepFrame } from '../../../../setup/setup-frame.js';
 
 type InitPhase =
   | 'input-dir'
@@ -44,18 +43,6 @@ interface ExistingSwaoYml {
   [key: string]: unknown;
 }
 
-// Shared key-handler helper: Enter confirms, Escape navigates back.
-// Exported because PlaywrightStep also uses it.
-export function ConfirmContinue({ onConfirm, onBack }: { onConfirm: () => void; onBack: () => void }) {
-  useInput((_input, key) => {
-    // #1412: Enter fires even when guidance is open -- GuidanceBox closes in
-    // the same keypress, giving one-press advance rather than two-press.
-    if (key.return) onConfirm();
-    if (key.escape && !_wizardGuidanceOpen) onBack();
-  });
-  return null;
-}
-
 // #3373: Enter-only confirmation (Escape is handled by the wizard shell).
 function ConfirmEnter({ onConfirm }: { onConfirm: () => void }) {
   useInput((_input, key) => {
@@ -64,16 +51,13 @@ function ConfirmEnter({ onConfirm }: { onConfirm: () => void }) {
   return null;
 }
 
-function ConfirmOrEdit({ onConfirm, onEdit, onBack }: { onConfirm: () => void; onEdit: () => void; onBack: () => void }) {
-  useInput((input, key) => {
-    if (key.return) onConfirm(); // #1412: same one-press advance
-    if ((input === 'e' || input === 'E') && !_wizardGuidanceOpen) onEdit();
-    if (key.escape && !_wizardGuidanceOpen) onBack();
-  });
-  return null;
-}
+/** #4230: the entries of the existing-workspace menu, each with its guidance entry. */
+export const INIT_EXISTING_OPTIONS: readonly SelectOption[] = [
+  { label: 'Continue with this workspace', value: 'continue', guidance: { title: 'Continue with this workspace', what: 'Keeps the engagement details and updates the bundled assets of the workspace (frameworks, templates, connectors) without touching your settings.' } },
+  { label: 'Edit the engagement details', value: 'edit', guidance: { title: 'Edit the engagement details', what: 'Asks again for the engagement name, the client code and the owner email, each pre-filled; only these keys of .swao.yml are changed.' } },
+];
 
-// -- Step 1: Init workspace -----------------------------------------------
+// -- Init workspace -------------------------------------------------------------
 
 export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagementName: string; clientCode: string; partnershipLead: string }) => void }) {
   const [phase, setPhase]         = useState<InitPhase>('input-dir');
@@ -85,6 +69,11 @@ export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagement
   const [endDate, setEndDate]     = useState('');
   const [existingParsed, setExistingParsed] = useState<ExistingSwaoYml | null>(null);
   const [error, setError]         = useState('');
+  // #4230: the guidance of the existing-workspace menu follows the highlighted entry.
+  const { entry: existingEntry, onCursorChange: onExistingCursor } = useOptionGuidance({
+    title: 'Workspace found',
+    what: 'This folder already holds a SWAO workspace. Continue with it, or edit its engagement details first.',
+  });
 
   const tryDir = (dir: string) => {
     const resolved = resolve(dir.trim() || '.');
@@ -128,8 +117,9 @@ export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagement
       setError(`Could not write .swao.yml: ${(e as Error).message}`);
       return;
     }
-    // #2386: emit wizard.engagement.complete so monitors can observe engagement data collection.
-    try { logPortfolio('info', 'wizard.engagement.complete', 'InitStep engagement data collected', { context: { engagement_name: name, client_code: code, has_lead: Boolean(ownerLead), has_engagement_lead: Boolean(engLead), has_end_date: Boolean(end) } }); } catch { /* best-effort */ }
+    // #2386 / #4121: engagement data of a new workspace collected and written. One code, one
+    // meaning: the wizard shell emits wizard.engagement.confirmed when the step completes.
+    try { logPortfolio('info', 'wizard.engagement.collected', 'InitStep engagement data collected', { context: { engagement_name: name, client_code: code, has_lead: Boolean(ownerLead), has_engagement_lead: Boolean(engLead), has_end_date: Boolean(end) } }); } catch { /* best-effort */ }
     onNext({ workDir: resolved, engagementName: name, clientCode: code, partnershipLead: ownerLead });
   };
 
@@ -137,284 +127,209 @@ export function InitStep({ onNext }: { onNext: (s: { workDir: string; engagement
   const writeAndUpdate = (name: string, code: string, ownerLead: string, engLead: string, end: string) => {
     const yamlPath = join(workDir, '.swao.yml');
     try {
-      const base = existingParsed ?? {};
-      const engBlock: ExistingSwaoYml['engagement'] = {
-        ...(base.engagement ?? {}),
-        name,
-        client_code: code,
-        partnership_lead: ownerLead,
-      };
-      if (engLead) engBlock.engagement_lead = engLead;
-      if (end) engBlock.end_date = end;
-      const updated: ExistingSwaoYml = { ...base, engagement: engBlock };
-      writeFileSync(yamlPath, `# .swao.yml -- SWAO workspace configuration\n${yamlDump(updated)}`, 'utf-8');
+      // #4283: minimal patch of the engagement keys only; comments, quoting and
+      // every other key of the file stay (Design 125 section 7).
+      const engagement = (key: string, value: string) => ({ path: ['engagement', key], value });
+      patchSwaoYmlFileOrThrow(yamlPath, [
+        engagement('name', name),
+        engagement('client_code', code),
+        engagement('partnership_lead', ownerLead),
+        ...(engLead ? [engagement('engagement_lead', engLead)] : []),
+        ...(end ? [engagement('end_date', end)] : []),
+      ]);
       try { runWorkspaceScaffolders(workDir); } catch { /* best-effort */ }
     } catch (e) {
       setError(`Could not update .swao.yml: ${(e as Error).message}`);
       return;
     }
-    // #2386: emit wizard.engagement.complete for update path as well.
-    try { logPortfolio('info', 'wizard.engagement.complete', 'InitStep engagement data updated', { context: { engagement_name: name, client_code: code, has_lead: Boolean(ownerLead), has_engagement_lead: Boolean(engLead), has_end_date: Boolean(end) } }); } catch { /* best-effort */ }
+    // #2386 / #4121: engagement data of an existing workspace edited and written.
+    try { logPortfolio('info', 'wizard.engagement.updated', 'InitStep engagement data updated', { context: { engagement_name: name, client_code: code, has_lead: Boolean(ownerLead), has_engagement_lead: Boolean(engLead), has_end_date: Boolean(end) } }); } catch { /* best-effort */ }
     onNext({ workDir, engagementName: name, clientCode: code, partnershipLead: ownerLead });
   };
+
+  // #4254 TUI-10 (Design 126 sections 4.5, 7.2, 7.7 and 9): every phase renders
+  // through SetupStepFrame (title "Init" without a number, the hint line of its
+  // input kind, one guidance box); each sub-phase goes back with Shift+Tab
+  // through the frame's `back`; Esc belongs to the wizard. The engagement facts
+  // are DetailRows; continue or edit an existing workspace are menu entries
+  // with their own guidance (#4230), no letter key.
+  const facts = (rows: ReadonlyArray<[string, string]>): JSX.Element => (
+    <Box flexDirection="column" marginBottom={1}>
+      {rows.map(([label, value]) => <DetailRow key={label} label={label} value={value || '(not set)'} labelWidth={16} path={label === 'Workspace' || label === 'Portfolio root'} />)}
+    </Box>
+  );
+  const frame = (subtitle: string, kind: FlowStepKind, guidance: GuidanceEntry, back: (() => void) | undefined, body: JSX.Element): JSX.Element => (
+    <SetupStepFrame title="Init" subtitle={subtitle} kind={kind} guidance={guidance} back={back}>
+      <Box flexDirection="column">
+        {body}
+        {error && <Text {...tone('error')}>{error}</Text>}
+      </Box>
+    </SetupStepFrame>
+  );
+  const keepNote = (current: string): string => `Current: ${current || '(not set)'}. An empty entry keeps it.`;
 
   // -- Edit-existing flow (pre-filled inputs from parsed YAML) ---------------
 
   if (phase === 'edit-existing-name') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Edit Engagement Details</Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="edit-eng-name"
-            label="Engagement name"
-            placeholder={engName || 'My Cloud Transformation'}
-            onSubmit={(v) => { setEngName(v || engName); setPhase('edit-existing-code'); }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Engagement name"
-          what={`Current: ${engName || '(not set)'}. Press Enter to keep, or type a new value.`}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
-    );
+    return frame('Edit the engagement details.', 'textInput', { title: 'Engagement name', what: `${keepNote(engName)} The name is shown on every report cover.` }, () => setPhase('confirm-existing'), (
+      <TextInput
+        key="edit-eng-name"
+        label="Engagement name"
+        placeholder={engName || 'My Cloud Transformation'}
+        onSubmit={(v) => { setEngName(v || engName); setPhase('edit-existing-code'); }}
+        active
+      />
+    ));
   }
 
   if (phase === 'edit-existing-code') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Edit Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="edit-client-code"
-            label="Client code (slug)"
-            placeholder={clientCode || 'acme'}
-            onSubmit={(v) => { setClientCode(v || clientCode); setPhase('edit-existing-lead'); }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Client code"
-          what={`Current: ${clientCode || '(not set)'}. Short slug used in folder names and BI exports.`}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('Edit the engagement details.', 'textInput', { title: 'Client code', what: `${keepNote(clientCode)} A short slug used in folder names and BI exports.` }, () => setPhase('edit-existing-name'), (
+      <>
+        {facts([['Engagement', engName]])}
+        <TextInput
+          key="edit-client-code"
+          label="Client code (slug)"
+          placeholder={clientCode || 'acme'}
+          onSubmit={(v) => { setClientCode(v || clientCode); setPhase('edit-existing-lead'); }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'edit-existing-lead') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Edit Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text>  Code: <Text color="cyanBright">{clientCode}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="edit-lead"
-            label="Engagement owner email (Enter to keep)"
-            placeholder={lead || 'you@example.com'}
-            onSubmit={(v) => { writeAndUpdate(engName, clientCode, v || lead, engagementLead, endDate); }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Engagement owner email"
-          what={`Current: ${lead || '(not set)'}. Shown on report covers.`}
-          affordances={['Enter -- confirm or keep  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('Edit the engagement details.', 'textInput', { title: 'Engagement owner email', what: `${keepNote(lead)} Shown on report covers.` }, () => setPhase('edit-existing-code'), (
+      <>
+        {facts([['Engagement', engName], ['Client code', clientCode]])}
+        <TextInput
+          key="edit-lead"
+          label="Engagement owner email (empty keeps it)"
+          placeholder={lead || 'you@example.com'}
+          onSubmit={(v) => { writeAndUpdate(engName, clientCode, v || lead, engagementLead, endDate); }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'confirm-existing') {
     const eng = existingParsed?.engagement;
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Workspace Found</Text>
-        <Text>  <Text color="cyanBright">{workDir}/.swao.yml</Text></Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  Engagement:  <Text color="cyanBright">{eng?.name || '(not set)'}</Text></Text>
-          <Text>  Client code: <Text color="cyanBright">{eng?.client_code || '(not set)'}</Text></Text>
-          <Text>  Lead email:  <Text color="cyanBright">{eng?.partnership_lead || '(not set)'}</Text></Text>
-        </Box>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  <Text color="cyanBright">Enter</Text>  -- continue with this workspace</Text>
-          <Text>  <Text color="cyanBright">E</Text>      -- edit engagement details</Text>
-          <Text>  <Text color="cyanBright">Esc</Text>    -- choose a different directory</Text>
-        </Box>
-        <ConfirmOrEdit
-          onConfirm={() => {
+    const options = [...INIT_EXISTING_OPTIONS];
+    return frame('A workspace was found in this folder.', 'picker', existingEntry, () => setPhase('input-dir'), (
+      <>
+        {facts([['Workspace', `${workDir}/.swao.yml`], ['Engagement', eng?.name ?? ''], ['Client code', eng?.client_code ?? ''], ['Lead email', eng?.partnership_lead ?? '']])}
+        <SelectInput
+          label=""
+          options={options}
+          numbered
+          showKeyHints={false}
+          visibleCount={options.length}
+          onCursorChange={onExistingCursor}
+          onSelect={(v) => {
+            if (v === 'edit') { setPhase('edit-existing-name'); return; }
             try { runWorkspaceScaffolders(workDir); } catch { /* best-effort */ }
             onNext({ workDir, engagementName: engName, clientCode, partnershipLead: lead });
           }}
-          onEdit={() => setPhase('edit-existing-name')}
-          onBack={() => setPhase('input-dir')}
         />
-        <GuidanceBox
-          title="Workspace found"
-          what="Continuing updates bundled assets. Press E to edit engagement name, code, or lead email."
-          affordances={['Enter -- continue  |  E -- edit config  |  Esc -- choose different directory']}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'input-engagement-name') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Engagement Details</Text>
-        <Text dimColor>These appear in all assessment reports.</Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="input-engagement-name"
-            label="Engagement name (e.g. ACME Cloud Transformation)"
-            placeholder="My Cloud Transformation"
-            onSubmit={(v) => { if (v) { setEngName(v); setPhase('input-client-code'); } }}
-            active
-          />
-        </Box>
-        {error && <Text color="red">{error}</Text>}
-        <GuidanceBox
-          title="Engagement name"
-          what="Name shown on all report covers (e.g. ACME Cloud Transformation)."
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
-        />
-      </Box>
-    );
+    return frame('These details appear in all assessment reports.', 'textInput', { title: 'Engagement name', what: 'The name shown on every report cover (e.g. ACME Cloud Transformation).' }, () => setPhase('input-dir'), (
+      <TextInput
+        key="input-engagement-name"
+        label="Engagement name (e.g. ACME Cloud Transformation)"
+        placeholder="My Cloud Transformation"
+        onSubmit={(v) => { if (v) { setEngName(v); setPhase('input-client-code'); } }}
+        active
+      />
+    ));
   }
 
   if (phase === 'input-client-code') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="input-client-code"
-            label="Client code (short slug, e.g. acme)"
-            placeholder="acme"
-            onSubmit={(v) => {
-              if (v) { setClientCode(v); setPhase('input-lead'); }
-            }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Client code"
-          what="Short slug used in folder names and BI exports."
-          details={[{ label: 'Format', value: 'lowercase letters, digits, hyphens (e.g. acme)' }]}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('These details appear in all assessment reports.', 'textInput', {
+      title: 'Client code',
+      what: 'A short slug used in folder names and BI exports.',
+      sections: [{ label: 'Format', text: 'lowercase letters, digits, hyphens (e.g. acme)' }],
+    }, () => setPhase('input-engagement-name'), (
+      <>
+        {facts([['Engagement', engName]])}
+        <TextInput
+          key="input-client-code"
+          label="Client code (short slug, e.g. acme)"
+          placeholder="acme"
+          onSubmit={(v) => {
+            if (v) { setClientCode(v); setPhase('input-lead'); }
+          }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'input-lead') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text>  Code: <Text color="cyanBright">{clientCode}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="input-lead"
-            label="Engagement owner email (Enter to skip)"
-            placeholder="you@example.com"
-            onSubmit={(v) => { setLead(v); setPhase('input-engagement-lead'); }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Engagement owner email"
-          what="Optional contact shown on report covers. Enter to skip."
-          affordances={['Enter -- confirm or skip  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('These details appear in all assessment reports.', 'textInput', { title: 'Engagement owner email', what: 'Optional contact shown on report covers. An empty entry skips it.' }, () => setPhase('input-client-code'), (
+      <>
+        {facts([['Engagement', engName], ['Client code', clientCode]])}
+        <TextInput
+          key="input-lead"
+          label="Engagement owner email (optional)"
+          placeholder="you@example.com"
+          onSubmit={(v) => { setLead(v); setPhase('input-engagement-lead'); }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'input-engagement-lead') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text>  Code: <Text color="cyanBright">{clientCode}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="input-engagement-lead"
-            label="Engagement lead name or email (Enter to skip)"
-            placeholder="firstname.lastname@example.com"
-            onSubmit={(v) => { setEngagementLead(v); setPhase('input-end-date'); }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Engagement lead"
-          what="The person leading delivery. Shown on HTML publication covers. Enter to skip."
-          affordances={['Enter -- confirm or skip  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('These details appear in all assessment reports.', 'textInput', { title: 'Engagement lead', what: 'The person leading delivery, shown on HTML publication covers. An empty entry skips it.' }, () => setPhase('input-lead'), (
+      <>
+        {facts([['Engagement', engName], ['Client code', clientCode]])}
+        <TextInput
+          key="input-engagement-lead"
+          label="Engagement lead name or email (optional)"
+          placeholder="firstname.lastname@example.com"
+          onSubmit={(v) => { setEngagementLead(v); setPhase('input-end-date'); }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   if (phase === 'input-end-date') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1 -- Engagement Details</Text>
-        <Text>  Engagement: <Text color="cyanBright">{engName}</Text>  Code: <Text color="cyanBright">{clientCode}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="input-end-date"
-            label="Expected end date YYYY-MM-DD (Enter to skip)"
-            placeholder="2026-12-31"
-            onSubmit={(v) => {
-              const err = validateIso8601Date(v);
-              if (err) { setError(err); return; }
-              writeAndFinish(engName, clientCode, lead, engagementLead, v);
-            }}
-            active
-          />
-        </Box>
-        {error && <Text color="red">{error}</Text>}
-        <GuidanceBox
-          title="Engagement end date"
-          what="Target completion date in YYYY-MM-DD format. Shown on publication covers. Enter to skip."
-          affordances={['Enter -- confirm or skip  |  Esc -- back']}
-          onOpenChange={setWizardGuidanceOpen}
+    return frame('These details appear in all assessment reports.', 'textInput', { title: 'Engagement end date', what: 'The target completion date in YYYY-MM-DD format, shown on publication covers. An empty entry skips it.' }, () => setPhase('input-engagement-lead'), (
+      <>
+        {facts([['Engagement', engName], ['Client code', clientCode]])}
+        <TextInput
+          key="input-end-date"
+          label="Expected end date YYYY-MM-DD (optional)"
+          placeholder="2026-12-31"
+          onSubmit={(v) => {
+            const err = validateIso8601Date(v);
+            if (err) { setError(err); return; }
+            writeAndFinish(engName, clientCode, lead, engagementLead, v);
+          }}
+          active
         />
-      </Box>
-    );
+      </>
+    ));
   }
 
   // phase === 'input-dir'
-  return (
-    <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 1 -- Initialise Workspace</Text>
-      <Text dimColor>Creates .swao.yml for a new workspace, or continues with an existing one.</Text>
-      {/* #3373 / ADR-0070: the portfolio root is the folder SWAO runs in; no
-          free-text directory, because the TUI and its child commands work
-          from this folder (a sub-folder workspace was not found by the health
-          check and the support bundle). */}
-      <Box marginTop={1} flexDirection="column">
-        <Text>Portfolio root: <Text bold color="whiteBright">{resolve('.')}</Text></Text>
-        <Text dimColor>Press Enter to use this folder. To use another folder, quit, copy the SWAO executable there and start it from that folder.</Text>
-        <ConfirmEnter onConfirm={() => tryDir('.')} />
-      </Box>
-      {error && <Text color="red">{error}</Text>}
-      <GuidanceBox
-        title="Portfolio root"
-        what="The folder SWAO was started in is the portfolio root: .swao.yml, apps/ and wsp/ are created here. An existing workspace in this folder is detected and reused."
-        affordances={['Enter -- confirm  |  Esc -- back']}
-        onOpenChange={setWizardGuidanceOpen}
-      />
-    </Box>
-  );
+  // #3373 / ADR-0070: the portfolio root is the folder SWAO runs in; no
+  // free-text directory, because the TUI and its child commands work from
+  // this folder (a sub-folder workspace was not found by the health check
+  // and the support bundle).
+  return frame('Creates .swao.yml for a new workspace, or continues with an existing one.', 'confirm', {
+    title: 'Portfolio root',
+    what: 'The folder SWAO was started in is the portfolio root: .swao.yml, apps/ and wsp/ are created here. An existing workspace in this folder is detected and reused.',
+    sections: [{ label: 'Other folder', text: 'Quit, copy the SWAO executable to that folder and start it from there.' }],
+  }, undefined, (
+    <>
+      {facts([['Portfolio root', resolve('.')]])}
+      <ConfirmEnter onConfirm={() => tryDir('.')} />
+    </>
+  ));
 }

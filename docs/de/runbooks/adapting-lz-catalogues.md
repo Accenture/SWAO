@@ -14,7 +14,7 @@ SWAO wird mit vorgefertigten Dienstekatalogen für 10 Cloud-Anbieter ausgeliefer
 | `delos` | Delos Cloud |
 | `gcp` | Google Cloud |
 | `oci` | Oracle Cloud Infrastructure |
-| `otc` | Open Telekom Cloud / T Cloud Public |
+| `otc` | T Cloud Public (ehemals Open Telekom Cloud) |
 | `stackit` | STACKIT |
 
 `swao lz catalogue list` gibt dieselbe Liste mit der Zahl der Regionen und Dienste aus; `swao lz catalogue show <provider>` zeigt Regionen, Souveränitätsmerkmale und Dienste eines Anbieters.

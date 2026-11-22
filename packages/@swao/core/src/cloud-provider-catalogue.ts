@@ -27,6 +27,8 @@ import type { LandingZoneCandidate, LandingZoneResult, LockInFlag } from './wsp-
 interface CatalogueCertification {
   status: string;
   scope?: string;
+  /** #4481: claim-level source of the certification (only some entries carry one). */
+  evidence_url?: string;
 }
 
 interface CatalogueService {
@@ -67,6 +69,7 @@ export interface CatalogueProvider {
   };
   certifications: {
     bsi_c5?: CatalogueCertification;
+    [certification: string]: CatalogueCertification | undefined;
   };
   compliance_regime_coverage: Record<string, string>;
   services: Record<string, CatalogueService>;
@@ -74,9 +77,15 @@ export interface CatalogueProvider {
   vendor_lock_in: VendorLockIn;
   cost_tier: 'low' | 'medium' | 'high';
   sovereign_score: number;
+  /** #4481: date of the last review of the entry (YYYY-MM-DD); absent on some entries. */
+  last_reviewed?: string;
+  /** #4481: vendor pages the entry was reviewed against. */
+  review_sources?: string[];
 }
 
 interface CatalogueRoot {
+  catalogue_version?: string;
+  last_updated?: string;
   providers: CatalogueProvider[];
 }
 
@@ -361,5 +370,122 @@ export function matchLandingZone(
     recommended_landing_zone: recommended?.id,
     landing_zone_recommendation_confidence: confidence,
     landing_zone_blockers: blockers.length > 0 ? blockers : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// #4481: market scan over the bundled provider list (opt-in, lower confidence)
+// ---------------------------------------------------------------------------
+
+/** #4481: a provider entry older than this (days before the run) counts as not reviewed. */
+export const MARKET_SCAN_MAX_REVIEW_AGE_DAYS = 180;
+
+export interface CatalogueDocument {
+  catalogue_version?: string;
+  last_updated?: string;
+  providers: CatalogueProvider[];
+}
+
+/** #4481: the provider list with its version and update date. */
+export function loadCatalogueDocument(cataloguePath: string): CatalogueDocument {
+  const parsed = load(readFileSync(cataloguePath, 'utf-8')) as CatalogueRoot;
+  return {
+    ...(typeof parsed.catalogue_version === 'string' ? { catalogue_version: parsed.catalogue_version } : {}),
+    ...(typeof parsed.last_updated === 'string' ? { last_updated: parsed.last_updated } : {}),
+    providers: parsed.providers ?? [],
+  };
+}
+
+/** A scored provider of the market scan, with the sources its entry cites. */
+export type MarketScanCandidate = LandingZoneCandidate & {
+  last_reviewed: string;
+  /** review_sources of the entry, then the claim-level certification evidence_url values. */
+  evidence: string[];
+};
+
+/** A provider the market scan lists without a fit score. */
+export interface MarketScanNotReviewed {
+  id: string;
+  name: string;
+  /** Absent when the entry has no last_reviewed date. */
+  last_reviewed?: string;
+  reason: string;
+  evidence: string[];
+}
+
+export interface MarketScanResult {
+  list_version?: string;
+  list_updated?: string;
+  max_review_age_days: number;
+  candidates: MarketScanCandidate[];
+  not_reviewed: MarketScanNotReviewed[];
+  recommended?: string;
+  confidence: 'low' | 'medium' | 'high';
+}
+
+function providerEvidence(p: CatalogueProvider): string[] {
+  const out: string[] = [];
+  for (const src of p.review_sources ?? []) if (typeof src === 'string' && src.trim()) out.push(src.trim());
+  for (const cert of Object.values(p.certifications ?? {})) {
+    const url = cert?.evidence_url;
+    if (typeof url === 'string' && url.trim() && !out.includes(url.trim())) out.push(url.trim());
+  }
+  return out;
+}
+
+/** Whole days from `from` to `to` (dates or timestamps); null when either does not parse. */
+function daysBetween(from: string, to: string): number | null {
+  const a = Date.parse(from);
+  const b = Date.parse(to);
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.floor((b - a) / 86_400_000);
+}
+
+/**
+ * #4481 (Design 012 section 5a): score the bundled provider list for the
+ * opt-in market scan. Only entries reviewed within `maxAgeDays` before
+ * `assessedAt` are scored (deterministic matchLandingZone); the others are
+ * listed as not reviewed without a fit score. The recommendation and the
+ * confidence come from the reviewed entries only.
+ */
+export function marketScan(
+  doc: CatalogueDocument,
+  constraints: LandingZoneConstraints,
+  assessedAt: string,
+  coverageScore = 0.8,
+  maxAgeDays = MARKET_SCAN_MAX_REVIEW_AGE_DAYS,
+): MarketScanResult {
+  const reviewed: CatalogueProvider[] = [];
+  const notReviewed: MarketScanNotReviewed[] = [];
+  for (const p of doc.providers) {
+    const evidence = providerEvidence(p);
+    if (typeof p.last_reviewed !== 'string' || !p.last_reviewed) {
+      notReviewed.push({ id: p.id, name: p.name, reason: 'no review date in the provider list', evidence });
+      continue;
+    }
+    const age = daysBetween(p.last_reviewed, assessedAt);
+    if (age === null || age > maxAgeDays) {
+      notReviewed.push({
+        id: p.id, name: p.name, last_reviewed: p.last_reviewed, evidence,
+        reason: age === null ? 'review date not readable' : `reviewed ${age} days before the run (more than ${maxAgeDays})`,
+      });
+      continue;
+    }
+    reviewed.push(p);
+  }
+  const matched = matchLandingZone(reviewed, constraints, {}, coverageScore);
+  const byId = new Map(reviewed.map((p) => [p.id, p]));
+  const candidates: MarketScanCandidate[] = (matched.landing_zone_candidates ?? []).map((c) => {
+    const p = byId.get(c.id)!;
+    return { ...c, last_reviewed: p.last_reviewed!, evidence: providerEvidence(p) };
+  });
+  return {
+    ...(doc.catalogue_version ? { list_version: doc.catalogue_version } : {}),
+    ...(doc.last_updated ? { list_updated: doc.last_updated } : {}),
+    max_review_age_days: maxAgeDays,
+    candidates,
+    not_reviewed: notReviewed,
+    ...(matched.recommended_landing_zone ? { recommended: matched.recommended_landing_zone } : {}),
+    confidence: candidates.length === 0 ? 'low' : (matched.landing_zone_recommendation_confidence ?? 'low'),
   };
 }

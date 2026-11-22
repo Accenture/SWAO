@@ -84,3 +84,39 @@ describe('ToolsMenu -- TU-TM-03: Community licence shows badge', () => {
     expect(lastFrame() ?? '').toContain('[Consultant+]');
   });
 });
+
+// ---------------------------------------------------------------------------
+// #4126: Tools > Frameworks is removed together with swao framework install,
+// uninstall, info and baseline (CLI/TUI parity, owner decision 2026-11-08).
+// ---------------------------------------------------------------------------
+describe('ToolsMenu -- #4126: no Frameworks entry', () => {
+  it('offers no Frameworks item and no install or baseline action; keys stay 1 to 8', () => {
+    mockTier = 'enterprise';
+    const onSelect = vi.fn();
+    const { lastFrame, stdin } = render(<ToolsMenu onSelect={onSelect} onBack={vi.fn()} />);
+    const frame = lastFrame() ?? '';
+    expect(frame).not.toMatch(/Frameworks/);
+    expect(frame).not.toMatch(/\b(install|baseline|upgrade)\b/i);
+    expect(frame).toContain('8  Help');
+    stdin.write('f');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4127: Landing Zone Connections moved to the Landing Zone Live setup branch
+// and step 1 of the Landing Zone Live Assessment; Tools keeps 1 to 8.
+// ---------------------------------------------------------------------------
+describe('ToolsMenu -- #4127: no Landing Zone Connections entry', () => {
+  it('lists keys 1 to 8 only and key 9 selects nothing', () => {
+    mockTier = 'enterprise';
+    const onSelect = vi.fn();
+    const { lastFrame, stdin } = render(<ToolsMenu onSelect={onSelect} onBack={vi.fn()} />);
+    const frame = lastFrame() ?? '';
+    expect(frame).not.toContain('Landing Zone Connections');
+    const keys = [...frame.matchAll(/^\s*(?:❯\s*)?(\d) {2}\S/gm)].map((m) => m[1]);
+    expect(keys).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '0']);
+    stdin.write('9');
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});

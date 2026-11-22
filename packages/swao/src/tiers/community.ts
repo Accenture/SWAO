@@ -37,21 +37,13 @@
 // In a pkg binary process.pkg is true so execPath is used; in dev/test it is
 // the node execPath + this script.
 
+// #4387: the command wiring lives in community-program.ts (importable by the
+// root help drift test); the commands register lazily per invocation.
+
 import { fileURLToPath } from 'url';
 import type { McpHostDeps } from '../lib/mcp-chat-contract.js';
-import { registerStubMcpChat } from './premium-stubs/mcp-chat.js';
-import {
-  buildProgram,
-  communityRenderHtml,
-  communityRenderPdf,
-  communityRenderLlmPdf,
-  communityRunPortfolio,
-  communityFormatPortfolioResult,
-  communityBuildPortal,
-  communityRunForApp,
-  communityServiceDeps,
-} from '../bootstrap.js';
-import { registerCommunityTierStubs } from './community-stubs.js';
+import { normaliseNoLlmFlag } from '../bootstrap.js';
+import { buildCommunityProgram } from './community-program.js';
 
 // #1560: cap effective tier so an Enterprise licence active in dev does not
 // bypass Community feature gates when testing the Community binary.
@@ -61,45 +53,11 @@ const cliSpawnDescriptor: McpHostDeps = (process as { pkg?: unknown }).pkg
   ? { swaoCliPath: process.execPath, cliIsScript: false }
   : { swaoCliPath: fileURLToPath(import.meta.url), cliIsScript: true };
 
-const program = buildProgram({
-  cliSpawnDescriptor,
-  // #3348 B-01 / B-02: MCP server and SWAO Chat are Enterprise; stubs here.
-  mcpChat: registerStubMcpChat(),
-  buildPortal: communityBuildPortal,
-  serviceDeps: communityServiceDeps,
-  assessDeps: {
-    runForApp: communityRunForApp,
-    runPortfolio: communityRunPortfolio,
-    formatPortfolioResult: communityFormatPortfolioResult,
-  },
-  reportDeps: {
-    runForApp: communityRunForApp,
-    renderHtml: communityRenderHtml,
-    renderPdf: communityRenderPdf,
-    renderLlmPdf: communityRenderLlmPdf,
-    runPortfolio: communityRunPortfolio,
-    formatPortfolioResult: communityFormatPortfolioResult,
-  },
+// #1652 / #1787 / #2089 / #3321 / #3323: the gate stubs for unipipe, generate-tf,
+// challenge and lz catalogue update, and the #2090 hiding of the Enterprise-only
+// publish options, are part of the Community wiring (community-program.ts).
+void buildCommunityProgram(cliSpawnDescriptor).then((program) => {
+  // Normalise --no-llm to --skip-llm; Commander reserves --no-<option> for boolean negation (#1715).
+  normaliseNoLlmFlag();
+  program.parse();
 });
-
-// Normalise --no-llm to --skip-llm; Commander reserves --no-<option> for boolean negation (#1715).
-const _noLlmIdx = process.argv.indexOf('--no-llm');
-if (_noLlmIdx !== -1) process.argv.splice(_noLlmIdx, 1, '--skip-llm');
-
-// #1652 / #1787 / #2089 / #3321 / #3323: gate stubs for unipipe, generate-tf,
-// challenge and lz catalogue update. Each prints the [LICENSE] block for its
-// FEATURE_GATES tier and exits 2 (see community-stubs.ts).
-registerCommunityTierStubs(program);
-
-// #2090: Hide Enterprise-only publish options from Community --help.
-// --site, --site-app, --edit all requireTier('enterprise') in publish.ts action;
-// showing them on a Community binary is misleading.
-const publishCmd = program.commands.find((c) => c.name() === 'publish');
-if (publishCmd) {
-  const _enterprisePublishOpts = new Set(['--site', '--site-app', '--edit']);
-  for (const opt of publishCmd.options) {
-    if (_enterprisePublishOpts.has(opt.long ?? '')) opt.hidden = true;
-  }
-}
-
-program.parse();

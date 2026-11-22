@@ -252,7 +252,8 @@ controls:
     severity_default: high
     assessment_type_scope: [app]
     evidence_basis:
-      - signal_prefix: STATE_LOG_ENABLED
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - NIS2_INC_1
       - ISO_27001_A.8.15
@@ -272,7 +273,8 @@ controls:
     assessment_type_scope: [app]
     evidence_basis:
       - context_input: ops_runbooks
-      - signal_prefix: STATE_LOG_RETENTION_DAYS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.15
     references:

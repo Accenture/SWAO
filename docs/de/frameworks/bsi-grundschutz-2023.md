@@ -131,7 +131,6 @@ Die Demo-Variante ist für Workshops, Schulungen und Präsentationen gedacht, be
 ## Rahmenwerk beziehen oder anpassen
 
 - Quelle zum Ansehen und Kopieren: [github.com/Accenture/SWAO/tree/main/community-frameworks/bsi-grundschutz-2023](https://github.com/Accenture/SWAO/tree/main/community-frameworks/bsi-grundschutz-2023)
-- Demo-Variante: [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023-demo](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023-demo)
 - Übersicht aller Community-Rahmenwerke: [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
 
 Um das Rahmenwerk für ein einzelnes Projekt anzupassen, kopieren Sie den Ordner `bsi-grundschutz-2023` (mit `framework-meta.yaml` und `controls.yaml`) in den Workspace nach `wsp/inputs/catalogs/community/bsi-grundschutz-2023/` und bearbeiten Sie dort die Kopie. SWAO liest Kataloge für die Compliance-Bewertung aus diesem Verzeichnis; die Workspace-Kopie ist damit maßgeblich. Behalten Sie die `id` in `regime_meta` bei, damit `regimes_active` sie weiterhin findet, und prüfen Sie die Kopie anschließend mit dem [Health Check](/de/health-check).

@@ -349,7 +349,7 @@ tier's binary) with `args` `["mcp"]`; for a source run, the
 absolute path to `node` with the script path and `mcp` as `args` (the
 source variant above), and no copy is made. Registration is Enterprise
 only: the Community and Consultant binaries, or a lower licence, get the
-`[LICENSE]` message (exit 1) and nothing is copied or written. `swao health-check` (probe 3, SWAO-MCP) warns when any SWAO entry,
+`[LICENSE]` message (exit 2) and nothing is copied or written. `swao health-check` (probe 3, SWAO-MCP) warns when any SWAO entry,
 in either file, points at a binary that no longer exists or is not the
 running SWAO binary.
 

@@ -24,7 +24,7 @@ components:
     score_partial: 0.5
     score_absent: 0.0
     sovereign_tooling_alternatives:
-      - OTC Log Tank Service (LTS)
+      - T Cloud Public Log Tank Service (LTS)
       - STACKIT Observability (Loki)
       - Grafana Loki (self-hosted)
 
@@ -45,7 +45,7 @@ components:
     score_absent: 0.0
     sovereign_tooling_alternatives:
       - Grafana Tempo (self-hosted)
-      - OTC Application Performance Management (APM)
+      - T Cloud Public Application Performance Management (APM)
       - STACKIT Observability (Tempo)
 
   - id: metrics_exposition
@@ -64,7 +64,7 @@ components:
     score_absent: 0.0
     sovereign_tooling_alternatives:
       - Prometheus + Grafana (self-hosted)
-      - OTC Cloud Eye metrics
+      - T Cloud Public Cloud Eye metrics
       - STACKIT Observability (Prometheus)
 
   - id: log_aggregation
@@ -84,7 +84,7 @@ components:
     score_absent: 0.0
     sovereign_tooling_alternatives:
       - Grafana Loki (self-hosted)
-      - OTC Log Tank Service (LTS)
+      - T Cloud Public Log Tank Service (LTS)
       - STACKIT Observability (Loki)
 
   - id: alerting_rules
@@ -102,7 +102,7 @@ components:
     score_absent: 0.0
     sovereign_tooling_alternatives:
       - Grafana Alertmanager (self-hosted)
-      - OTC Simple Message Notification (SMN)
+      - T Cloud Public Simple Message Notification (SMN)
       - STACKIT Observability (Alertmanager)
 
   - id: slo_definitions

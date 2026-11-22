@@ -13,6 +13,10 @@ per-service fit/gap verdict plus an overall verdict per target.
 The assessment is fully deterministic. It makes no LLM calls and needs no cloud
 credentials. It is available in all licence tiers.
 
+To read what a **deployed** landing zone actually offers and contains, through the
+provider's read-only APIs, use the [Landing Zone Live Assessment](/assessment/landing-zone-live).
+A live run can also update a catalogue (`swao lz catalogue update --source live`).
+
 ---
 
 ## What you can do with it
@@ -73,7 +77,7 @@ verdicts always come from your active frameworks.
 | Provider ID | Platform | Regions | Distinct services | Operator jurisdiction | Extraterritorial exposure | Catalogue date | Source, confidence |
 |---|---|---|---|---|---|---|---|
 | `stackit` | STACKIT | 2: `eu01` (Germany), `eu02` (Austria) | 46 (eu01: 46, eu02: 29) | EU entity | none recorded | 2026-09-04 | STACKIT PIM API, medium |
-| `otc` | Open Telekom Cloud / T Cloud Public | 2: `eu-de` (Germany), `eu-nl` (Netherlands) | 56 (eu-de: 56, eu-nl: 34) | EU entity | none recorded | 2026-08-11 | curated, medium |
+| `otc` | T Cloud Public (formerly Open Telekom Cloud) | 2: `eu-de` (Germany), `eu-nl` (Netherlands) | 56 (eu-de: 56, eu-nl: 34) | EU entity | none recorded | 2026-08-11 | curated, medium |
 | `delos` | Delos Cloud (Germany-only) | 1: `de` | 43 | EU entity | none recorded | 2026-08-11 | curated, low |
 | `aws-esc` | AWS European Sovereign Cloud | 1: `eusc-de-east-1` (Germany) | 113 | EU entity | none recorded | 2026-09-04 | botocore endpoints, high |
 | `aws-iso-e` | AWS ISOE Europe (classified) | 1: `eu-isoe-west-1` | 83 | US entity (conservative, unverified) | CLOUD Act, FISA 702 | 2026-09-04 | botocore endpoints, low (sovereignty facts unsubstantiated) |

@@ -18,15 +18,19 @@
 // The probe walks `<workspace>/apps/*/.swao.yml` and runs `git ls-remote`
 // against each configured VCS URL. Tests exercise the workspace-walk + per-app
 // classifier logic against synthesised fixture workspaces under a tmpdir.
-// No real network calls (the spawnSync to git ls-remote is mocked via the
-// workspace shape: every test fixture uses URLs that the probe should classify
-// as `no-token` or `skip-non-https` before reaching the network call).
+// No real network calls: fixtures either never reach ls-remote (no VCS URL,
+// SSH, fixture host) or pass a fake ls-remote runner (#4222: without a token
+// the probe tries anonymous access).
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { buildVcsAuthProbe, runGitLsRemote, buildGitConfigEnv } from './vcs-auth-probe.js';
+import { buildVcsAuthProbe, runGitLsRemote, buildGitConfigEnv, classifyAnonymousLsRemote } from './vcs-auth-probe.js';
+import type { LsRemoteRunner } from './vcs-auth-probe.js';
+
+/** #4222: fake ls-remote: anonymous access refused (a private repository). */
+const privateRepo: LsRemoteRunner = async () => ({ status: 128, stderr: "fatal: could not read Username for 'https://github.com': terminal prompts disabled" });
 import { CredentialStore } from '@swao/core';
 
 // Empty credential store: isolated tmpdir ensures no real tokens are found,
@@ -134,11 +138,13 @@ describe('buildVcsAuthProbe (#0326)', () => {
       const ws = createFixture('legacy-token', {
         'gh-app': 'source:\n  vcs:\n    url: https://github.com/foo/bar.git\n',
       });
-      const probe = await buildVcsAuthProbe(ws, store);
+      const calls: string[][] = [];
+      const probe = await buildVcsAuthProbe(ws, store, { lsRemote: async (args, t, e) => { calls.push(args); return privateRepo(args, t, e); } });
       expect(probe.apps).toHaveLength(1);
-      // The legacy key must NOT reach the ls-remote branch: outcome is
-      // no-token (with the provider-scoped key named in the hint), and no
-      // network call happens.
+      // The legacy key must NOT reach the ls-remote branch: the check is
+      // anonymous (#4222), outcome no-token with the provider-scoped key named.
+      expect(calls).toHaveLength(1);
+      expect(calls[0]!.join(' ')).not.toContain('not-a-real-token-value');
       expect(probe.apps[0].outcome).toBe('no-token');
       expect(probe.apps[0].hint).toMatch(/provider:github:token|credential set/);
     } finally {
@@ -154,7 +160,7 @@ describe('buildVcsAuthProbe (#0326)', () => {
       'app-b': 'source:\n  vcs:\n    url: https://github.com/foo/bar.git\n',
       'app-c': 'source:\n  vcs:\n    url: git@github.com:foo/bar.git\n',
     });
-    const probe = await buildVcsAuthProbe(ws, emptyStore);
+    const probe = await buildVcsAuthProbe(ws, emptyStore, { lsRemote: privateRepo });
     expect(probe.apps).toHaveLength(3);
     const appIds = probe.apps.map((a) => a.app_id).sort();
     expect(appIds).toEqual(['app-a', 'app-b', 'app-c']);
@@ -167,7 +173,7 @@ describe('buildVcsAuthProbe (#0326)', () => {
       'github': 'source:\n  vcs:\n    url: https://github.com/foo/bar.git\n',
       'gitlab': 'source:\n  vcs:\n    url: https://gitlab.com/foo/bar.git\n',
     });
-    const probe = await buildVcsAuthProbe(ws, emptyStore);
+    const probe = await buildVcsAuthProbe(ws, emptyStore, { lsRemote: privateRepo });
     const byApp = Object.fromEntries(probe.apps.map((a) => [a.app_id, a]));
     expect(byApp['github'].host).toBe('github.com');
     expect(byApp['gitlab'].host).toBe('gitlab.com');
@@ -200,6 +206,64 @@ describe('buildVcsAuthProbe (#0326)', () => {
     const probe = await buildVcsAuthProbe(ws);
     expect(probe.apps).toHaveLength(1);
     expect(probe.apps[0].app_id).toBe('real-app');
+  });
+});
+
+// #4222: without a stored token the probe runs an anonymous ls-remote (mocked
+// runner): a public repository is ok "public, no token needed", a private one
+// stays no-token (a warning, not a failure), a network error stays unreachable.
+describe('buildVcsAuthProbe anonymous access without a token (#4222)', () => {
+  let root: string;
+  let storeDir: string;
+  let store: CredentialStore;
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), 'swao-vcs-anon-'));
+    storeDir = mkdtempSync(join(tmpdir(), 'swao-vcs-anon-store-'));
+    store = new CredentialStore(storeDir);
+  });
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(storeDir, { recursive: true, force: true });
+  });
+  function ws(name: string, yml: string): string {
+    const w = join(root, name);
+    mkdirSync(join(w, 'apps', 'sovereign-health'), { recursive: true });
+    writeFileSync(join(w, 'apps', 'sovereign-health', '.swao.yml'), yml, 'utf-8');
+    return w;
+  }
+  const PUBLIC_YML = 'source:\n  vcs:\n    type: github\n    url: https://github.com/sovereignbrick/brickos.git\n    ref: main\n    git_proxy: http://proxy.corp:8080\n';
+
+  it('a public repository without a token is ok, "public, no token needed", checked anonymously with the proxy settings', async () => {
+    const seen: Array<{ args: string[]; env: Record<string, string> }> = [];
+    const probe = await buildVcsAuthProbe(ws('public', PUBLIC_YML), store, {
+      lsRemote: async (args, _t, env) => { seen.push({ args, env }); return { status: 0, stderr: '' }; },
+    });
+    expect(probe.apps[0]).toMatchObject({ outcome: 'public', host: 'github.com' });
+    expect(probe.status).toBe('ok');
+    expect(probe.message).toContain('public, no token needed');
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.args).toEqual(['-c', 'credential.helper=', 'ls-remote', '--exit-code', 'https://github.com/sovereignbrick/brickos.git', 'HEAD']);
+    expect(seen[0]!.env).toMatchObject({ GIT_CONFIG_KEY_0: 'http.proxy', GIT_CONFIG_VALUE_0: 'http://proxy.corp:8080' });
+  });
+
+  it('a private repository without a token stays no-token with the token hint, and the probe warns (not fails)', async () => {
+    const probe = await buildVcsAuthProbe(ws('private', PUBLIC_YML), store, { lsRemote: privateRepo });
+    expect(probe.apps[0]!.outcome).toBe('no-token');
+    expect(probe.apps[0]!.hint).toMatch(/private.*swao credential set provider:github:token/);
+    expect(probe.status).toBe('warn');
+  });
+
+  it('a 404 or 401 without a token is no-token too (anonymous access hides private repositories)', () => {
+    expect(classifyAnonymousLsRemote('remote: Repository not found.\nfatal: repository not found', 128, 'provider:github:token').outcome).toBe('no-token');
+    expect(classifyAnonymousLsRemote('fatal: unable to access: The requested URL returned error: 401', 128, 'provider:github:token').outcome).toBe('no-token');
+  });
+
+  it('a network failure without a token gives the existing unreachable outcome', async () => {
+    const probe = await buildVcsAuthProbe(ws('offline', PUBLIC_YML), store, {
+      lsRemote: async () => ({ status: 128, stderr: "fatal: unable to access 'https://github.com/x.git/': Could not resolve host: github.com" }),
+    });
+    expect(probe.apps[0]!.outcome).toBe('network-unreachable');
+    expect(probe.status).toBe('fail');
   });
 });
 

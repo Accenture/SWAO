@@ -19,11 +19,20 @@ export interface LlmUsage {
   /** Completion / output tokens produced by the call. */
   output_tokens: number;
   /**
-   * Estimated USD cost for this single call, computed by the provider
-   * from a model price table (Anthropic / OpenAI). For local models
-   * (Ollama) cost_usd is 0.
+   * USD cost of this single call: the cost the provider billed (OpenRouter
+   * usage accounting), else an estimate from the connector rates or a code
+   * price table (Anthropic / OpenAI). For local models (Ollama) cost_usd is 0.
    */
   cost_usd: number;
+  /**
+   * #4372: where cost_usd comes from, when the driver knows it.
+   * 'billed' = the cost the gateway reported in the response (OpenRouter
+   * usage accounting); 'configured' = computed from the connector's rates
+   * or a code price table (a list price estimate, never 'billed');
+   * 'none' = no price known (cost_usd is 0 but means "not priced").
+   * Absent = the driver does not say (legacy drivers).
+   */
+  cost_source?: 'billed' | 'configured' | 'none';
 }
 
 export type LlmProviderName = 'anthropic' | 'openai' | 'ollama' | 'open-llm-provider' | 'stub' | 'bedrock';
@@ -134,7 +143,12 @@ export interface LlmProvider {
 // Update when Anthropic publishes new pricing.
 // ---------------------------------------------------------------------
 const ANTHROPIC_PRICING_PER_MTOK: Record<string, { input: number; output: number }> = {
-  'claude-opus-4-7':            { input: 15.00, output: 75.00 },
+  // Anthropic model table of 2026-10-06 (#4475). Claude Haiku 5.5: rate for prompts up to 100K tokens.
+  'claude-opus-5-5':            { input:  4.00, output: 20.00 },
+  'claude-sonnet-5-5':          { input:  2.00, output: 10.00 },
+  'claude-haiku-5-5':           { input:  0.10, output:  0.50 },
+  'claude-fable-5-1':           { input: 10.00, output: 50.00 },
+  'claude-opus-4-7':            { input:  5.00, output: 25.00 },
   'claude-sonnet-4-6':          { input:  3.00, output: 15.00 },
   'claude-haiku-4-5':           { input:  1.00, output:  5.00 },
   'claude-haiku-4-5-20251001':  { input:  1.00, output:  5.00 },
@@ -144,6 +158,31 @@ export function anthropicCostUsd(model: string, inputTokens: number, outputToken
   const price = ANTHROPIC_PRICING_PER_MTOK[model];
   if (!price) return 0;
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
+}
+
+/** #4372: rates of one model in USD per 1M tokens (connector yaml or code table). */
+export interface CostRates { inputPerMillion: number; outputPerMillion: number }
+
+/** #4372: rates of the Anthropic code table; undefined when the model is not in it. */
+export function anthropicTableRates(model: string): CostRates | undefined {
+  const price = ANTHROPIC_PRICING_PER_MTOK[model];
+  return price ? { inputPerMillion: price.input, outputPerMillion: price.output } : undefined;
+}
+
+/**
+ * #4372: cost and cost source of a native driver call priced from rates
+ * (connector yaml rates or a code price table): `configured` when rates are
+ * known, `none` (cost 0, meaning not priced) when the model has no price.
+ * `billed` is reserved for a cost the provider returned in its response.
+ */
+export function ratedUsageCost(
+  rates: CostRates | undefined, inputTokens: number, outputTokens: number,
+): { cost_usd: number; cost_source: 'configured' | 'none' } {
+  if (!rates) return { cost_usd: 0, cost_source: 'none' };
+  return {
+    cost_usd: (inputTokens * rates.inputPerMillion + outputTokens * rates.outputPerMillion) / 1_000_000,
+    cost_source: 'configured',
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -166,6 +205,12 @@ export function openaiCostUsd(model: string, inputTokens: number, outputTokens: 
   const price = OPENAI_PRICING_PER_MTOK[model];
   if (!price) return 0;
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
+}
+
+/** #4372: rates of the OpenAI code table; undefined when the model is not in it. */
+export function openaiTableRates(model: string): CostRates | undefined {
+  const price = OPENAI_PRICING_PER_MTOK[model];
+  return price ? { inputPerMillion: price.input, outputPerMillion: price.output } : undefined;
 }
 
 // ---------------------------------------------------------------------

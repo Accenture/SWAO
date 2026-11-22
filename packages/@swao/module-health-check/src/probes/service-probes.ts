@@ -26,8 +26,10 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { load } from 'js-yaml';
+import { listAppConfigs, prefetchedText } from '../app-config-walk.js';
+import { meterFileRead, meterStep } from '../probe-meter.js';
 import { looksLikePhone, PortfolioSummarySchema, ScaffoldSignalsFileSchema } from '@swao/core';
 import {
   APM_DOMAINS,
@@ -38,11 +40,20 @@ import {
   apmFrameworkDir,
   listSnapshots,
   MAX_SNAPSHOTS,
-  readStub,
+  INTAKE_TEMPLATE_FILE,
+  loadColumnMapFile,
+  parseIntakeWorkbook,
+  parseStub,
+  SERVICE_INTAKE_DIR,
   tier2Dir,
 } from '@swao/module-service-assessment';
 
-export type ServiceProbeStatus = 'skip' | 'ok' | 'warn' | 'error';
+/**
+ * #4262: `info` is a probe that ran and reports a fact with nothing to fix
+ * (the recorded intake before its first import); `skip` is a probe that did
+ * not run. Both print as INFO; only `skip` counts as not checked.
+ */
+export type ServiceProbeStatus = 'skip' | 'info' | 'ok' | 'warn' | 'error';
 
 export interface ServiceProbeResult {
   key: string;
@@ -54,7 +65,8 @@ export interface ServiceProbeResult {
 }
 
 export const SERVICE_PROBE_FIRST = 19;
-export const PROBE_TOTAL = 25;
+// #3589: probe [26] LZ connections (lz-connections-probe.ts) follows the service probes.
+export const PROBE_TOTAL = 26;
 
 type Rec = Record<string, any>;
 
@@ -62,19 +74,90 @@ function readYaml(p: string): Rec | null {
   try { return (load(readFileSync(p, 'utf-8')) ?? null) as Rec | null; } catch { return null; }
 }
 
-export function isServiceWorkspace(workspacePath: string): boolean {
-  return !!readYaml(join(workspacePath, '.swao.yml'))?.['service_portfolio'];
+/**
+ * #4262: how far a workspace is a service workspace. `portfolio`: the
+ * `service_portfolio` block is recorded (the intake ran; the Setup Wizard's
+ * Service intake step and `swao service init` write it). `declared`:
+ * `workspace.assessment_types` lists `service` (the Setup Wizard's type
+ * selection) but no intake is recorded yet. `none`: neither marker.
+ */
+export type ServiceWorkspaceState = 'portfolio' | 'declared' | 'none';
+
+export function serviceWorkspaceState(workspacePath: string): ServiceWorkspaceState {
+  const doc = readYaml(join(workspacePath, '.swao.yml'));
+  if (doc?.['service_portfolio']) return 'portfolio';
+  const types = doc?.['workspace']?.['assessment_types'];
+  return Array.isArray(types) && types.includes('service') ? 'declared' : 'none';
 }
 
-/** App folders under apps/ whose `.swao.yml` declares `assessment.type: service`. */
+/** #4262: either marker makes a service workspace (one detector for every service probe). */
+export function isServiceWorkspace(workspacePath: string): boolean {
+  return serviceWorkspaceState(workspacePath) !== 'none';
+}
+
+/** #4262: the warning of a declared service workspace without a recorded intake. */
+export const SERVICE_INTAKE_MISSING =
+  'service workspace without a recorded intake: the service_portfolio block is missing in the workspace .swao.yml ' +
+  '(run the Service intake step of swao setup, or swao service init)';
+
+/**
+ * #4295: CLI remedies of the service probes and their TUI path. The probe
+ * message is the CLI wording; the TUI health check list (HealthCheckProbeList,
+ * tuiRemedyText) shows the TUI path instead, so an operator in the TUI never
+ * reads a command it does not see.
+ */
+export const SERVICE_IMPORT_REMEDY = 'run swao service init';
+export const SERVICE_RESEARCH_REMEDY = 'run swao service research';
+export const SERVICE_TUI_REMEDIES: ReadonlyArray<readonly [cli: string, tui: string]> = [
+  ['(run the Service intake step of swao setup, or swao service init)', '(Setup, Service Portfolio Assessment, Intake Input)'],
+  [`${SERVICE_RESEARCH_REMEDY} --refresh`, 'run Run Assessment, Service Portfolio Assessment again (it refreshes stale research)'],
+  [`re-${SERVICE_IMPORT_REMEDY}`, 'run Run Assessment, Service Portfolio Assessment again (it imports the intake first)'],
+  [SERVICE_IMPORT_REMEDY, 'start Run Assessment, Service Portfolio Assessment (it imports the intake first)'],
+  [SERVICE_RESEARCH_REMEDY, 'start Run Assessment, Service Portfolio Assessment (it researches every app)'],
+  ['(swao service init --replace keeps one workbook)', '(Run Assessment, Service Portfolio Assessment can replace the earlier sources and keep one workbook)'],
+  ['run swao assess for an app, or swao service research', 'start Run Assessment, Service Portfolio Assessment'],
+];
+
+/** #4295: a probe message in TUI wording (plain string replacement, no pattern on the input). */
+export function tuiRemedyText(text: string): string {
+  let out = text;
+  for (const [cli, tui] of SERVICE_TUI_REMEDIES) out = out.split(cli).join(tui);
+  return out;
+}
+
+/** #4262: skip message of the probes that need the intake, in a declared workspace. */
+const WAITS_FOR_INTAKE = 'waits for the service intake (service_portfolio block missing)';
+
+/**
+ * App folders under apps/ whose `.swao.yml` declares `assessment.type: service`.
+ * #4461: from the shared walk of the app configs (one read per health check).
+ */
 function serviceAppDirs(workspacePath: string): Array<{ id: string; dir: string; doc: Rec | null }> {
-  const apps = join(workspacePath, 'apps');
-  if (!existsSync(apps)) return [];
-  return readdirSync(apps, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => ({ id: d.name, dir: join(apps, d.name), doc: readYaml(join(apps, d.name, '.swao.yml')) }))
+  return listAppConfigs(workspacePath)
+    .map((a) => ({ id: a.id, dir: a.dir, doc: a.parseError ? null : ((a.doc ?? null) as Rec | null) }))
     .filter((a) => a.doc?.['assessment']?.['type'] === 'service')
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * #4461: readStub with the read counted by the probe meter (same result). A
+ * stub the prefetch of the health check already read (prefetchAppInputs) is
+ * parsed from memory and not counted as a probe read.
+ */
+function readStub(path: string): ReturnType<typeof parseStub> {
+  const pre = prefetchedText(path);
+  if (pre.hit) {
+    if (pre.text === null) return null;
+    try { return parseStub(pre.text); } catch { return null; }
+  }
+  if (!existsSync(path)) return null;
+  try {
+    const text = readFileSync(path, 'utf-8');
+    meterFileRead(Buffer.byteLength(text));
+    return parseStub(text);
+  } catch {
+    return null;
+  }
 }
 
 function result(key: string, label: string, errors: string[], warnings: string[], okMessage: string): ServiceProbeResult {
@@ -84,19 +167,107 @@ function result(key: string, label: string, errors: string[], warnings: string[]
 }
 const skip = (key: string, label: string, message = 'not a service workspace'): ServiceProbeResult =>
   ({ key, label, status: 'skip', message, errors: [], warnings: [] });
+/** #4262: a probe that needs the recorded intake skips, naming why. */
+function intakeGate(workspacePath: string, key: string, label: string): ServiceProbeResult | null {
+  const state = serviceWorkspaceState(workspacePath);
+  if (state === 'portfolio') return null;
+  return skip(key, label, state === 'declared' ? WAITS_FOR_INTAKE : undefined);
+}
+const OFFICE_LOCK_PREFIX = '~$';
+// The blank template Setup copies in is not an intake until it is filled and recorded.
+const isWorkbook = (name: string): boolean => name.toLowerCase().endsWith('.xlsx') && !name.startsWith(OFFICE_LOCK_PREFIX) && name !== INTAKE_TEMPLATE_FILE;
+
+/**
+ * #4295: the intake the `service_portfolio` block records: `intake` (the Setup
+ * Intake Input step and `service init` write it), else the single workbook in
+ * `intake_folder` (the form `service init` resolves, intake-location.ts).
+ * Null when neither names a workbook.
+ */
+export function recordedServiceIntake(workspacePath: string): { file: string; exists: boolean } | null {
+  const sp = readYaml(join(workspacePath, '.swao.yml'))?.['service_portfolio'];
+  if (!sp || typeof sp !== 'object') return null;
+  const intake = (sp as Rec)['intake'];
+  if (typeof intake === 'string' && intake.trim()) {
+    const file = intake.trim();
+    return { file, exists: existsSync(isAbsolute(file) ? file : join(workspacePath, file)) };
+  }
+  const folderRaw = (sp as Rec)['intake_folder'];
+  const folder = typeof folderRaw === 'string' && folderRaw.trim() ? folderRaw.trim() : SERVICE_INTAKE_DIR;
+  const dir = isAbsolute(folder) ? folder : join(workspacePath, folder);
+  let books: string[] = [];
+  try { books = readdirSync(dir).filter(isWorkbook).sort(); } catch { return null; }
+  return books.length === 1 ? { file: `${slashes(folder)}/${books[0]}`, exists: true } : null;
+}
+
+/** #4295: outcome of reading the recorded intake before the import: data rows, or why it cannot be read. */
+export type RecordedIntakeCheck = { rows: number } | { error: string };
+
+function shortReason(e: unknown): string {
+  const msg = (e instanceof Error ? e.message : String(e)).split('\n').join(' ').trim();
+  return msg.length > 160 ? `${msg.slice(0, 157)}...` : msg;
+}
+
+/**
+ * #4295: reads the recorded intake workbook (with the recorded column map, as
+ * `service init` does) for the service workspace probe. Only counts leave
+ * this function, never a cell value. Null when no intake is recorded or no
+ * app import is pending (apps exist), so the probe needs no read.
+ */
+export async function checkRecordedIntake(
+  workspacePath: string,
+  parse: typeof parseIntakeWorkbook = parseIntakeWorkbook,
+): Promise<RecordedIntakeCheck | null> {
+  if (serviceWorkspaceState(workspacePath) !== 'portfolio' || serviceAppDirs(workspacePath).length > 0) return null;
+  const intake = recordedServiceIntake(workspacePath);
+  if (!intake?.exists) return null;
+  const abs = isAbsolute(intake.file) ? intake.file : join(workspacePath, intake.file);
+  try {
+    const mapping = readYaml(join(workspacePath, '.swao.yml'))?.['service_portfolio']?.['mapping'];
+    const map = typeof mapping === 'string' && mapping.trim()
+      ? loadColumnMapFile(isAbsolute(mapping) ? mapping : join(workspacePath, mapping))
+      : undefined;
+    const r = await parse(abs, { ...(map ? { map } : {}), sourceLabel: intake.file });
+    return { rows: r.rows.length };
+  } catch (e) {
+    return { error: shortReason(e) };
+  }
+}
+
+/** Forward slashes in a displayed path (no pattern on the input). */
+function slashes(p: string): string {
+  return p.split('\\').join('/');
+}
+
 const listShort = (xs: string[], n = 5) => (xs.length > n ? `${xs.slice(0, n).join(', ')} (+${xs.length - n} more)` : xs.join(', '));
 
 // ---------------------------------------------------------------- [19] #3127
 
 /** Workspace structure: service apps, valid app configs, scaffold signals, portfolio summary. */
-export function buildServiceWorkspaceProbe(workspacePath: string): ServiceProbeResult {
+export function buildServiceWorkspaceProbe(workspacePath: string, intakeCheck?: RecordedIntakeCheck | null): ServiceProbeResult {
   const key = 'service_workspace';
   const label = 'Service workspace';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const state = serviceWorkspaceState(workspacePath);
+  if (state === 'none') return skip(key, label);
+  if (state === 'declared') return result(key, label, [], [SERVICE_INTAKE_MISSING], '');
   const errors: string[] = [];
   const warnings: string[] = [];
   const apps = serviceAppDirs(workspacePath);
-  if (apps.length === 0) errors.push('no service apps under apps/ (run swao service init)');
+  if (apps.length === 0) {
+    // #4295: before the first import the intake is the expected state, not a
+    // failure: the Service Portfolio Assessment imports it as its first step.
+    const intake = recordedServiceIntake(workspacePath);
+    if (intake?.exists) {
+      // #4295: with the read of the runner (checkRecordedIntake) the probe names the rows or the reason it cannot import.
+      if (intakeCheck && 'error' in intakeCheck) return result(key, label, [`intake ${intake.file} cannot be read: ${intakeCheck.error}`], [], '');
+      if (intakeCheck && intakeCheck.rows === 0) return result(key, label, [`intake ${intake.file} has no data rows (fill it or record another workbook)`], [], '');
+      const what = intakeCheck ? `${intakeCheck.rows} rows in ${intake.file}` : intake.file;
+      // #4262: the probe ran and found the expected pre-import state: info, not skip.
+      return { key, label, status: 'info', message: `intake recorded (${what}); the Service Portfolio Assessment imports it and creates the apps at its first run`, errors: [], warnings: [] };
+    }
+    return result(key, label, [intake
+      ? `intake ${intake.file} not found; no service apps under apps/ (copy the workbook back, then ${SERVICE_IMPORT_REMEDY})`
+      : `no intake recorded and no service apps under apps/ (put the intake workbook into ${slashes(SERVICE_INTAKE_DIR)}/, then ${SERVICE_IMPORT_REMEDY})`], [], '');
+  }
   const invalid = apps.filter((a) => !ServiceAppConfigSchema.safeParse(a.doc).success).map((a) => a.id);
   if (invalid.length > 0) errors.push(`invalid apps/<id>/.swao.yml for ${listShort(invalid)}`);
 
@@ -118,7 +289,7 @@ export function buildServiceWorkspaceProbe(workspacePath: string): ServiceProbeR
   // Apps named in the scaffold signals or cluster membership must have a folder.
   const signalsPath = join(workspacePath, 'wsp', 'signals', 'scaffold-signals.json');
   if (!existsSync(signalsPath)) {
-    errors.push('wsp/signals/scaffold-signals.json missing (run swao service init)');
+    errors.push(`wsp/signals/scaffold-signals.json missing (${SERVICE_IMPORT_REMEDY})`);
   } else {
     let parsed: ReturnType<typeof ScaffoldSignalsFileSchema.safeParse> | null = null;
     try { parsed = ScaffoldSignalsFileSchema.safeParse(JSON.parse(readFileSync(signalsPath, 'utf-8'))); } catch { /* invalid JSON */ }
@@ -149,20 +320,22 @@ const API_STUBS = ['cve-summary', 'eol-status'] as const;
 export function buildResearchCacheProbe(workspacePath: string, now: Date = new Date()): ServiceProbeResult {
   const key = 'research_cache';
   const label = 'Research cache';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   const missing: string[] = [];
   const stale: string[] = [];
   const noConfidence: string[] = [];
   const apps = serviceAppDirs(workspacePath);
   if (apps.length === 0) return skip(key, label, 'no service apps yet (run swao service init)');
-  for (const a of apps) {
+  meterStep('research stubs of the apps', () => { for (const a of apps) {
     const dir = join(a.dir, 'wsp', 'inputs', 'research');
     const stubs = API_STUBS.map((t) => readStub(join(dir, `${t}.md`)));
     if (stubs.some((s) => !s)) { missing.push(a.id); continue; }
     const oldest = Math.min(...stubs.map((s) => Date.parse(String(s!.front['retrieved_at'] ?? ''))).map((t) => (Number.isFinite(t) ? t : 0)));
     if ((now.getTime() - oldest) / 86_400_000 > RESEARCH_STALE_DAYS) stale.push(a.id);
-    if (!existsSync(join(dir, 'confidence.json'))) noConfidence.push(a.id);
-  }
+    const conf = prefetchedText(join(dir, 'confidence.json'));
+    if (conf.hit ? conf.text === null : !existsSync(join(dir, 'confidence.json'))) noConfidence.push(a.id);
+  } });
   const errors = missing.length > 0 ? [`Research stub missing for app ${listShort(missing)} - run swao service research`] : [];
   const warnings = [
     ...(stale.length > 0 ? [`Research stub stale (> ${RESEARCH_STALE_DAYS} days) for ${listShort(stale)} - run swao service research --refresh`] : []),
@@ -177,7 +350,8 @@ export function buildResearchCacheProbe(workspacePath: string, now: Date = new D
 export function buildVendorCatalogProbe(workspacePath: string): ServiceProbeResult {
   const key = 'vendor_catalog';
   const label = 'Vendor catalogue (Tier 2)';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   const dir = tier2Dir(workspacePath);
   const files = existsSync(dir) ? readdirSync(dir).filter((n) => /\.ya?ml$/i.test(n)).sort() : [];
   if (files.length === 0) return skip(key, label, 'no Tier 2 catalogue (optional)');
@@ -209,7 +383,8 @@ export function buildVendorCatalogProbe(workspacePath: string): ServiceProbeResu
 export function buildClusterDetectionProbe(workspacePath: string): ServiceProbeResult {
   const key = 'cluster_detection';
   const label = 'Cluster detection';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   let signals: Array<{ code: string; app_id?: string | undefined; evidence: string[] }> = [];
   try {
     const parsed = ScaffoldSignalsFileSchema.safeParse(JSON.parse(readFileSync(join(workspacePath, 'wsp', 'signals', 'scaffold-signals.json'), 'utf-8')));
@@ -242,7 +417,8 @@ const BOOLEAN_ONLY = ['vendor.support_contact_present', 'vendor.support_phone_pr
 export function buildPiiScrubAuditProbe(workspacePath: string): ServiceProbeResult {
   const key = 'pii_scrub_audit';
   const label = 'PII scrub audit';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   const errors: string[] = [];
   const apps = serviceAppDirs(workspacePath);
   if (apps.length === 0) return skip(key, label, 'no service apps yet (run swao service init)');
@@ -273,7 +449,8 @@ export const SNAPSHOT_STALE_DAYS = 90;
 export function buildDeltaSnapshotProbe(workspacePath: string, now: Date = new Date()): ServiceProbeResult {
   const key = 'delta_snapshot';
   const label = 'Portfolio snapshots';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   const snaps = listSnapshots(workspacePath);
   if (snaps.length === 0) return skip(key, label, 'No portfolio snapshots yet - baseline will be established on first run');
   const m = /(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})/.exec(snaps.at(-1)!)!;
@@ -297,7 +474,8 @@ export const MIN_CONTROLS_PER_DOMAIN = 4;
 export function buildFrameworkControlsProbe(workspacePath: string): ServiceProbeResult {
   const key = 'framework_controls';
   const label = 'SWAO_APM controls';
-  if (!isServiceWorkspace(workspacePath)) return skip(key, label);
+  const gate = intakeGate(workspacePath, key, label);
+  if (gate) return gate;
   const located = apmFrameworkDir(workspacePath);
   if (!located) return skip(key, label, 'SWAO_APM framework not found');
   const doc = readYaml(join(located.dir, 'controls.yaml'));
@@ -335,11 +513,11 @@ export function buildFrameworkControlsProbe(workspacePath: string): ServiceProbe
  */
 export interface ServiceProbeRunner {
   key: string;
-  run: (workspacePath: string, now: Date) => ServiceProbeResult;
+  run: (workspacePath: string, now: Date, intakeCheck?: RecordedIntakeCheck | null) => ServiceProbeResult;
 }
 
 export const SERVICE_PROBE_RUNNERS: readonly ServiceProbeRunner[] = [
-  { key: 'service_workspace', run: (ws) => buildServiceWorkspaceProbe(ws) },
+  { key: 'service_workspace', run: (ws, _now, intakeCheck) => buildServiceWorkspaceProbe(ws, intakeCheck) },
   { key: 'research_cache', run: (ws, now) => buildResearchCacheProbe(ws, now) },
   { key: 'vendor_catalog', run: (ws) => buildVendorCatalogProbe(ws) },
   { key: 'cluster_detection', run: (ws) => buildClusterDetectionProbe(ws) },
@@ -355,11 +533,25 @@ export function buildServiceProbes(workspacePath: string, now: Date = new Date()
 
 /** Event sink used by runServiceProbes; the runner passes logPortfolio. */
 export type ServiceProbeLogFn = (
-  level: 'info',
+  level: 'info' | 'warn' | 'error',
   code: 'health-check.probe.start' | 'health-check.probe.complete',
   message: string,
   opts: { context: Record<string, unknown> },
 ) => void;
+
+/** #4260: log level of a service probe outcome (warn for warn, error for error, info for ok and skip). */
+export function serviceProbeLogLevel(status: ServiceProbeResult['status']): 'info' | 'warn' | 'error' {
+  switch (status) {
+    case 'ok':
+    case 'info':
+    case 'skip':
+      return 'info';
+    case 'warn':
+      return 'warn';
+    case 'error':
+      return 'error';
+  }
+}
 
 /**
  * Run probes [19]-[25] one at a time, emitting health-check.probe.start before
@@ -372,12 +564,14 @@ export function runServiceProbes(
   onResult?: (probe: ServiceProbeResult, index: number) => void,
   now: Date = new Date(),
   clock: () => number = Date.now,
+  /** #4295: the runner's read of the recorded intake (checkRecordedIntake). */
+  intakeCheck: RecordedIntakeCheck | null = null,
 ): ServiceProbeResult[] {
   return SERVICE_PROBE_RUNNERS.map((runner, i) => {
     const t0 = clock();
     log('info', 'health-check.probe.start', `probe: ${runner.key}`, { context: { probe: runner.key } });
-    const sp = runner.run(workspacePath, now);
-    log('info', 'health-check.probe.complete', `probe: ${sp.key} status=${sp.status}`, {
+    const sp = runner.run(workspacePath, now, intakeCheck);
+    log(serviceProbeLogLevel(sp.status), 'health-check.probe.complete', `probe: ${sp.key} status=${sp.status}`, {
       context: { probe: sp.key, status: sp.status, errors: sp.errors.length, warnings: sp.warnings.length, elapsed_ms: clock() - t0 },
     });
     onResult?.(sp, i);
@@ -389,7 +583,7 @@ export function formatServiceProbeLine(probe: ServiceProbeResult, index: number)
   // Dot padding (at least 2) so the TUI health-check parser's HEADER_RE matches.
   const text = `[${SERVICE_PROBE_FIRST + index}/${PROBE_TOTAL}] ${probe.label}`;
   const label = text + '.'.repeat(Math.max(2, 26 - text.length));
-  const tag = ({ skip: 'INFO', ok: 'ok  ', warn: 'WARN', error: 'FAIL' } as const)[probe.status];
+  const tag = ({ skip: 'INFO', info: 'INFO', ok: 'ok  ', warn: 'WARN', error: 'FAIL' } as const)[probe.status];
   return `  ${label}  ${tag}  ${probe.message}`;
 }
 

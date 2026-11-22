@@ -110,7 +110,7 @@ Die Quelle des Frameworks (`framework-meta.yaml`, `controls.yaml` und ggf. weite
 - Framework-Quelle: <https://github.com/Accenture/SWAO/tree/main/community-frameworks/nis2>
 - Übersicht aller Community-Frameworks: <https://github.com/Accenture/SWAO/tree/main/community-frameworks>
 
-Um das Framework für ein einzelnes Engagement anzupassen, kopieren Sie den Ordner `nis2` in Ihren Workspace nach `wsp/inputs/catalogs/community/nis2/` und bearbeiten Sie dort die Kopie, etwa um Schweregrade anzupassen oder engagementspezifische Kontrollen zu ergänzen. SWAO liest diesen Workspace-Ordner; das mit SWAO ausgelieferte Original bleibt unverändert. Legen Sie die Kopie direkt unter `community/` ab, denn Ordner, deren Name mit einem Punkt beginnt, werden übersprungen. Halten Sie `regime_meta.id` eindeutig: Deklarieren zwei Workspace-Ordner dieselbe ID, wird nur einer davon geladen. `swao framework info NIS2` zeigt die mitgelieferten Metadaten an.
+Um das Framework für ein einzelnes Engagement anzupassen, kopieren Sie den Ordner `nis2` in Ihren Workspace nach `wsp/inputs/catalogs/community/nis2/` und bearbeiten Sie dort die Kopie, etwa um Schweregrade anzupassen oder engagementspezifische Kontrollen zu ergänzen. SWAO liest diesen Workspace-Ordner; das mit SWAO ausgelieferte Original bleibt unverändert. Legen Sie die Kopie direkt unter `community/` ab, denn Ordner, deren Name mit einem Punkt beginnt, werden übersprungen. Halten Sie `regime_meta.id` eindeutig: Deklarieren zwei Workspace-Ordner dieselbe ID, wird nur einer davon geladen. `swao framework list` listet die Rahmenwerke im Workspace.
 
 ## Grenzen und Hinweise
 

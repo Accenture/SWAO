@@ -1,0 +1,9 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: SWAO Application Portfolio Management. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: SWAO_APM
+mappings: []

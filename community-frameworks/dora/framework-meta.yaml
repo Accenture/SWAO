@@ -1,0 +1,68 @@
+# SWAO community framework metadata (design 029 section 2.3 and section 11; Design 104 section 5.1)
+# Catalogue 2.0.0 (#3962, 2026-11-06): DORA with its eight Level 2 acts; see controls.yaml header.
+
+framework:
+  id: DORA
+  name: "Digital Operational Resilience Act"
+  version: "2025-01-17"
+  authority: "European Union (Regulation (EU) 2022/2554)"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints:
+    - financial_services
+    - banking
+    - insurance
+    - payment_institution
+    - investment_firm
+  scoring_mode: binary
+  assessment_type_scope: [app, aud, lz]
+  effective_date: "2025-01-17"
+  next_review_date: "2027-05-06"
+  description: >-
+    Regulation (EU) 2022/2554 (DORA), in force since 2023-01-16 and applicable
+    from 2025-01-17, with its eight Level 2 acts. 55 controls across the five
+    pillars: ICT risk management (32, Art. 5 to 16), ICT-related incident
+    management and reporting (8, Art. 17 to 23), digital operational resilience
+    testing (4, Art. 24 to 27), ICT third-party risk (10, Art. 28 to 44) and
+    information sharing (1, Art. 45). 20 controls are assessable from workload
+    or landing zone evidence (2 only from it, 18 together with documents); 35
+    are organisational and need documents in the app's ingestion folder.
+    Cross-mapped to NIS2, BSI C5, EUCS, GDPR, ISO/IEC 27001:2022 Annex A,
+    BSI IT-Grundschutz 2023, KRITIS-DE and SOC 2, equivalences in both
+    directions (#4058, README section Cross-mappings).
+  companion_standards:
+    - "Commission Delegated Regulation (EU) 2024/1774, ICT risk management tools, methods, processes and policies and the simplified framework, https://eur-lex.europa.eu/eli/reg_del/2024/1774/oj"
+    - "Commission Delegated Regulation (EU) 2024/1772, classification of ICT-related incidents and cyber threats, https://eur-lex.europa.eu/eli/reg_del/2024/1772/oj"
+    - "Commission Delegated Regulation (EU) 2024/1773, policy on ICT services supporting critical or important functions, https://eur-lex.europa.eu/eli/reg_del/2024/1773/oj"
+    - "Commission Delegated Regulation (EU) 2025/301, content and time limits of major incident reports and voluntary threat notifications, https://eur-lex.europa.eu/eli/reg_del/2025/301/oj"
+    - "Commission Delegated Regulation (EU) 2025/532, subcontracting of ICT services supporting critical or important functions, https://eur-lex.europa.eu/eli/reg_del/2025/532/oj"
+    - "Commission Delegated Regulation (EU) 2025/1190, threat-led penetration testing, https://eur-lex.europa.eu/eli/reg_del/2025/1190/oj"
+    - "Commission Implementing Regulation (EU) 2024/2956, standard templates for the register of information, https://eur-lex.europa.eu/eli/reg_impl/2024/2956/oj"
+    - "Commission Implementing Regulation (EU) 2025/302, forms, templates and procedures for incident reporting, https://eur-lex.europa.eu/eli/reg_impl/2025/302/oj"
+  references:
+    - "Regulation (EU) 2022/2554, OJ L 333, 27.12.2022, https://eur-lex.europa.eu/eli/reg/2022/2554/oj"
+    - "Text verification (2026-11-06, #3965): every citation checked against the EUR-Lex text of Regulation (EU) 2022/2554 and of the eight Level 2 acts (EUR-Lex HTML by CELEX number and ELI pages)"
+    - "ESAs designation of critical ICT third-party providers, 18.11.2025, https://www.esma.europa.eu/press-news/esma-news/european-supervisory-authorities-designate-critical-ict-third-party-providers"
+    - "EBA/GL/2019/04 on ICT and security risk management was amended by EBA/GL/2025/02 to remove the overlap with DORA; it is not a DORA source"
+    - "Digital Omnibus proposal COM(2025) 837, procedure 2025/0360(COD), would amend DORA incident reporting (single entry point); pending, no effect on obligations (next_review_date)"
+  catalogue_version: "2.0.0"
+  last_reviewed: "2026-11-06"
+  signal_prefix: DORA
+
+  cross_mapping_hints:
+    target_frameworks:
+      - NIS2           # DORA is the sector-specific act for financial entities (NIS2 Art. 4)
+      - BSI_C5         # OIS, IDM, CRY, COS, OPS, AVL, INM domains
+      - EUCS           # GRC, IAM, CRY, OPS, BCP, INC, AUD domains
+      - GDPR           # Art. 28, 32, 33, 34, 44
+      - ISO_27001      # Annex A (not shipped in the public download)
+
+  redistribution_note: >-
+    DORA and its Level 2 acts are EU legislative acts; EUR-Lex allows reuse,
+    also commercial, with the source acknowledged and the meaning not
+    distorted (EUR-Lex legal notice, Commission Decision 2011/833/EU). Control
+    descriptions paraphrase the legal text; they do not constitute legal
+    advice. Consult qualified legal counsel and your competent authority.
+
+  replaces: []

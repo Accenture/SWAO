@@ -20,7 +20,7 @@
 **Framework ID:** `NIST_SP_800_66R2`
 **Version:** NIST SP 800-66 Revision 2 (February 2024) / HIPAA Security Rule (45 CFR Part 164 Subpart C)
 **Authority:** U.S. Department of Health and Human Services (HHS); NIST
-**SWAO tier:** Community (install required -- `swao framework install NIST_SP_800_66R2`)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa/`)
 **Controls:** 49 controls expanding the HIPAA Security Rule implementation specifications
 
 ## What this framework evaluates
@@ -41,7 +41,8 @@ migrating to sovereign or regulated cloud environments.
 Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
-swao framework install NIST_SP_800_66R2
+# copy this folder from the GitHub repository into the workspace
+cp -r nist-sp-800-66r2-hipaa <workspace>/wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa
 ```
 
 ```yaml
@@ -64,7 +65,8 @@ assessment:
 Install a local copy to override specific controls for your engagement:
 
 ```bash
-swao framework install NIST_SP_800_66R2
+# copy this folder from the GitHub repository into the workspace
+cp -r nist-sp-800-66r2-hipaa <workspace>/wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa
 ```
 
 The installed copy at `wsp/inputs/catalogs/community/nist-sp-800-66r2-hipaa/controls.yaml` overrides

@@ -20,7 +20,7 @@
 **Framework ID:** `AI_10_PILLARS`
 **Version:** 2026-Q2
 **Authority:** Community framework -- contributed by Alok Sharan
-**SWAO tier:** Community (install required -- `swao framework install AI_10_PILLARS`)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/ai-10-pillars/`)
 **Controls:** 11 controls across 10 pillars
 
 ## What this framework evaluates
@@ -39,7 +39,7 @@ regulated data.
 
 ## How to activate in SWAO
 
-Install the framework with `swao framework install AI_10_PILLARS`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
+Copy this folder from the [GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into the workspace at `wsp/inputs/catalogs/community/ai-10-pillars/`, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
 assessment:
@@ -78,7 +78,8 @@ consultant-furnished governance documents (AI inventory, risk assessment questio
 Install a local copy to override specific controls:
 
 ```bash
-swao framework install AI_10_PILLARS
+# copy this folder from the GitHub repository into the workspace
+cp -r ai-10-pillars <workspace>/wsp/inputs/catalogs/community/ai-10-pillars
 ```
 
 The installed copy at `wsp/inputs/catalogs/community/ai-10-pillars/controls.yaml` overrides the

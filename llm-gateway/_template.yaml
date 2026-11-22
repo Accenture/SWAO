@@ -41,8 +41,12 @@ connector:
     # catalogue:
     #   - id: my-model
     #     cost: { input_per_million: 0, output_per_million: 0 }
-    # Optional dynamic discovery (OpenAI-style /v1/models):
+    # Live model discovery (#4475) is on by default and uses the list route of the
+    # protocol (openai-chat and anthropic-messages /v1/models, ollama /api/tags,
+    # bedrock ListFoundationModels). Set another route, or turn it off for a
+    # platform without a list route or an air-gapped one:
     # discovery_endpoint: /v1/models
+    # discovery: false
   defaults:
     temperature: 0
     # max_tokens: 8192

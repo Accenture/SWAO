@@ -23,10 +23,11 @@
  * `domain_weights` key is a warning (equal weights assumed); a wrong sum is an error.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
 import { apmFrameworkDir, validateDomainWeights } from '@swao/module-service-assessment';
+import { isServiceWorkspace } from './service-probes.js';
 
 export type ApmWeightsProbeStatus = 'skip' | 'ok' | 'warn' | 'error';
 
@@ -38,16 +39,6 @@ export interface ApmWeightsProbeResult {
   warnings: string[];
 }
 
-function isServiceWorkspace(workspacePath: string): boolean {
-  const p = join(workspacePath, '.swao.yml');
-  if (!existsSync(p)) return false;
-  try {
-    const doc = load(readFileSync(p, 'utf-8')) as { service_portfolio?: unknown } | null;
-    return !!doc?.service_portfolio;
-  } catch {
-    return false;
-  }
-}
 
 export function buildApmWeightsProbe(workspacePath: string): ApmWeightsProbeResult {
   if (!isServiceWorkspace(workspacePath)) return { status: 'skip', message: 'not a service workspace', source: null, errors: [], warnings: [] };

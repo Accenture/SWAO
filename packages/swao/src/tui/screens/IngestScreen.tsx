@@ -13,17 +13,23 @@
 //
 // ================================================================
 
-// #0967 -- TUI wrapper for `swao ingest`.
-// Classifies + extracts files from ingestion/ before a full assessment.
+// #0967: TUI wrapper for `swao ingest`.
+// Classifies and extracts files from ingestion/ before a full assessment.
+// #4257 (TUI-13, Design 126 sections 3, 4.6 and 4.8): on ScreenLayout; the
+// output through RunOutput (dashes normalised, wrapped with a hanging
+// indent), the result as a StatusRow, Esc cancel while running (Q-09),
+// Enter finish and Esc abort when done.
 
 import { useState, useEffect, useRef } from 'react';
-import { Box, Text, useInput, useStdout } from 'ink';
+import { Text, useInput } from 'ink';
 import { spawn } from 'node:child_process';
 import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { findWorkspace, logPortfolio, setWorkspaceRoot } from '@swao/core';
-import { GuidanceBox } from '@swao/tui-kit';
-import { Header } from '../components/Header.js';
+import { selfSpawnCommand } from '@swao/core';
+import { ScreenLayout, RunOutput, StatusRow, DetailRow, KEY_HINTS, guidanceOwnsKey, tone, type GuidanceEntry } from '@swao/tui-kit';
+import { useScreenHeader } from '../components/screen-header.js';
+import { cliLineLevel } from '../../commands/cli-line-level.js';
 
 type Phase = 'running' | 'done';
 
@@ -50,13 +56,16 @@ export function IngestScreen({ onBack, appId }: IngestScreenProps) {
   const [phase, setPhase]     = useState<Phase>('running');
   const donePressRef          = useRef(false);
   const workspaceRef          = useRef<string | undefined>(undefined);
-  const { stdout }            = useStdout();
-  const termRows              = stdout?.rows ?? 24;
+  const header                = useScreenHeader('Ingest Files');
+  const guidanceOpenRef       = useRef(false);
 
-  useInput((input, key) => {
-    if (phase !== 'done') return;
+  useInput((_input, key) => {
+    // #4230 (Design 126 section 7.8): an open guidance box owns Esc, PgUp and PgDn only.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
     if (donePressRef.current) return;
-    if (key.return || key.escape || input === 'q') {
+    // Q-09: Esc cancels the ingestion at once (unmount stops the child).
+    if (phase === 'running' && key.escape) { donePressRef.current = true; onBack(); return; }
+    if (phase === 'done' && (key.return || key.escape)) {
       donePressRef.current = true;
       onBack();
     }
@@ -67,13 +76,11 @@ export function IngestScreen({ onBack, appId }: IngestScreenProps) {
     workspaceRef.current = workspace ?? undefined;
     if (workspace) { try { setWorkspaceRoot(workspace); } catch { /* best-effort */ } }
     if (!workspace) {
-      setLines(['[warn] No SWAO workspace found. Run Workspace Setup (menu 1) to initialise, then try again.']);
+      setLines(['No SWAO workspace found. Run Workspace Setup (menu 1) to initialise, then try again.']);
       setExitCode(1);
       setPhase('done');
       return;
     }
-    const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-    const baseArgs = isPkg ? [] : [process.argv[1] ?? ''];
     const args = ['ingest'];
     if (workspace) args.push('--workspace', workspace);
     // Resolve app: explicit prop wins; otherwise auto-discover from apps/ directory.
@@ -81,12 +88,15 @@ export function IngestScreen({ onBack, appId }: IngestScreenProps) {
     const resolvedApp = appId ?? (workspace ? discoverIngestApp(workspace) : undefined);
     if (resolvedApp) args.push('--app', resolvedApp);
 
-    const child = spawn(process.execPath, [...baseArgs, ...args], {
+    // #4241: central self-spawn helper (pkg binary and node dist).
+    const selfCmd = selfSpawnCommand(args, {
       env: {
         ...process.env,
-        PKG_EXECPATH: '',
         NODE_OPTIONS: [process.env['NODE_OPTIONS'], '--no-deprecation'].filter(Boolean).join(' '),
       },
+    });
+    const child = spawn(selfCmd.command, selfCmd.args, {
+      env: selfCmd.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -95,10 +105,7 @@ export function IngestScreen({ onBack, appId }: IngestScreenProps) {
       if (!trimmed) return;
       // #2359: write full line to NDJSON log before TUI truncation.
       if (workspaceRef.current) {
-        const level = trimmed.startsWith('[warn]') ? 'warn'
-          : trimmed.startsWith('[error]') ? 'error'
-          : 'info';
-        try { logPortfolio(level, 'ingest_log', trimmed); } catch { /* best-effort */ }
+        try { logPortfolio(cliLineLevel(trimmed), 'ingest_log', trimmed); } catch { /* best-effort */ }
       }
       setLines((prev) => [...prev, trimmed]);
     };
@@ -118,60 +125,40 @@ export function IngestScreen({ onBack, appId }: IngestScreenProps) {
   }, [appId]);
 
   const succeeded = exitCode === 0;
+  const failed = phase === 'done' && !succeeded;
+
+  const entry: GuidanceEntry = {
+    title: 'Ingest Files',
+    what: failed
+      ? 'Ingestion failed. Check the output for the cause. Common causes: unsupported file format, missing ingestion/ folder, or a permissions issue on wsp/inputs/.'
+      : 'Classifies and extracts the files of the app ingestion/ folder into the structured wsp/inputs/ tree. Run before an assessment to pre-process PDFs, spreadsheets and other documents.',
+    sections: [
+      { label: 'Input', text: 'apps/<app>/ingestion/ (drop files here before running)' },
+      { label: 'Output', text: 'apps/<app>/wsp/inputs/ (normalised files, ready for the context pass)' },
+    ],
+    cli: 'swao ingest --app <id>',
+  };
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="Ingest Files" />
-      <Box marginTop={1}>
-        <Text bold color="cyanBright">Ingestion pre-processor</Text>
-        {phase === 'running' && <Text dimColor>  running...</Text>}
-      </Box>
-      {/* #2420: two-line rendering for long messages -- split at ' -- ' separator so
-          filename is on line 1 and the description/detail is on line 2 (indented).
-          #2186: wrap="wrap" on all Text lines so any remaining long output wraps
-          cleanly within the terminal width rather than truncating mid-word. */}
-      <Box flexDirection="column" marginTop={1} flexGrow={1}>
-        {lines.slice(-30).map((l, i) => {
-          const color = l.startsWith('[warn]') ? 'yellow' : l.startsWith('[ok]') ? 'green' : undefined;
-          const sepIdx = l.indexOf(' -- ');
-          if (l.length > 95 && sepIdx > 0) {
-            return (
-              <Box key={i} flexDirection="column">
-                <Text color={color} wrap="wrap">{l.slice(0, sepIdx)}</Text>
-                <Text color={color} wrap="wrap">{'        '}{l.slice(sepIdx + 4)}</Text>
-              </Box>
-            );
-          }
-          return (
-            <Text key={i} color={color} wrap="wrap">{l}</Text>
-          );
-        })}
-      </Box>
+    <ScreenLayout
+      header={header}
+      title={{ title: 'Ingest Files', subtitle: 'Classify and extract the documents of the ingestion folder before an assessment.' }}
+      keys={phase === 'done' ? KEY_HINTS.lastStep.filter((h) => h.key !== '↑↓') : KEY_HINTS.run}
+      guidance={{ entry, initiallyCollapsed: true, onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
+      {phase === 'running' && <Text {...tone('muted')}>Ingestion running...</Text>}
+      {lines.length > 0 && <RunOutput lines={lines} maxLines={20} />}
       {phase === 'done' && (
-        <Box marginTop={1} flexDirection="column">
-          <Text bold color={succeeded ? 'green' : 'red'}>
-            {succeeded ? '[ok]  Ingestion complete' : `[fail]  Ingestion exited with code ${exitCode}`}
-          </Text>
-        </Box>
+        <>
+          <Text> </Text>
+          <StatusRow
+            level={succeeded ? 'ok' : 'fail'}
+            label={succeeded ? 'Ingestion complete' : 'Ingestion failed'}
+            labelWidth={24}
+          />
+          {!succeeded && exitCode !== null && <DetailRow label="Exit code" value={String(exitCode)} />}
+        </>
       )}
-      <GuidanceBox
-        initiallyCollapsed={true}
-        maxRows={Math.max(8, termRows - 20)}
-        title="Ingestion details"
-        what={succeeded || phase === 'running'
-          ? 'Classifies and extracts files from the app ingestion/ folder into structured wsp/inputs/ tree. Run before an assessment to pre-process PDFs, spreadsheets, and other documents.'
-          : 'Ingestion failed. Check the output above for error details. Common causes: unsupported file format, missing ingestion/ folder, or a permissions issue on wsp/inputs/.'}
-        details={[
-          { label: 'Input',  value: 'apps/<app>/ingestion/  (drop files here before running)' },
-          { label: 'Output', value: 'apps/<app>/wsp/inputs/  (normalised files, ready for CTX pass)' },
-        ]}
-        affordances={phase === 'done' ? ['Enter / Esc / Q -- back to Tools menu'] : []}
-      />
-      {phase === 'done' && (
-        <Box marginTop={1}>
-          <Text dimColor>Press Enter, Esc, or Q to return to Tools menu</Text>
-        </Box>
-      )}
-    </Box>
+    </ScreenLayout>
   );
 }

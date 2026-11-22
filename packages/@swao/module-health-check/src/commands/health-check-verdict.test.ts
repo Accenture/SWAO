@@ -51,6 +51,7 @@ function baseHealthCheckCtx(): BuildHealthCheckContext {
     wspMetadataProbe: { status: 'absent', engagement_name: '', warnings: [], message: '' },
     lzCatalogueCoverageProbe: { status: 'ok', message: '', detail: '', gaps_count: 0 },
     credentialVaultProbe: { status: 'ok', vaultExists: true, decryptable: true, keyCount: 0, categories: [], message: '' },
+    lzConnectionsProbe: { status: 'info', message: 'no live landing zone registered', scopes: [] },
     intakeMappingProbe: { status: 'skip', message: '', errors: [], warnings: [] },
     apmWeightsProbe: { status: 'skip', message: '', source: null, errors: [], warnings: [] },
     serviceProbes: [],
@@ -65,6 +66,13 @@ describe('computeFailedProbes (#3170)', () => {
     ctx.iacToolchainProbe = { status: 'warn', tools: [], message: 'partial' };
     ctx.llmGatewayProbe = { ok: null, message: 'credential not loaded' };
     expect(computeFailedProbes(ctx)).toEqual([]);
+  });
+
+  it('a refused or unreachable LZ connection (probe [26]) is a warning, never a failure (#3589)', () => {
+    const ctx = baseHealthCheckCtx();
+    ctx.lzConnectionsProbe = { status: 'warn', message: '1 need attention', scopes: [{ lz_id: 'otc-prod', scope_id: 'platform', provider: 'otc', state: 'refused', readable: 3, unreadable: 0 }] };
+    expect(computeFailedProbes(ctx)).toEqual([]);
+    expect(buildHealthCheckLogContext(ctx, []).probes).toMatchObject({ lz_connections: { status: 'warn', scopes: 1 } });
   });
 
   it('counts every FAIL-level outcome, including probes the NDJSON list used to omit', () => {

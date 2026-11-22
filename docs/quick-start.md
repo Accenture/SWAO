@@ -47,7 +47,7 @@ Verify:
 
 ```bash
 swao --version
-# SWAO -- Sovereign Workload Assessment & Onboarding v0.11.2 (Community)
+# SWAO, Sovereign Workload Assessment and Onboarding v0.11.2 (Community)
 ```
 
 ---
@@ -90,10 +90,11 @@ Select **1. Workspace Setup**. The wizard walks through these steps:
 2. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a stub for
    offline testing.
 3. **Credentials** - the API key for the chosen provider.
-4. **Health check**, then the optional **Claude Desktop** and **Playwright** integrations.
+4. The optional **LZ Connections**, **MCP Client** and **Playwright** steps, and the **Test Code** setting.
+5. **Health check** of the finished configuration, then **Ready** with its result.
 
-New workspaces contain four demo frameworks. Copy more into the workspace at any time with
-`swao framework install <ID>` (`swao framework list` shows the IDs); you choose the frameworks
+New workspaces contain four demo frameworks. Copy more into `wsp/inputs/catalogs/community/` at any time from
+[GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) (`swao framework list` lists the workspace frameworks); you choose the frameworks
 for each app when you run the assessment.
 
 The wizard creates the workspace folder and configuration on disk. No further setup needed.
@@ -214,7 +215,8 @@ swao init --name my-app
 swao credential set anthropic-api-key <your-api-key>
 
 # 3. Copy a compliance framework into the workspace and select it
-swao framework install GDPR
+#    (copy the gdpr folder from github.com/Accenture/SWAO/tree/main/community-frameworks
+#    into wsp/inputs/catalogs/community/gdpr/)
 swao regime-select --app my-app --regimes GDPR
 
 # 4. Pre-flight check
@@ -232,7 +234,7 @@ swao export --app my-app --formats csv,ndjson,xlsx
 | You want to | Read |
 |---|---|
 | Re-run with a new export in PowerBI | [Export BI runbook](/export-bi) |
-| Add a community framework | `swao framework install <id>` or copy a framework folder into `wsp/inputs/catalogs/community/<folder>/` |
+| Add a community framework | Copy a framework folder from [GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into `wsp/inputs/catalogs/community/<folder>/` |
 | Run a portfolio assessment | `swao export --portfolio` (Consultant/Enterprise tier) |
 | Connect Claude AI via MCP | [How it works - MCP](/how-it-works) |
 | Share findings with a client | Open `wsp/publications/latest/index.html` |

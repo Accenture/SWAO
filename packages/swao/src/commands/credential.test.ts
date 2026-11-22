@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect } from 'vitest';
-import { renderCredentialList } from './credential.js';
+import { renderCredentialList, readCredentialValueFromStdin } from './credential.js';
 
 describe('renderCredentialList grouping (#1411 Phase 1)', () => {
   // The operator's real QA store shape (2026-08-06).
@@ -58,5 +58,20 @@ describe('renderCredentialList grouping (#1411 Phase 1)', () => {
   it('handles app ids containing hyphens in the playwright pattern', () => {
     const out = renderCredentialList(['playwright-pass-my-multi-part-app']).join('\n');
     expect(out).toContain('playwright-*-my-multi-part-app: pass   (missing: url, user)');
+  });
+});
+
+describe('landing zone keys and stdin values (#3570)', () => {
+  it('groups lz:<lz-id>:<scope-id>:<field> keys under Landing zones', () => {
+    const out = renderCredentialList(['lz:otc-prod:platform:password', 'lz:otc-prod:platform:username', 'aws-access-key-id']).join('\n');
+    expect(out).toContain('Landing zones (2)');
+    expect(out).toContain('lz:otc-prod:platform:password');
+    expect(out).toContain('Other (1)');
+  });
+
+  it('reads a value from stdin and drops one trailing line break', async () => {
+    const { Readable } = await import('node:stream');
+    expect(await readCredentialValueFromStdin(Readable.from([Buffer.from('fake-'), Buffer.from('value\r\n')]))).toBe('fake-value');
+    expect(await readCredentialValueFromStdin(Readable.from([Buffer.from('a\nb\n')]))).toBe('a\nb');
   });
 });

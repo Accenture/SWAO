@@ -13,19 +13,66 @@
 //
 // ================================================================
 
-// #1515 -- TUI wrapper for `swao support-bundle`.
+// #1515: TUI wrapper for `swao support-bundle`.
 // Collects a PII-free diagnostic bundle from existing event logs.
+// #4257 (TUI-13, Design 126 sections 3, 4.6, 4.8 and 6): on ScreenLayout; the
+// included and excluded facts and the output folder as DetailRows (the path
+// keeps drive and file name), the output through RunOutput, the result as a
+// StatusRow, keys through KeyHints (Enter confirm, Esc cancel; Esc cancels a
+// running bundle, Q-09), the CLI only in the guidance `cli` field.
 
 import { useState, useEffect, useRef } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Text, useInput } from 'ink';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { findWorkspace } from '@swao/core';
-import { GuidanceBox, ProgressBar } from '@swao/tui-kit';
-import { Header } from '../components/Header.js';
-import { BUNDLE_VERSION } from '../../commands/support-bundle.js';
+import { selfSpawnCommand } from '@swao/core';
+import { DetailRow, KEY_HINTS, ProgressBar, RunOutput, ScreenLayout, StatusRow, guidanceOwnsKey, type GuidanceEntry, type KeyHint } from '@swao/tui-kit';
+import { useScreenHeader } from '../components/screen-header.js';
+import { BUNDLE_VERSION, bundlePathFromLine } from '../../commands/support-bundle.js';
 
 type Phase = 'confirm' | 'running' | 'done';
+
+const INCLUDED = 'event trace, error context, workspace config, health check output, LZ catalogue meta, run manifests';
+const EXCLUDED = 'engagement names, client codes, lead names, absolute paths, API keys';
+
+/** The keys per phase (Design 126 section 7.9). */
+export function supportBundleKeys(phase: Phase): readonly KeyHint[] {
+  if (phase === 'confirm') return [{ key: 'Enter', verb: 'confirm' }, { key: 'Esc', verb: 'cancel' }];
+  if (phase === 'running') return KEY_HINTS.run;
+  return [{ key: 'Enter', verb: 'back' }, { key: 'Esc', verb: 'back' }];
+}
+
+const SUPPORT_BUNDLE_CLI = { cli: 'swao support-bundle --workspace <path>' } as const;
+
+/** The guidance entry per phase and result. */
+export function supportBundleGuidance(phase: Phase, succeeded: boolean): GuidanceEntry {
+  if (phase === 'done' && succeeded) {
+    return {
+      title: 'Bundle location',
+      what: 'Send this file to your SWAO support contact. No document content or credentials are included; client hosts, paths and chat text are redacted (#3437).',
+      sections: [{ label: 'Extract', text: 'tar -xzf <bundle>.tar.gz' }],
+      ...SUPPORT_BUNDLE_CLI,
+    };
+  }
+  if (phase === 'done') {
+    return {
+      title: 'Bundle creation failed',
+      what: 'The support bundle could not be created. Check the output for the specific error. Common causes: missing SWAO event logs in wsp/logs/, insufficient disk space, or a file permission issue on the output directory.',
+      ...SUPPORT_BUNDLE_CLI,
+    };
+  }
+  return {
+    title: 'What gets included',
+    what: 'Creates a PII-free diagnostic archive from SWAO event logs and workspace metadata. Send this file to your SWAO support contact to help diagnose issues.',
+    sections: [
+      { label: 'Included', text: INCLUDED },
+      { label: 'Excluded', text: EXCLUDED },
+      { label: 'Format', text: 'tar.gz, extract with tar -xzf <bundle>.tar.gz' },
+    ],
+    ...SUPPORT_BUNDLE_CLI,
+  };
+}
 
 export interface SupportBundleScreenProps {
   onBack: () => void;
@@ -38,6 +85,8 @@ export function SupportBundleScreen({ onBack }: SupportBundleScreenProps) {
   const [resolvedOutDir, setResolvedOutDir] = useState<string>('wsp/support-diag/');
   const [progressTick, setProgressTick] = useState(0);
   const donePressRef                = useRef(false);
+  const guidanceOpenRef             = useRef(false);
+  const header                      = useScreenHeader('Support Bundle');
 
   // Resolve output dir at mount so confirm phase shows the actual path (#1599)
   useEffect(() => {
@@ -54,22 +103,19 @@ export function SupportBundleScreen({ onBack }: SupportBundleScreenProps) {
     return () => clearInterval(id);
   }, [phase]);
 
-  useInput((input, key) => {
+  useInput((_input, key) => {
+    // Design 126 section 7.8: an open guidance box owns Esc and the pager keys.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
+    if (donePressRef.current) return;
     if (phase === 'confirm') {
-      if (key.return || input === 'y' || input === 'Y') {
-        setPhase('running');
-      }
-      if (key.escape || input === 'n' || input === 'N' || input === 'q') {
-        onBack();
-      }
+      if (key.return) { setPhase('running'); return; }
+      if (key.escape) { donePressRef.current = true; onBack(); }
       return;
     }
-    if (phase === 'done') {
-      if (donePressRef.current) return;
-      if (key.return || key.escape || input === 'q') {
-        donePressRef.current = true;
-        onBack();
-      }
+    // Q-09: Esc cancels a running bundle at once (the unmount stops the child).
+    if ((phase === 'running' && key.escape) || (phase === 'done' && (key.return || key.escape))) {
+      donePressRef.current = true;
+      onBack();
     }
   });
 
@@ -77,16 +123,14 @@ export function SupportBundleScreen({ onBack }: SupportBundleScreenProps) {
     if (phase !== 'running') return;
 
     const workspace = findWorkspace(process.cwd());
-    // IS_PKG pattern: in pkg binary, argv[1] is the virtual snapshot path -- including
-    // it causes commander to see it as the command (argv shifts). Use [] in pkg mode,
-    // same as LlmAssessmentScreen spawnLeg pattern (#1663).
-    const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-    const baseArgs = isPkg ? [] : [process.argv[1] ?? ''];
+    // #1663 / #4241: the central self-spawn helper never passes the virtual
+    // snapshot path in the binary (commander would read it as the command).
     const args = ['support-bundle'];
     if (workspace) args.push('--workspace', workspace);
 
-    const child = spawn(process.execPath, [...baseArgs, ...args], {
-      env: { ...process.env, PKG_EXECPATH: '' },
+    const selfCmd = selfSpawnCommand(args);
+    const child = spawn(selfCmd.command, selfCmd.args, {
+      env: selfCmd.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
@@ -110,112 +154,40 @@ export function SupportBundleScreen({ onBack }: SupportBundleScreenProps) {
   }, [phase]);
 
   const succeeded = exitCode === 0;
+  // #1599: the resolved bundle path on success.
+  const bundlePath = lines.map(bundlePathFromLine).find((p): p is string => p !== undefined) ?? resolvedOutDir;
+  const title = phase === 'confirm'
+    ? { title: 'Support Diagnostic Bundle', subtitle: `Packages SWAO event logs and diagnostics into one PII-free archive for your SWAO support contact (bundle v${BUNDLE_VERSION}).` }
+    : phase === 'running' ? { title: 'Creating the bundle' }
+    : { title: 'Support Diagnostic Bundle' };
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="Support Bundle" />
-      <Box marginTop={1} flexDirection="column">
-        <Text bold color="cyanBright">Support Diagnostic Bundle</Text>
-        {phase === 'running' && (
-          <Box marginTop={1}>
-            <ProgressBar value={progressTick} total={20} label="Creating bundle..." color="cyan" width={28} />
-          </Box>
-        )}
-      </Box>
-
+    <ScreenLayout
+      header={header}
+      title={title}
+      keys={supportBundleKeys(phase)}
+      guidance={{ entry: supportBundleGuidance(phase, succeeded), initiallyCollapsed: phase !== 'done', onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
       {phase === 'confirm' && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text>Packages SWAO event logs and diagnostics into a single PII-free archive</Text>
-          <Text>ready to send to your SWAO support contact (bundle v{BUNDLE_VERSION}).</Text>
-          <Box marginTop={1}>
-            <Text dimColor>Included:  </Text>
-            <Text>event trace, error context, workspace config, health-check, LZ catalogue meta</Text>
-          </Box>
-          <Box>
-            <Text dimColor>Excluded:  </Text>
-            <Text>engagement names, client codes, lead names, absolute paths, API keys</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Output:    </Text>
-            <Text bold>{resolvedOutDir}</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Press Enter or Y to create the bundle   Esc, N, or Q to cancel</Text>
-          </Box>
-          <GuidanceBox
-            title="What gets included"
-            what="Creates a PII-free diagnostic archive from SWAO event logs and workspace metadata. Send this file to your SWAO support contact to help diagnose issues."
-            details={[
-              { label: 'Included', value: 'event trace, error context, workspace config, health-check output, LZ catalogue meta, run manifests' },
-              { label: 'Excluded', value: 'engagement names, client codes, lead names, absolute paths, API keys' },
-              { label: 'Format', value: 'tar.gz -- extract with: tar -xzf <bundle>.tar.gz' },
-            ]}
-            affordances={['Enter / Y -- create bundle  |  Esc / N / Q -- cancel']}
-          />
-        </Box>
+        <>
+          <DetailRow label="Included" value={INCLUDED} />
+          <DetailRow label="Excluded" value={EXCLUDED} />
+          <DetailRow label="Output" value={resolvedOutDir} path />
+        </>
       )}
-
-      {phase === 'running' && (
-        <Box flexDirection="column" marginTop={1} flexGrow={1}>
-          {lines.slice(-20).map((l, i) => (
-            <Text
-              key={i}
-              color={l.startsWith('[ok]') ? 'green' : l.startsWith('[error]') ? 'red' : undefined}
-            >
-              {l}
-            </Text>
-          ))}
-          <GuidanceBox initiallyCollapsed={true} title="Support Bundle" what="Creating a PII-free diagnostic archive from SWAO event logs and workspace metadata." />
-        </Box>
-      )}
-
+      {phase === 'running' && <ProgressBar value={progressTick} total={20} label="Creating bundle..." width={28} />}
+      {phase !== 'confirm' && lines.length > 0 && <RunOutput lines={lines} maxLines={20} />}
       {phase === 'done' && (
-        <Box flexDirection="column" marginTop={1}>
-          <Box flexDirection="column" flexGrow={1}>
-            {lines.slice(-20).map((l, i) => (
-              <Text
-                key={i}
-                color={l.startsWith('[ok]') ? 'green' : l.startsWith('[error]') ? 'red' : undefined}
-              >
-                {l}
-              </Text>
-            ))}
-          </Box>
-          <Box marginTop={1} flexDirection="column">
-            <Text bold color={succeeded ? 'green' : 'red'}>
-              {succeeded
-                ? `[ok]  Bundle created successfully (v${BUNDLE_VERSION})`
-                : `[fail]  Bundle creation failed (exit ${exitCode})`}
-            </Text>
-            {/* #1599: highlight resolved bundle path in GuidanceBox on success */}
-            {succeeded && (() => {
-              const pathLine = lines.find(l => l.startsWith('[ok]  Support bundle created:'));
-              const bundlePath = pathLine ? pathLine.replace('[ok]  Support bundle created: ', '') : resolvedOutDir;
-              return (
-                <Box marginTop={1}>
-                  <GuidanceBox
-                    title="Bundle location"
-                    what="Send this file to your SWAO support contact. No document content or credentials are included; client hosts, paths and chat text are redacted (#3437)."
-                    details={[{ label: 'Path', value: bundlePath }]}
-                    affordances={['Press Enter, Esc, or Q to return to Tools menu']}
-                    initiallyCollapsed={false}
-                  />
-                </Box>
-              );
-            })()}
-            {!succeeded && (
-              <Box marginTop={1}>
-                <GuidanceBox
-                  title="Bundle creation failed"
-                  what="The support bundle could not be created. Check the output above for the specific error. Common causes: missing SWAO event logs in wsp/logs/, insufficient disk space, or a file-permission issue on the output directory."
-                  affordances={['Press Enter, Esc, or Q to return to Tools menu']}
-                  initiallyCollapsed={false}
-                />
-              </Box>
-            )}
-          </Box>
-        </Box>
+        <>
+          <Text> </Text>
+          <StatusRow
+            level={succeeded ? 'ok' : 'fail'}
+            label="Bundle"
+            summary={succeeded ? `created (v${BUNDLE_VERSION})` : `creation failed (exit ${exitCode ?? 'unknown'})`}
+          />
+          {succeeded && <DetailRow label="Path" value={bundlePath} path />}
+        </>
       )}
-    </Box>
+    </ScreenLayout>
   );
 }

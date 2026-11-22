@@ -89,7 +89,90 @@ Failed blocker checks are also listed in `lzrResult.blockers` and failed warning
 
 Pass 23 does not call Terraform, a cloud API or the network. You produce the state file yourself (for example with `terraform state pull`).
 
-In portfolio mode (`swao assess --portfolio --lzr <id>`, Enterprise) SWAO picks an adapter per app: snapshot files `lz-meshstack-snapshot.json`, `lz-aws-snapshot.json` or `lz-azure-snapshot.json` in `wsp/inputs/terraform/` are evaluated by the meshStack, AWS or Azure adapters; otherwise the Terraform route above is used. The summary is written to `lzr-summary.json` in the portfolio run directory.
+In portfolio mode (`swao assess --portfolio --lzr <label>`, Enterprise) SWAO can also read landing zone snapshots; see the next section. The summary is written to `lzr-summary.json` in the portfolio run directory.
+
+## Landing zone snapshots
+
+A landing zone snapshot is an export of the client's target landing zone: the clusters, databases, caches, quotas and policy compliance that are already deployed there. Portfolio Landing Zone Readiness (Portfolio Operations, Landing Zone Readiness in the TUI, or `swao assess --portfolio --lzr <label>`) evaluates it offline, without a connection to the provider.
+
+### Which file is evaluated
+
+The snapshot files live in `apps/<app>/wsp/inputs/terraform/`. The label picks the file:
+
+| Label | File | Adapter | Provider shown |
+|---|---|---|---|
+| `lz-meshstack-01` | `lz-meshstack-snapshot.json` | meshStack | meshStack platform with the cloud it manages (first token of `platform_id`, for example STACKIT) |
+| `lz-aws-01` | `lz-aws-snapshot.json` | AWS | AWS |
+| `lz-azure-01` | `lz-azure-snapshot.json` | Azure | Azure |
+| `lz-terraform-01` | any `*.tfstate` or `*.tfplan` | Terraform route (this pass) | derived as described above |
+
+The CLI also accepts the file stem (`lz-azure`) or the file name (`lz-azure-snapshot.json`). An app that does not have the picked file is reported as `skipped` with the missing file name; it is never evaluated on another file. A label that names no snapshot kind (for example `lz-stackit-de-01`) uses the first file found in the order meshStack, AWS, Azure, Terraform.
+
+Each row of `lzr-summary.json` records `source_snapshot` (the file), `picker_label`, `provider_id` (machine key), `provider_map_id` and `provider_label` (the provider name from the central name map), `platform: meshstack` for a meshStack snapshot, and `lzr_snapshot_fabricated` for a sample file. The text report (`swao report --portfolio --view lzr`) shows the provider, the source file and the sample flag per app.
+
+### Sample files
+
+`swao init` seeds the three files with `"sample": true` (and the legacy `"fabricated": true`) so the pass can be demonstrated. Their results are marked `[SIM]`. Replace a sample with an export of the client's target landing zone in the same format before relying on the result.
+
+### Field list per provider
+
+All fields are optional; a missing list counts as empty. `snapshot_generated_at` (ISO timestamp) and `sample` are accepted in every file.
+
+**`lz-aws-snapshot.json`**
+
+| Field | Type | Source in the account |
+|---|---|---|
+| `eks_clusters[]` | `name`, `status` (`ACTIVE`), `version` | `aws eks list-clusters` and `aws eks describe-cluster` |
+| `rds_instances[]` | `identifier`, `engine` (`postgres`), `status` (`available`), `engineVersion` | `aws rds describe-db-instances` |
+| `elasticache_groups[]` | `id`, `status` (`available`) | `aws elasticache describe-replication-groups` |
+| `config_compliance.non_compliant_rules[]` | `rule`, `resource` | AWS Config, `aws configservice describe-compliance-by-config-rule` |
+| `vpc_count` | number | `aws ec2 describe-vpcs` |
+| `service_quota_eks_remaining`, `service_quota_rds_remaining` | number | Service Quotas, limit minus usage |
+
+**`lz-azure-snapshot.json`**
+
+| Field | Type | Source in the subscription |
+|---|---|---|
+| `aks_clusters[]` | `name`, `provisioningState` (`Succeeded`), `kubernetesVersion` | `az aks list` |
+| `postgresql_servers[]` | `name`, `state` (`Ready`), `version` | `az postgres flexible-server list` |
+| `redis_instances[]` | `name`, `provisioningState` (`Succeeded`) | `az redis list` |
+| `keyvault_vaults[]` | `name` | `az keyvault list` |
+| `vnet_count` | number | `az network vnet list` |
+| `aks_quota_remaining` | number | compute quota of the region, limit minus usage |
+| `policy_non_compliant_count`, `policy_violations[]` | number; `policyDefinitionName`, `resourceId` | `az policy state summarize` and `az policy state list` |
+
+**`lz-meshstack-snapshot.json`**
+
+| Field | Type | Source in meshStack |
+|---|---|---|
+| `platform_id` | string, for example `stackit-de-01`; the first token names the managed cloud | the meshStack platform of the target landing zone |
+| `tenant_exists` | boolean | whether the project tenant exists on the platform |
+| `building_block_definitions[]` | `identifier`, `displayName`, `status` (`ACTIVE`) | building block definitions of the platform |
+| `building_block_instances[]` | `definitionIdentifier`, `state` (`SUCCEEDED`), `displayName` | building block instances of the project |
+| `quota_supported` | boolean | whether the platform reports quotas |
+
+**Terraform state or plan:** `terraform state pull > <name>.tfstate`, or `terraform show -json <plan> > <name>.tfplan` for a plan (see "What you need to provide").
+
+### An LZ Live run as the source
+
+When a registered landing zone has an LZ Live run, the picker also lists that run (`live:<landing zone id>`, with the provider and the finish time). `swao assess --portfolio --lzr live:otc-prod` reads the newest usable run of `otc-prod` from `landing-zones/otc-prod/wsp/runs/` (the run named in `latest-lz-live.txt`, else the newest run with a merged view; a failed run is never read). Nothing is fetched from the provider: LZR reads the stored run only. The run belongs to the landing zone, so every app is evaluated against it.
+
+| LZR field | Read from the LZ Live run |
+|---|---|
+| Kubernetes clusters, databases, caches | resource types of the merged view (`eks.cluster`, `cce.clusters`, `rds.instances`, `dcs.instances`, `postgres-flex.instance` and others); presence only |
+| Quotas | the quotas of the scope scans: remaining, or limit minus usage |
+| Policy compliance | the guardrails of the merged view (pass, fail, unknown) and the baseline checks |
+| Network | VPC and network resources of the merged view |
+
+A field the run does not record is shown as "not recorded by LZ Live" and never as passed, so such a run reads ADVISORY, not READY. A field read only in part, for example guardrails when an application scope login cannot read the organisation policies, or quotas of one region, is shown as partial and never passes either. Not recorded today: the state of a resource (running, available), quota usage on AWS (Service Quotas reports limits only), quotas on T Cloud Public and Azure, guardrails on STACKIT, and Kubernetes clusters and caches on STACKIT. A run served by a mock CSP environment is marked `[SIM]`; a partial run adds a warning. The summary row records `source_kind: lz-live-run`, `live_run` (landing zone, run, status, finish time, folder) and `not_recorded`.
+
+### How LZR differs from the other landing zone checks
+
+| Check | Reads | Where |
+|---|---|---|
+| LZ catalogue fit | what a provider offers in a region (the landing zone catalogue); no client landing zone | inside the Application Assessment, `lz-catalogue-fit.yaml`; see [Landing zone assessment](/assessment/landing-zone) |
+| LZ Live Assessment | the client tenant through the provider API | its own run per registered landing zone; see [Landing zone live assessment](/assessment/landing-zone-live) |
+| Landing Zone Readiness (this pass) | an exported snapshot or Terraform state of the target landing zone, offline | `--lzr`; portfolio mode with snapshots or a stored LZ Live run |
 
 ## Outputs
 
@@ -107,7 +190,7 @@ The run manifest records the input type used (`terraform`, `snapshot`, `live_api
 | `--lzr <landingZoneId>` | Runs Pass 23 inside the pass loop, after the static passes, DYNAMIC, SCOPE and MALWARE and before COMP and SYNTH, so that [Pass 09 SYNTH](/passes/09-synth) uses the verdict of the same run |
 | `--lz-cat-provider`, `assessment.landing_zone.provider` | Name the target provider when the landing zone ID does not |
 | `--lzr-fail-on-blocked` | Exits with code 4 when the verdict is `blocked` (after all passes have run) |
-| `--portfolio --lzr <id>` | Portfolio-wide readiness (Enterprise) |
+| `--portfolio --lzr <label>` | Portfolio-wide readiness (Enterprise); the label picks the snapshot (see "Landing zone snapshots") |
 
 `lzr` in `--passes` or in a lens does not run this pass; without `--lzr`, SWAO prints a note that Pass 23 needs `--lzr <landingZoneId>`.
 

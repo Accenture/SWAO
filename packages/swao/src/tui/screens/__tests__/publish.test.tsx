@@ -106,9 +106,26 @@ describe('PublishScreen -- TU-03: mode options', () => {
     expect(lastFrame() ?? '').toContain('Single-Page HTML Report');
   });
 
-  it('shows HTML Editor as the second active mode', () => {
+  it('shows HTML Editor as the last active mode (#4122)', () => {
     const { lastFrame } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
-    expect(lastFrame() ?? '').toContain('HTML Editor');
+    // #4257: the mode menu is the central numbered SelectInput ("1  Label   description").
+    const keys = [...(lastFrame() ?? '').matchAll(/(\d)\s+(Single-Page HTML Report|Portfolio Engagement Hub[^\n]*?|Landing Zone Live View[^\n]*?|HTML Editor)(?=\s{2}|\n|$)/g)].map((m) => `${m[1]} ${m[2]}`);
+    expect(keys.map((k) => k.slice(2))).toEqual([
+      'Single-Page HTML Report',
+      expect.stringContaining('Portfolio Engagement Hub'),
+      expect.stringContaining('Landing Zone Live View'),
+      expect.stringContaining('HTML Editor'),
+    ]);
+    expect(keys[3]).toMatch(/^4 HTML Editor/);
+  });
+
+  it('menu descriptions are plain text, no CLI syntax (#4122)', () => {
+    const frame = lastFrameOf(<PublishScreen onBack={noop} version="0.0.0-test" />);
+    // #4257: SelectInput cuts a long description at the row width (Design 126 M-04).
+    for (const d of ['one report per assessment run', 'overview of all assessed apps', 'live landing zone view', 'customise layout']) {
+      expect(frame).toContain(d);
+    }
+    expect(frame).not.toMatch(/swao publish/);
   });
 
   it('does not show coming-soon modes [4-6] in the menu (#1439)', () => {
@@ -135,9 +152,9 @@ describe('PublishScreen -- TU-03: mode options', () => {
 describe('PublishScreen -- TU-04: HTML Editor confirmation screen', () => {
   it('shows enterprise gate when Community user selects HTML Editor mode (#2308)', async () => {
     // HTML Editor is Enterprise-gated (#2308). In Community mode (version 0.0.0-test),
-    // pressing '2' must show the licence gate message rather than the editor URL.
+    // pressing '4' (#4122: the editor is last) must show the licence gate message rather than the editor URL.
     const { lastFrame, stdin } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
-    await pressKey(stdin, '2');
+    await pressKey(stdin, '4');
     const frame = lastFrame() ?? '';
     expect(frame).toContain('Enterprise');
     expect(frame).toContain('licence');
@@ -147,7 +164,7 @@ describe('PublishScreen -- TU-04: HTML Editor confirmation screen', () => {
 
   it('shows the HTML Editor label on the confirmation screen', async () => {
     const { lastFrame, stdin } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
-    await pressKey(stdin, '2');
+    await pressKey(stdin, '4');
     expect(lastFrame() ?? '').toContain('HTML Editor');
   });
 });
@@ -200,8 +217,13 @@ describe('PublishScreen -- single-page HTML is Consultant+ for every assessment 
   it('Community: selecting Single-Page HTML Report shows the Consultant licence block, not the app prompt', async () => {
     const { lastFrame, stdin } = render(<PublishScreen onBack={noop} version="0.0.0-test" />);
     await pressKey(stdin, '1');
-    const frame = lastFrame() ?? '';
+    const frame = (lastFrame() ?? '').replace(/\s+/g, ' ');
     expect(frame).toContain('requires a Consultant or Enterprise licence');
     expect(frame).toContain('[Consultant+]');
   });
 });
+
+function lastFrameOf(el: React.ReactElement): string {
+  return render(el).lastFrame() ?? '';
+}
+

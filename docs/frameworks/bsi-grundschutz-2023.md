@@ -129,7 +129,6 @@ Use the demo variant for workshops, training and presentations where a short rep
 ## Get or customise this framework
 
 - Source to view and copy: [github.com/Accenture/SWAO/tree/main/community-frameworks/bsi-grundschutz-2023](https://github.com/Accenture/SWAO/tree/main/community-frameworks/bsi-grundschutz-2023)
-- Demo variant: [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023-demo](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/bsi-grundschutz-2023-demo)
 - Overview of all community frameworks: [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
 
 To customise the framework for one engagement, copy the `bsi-grundschutz-2023` folder (with `framework-meta.yaml` and `controls.yaml`) into the workspace at `wsp/inputs/catalogs/community/bsi-grundschutz-2023/` and edit the copy there. SWAO reads catalogues for the compliance evaluation from this directory, so the workspace copy is the one that counts. Keep the `id` in `regime_meta` unchanged so that `regimes_active` still finds it, and check the copy afterwards with the [health check](/health-check).

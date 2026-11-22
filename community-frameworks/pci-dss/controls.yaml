@@ -56,8 +56,7 @@ controls:
       vulnerability management apply throughout the SDLC.
     severity_default: medium
     evidence_basis:
-      - signal_prefix: PP
-      - signal_prefix: QA
+      - signal_prefix: QUAL
       - signal_prefix: SBOM
     references:
       - "PCI DSS v4.0 Requirement 6.2"
@@ -83,7 +82,8 @@ controls:
       origination, and identity of affected data or resource.
     severity_default: high
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
       - context_input: ops_runbooks
     references:
       - "PCI DSS v4.0 Requirement 10"

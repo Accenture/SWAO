@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect } from 'vitest';
-import { insertCountryHeaders } from './AssessScreen.js';
+import { insertCountryHeaders } from './assess-helpers.js';
 
 describe('insertCountryHeaders (#3380)', () => {
   it('inserts one header per country, grouped and sorted', () => {

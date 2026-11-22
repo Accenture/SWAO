@@ -39,6 +39,7 @@
 //     runs and `data:` URIs are blanked out (same length, so columns stay).
 
 import { readFileSync } from 'fs';
+import { reportPassProgress } from '@swao/core';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -571,6 +572,8 @@ export interface ScanOptions {
   maxHitsPerKey?: number;
   /** One hit per key per file (the first line). Default false. */
   firstHitPerFile?: boolean;
+  /** #4300: phase named in the per-file progress report (default `catalogue_scan`). */
+  progressPhase?: string;
 }
 
 /** #3411: hit counts per path class, including hits beyond the cap. */
@@ -616,7 +619,11 @@ export function scanCatalogueRules<K>(
   let filesScanned = 0;
   let filesSkipped = 0;
   if (rules.length === 0) return { hits, totals, totalsByClass, unexceptedByClass, filesScanned, filesSkipped };
+  const phase = opts.progressPhase ?? 'catalogue_scan';
+  let seen = 0;
   for (const f of files) {
+    // #4300: synchronous file reads, reported per file; the sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase, files: ++seen });
     if (!isScannableFile(f)) { filesSkipped++; continue; }
     const applicable = rules.filter((r) => !r.appliesTo || r.appliesTo(f));
     if (applicable.length === 0) continue;

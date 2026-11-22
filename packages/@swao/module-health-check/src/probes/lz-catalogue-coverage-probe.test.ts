@@ -16,7 +16,8 @@
 // #3155: the LZ catalogue probe sees per-provider workspace copies and validates
 // them through the same resolver the fit uses.
 import { describe, it, expect, afterAll } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolveBundledLzCataloguesDir } from '@swao/module-landing-zone';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildLzCatalogueCoverageProbe, readWorkspaceLzTargets } from './lz-catalogue-coverage-probe.js';
@@ -117,6 +118,35 @@ describe('lz_catalogue_coverage probe: catalogue quality rules (#3282)', () => {
   const acme = (regionsCount: number) => JSON.stringify({
     meta: { schema_version: '0.1', name: 'Acme', provider: 'acme', last_updated: '2026-10-01', source: { mode: 'curated', source_note: 'docs' }, confidence: 'medium', regions_count: regionsCount },
     regions: [{ id: 'de-1', sovereignty: { residency_country: 'DE', operator_jurisdiction: 'EU-entity', extraterritorial_exposure: [], certifications: [] }, services: [{ code: 'vm' }] }],
+  });
+
+  it('#4228: a workspace copy identical to the bundled catalogue reports each finding once; a changed copy keeps its own', () => {
+    const dir = catalogueDir({ 'acme.json': acme(2) });
+    const ws = emptyWorkspace();
+    const wsDir = join(ws, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+    mkdirSync(wsDir, { recursive: true });
+    writeFileSync(join(wsDir, 'acme.json'), acme(2));
+    const same = buildLzCatalogueCoverageProbe(ws, { bundledDir: dir, now: NOW });
+    expect(same.quality?.findings.filter((f) => f.rule === 'regions-count').map((f) => f.file)).toEqual(['bundled/acme.json']);
+    expect(same.quality?.identical_copies).toEqual(['wsp/inputs/catalogs/lz-catalogues/acme.json']);
+    writeFileSync(join(wsDir, 'acme.json'), acme(3));
+    const changed = buildLzCatalogueCoverageProbe(ws, { bundledDir: dir, now: NOW });
+    expect(changed.quality?.findings.filter((f) => f.rule === 'regions-count')).toHaveLength(2);
+    expect(changed.quality?.identical_copies).toBeUndefined();
+  });
+
+  it('#4228: the bundled Azure catalogue and its workspace copy give one info finding for portland (accepted unknown) and no warning', () => {
+    const bundled = resolveBundledLzCataloguesDir();
+    expect(bundled).toBeTruthy();
+    const ws = emptyWorkspace();
+    const wsDir = join(ws, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+    mkdirSync(wsDir, { recursive: true });
+    copyFileSync(join(bundled!, 'azure.json'), join(wsDir, 'azure.json'));
+    const r = buildLzCatalogueCoverageProbe(ws);
+    const portland = r.quality?.findings.filter((f) => f.region === 'portland') ?? [];
+    expect(portland).toHaveLength(1);
+    expect(portland[0]).toMatchObject({ rule: 'facts-unsourced', severity: 'info', file: 'bundled/azure.json' });
+    expect(r.quality?.findings.filter((f) => f.rule === 'facts-unsourced' && f.severity === 'warn')).toEqual([]);
   });
 
   it('#3298: a workspace folder without index.json is found by its catalogue files and checked per file', () => {

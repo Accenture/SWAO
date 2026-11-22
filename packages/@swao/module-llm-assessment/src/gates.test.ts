@@ -104,4 +104,49 @@ describe('checkAppAssessmentPrecondition (#1420)', () => {
     expect(r.ok).toBe(false);
     expect(r.reason).toBe('no-completed-run');
   });
+
+  // #4242: the newest APPLICATION run is the suite; LZ Catalog / service runs are skipped.
+  it('an application run followed by an LZ Catalog run picks the application run', () => {
+    const appDir = makeApp('app-then-lz');
+    const fourteen = Array.from({ length: 14 }, (_, i) => `pass_${i}`);
+    writeRun(appDir, '2026-11-09T14-08-36', { finished_at: '2026-11-09T14:20:00Z', passes_executed: fourteen, pass_stats: [] });
+    writeFileSync(join(appDir, 'wsp', 'runs', '2026-11-09T14-08-36', 'run-context.yaml'), 'assessment_type: application\n', 'utf-8');
+    writeRun(appDir, '2026-11-09T16-06-46', { finished_at: '2026-11-09T16:07:00Z', passes_executed: ['lz_fit', 'lz_fit'], pass_stats: [] });
+    writeFileSync(join(appDir, 'wsp', 'runs', '2026-11-09T16-06-46', 'run-context.yaml'), 'assessment_type: landing-zone-catalog\n', 'utf-8');
+    const r = checkAppAssessmentPrecondition(tmpRoot, 'app-then-lz');
+    expect(r.ok).toBe(true);
+    expect(r.latestRun?.runTs).toBe('2026-11-09T14-08-36');
+    expect(r.latestRun?.passCount).toBe(14);
+    expect(r.latestRun?.assessmentType).toBe('application');
+    expect(r.applicationRuns?.map((a) => a.runTs)).toEqual(['2026-11-09T14-08-36']);
+  });
+
+  it('an LZ Catalog run is recognised from its lz fit pass files when run-context.yaml is absent', () => {
+    const appDir = makeApp('lz-files');
+    writeRun(appDir, '2026-11-01T10-00-00', completedManifest);
+    writeRun(appDir, '2026-11-02T10-00-00', { finished_at: '2026-11-02T10:01:00Z', passes_executed: ['lz_fit'] });
+    mkdirSync(join(appDir, 'wsp', 'runs', '2026-11-02T10-00-00', 'passes'), { recursive: true });
+    writeFileSync(join(appDir, 'wsp', 'runs', '2026-11-02T10-00-00', 'passes', 'lz-fit.yaml'), 'fit: {}\n', 'utf-8');
+    const r = checkAppAssessmentPrecondition(tmpRoot, 'lz-files');
+    expect(r.latestRun?.runTs).toBe('2026-11-01T10-00-00');
+  });
+
+  it('an app with only LZ Catalog or service runs is not available, with the reason', () => {
+    const appDir = makeApp('lz-only');
+    writeRun(appDir, '2026-11-09T16-06-46', { finished_at: '2026-11-09T16:07:00Z', passes_executed: ['lz_fit'] });
+    writeFileSync(join(appDir, 'wsp', 'runs', '2026-11-09T16-06-46', 'run-context.yaml'), 'assessment_type: landing-zone-catalog\n', 'utf-8');
+    const r = checkAppAssessmentPrecondition(tmpRoot, 'lz-only');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('no-application-run');
+    expect(r.detail).toContain('landing-zone-catalog');
+    expect(r.message).toContain('no completed Application Assessment run');
+
+    const svcDir = makeApp('svc-only');
+    writeRun(svcDir, '2026-11-09T10-00-00', { finished_at: '2026-11-09T10:05:00Z', passes_executed: ['a', 'b', 'c', 'd', 'e'] });
+    writeFileSync(join(svcDir, 'wsp', 'runs', '2026-11-09T10-00-00', 'run-context.yaml'), 'assessment_type: service\n', 'utf-8');
+    const s = checkAppAssessmentPrecondition(tmpRoot, 'svc-only');
+    expect(s.ok).toBe(false);
+    expect(s.reason).toBe('no-application-run');
+    expect(s.detail).toContain('service');
+  });
 });

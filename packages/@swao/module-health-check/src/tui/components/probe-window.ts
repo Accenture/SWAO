@@ -14,22 +14,27 @@
 // ================================================================
 
 /**
- * Probe-list viewport windowing (#1347, corrected by #1390).
+ * Probe-list viewport windowing (#1347, #1390; #4348).
  *
- * useStdout().rows is the FULL terminal height; the wizard header, step
- * title, guidance box, and footer all render in the same Ink frame as the
- * probe list. The original #1347 budget reserved only 8 rows, so with 13
- * probes on a ~30-row terminal the frame overflowed the terminal and Ink
- * corrupted the render (middle rows vanished with no paging indicator).
- *
- * CHROME_RESERVED matches the pass-picker budget (AssessScreen.tsx
- * passVisibleCount = max(4, rows - 18)) so the window shrinks BEFORE the
- * frame can overflow and the paging indicators become mandatory whenever
- * the list does not fit.
+ * #4348: the fixed CHROME_RESERVED of 18 rows is gone. The window comes from
+ * the shared height rule of @swao/tui-kit: the rows ScreenLayout leaves after
+ * the measured chrome and the collapsed guidance box (useListBudget), and the
+ * real wrapped height of every probe row (statusRowHeight; a warn or fail
+ * row with a long reason takes three lines, not two). Before the first
+ * measurement the list takes the shared UNMEASURED_LIST_LINES of tui-kit
+ * (pagedListWindow, no constant of its own), so no frame is ever taller than
+ * the terminal.
  */
 
-export const CHROME_RESERVED = 18;
-export const MIN_VISIBLE = 4;
+import { pagedListWindow, type GuidanceEntry } from '@swao/tui-kit';
+
+/** #4348: the guidance sentence on how the probe list scrolls (Design 126 section 7.10). */
+export const PROBE_LIST_SCROLL_TEXT = 'The list scrolls with the Up and Down arrows and pages with PgUp and PgDn; where the terminal passes the mouse wheel on as arrow keys, the wheel moves the selection the same way.';
+
+/** The probe guidance with the List section (how the list scrolls) appended. */
+export function withScrollSection(entry: GuidanceEntry): GuidanceEntry {
+  return { ...entry, sections: [...(entry.sections ?? []), { label: 'List', text: PROBE_LIST_SCROLL_TEXT }] };
+}
 
 export interface ProbeWindow {
   start: number;      // first visible index (inclusive)
@@ -38,16 +43,13 @@ export interface ProbeWindow {
   belowCount: number; // probes hidden below the window
 }
 
-export function computeProbeWindow(cursor: number, total: number, terminalRows: number): ProbeWindow {
-  const maxVisible = Math.max(MIN_VISIBLE, terminalRows - CHROME_RESERVED);
-  if (total <= maxVisible) {
-    return { start: 0, end: total, aboveCount: 0, belowCount: 0 };
-  }
-  const clampedCursor = Math.max(0, Math.min(cursor, total - 1));
-  const start = Math.max(0, Math.min(
-    clampedCursor - Math.floor(maxVisible / 2),
-    total - maxVisible,
-  ));
-  const end = Math.min(total, start + maxVisible);
-  return { start, end, aboveCount: start, belowCount: total - end };
+/**
+ * The probes shown for `cursor`: `heights` are the wrapped row heights,
+ * `budget` the rows the list may take (undefined before the first measurement).
+ */
+export function computeProbeWindow(cursor: number, heights: readonly number[], budget: number | undefined): ProbeWindow {
+  const total = heights.length;
+  if (total === 0) return { start: 0, end: 0, aboveCount: 0, belowCount: 0 };
+  const w = pagedListWindow(heights, cursor, budget);
+  return { start: w.start, end: w.end, aboveCount: w.above, belowCount: w.below };
 }

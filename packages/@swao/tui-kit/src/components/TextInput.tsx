@@ -15,6 +15,8 @@
 
 import { useState, useRef } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { tone } from '../theme.js';
+import { sanitisePastedText } from '../input/paste.js';
 
 interface TextInputProps {
   label: string;
@@ -48,11 +50,13 @@ export function TextInput({ label, placeholder, initialValue = '', onSubmit, act
     // Handle bracketed paste protocol (Windows Terminal, modern terminals).
     // ESC[200~ opens the paste; ESC[201~ closes it. All content between the
     // markers is applied atomically so key.meta guards do not drop characters.
+    // #4379: Ink strips the leading ESC of a chunk, so the markers are found
+    // without it; the content is cleaned for a single line (sanitisePastedText).
     if (inPasteRef.current) {
-      const combined = pasteBufferRef.current + input;
-      const closeIdx = combined.indexOf('\x1b[201~');
+      const combined = pasteBufferRef.current + (key.return ? '\r' : input);
+      const closeIdx = combined.indexOf('[201~');
       if (closeIdx >= 0) {
-        setValue(v => v + combined.slice(0, closeIdx));
+        setValue(v => v + sanitisePastedText(combined.slice(0, closeIdx)));
         pasteBufferRef.current = '';
         inPasteRef.current = false;
       } else {
@@ -60,12 +64,12 @@ export function TextInput({ label, placeholder, initialValue = '', onSubmit, act
       }
       return;
     }
-    const openIdx = input.indexOf('\x1b[200~');
+    const openIdx = input.indexOf('[200~');
     if (openIdx >= 0) {
-      const after = input.slice(openIdx + 7); // 7 = len('\x1b[200~')
-      const closeIdx = after.indexOf('\x1b[201~');
+      const after = input.slice(openIdx + 5); // 5 = len('[200~')
+      const closeIdx = after.indexOf('[201~');
       if (closeIdx >= 0) {
-        setValue(v => v + after.slice(0, closeIdx));
+        setValue(v => v + sanitisePastedText(after.slice(0, closeIdx)));
       } else {
         inPasteRef.current = true;
         pasteBufferRef.current = after;
@@ -98,10 +102,10 @@ export function TextInput({ label, placeholder, initialValue = '', onSubmit, act
       {labelAbove && <Text bold>{label}:</Text>}
       <Box>
         {!labelAbove && <Text bold>{label}: </Text>}
-        <Text color={dimmed ? undefined : 'cyan'} dimColor={dimmed}>{display}</Text>
-        {active && <Text color="cyanBright">|</Text>}
+        <Text {...tone(dimmed ? 'muted' : 'text')}>{display}</Text>
+        {active && <Text {...tone('selection')}>|</Text>}
         {active && mask !== undefined && (
-          <Text dimColor>{'  Ctrl+E: ' + (revealed ? 'hide' : 'reveal')}</Text>
+          <Text {...tone('muted')}>{'  Ctrl+E: ' + (revealed ? 'hide' : 'reveal')}</Text>
         )}
       </Box>
     </Box>

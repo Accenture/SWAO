@@ -36,6 +36,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { load } from 'js-yaml';
+import { logPortfolioAt, roundCostUsd, withLlmCallContext } from '@swao/core';
 import { loadInfraCatalogue, type InfraCatalogue } from '../catalog/infra-cat.js';
 import { minConfidence, topicConfidence, distribution, type ConfidenceDistribution } from './confidence.js';
 import { emptyEolBlock, queryEol } from './eol-client.js';
@@ -91,6 +92,8 @@ export interface ServiceResearchOptions {
   baseUrls?: Partial<ResearchBaseUrls>;
   rateLimits?: { nvd?: { max: number; windowMs: number }; vt?: { max: number; windowMs: number } };
   onProgress?: (line: string) => void;
+  /** #4485: when the caller logged service.research.prepare.start (Date.now()); prepare.complete counts from it. */
+  prepareStartedAt?: number;
   builtinCatalogueDir?: string | null;
   userAgent?: string;
   /**
@@ -134,6 +137,34 @@ export interface ServiceResearchResult {
   /** Confidence per API topic (#3168): the composite alone hides which topic is weak. */
   topicDistribution: Record<string, ConfidenceDistribution>;
   dryRun: boolean;
+  /** #4270: apps whose research threw; the batch continued with the next app. */
+  failed?: ServiceResearchFailure[];
+  /** #4270: per topic, how many apps were skipped for which reason (`no_api_key`, `no_binary_hash`, `no_input`, ...). */
+  skippedReasons?: Record<string, Record<string, number>>;
+  /** #4270: successful LLM calls of the batch and their summed cost (USD). */
+  llmCalls?: number;
+  costUsd?: number;
+}
+
+/** #4270: one app whose research failed. */
+export interface ServiceResearchFailure {
+  appId: string;
+  reason: string;
+}
+
+/**
+ * #4270: `skipped_reason` per topic stub of one app (topics without a stub or
+ * not skipped are absent).
+ */
+export function topicSkipReasons(researchDir: string): Partial<Record<ResearchTopic, string>> {
+  const out: Partial<Record<ResearchTopic, string>> = {};
+  for (const topic of RESEARCH_TOPICS) {
+    const front = readStub(join(researchDir, `${topic}.md`))?.front as Record<string, unknown> | undefined;
+    // The VirusTotal stub keeps its reason in the vt block (`no_api_key`, `no_binary_hash`).
+    const reason = front?.['skipped_reason'] ?? (front?.['vt'] as { skipped_reason?: unknown } | undefined)?.skipped_reason;
+    if (typeof reason === 'string' && reason !== '') out[topic] = reason;
+  }
+  return out;
 }
 
 export class ResearchError extends Error {
@@ -189,9 +220,14 @@ export function readServiceApp(appDir: string, appId: string): ResearchAppInput 
   };
 }
 
-export function discoverServiceApps(workspacePath: string): ResearchAppInput[] {
+export function discoverServiceApps(workspacePath: string, opts?: { appId?: string }): ResearchAppInput[] {
   const appsDir = join(workspacePath, 'apps');
   if (!existsSync(appsDir)) return [];
+  // #4485: one app reads only its own .swao.yml, not every app of the workspace.
+  if (opts?.appId !== undefined) {
+    const one = readServiceApp(join(appsDir, opts.appId), opts.appId);
+    return one ? [one] : [];
+  }
   return readdirSync(appsDir, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .map((d) => readServiceApp(join(appsDir, d.name), d.name))
@@ -211,6 +247,38 @@ function sameInputs(front: Record<string, unknown> | undefined, app: ResearchApp
 
 const isProtected = (front: Record<string, unknown> | undefined): boolean =>
   !!front && (typeof front['reviewed_by'] === 'string' || front['provenance'] === 'user-provided');
+
+/** #4236: how many LLM research calls a research run would skip because the topic stub is still valid. */
+export interface CachedLlmResearch {
+  /** Service apps in the workspace. */
+  apps: number;
+  /** LLM topics over all those apps (apps x 4). */
+  topicsTotal: number;
+  /** Topics a research run keeps without an LLM call (fresh researched stub for the same inputs, or analyst-reviewed). */
+  topicsCached: number;
+}
+
+/**
+ * #4236: the cached share of LLM research, with the rule the research run applies
+ * (`runServiceResearch`: an unchanged researched stub within `STUB_TTL_DAYS.llm`
+ * for the same vendor, product and version, or a protected stub, is not re-asked).
+ */
+export function cachedLlmResearch(workspacePath: string, now: Date = new Date(), opts?: { appId?: string }): CachedLlmResearch {
+  // #4485 / #4497: One service counts the stubs of that app only (not the 4 stubs of every app).
+  const apps = discoverServiceApps(workspacePath, opts?.appId !== undefined ? { appId: opts.appId } : undefined);
+  let cached = 0;
+  for (const app of apps) {
+    const dir = join(workspacePath, 'apps', app.appId, 'wsp', 'inputs', 'research');
+    for (const topic of LLM_TOPICS) {
+      const front = readStub(join(dir, `${topic}.md`))?.front;
+      if (!front) continue;
+      if (isProtected(front)) { cached += 1; continue; }
+      const old = (front as { llm?: LlmBlock }).llm;
+      if (sameInputs(front, app) && front['status'] === 'researched' && isFresh(old, STUB_TTL_DAYS.llm, now, false)) cached += 1;
+    }
+  }
+  return { apps: apps.length, topicsTotal: apps.length * LLM_TOPICS.length, topicsCached: cached };
+}
 
 function stubHeader(topic: ResearchTopic, app: ResearchAppInput) {
   return { topic, app_id: app.appId, vendor_name: app.vendor, product_name: app.appName, version: app.version };
@@ -282,9 +350,21 @@ export async function runServiceResearch(opts: ServiceResearchOptions): Promise<
   const llm = opts.skipLlm ? null : opts.llm ?? null;
   const llmSkipReason = opts.skipLlm ? LLM_SKIP_REASONS.byUser : llm ? null : opts.llmSkipReason ?? LLM_SKIP_REASONS.noLlm;
 
-  let apps = discoverServiceApps(opts.workspacePath);
+  // #4485: the preparation is observable: one phase line per step with its duration.
+  const prepLog = (level: 'info' | 'warn', code: string, message: string, context: Record<string, unknown>): void => {
+    try { logPortfolioAt(opts.workspacePath, level, code, message, { context }); } catch { /* logging never stops research */ }
+  };
+  const prepStarted = opts.prepareStartedAt ?? Date.now();
+  let phaseStarted = Date.now();
+  const phaseDone = (step: string, extra: Record<string, unknown> = {}): void => {
+    const ms = Date.now() - phaseStarted;
+    prepLog('info', 'service.research.prepare.phase', `Service research preparation: ${step} (${(ms / 1000).toFixed(1)} s)`, { step, duration_ms: ms, ...(opts.appId ? { app_filter: opts.appId } : {}), ...extra });
+    phaseStarted = Date.now();
+  };
+
+  const apps = discoverServiceApps(opts.workspacePath, opts.appId ? { appId: opts.appId } : undefined);
+  phaseDone('read the service apps', { apps: apps.length });
   if (opts.appId) {
-    apps = apps.filter((a) => a.appId === opts.appId);
     if (apps.length === 0) throw new ResearchError(`no service app "${opts.appId}" in this workspace (apps/${opts.appId}/.swao.yml with assessment.type: service)`);
   }
   if (apps.length === 0) throw new ResearchError('no service apps in this workspace; run swao service init first');
@@ -294,6 +374,7 @@ export async function runServiceResearch(opts: ServiceResearchOptions): Promise<
     ...(opts.builtinCatalogueDir !== undefined ? { builtinDir: opts.builtinCatalogueDir } : {}),
   });
   const service = (id: string | null) => (id ? catalogue.services.find((s) => s.id === id) : undefined);
+  phaseDone('load the infrastructure catalogue', { services: catalogue.services.length });
 
   let bsiItems: ReturnType<typeof parseBsiRss> | null = null;
   let bsiError: string | null = null;
@@ -307,9 +388,13 @@ export async function runServiceResearch(opts: ServiceResearchOptions): Promise<
   };
 
   progress(`Researching ${apps.length} app(s)...${dryRun ? ' (dry run: no requests, no writes)' : ''}`);
+  const logResearch = (level: 'info' | 'warn', code: string, message: string, context: Record<string, unknown>): void => {
+    try { logPortfolioAt(opts.workspacePath, level, code, message, { context }); } catch { /* logging never stops research */ }
+  };
   const results: AppResearchResult[] = [];
 
-  for (const [i, app] of apps.entries()) {
+  // #4270: one app's research; the batch loop below wraps it with its events and LLM call context.
+  const researchApp = async (app: ResearchAppInput): Promise<AppResearchResult> => {
     const dir = join(opts.workspacePath, 'apps', app.appId, 'wsp', 'inputs', 'research');
     const topics = {} as Record<ResearchTopic, TopicAction>;
     const conf = {} as Record<ResearchTopic, ResearchConfidence | null>;
@@ -373,7 +458,9 @@ export async function runServiceResearch(opts: ServiceResearchOptions): Promise<
         }
         const model = llm as ResearchLlm;
         llmTasks.push((async () => {
-          const out = await researchTopicWithLlm(model, llmTopic, { vendor: app.vendor, product: app.appName, version: app.version, infraCategory: app.infraCategory }, now);
+          // #4270: provider.llm.* events of this call carry caller service.research.<topic> and the app id.
+          const out = await withLlmCallContext({ caller: `service.research.${llmTopic}`, appId: app.appId }, () =>
+            researchTopicWithLlm(model, llmTopic, { vendor: app.vendor, product: app.appName, version: app.version, infraCategory: app.infraCategory }, now));
           if (out.skippedReason) {
             const note = llmFailedNote(out.skippedReason, out.block.error);
             writeStub(path, {
@@ -519,17 +606,76 @@ export async function runServiceResearch(opts: ServiceResearchOptions): Promise<
       writeFileSync(join(sigDir, RESEARCH_SIGNALS_FILE), `${JSON.stringify(sigFile, null, 2)}\n`, 'utf-8');
       signalCount = signals.length;
     }
-    results.push({ appId: app.appId, topics, composite, topicConfidence: conf, signalCount });
-    const shown = llm ? RESEARCH_TOPICS : API_TOPICS;
-    const summary = shown.map((t) => `${t.split('-')[0]} ${topics[t]}${conf[t] ? `/${conf[t]}` : ''}`).join(', ');
-    progress(`[${i + 1}/${apps.length}] ${app.appId}: ${summary}; composite ${composite ?? 'none'}${signalCount !== null ? `; ${signalCount} RESEARCH signal(s)` : ''}`);
-  }
+    return { appId: app.appId, topics, composite, topicConfidence: conf, signalCount };
+  };
+
+  // #4270: batch and per-app events (portfolio log) with call count and cost from the LLM call context.
+  const batchStarted = Date.now();
+  const failed: ServiceResearchFailure[] = [];
+  const skipped: Record<string, Record<string, number>> = {};
+  const prepMs = Date.now() - prepStarted;
+  logResearch('info', 'service.research.prepare.complete', `Service research preparation complete (${(prepMs / 1000).toFixed(1)} s)`, {
+    duration_ms: prepMs, apps_total: apps.length, ...(opts.appId ? { app_filter: opts.appId } : {}),
+  });
+  logResearch('info', 'service.research.start', `Service research started: ${apps.length} app(s)${dryRun ? ' (dry run)' : ''}`, {
+    apps_total: apps.length, ...(opts.appId ? { app_filter: opts.appId } : {}), refresh, dry_run: dryRun,
+    llm_topics: llm ? LLM_TOPICS.length : 0, ...(llm ? { llm_provider: llm.name, llm_model: llm.model } : { llm_skip_reason: llmSkipReason }),
+  });
+  const batch = await withLlmCallContext({ caller: 'service.research' }, async (batchCtx) => {
+    for (const [i, app] of apps.entries()) {
+      const appStarted = Date.now();
+      await withLlmCallContext({ caller: 'service.research.app', appId: app.appId }, async (appCtx) => {
+        try {
+          const r = await researchApp(app);
+          results.push(r);
+          const reasons = dryRun ? {} : topicSkipReasons(join(opts.workspacePath, 'apps', app.appId, 'wsp', 'inputs', 'research'));
+          for (const [topic, reason] of Object.entries(reasons)) {
+            const byReason = (skipped[topic] ??= {});
+            byReason[reason] = (byReason[reason] ?? 0) + 1;
+          }
+          const actions = Object.values(r.topics);
+          logResearch('info', 'service.research.app.complete', `Service research ${i + 1}/${apps.length}: ${app.appId} complete`, {
+            app_id: app.appId, index: i + 1, total: apps.length, status: 'ok',
+            topics_written: actions.filter((a) => a === 'created' || a === 'refreshed').length,
+            topics_unchanged: actions.filter((a) => a === 'unchanged').length,
+            topics_protected: actions.filter((a) => a === 'protected').length,
+            topics_skipped: Object.keys(reasons).length, composite: r.composite, signals: r.signalCount,
+            llm_calls: appCtx.llmCalls, cost_usd: roundCostUsd(appCtx.costUsd), duration_ms: Date.now() - appStarted,
+          });
+          const shown = llm ? RESEARCH_TOPICS : API_TOPICS;
+          const summary = shown.map((t) => `${t.split('-')[0]} ${r.topics[t]}${r.topicConfidence[t] ? `/${r.topicConfidence[t]}` : ''}`).join(', ');
+          progress(`[${i + 1}/${apps.length}] ${app.appId}: ${summary}; composite ${r.composite ?? 'none'}${r.signalCount !== null ? `; ${r.signalCount} RESEARCH signal(s)` : ''}`);
+        } catch (e) {
+          // One app's failure no longer stops the batch: it is logged and listed, the next app runs.
+          const reason = (e instanceof Error ? e.message : String(e)).replace(/\s+/g, ' ').trim().slice(0, 300);
+          failed.push({ appId: app.appId, reason });
+          logResearch('warn', 'service.research.app.failed', `Service research ${i + 1}/${apps.length}: ${app.appId} failed: ${reason}`, {
+            app_id: app.appId, index: i + 1, total: apps.length, status: 'failed', reason,
+            llm_calls: appCtx.llmCalls, cost_usd: roundCostUsd(appCtx.costUsd), duration_ms: Date.now() - appStarted,
+          });
+          progress(`[${i + 1}/${apps.length}] ${app.appId}: failed (${reason})`);
+        }
+      });
+    }
+    return batchCtx;
+  });
 
   // #3289: the LLM topics get a distribution line only when an LLM researched them.
   const topicDistribution = Object.fromEntries((llm ? RESEARCH_TOPICS : API_TOPICS).map((t) => [t, distribution(results.map((r) => r.topicConfidence[t] ?? null))]));
+  const compositeDistribution = distribution(results.map((r) => r.composite));
+  // #4270 / #4238: per topic, why apps had nothing to look up (no_api_key is a setup
+  // gap, no_binary_hash is expected for intake-only service apps, no_input a data gap).
+  logResearch(failed.length > 0 ? 'warn' : 'info', 'service.research.complete',
+    `Service research complete: ${results.length} of ${apps.length} app(s) ok${failed.length > 0 ? `, ${failed.length} failed` : ''}, ${batch.llmCalls} LLM call(s), ${roundCostUsd(batch.costUsd)} USD`, {
+      apps_total: apps.length, apps_ok: results.length, apps_failed: failed.length,
+      ...(failed.length > 0 ? { failed_apps: failed.slice(0, 20).map((f) => f.appId) } : {}),
+      llm_calls: batch.llmCalls, cost_usd: roundCostUsd(batch.costUsd), duration_ms: Date.now() - batchStarted,
+      dry_run: dryRun, composite: compositeDistribution, topics: topicDistribution, skipped_reasons: skipped,
+    });
   return {
     apps: results, llmTopics: LLM_TOPICS, llm: llm ? { provider: llm.name, model: llm.model } : null, llmSkipReason,
-    distribution: distribution(results.map((r) => r.composite)), topicDistribution, dryRun,
+    distribution: compositeDistribution, topicDistribution, dryRun,
+    failed, skippedReasons: skipped, llmCalls: batch.llmCalls, costUsd: roundCostUsd(batch.costUsd),
   };
 }
 

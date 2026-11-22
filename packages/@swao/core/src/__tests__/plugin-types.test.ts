@@ -47,7 +47,7 @@ describe('@swao/core plugin-types', () => {
       'audit',
       'landing-zone',
       'landing-zone-catalog',
-      'landing-zone-customer',
+      'landing-zone-live',
       'hybrid',
       'llm',
     ];

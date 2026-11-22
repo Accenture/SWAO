@@ -18,13 +18,16 @@
 // subprocess calls are mocked via vi.mock('child_process') so no real IaC
 // toolchain needs to be installed in CI. Per CLAUDE.md SS5.9 / issue #1328.
 
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 import type { SpawnSyncReturns } from 'child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 vi.mock('child_process', () => ({ spawnSync: vi.fn() }));
 
 import { spawnSync } from 'child_process';
-import { buildIaCToolchainProbe, parseToolVersion, formatToolVersion } from './iac-toolchain-probe.js';
+import { buildIaCToolchainProbe, parseToolVersion, formatToolVersion, workspaceHasIacSources } from './iac-toolchain-probe.js';
 
 const mockSpawn = vi.mocked(spawnSync);
 
@@ -106,8 +109,8 @@ describe('buildIaCToolchainProbe -- tools not found (#1328)', () => {
   });
 });
 
-describe('buildIaCToolchainProbe -- partial toolchain (#1328)', () => {
-  it('returns warn + partial message when only terraform is found', () => {
+describe('buildIaCToolchainProbe -- partial toolchain (#1328, #4224)', () => {
+  it('returns ok with the missing tools as a note when only terraform is found (#4224)', () => {
     mockSpawn
       .mockReturnValueOnce(makeSpawnResult('Terraform v1.9.8', 0))
       .mockReturnValueOnce(makeNotFoundResult())
@@ -117,10 +120,10 @@ describe('buildIaCToolchainProbe -- partial toolchain (#1328)', () => {
 
     const result = buildIaCToolchainProbe();
 
-    expect(result.status).toBe('warn');
+    expect(result.status).toBe('ok');
     expect(result.tools[0]?.available).toBe(true);
     expect(result.tools.slice(1).every((t) => !t.available)).toBe(true);
-    expect(result.message).toMatch(/partial/);
+    expect(result.message).toMatch(/Not found \(optional\)/);
     expect(result.message).toMatch(/opentofu/);
     expect(result.message).toMatch(/pulumi/);
     expect(result.message).toMatch(/checkov/);
@@ -202,7 +205,7 @@ describe('buildIaCToolchainProbe -- terraform -json output (#3172)', () => {
 
     expect(result.tools[0]?.available).toBe(true);
     expect(result.tools[0]?.version).toBe('v1.9.8');
-    expect(result.message).toBe('IaC toolchain (partial): terraform v1.9.8. Not found: opentofu, pulumi, checkov, kics.');
+    expect(result.message).toBe('IaC toolchain ready: terraform v1.9.8. Not found (optional): opentofu, pulumi, checkov, kics.');
     expect(result.message).not.toContain('{');
   });
 
@@ -215,5 +218,66 @@ describe('buildIaCToolchainProbe -- terraform -json output (#3172)', () => {
 
     expect(result.tools[0]?.available).toBe(true);
     expect(result.message).toContain('terraform (version unknown)');
+  });
+});
+
+// #4224: the probe rates the tools as the Tools step does (all optional): no
+// tool found warns only when the workspace holds IaC sources.
+describe('buildIaCToolchainProbe -- workspace IaC sources (#4224)', () => {
+  const roots: string[] = [];
+  afterAll(() => { for (const r of roots) rmSync(r, { recursive: true, force: true }); });
+  function ws(files: string[]): string {
+    const d = mkdtempSync(join(tmpdir(), 'swao-iac-4224-'));
+    roots.push(d);
+    for (const f of files) {
+      mkdirSync(join(d, f, '..'), { recursive: true });
+      writeFileSync(join(d, f), '');
+    }
+    return d;
+  }
+
+  it('no tool and IaC sources in the workspace: warn', () => {
+    mockSpawn.mockReturnValue(makeNotFoundResult());
+    const d = ws(['apps/shop/wsp/inputs/source/infra/main.tf']);
+    expect(buildIaCToolchainProbe(d).status).toBe('warn');
+  });
+
+  it('no tool and no IaC sources: info, nothing to validate', () => {
+    mockSpawn.mockReturnValue(makeNotFoundResult());
+    const d = ws(['apps/shop/wsp/inputs/source/README.md', 'node_modules/x/main.tf']);
+    const result = buildIaCToolchainProbe(d);
+    expect(result.status).toBe('info');
+    expect(result.message).toMatch(/no IaC sources in the workspace/);
+  });
+
+  it('a partial toolchain is ok with the missing list in a workspace with IaC sources', () => {
+    mockSpawn
+      .mockReturnValueOnce(makeSpawnResult('Terraform v1.9.8', 0))
+      .mockReturnValue(makeNotFoundResult());
+    const d = ws(['apps/shop/wsp/inputs/source/main.tf']);
+    const result = buildIaCToolchainProbe(d);
+    expect(result.status).toBe('ok');
+    expect(result.message).toContain('Not found (optional): opentofu, pulumi, checkov, kics');
+  });
+
+  it('workspaceHasIacSources finds .tf, .tfvars, .tfstate and Pulumi.yaml and skips node_modules and .git', () => {
+    expect(workspaceHasIacSources(ws(['a/b/prod.tfvars']))).toBe(true);
+    expect(workspaceHasIacSources(ws(['a/terraform.tfstate']))).toBe(true);
+    expect(workspaceHasIacSources(ws(['stack/Pulumi.yaml']))).toBe(true);
+    expect(workspaceHasIacSources(ws(['.git/x.tf', 'node_modules/y/z.tf', 'docs/readme.md']))).toBe(false);
+  });
+
+  // #4461: a wsp folder is walked into its inputs only (and not into inputs/research).
+  it('workspaceHasIacSources walks a wsp folder into inputs only and skips inputs/research', () => {
+    expect(workspaceHasIacSources(ws(['apps/shop/wsp/inputs/terraform/main.tf']))).toBe(true);
+    expect(workspaceHasIacSources(ws(['apps/shop/wsp/inputs/source/infra/main.tf']))).toBe(true);
+    expect(workspaceHasIacSources(ws(['apps/shop/wsp/publications/x.tf', 'apps/shop/wsp/cache/y.tf', 'apps/shop/wsp/inputs/research/z.tf']))).toBe(false);
+    // A folder named wsp inside a source tree is pruned the same way; a .tf directly in it still counts.
+    expect(workspaceHasIacSources(ws(['apps/shop/wsp/inputs/source/wsp/main.tf']))).toBe(true);
+    const many = Array.from({ length: 50 }, (_, i) => 'apps/svc' + i + '/wsp/publications/latest-service.html');
+    const stats = { dirs: 0, entries: 0 };
+    expect(workspaceHasIacSources(ws([...many, 'apps/zz/wsp/inputs/terraform/main.tf']), stats)).toBe(true);
+    // root, apps, 51 app folders, 51 wsp folders, the inputs and terraform folder of zz: no publications folder.
+    expect(stats.dirs).toBe(1 + 1 + 51 + 51 + 2);
   });
 });

@@ -14,7 +14,7 @@
 // ================================================================
 
 import type { LlmProvider, LlmUsage, LlmTrace, LlmCompletion, LlmToolChatParams } from './types.js';
-import { anthropicCostUsd } from './types.js';
+import { anthropicTableRates, ratedUsageCost, type CostRates } from './types.js';
 import { logPortfolio } from '@swao/core';
 import { scrubForEgress } from './egress-redaction.js';
 import {
@@ -75,6 +75,8 @@ export class AnthropicLlmProvider implements LlmProvider {
   private readonly messagesUrl: string;
   private readonly appId: string | undefined;
   private readonly idleTimeoutMs: number;
+  /** #4372: rates of this model (connector yaml, else the code table on the legacy path); undefined = unpriced. */
+  private readonly rates: CostRates | undefined;
   /** Concurrency limiter key (#3284): provider + endpoint origin. */
   readonly concurrencyKey: string;
   private lastUsage: LlmUsage | undefined;
@@ -94,8 +96,16 @@ export class AnthropicLlmProvider implements LlmProvider {
    * @param maxTokens   Optional max output tokens; defaults to DEFAULT_MAX_TOKENS (8192).
    *                    Set via `providers.llm.primary.max_tokens` in .swao.yml to increase
    *                    the budget for large-corpus passes (e.g. pass 03 with 15+ files).
+   * @param costConfig  #4372: connector yaml rates of the model (gateway) or the
+   *                    .swao.yml cost_per_token (legacy factory). Win over the code table.
+   * @param useCodeTable #4372: fall back to ANTHROPIC_PRICING_PER_MTOK when no
+   *                    rates are given (legacy factory path, default). The gateway
+   *                    passes false: a model without yaml rates is unpriced.
    */
-  constructor(apiKey?: string, model?: string, temperature?: number, maxTokens?: number, baseUrl?: string, appId?: string) {
+  constructor(
+    apiKey?: string, model?: string, temperature?: number, maxTokens?: number, baseUrl?: string, appId?: string,
+    costConfig?: CostRates, useCodeTable = true,
+  ) {
     const key = apiKey ?? process.env['SWAO_ANTHROPIC_API_KEY'] ?? process.env['ANTHROPIC_API_KEY'];
     if (!key) {
       throw new Error(
@@ -110,6 +120,7 @@ export class AnthropicLlmProvider implements LlmProvider {
     // different host (aggregators expose /v1/messages too). Default unchanged.
     this.messagesUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/v1/messages` : ANTHROPIC_API_URL;
     this.appId = appId;
+    this.rates = costConfig ?? (useCodeTable ? anthropicTableRates(this.model) : undefined);
     this.idleTimeoutMs = resolveLlmIdleTimeoutMs();
     this.concurrencyKey = llmLimiterKey(this.name, this.messagesUrl);
   }
@@ -369,8 +380,10 @@ export class AnthropicLlmProvider implements LlmProvider {
         );
       }
 
-      const costUsd = anthropicCostUsd(this.model, inputTokens, outputTokens);
-      const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd };
+      // #4372: a list price estimate (configured) or none, never billed.
+      const cost = ratedUsageCost(this.rates, inputTokens, outputTokens);
+      const costUsd = cost.cost_usd;
+      const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, ...cost };
       this.lastUsage = usage;
       return {
         value: { text: rawText, usage },
@@ -495,7 +508,7 @@ export class AnthropicLlmProvider implements LlmProvider {
             okContext: {
               tokens_in: inTok,
               tokens_out: outTok,
-              cost_usd: anthropicCostUsd(this.model, inTok, outTok),
+              cost_usd: ratedUsageCost(this.rates, inTok, outTok).cost_usd,
               stop_reason: json.stop_reason,
             },
           };
@@ -508,7 +521,7 @@ export class AnthropicLlmProvider implements LlmProvider {
       usage = {
         input_tokens: totalInputTokens,
         output_tokens: totalOutputTokens,
-        cost_usd: anthropicCostUsd(this.model, totalInputTokens, totalOutputTokens),
+        ...ratedUsageCost(this.rates, totalInputTokens, totalOutputTokens),
       };
       this.lastUsage = usage;
 

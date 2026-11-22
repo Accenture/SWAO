@@ -13,7 +13,8 @@
 //
 // ================================================================
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { writeFileAtomicSync } from './atomic-write.js';
 import { join } from 'path';
 import { homedir, hostname, userInfo } from 'os';
 import { logPortfolio } from './log.js';
@@ -110,9 +111,19 @@ function isEncryptedVault(obj: unknown): obj is EncryptedVault {
   );
 }
 
-function envVarName(name: string): string {
-  return `SWAO_CREDENTIAL_${name.toUpperCase().replace(/-/g, '_')}`;
+// #3570 (Design 121 Q-M5): `:` in scoped names (lz:<lz-id>:<scope-id>:<field>,
+// provider:<p>:token) is not portable in environment variable names, so it
+// maps to `__` before `-` maps to `_`. The ids around the separators are
+// kebab-case (no `_`, no double hyphen), so list() can reverse the mapping.
+export function credentialEnvVarName(name: string): string {
+  return `SWAO_CREDENTIAL_${name.toUpperCase().replace(/:/g, '__').replace(/-/g, '_')}`;
 }
+
+function credentialNameFromEnvVar(envKey: string): string {
+  return envKey.slice('SWAO_CREDENTIAL_'.length).toLowerCase().replace(/__/g, ':').replace(/_/g, '-');
+}
+
+const envVarName = credentialEnvVarName;
 
 function redact(_value: string): string {
   return '[REDACTED]';
@@ -175,9 +186,10 @@ export class CredentialStore {
       // path. On POSIX, rename(2) is atomic; on Windows, renameSync uses
       // MoveFileExW which is not crash-atomic but avoids EBUSY from concurrent
       // writeFileSync calls racing on the same file handle.
-      const tmpFile = this.credFile + '.tmp';
-      writeFileSync(tmpFile, JSON.stringify(vault, null, 2), { encoding: 'utf-8', mode: 0o600 });
-      renameSync(tmpFile, this.credFile);
+      // #3686/#3823: a unique temp name per write, a bounded retry of a
+      // transient Windows lock (EPERM/EBUSY/EACCES from an antivirus scanner
+      // or the indexer) on the rename, and the temp file removed on failure.
+      writeFileAtomicSync(this.credFile, JSON.stringify(vault, null, 2), { mode: 0o600 });
     } catch (err) {
       logPortfolio('error', 'credential.store.error', 'Credential vault write failed', {
         context: { error: (err as NodeJS.ErrnoException).code ?? (err as Error).constructor.name },
@@ -208,7 +220,7 @@ export class CredentialStore {
     const fileKeys = Object.keys(data);
     const envKeys = Object.keys(process.env)
       .filter((k) => k.startsWith('SWAO_CREDENTIAL_'))
-      .map((k) => k.slice('SWAO_CREDENTIAL_'.length).toLowerCase().replace(/_/g, '-'));
+      .map(credentialNameFromEnvVar);
     return [...new Set([...fileKeys, ...envKeys])].sort();
   }
 
@@ -220,6 +232,30 @@ export class CredentialStore {
     // #2325: audit log -- key name only, never the value
     logPortfolio('info', 'credential.deleted', 'Credential deleted', { context: { key: name } });
     return true;
+  }
+
+  // #3570: rename vault keys in one load/modify/save, so a failed write cannot
+  // leave half the keys moved. Refuses (throws, vault unchanged) when a source
+  // key is missing or a target key already exists. Logs key names only.
+  async moveKeys(moves: ReadonlyArray<{ from: string; to: string }>): Promise<void> {
+    const { data, salt } = this.load();
+    for (const { from, to } of moves) {
+      if (!(from in data)) throw new Error(`[credential] cannot move "${from}": not in the vault`);
+      if (to in data) throw new Error(`[credential] cannot move "${from}" to "${to}": target already exists`);
+    }
+    const targets = new Set<string>();
+    for (const { to } of moves) {
+      if (targets.has(to)) throw new Error(`[credential] cannot move two keys to "${to}"`);
+      targets.add(to);
+    }
+    for (const { from, to } of moves) {
+      data[to] = data[from] as string;
+      delete data[from];
+    }
+    this.save(data, salt);
+    for (const { from, to } of moves) {
+      logPortfolio('info', 'credential.moved', 'Credential moved', { context: { from, to } });
+    }
   }
 
   loadSync(): Record<string, string> {

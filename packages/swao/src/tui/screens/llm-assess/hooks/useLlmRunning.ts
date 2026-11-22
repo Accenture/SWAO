@@ -3,13 +3,12 @@
 // emission, and per-call progress polling.
 
 import { useEffect, useRef } from 'react';
-import { spawn } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
 import {
   orchestrateLegs,
   type ResolvedLeg,
   type OrchestrationResult,
+  type LegChallengeContext,
+  type LegSpawnHooks,
 } from '@swao/module-llm-assessment';
 import { setWorkspaceRoot, logPortfolio, logApp } from '@swao/core';
 import type { SwaoYmlLlmAssessment } from '@swao/core';
@@ -17,6 +16,10 @@ import { LicenseGuard } from '../../../../license/license-guard.js';
 import { SWAO_VERSION } from '../../../../branding.js';
 import type { EligibleApp } from '../types.js';
 import { spawnChallenge, spawnLzChallenge } from '../spawnHelpers.js';
+import { createLegPreflight } from '../../../../commands/llm-leg-preflight.js';
+import { spawnLegProcess } from '../../../../commands/llm-leg-spawn.js';
+import { createLegLogPoller } from '../legLogPoller.js';
+import { legPriceWarning } from '../../../../commands/llm-leg-cost.js';
 
 const MIN_LEGS = 2;
 
@@ -32,9 +35,15 @@ interface UseLlmRunningParams {
   setErrorMsg: (m: string) => void;
   setProgress: React.Dispatch<React.SetStateAction<string[]>>;
   setLegCallLines: React.Dispatch<React.SetStateAction<string[]>>;
+  /** #4472: passes the polled leg has completed (Stage bar), with that leg's id. */
+  setLegPassesDone?: (n: number, legId?: string) => void;
   result: OrchestrationResult | null;
   legWorkspaceForPollRef: React.MutableRefObject<string | null>;
   runStartedAtRef: React.MutableRefObject<number>;
+  /** #4243: transient preparation line (null clears it). */
+  setStatusLine: (line: string | null) => void;
+  /** #4243: Esc cancel aborts this controller (created per run). */
+  abortRef: React.MutableRefObject<AbortController | null>;
 }
 
 export function useLlmRunning({
@@ -49,9 +58,12 @@ export function useLlmRunning({
   setErrorMsg,
   setProgress,
   setLegCallLines,
+  setLegPassesDone,
   result,
   legWorkspaceForPollRef,
   runStartedAtRef,
+  setStatusLine,
+  abortRef,
 }: UseLlmRunningParams): void {
   // Keep stable refs to setters so the async callbacks always target the live
   // React dispatch without needing to add setters to dep arrays.
@@ -65,6 +77,12 @@ export function useLlmRunning({
   setErrorRef.current    = setErrorMsg;
   setProgressRef.current = setProgress;
   setLegCallRef.current  = setLegCallLines;
+  const setPassesRef   = useRef(setLegPassesDone);
+  setPassesRef.current   = setLegPassesDone;
+  // #4472: the leg whose log the poll reads; its passes never count for another leg.
+  const pollLegRef = useRef<string | null>(null);
+  const setStatusRef   = useRef(setStatusLine);
+  setStatusRef.current   = setStatusLine;
 
   // ---- Stage: running ----
   useEffect(() => {
@@ -76,6 +94,8 @@ export function useLlmRunning({
     // correct app NDJSON path during the onProgress callback below.
     setWorkspaceRoot(workspacePath);
     let cancelled = false;
+    const abort = new AbortController();
+    abortRef.current = abort;
 
     void (async () => {
       try {
@@ -94,12 +114,24 @@ export function useLlmRunning({
           },
           keepLegWsp:       cfg.keep_leg_wsp ?? false,
           passSuiteVersion: SWAO_VERSION,
+          signal: abort.signal,
+          // #4242: the application run the comparison refers to (run.start, publication model).
+          ...(selectedApp.suiteRun ? { suiteRun: { runTs: selectedApp.suiteRun.runTs, assessmentType: 'application', passCount: selectedApp.suiteRun.passCount } } : {}),
+          onStatus: (line) => { if (!cancelled) setStatusRef.current(line); },
+          // #4244 (Design 092 section 7.2a): the leg command is checked with
+          // `assess --preflight` in the main workspace before its leg workspace is
+          // copied; a failure ends the leg in red with the real reason.
+          preflightLeg: createLegPreflight({ workspaceRoot: workspacePath, appId: selectedApp.id, crawl: includeCrawl, signal: abort.signal }),
+          // #4372: warn before the run about candidates without a price (shared with the CLI).
+          pricePreflight: (leg) => legPriceWarning(leg, workspacePath),
           onProgress: (m) => {
             if (!cancelled) {
               setProgressRef.current((prev) => [...prev, m]);
               // #2598: persist each orchestrator progress line to the NDJSON log
               // so monitors and the log viewer can see leg-level events in real-time.
-              try { logApp(selectedApp.id, 'info', 'llm.assess.progress', m); } catch { /* best-effort */ }
+              // #4243: one event family (llm_assess.*); failed legs log at error level.
+              const level = /: failed\b/.test(m) ? 'error' : 'info';
+              try { logApp(selectedApp.id, level, 'llm_assess.progress', m); } catch { /* best-effort */ }
             }
           },
           // #2506: only pass challenge spawners for Enterprise tier; on lower tiers
@@ -110,54 +142,49 @@ export function useLlmRunning({
             const guardState = (() => { try { return LicenseGuard.load().state; } catch { return null; } })();
             const isEnterprise = guardState?.tier === 'enterprise';
             if (!isEnterprise) {
-              setProgressRef.current((prev) => [...prev, 'challenge phase: [Enterprise] not available on this tier -- skipping']);
+              setProgressRef.current((prev) => [...prev, 'challenge phase: needs the Enterprise tier, skipped']);
             }
             return isEnterprise
               ? {
-                  spawnChallenge:   (leg: ResolvedLeg, legWsr: string, legEnv: Record<string,string>) => spawnChallenge(selectedApp.id, workspacePath, leg, legWsr, legEnv),
-                  spawnLzChallenge: (leg: ResolvedLeg, legWsr: string, legEnv: Record<string,string>) => spawnLzChallenge(selectedApp.id, workspacePath, leg, legWsr, legEnv),
+                  // #4277: challenges run in the leg workspace on the staged run (ctx).
+                  // #4478: the challenge signal (Esc cancel or a fired challenge limit) kills the challenge tree.
+                  spawnChallenge:   (leg: ResolvedLeg, legWsr: string, legEnv: Record<string,string>, ctx: LegChallengeContext, signal?: AbortSignal, hooks?: LegSpawnHooks) => spawnChallenge(selectedApp.id, workspacePath, leg, legWsr, legEnv, ctx, signal, hooks),
+                  spawnLzChallenge: (leg: ResolvedLeg, legWsr: string, legEnv: Record<string,string>, ctx: LegChallengeContext, signal?: AbortSignal, hooks?: LegSpawnHooks) => spawnLzChallenge(selectedApp.id, workspacePath, leg, legWsr, legEnv, ctx, signal, hooks),
                 }
               : {};
           })(),
-          spawnLeg: (leg, legWorkspaceRoot, legEnv) => {
+          spawnLeg: (leg, legWorkspaceRoot, legEnv, signal, hooks) => {
             if (!cancelled) {
               legWorkspaceForPollRef.current = legWorkspaceRoot;
+              pollLegRef.current = leg.id;
               setLegCallRef.current([]);
+              setPassesRef.current?.(0, leg.id);
             }
-            return new Promise((resolveSpawn) => {
-              const started = Date.now();
-              const isPkg = Boolean((process as { pkg?: unknown }).pkg);
-              const cmd = process.execPath;
-              const baseArgs = isPkg ? [] : [process.argv[1] ?? ''];
-              const child = spawn(
-                cmd,
-                [...baseArgs, 'assess', '--app', selectedApp.id, '--llm', `${leg.connector}:${leg.model}`, '--no-cache', ...(includeCrawl ? [] : ['--no-crawl'])],
-                {
-                  cwd: legWorkspaceRoot,
-                  env: { ...process.env, ...legEnv, PKG_EXECPATH: '' },
-                  stdio: ['ignore', 'pipe', 'pipe'],
-                  windowsHide: true,
-                },
-              );
-              child.on('error', () => resolveSpawn({ exitCode: null, durationMs: Date.now() - started }));
-              child.on('exit', (code) => resolveSpawn({ exitCode: code, durationMs: Date.now() - started }));
+            // #4241 / #4244 / #4470: the shared leg spawn (CLI parity): self-spawn with
+            // the preflight argv, both pipes drained (#4243), the PID to the orchestrator,
+            // and the leg signal (Esc cancel or a fired leg limit) stops the process tree by PID.
+            return spawnLegProcess({
+              appId: selectedApp.id, leg, legWorkspaceRoot, legEnv, crawl: includeCrawl,
+              ...(signal ? { signal } : {}), ...(hooks ? { hooks } : {}),
             });
           },
         });
 
-        if (!cancelled) {
+        // #4256: after an Esc cancel (RunPanel aborts, then the screen returns to the review) the result stays unused.
+        if (!cancelled && !abort.signal.aborted) {
+          setStatusRef.current(null);
           setResultRef.current(orch);
           setStageRef.current('saving');
         }
       } catch (err: unknown) {
-        if (!cancelled) {
+        if (!cancelled && !abort.signal.aborted) {
           setErrorRef.current(err instanceof Error ? err.message : String(err));
           setStageRef.current('error');
         }
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; abortRef.current = null; };
   }, [stage]);
 
   // ---- Stage: saving (#1673 + #2412) ----
@@ -168,9 +195,13 @@ export function useLlmRunning({
       try {
         setWorkspaceRoot(workspacePath);
         const models = resolvedLegs.map(l => `${l.connector}${l.model !== 'default' ? ':' + l.model : ''}`);
-        logPortfolio('info', 'llm_assess.complete', 'LLM Assessment run complete', {
+        // #4243: the status says whether the comparison is complete.
+        const level = result.status === 'complete' ? 'info' : result.status === 'failed' ? 'error' : 'warn';
+        logPortfolio(level, 'llm_assess.complete', `LLM Assessment run ${result.status}`, {
           context: {
             run_dir: result.runDir,
+            status: result.status,
+            legs_failed: result.legs.filter((l) => l.status === 'failed').map((l) => ({ id: l.id, reason: l.reason ?? null })),
             legs: resolvedLegs.length,
             findings: result.findingsCount,
             wall_clock_ms: runStartedAtRef.current > 0 ? Date.now() - runStartedAtRef.current : undefined,
@@ -190,53 +221,15 @@ export function useLlmRunning({
   useEffect(() => {
     if (stage !== 'running' || !selectedApp) return;
 
-    let seenCount = 0;
-    let currentLogPath: string | null = null;
-
+    // #4479: only the bytes added since the last tick are read (was the whole leg log every 1.5 s).
+    const poller = createLegLogPoller(selectedApp.id);
     const timer = setInterval(() => {
-      const legWsp = legWorkspaceForPollRef.current;
-      if (!legWsp) return;
-
-      const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const newLogPath = join(legWsp, 'apps', selectedApp.id, 'wsp', 'logs', `app-events-${monthKey}.ndjson`);
-      if (newLogPath !== currentLogPath) { currentLogPath = newLogPath; seenCount = 0; }
-      if (!existsSync(currentLogPath)) return;
-
-      let raw: string;
-      try { raw = readFileSync(currentLogPath, 'utf-8'); } catch { return; }
-      const lines = raw.split('\n').filter(l => l.trim());
-      const newLines: string[] = [];
-      for (let i = seenCount; i < lines.length; i++) {
-        try {
-          const entry = JSON.parse(lines[i]) as { code?: string; message?: string; context?: Record<string, unknown> };
-          const code = entry.code ?? '';
-          const ctx = (entry.context ?? {}) as Record<string, unknown>;
-          let callLine: string | null = null;
-          // #2598: show orchestrator-level progress lines (leg start/complete/challenge) in real-time
-          if (code === 'llm.assess.progress') {
-            callLine = entry.message ?? '';
-          } else if (code === 'assessment.pass.start') {
-            callLine = `  pass ${String(ctx['num'] ?? '?')} -- ${String(ctx['name'] ?? ctx['pass'] ?? '?')} starting`;
-          } else if (code === 'assessment.pass.complete') {
-            const ms = typeof ctx['wall_clock_ms'] === 'number' ? `${Math.round((ctx['wall_clock_ms'] as number) / 1000)}s` : '?';
-            callLine = `  pass ${String(ctx['num'] ?? '?')} -- ${String(ctx['name'] ?? ctx['pass'] ?? '?')} complete (${ms})`;
-          } else if (/^provider\.llm\.[^.]+\.retry$/.test(code)) {
-            callLine = `    retrying (attempt ${typeof ctx['attempt'] === 'number' ? String(ctx['attempt']) : '?'})`;
-          } else if (/^provider\.llm\.[^.]+\.ok$/.test(code)) {
-            const ms = typeof ctx['latency_ms'] === 'number' ? `${Math.round((ctx['latency_ms'] as number) / 1000)}s` : '?';
-            const att = typeof ctx['attempt'] === 'number' ? ` call ${ctx['attempt']}` : '';
-            callLine = `    LLM${att} complete (${ms})`;
-          }
-          if (callLine) newLines.push(callLine);
-        } catch { /* skip */ }
-      }
-      seenCount = lines.length;
+      const { lines: newLines, passesDone } = poller.poll(legWorkspaceForPollRef.current);
       if (newLines.length > 0) {
         setLegCallRef.current(prev => [...prev, ...newLines].slice(-10));
       }
+      if (passesDone !== null) setPassesRef.current?.(passesDone, pollLegRef.current ?? undefined);
     }, 1500);
-
     return () => clearInterval(timer);
   }, [stage, selectedApp?.id]);
 }

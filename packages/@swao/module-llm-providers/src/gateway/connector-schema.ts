@@ -99,6 +99,12 @@ const ModelEntrySchema = z.object({
   context_window: z.number().int().positive().optional(),
   cost: CostSchema.optional(),
   notes: z.string().optional(),
+  /** #4475: added by live model discovery, not curated in the connector file;
+   *  the next discovery replaces it (a model the platform stopped serving goes). */
+  discovered: z.boolean().optional(),
+  /** #4475: false when the platform's model list of models.discovered_at did not
+   *  contain this curated entry (not served); true when it did. Absent: not checked. */
+  served: z.boolean().optional(),
 }).strict();
 
 const AuthSchema = z.object({
@@ -179,6 +185,12 @@ const ConnectorSchema = z.object({
     default: z.string().min(1),
     catalogue: z.array(ModelEntrySchema).optional(),
     discovery_endpoint: z.string().optional(),
+    /** #4475: false turns live model discovery off (air-gapped platform or no
+     *  list route); the catalogue stays the only source. Default: on, with the
+     *  protocol's list route when no discovery_endpoint is declared. */
+    discovery: z.boolean().optional(),
+    /** #4475: when the served models were last read live (ISO 8601). */
+    discovered_at: z.string().optional(),
   }).strict(),
   defaults: DefaultsSchema.optional(),
   request_overrides: RequestOverridesSchema.optional(),

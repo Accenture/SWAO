@@ -175,13 +175,15 @@ describe.skipIf(!canRunE2e)('TUI E2E (#0670 Phase 4)', () => {
     }
   });
 
-  it('Ctrl+C sends SIGINT and terminates the process', async () => {
+  it('Ctrl+C asks first; a second Ctrl+C within 2 seconds terminates the process (#4379)', async () => {
     setupSandbox();
     const { proc, output, kill } = spawnTui();
 
     try {
       await waitFor(output, 'Workspace Setup');
-      proc.write('\x03'); // Ctrl+C
+      proc.write('\x03'); // Ctrl+C: "Press Ctrl+C again to quit SWAO"
+      await waitFor(output, 'Press Ctrl+C again to quit SWAO', 1500);
+      proc.write('\x03'); // the second Ctrl+C inside the 2 second window
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('Process did not exit on Ctrl+C')), 3000);
         proc.onExit(() => { clearTimeout(timer); resolve(); });
@@ -247,11 +249,9 @@ describe.skipIf(!canRunE2e)('TUI E2E (#0670 Phase 4)', () => {
       // Application Assessment (key '1')
       proc.write('1');
 
-      // App selection: "+ New app..." is item 0; smoke-app is item 1.
-      // Press down arrow then Enter to pick smoke-app.
-      await waitFor(output, '+ New app', 5000);
-      proc.write('\x1B[B'); // down arrow
-      await waitFor(output, 'smoke-app', 3000);
+      // App selection (#4239): applications come first and the cursor starts
+      // on the first application, so Enter picks smoke-app.
+      await waitFor(output, 'smoke-app', 5000);
       proc.write('\r'); // Enter
 
       // Regimes step: select first regime then confirm.

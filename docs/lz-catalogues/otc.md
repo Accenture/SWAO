@@ -1,10 +1,10 @@
-# Open Telekom Cloud / T Cloud Public (otc)
+# T Cloud Public (otc)
 
 This page describes the Landing Zone catalogue `otc` as shipped with SWAO: the provider and its sovereignty model, the regions with their residency and certifications, how the catalogue is refreshed and how to use it as a target.
 
 ## Provider and sovereignty model
 
-Open Telekom Cloud, now marketed as T Cloud Public, is the public cloud of T-Systems International GmbH, a Deutsche Telekom subsidiary. The provider ID stays `otc`. The catalogue covers the regions `eu-de` (Germany) and `eu-nl` (Netherlands), each with three availability zones.
+T Cloud Public (formerly Open Telekom Cloud; renamed by Deutsche Telekom in early 2026) is the public cloud of T-Systems International GmbH, a Deutsche Telekom subsidiary. The provider ID stays `otc`; the console and the technical documentation remain at `console.otc.t-systems.com` and `docs.otc.t-systems.com`. The catalogue covers the regions `eu-de` (Germany) and `eu-nl` (Netherlands), each with three availability zones.
 
 Sovereignty model: the operator is an EU entity without a US parent, so no extraterritorial exposure is recorded. Both regions record BSI C5, ISO/IEC 27001 and SOC 2. Offerings of T Cloud Public outside these two regions are not covered by this catalogue.
 
@@ -15,7 +15,7 @@ Sovereignty model: the operator is an EU entity without a US parent, so no extra
 | Property | Value |
 |---|---|
 | Provider ID (for targets) | `otc` |
-| Catalogue name | Open Telekom Cloud / T Cloud Public service catalogue |
+| Catalogue name | T Cloud Public service catalogue |
 | Regions | 2 |
 | Distinct services | 56 |
 | Operator jurisdiction | EU entity (`EU-entity`) |

@@ -27,7 +27,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
 import { load } from 'js-yaml';
 import { ScaffoldSignalsFileSchema } from '@swao/core';
-import { ColumnMapError, checkPiiDeclarations, columnToIndex, loadColumnMapFile, type ColumnMap } from '@swao/module-service-assessment';
+import { ColumnMapError, checkPiiDeclarations, columnToIndex, loadColumnMapFile, vendorCoverageWarning, serviceAppVendorNames, NO_VENDOR_COLUMN_WARNING_PREFIX, type ColumnMap } from '@swao/module-service-assessment';
+import { serviceWorkspaceState, SERVICE_INTAKE_MISSING } from './service-probes.js';
 
 export type IntakeMappingProbeStatus = 'skip' | 'ok' | 'warn' | 'error';
 
@@ -44,6 +45,9 @@ interface ServicePortfolioBlock {
   headers?: Record<string, Record<string, string>>;
   row_count?: number;
 }
+
+/** #4262: ok message of a service workspace on the default column map (no mapping file recorded). */
+export const DEFAULT_COLUMN_MAP_OK = 'default column map in use (no mapping file recorded)';
 
 /** Share of rows above which a type mismatch is an error and a blank OS is a warning (§21.1). */
 const TYPE_MISMATCH_ERROR_RATIO = 0.1;
@@ -71,17 +75,22 @@ function headersFor(sp: ServicePortfolioBlock, map: ColumnMap): Map<number, stri
 
 export function buildIntakeMappingProbe(workspacePath: string): IntakeMappingProbeResult {
   const sp = readServicePortfolio(workspacePath);
-  if (!sp) return { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] };
-  if (!sp.mapping) return { status: 'skip', message: 'default intake template in use (no --mapping file)', errors: [], warnings: [] };
-
+  if (!sp) {
+    // #4262: a declared service workspace (workspace.assessment_types) without the intake block warns.
+    return serviceWorkspaceState(workspacePath) === 'declared'
+      ? { status: 'warn', message: SERVICE_INTAKE_MISSING, errors: [], warnings: [SERVICE_INTAKE_MISSING] }
+      : { status: 'skip', message: 'not a service workspace', errors: [], warnings: [] };
+  }
   const errors: string[] = [];
   const warnings: string[] = [];
-  const mappingPath = isAbsolute(sp.mapping) ? sp.mapping : join(workspacePath, sp.mapping);
+  // #4262: without a mapping file the default column map applies; the probe
+  // still runs the import checks below (it no longer skips in a service workspace).
+  const mappingPath = sp.mapping ? (isAbsolute(sp.mapping) ? sp.mapping : join(workspacePath, sp.mapping)) : null;
 
   let map: ColumnMap | null = null;
-  if (!existsSync(mappingPath)) {
+  if (mappingPath && !existsSync(mappingPath)) {
     errors.push(`mapping file not found: ${sp.mapping}`);
-  } else {
+  } else if (mappingPath) {
     try {
       map = loadColumnMapFile(mappingPath);
     } catch (e) {
@@ -119,7 +128,15 @@ export function buildIntakeMappingProbe(workspacePath: string): IntakeMappingPro
     }
   }
 
+  // #4489: CVE research and vendor consolidation need vendor names. An import
+  // since #4489 records the warning in scaffold-signals.json; an older one is
+  // checked on the scaffolded apps (vendor.name of apps/<id>/.swao.yml).
+  if (!warnings.some((w) => w.startsWith(NO_VENDOR_COLUMN_WARNING_PREFIX))) {
+    const gap = vendorCoverageWarning(serviceAppVendorNames(workspacePath));
+    if (gap) warnings.push(gap);
+  }
+
   if (errors.length > 0) return { status: 'error', message: `${errors.length} mapping error(s): ${errors[0]}`, errors, warnings };
   if (warnings.length > 0) return { status: 'warn', message: `${warnings.length} warning(s): ${warnings[0]}`, errors, warnings };
-  return { status: 'ok', message: `column map ${sp.mapping} valid`, errors, warnings };
+  return { status: 'ok', message: sp.mapping ? `column map ${sp.mapping} valid` : DEFAULT_COLUMN_MAP_OK, errors, warnings };
 }

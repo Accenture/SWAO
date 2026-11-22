@@ -26,8 +26,9 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { load as yamlLoad, dump as yamlDump } from 'js-yaml';
-import { SCAFFOLD_SIGNAL_CODES, ScaffoldSignalsFileSchema, type ScaffoldSignal } from '@swao/core';
+import { SCAFFOLD_SIGNAL_CODES, ScaffoldSignalsFileSchema, patchSwaoYmlFile, patchSwaoYmlText, type ScaffoldSignal } from '@swao/core';
 import type { AppPlan } from './plan.js';
 
 /** Optional hint subfolders of `ingestion/` that are still honoured; no longer created (#3212). */
@@ -88,8 +89,23 @@ function dump(obj: unknown): string {
   return yamlDump(obj, { lineWidth: -1, noRefs: true, sortKeys: false });
 }
 
-/** Replace (or append) the top-level `service_portfolio:` block, keeping the rest of the file and its comments. */
+/**
+ * Replace (or append) the top-level `service_portfolio:` block, keeping the rest of the file and its comments.
+ * #4283 (b): through the central minimal-patch writer of `@swao/core`: only the
+ * scaffold metadata keys under `service_portfolio` change, in place; analyst
+ * keys (`intake`, glossary, cost options), their order, quoting and the blank
+ * lines around the block stay. The line rewrite below remains only as the
+ * fallback when the helper refuses the file (it does not parse, for example).
+ */
 export function upsertServicePortfolioBlock(text: string, meta: ServicePortfolioMeta): string {
+  const edits = Object.entries(meta).map(([k, value]) => ({ path: ['service_portfolio', k], value }));
+  const patched = patchSwaoYmlText(text, edits);
+  if (patched.ok) return patched.text;
+  return rewriteServicePortfolioBlockLines(text, meta);
+}
+
+/** The pre-#4283 line rewrite of the block, kept as the fallback of upsertServicePortfolioBlock (exported for its tests). */
+export function rewriteServicePortfolioBlockLines(text: string, meta: ServicePortfolioMeta): string {
   const lines = text.split(/\r?\n/);
   const start = lines.findIndex((l) => /^service_portfolio:\s*$/.test(l));
   // trimEnd() strips exactly what `/\s*$/` matched, without its polynomial backtracking.
@@ -158,6 +174,16 @@ export function writeScaffold(
       merged['generated_fields'] = existing?.['generated_fields'] ?? body['generated_fields'];
       body = merged;
       result.refreshed.push(p.appId);
+      // #4283 (Design 125 section 7): a refresh edits only the changed
+      // top-level keys in place through the core minimal-patch writer, so the
+      // analyst's comments and key order stay; never a whole-file dump.
+      mkdirSync(join(appDir, 'ingestion'), { recursive: true });
+      const edits = Object.keys(body)
+        .filter((k) => !isDeepStrictEqual(existing?.[k], body[k]))
+        .map((k) => ({ path: [k], value: body[k] }));
+      const patched = patchSwaoYmlFile(ymlPath, edits);
+      if (!patched.ok) throw new Error(`apps/${p.appId}/.swao.yml could not be refreshed safely: ${patched.error}`);
+      continue;
     } else {
       result.created.push(p.appId);
     }

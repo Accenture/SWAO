@@ -29,14 +29,13 @@ import {
   logPortfolio,
   resolveClaudeDesktopConfigs,
   selectClaudeDesktopPatchTargets,
+  selfEntryScript,
   type ClaudeDesktopConfigCandidate,
   type ClaudeDesktopConfigKind,
   type FeatureKey,
   type LicenseTier,
 } from '@swao/core';
 import { formatLicenseGateError, printLicenseInvalidError } from '../lib/license-gate-error.js';
-import type { McpClientInstallRequest, McpClientInstallResult } from '../lib/mcp-chat-contract.js';
-import { installMcpClient, type McpClientInstallEnv } from './mcp-client-install.js';
 
 // #3163: the config resolver (MSIX virtualised path + conventional %APPDATA%
 // path, Design 024 MSIX) and SWAO_BIN_RE now live in @swao/core so the wizard,
@@ -120,7 +119,7 @@ export interface StableBinaryResolution {
 /** Injectable for tests so they never copy the real executable. */
 export interface StableBinaryOps {
   execPath?: string;
-  /** Entry script on source runs; defaults to process.argv[1]. */
+  /** Entry script on source runs; defaults to selfEntryScript() (#4241). */
   scriptPath?: string;
   copyFile?: (src: string, dest: string) => void;
   exists?: (p: string) => boolean;
@@ -153,7 +152,7 @@ export function resolveStableBinary(ops: StableBinaryOps = {}): StableBinaryReso
   if (name === undefined) {
     if (NODE_EXEC_RE.test(execName)) {
       // Source run: node plus the entry script, nothing copied.
-      const script = ops.scriptPath ?? process.argv[1];
+      const script = ops.scriptPath ?? selfEntryScript();
       const sourceArgs = script ? [resolve(script), ...MCP_SERVER_ARGS] : args;
       return { path: execPath, args: sourceArgs, copied: false, execPath, sourceRun: true };
     }
@@ -190,16 +189,16 @@ export function resolveStableBinary(ops: StableBinaryOps = {}): StableBinaryReso
 }
 
 /**
- * #3286 (Design 110 D-10): the copy-failure warning, shared by the wizard so it
- * says what `swao mcp install` and `swao init --mcp` print. Undefined when the
- * copy did not fail.
+ * #3286 (Design 110 D-10): the copy-failure warning of the Setup Wizard MCP
+ * step. Undefined when the copy did not fail. #4213 (Design 126 section 8
+ * rule 2): the screen names no CLI command; the step guidance carries it.
  */
-export function stableCopyWarning(r: StableBinaryResolution, rerunCommand = 'swao mcp install'): string[] | undefined {
+export function stableCopyWarning(r: StableBinaryResolution): string[] | undefined {
   if (r.copyError === undefined) return undefined;
   return [
     `Could not refresh the stable binary copy${r.stablePath ? ` ${r.stablePath}` : ''}: ${r.copyError}`,
     `Registering: ${r.path}`,
-    `Quit Claude Desktop (tray icon, Quit) and re-run \`${rerunCommand}\` to register the current binary.`,
+    'Quit Claude Desktop (tray icon, Quit) and register the client again to register the current binary.',
   ];
 }
 
@@ -267,9 +266,10 @@ export function formatMcpRegistrationRefusal(r: McpRegistrationRefusal, feature:
 
 /**
  * #3341: CLI form of the gate for `swao mcp install` and `swao init --mcp`:
- * on refusal print the [LICENSE] text to stderr and exit non-zero (1 for a
- * tier refusal, 3 for an invalid licence, as printLicenseGateError and
- * printLicenseInvalidError) before anything is copied or written.
+ * on refusal print the [LICENSE] text to stderr and exit non-zero (2 for a
+ * tier refusal per ADR-0055 and #3844, 3 for an invalid licence, as
+ * printLicenseGateError and printLicenseInvalidError) before anything is
+ * copied or written.
  */
 export function requireMcpRegistration(feature: string, ops: McpRegistrationGateOps = {}): void {
   const r = mcpRegistrationRefusal(ops);
@@ -278,39 +278,14 @@ export function requireMcpRegistration(feature: string, ops: McpRegistrationGate
   console.error(formatMcpRegistrationRefusal(r, feature));
   try {
     logPortfolio('error', 'licence.gate.error', `${feature} requires an Enterprise licence`, {
-      context: { feature, required: r.kind === 'tier' ? r.required : 'enterprise', current: r.kind === 'tier' ? r.current : 'unknown', code: 1 },
+      context: { feature, required: r.kind === 'tier' ? r.required : 'enterprise', current: r.kind === 'tier' ? r.current : 'unknown', code: 2 },
     });
   } catch { /* best-effort */ }
-  process.exit(1);
+  process.exit(2);
 }
 
-/**
- * #3217: the dependencies `swao mcp install` receives from the host (see
- * McpInstallDeps in lib/mcp-chat-contract.ts): the shared licence gate (#3341), the
- * shared stable-binary resolver and the shared multi-config patcher,
- * identical to the wizard and `init --mcp`.
- */
-export function buildMcpInstallDeps(
-  ops: StableBinaryOps = {},
-  candidates?: ReadonlyArray<ClaudeDesktopConfigCandidate>,
-  gate: McpRegistrationGateOps = {},
-  clientEnv: McpClientInstallEnv = {},
-): {
-  requireLicence: () => void;
-  resolveBinary: () => StableBinaryResolution;
-  patchAll: (binaryPath: string, args?: ReadonlyArray<string>) => ClaudeDesktopPatchOutcome[];
-  installClient: (request: McpClientInstallRequest) => McpClientInstallResult;
-} {
-  const gateOps: McpRegistrationGateOps = { ...gate, execPath: gate.execPath ?? ops.execPath };
-  return {
-    requireLicence: () => requireMcpRegistration('swao mcp install', gateOps),
-    resolveBinary: () => resolveStableBinary(ops),
-    patchAll: (binaryPath, args) => patchAllClaudeDesktopConfigs(binaryPath, candidates, args),
-    // #3478: per-client safe writer (Design 116 REQ-13); same Claude Desktop candidates as patchAll.
-    installClient: (request) =>
-      installMcpClient(request, { ...(candidates ? { claudeDesktopCandidates: () => candidates } : {}), ...clientEnv }),
-  };
-}
+// #3217: the dependencies `swao mcp install` receives from the host are built
+// by buildMcpInstallDeps in lib/mcp-install-deps.ts (CLI code, #4213).
 
 export type ClaudeDesktopPatchResult = 'patched' | 'already_present' | 'error';
 

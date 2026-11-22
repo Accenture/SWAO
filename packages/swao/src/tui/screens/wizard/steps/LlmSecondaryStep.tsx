@@ -13,15 +13,23 @@
 //
 // ================================================================
 
+// #4254 / #4230 (Design 126 sections 4.5, 7.7 and 9): the yes/no question on
+// SetupStepFrame (picker hints, step title without a number); each answer
+// carries its own guidance entry (#4230 Log names this call site). "No: skip"
+// is the visible entry, Esc belongs to the wizard. The configure phase is the
+// LLM step in its secondary form; its connector picker goes back to the
+// question with Shift+Tab or Left arrow.
+
 import { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
-import { SelectInput, GuidanceBox } from '@swao/tui-kit';
+import { Box, Text } from 'ink';
+import { SelectInput, fitToWidth, useHeaderWidth, useOptionGuidance, type GuidanceEntry, type GuidanceSection, type SelectOption } from '@swao/tui-kit';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { type LlmProvider, setWizardGuidanceOpen } from '../shared.js';
+import { type LlmProvider } from '../shared.js';
 import { LlmStep } from './LlmStep.js';
+import { SetupStepFrame } from '../../../../setup/setup-frame.js';
 
-// -- Step 1c: Secondary LLM provider (#1768) --------------------------------
+// -- Secondary LLM provider (#1768) -------------------------------------------
 
 // Reads the latest LLM Assessment run (if any) and returns the connector id
 // of the top-ranked non-primary leg as a suggestion for the secondary slot.
@@ -55,6 +63,36 @@ function suggestSecondaryConnector(workspaceRoot: string, primaryProvider: LlmPr
   }
 }
 
+/** #4230: the two answers, each with its own guidance entry. */
+export function secondaryOptions(suggestion: string | null): SelectOption[] {
+  const sections: GuidanceSection[] = suggestion ? [{ label: 'Suggestion', text: `${suggestion} ranked best after the primary in your last LLM Assessment run.` }] : [];
+  return [
+    {
+      label: 'Yes: configure a secondary provider now',
+      value: 'yes',
+      guidance: {
+        title: 'Configure a secondary provider',
+        what: 'A second provider runs the same passes as the primary in the LLM Assessment; the reports show both side by side (Design 092). Compares providers, model versions or a private deployment.',
+        sections,
+      },
+    },
+    {
+      label: 'No: skip (can be added later in .swao.yml)',
+      value: 'no',
+      guidance: {
+        title: 'Skip the secondary provider',
+        what: 'Only the primary LLM is configured. Add providers.llm.secondary in .swao.yml at any time, or run this step again from Setup.',
+        sections,
+      },
+    },
+  ];
+}
+
+const STEP_GUIDANCE: GuidanceEntry = {
+  title: 'Secondary LLM provider',
+  what: 'Configure a second provider to enable head-to-head model comparison in the LLM Assessment (Design 092).',
+};
+
 export function LlmSecondaryStep({
   workspaceRoot,
   primaryProvider,
@@ -68,59 +106,33 @@ export function LlmSecondaryStep({
 }) {
   const [phase, setPhase] = useState<'prompt' | 'configure'>('prompt');
   const suggestion = suggestSecondaryConnector(workspaceRoot, primaryProvider);
-
-  useInput((_input, key) => {
-    if (phase !== 'prompt') return;
-    if (key.escape) onSkip();
-  });
+  const { entry, onCursorChange } = useOptionGuidance(STEP_GUIDANCE);
+  const width = useHeaderWidth();
 
   if (phase === 'configure') {
-    return (
-      <Box flexDirection="column">
-        <Text bold color="cyanBright">Step 1c -- Secondary LLM Provider</Text>
-        <LlmStep
-          workspaceRoot={workspaceRoot}
-          onNext={onNext}
-          isSecondary
-        />
-      </Box>
-    );
+    return <LlmStep workspaceRoot={workspaceRoot} onNext={onNext} isSecondary onBack={() => setPhase('prompt')} />;
   }
 
   return (
-    <Box flexDirection="column">
-      <Text bold color="cyanBright">Step 1c -- Secondary LLM Provider (optional)</Text>
-      <Text dimColor>A secondary provider runs LLM Assessment legs in parallel with the primary for direct model comparison.</Text>
-      {suggestion && (
-        <Box marginTop={1}>
-          <Text>  Suggestion from last LLM Assessment: <Text color="cyan">{suggestion}</Text></Text>
+    <SetupStepFrame title="Secondary LLM" subtitle="Optional: a second provider for the LLM Assessment comparison." kind="picker" guidance={entry}>
+      <Box flexDirection="column">
+        {suggestion && <Text>{fitToWidth(`Suggestion from the last LLM Assessment: ${suggestion}`, width)}</Text>}
+        <Box marginTop={suggestion ? 1 : 0}>
+          <SelectInput
+            label="Add a secondary LLM provider?"
+            options={secondaryOptions(suggestion)}
+            numbered
+            showKeyHints={false}
+            visibleCount={2}
+            onCursorChange={onCursorChange}
+            onSelect={(v) => {
+              if (v === 'yes') setPhase('configure');
+              else onSkip();
+            }}
+            active
+          />
         </Box>
-      )}
-      <Box marginTop={1}>
-        <SelectInput
-          label="Add a secondary LLM provider?"
-          options={[
-            { label: 'Yes -- configure a secondary provider now', value: 'yes' },
-            { label: 'No  -- skip (can be added later in .swao.yml)', value: 'no' },
-          ]}
-          onSelect={(v) => {
-            if (v === 'yes') setPhase('configure');
-            else onSkip();
-          }}
-          active
-        />
       </Box>
-      <GuidanceBox
-        title="Secondary LLM provider"
-        what="Configure a second provider to enable head-to-head model comparison in LLM Assessment (Design 092). The secondary provider runs the same passes as the primary; results appear side-by-side in the HTML and PDF reports."
-        details={[
-          { label: 'When useful',  value: 'Comparing Anthropic vs OpenAI, testing a new model version, or benchmarking a private deployment.' },
-          { label: 'Skip is fine', value: 'You can add providers.llm.secondary manually in .swao.yml at any time.' },
-          ...(suggestion ? [{ label: 'Suggestion', value: `${suggestion} ranked #2 in your last LLM Assessment run.` }] : []),
-        ]}
-        affordances={['Up/Down -- select  |  Enter -- confirm  |  Escape -- skip']}
-        onOpenChange={setWizardGuidanceOpen}
-      />
-    </Box>
+    </SetupStepFrame>
   );
 }

@@ -19,7 +19,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { dump } from 'js-yaml';
-import { buildIntakeMappingProbe } from './intake-mapping-probe.js';
+import { buildIntakeMappingProbe, DEFAULT_COLUMN_MAP_OK } from './intake-mapping-probe.js';
 
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
@@ -68,9 +68,15 @@ function workspace(opts: {
 }
 
 describe('buildIntakeMappingProbe (#3084)', () => {
-  it('skips application workspaces and the default template', () => {
+  it('skips application workspaces; runs on the default column map (#4262)', () => {
     expect(buildIntakeMappingProbe(workspace({ service: false })).status).toBe('skip');
-    expect(buildIntakeMappingProbe(workspace({ mapping: null }))).toMatchObject({ status: 'skip', message: expect.stringMatching(/default intake template/) });
+    expect(buildIntakeMappingProbe(workspace({ mapping: null }))).toMatchObject({ status: 'ok', message: DEFAULT_COLUMN_MAP_OK });
+  });
+
+  it('#4262: on the default column map the import checks still run (duplicate IDs fail)', () => {
+    const r = buildIntakeMappingProbe(workspace({ mapping: null, signals: [{ code: 'SCAFFOLD.DUPLICATE_ID', app_id: 'app-1' }] }));
+    expect(r.status).toBe('error');
+    expect(r.errors).toContain('duplicate app IDs after parse: app-1');
   });
 
   it('passes a valid mapping with all PII columns declared', () => {
@@ -125,5 +131,32 @@ describe('buildIntakeMappingProbe (#3084)', () => {
       'field memory_mb: 1 of 20 value(s) not numeric; stored as null',
       'unknown true_values: field migration_candidate: 2 of 20 value(s) not in true_values / false_values; stored as null',
     ]);
+  });
+});
+
+// #4489: the probe names apps without a vendor name (CVE research and vendor consolidation stay empty).
+describe('intake_mapping probe: vendor column (#4489)', () => {
+  const app = (ws: string, id: string, vendor?: string): void => {
+    mkdirSync(join(ws, 'apps', id), { recursive: true });
+    writeFileSync(join(ws, 'apps', id, '.swao.yml'), dump({ app_id: id, assessment: { type: 'service' }, ...(vendor ? { vendor: { name: vendor } } : {}) }));
+  };
+
+  it('warns with the count when no scaffolded service app has a vendor name', () => {
+    const ws = workspace({ mapping: MAP });
+    app(ws, 'app001');
+    app(ws, 'app002');
+    const r = buildIntakeMappingProbe(ws);
+    expect(r.status).toBe('warn');
+    expect(r.warnings.join(' ')).toContain('no column maps to vendor.name: 0 of 2 apps have a vendor name');
+  });
+
+  it('stays quiet when an app has a vendor name, and does not repeat a recorded warning', () => {
+    const ws = workspace({ mapping: MAP });
+    app(ws, 'app001', 'FUJIFILM');
+    app(ws, 'app002');
+    expect(buildIntakeMappingProbe(ws).warnings.join(' ')).not.toContain('vendor.name');
+    const recorded = workspace({ mapping: MAP, warnings: ['no column maps to vendor.name: 0 of 9 apps have a vendor name'] });
+    app(recorded, 'app001');
+    expect(buildIntakeMappingProbe(recorded).warnings.filter((w) => w.includes('vendor.name'))).toHaveLength(1);
   });
 });

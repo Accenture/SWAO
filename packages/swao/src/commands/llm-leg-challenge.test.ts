@@ -65,6 +65,26 @@ describe('readLegChallengeAgents (#3336)', () => {
     expect(readLegChallengeAgents(wsp, 'app', started).agents.map(a => a.agent_id)).toEqual(['new']);
   });
 
+  it('app (#4322): only challenge-app/<ts>/combined.yaml with 5 reports gives 5 agents', () => {
+    const started = Date.now();
+    const dir = join(wsp, 'challenge-app', folderTs(started + 2_000));
+    mkdirSync(dir, { recursive: true });
+    const ids = ['application-architect', 'business-owner', 'grc-compliance-officer', 'finops-lead', 'programme-manager'];
+    writeFileSync(join(dir, 'combined.yaml'),
+      `agent_count: 5\nreports:\n${ids.map((id) => `  - agent_id: ${id}\n    report: '{}'\n`).join('')}`);
+    const r = readLegChallengeAgents(wsp, 'app', started);
+    expect(r.agents.map(a => a.agent_id)).toEqual(ids);
+    expect(r.source).toBe(join(dir, 'combined.yaml'));
+  });
+
+  it('app (#4322): a dated combined.yaml older than the spawn is ignored', () => {
+    const started = Date.now();
+    const dir = join(wsp, 'challenge-app', folderTs(started - HOUR));
+    mkdirSync(dir, { recursive: true });
+    writeOld(join(dir, 'combined.yaml'), 'reports:\n  - agent_id: business-owner\n', HOUR);
+    expect(readLegChallengeAgents(wsp, 'app', started)).toEqual({ agents: [], source: null });
+  });
+
   it('lz: the challenge-lz/<ts>/ folder written by this leg, not an older folder', () => {
     const started = Date.now();
     const oldDir = join(wsp, 'challenge-lz', folderTs(started - HOUR));

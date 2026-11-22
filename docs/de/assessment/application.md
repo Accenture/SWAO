@@ -242,15 +242,28 @@ swao assess --portfolio
    fragt die TUI die Anwendungs-ID, die Git-Repository-URL, Branch oder Ref und das
    Unterverzeichnis ab, optional außerdem die Crawl-URL für Playwright und die
    Anmeldedaten (gespeichert im Credential-Vault).
-3. Wählen Sie optional eine **Target Landing Zone**: Cloud-Anbieter auswählen, Regionen
+3. Wählen Sie die Frameworks und die Passes dieses Laufs. Sie starten mit den Vorgaben
+   der App (`assessment.regimes_active`, `assessment.pass_profile`) und gelten nur für
+   diesen Lauf (`swao assess --regimes <ids|none> --passes <liste>`; ein im
+   Credential-Hub gewählter LLM-Anbieter der App wird zu `--llm-provider <typ>`). Weicht
+   eine Auswahl von der Vorgabe ab, fragt SWAO „Save as the new default for this app?“
+   (Standard: Nein); Ja ändert nur diesen Schlüssel in `apps/<id>/.swao.yml`, die
+   Kommentare bleiben erhalten.
+4. Wählen Sie optional eine **Target Landing Zone**: Cloud-Anbieter auswählen, Regionen
    filtern und eine oder mehrere Zielregionen markieren. SWAO führt die
    Landing-Zone-Bewertung dann zusammen mit den Passes aus. Die Auswahl ist mit den
-   Zielen des letzten Laufs dieser App vorbelegt (ADR-0067: Ziele werden pro Lauf
-   gewählt, nicht vom Assistenten in die `.swao.yml` geschrieben); ändern Sie sie für
-   diesen Lauf oder lassen Sie sie leer, um ohne Landing-Zone-Bewertung zu laufen
-   (`--no-lz-fit`).
-4. Bestätigen Sie. Eine Fortschrittsanzeige zeigt jeden abgeschlossenen Pass.
-5. Nach dem Lauf geht es im Hauptmenü mit **4 Generate Report**, **5 Publish HTML** oder
+   eingerichteten Zielen vorbelegt (`assessment.landing_zone.targets`, erst App, dann
+   Workspace); eine Geografie wie `azure:germany` wird als ihre Standardregion
+   (`azure:germanywestcentral`) angezeigt und vorbelegt, genau wie `swao assess --app <id>`
+   sie auflöst. Ohne eingerichtete Ziele sind die Ziele des letzten Laufs vorbelegt.
+   Ändern Sie sie für diesen Lauf oder lassen Sie sie leer, um ohne
+   Landing-Zone-Bewertung zu laufen (`--no-lz-fit`). Ein Anbieter ohne Region wird vor dem
+   Lauf genannt. `run-context.yaml` hält fest, woher die Ziele stammen
+   (`lz_targets_source`). Eine mit einem Live-Landing-Zone-Scope verknüpfte App wird
+   weiterhin gegen den statischen Katalog bewertet, mit einer Warnung: Live-Daten der
+   Landing Zone nutzt nur die Landing-Zone-Live-Bewertung.
+5. Bestätigen Sie. Eine Fortschrittsanzeige zeigt jeden abgeschlossenen Pass.
+6. Nach dem Lauf geht es im Hauptmenü mit **4 Generate Report**, **5 Publish HTML** oder
    **6 Export BI** weiter.
 
 ---

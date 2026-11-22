@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import type { PassContext, PassResult } from '@swao/core';
 import type { Signal } from '@swao/core';
-import { listSourceFiles, findShallowestSourceFile, computeLanguageCensus, manifestKindInfo, productionLoc } from '@swao/core';
+import { listSourceFiles, findShallowestSourceFile, computeLanguageCensus, manifestKindInfo, productionLoc, yieldPassProgress } from '@swao/core';
 import type { BuildManifest, LanguageCensus, LanguageCoverage, SourceLanguage } from '@swao/core';
 import { buildLanguageCoverage } from './language-coverage.js';
 import { findTfstateFiles, parseTfState, collectResourceTypes, extractSourceServices } from './tf-state-parser.js';
@@ -215,6 +215,9 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
   const signals: Signal[] = [];
   const assessment: Record<string, unknown> = {};
 
+  // #4266: each phase reports progress and yields, so the run heartbeat can fire
+  // between the synchronous steps (the walk and the census report from inside).
+  await yieldPassProgress({ phase: 'inventory:language_census' });
   // #3423: language census and build manifests at any depth (central source scope).
   const census: LanguageCensus = existsSync(sourcePath)
     ? computeLanguageCensus(sourcePath)
@@ -435,6 +438,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
     }
   }
 
+  await yieldPassProgress({ phase: 'inventory:iac_state' });
   // --- INV-10+ / INV-06: Terraform state detection + HCL guidance ---
   // Reads wsp/inputs/terraform/*.tfstate (ingestion folder) and *.tfstate at source root.
   // Emits service_dep signals for services not already covered by source-code analysis.
@@ -544,6 +548,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
     }
   }
 
+  await yieldPassProgress({ phase: 'inventory:reference_scans' });
   // --- INV-07 / INV-08 / INV-09: reference catalogue scans (#3160) ---
   // db-compatibility-catalogue.yaml (INV-07), legacy-indicators-catalogue.yaml
   // (INV-08) and vendor-sdk-catalogue.yaml (INV-09) are matched against the
@@ -565,6 +570,7 @@ export async function runInvPass(ctx: PassContext): Promise<PassResult> {
     assessment.reference_catalogue_checks = { error: (err as Error).message.split('\n')[0] };
   }
 
+  await yieldPassProgress({ phase: 'inventory:service_footprint' });
   // --- Service footprint (#3430): backing services from build files, compose,
   // Kubernetes, configuration, Liquibase changelogs and documents. Runs after
   // every other service_dep producer so their INV ids stay stable; emits

@@ -53,6 +53,16 @@ export interface RunLzTargets {
   resolved: LzResolvedTarget[];
 }
 
+/**
+ * #4006: the catalogue targets of an app run: the configured ones (flag or
+ * `assessment.landing_zone.targets`), else the targets seeded from the linked
+ * landing zone (#3980 fallback). One rule for the inline fit and Pass 11, so
+ * the seeded targets reach the baseline decisions like configured ones.
+ */
+export function effectiveCatalogueTargets(configured: readonly LzTargetSpec[], seeded: readonly LzTargetSpec[]): LzTargetSpec[] {
+  return configured.length === 0 && seeded.length > 0 ? [...seeded] : [...configured];
+}
+
 /** `assessment` block of the workspace .swao.yml, or undefined (missing or invalid file). */
 export function readWorkspaceAssessment(workspaceRoot: string): Record<string, unknown> | undefined {
   const p = join(workspaceRoot, '.swao.yml');
@@ -126,4 +136,51 @@ export function resolveRunLzTargets(opts: ResolveRunLzTargetsOptions): RunLzTarg
     out.push(target);
   }
   return { targets: out, source, resolved };
+}
+
+const silent = (): void => { /* no output: a second, attribution-only resolution */ };
+
+/**
+ * #4285 (Design 125 sections 5.7 and 8): the set-up targets of an app, the way
+ * `swao assess` resolves them without flags (app `assessment.landing_zone.targets`,
+ * then the workspace), geography values mapped to their default region. Feeds
+ * the target pickers of the Application and LZ Catalog Assessment screens, so
+ * TUI and CLI preselect the same targets. Silent: no log line, no console line.
+ */
+export function setupLzTargetsForPicker(workspaceRoot: string, appId: string): { targets: string[]; resolved: LzResolvedTarget[]; source: LzTargetSource } {
+  const appYml = join(workspaceRoot, 'apps', appId, '.swao.yml');
+  let appAssessment: Record<string, unknown> | undefined;
+  try {
+    const a = existsSync(appYml) ? ((load(readFileSync(appYml, 'utf-8')) ?? {}) as Record<string, unknown>)['assessment'] : undefined;
+    appAssessment = a && typeof a === 'object' && !Array.isArray(a) ? (a as Record<string, unknown>) : undefined;
+  } catch { appAssessment = undefined; }
+  const wsCat = join(workspaceRoot, 'wsp', 'inputs', 'catalogs', 'lz-catalogues');
+  const r = resolveRunLzTargets({
+    app: appId, workspaceRoot, cataloguesDir: existsSync(wsCat) ? wsCat : undefined,
+    appAssessment, workspaceAssessment: readWorkspaceAssessment(workspaceRoot),
+    logApp: silent as unknown as typeof coreLogApp, logPortfolio: silent as unknown as typeof coreLogPortfolio, info: silent,
+  });
+  return { targets: r.targets.map(lzTargetLabel), resolved: r.resolved, source: r.source };
+}
+
+/**
+ * #4285: where the targets of a run came from, recorded in run-context.yaml
+ * (`lz_targets_source`) and run-status.json (`resolved_targets`). Targets
+ * passed on the command line (the TUI passes its picks this way) that equal
+ * the set-up targets after geography resolution are attributed to the set-up
+ * key, with its geography resolution; other passed targets keep their CLI
+ * source. `configured` is the resolution without any flag.
+ */
+export function attributeLzTargets(run: RunLzTargets, configured: RunLzTargets): { source: string; resolved: LzResolvedTarget[] } {
+  const labels = (t: readonly LzTargetSpec[]): Set<string> => new Set(t.map(lzTargetLabel));
+  const a = labels(run.targets);
+  const b = labels(configured.targets);
+  const same = a.size > 0 && a.size === b.size && [...a].every((x) => b.has(x));
+  if (run.source.startsWith('cli:') && configured.source !== 'none' && same) return { source: configured.source, resolved: configured.resolved };
+  return { source: run.source, resolved: run.resolved };
+}
+
+/** The flag-free resolution of an app's targets, silent (for attributeLzTargets). */
+export function configuredRunLzTargets(opts: Omit<ResolveRunLzTargetsOptions, 'cliTargets' | 'cliProvider' | 'cliRegion' | 'logApp' | 'logPortfolio' | 'info'>): RunLzTargets {
+  return resolveRunLzTargets({ ...opts, logApp: silent as unknown as typeof coreLogApp, logPortfolio: silent as unknown as typeof coreLogPortfolio, info: silent });
 }

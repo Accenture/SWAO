@@ -1,0 +1,159 @@
+# Service-to-control mapping (Design 120 section 8.2; Design 123 section 8.2, #3863).
+# Framework: Client LZ Policy Baseline. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Rows follow the capabilities named in policy-baseline.yaml (capabilities, applies_to,
+# allow_capabilities) and the services each policy bears on. confidence: curated, because
+# the client sets the baseline (Design 123 section 8.2, Design 120 Q-23); a client that edits
+# policy-baseline.yaml adjusts these rows with it. Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: CLIENT_LZ_POLICY_BASELINE
+mappings:
+  - capability: managed_llm
+    controls: [CPB-SVC-01, CPB-RES-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_inference
+    controls: [CPB-SVC-01, CPB-ENC-02]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_training
+    controls: [CPB-SVC-01, CPB-ENC-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_speech
+    controls: [CPB-SVC-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_translation
+    controls: [CPB-SVC-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_vision
+    controls: [CPB-SVC-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: ml_nlp
+    controls: [CPB-SVC-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: object_storage
+    controls: [CPB-ENC-01, CPB-RES-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: block_storage
+    controls: [CPB-ENC-01, CPB-BCK-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: file_storage
+    controls: [CPB-ENC-01, CPB-BCK-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: postgresql
+    controls: [CPB-SVC-03, CPB-ENC-01, CPB-BCK-01, CPB-NET-03]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: mysql
+    controls: [CPB-ENC-01, CPB-BCK-01, CPB-NET-03]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: nosql_database
+    controls: [CPB-ENC-01, CPB-BCK-01, CPB-NET-03]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: redis
+    controls: [CPB-NET-03]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: key_vault
+    controls: [CPB-ENC-01]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: secrets_management
+    controls: [CPB-IAM-02]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: certificate_management
+    controls: [CPB-ENC-02]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: load_balancer
+    controls: [CPB-ENC-02, CPB-NET-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: api_gateway
+    controls: [CPB-ENC-02, CPB-NET-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: cdn
+    controls: [CPB-ENC-02]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: waf
+    controls: [CPB-NET-01]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: network_firewall
+    controls: [CPB-NET-02, CPB-NET-03]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: vpc_networking
+    controls: [CPB-NET-01, CPB-NET-02]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: vm_compute
+    controls: [CPB-NET-02, CPB-TAG-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: kubernetes
+    controls: [CPB-NET-01, CPB-TAG-01]
+    relevance: configure
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: identity_management
+    controls: [CPB-IAM-01, CPB-IAM-02]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: audit_logging
+    controls: [CPB-LOG-01, CPB-LOG-02]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: log_management
+    controls: [CPB-LOG-02]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: monitoring
+    controls: [CPB-LOG-01]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"
+  - capability: backup
+    controls: [CPB-BCK-01]
+    relevance: supports
+    confidence: curated
+    source: "policy-baseline.yaml shipped default 1.0.0 (Design 123 section 6.2)"

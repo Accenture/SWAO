@@ -35,26 +35,36 @@ describe('AssessmentTypeScreen -- drift guard (#1419)', () => {
       'application',
       'service',
       'landing-zone-catalog',
+      'landing-zone-live',
       'llm',
     ]);
     expect(ASSESSMENT_TYPE_ENTRIES.map(e => e.label)).toEqual([
       'Application Assessment',
       'Service Portfolio Assessment',
       'Landing Zone Catalog Assessment',
+      'Landing Zone Live Assessment',
       'LLM Assessment for SWAO',
     ]);
   });
 
   it('no entry label or detail mentions the removed audit type', () => {
     for (const entry of ASSESSMENT_TYPE_ENTRIES) {
-      expect(`${entry.label} ${entry.detail}`).not.toMatch(/audit/i);
+      expect(`${entry.label} ${entry.detail} ${entry.cli}`).not.toMatch(/audit/i);
     }
   });
 
   it('the service entry advertises `swao service`, never `assess --type service` (Design 103 s3.6)', () => {
     const entry = ASSESSMENT_TYPE_ENTRIES.find(e => e.type === 'service');
-    expect(entry?.detail).toMatch(/^swao service /);
-    expect(`${entry?.detail} ${entry?.what}`).not.toContain('--type service');
+    expect(entry?.cli).toMatch(/^swao service$/);
+    expect(`${entry?.cli} ${entry?.what}`).not.toContain('--type service');
+  });
+
+  it('landing-zone-live sits directly after the catalogue assessment; LLM moves down one (#3588, Design 120 section 14.2)', () => {
+    expect(KNOWN_ASSESSMENT_TYPES).toContain('landing-zone-live');
+    const i = ASSESSMENT_TYPE_ENTRIES.findIndex(e => e.type === 'landing-zone-live');
+    expect(ASSESSMENT_TYPE_ENTRIES[i - 1]?.type).toBe('landing-zone-catalog');
+    expect(ASSESSMENT_TYPE_ENTRIES[i + 1]?.type).toBe('llm');
+    expect(ASSESSMENT_TYPE_ENTRIES[i]?.cli).toContain('--type landing-zone-live --lz');
   });
 
   it('every menu entry is a canonical assessment type', () => {
@@ -64,7 +74,7 @@ describe('AssessmentTypeScreen -- drift guard (#1419)', () => {
   });
 
   it('removed placeholder types stay canonical (router + history compat)', () => {
-    for (const t of ['audit', 'landing-zone-customer', 'hybrid']) {
+    for (const t of ['audit', 'hybrid']) {
       expect(KNOWN_ASSESSMENT_TYPES).toContain(t);
       expect(ASSESSMENT_TYPE_ENTRIES.find(e => e.type === t)).toBeUndefined();
     }
@@ -87,6 +97,25 @@ describe('AssessmentTypeScreen -- drift guard (#1419)', () => {
     const entry = ASSESSMENT_TYPE_ENTRIES.find(e => e.type === 'llm');
     expect(entry?.what).toMatch(/completed Application Assessment/);
     expect(entry?.what).toMatch(/Consultant and Enterprise/);
-    expect(entry?.detail).toContain('--type llm');
+    expect(entry?.cli).toContain('--type llm');
   });
 });
+
+// #4110: the menu line carries a short plain description; the CLI command
+// moves to the guidance box.
+describe('AssessmentTypeScreen menu descriptions (#4110)', () => {
+  it('uses the owner short descriptions, no CLI syntax on the menu line', () => {
+    expect(ASSESSMENT_TYPE_ENTRIES.map(e => e.detail)).toEqual([
+      'static/dynamic on source code',
+      '3rd party, SaaS, COTS service catalog',
+      'based on the CSP service catalog',
+      'based on your live CSP data',
+      'compare up to 5 LLMs',
+    ]);
+    for (const e of ASSESSMENT_TYPE_ENTRIES) {
+      expect(e.detail).not.toMatch(/swao |--/);
+      expect(e.cli).toMatch(/^swao /);
+    }
+  });
+});
+

@@ -71,7 +71,7 @@ Bewertung.
 llm_assessment:
   legs:
     - connector: openrouter
-      model: anthropic/claude-sonnet-4
+      model: anthropic/claude-sonnet-5.5
       primary: true
     - connector: openrouter
       model: deepseek/deepseek-v4-flash

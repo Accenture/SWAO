@@ -21,9 +21,10 @@ import { Box, Text, useInput, useStdout } from 'ink';
 import { spawn } from 'child_process';
 import { appendFileSync, existsSync, readdirSync, writeFileSync, mkdirSync, readFileSync, renameSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
-import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
+import { load as loadYaml } from 'js-yaml';
 import { CredentialStore, LicenseGuard, writeCrawlSection } from '@swao/core';
-import { HeaderView, isAllowed, type LicenseStateView, type LicenseTier } from '@swao/tui-kit';
+import { selfSpawnCommand, providerLabel as centralProviderLabel, providerColumns, parsePassRunningLine, parsePostStepLine, type PostStepLine } from '@swao/core';
+import { ConfirmPanel, CONFIRM_PANEL_KEYS, KEY_HINTS, PICKER_VISIBLE_COUNT, isAllowed, terminalFrameWidth, tone, tokenColor, useFlowNavigation, useOptionGuidance, type GuidanceEntry, type KeyHint, type LicenseStateView, type LicenseTier } from '@swao/tui-kit';
 
 // SWAO_TUI_DEBUG=1 enables file-based TUI tracing to wsp/logs/tui-debug.log.
 // Never writes to stdout (would corrupt Ink's cursor tracking).
@@ -40,18 +41,25 @@ const tuiDebug = (msg: string): void => {
 
 import { TextInput } from '@swao/tui-kit';
 import { SelectInput } from '@swao/tui-kit';
+import { LENS_SAVE_OPTIONS, LENS_SAVE_YES, lensRunArgs, lensSaveQuestionNeeded } from './lens-save-default.js';
+import { linkedAppCatalogueNotice, linkedAppCatalogueShortNotice, linkedAppSeedPrefill, lzCatTargetsArgs } from './lz-source-choice.js';
+import { TargetLzNotice, TARGET_LZ_SKIP, TARGET_LZ_SKIP_OPTION, TARGET_LZ_MARKET_SCAN, targetLzMarketScanOption, lzMarketScanArgs, TARGET_LZ_TITLE, TARGET_LZ_PROVIDER_KEYS, TARGET_LZ_GAP_KEYS, TARGET_LZ_PROVIDER_HINT, TARGET_LZ_FILTER_KEYS, TARGET_LZ_MANUAL_REGION_KEYS, targetLzRegionKeys } from './TargetLzNotice.js';
+import { setupLzTargetsFor, setupLzTargetsLine, setupTargetsNotOffered, providersWithoutRegion, providersWithoutRegionNotice } from './setup-lz-targets.js';
+import { APP_SAVE_YES, appDefaultEdits, appRunChoiceArgs, runAppLlmConfig, appSaveHint, appSaveOptions, saveAppDefault, selectionDiffers } from './app-run-defaults.js';
 import { MultiSelect } from '@swao/tui-kit';
-import { ProgressBar } from '@swao/tui-kit';
-import { LiveOutput } from '@swao/tui-kit';
-import { GuidanceBox } from '@swao/tui-kit';
+import { DetailRow, guidanceOwnsKey, FinishPanel, FINISH_MAIN_MENU, FINISH_PANEL_KEYS, type FinishItem } from '@swao/tui-kit';
+import { lensPassPreselection, passesLeftOut } from './lens-passes.js';
+import { appFinishGuidance, appFinishView, failedRunGuidance, failedRunView, readAppRunFolder, readLzFitVerdicts, type AppChallengeOffer } from './app-finish.js';
 import { CommunityFrameworkPicker } from '@swao/tui-kit';
 import type { CommunityFrameworkOption } from '@swao/tui-kit';
 import { LlmModelPicker, formatLlmCurrentLabel } from '@swao/tui-kit';
 import { PasswordInput } from '@swao/tui-kit';
 import { filterList, FILTER_THRESHOLD, SHOW_ALL } from '../list-filter.js';
-import { findWorkspace } from '@swao/core';
+import { findWorkspace, formatBaselineDecisionLines, readBaselineDecisions } from '@swao/core';
 import { logApp } from '@swao/core';
-import { openWithDefaultApp, copyToClipboard } from '@swao/core';
+import { createPassLineTracker } from './pass-line-tracker.js';
+import { createAppRunSummary, readLatestRunId, readRunType } from './app-run-summary.js';
+import { openWithDefaultApp, treeKillPid } from '@swao/core';
 import { findInstalledChromium, PLAYWRIGHT_VERSION } from '@swao/core';
 import { PASS_DESCRIPTIONS } from './shared/passDescriptions.js';
 import { TUI_DEFAULT_PASS_KEYS, DEFAULT_PASS_KEYS as ORCHESTRATOR_DEFAULT_PASS_KEYS, TUI_OPT_IN_PASS_KEYS } from '../../orchestrator.js';
@@ -59,6 +67,12 @@ import { ChallengePromptPhase, challengeOfferForApp } from './shared/ChallengePr
 import { RunningPhase } from './shared/RunningPhase.js';
 import { PreflightLlmPhase } from './shared/PreflightLlmPhase.js';
 import { AppPickerPhase } from './shared/AppPickerPhase.js';
+import { FlowFrame } from './shared/flow-frame.js';
+import { RUN_OPTIONS_GUIDANCE, RUN_OPT_CACHE, RUN_OPT_ITER, RUN_OPT_SOURCE, RUN_OPT_STATS, appRunOptions } from './app-run-options.js';
+import { APP_CRED_LLM, APP_CRED_PW_MFA, APP_CRED_PW_PASS, APP_CRED_PW_URL, APP_CRED_PW_USER, APP_CRED_VCS_TOKEN, APP_CRED_VCS_URL, APP_PHASE_STEP, APP_STEPS, APP_TEXT_PHASES, appBackPhase, appCredentialOptions, isAppPreRunPhase, type AppPhase } from './app-flow.js';
+import { CRED_API_PREFIX, CRED_CONTINUE } from './lz-catalog-flow.js';
+import { renameAppYmlText } from './app-rename-yml.js';
+import { completedPassCount, isPassResultLine, lastPassName, passSubProgress } from '../../commands/pass-progress-line.js';
 import type { LocalConnectorInfo } from './shared/types.js';
 import { listLocalConnectors as sharedListLocalConnectors } from '@swao/module-llm-providers';
 import {
@@ -69,16 +83,15 @@ import {
   listApiTokenConnectors,
   readLastRunAppLzTargets,
   insertCountryHeaders,
+  lzProviderRowGuidance,
+  lzRegionRowGuidance,
   type RegimeOption,
   type AppYamlOptions,
   type LzCatalogueEntry,
   type LzCatalogueHint,
   type LensDef,
   type AssessScaffold,
-} from '../AssessScreen.js';
-
-const BIN  = process.execPath;
-const SELF = process.argv[1] as string;
+} from '../assess-helpers.js';
 
 // Core passes used as the first-run default selection (#0901).
 // dynamic and malware are opt-in: they require external tooling (Playwright / malware
@@ -94,81 +107,47 @@ const DEFAULT_PASS_KEYS: string[] = [...TUI_DEFAULT_PASS_KEYS];
 const ALL_PASSES = ORCHESTRATOR_DEFAULT_PASS_KEYS.join(',');
 const ALL_PASS_COUNT = ORCHESTRATOR_DEFAULT_PASS_KEYS.length;
 
-type Phase =
-  | 'input-app'
-  | 'input-app-new'
-  | 'input-vcs-url'
-  | 'input-vcs-ref'
-  | 'input-source-subdir'
-  | 'input-playwright-url'
-  // #0885: credential reuse prompt when a matching URL is found in the store
-  | 'input-playwright-url-reuse'
-  // #0776-C: inline login sub-steps following the URL prompt
-  | 'input-playwright-username'
-  | 'input-playwright-password'
-  // #0814: per-app credential hub + sub-steps (VCS + Playwright)
-  | 'input-app-credentials'
-  | 'input-app-cred-vcs-url'
-  | 'input-app-cred-vcs-token'
-  | 'input-app-cred-playwright-url'
-  | 'input-app-cred-playwright-user'
-  | 'input-app-cred-playwright-pass'
-  | 'input-app-cred-playwright-mfa'
-  // #2329: API token entry for an LLM gateway connector
-  | 'input-app-cred-api-token'
-  // #0800: per-app LLM override (L key from credential hub)
-  | 'input-app-llm'
-  | 'input-ingest-tip'
-  | 'input-lenses'
-  | 'input-regimes'
-  | 'input-passes'
-  | 'playwright-warn'
-  | 'input-source-path'
-  | 'input-iter'
-  | 'pick-delete'
-  | 'confirm-delete'
-  | 'pick-rename'
-  | 'input-rename'
-  | 'op-done'
-  | 'input-app-lz-provider'
-  | 'input-app-lz-region'
-  // #2328: pre-flight LLM connectivity check before starting the run
-  | 'preflight-llm'
-  | 'running'
-  // #0407 (sprint-040 round-6): explicit "assessment done -- press Enter
-  // for BI export options" step so the operator can see the final
-  // 100% green bar + summary before being whisked into the export menu.
-  | 'assess-done'
-  | 'challenge-prompt'
-  | 'export-prompt'
-  | 'export-running'
-  | 'done';
 
 // PASS_DESCRIPTIONS imported from ./assess/shared/passDescriptions.js
 
 const PASS_FAIL_ADVICE: Record<string, string> = {
-  synthesis: 'The 7R recommendation and coverage score will be absent from the report. You can re-run synthesis alone: select passes -> synth. Check: API key set in Credentials (7); outbound HTTPS to api.anthropic.com not blocked by corporate proxy.',
+  synthesis: 'The 7R recommendation and the coverage score are missing from the report. Run synthesis alone by choosing synth on the Passes step. Check the API key in Credentials and that a proxy does not block HTTPS to the LLM endpoint.',
 };
+
+/** #4256: the details view of the finish screen (Enter or Esc returns to the finish menu). */
+const FINISH_DETAILS_KEYS: readonly KeyHint[] = [{ key: 'Enter', verb: 'back' }];
+
+/** #4255 (Design 126 sections 7.4 and 7.9): key hints of the phases before the run. Esc aborts the
+ *  flow; the left arrow (Shift+Tab in a text input) goes back one step with the values kept. */
+const K_CONFIRM_BACK: readonly KeyHint[] = KEY_HINTS.textInput;
+const K_SELECT_CONFIRM_BACK: readonly KeyHint[] = KEY_HINTS.picker;
+const K_PICKER: readonly KeyHint[] = KEY_HINTS.picker;
+const K_NEXT_EMPTY_SKIPS: readonly KeyHint[] = [{ key: 'Enter', verb: 'next', object: '(empty skips)' }, { key: 'Shift+Tab', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
+const K_SAVE_EMPTY_SKIPS: readonly KeyHint[] = [{ key: 'Enter', verb: 'save', object: '(empty skips)' }, { key: 'Shift+Tab', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
+const K_TOGGLE_CONFIRM_BACK: readonly KeyHint[] = KEY_HINTS.multiSelect;
+const K_NEXT_BACK: readonly KeyHint[] = [{ key: 'Enter', verb: 'next' }, { key: '←', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
+const OP_DONE_KEYS: readonly KeyHint[] = [{ key: 'Enter', verb: 'next' }, { key: 'Esc', verb: 'abort' }];
+const K_PASSES: readonly KeyHint[] = [{ key: '↑↓', verb: 'select' }, { key: 'Space', verb: 'toggle' }, { key: 'A', verb: 'toggle', object: 'all' }, { key: 'Enter', verb: 'next' }, { key: '←', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
 
 const PASS_OPTIONS = [
   { label: 'All passes (recommended)',                  value: 'all'     },
-  { label: '01-inv     -- Inventory analysis',          value: 'inv'     },
-  { label: '02-state   -- State detection',             value: 'state'   },
-  { label: '03-data    -- Data classification',         value: 'data'    },
-  { label: '04-ctx     -- Context ingestion',           value: 'ctx'     },
-  { label: '05-sbom    -- Software Bill of Materials',  value: 'sbom'    },
-  { label: '06-tf      -- Terraform analysis',          value: 'tf'      },
-  { label: '07-egr     -- Egress analysis',             value: 'egr'     },
-  { label: '08-crypto  -- Cryptography scan',           value: 'crypto'  },
-  { label: '09-synth   -- AI synthesis + 7R',           value: 'synth'   },
-  { label: '10-dynamic -- Playwright crawl',             value: 'dynamic' },
-  { label: '11-comp    -- Compliance evaluation (LLM)', value: 'comp'    },
-  { label: '12-blocks  -- Block assessments (LLM)',     value: 'blocks'  },
-  { label: '13-scope   -- Scope analysis',              value: 'scope'   },
-  { label: '26-quality -- Code health worklist',         value: 'quality' }, // #3405
+  { label: '01-inv        Inventory analysis',          value: 'inv'     },
+  { label: '02-state      State detection',             value: 'state'   },
+  { label: '03-data       Data classification',         value: 'data'    },
+  { label: '04-ctx        Context ingestion',           value: 'ctx'     },
+  { label: '05-sbom       Software Bill of Materials',  value: 'sbom'    },
+  { label: '06-tf         Terraform analysis',          value: 'tf'      },
+  { label: '07-egr        Egress analysis',             value: 'egr'     },
+  { label: '08-crypto     Cryptography scan',           value: 'crypto'  },
+  { label: '09-synth      AI synthesis + 7R',           value: 'synth'   },
+  { label: '10-dynamic    Playwright crawl',             value: 'dynamic' },
+  { label: '11-comp       Compliance evaluation (LLM)', value: 'comp'    },
+  { label: '12-blocks     Block assessments (LLM)',     value: 'blocks'  },
+  { label: '13-scope      Scope analysis',              value: 'scope'   },
+  { label: '26-quality    Code health worklist',         value: 'quality' }, // #3405
   // #3419: default secret scan (Gitleaks); the full malware scan supersedes it.
-  { label: '14-secrets -- Secret scan (Gitleaks)',       value: 'secrets' },
-  { label: '14-malware -- Malware scan (full)',          value: 'malware' },
+  { label: '14-secrets    Secret scan (Gitleaks)',       value: 'secrets' },
+  { label: '14-malware    Malware scan (full)',          value: 'malware' },
 ];
 
 // #0383: maps short pass keys (PASS_OPTIONS) to the long names used in
@@ -300,22 +279,15 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   }, []);
   const isEnterprise = isAllowed(licenseState, 'enterprise' as LicenseTier);
 
-  // Local master-banner wrapper: closes over the host-injected version + the
-  // licence state (LicenseGuard is in @swao/core). Memoised for a stable
-  // identity so HeaderView (which holds resize state) does not remount. Lets
-  // the existing `<Header subtitle=... />` call sites stay unchanged.
-  const Header = useMemo(() => {
-    let licenseState: LicenseStateView | null = null;
-    let licenseError: string | null = null;
-    try { licenseState = LicenseGuard.load().state as LicenseStateView; }
-    catch (e) { licenseError = (e as Error).message; }
-    return function Header(props: { subtitle?: string; contextPrefix?: string; stepInfo?: string; hideLicenseStatus?: boolean }): JSX.Element {
-      return <HeaderView {...props} version={version} licenseState={licenseState} licenseError={licenseError} />;
-    };
-  }, [version]);
 
-  const [phase, setPhase]     = useState<Phase>('input-app');
+  const [phase, setPhase]     = useState<AppPhase>('input-app');
   const [app, setApp]         = useState('');
+  // #3980 seeding, #4244 (every tier): the target LZ step pre-fills the targets the CLI seeds for a linked app.
+  const lzLinkSeed = useMemo(() => linkedAppSeedPrefill(workspace, app), [workspace, app]);
+  // #4285: the set-up targets (assessment.landing_zone.targets, app then workspace), geographies resolved as the CLI does.
+  const setupLz = useMemo(() => setupLzTargetsFor(workspace, app, scaffold.resolveSetupLzTargets, () => []), [workspace, app, scaffold.resolveSetupLzTargets]);
+  // #4285 (#4289 AC2): providers chosen without any region, named before the run.
+  const [lzProvidersWithoutRegion, setLzProvidersWithoutRegion] = useState<string[]>([]);
   const [vcsUrl, setVcsUrl]       = useState('');
   const [vcsRef, setVcsRef]       = useState('');
   const [, setVcsSubdir] = useState('');
@@ -323,6 +295,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #0382: tracks the MultiSelect cursor row so the per-framework
   // #0385 Design 074: active lens selection + auto-framework hints from confirmed lenses.
   const [selectedLenses, setSelectedLenses] = useState<string[]>([]);
+  // #4283: a refused save-as-default write (the run continues with the lenses).
+  const [lensSaveError, setLensSaveError] = useState<string | null>(null);
+  // #4284: run-time choices of this run (flags of the run, never written unless saved as the default).
+  const [regimesConfirmed, setRegimesConfirmed] = useState(false);
+  const [runLlmProvider, setRunLlmProvider] = useState<string | null>(null);
+  const [appSaveError, setAppSaveError] = useState<string | null>(null);
   const [lensAutoFrameworks, setLensAutoFrameworks] = useState<string[]>([]);
   // #1068: ref mirrors lensAutoFrameworks so initialSelected in the regime picker reads the
   // synchronously-updated value, not the stale state captured before React flushes the batch.
@@ -361,6 +339,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const [appLzCatTargets, setAppLzCatTargets]     = useState<string[]>([]);
   const [appLzCatFrameworks, setAppLzCatFrameworks] = useState<string[]>([]);
   const [appLzRegionFilter, setAppLzRegionFilter] = useState<string>('');
+  // #4481: opt-in market scan of the bundled provider list (--lz-market-scan), off by default.
+  const [appLzMarketScan, setAppLzMarketScan] = useState<boolean>(false);
   // #0814: per-app credential collection. Credentials are stored in CredentialStore
   // with per-app keys (e.g. vcs-token-sovereign-health). appCredStoredKeys tracks
   // which keys are already stored so the UI can show "stored -- Enter to keep."
@@ -372,6 +352,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #0800: saved pass profile from app .swao.yml, used as initialSelected in input-passes.
   // #0901: default to core passes only (no dynamic/malware) -- operator opts in explicitly.
   const [initialPassProfile, setInitialPassProfile] = useState<string[]>(DEFAULT_PASS_KEYS);
+  // #4499: the app's pass preselection before the lenses; a lens adds to it.
+  const basePassProfileRef = useRef<string[]>([...DEFAULT_PASS_KEYS]);
+  const setBasePassProfile = (p: readonly string[]): void => { basePassProfileRef.current = [...p]; setInitialPassProfile([...p]); };
   // #0776-C: collect Playwright URL + login credentials before writing atomically
   // at the password step so all three fields land in the crawl block together.
   const [playwrightUrl, setPlaywrightUrl]                     = useState('');
@@ -388,6 +371,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #0246: per-pass sub-progress label (e.g. "BSI_C5 (3/7)" while
   // Pass 11 iterates regimes). Cleared on every new pass.
   const [passSubLabel, setPassSubLabel] = useState('');
+  // #4498: the post-pass step after the last pass ("[post] Portfolio summary: 106 of 235 apps").
+  const [postStep, setPostStep] = useState<PostStepLine | null>(null);
   // #0379: track completed passes + intra-pass fractional advancement so the
   // progress bar reflects actual work done. Previously the bar was driven by
   // passNum (rising 1..12) against a hardcoded total of 9, so it pinned at
@@ -402,16 +387,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const [renameTarget, setRenameTarget]       = useState('');
   const [opMessage, setOpMessage]             = useState('');
   const [opError, setOpError]                 = useState('');
-  const [exportLines, setExportLines]   = useState<string[]>([]);
-  const [exportDone, setExportDone]     = useState(false);
-  const [exportCode, setExportCode]     = useState<number | null>(null);
-  const [exportBundleDir, setExportBundleDir] = useState('');
   // #0928: block assessment verdicts read from 12-blocks.yaml when assess-done.
   const [blockVerdicts, setBlockVerdicts] = useState<Record<string, string>>({});
-  // #0408 (sprint-040 round-7): inline export panel hot-keys.
-  const [exportPbitPath, setExportPbitPath] = useState('');
-  const [exportPortfolioPbitPath, setExportPortfolioPbitPath] = useState('');
-  const [exportActionToast, setExportActionToast] = useState('');
+  // #4256: the finish screen shows its details (block verdicts, baseline decisions) on request.
+  const [finishDetails, setFinishDetails] = useState(false);
+  // #3981: baseline decisions of the run (ranked contributions per control), from baseline-decisions.json.
+  const [baselineDecisionLines, setBaselineDecisionLines] = useState<string[]>([]);
   // #0659: landing-zone verdict + per-target breakdown captured from child stdout
   const [lzVerdict, setLzVerdict] = useState('');
   const [lzTargetVerdicts, setLzTargetVerdicts] = useState<{ target: string; verdict: string; gaps: number }[]>([]);
@@ -433,9 +414,6 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #2329/#2351: LLM connector list for the API tokens section of the credential hub.
   const [apiTokenConnectors, setApiTokenConnectors] = useState<LocalConnectorInfo[]>([]);
   const [apiTokenConnectorIdx, setApiTokenConnectorIdx] = useState(0);
-  // #2352: paging -- page 0-indexed; page size 9 (one per numeric key per page)
-  const [apiTokenPage, setApiTokenPage] = useState(0);
-  const API_TOKEN_PAGE_SIZE = 9;
   // #2328: resolved connector + apiKey passed as props into PreflightLlmPhase (#2371).
   const [preflightConnector, setPreflightConnector] = useState<LocalConnectorInfo | null>(null);
   // #3383: run the deterministic passes only (adds --skip-llm) when the operator
@@ -461,7 +439,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     // (anthropic first because the .swao.yml template defaults to it).
     if (storedCreds['anthropic-api-key'] || process.env['ANTHROPIC_API_KEY']) return 'Anthropic Claude  (credential-only; .swao.yml has no provider pinned)';
     if (storedCreds['openai-api-key']    || process.env['OPENAI_API_KEY'])    return 'OpenAI  (credential-only; .swao.yml has no provider pinned)';
-    return 'No LLM credentials configured. Set SWAO_LLM_PROVIDER or add credentials via `swao credential set`.';
+    return 'No LLM credentials configured. Set SWAO_LLM_PROVIDER or add the credentials in Tools, Credentials.';
   })();
 
   // #0620: terminal-size-based caps keep the TUI frame from overflowing the
@@ -473,7 +451,6 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const { stdout } = useStdout();
   const terminalRows = stdout?.rows ?? 24;
   const terminalCols = stdout?.columns ?? 80;
-  const maxLiveLines = Math.max(3, terminalRows - 19);
   const passVisibleCount = Math.max(4, terminalRows - 18);
   // Match the GuidanceBox width formula (#0741) so all bordered panels align.
   const guidanceWidth = Math.min(100, Math.max(63, terminalCols - 2));
@@ -488,6 +465,11 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
 
     // Reset counters + output from any previous run in the same session (#0379).
     setCompletedPasses(0);
+    // #4256 (A-20): a rerun after a cancel starts on the preparing state, never on the old pass.
+    setPassName('');
+    setPassSubLabel('');
+    setPostStep(null);
+    setFailedPass('');
     setSubFraction(0);
     setLines([]);
     setLzVerdict('');
@@ -507,14 +489,20 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       : passes.includes('dynamic');
     let args: string[];
     args = ['assess', '--app', app, '--passes', passArg];
+    args.push(...lensRunArgs((scaffold.lenses?.length ?? 0) > 0, selectedLenses)); // #4283 lenses_used of this run
+    args.push(...appRunChoiceArgs({ regimes: regimesConfirmed ? regimes : null, llmProvider: runLlmProvider })); // #4284 run-time choices
     if (skipLlm) args.push('--skip-llm'); // #3383
     if (!includeDynamic) args.push('--no-crawl');
     if (showStats) args.push('--stats');
     if (!useCassette) args.push('--no-cache');
     if (sourcePath.trim()) args.push('--source-path', sourcePath.trim());
     if (iter.trim() && iter.trim() !== '1') args.push('--iter', iter.trim());
+    // #4244: the app LZ step offers the static catalogue only (live landing-zone
+    // data is used only by the LZ Live Assessment).
     if (appLzCatTargets.length > 0) {
-      args.push('--lz-cat-targets', appLzCatTargets.join(','));
+      // #3980 seeding: the unedited seeded pre-fill carries --lz-cat-targets-seeded.
+      const offered = (scaffold.lzCatalogueHint?.entries ?? []).flatMap(e => e.regions.map(r => `${e.provider}:${r.id}`));
+      args.push(...lzCatTargetsArgs(appLzCatTargets, lzLinkSeed, offered));
     } else {
       // #3378 (ADR-0067): the TUI chooses LZ targets per run and never falls back
       // to .swao.yml. An empty selection (or skipping the LZ step) means "no LZ
@@ -522,13 +510,18 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       // .swao.yml resolver fire.
       args.push('--no-lz-fit');
     }
+    args.push(...lzMarketScanArgs(appLzMarketScan)); // #4481
 
     // #2495: Design 098 -- emit assess.app.start before spawning the subprocess.
     try { logApp(app, 'info', 'assess.app.start', 'assessment started', { context: { passes: passArg } }); } catch { /* best-effort */ }
+    // #4301: passes, signals and run id for assess.app.complete, from the pass tracker's events.
+    const runSummary = createAppRunSummary(passArg);
 
-    const child = spawn(BIN, [SELF, ...args], {
+    // #4267: SWAO_PASS_MARKERS=1 opts in to the [pass-start] / [pass-done] markers the event writer reads.
+    const selfCmd = selfSpawnCommand(args, { env: { ...buildChildEnv(workspace, storedCreds, wsLlmConfig, runAppLlmConfig(readAppLlmConfig(workspace, app), runLlmProvider)), SWAO_PASS_MARKERS: '1' } });
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: buildChildEnv(workspace, storedCreds, wsLlmConfig, readAppLlmConfig(workspace, app)),
+      env: selfCmd.env,
       cwd: workspace ?? undefined,
       // #0805: prevent child PKG binary from inheriting the parent's Windows
       // console handle. Without this, the child's Node.js runtime calls
@@ -539,6 +532,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     });
 
     const allLines: string[] = [];
+    let stopped = false;
+    // #4267: per-line pass attribution and assess.app.pass.* events from the child's markers.
+    const passTracker = createPassLineTracker();
     // #0996: Filter Node.js runtime deprecation warnings from third-party deps.
     // Buffer() deprecation ([DEP0005]) from xlsx/docx processing is not actionable
     // for the operator and pollutes the assess.log.
@@ -558,38 +554,42 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     };
     const push = (chunk: Buffer) => {
       const text = chunk.toString();
-      const newLines = text.split('\n').filter(line => Boolean(line) && !DEP_WARN_FILTER.test(line));
-      allLines.push(...newLines);
-      pendingLines.push(...newLines);
+      const newLines: string[] = [];
       // #2571: emit each output line to the NDJSON event log so the --- Output ---
       // section is persisted in real-time alongside WSP artefacts.
-      for (const line of newLines) {
-        try { logApp(app, 'info', 'tui.output', line, { context: { pass: passNameRef.current || undefined } }); } catch { /* best-effort */ }
+      // #4267: the pass of each line comes from the tracker (updated per line); the
+      // [pass-start] / [pass-done] markers become assess.app.pass.* events and are not shown.
+      for (const line of text.split('\n').filter(l => Boolean(l) && !DEP_WARN_FILTER.test(l))) {
+        const tracked = passTracker.consume(line);
+        for (const ev of tracked.events) {
+          runSummary.observe(ev);
+          try { logApp(app, 'info', ev.code, ev.message, { context: ev.context }); } catch { /* best-effort */ }
+        }
+        if (tracked.marker) continue;
+        newLines.push(line);
+        try { logApp(app, 'info', 'tui.output', line, { context: { pass: tracked.pass } }); } catch { /* best-effort */ }
       }
+      allLines.push(...newLines);
+      pendingLines.push(...newLines);
       if (!flushTimer) flushTimer = setTimeout(flushPending, 50);
-      // Match every "Pass NN -- name" occurrence; take the LAST. A single
-      // stdout chunk often carries both "[ok] Pass NN -- finished" AND the
-      // next "[info] Running Pass NN+1 -- starting" -- with .match() only
+      // Match every "Pass NN, name" occurrence; take the LAST. A single
+      // stdout chunk often carries both "[ok] Pass NN, finished" AND the
+      // next "[info] Running Pass NN+1, starting" -- with .match() only
       // the first match wins, so passName lagged a pass behind and the
       // label + error-state both showed the wrong pass name. #0403.
-      const passMatches = [...text.matchAll(/Pass (\d+) -- (\S+)/gi)];
-      const m = passMatches.length > 0 ? passMatches[passMatches.length - 1] : null;
-      if (m) {
-        setPassName((m[2] ?? '').replace(/\.+$/, ''));
+      const lastPass = lastPassName(text);
+      if (lastPass !== null) {
+        setPassName(lastPass);
         setPassSubLabel('');
         setSubFraction(0);
       }
       // #0379: count completed passes via "[ok] Pass NN" so the progress
       // bar denominator stays honest. Use match-all to handle the case
       // where two passes complete in the same stdout chunk.
-      const okMatches = [...text.matchAll(/\[ok\]\s+Pass\s+(\d+)\s+--\s+(\S+)/gi)];
-      let okDelta = okMatches.length;
+      const okDelta = completedPassCount(text);
       if (okDelta > 0) {
         setCompletedPasses(prev => prev + okDelta);
-        // #2495: emit assess.app.pass.complete for each completed pass.
-        for (const m of okMatches) {
-          try { logApp(app, 'info', 'assess.app.pass.complete', `Pass ${m[1]} ${m[2]} complete`, { context: { pass: m[2] ?? '', num: m[1] ?? '' } }); } catch { /* best-effort */ }
-        }
+        // #2495 / #4267: assess.app.pass.complete is written by the pass tracker above.
       }
       // #0659: landing-zone fit completion -- one line per target in multi-target runs.
       // #1114: use matchAll+/g so multiple targets arriving in one stdout chunk are all
@@ -605,26 +605,26 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       // Overall verdict from multi-target summary line -- always printed even for 1 target.
       const overallM = text.match(/Overall:\s+(\S+)/i);
       if (overallM) setLzVerdict((overallM[1] ?? '').toLowerCase());
-      // #0246 + #0379: per-pass sub-progress "[progress] Pass 11 -- BSI_C5 (3/7)".
+      // #0246 + #0379: per-pass sub-progress "[progress] Pass 11, BSI_C5 (3/7)".
       // The label surfaces intra-pass advancement so the operator knows the
       // LLM is making headway; subFraction (n/d) feeds into the bar value
       // so Pass 11's framework loop advances the bar smoothly rather than
       // jumping a full pass-width at the end.
-      const pm = text.match(/\[progress\] Pass \d+ -- (\S+) \((\d+)\/(\d+)\)/);
+      // #4498: a post-pass step line names the step that runs after the last pass.
+      const post = parsePostStepLine(text);
+      if (post) setPostStep(post);
+      const pm = passSubProgress(text);
       if (pm) {
-        const num = parseInt(pm[2] ?? '0', 10);
-        const den = parseInt(pm[3] ?? '0', 10);
-        setPassSubLabel(`${pm[1]} (${num}/${den})`);
+        const num = pm.done;
+        const den = pm.total;
+        setPassSubLabel(`${pm.label} (${num}/${den})`);
         if (den > 0) setSubFraction(num / den);
       }
       // #1097: advance sub-fraction when a pass STARTS so the bar shows
       // non-zero progress during long-running LLM calls (not just on completion).
-      if (/\[info\]\s+Running Pass \d+ --/i.test(text)) {
+      if (parsePassRunningLine(text) !== null) { // #4402: the one parser of @swao/core
         setSubFraction(0.5);
-        // #2495: emit assess.app.pass.start for each pass that starts.
-        for (const pm of text.matchAll(/\[info\]\s+Running Pass (\d+) -- (\S+)/gi)) {
-          try { logApp(app, 'info', 'assess.app.pass.start', `Pass ${pm[1]} ${pm[2]} start`, { context: { pass: pm[2] ?? '', num: pm[1] ?? '' } }); } catch { /* best-effort */ }
-        }
+        // #2495 / #4267: assess.app.pass.start is written by the pass tracker above.
       }
       // Match "[error] Pass synth failed: ..."
       const errM = text.match(/\[error\] Pass (\S+) failed/i);
@@ -646,9 +646,15 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       if (flushTimer) { clearTimeout(flushTimer); flushPending(); }
       // #2495: emit assess.app.complete before signalling done (different code from
       // subprocess's assessment.app.complete -- no double-entry, see #1782 rationale).
-      try { logApp(app, 'info', 'assess.app.complete', 'assessment complete', { context: { exit_code: exitCode } }); } catch { /* best-effort */ }
-      setCode(exitCode);
-      setDone(true);
+      // #4301: run_id, status, duration, passes run and not run, signals, caller.
+      try {
+        const latest = workspace ? readLatestRunId(resolve(workspace, 'apps', app, 'wsp')) : null;
+        // #4400: the run type from the run (run-status.json), not the flow.
+        const done = runSummary.complete(exitCode, latest, workspace ? readRunType(resolve(workspace, 'apps', app, 'wsp'), latest) : 'application');
+        logApp(app, done.level, 'assess.app.complete', done.message, { context: done.context });
+      } catch { /* best-effort */ }
+      // #4256: a cancelled run (or a screen that left) keeps its state; the cancel set the phase.
+      if (!stopped) { setCode(exitCode); setDone(true); }
       // #1782: lz.assess.complete is emitted by the CLI subprocess (assess.ts)
       // with authoritative context. The TUI emission was redundant and caused
       // double-entry in the NDJSON event log with inconsistent context shapes.
@@ -676,51 +682,20 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       // BI bundle. Previously this auto-routed straight to export-prompt
       // and the 100% bar flashed by too quickly.
       // On non-zero exit, the BI bundle is meaningless -- skip the prompt.
+      if (stopped) return;
       if (exitCode === 0) {
         setPhase('assess-done');
       } else { setPhase('done'); }
     });
-    return () => { child.kill(); if (flushTimer) clearTimeout(flushTimer); };
+    // #4256 (Design 126 section 7.6): leaving the run phase (cancel) or the screen stops the
+    // child process tree (taskkill /T on Windows); the close handler then changes nothing.
+    return () => {
+      stopped = true;
+      if (child.pid) void treeKillPid(child.pid); else child.kill();
+      if (flushTimer) clearTimeout(flushTimer);
+    };
   }, [phase]);
 
-  // Pattern A (#0220): chain `swao export` after a successful assess.
-  useEffect(() => {
-    if (phase !== 'export-running') return;
-    const args = ['export', '--app', app, '--formats', 'csv,ndjson,xlsx'];
-    const child = spawn(BIN, [SELF, ...args], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
-      cwd: workspace ?? undefined,
-      windowsHide: true,
-    });
-    const push = (chunk: Buffer) => {
-      const text = chunk.toString();
-      setExportLines(prev => [...prev, ...text.split('\n').filter(Boolean)]);
-      const starMatch = text.match(/\[ok\]\s+Star CSV bundle written\s+->\s+(\S+[/\\]star[/\\]?)/);
-      if (starMatch) setExportBundleDir((starMatch[1] ?? '').replace(/[/\\]$/, ''));
-      // #0408: capture both .pbit paths for the inline export panel hot-keys.
-      const pbitMatches = text.matchAll(/\[ok\]\s+PowerBI template ready\s+->\s+(\S+\.pbit)/g);
-      for (const m of pbitMatches) {
-        const p = (m[1] ?? '').trim();
-        if (/swao-portfolio\.pbit$/i.test(p)) setExportPortfolioPbitPath(p);
-        else                                  setExportPbitPath(p);
-      }
-    };
-    child.stdout.on('data', push);
-    child.stderr.on('data', push);
-    child.on('error', (err) => {
-      setLines(prev => [...prev, `[error] Failed to start export process: ${err.message}`]);
-      setExportCode(1);
-      setExportDone(true);
-      setPhase('done');
-    });
-    child.on('close', (exitCode) => {
-      setExportCode(exitCode);
-      setExportDone(true);
-      setPhase('done');
-    });
-    return () => { child.kill(); };
-  }, [phase]);
 
   // #0397 / #0400 / #0406 / #0407 REVERTED AGAIN: writing \x1b[2J\x1b[H
   // during render confused Ink's diff-renderer -- Ink doesn't know about
@@ -758,23 +733,40 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #0814: load stored credential keys when entering the credential hub so the
   // UI can show "already stored -- Enter to keep" hints per sub-step.
   // #2329/#2351: enumerate LLM connectors (built-ins + workspace + llm-gateways/) for the API tokens section.
-  // #2352: reset page to 0 on re-entry.
   useEffect(() => {
     if (phase !== 'input-app-credentials') return;
     const stored = readStoredCredentials();
     const keys = new Set(Object.keys(stored));
     setAppCredStoredKeys(keys);
     setApiTokenConnectors(listApiTokenConnectors(workspace ?? undefined));
-    setApiTokenPage(0);
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // #0408 (round-7): toast helper for the inline export panel hot-keys.
-  const toastExport = (msg: string) => {
-    setExportActionToast(msg);
-    setTimeout(() => setExportActionToast(''), 2500);
-  };
 
   const guidanceOpenRef = useRef(false);
+
+  // #4255 (Design 126 sections 7.4 and 7.5): Esc before the run aborts the flow
+  // (AbortDialog once an app is chosen). The screen reads the keys itself (its
+  // phases are the steps), so the hook only provides the dialog and the decision.
+  const nav = useFlowNavigation({ steps: APP_STEPS, dirty: app !== '', onExit: onBack, what: 'assessment', active: false });
+  const flowHeader = useMemo(() => {
+    let ls: LicenseStateView | null = null;
+    let le: string | null = null;
+    try { ls = LicenseGuard.load().state as LicenseStateView; }
+    catch (e) { le = (e as Error).message; }
+    return { subtitle: typeLabel, version, licenseState: ls, licenseError: le };
+  }, [version]);
+  const onGuidanceOpenChange = (open: boolean): void => { guidanceOpenRef.current = open; nav.onGuidanceOpenChange(open); };
+  /** The frame of a phase before the run: header, licence line, step bar, title (#4255). */
+  const frame = { header: flowHeader, steps: APP_STEPS, current: APP_PHASE_STEP[phase], onGuidanceOpenChange, dialog: nav.dialog };
+  // #4230: the credential list box follows the highlighted entry.
+  // #4255: the run options box follows the highlighted entry.
+  const { entry: runOptionEntry, onCursorChange: onRunOptionCursor } = useOptionGuidance(RUN_OPTIONS_GUIDANCE);
+  // #4213 (Design 126 section 9): the entry of the highlighted option of the current picker
+  // phase; every picker sets it on mount and on each move, so no phase reads a stale entry.
+  const [pickEntry, setPickEntry] = useState<GuidanceEntry | undefined>(undefined);
+  const onPickCursor = (_v: string, o?: { guidance?: GuidanceEntry }): void => { setPickEntry(o?.guidance); };
+  const pickGuidance = pickEntry ? { entry: pickEntry } : {};
+  const { entry: credEntry, onCursorChange: onCredCursor } = useOptionGuidance({ title: 'Per-app credentials', what: 'Credentials are keyed to this app only and stored in the SWAO credential store. Every field is optional; Continue goes on.' });
 
   // #0928: read block verdicts from 12-blocks.yaml when the assessment finishes.
   useEffect(() => {
@@ -784,6 +776,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       if (!existsSync(runsDir)) return;
       const latest = readdirSync(runsDir).sort().at(-1);
       if (!latest) return;
+      const decisions = readBaselineDecisions(join(runsDir, latest));
+      if (decisions) setBaselineDecisionLines(formatBaselineDecisionLines(decisions, 6));
       const blocksPath = join(runsDir, latest, 'passes', '12-blocks.yaml');
       if (!existsSync(blocksPath)) return;
       const parsed = loadYaml(readFileSync(blocksPath, 'utf-8')) as { assessment?: { blocks?: Record<string, unknown> } } | null;
@@ -803,7 +797,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // #2328: Route to preflight-llm if the workspace uses an LLM gateway connector,
   // otherwise go directly to 'running'. Reads per-app override at call time.
   const beginRun = () => {
-    const appLlm = readAppLlmConfig(workspace, app);
+    // #4284: the LLM provider chosen for this run (preflight on what the run uses).
+    const appLlm = runAppLlmConfig(readAppLlmConfig(workspace, app), runLlmProvider);
     const connectorId = appLlm.connector ?? wsLlmConfig.connector;
     if (!connectorId) { setPhase('running'); return; }
     const connectors = listLocalConnectors(workspace ?? undefined);
@@ -820,156 +815,102 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
 
   // #2328: preflight LLM ping logic moved to PreflightLlmPhase (#2371).
 
+  /** #4255 (section 7.1): in a text input the left arrow moves the text cursor; Shift+Tab goes back. */
+  const appTextPhase = (): boolean => {
+    if (APP_TEXT_PHASES.has(phase)) return true;
+    const entries = scaffold.lzCatalogueHint?.entries ?? [];
+    if (phase === 'input-app-lz-provider') return entries.length === 0;
+    if (phase === 'input-app-lz-region') {
+      const n = appLzCatProviders.reduce((sum, pid) => sum + (entries.find(e => e.provider === pid)?.regions.length ?? 0), 0);
+      return n === 0 || (n > FILTER_THRESHOLD && appLzRegionFilter === '');
+    }
+    return false;
+  };
+  /** #4255 (section 7.2): back one step, values kept; a region filter is cleared first. */
+  const backOneStep = (): void => {
+    if (phase === 'input-app-lz-region' && appLzRegionFilter) { setAppLzRegionFilter(''); return; }
+    if (phase === 'input-app-credentials') setEditOnlyMode(false);
+    if (phase === 'confirm-delete') setDeleteSelection([]);
+    const to = appBackPhase(phase, { hasLenses: (scaffold.lenses?.length ?? 0) > 0, reuseFromHub: playwrightUrlReuseOrigin === 'hub' });
+    if (to) setPhase(to);
+  };
+  /** #4255 (section 7.10): an entry of the credential list (were the letter keys R, A, T, U, P, M, L and 1 to 9). */
+  const onCredentialSelect = (value: string): void => {
+    const target: Record<string, AppPhase> = {
+      [APP_CRED_VCS_URL]: 'input-app-cred-vcs-url',
+      [APP_CRED_VCS_TOKEN]: 'input-app-cred-vcs-token',
+      [APP_CRED_PW_URL]: 'input-app-cred-playwright-url',
+      [APP_CRED_PW_USER]: 'input-app-cred-playwright-user',
+      [APP_CRED_PW_PASS]: 'input-app-cred-playwright-pass',
+      [APP_CRED_PW_MFA]: 'input-app-cred-playwright-mfa',
+      [APP_CRED_LLM]: 'input-app-llm',
+    };
+    const to = target[value];
+    if (to) { setPhase(to); return; }
+    if (value.startsWith(CRED_API_PREFIX)) {
+      const idx = apiTokenConnectors.findIndex(c => c.id === value.slice(CRED_API_PREFIX.length));
+      if (idx >= 0) { setApiTokenConnectorIdx(idx); setPhase('input-app-cred-api-token'); }
+      return;
+    }
+    if (value !== CRED_CONTINUE) return;
+    if (editOnlyMode) { setEditOnlyMode(false); setPhase('input-app'); }
+    else { setPhase('input-ingest-tip'); }
+  };
+  /** #4255 (section 4.4): the delete confirmation's Enter (was the letter key y). */
+  const deleteSelectedApps = (): void => {
+    try {
+      if (!workspace) throw new Error('No workspace found');
+      for (const id of deleteSelection) {
+        rmSync(join(workspace, 'apps', id), { recursive: true, force: true });
+      }
+      setOpMessage(`Deleted ${deleteSelection.length} app${deleteSelection.length === 1 ? '' : 's'}: ${deleteSelection.join(', ')}`);
+      setOpError('');
+    } catch (e) {
+      setOpError((e as Error).message);
+      setOpMessage('');
+    }
+    setPhase('op-done');
+  };
+
   useInput((input, key) => {
-    // Allow C/L to pass through even when guidance is open; they trigger
-    // phase transitions that naturally close the guidance box.
-    if (guidanceOpenRef.current && !(input === 'c' || input === 'C' || input === 'l' || input === 'L')) return;
-    if ((phase === 'done') && (key.return || key.escape)) onBack();
-    // assess-done summary: Esc always returns to main menu; Enter goes to the
-    // challenge-prompt step if onChallenge is wired (#0988 Design 074 Step 8).
-    if (phase === 'assess-done' && key.escape) onBack();
-    if (phase === 'assess-done' && key.return) {
-      // #3383: no Stakeholder Challenge for a deterministic-only run (no LLM).
-      if (onChallenge && isEnterprise && !skipLlm) { setPhase('challenge-prompt'); }
-      else { onBack(); }
+    // #4230 (Design 126 section 7.8): an open guidance box owns Esc, PgUp and
+    // PgDn only; every other key keeps working with the box open.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
+    if (nav.dialogOpen) return; // #4255: the AbortDialog owns Enter and Esc
+    // #4256: a failed run ends on FinishPanel (its menu owns Enter); Esc returns to the main menu.
+    if (phase === 'done' && (key.escape || (key.return && code === 0))) onBack();
+    // #4256 (Design 126 section 4.7): the assess-done finish screen is FinishPanel;
+    // its menu owns Enter and the arrows (Stakeholder Challenge, Show details, View
+    // the log, Back to main menu; no letter keys). Esc closes the details, else
+    // aborts to the main menu.
+    if (phase === 'assess-done') {
+      if (finishDetails && (key.escape || key.return)) { setFinishDetails(false); return; }
+      if (key.escape) onBack();
+      return;
     }
-    // #0715: open the assess.log in the OS default viewer when L is pressed.
-    // Use ref so stale closure always reads the live path (#0805).
-    if (phase === 'assess-done' && (input === 'l' || input === 'L') && logFilePathRef.current) {
-      tuiDebug(`L key pressed -- opening log: ${logFilePathRef.current}`);
-      openWithDefaultApp(logFilePathRef.current);
-    }
-    // #0928: C key launches App Stakeholder Challenge; #1109: C also launches LZ Sovereignty Challenge.
-    // #2262: guard -- challenge module absent on Community/Consultant; pressing C on those tiers crashes.
-    if (phase === 'assess-done' && (input === 'c' || input === 'C')) {
-      if (!isEnterprise) return;
-      if (skipLlm) return; // #3383: challenge is LLM-driven; not for a deterministic-only run
-      onChallenge?.(app);
-    }
-    // #0408: in the inline export-done state, R/P/C/E launch templates +
-    // copy the paths. Only active after the export completes successfully.
-    if (phase === 'done' && exportDone && exportCode === 0) {
-      if ((input === 'r' || input === 'R') && exportPbitPath) {
-        toastExport(openWithDefaultApp(exportPbitPath) ? `Opening report template -> ${exportPbitPath}` : `Could not open ${exportPbitPath}`);
-      }
-      if ((input === 'p' || input === 'P') && exportPortfolioPbitPath) {
-        toastExport(openWithDefaultApp(exportPortfolioPbitPath) ? `Opening portfolio template -> ${exportPortfolioPbitPath}` : `Could not open ${exportPortfolioPbitPath}`);
-      }
-      if ((input === 'c' || input === 'C') && exportBundleDir) {
-        toastExport(copyToClipboard(exportBundleDir) ? `Copied SWAOExportPath to clipboard: ${exportBundleDir}` : 'Clipboard copy failed (xclip/xsel missing?)');
-      }
-      // #0409 (sprint-040 round-8): copy EvidenceUrlPrefix. Standard
-      // value for local PowerBI Desktop authoring is `file:///<workspace>/apps/<app>/`.
-      // Documented as the production-vs-Service swap target in #0268.
-      if ((input === 'e' || input === 'E') && workspace) {
-        const evidenceUrl = `file:///${workspace.replace(/\\/g, '/')}/apps/${app}/`;
-        toastExport(copyToClipboard(evidenceUrl) ? `Copied EvidenceUrlPrefix to clipboard: ${evidenceUrl}` : 'Clipboard copy failed');
-      }
-    }
-    // #0763/#0800: input-app keyboard handlers moved to AppPickerPhase (#2371).
-    if (phase === 'input-vcs-url' && key.escape) setPhase('input-app-new');
-    if (phase === 'input-vcs-ref' && key.escape) setPhase('input-vcs-url');
-    if (phase === 'input-source-subdir' && key.escape) setPhase('input-vcs-ref');
-    if (phase === 'input-playwright-url' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-playwright-url-reuse' && key.escape)
-      setPhase(playwrightUrlReuseOrigin === 'hub' ? 'input-app-cred-playwright-url' : 'input-playwright-url');
-    // #0776-C: escape from login sub-steps walks back through the chain
-    if (phase === 'input-playwright-username' && key.escape) setPhase('input-playwright-url');
-    if (phase === 'input-playwright-password' && key.escape) setPhase('input-playwright-username');
-    // #0814: escape navigation for the credential hub and all sub-steps
-    if (phase === 'input-app-credentials' && key.escape) { setEditOnlyMode(false); setPhase('input-app'); }
-    if (phase === 'input-app-cred-vcs-url' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-vcs-token' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-playwright-url' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-playwright-user' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-playwright-pass' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-playwright-mfa' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-llm' && key.escape) setPhase('input-app-credentials');
-    // #2329: Esc from API token entry returns to hub
-    if (phase === 'input-app-cred-api-token' && key.escape) setPhase('input-app-credentials');
-    // #2328: preflight keyboard handlers moved to PreflightLlmPhase (#2371).
-    // #0814: credential hub hot-keys
-    if (phase === 'input-app-credentials' && (input === 'r' || input === 'R')) setPhase('input-app-cred-vcs-url');
-    if (phase === 'input-app-credentials' && (input === 'a' || input === 'A')) setPhase('input-app-cred-vcs-token');
-    if (phase === 'input-app-credentials' && (input === 't' || input === 'T')) setPhase('input-app-cred-playwright-url');
-    if (phase === 'input-app-credentials' && (input === 'u' || input === 'U')) setPhase('input-app-cred-playwright-user');
-    if (phase === 'input-app-credentials' && (input === 'p' || input === 'P')) setPhase('input-app-cred-playwright-pass');
-    if (phase === 'input-app-credentials' && (input === 'm' || input === 'M')) setPhase('input-app-cred-playwright-mfa');
-    // #2329/#2352: numeric keys (1-9) for API token connectors; paged
-    if (phase === 'input-app-credentials' && /^[1-9]$/.test(input)) {
-      const pageStart = apiTokenPage * API_TOKEN_PAGE_SIZE;
-      const idx = pageStart + parseInt(input, 10) - 1;
-      if (idx < apiTokenConnectors.length) {
-        setApiTokenConnectorIdx(idx);
-        setPhase('input-app-cred-api-token');
-      }
-    }
-    // #2352: [ / ] to navigate pages in the API tokens section
-    if (phase === 'input-app-credentials' && (input === ']' || key.downArrow)) {
-      const totalPages = Math.ceil(apiTokenConnectors.length / API_TOKEN_PAGE_SIZE);
-      if (apiTokenPage < totalPages - 1) setApiTokenPage(p => p + 1);
-    }
-    if (phase === 'input-app-credentials' && (input === '[' || key.upArrow)) {
-      if (apiTokenPage > 0) setApiTokenPage(p => p - 1);
-    }
-    // #0800: L key opens per-app LLM override selector
-    if (phase === 'input-app-credentials' && (input === 'l' || input === 'L')) setPhase('input-app-llm');
-    // Enter/S on hub: in edit-only mode return to input-app; otherwise advance to assessment
-    if (phase === 'input-app-credentials' && (key.return || input === 's' || input === 'S')) {
-      if (editOnlyMode) { setEditOnlyMode(false); setPhase('input-app'); }
-      else { setPhase('input-ingest-tip'); }
-    }
-    if (phase === 'input-ingest-tip') {
-      if (key.return) {
-        if ((scaffold.lenses?.length ?? 0) > 0) setPhase('input-lenses');
-        else setPhase('input-regimes');
-      }
-      if (key.escape) setPhase('input-app');
-    }
-    if (phase === 'input-lenses' && key.escape) setPhase('input-ingest-tip');
-    if (phase === 'input-regimes' && key.escape) {
-      if ((scaffold.lenses?.length ?? 0) > 0) { setPhase('input-lenses'); }
-      else { setPhase('input-app'); }
-    }
-    if (phase === 'input-passes' && key.escape) setPhase('input-regimes');
-    if (phase === 'input-app-lz-provider' && key.escape) beginRun();
-    if (phase === 'input-app-lz-region' && key.escape) {
-      if (appLzRegionFilter) { setAppLzRegionFilter(''); } else { setAppLzCatProviders([]); setPhase('input-app-lz-provider'); }
+    if (phase === 'input-ingest-tip' && key.return) {
+      if ((scaffold.lenses?.length ?? 0) > 0) setPhase('input-lenses');
+      else setPhase('input-regimes');
     }
     // #0621: in the no-frameworks empty-state there is no active MultiSelect to
     // consume Enter, so advance to the passes step here. Gated on the empty set
     // so it never competes with the picker's own Enter (onConfirm) when present.
     if (phase === 'input-regimes' && key.return && discoverRegimes().length === 0) setPhase('input-passes');
-    if (phase === 'export-running' && key.escape) onBack();
-    if (phase === 'input-passes' && (input === 's' || input === 'S')) setShowStats(s => !s);  // #0259
-    if (phase === 'input-passes' && (input === 'c' || input === 'C')) setUseCassette(c => !c);  // cassette opt-out
-    if (phase === 'input-passes' && (input === 'p' || input === 'P')) setPhase('input-source-path');  // #0259.C1
-    if (phase === 'input-passes' && (input === 'i' || input === 'I')) setPhase('input-iter');         // #0259.C1
-    if ((phase === 'input-source-path' || phase === 'input-iter') && key.escape) setPhase('input-passes');
-    if ((phase === 'pick-delete' || phase === 'pick-rename') && key.escape) setPhase('input-app');
-    if (phase === 'input-rename' && key.escape) setPhase('pick-rename');
-    if (phase === 'op-done' && (key.return || key.escape)) {
+    // #4255 (Design 126 section 7.10): stats, LLM cache, source path and iteration are list
+    // entries of the Run options sub-step (were the letter keys S, C, P and I).
+    if (phase === 'op-done' && key.return) {
       setOpMessage(''); setOpError(''); setDeleteSelection([]); setRenameTarget('');
       setPhase('input-app');
+      return;
     }
-    if (phase === 'confirm-delete') {
-      if (input === 'y' || input === 'Y') {
-        try {
-          if (!workspace) throw new Error('No workspace found');
-          for (const id of deleteSelection) {
-            rmSync(join(workspace, 'apps', id), { recursive: true, force: true });
-          }
-          setOpMessage(`Deleted ${deleteSelection.length} app${deleteSelection.length === 1 ? '' : 's'}: ${deleteSelection.join(', ')}`);
-          setOpError('');
-        } catch (e) {
-          setOpError((e as Error).message);
-          setOpMessage('');
-        }
-        setPhase('op-done');
-      } else if (input === 'n' || input === 'N' || key.escape) {
-        setDeleteSelection([]);
-        setPhase('input-app');
-      }
+    // #4255 (Design 126 sections 7.2 and 7.4): before the run Esc aborts the flow
+    // (AbortDialog once an app is chosen); the left arrow, or Shift+Tab in a text
+    // input, goes back one step with the values kept. The per-phase Esc targets
+    // (A-27) and the letter keys of the credential list are gone (section 7.10,
+    // onCredentialSelect); the delete confirmation is a ConfirmPanel.
+    if (isAppPreRunPhase(phase)) {
+      if (key.escape) { nav.requestAbort(); return; }
+      if ((key.tab && key.shift) || (key.leftArrow && !appTextPhase())) { backOneStep(); return; }
     }
   });
 
@@ -1095,12 +1036,17 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const discoverRegimes = (): RegimeOption[] =>
     discoverCommunityRegimes(workspace, 'app', scaffold.bundledCommunityDir);
 
-  const lzProviderName = (id: string): string =>
-    scaffold.lzCatalogueHint?.entries.find(e => e.provider === id)?.name ?? id;
+  // #4296: the central provider name map (abbreviation plus full name).
+  const lzProviderName = (id: string): string => {
+    // #4349: the map label, not the catalogue hint label (a third form).
+    const entry = scaffold.lzCatalogueHint?.entries.find(e => e.provider === id);
+    return centralProviderLabel(id, 'pair', entry?.name);
+  };
 
   // #1021: truncate a string to fit within the usable terminal line width.
   const truncateLabel = (s: string, reservedChars = 0): string => {
-    const cols = (process.stdout.columns ?? 80) - 2 - reservedChars;
+    // #4110: lines are cut at the TerminalFrame width, not the terminal width.
+    const cols = (terminalFrameWidth(process.stdout.columns) ?? 80) - 2 - reservedChars;
     return s.length > cols ? s.slice(0, Math.max(0, cols - 3)) + '...' : s;
   };
 
@@ -1159,84 +1105,6 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     return DEFAULT_PASS_KEYS;
   };
 
-  // #0800: persist the chosen pass profile to assessment.pass_profile in app .swao.yml.
-  // #0886: if malware is selected, auto-write a passes.malware block when not already present.
-  const writeAppPassProfile = (appId: string, chosen: string[]): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      const assessment = (yml['assessment'] ?? {}) as Record<string, unknown>;
-      assessment['pass_profile'] = chosen;
-      yml['assessment'] = assessment;
-      if (chosen.includes('malware')) {
-        const passes = (yml['passes'] ?? {}) as Record<string, unknown>;
-        if (!passes['malware']) {
-          passes['malware'] = {
-            tools: {
-              gitleaks: { enabled: true },
-              osv: { enabled: true },
-              clamav: { enabled: true },
-              yara: { enabled: true },
-              ort: { enabled: false },
-            },
-          };
-          yml['passes'] = passes;
-        }
-      }
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
-
-  // #0800: write per-app LLM override to the app's .swao.yml providers.llm.primary block.
-  const writeAppLlmProvider = (appId: string, type: string, model?: string, endpoint?: string): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      const providers = (yml['providers'] ?? {}) as Record<string, unknown>;
-      const llm = (providers['llm'] ?? {}) as Record<string, unknown>;
-      const primary: Record<string, unknown> = { type };
-      if (model)    primary['model']    = model;
-      if (endpoint) primary['endpoint'] = endpoint;
-      llm['primary']    = primary;
-      providers['llm']  = llm;
-      yml['providers']  = providers;
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
-
-  // #0800: clear per-app LLM override so the workspace default is used.
-  const clearAppLlmProvider = (appId: string): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      const providers = yml['providers'] as Record<string, unknown> | undefined;
-      if (!providers) return;
-      delete (providers['llm'] as Record<string, unknown> | undefined)?.['primary'];
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
-
-  // Persist the chosen regimes back to the app's .swao.yml. Round-trips
-  // the YAML so other keys (source, vcs, context_inputs) are preserved.
-  const writeAppRegimes = (appId: string, chosen: string[]): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      // #0755: write to assessment.regimes_active (compliance-evaluator reads this since #0748).
-      const assessment = (yml['assessment'] ?? {}) as Record<string, unknown>;
-      assessment['regimes_active'] = chosen;
-      yml['assessment'] = assessment;
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
 
   // Existing app selected -- route to the appropriate next phase based on
   // the selected assessment type (#0630/#0631).
@@ -1251,8 +1119,10 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       try { scaffold.ingestion(join(workspace, 'apps', id)); } catch { /* best-effort */ }
     }
     setRegimes(readAppRegimes(id));
+    setRegimesConfirmed(false); // #4284: run-time choices start from the app defaults
+    setRunLlmProvider(null);
     // #0800: pre-load the saved pass profile so input-passes shows saved defaults.
-    setInitialPassProfile(readAppPassProfile(id));
+    setBasePassProfile(readAppPassProfile(id));
     // #0814: credential hub -- both application and landing-zone types; LZ shows
     // VCS section only (no Playwright). 'input-app-credentials' uses assessmentType
     // to conditionally render the Playwright section.
@@ -1269,7 +1139,9 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       try { scaffold.ingestion(join(workspace, 'apps', id)); } catch { /* best-effort */ }
     }
     setRegimes(readAppRegimes(id));
-    setInitialPassProfile(readAppPassProfile(id));
+    setRegimesConfirmed(false);
+    setRunLlmProvider(null);
+    setBasePassProfile(readAppPassProfile(id));
     setPhase('input-app-credentials');
   };
 
@@ -1287,8 +1159,30 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     setSelectedLenses([]);
     setLensAutoFrameworks([]);
     lensAutoFrameworksRef.current = [];
-    setInitialPassProfile(DEFAULT_PASS_KEYS);
+    setBasePassProfile(DEFAULT_PASS_KEYS);
+    setRegimesConfirmed(false); // #4284
+    setRunLlmProvider(null);
     setPhase('input-vcs-url');
+  };
+
+  // #0833: after the passes are confirmed (and the #4284 save question answered),
+  // warn before the run if dynamic_analysis is selected but Chromium is not
+  // installed. Runs fresh here so re-entering the screen after install picks up
+  // the new state without a restart. The bundled playwright-core can use any
+  // discovered Chromium via executablePath (#0971).
+  const afterPassesConfirmed = (selected: string[]): void => {
+    const hasDynamic = selected.includes('dynamic') || selected.includes('all');
+    const chromiumMissing = findInstalledChromium() === null;
+    setPhase(hasDynamic && chromiumMissing ? 'playwright-warn' : 'input-app-lz-provider');
+  };
+
+  // #4284: the app file holds a passes.malware block already (kept on save).
+  const appHasMalwareBlock = (appId: string): boolean => {
+    if (!workspace) return false;
+    try {
+      const yml = loadYaml(readFileSync(join(workspace, 'apps', appId, '.swao.yml'), 'utf-8')) as { passes?: { malware?: unknown } } | null;
+      return Boolean(yml?.passes?.malware);
+    } catch { return false; }
   };
 
   // #0379: was hardcoded 9 here but the actual ALL_PASSES contract is 12
@@ -1303,25 +1197,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   const totalPasses = passes.includes('all')
     ? ALL_PASS_COUNT + (passes.includes('malware') && !ALL_PASSES.split(',').includes('secrets') ? 1 : 0)
     : passes.filter(p => p !== 'all' && !(p === 'secrets' && passes.includes('malware'))).length;
-  // Effective work-done. #0396 (sprint-040): on FAILURE keep the bar at
-  // the last actual progress instead of snapping to 100 percent. The bar
-  // turns red so the failure is unmistakable; jumping to 100 percent on
-  // an exit-1 looked like the run succeeded but with warnings.
-  const inProgressValue = Math.min(totalPasses, completedPasses + subFraction);
-  const progressValue = done
-    ? (code === 0 ? totalPasses : inProgressValue)
-    : inProgressValue;
-  // Show at least 10% when the assessment is actively running, so the bar
-  // does not flash 0% before the first pass completes.
-  // #2333: cap at 95% while still running so the bar never hits 100% before
-  // the assess-done phase is reached (the final pass completes then the code
-  // transitions; a 100% bar mid-run was misleading to operators).
-  const rawDisplayProgress = (phase === 'running' && progressValue === 0)
-    ? totalPasses * 0.1
-    : progressValue;
-  const displayProgressValue = phase === 'running'
-    ? Math.min(totalPasses * 0.95, rawDisplayProgress)
-    : rawDisplayProgress;
+  // #4256: the run view (RunPanel) computes the stage percentage from the
+  // passes done and the sub-progress of the current pass (run-view.ts).
 
   // ---- render phases ----
 
@@ -1338,17 +1215,16 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
         onDelete={() => setPhase('pick-delete')}
         onRename={() => setPhase('pick-rename')}
         onEditCredentials={handleEditApp}
-        onBack={onBack}
-        Header={Header}
+        onBack={nav.requestAbort}
+        {...frame}
       />
     );
   }
 
   if (phase === 'input-app-new') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="New Application" />
-        <Text>Workspace: <Text bold color="whiteBright">{workspace ?? '(none)'}</Text></Text>
+      <FlowFrame {...frame} title={"New Application"} keys={K_CONFIRM_BACK} guidance={{ title: "New application ID", what: "Folder-safe identifier for this app in the engagement (e.g. my-app).", details: [{ label: 'Format', value: 'Lowercase letters, digits, hyphens' }] }}>
+        <Text>Workspace: <Text bold>{workspace ?? '(none)'}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-new"
@@ -1358,35 +1234,48 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="New application ID"
-          what="Folder-safe identifier for this app in the engagement (e.g. my-app)."
-          details={[{ label: 'Format', value: 'Lowercase letters, digits, hyphens' }]}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
-  // #0732: optional target LZ step for app assessments -- Esc skips to running.
+  // #0732: optional target LZ step for app assessments. #4255 (Design 126 section 7.4): Esc aborts;
+  // confirming with no provider selected goes on without an LZ fit.
   if (phase === 'input-app-lz-provider') {
     const hint = scaffold.lzCatalogueHint;
-    const providerOptions = hint?.entries.map(e => ({ label: e.label ?? `${e.name}  (${e.provider})`, value: e.provider })) ?? [];
+    // #4349: provider rows from the central name map (#4296), not the catalogue hint label.
+    const providerOptions = hint?.entries.map(e => ({ label: providerColumns(e.provider, e.name), value: e.provider, guidance: lzProviderRowGuidance(e, e.provider) })) ?? [];
+    const longNotice = linkedAppCatalogueNotice(workspace, app);
+    const providerKeys = providerOptions.length > 0 ? TARGET_LZ_PROVIDER_KEYS : TARGET_LZ_MANUAL_REGION_KEYS;
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Application Assessment -- Target Landing Zone (optional)" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>  Select one or more target CSPs. HTML publication will show per-service readiness for each. <Text color="yellow">Esc to skip.</Text></Text>
+      <FlowFrame {...frame} title={TARGET_LZ_TITLE} keys={providerKeys} guidance={{ title: "Target Landing Zone", what: "Optional: select one or more CSPs and regions to run catalogue fits during this assessment. Each combination produces a readiness block in the HTML publication. Enter goes on to the regions; Skip this step (or Enter with no provider selected) goes on without an LZ fit, so nothing is assessed against the catalogue.", details: longNotice ? [{ label: 'LZ source', value: longNotice }] : undefined, ...pickGuidance }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        {/* #3980, #4244: the CLI warning of a linked app (assessed against the static catalogue on every tier).
+            #4349: one short LZ source line and the hint in an indented Box; the full notice goes to the guidance. */}
+        <TargetLzNotice notice={linkedAppCatalogueShortNotice(workspace, app)} hint={TARGET_LZ_PROVIDER_HINT} />
         <Box marginTop={1}>
           {providerOptions.length > 0 ? (
             <MultiSelect
               label="Cloud provider(s)"
-              options={providerOptions}
+              visibleCount={PICKER_VISIBLE_COUNT}
+              // #4255 (Design 126 section 7.7): "Skip this step" is the last entry, an action, not a toggle.
+              // #4481: the market scan entry toggles --lz-market-scan (off by default).
+              options={[...providerOptions, targetLzMarketScanOption(appLzMarketScan), TARGET_LZ_SKIP_OPTION]}
+              onAction={(v) => {
+                if (v === TARGET_LZ_MARKET_SCAN) { setAppLzMarketScan(on => !on); return; }
+                if (v === TARGET_LZ_SKIP) beginRun();
+              }}
+              showKeyHints={false}
+              onCursorChange={onPickCursor}
               allowEmptyConfirm
-              // #3378 Part B: pre-select the providers of this app's last run.
-              initialSelected={[...new Set(readLastRunAppLzTargets(workspace, app).map(t => t.split(':')[0]!))]
-                .filter(p => providerOptions.some(o => o.value === p))}
+              // #4285: pre-select the providers of the set-up targets; #3378 Part B: else
+              // this app's last run; #3980: else the providers seeded from the linked landing zone.
+              initialSelected={(() => {
+                const offered = (ps: string[]): string[] => [...new Set(ps)].filter(p => providerOptions.some(o => o.value === p));
+                const setup = offered(setupLz.targets.map(t => t.split(':')[0]!));
+                if (setup.length > 0) return setup;
+                const last = offered(readLastRunAppLzTargets(workspace, app).map(t => t.split(':')[0]!));
+                return last.length > 0 ? last : offered(lzLinkSeed?.providers ?? []);
+              })()}
               onConfirm={(selected) => {
                 if (selected.length === 0) { beginRun(); return; }
                 setAppLzCatProviders(selected);
@@ -1410,13 +1299,24 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             />
           )}
         </Box>
-        <GuidanceBox
-          title="Target Landing Zone"
-          what="Optional: select one or more CSPs and regions to run catalogue fits during this assessment. Each combination produces a readiness block in the HTML publication."
-          affordances={['Up/Down -- move  |  Space -- toggle  |  A -- select all  |  Enter -- confirm  |  Esc -- skip LZ step']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      </FlowFrame>
+    );
+  }
+
+  // #4285 (#4289 AC2): a provider selected without any region is named before the run.
+  if (phase === 'input-app-lz-gap') {
+    return (
+      <FlowFrame {...frame} keys={TARGET_LZ_GAP_KEYS} guidance={{ title: 'Providers without a region', what: 'A provider without a selected region is not assessed in this run. Go back to the regions to add one, or run with the targets listed.' }}>
+        {/* #4255 (section 4.4): a ConfirmPanel with the step bar (was Enter or Esc on a text line). */}
+        <ConfirmPanel
+          title="Run without these providers?"
+          subtitle={`App ${app}`}
+          rows={[{ label: 'Targets', value: appLzCatTargets.join(', ') }]}
+          risk={providersWithoutRegionNotice(lzProvidersWithoutRegion)}
+          onConfirm={beginRun}
+          active={!nav.dialogOpen}
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -1429,47 +1329,48 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       if (!entry) return [];
       // #3380: render the shared label; carry country for header grouping.
       return entry.regions.map(r => ({
-        label: `${pid.toUpperCase()} / ${r.label ?? `${r.id} - ${r.display}`}`,
+        label: `${centralProviderLabel(pid, 'abbr')} / ${r.label ?? `${r.id} - ${r.display}`}`,
         value: `${pid}:${r.id}`,
         country: r.country,
+        guidance: lzRegionRowGuidance(lzProviderName(pid), r, app),
       }));
     });
     const providerLabel = truncateLabel(appLzCatProviders.map(pid => lzProviderName(pid)).join(', '), 30 + app.length);
 
     if (allTargetOptions.length > FILTER_THRESHOLD && appLzRegionFilter === '') {
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle="Application Assessment -- Target Landing Zone (optional)" />
-          <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
-          <Text dimColor>{allTargetOptions.length} regions available. Type a substring to filter. <Text color="yellow">Esc to skip.</Text></Text>
+        <FlowFrame {...frame} title={TARGET_LZ_TITLE} keys={TARGET_LZ_FILTER_KEYS} guidance={{ title: "Filter regions", what: `${allTargetOptions.length} provider/region combinations for ${providerLabel}. Type part of the region ID or name, or leave it empty to show all.` }}>
+          <Text>App: <Text {...tone('accent')}>{app}</Text>, CSP(s): <Text {...tone('accent')}>{providerLabel}</Text></Text>
+          <Text {...tone('muted')}>{allTargetOptions.length} regions available. Type a substring to filter.</Text>
           <Box marginTop={1}>
             <TextInput
               key="app-lz-region-filter"
-              label="Filter by provider/region ID or name (Enter to show all)"
+              label="Filter by provider/region ID or name (leave it empty to show all)"
               placeholder="eu, Frankfurt, aws-esc"
               onSubmit={(v) => setAppLzRegionFilter(v || SHOW_ALL)}
               active
             />
           </Box>
-          <GuidanceBox
-            title="Filter regions"
-            what={`${allTargetOptions.length} provider/region combinations for ${providerLabel}. Type part of the region ID or name, or press Enter to show all.`}
-            affordances={['Type -- filter  |  Enter -- apply  |  Esc -- back to provider']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        </FlowFrame>
       );
     }
 
     const filteredTargetOptions = filterList(allTargetOptions, appLzRegionFilter, r => r.label);
     if (allTargetOptions.length > 0) {
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle="Application Assessment -- Target Landing Zone (optional)" />
-          <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
+        <FlowFrame {...frame} title={TARGET_LZ_TITLE} keys={targetLzRegionKeys(!!appLzRegionFilter && appLzRegionFilter !== SHOW_ALL)} guidance={{ title: "Target Region(s)", what: appLzRegionFilter && appLzRegionFilter !== SHOW_ALL
+              ? `${filteredTargetOptions.length} of ${allTargetOptions.length} combinations match "${appLzRegionFilter}".`
+              : `${allTargetOptions.length} provider/region combinations across ${appLzCatProviders.length} CSP(s). Select all targets to compare in one run.`, ...pickGuidance }}>
+          <Text>App: <Text {...tone('accent')}>{app}</Text>, CSP(s): <Text {...tone('accent')}>{providerLabel}</Text></Text>
           {appLzRegionFilter && appLzRegionFilter !== SHOW_ALL && (
-            <Text dimColor>Filter: <Text color="cyanBright">{appLzRegionFilter}</Text>  ({filteredTargetOptions.length}/{allTargetOptions.length} regions)  Esc to clear</Text>
+            <Text {...tone('muted')}>Filter: <Text {...tone('accent')}>{appLzRegionFilter}</Text>  ({filteredTargetOptions.length}/{allTargetOptions.length} regions)</Text>
           )}
+          {/* #4285: the set-up targets and their geography resolution; a set-up target not offered is named. */}
+          {setupLzTargetsLine(setupLz) && <Text {...tone('muted')}>{setupLzTargetsLine(setupLz)}</Text>}
+          {(() => {
+            const missing = setupTargetsNotOffered(setupLz, appLzCatProviders, allTargetOptions.map(o => o.value));
+            return missing.length > 0 ? <Text {...tone('warning')}>Set-up target(s) not in the catalogue: {missing.join(', ')}</Text> : null;
+          })()}
           <Box marginTop={1}>
             {filteredTargetOptions.length > 0 ? (
               <MultiSelect
@@ -1477,42 +1378,49 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
                 label="Target region(s)"
                 options={insertCountryHeaders(filteredTargetOptions)}
                 initialSelected={(() => {
-                  // #3378 Part B: this run's picks, else the last run's targets, else the first option.
+                  // #3378 Part B: this run's picks; #4285: else the set-up targets
+                  // (geographies resolved); else the last run's targets, else the first option.
                   if (appLzCatTargets.length > 0) return appLzCatTargets;
+                  const setup = setupLz.targets.filter(t => filteredTargetOptions.some(o => o.value === t));
+                  if (setup.length > 0) return setup;
                   const lastRun = readLastRunAppLzTargets(workspace, app).filter(t => filteredTargetOptions.some(o => o.value === t));
                   if (lastRun.length > 0) return lastRun;
+                  // #3980: the targets seeded from the linked landing zone (below Consultant).
+                  const seeded = (lzLinkSeed?.targets ?? []).filter(t => filteredTargetOptions.some(o => o.value === t));
+                  if (seeded.length > 0) return seeded;
                   return filteredTargetOptions[0] ? [filteredTargetOptions[0].value] : [];
                 })()}
                 allowEmptyConfirm
+                showKeyHints={false}
                 visibleCount={12}
+                onCursorChange={onPickCursor}
                 onConfirm={(selected) => {
                   tuiDebug(`input-app-lz-region:onConfirm selected=[${selected.join(',')}]`);
                   if (selected.length === 0) { beginRun(); return; }
                   setAppLzCatTargets(selected);
+                  // #4285: a provider left without a region is named before the run.
+                  const missing = providersWithoutRegion(appLzCatProviders, selected);
+                  if (missing.length > 0) {
+                    try { logApp(app, 'warn', 'assess.lz.provider.skipped', providersWithoutRegionNotice(missing), { context: { app_id: app, providers: missing } }); } catch { /* best-effort */ }
+                    setLzProvidersWithoutRegion(missing);
+                    setPhase('input-app-lz-gap');
+                    return;
+                  }
                   beginRun();
                 }}
               />
             ) : (
-              <Text color="yellow">No regions match "{appLzRegionFilter}". Press Esc to clear filter.</Text>
+              <Text {...tone('warning')}>No regions match "{appLzRegionFilter}".</Text>
             )}
           </Box>
-          <GuidanceBox
-            title="Target Region(s)"
-            what={appLzRegionFilter && appLzRegionFilter !== SHOW_ALL
-              ? `${filteredTargetOptions.length} of ${allTargetOptions.length} combinations match "${appLzRegionFilter}".`
-              : `${allTargetOptions.length} provider/region combinations across ${appLzCatProviders.length} CSP(s). Select all targets to compare in one run.`}
-            affordances={['Up/Down -- move  |  Space -- toggle  |  A -- select all  |  Enter -- confirm  |  Esc -- clear filter or back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        </FlowFrame>
       );
     }
 
     // No catalogue loaded for the selected providers -- fall back to manual entry.
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Application Assessment -- Target Landing Zone (optional)" />
-        <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
+      <FlowFrame {...frame} title={TARGET_LZ_TITLE} keys={TARGET_LZ_MANUAL_REGION_KEYS} guidance={{ title: "Target Region", what: "No region catalogue loaded for the selected provider(s). Enter the region ID manually." }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text>, CSP(s): <Text {...tone('accent')}>{providerLabel}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-lz-region"
@@ -1530,22 +1438,21 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Target Region"
-          what="No region catalogue loaded for the selected provider(s). Enter the region ID manually."
-          affordances={['Enter -- confirm  |  Esc -- skip']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-vcs-url') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="New Application" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>Enter the git repository URL -- SWAO clones it before running assessment passes. Branch and subdir follow on the next screen.</Text>
+      <FlowFrame {...frame} title={"New Application"} keys={K_NEXT_EMPTY_SKIPS} guidance={{ title: "Git repository URL", what: "SWAO clones the repository using git. Private repos require a stored VCS token (Tools, Credentials).", details: [
+            { label: 'GitHub',       value: 'https://github.com/org/repo' },
+            { label: 'Azure DevOps', value: 'https://dev.azure.com/org/project/_git/repo' },
+            { label: 'GitLab',       value: 'https://gitlab.com/org/repo' },
+            { label: 'SSH',          value: 'git@github.com:org/repo.git' },
+            { label: 'Local path',   value: 'C:\\path\\to\\app  (absolute, skips clone)' },
+          ] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text {...tone('muted')}>Enter the git repository URL; SWAO clones it before running assessment passes. Branch and subdir follow on the next screen.</Text>
         <Box marginTop={1}>
           <TextInput
             key="input-vcs-url"
@@ -1603,32 +1510,18 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
         </Box>
         {sourceInputWarning ? (
           <Box marginTop={1} flexDirection="column">
-            <Text color="yellow">{sourceInputWarning}</Text>
+            <Text {...tone('warning')}>{sourceInputWarning}</Text>
           </Box>
         ) : null}
-        <GuidanceBox
-          title="Git repository URL"
-          what="SWAO clones the repository using git. Private repos require a stored VCS token (swao credential set vcs-token)."
-          details={[
-            { label: 'GitHub',       value: 'https://github.com/org/repo' },
-            { label: 'Azure DevOps', value: 'https://dev.azure.com/org/project/_git/repo' },
-            { label: 'GitLab',       value: 'https://gitlab.com/org/repo' },
-            { label: 'SSH',          value: 'git@github.com:org/repo.git' },
-            { label: 'Local path',   value: 'C:\\path\\to\\app  (absolute -- skips clone)' },
-          ]}
-          affordances={['Enter -- confirm  |  Esc -- back  |  Enter alone -- skip']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-vcs-ref') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="New Application" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text>URL: <Text color="cyanBright">{vcsUrl}</Text></Text>
+      <FlowFrame {...frame} title={"New Application"} keys={K_CONFIRM_BACK} guidance={{ title: "Branch / ref", what: "Branch, tag, or commit SHA to assess. Enter for main.", details: [{ label: 'Format', value: 'Branch name, tag, or 40-char SHA' }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text>URL: <Text {...tone('accent')}>{vcsUrl}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-vcs-ref"
@@ -1642,24 +1535,16 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Branch / ref"
-          what="Branch, tag, or commit SHA to assess. Enter for main."
-          details={[{ label: 'Format', value: 'Branch name, tag, or 40-char SHA' }]}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-source-subdir') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="New Application" />
-        <Text>App: <Text color="cyanBright">{app}</Text>  Ref: <Text color="cyanBright">{vcsRef}</Text></Text>
-        <Text dimColor>If the repository is a monorepo, enter the path to the app inside it.</Text>
-        <Text dimColor>Example: <Text color="cyanBright">apps/health/sovereign-health</Text>  -- or press Enter if the root is the app.</Text>
+      <FlowFrame {...frame} title={"New Application"} keys={K_CONFIRM_BACK} guidance={{ title: "App subdirectory", what: "For monorepos: subfolder containing this app. Enter for repo root.", details: [{ label: 'Format', value: 'Relative path, no leading slash (e.g. apps/billing)' }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text>  Ref: <Text {...tone('accent')}>{vcsRef}</Text></Text>
+        <Text {...tone('muted')}>If the repository is a monorepo, enter the path to the app inside it.</Text>
+        <Text {...tone('muted')}>Example: <Text {...tone('accent')}>apps/health/sovereign-health</Text>, or Enter when the root is the app.</Text>
         <Box marginTop={1}>
           <TextInput
             key="input-source-subdir"
@@ -1694,26 +1579,18 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="App subdirectory"
-          what="For monorepos: subfolder containing this app. Enter for repo root."
-          details={[{ label: 'Format', value: 'Relative path, no leading slash (e.g. apps/billing)' }]}
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-playwright-url') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright crawl URL"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright crawl URL", what: "SWAO can crawl the app web UI to capture screenshots and network traces during the dynamic analysis pass. Provide the base URL of the running app. Leave empty to skip dynamic analysis.", details: [{ label: 'Stored in', value: 'apps/' + app + '/.swao.yml  (crawl.target_url)' }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-playwright-url"
-            label="Playwright crawl URL (Enter to skip)"
+            label="Playwright crawl URL (leave it empty to skip)"
             placeholder="https://app.example.com"
             onSubmit={(raw) => {
               const target = raw.trim();
@@ -1740,32 +1617,30 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright crawl URL"
-          what="SWAO can crawl the app web UI to capture screenshots and network traces during the dynamic analysis pass. Provide the base URL of the running app. Leave empty to skip dynamic analysis."
-          details={[{ label: 'Stored in', value: 'apps/' + app + '/.swao.yml  (crawl.target_url)' }]}
-          affordances={['Enter -- save URL and continue to login step', 'Enter (empty) -- skip crawl setup  |  Esc -- back to credentials']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   // #0885: credential reuse -- offer to copy stored creds from another app with the same URL.
   if (phase === 'input-playwright-url-reuse') {
     const reuseOptions = [
-      { label: `Reuse credentials from app "${playwrightUrlMatchSourceApp}"`, value: 'reuse' },
-      { label: 'Enter new credentials', value: 'new' },
+      {
+        label: `Reuse credentials from app "${playwrightUrlMatchSourceApp}"`,
+        value: 'reuse',
+        guidance: { title: 'Reuse credentials', what: `Copies the stored crawl username and password of app "${playwrightUrlMatchSourceApp}" to ${app} in the SWAO credential store; nothing is typed again.` },
+      },
+      { label: 'Enter new credentials', value: 'new', guidance: { title: 'Enter new credentials', what: `Asks for the crawl username and password of ${app}; they are stored for this app only.` } },
     ];
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>URL <Text color="cyanBright">{playwrightUrl}</Text> is already stored for app <Text color="cyanBright">{playwrightUrlMatchSourceApp}</Text>.</Text>
+      <FlowFrame {...frame} title={"Reuse credentials"} keys={K_SELECT_CONFIRM_BACK} guidance={{ title: "Reuse credentials", what: `The URL "${playwrightUrl}" is already configured for app "${playwrightUrlMatchSourceApp}". Reuse copies the stored username and password so you do not have to re-enter them.`, ...pickGuidance }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text {...tone('muted')}>URL <Text {...tone('accent')}>{playwrightUrl}</Text> is already stored for app <Text {...tone('accent')}>{playwrightUrlMatchSourceApp}</Text>.</Text>
         <Box marginTop={1}>
           <SelectInput
             label="Reuse stored credentials?"
             options={reuseOptions}
+            visibleCount={reuseOptions.length}
+            onCursorChange={onPickCursor}
             onSelect={(v) => {
               if (v === 'reuse') {
                 const freshCreds = readStoredCredentials();
@@ -1790,26 +1665,19 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             }}
           />
         </Box>
-        <GuidanceBox
-          title="Reuse credentials"
-          what={`The URL "${playwrightUrl}" is already configured for app "${playwrightUrlMatchSourceApp}". Reuse copies the stored username and password so you do not have to re-enter them.`}
-          affordances={['Up/Down -- select  |  Enter -- confirm  |  Esc -- back to URL entry']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   // #0776-C: inline Playwright login sub-step 1 -- username.
   if (phase === 'input-playwright-username') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright login username"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright login username", what: "Optional: username for the crawl target login form. Leave empty to skip authentication.", details: [{ label: 'Stored in', value: 'apps/' + app + '/.swao.yml  (crawl.username)' }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-playwright-username"
-            label="Playwright login username (Enter to skip)"
+            label="Playwright login username (leave it empty to skip)"
             placeholder="username"
             onSubmit={(raw) => {
               setPlaywrightUsername(raw.trim());
@@ -1818,14 +1686,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright login username"
-          what="Optional: username for the crawl target login form. Leave empty to skip authentication."
-          details={[{ label: 'Stored in', value: 'apps/' + app + '/.swao.yml  (crawl.username)' }]}
-          affordances={['Enter -- save username and continue', 'Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -1833,13 +1694,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // Writing all crawl fields atomically here (URL + username + password).
   if (phase === 'input-playwright-password') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright login password"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright login password", what: "Optional: password for the crawl target login form. Stored encrypted in the SWAO credential vault, so real credentials are safe here.", details: [{ label: 'Stored in', value: 'SWAO credential vault  (crawl-password:<hostname>)' }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-playwright-password"
-            label="Playwright login password (Enter to skip)"
+            label="Playwright login password (leave it empty to skip)"
             mask="*"
             onSubmit={(raw) => {
               const password = raw.trim();
@@ -1861,92 +1721,50 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright login password"
-          what="Optional: password for the crawl target login form. Stored encrypted in the SWAO credential vault -- safe to use real credentials."
-          details={[{ label: 'Stored in', value: 'SWAO credential vault  (crawl-password:<hostname>)' }]}
-          affordances={['Enter -- save password and continue', 'Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   // #0814: credential hub -- shows stored status and shortcuts for each sub-step.
   // Landing Zone assessments show only the VCS section; Playwright section is
   // hidden because LZ assessments are static catalogue comparisons (no crawler).
+  // #4255 (section 7.10): the credential list is a SelectInput; its entries replace the letter keys.
   if (phase === 'input-app-credentials') {
-    const vcsUrlKey   = `vcs-url-${app}`;
-    const vcsKey      = `vcs-token-${app}`;
-    const pwUrlKey    = `playwright-url-${app}`;
-    const pwUserKey   = `playwright-user-${app}`;
-    const pwPassKey   = `playwright-pass-${app}`;
-    const pwMfaKey    = `playwright-mfa-${app}`;
-    const s = (k: string) => appCredStoredKeys.has(k);
-    const dot = (k: string) => (
-      <Text color={s(k) ? 'green' : 'gray'}>{s(k) ? '[stored]' : '[  --  ]'}</Text>
-    );
-    const continueLabel = editOnlyMode ? 'Save + back' : 'continue';
-    // #2352: paging for API tokens section
-    const apiTotalPages = Math.max(1, Math.ceil(apiTokenConnectors.length / API_TOKEN_PAGE_SIZE));
-    const apiPageStart = apiTokenPage * API_TOKEN_PAGE_SIZE;
-    const apiPageConnectors = apiTokenConnectors.slice(apiPageStart, apiPageStart + API_TOKEN_PAGE_SIZE);
-    const apiPageIndicator = apiTotalPages > 1 ? ` (page ${apiTokenPage + 1}/${apiTotalPages})` : '';
-    const apiPageNav = apiTotalPages > 1 ? '  |  [ / ] -- prev/next page' : '';
-    // #2329: build numeric affordance hint for API token connectors on current page (1-N)
-    const apiKeyConnectors = apiPageConnectors.filter(c => c.credentialKey);
-    const apiNumHint = apiKeyConnectors.length > 0
-      ? `  |  1${apiKeyConnectors.length > 1 ? `-${apiKeyConnectors.length}` : ''} -- API token`
-      : '';
-    const affordances = [`R -- repo URL  |  A -- access token  |  T -- Playwright URL  |  U -- PW username  |  P -- PW password  |  M -- MFA seed  |  L -- LLM override${apiNumHint}${apiPageNav}  |  Enter/S -- ${continueLabel}  |  Esc -- back`];
+    const keyOf: Record<string, string> = {
+      [APP_CRED_VCS_URL]: `vcs-url-${app}`,
+      [APP_CRED_VCS_TOKEN]: `vcs-token-${app}`,
+      [APP_CRED_PW_URL]: `playwright-url-${app}`,
+      [APP_CRED_PW_USER]: `playwright-user-${app}`,
+      [APP_CRED_PW_PASS]: `playwright-pass-${app}`,
+      [APP_CRED_PW_MFA]: `playwright-mfa-${app}`,
+    };
+    const credOptions = appCredentialOptions({
+      editOnly: editOnlyMode,
+      stored: (v) => appCredStoredKeys.has(keyOf[v] ?? ''),
+      llmDetail: runLlmProvider ?? 'workspace default',
+      connectors: apiTokenConnectors,
+      storedKey: (k) => appCredStoredKeys.has(k),
+    });
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text>{editOnlyMode && <Text dimColor>  (edit mode -- Enter to save and return)</Text>}</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text bold>Credentials for this app</Text>
-          <Text color="gray">Press a shortcut to edit a credential, or Enter to continue.</Text>
-        </Box>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  VCS:</Text>
-          <Text>    {dot(vcsUrlKey)}  <Text bold>R</Text>  Repository URL</Text>
-          <Text>    {dot(vcsKey)}  <Text bold>A</Text>  Access token</Text>
-          <Text>  Playwright:</Text>
-          <Text>    {dot(pwUrlKey)}  <Text bold>T</Text>  Target URL</Text>
-          <Text>    {dot(pwUserKey)}  <Text bold>U</Text>  Username</Text>
-          <Text>    {dot(pwPassKey)}  <Text bold>P</Text>  Password</Text>
-          <Text>    {dot(pwMfaKey)}  <Text bold>M</Text>  MFA seed (TOTP base32)</Text>
-        </Box>
-        {/* #2329/#2351/#2352: API tokens section -- built-in + workspace + llm-gateways/ connectors, paged */}
-        <Box marginTop={1} flexDirection="column">
-          <Text>  API tokens{apiPageIndicator}:</Text>
-          {apiPageConnectors.map((c, i) => {
-            const stored = c.credentialKey ? appCredStoredKeys.has(c.credentialKey) : false;
-            const statusText = c.credentialKey
-              ? (stored ? '[stored]' : '[  --  ]')
-              : '[env-var]';
-            const statusColor = stored ? 'green' : 'gray';
-            const numLabel = <Text bold={!!c.credentialKey}>{i + 1}</Text>;
-            return (
-              // #2394: pad badge to fixed 9 chars so numeric shortcut column aligns regardless of badge width
-              <Text key={c.id}>    <Text color={statusColor}>{statusText.padEnd(9)}</Text> {numLabel}  {c.name}</Text>
-            );
-          })}
-        </Box>
-        <GuidanceBox
-          title="Per-app credentials"
-          what="Credentials are keyed to this app only (not shared). Stored securely in the SWAO credential store. All fields are optional -- skip any that do not apply."
-          details={[
-            { label: 'VCS URL key', value: vcsUrlKey },
-            { label: 'VCS token key', value: vcsKey },
-            { label: 'Playwright URL key', value: pwUrlKey },
-            { label: 'MFA seed format', value: 'base32, 16-32 chars (e.g. JBSWY3DPEHPK3PXP)' },
-          ]}
-          affordances={affordances}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          maxRows={Math.max(8, terminalRows - 20)}
+      <FlowFrame
+        {...frame}
+        title="Credentials"
+        subtitle={editOnlyMode ? `App ${app}, edit mode: the first entry saves and returns to the apps` : `App ${app}; every credential is optional`}
+        keys={K_PICKER}
+        guidance={{ entry: credEntry, maxRows: Math.max(8, terminalRows - 20) }}
+      >
+        <SelectInput
+          key={`app-cred-${app}-${editOnlyMode ? 'edit' : 'run'}`}
+          label="Credentials for this app"
+          options={credOptions}
+          initialIndex={0}
+          visibleCount={PICKER_VISIBLE_COUNT}
+          showKeyHints={false}
+          onCursorChange={onCredCursor}
+          onSelect={onCredentialSelect}
+          active
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -1955,13 +1773,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = `vcs-url-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"VCS repository URL"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "VCS repository URL", what: "Full HTTPS clone URL for the application source repository. Stored per-app so different apps can point to different repositories.", details: [{ label: 'Credential key', value: credKey }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-vcs-url"
-            label={alreadyStored ? 'Repository URL (Enter to keep existing)' : 'Repository URL (Enter to skip)'}
+            label={alreadyStored ? 'Repository URL (leave it empty to keep the stored one)' : 'Repository URL (leave it empty to skip)'}
             placeholder="https://github.com/org/repo"
             onSubmit={(raw) => {
               const val = raw.trim();
@@ -1977,14 +1794,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="VCS repository URL"
-          what="Full HTTPS clone URL for the application source repository. Stored per-app so different apps can point to different repositories."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2009,13 +1819,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = effectiveVcsUrl ? deriveVcsTokenKey(effectiveVcsUrl) : 'provider:vcs:token';
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"VCS token"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "VCS token", what: "Personal access token or deploy token for cloning the app repository. Stored under the provider-scoped key so the assess pipeline can find it.", details: [{ label: 'Credential key', value: credKey }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-vcs-token"
-            label={alreadyStored ? 'VCS token (Enter to keep existing)' : 'VCS token (Enter to skip)'}
+            label={alreadyStored ? 'VCS token (leave it empty to keep the stored one)' : 'VCS token (leave it empty to skip)'}
             placeholder=""
             onSubmit={(raw) => {
               const val = raw.trim();
@@ -2028,14 +1837,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="VCS token"
-          what="Personal access token or deploy token for cloning the app repository. Stored under the provider-scoped key so the assess pipeline can find it."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2044,13 +1846,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = `playwright-url-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright target URL"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright target URL", what: "URL the Playwright crawler navigates to for this app. Stored per-app in the credential store so different apps can target different URLs.", details: [{ label: 'Credential key', value: credKey }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-playwright-url"
-            label={alreadyStored ? 'Playwright target URL (Enter to keep existing)' : 'Playwright target URL (Enter to skip)'}
+            label={alreadyStored ? 'Playwright target URL (leave it empty to keep the stored one)' : 'Playwright target URL (leave it empty to skip)'}
             placeholder="https://app.example.com"
             onSubmit={(raw) => {
               const val = raw.trim();
@@ -2075,14 +1876,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright target URL"
-          what="URL the Playwright crawler navigates to for this app. Stored per-app in the credential store so different apps can target different URLs."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2091,13 +1885,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = `playwright-user-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright login username"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright login username", what: "Username for form-based or basic authentication during the Playwright dynamic analysis crawl. Leave empty if the app does not require authentication.", details: [{ label: 'Credential key', value: credKey }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-playwright-user"
-            label={alreadyStored ? 'Playwright login username (Enter to keep existing)' : 'Playwright login username (Enter to skip)'}
+            label={alreadyStored ? 'Playwright login username (leave it empty to keep the stored one)' : 'Playwright login username (leave it empty to skip)'}
             placeholder=""
             onSubmit={(raw) => {
               const val = raw.trim();
@@ -2110,14 +1903,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright login username"
-          what="Username for form-based or basic authentication during the Playwright dynamic analysis crawl. Leave empty if the app does not require authentication."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2126,13 +1912,12 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = `playwright-pass-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"Playwright login password"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "Playwright login password", what: "Password for form-based or basic authentication during the Playwright dynamic analysis crawl. Stored encrypted in the SWAO credential store. Ctrl+E shows or hides the typed text.", details: [{ label: 'Credential key', value: credKey }] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-playwright-pass"
-            label={alreadyStored ? 'Playwright login password (Enter to keep existing)' : 'Playwright login password (Enter to skip)'}
+            label={alreadyStored ? 'Playwright login password (leave it empty to keep the stored one)' : 'Playwright login password (leave it empty to skip)'}
             placeholder=""
             mask="*"
             onSubmit={(raw) => {
@@ -2146,14 +1931,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Playwright login password"
-          what="Password for form-based or basic authentication during the Playwright dynamic analysis crawl. Stored encrypted in the SWAO credential store."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back  |  Ctrl+E -- reveal/hide']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2162,13 +1940,15 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = `playwright-mfa-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={"MFA / TOTP seed"} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: "MFA / TOTP seed", what: "Base32-encoded TOTP secret for multi-factor authentication. SWAO generates a one-time code from this seed at crawl time. Typically found in the app authenticator setup QR code.", details: [
+            { label: 'Credential key', value: credKey },
+            { label: 'Format', value: 'base32, 16-32 uppercase chars (e.g. JBSWY3DPEHPK3PXP)' },
+          ] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <TextInput
             key="input-app-cred-playwright-mfa"
-            label={alreadyStored ? 'TOTP MFA seed (Enter to keep existing)' : 'TOTP MFA seed (Enter to skip)'}
+            label={alreadyStored ? 'TOTP MFA seed (leave it empty to keep the stored one)' : 'TOTP MFA seed (leave it empty to skip)'}
             placeholder="JBSWY3DPEHPK3PXP"
             onSubmit={(raw) => {
               const val = raw.trim();
@@ -2181,17 +1961,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="MFA / TOTP seed"
-          what="Base32-encoded TOTP secret for multi-factor authentication. SWAO generates a one-time code from this seed at crawl time. Typically found in the app authenticator setup QR code."
-          details={[
-            { label: 'Credential key', value: credKey },
-            { label: 'Format', value: 'base32, 16-32 uppercase chars (e.g. JBSWY3DPEHPK3PXP)' },
-          ]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2201,24 +1971,25 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const credKey = connector?.credentialKey;
     if (!connector || !credKey) {
       const infoMsg = connector?.envVar
-        ? `${connector.name} uses an environment variable (${connector.envVar}) -- no vault key to enter here.`
-        : 'No vault-stored API key for this connector.';
+        ? `${connector.name} uses the environment variable ${connector.envVar}; there is no stored key to enter here.`
+        : 'No stored API key for this connector.';
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle={typeLabel} />
-          <Text color="yellow">{infoMsg}</Text>
-          <Text dimColor>Press Esc to return.</Text>
-        </Box>
+        <FlowFrame {...frame} title="API key" keys={K_CONFIRM_BACK} guidance={{ title: 'API key', what: infoMsg }}>
+          <Text {...tone('warning')}>{infoMsg}</Text>
+        </FlowFrame>
       );
     }
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title={`${connector.name} API key`} keys={K_SAVE_EMPTY_SKIPS} guidance={{ title: `${connector.name} API key`, what: `API key for the ${connector.name} LLM gateway connector. Stored in the SWAO credential vault under key "${credKey}".`, details: [
+            { label: 'Connector', value: connector.id },
+            { label: 'Credential key', value: credKey },
+            { label: 'Model', value: connector.defaultModel || '(not set)' },
+          ], maxRows: Math.max(8, terminalRows - 20) }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1}>
           <PasswordInput
-            label={alreadyStored ? `${connector.name} API key (Enter to keep existing)` : `${connector.name} API key (Enter to skip)`}
+            label={alreadyStored ? `${connector.name} API key (leave it empty to keep the stored one)` : `${connector.name} API key (leave it empty to skip)`}
             onSubmit={(raw) => {
               const val = raw.trim();
               if (val) {
@@ -2230,19 +2001,7 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title={`${connector.name} API key`}
-          what={`API key for the ${connector.name} LLM gateway connector. Stored in the SWAO credential vault under key "${credKey}".`}
-          details={[
-            { label: 'Connector', value: connector.id },
-            { label: 'Credential key', value: credKey },
-            { label: 'Model', value: connector.defaultModel || '(not set)' },
-          ]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          maxRows={Math.max(8, terminalRows - 20)}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2251,22 +2010,21 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const currentAppLlm = readAppLlmConfig(workspace, app);
     const currentLabel = formatLlmCurrentLabel(currentAppLlm.type, currentAppLlm.model, wsLlmConfig.type);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
+      <FlowFrame {...frame} ownGuidance>
         <LlmModelPicker
           app={app}
           currentLabel={currentLabel}
           onSelect={(v) => {
-            if (v === 'workspace-default') {
-              clearAppLlmProvider(app);
-            } else {
-              writeAppLlmProvider(app, v);
-            }
-            setPhase('input-app-credentials');
+            // #4284: the choice applies to this run (--llm-provider); saving it as
+            // the app default is a separate question that starts on No.
+            setRunLlmProvider(v);
+            setAppSaveError(null);
+            const stored = currentAppLlm.type ?? 'workspace-default';
+            setPhase(workspace && v !== stored ? 'input-app-llm-save' : 'input-app-credentials');
           }}
-          onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
+          onGuidanceOpenChange={onGuidanceOpenChange}
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2276,15 +2034,15 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
           .filter(d => d.isDirectory()).map(d => d.name)
       : [];
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Delete Application" />
-        <Text>Workspace: <Text bold color="whiteBright">{workspace}</Text></Text>
-        <Text color="yellow">Select one or more apps to delete (space to toggle, Enter to confirm).</Text>
+      <FlowFrame {...frame} title="Delete an app" subtitle={`Workspace ${workspace ?? ''}`} keys={K_TOGGLE_CONFIRM_BACK} guidance={{ title: 'Delete an app', what: 'Select one or more apps to delete. SWAO asks once more before it removes the folders; confirming with nothing selected returns to the app list.', ...pickGuidance }}>
         <Box marginTop={1}>
           <MultiSelect
             label="Apps"
-            options={existingApps.map(a => ({ label: a, value: a }))}
+            options={existingApps.map(a => ({ label: a, value: a, guidance: { title: a, what: `Marks apps/${a}/ for deletion: the folder with its runs, reports and exports. SWAO asks once more before it removes it.` } }))}
             initialSelected={[]}
+            visibleCount={PICKER_VISIBLE_COUNT}
+            showKeyHints={false}
+            onCursorChange={onPickCursor}
             onConfirm={(selected) => {
               if (selected.length === 0) { setPhase('input-app'); return; }
               setDeleteSelection(selected);
@@ -2293,37 +2051,24 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Escape to cancel.</Text>
-        </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'confirm-delete') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Confirm Delete" />
-        {/* #2323: cap box width to prevent overflow past the header line */}
-        <Box flexDirection="column" marginTop={1} borderStyle="single" paddingX={1} width={Math.min(96, (stdout?.columns ?? 80) - 4)}>
-          <Text color="yellow" bold>Delete the following app{deleteSelection.length === 1 ? '' : 's'} permanently?</Text>
-          {deleteSelection.map(id => (
-            <Text key={id}>  apps/<Text color="cyanBright">{id}</Text>/  (all WSP runs, exports, and source code)</Text>
-          ))}
-        </Box>
-        <Box marginTop={1}>
-          <Text bold>Type <Text color="green">y</Text> to confirm, <Text color="yellow">n</Text> or Escape to cancel.</Text>
-        </Box>
-        <GuidanceBox
-          title="Delete app"
-          what="Permanently removes the app directory and all WSP runs, reports, and exports inside it."
-          details={[
-            { label: 'Vault credentials', value: 'Vault keys (playwright-url, playwright-pass, playwright-user, playwright-mfa, provider:*:token) are NOT removed. Use swao credential delete to clean them up separately.' },
-            { label: 'Action', value: 'y -- confirm delete | n or Escape -- cancel' },
-          ]}
-          affordances={['y -- confirm delete', 'n or Escape -- cancel']}
+      <FlowFrame {...frame} keys={CONFIRM_PANEL_KEYS} guidance={{ title: 'Delete app', what: 'Permanently removes the app directory and all WSP runs, reports, and exports inside it.', details: [
+            { label: 'Vault credentials', value: 'Vault keys (playwright-url, playwright-pass, playwright-user, playwright-mfa, provider:*:token) are NOT removed. Remove them separately in Tools, Credentials.' },
+          ] }}>
+        {/* #4255 (section 4.4, A-27): a ConfirmPanel; Enter deletes, the left arrow goes back, Esc aborts (were y, n and Escape). */}
+        <ConfirmPanel
+          title={`Delete ${deleteSelection.length === 1 ? 'this app' : `these ${deleteSelection.length} apps`} permanently?`}
+          rows={deleteSelection.map(id => ({ label: 'App', value: `apps/${id}/` }))}
+          risk="Removes all WSP runs, exports and the source code of the app. Stored credentials stay."
+          onConfirm={deleteSelectedApps}
+          active={!nav.dialogOpen}
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2333,30 +2078,26 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
           .filter(d => d.isDirectory()).map(d => d.name)
       : [];
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Rename Application" />
-        <Text>Workspace: <Text bold color="whiteBright">{workspace}</Text></Text>
-        <Box marginTop={1}>
-          <SelectInput
-            label="Select the app to rename"
-            options={existingApps.map(a => ({ label: a, value: a }))}
-            onSelect={(v) => { setRenameTarget(v); setPhase('input-rename'); }}
-            active
-          />
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Escape to cancel.</Text>
-        </Box>
-      </Box>
+      <FlowFrame {...frame} title="Rename an app" subtitle={`Workspace ${workspace ?? ''}`} keys={K_PICKER} guidance={{ title: 'Rename an app', what: 'Pick the app to rename; its folder and its runs keep their content.', ...pickGuidance }}>
+        <SelectInput
+          label="App to rename"
+          options={existingApps.map(a => ({ label: a, value: a, guidance: { title: a, what: `Renames apps/${a}/; the next step asks for the new id. The folder and its runs keep their content.` } }))}
+          visibleCount={PICKER_VISIBLE_COUNT}
+          filter={existingApps.length > 9}
+          itemNoun="apps"
+          showKeyHints={false}
+          onCursorChange={onPickCursor}
+          onSelect={(v) => { setRenameTarget(v); setPhase('input-rename'); }}
+          active
+        />
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-rename') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Rename Application" />
-        <Text>Renaming: <Text color="cyanBright">{renameTarget}</Text></Text>
-        <Text dimColor>New id must be lowercase, alphanumeric, hyphen-separated.</Text>
+      <FlowFrame {...frame} title="Rename an app" subtitle={`Renaming ${renameTarget}`} keys={K_CONFIRM_BACK} guidance={{ title: 'New application id', what: 'Lowercase letters, digits and hyphens, starting with a letter. An empty entry or the same id leaves the app as it is.' }}>
+        <Text {...tone('muted')}>New id must be lowercase, alphanumeric, hyphen-separated.</Text>
         <Box marginTop={1}>
           <TextInput
             key="input-rename"
@@ -2379,12 +2120,10 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
                 renameSync(oldDir, newDir);
                 const ymlPath = join(newDir, '.swao.yml');
                 if (existsSync(ymlPath)) {
-                  const yml = readFileSync(ymlPath, 'utf-8');
-                  // Rewrite both id and name fields (the latter often mirrors id; keep it consistent).
-                  const updated = yml
-                    .replace(/(^|\n)(\s*)id:\s*[^\n]+/,   `$1$2id: ${newId}`)
-                    .replace(/(^|\n)(\s*)name:\s*"[^"]*"/, `$1$2name: "${newId}"`);
-                  writeFileSync(ymlPath, updated, 'utf-8');
+                  // #4283 (b): top-level app_id / id and a mirrored name, through the central writer.
+                  const renamed = renameAppYmlText(readFileSync(ymlPath, 'utf-8'), renameTarget, newId);
+                  if (!renamed.ok) throw new Error(`apps/${newId}/.swao.yml not updated: ${renamed.error}`);
+                  if (renamed.changed) writeFileSync(ymlPath, renamed.text, 'utf-8');
                 }
                 setOpMessage(`Renamed apps/${renameTarget}/ to apps/${newId}/`);
                 setOpError('');
@@ -2397,32 +2136,19 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Escape to cancel.</Text>
-        </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'op-done') {
     const opWasDelete = opMessage.startsWith('Deleted');
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        {opMessage && <Text color="green">{opMessage}</Text>}
-        {opError   && <Text color="red">Error: {opError}</Text>}
-        <Box marginTop={1}>
-          <Text dimColor>Press Enter or Escape to return.</Text>
-        </Box>
-        {/* #2323: guidance box on op completion */}
-        <GuidanceBox
-          title={opWasDelete ? 'Delete complete' : 'Operation complete'}
-          what={opWasDelete
-            ? 'App directory and all WSP runs removed. Vault credentials for this app were not cleared -- use swao credential delete to remove them.'
-            : opError ? 'Operation failed. Check the error above and try again.' : 'Operation completed successfully.'}
-          affordances={['Enter or Escape -- return to app list']}
-        />
-      </Box>
+      <FlowFrame {...frame} title={opWasDelete ? 'Delete complete' : 'Operation complete'} keys={OP_DONE_KEYS} guidance={{ title: opWasDelete ? 'Delete complete' : 'Operation complete', what: opWasDelete
+            ? 'App directory and all WSP runs removed. Vault credentials for this app were not cleared; remove them in Tools, Credentials.'
+            : opError ? 'Operation failed. Check the error above and try again.' : 'Operation completed successfully.' }}>
+        {opMessage && <Text {...tone('ok')}>{opMessage}</Text>}
+        {opError   && <Text {...tone('error')}>Error: {opError}</Text>}
+      </FlowFrame>
     );
   }
 
@@ -2433,22 +2159,18 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       : `wsp/inputs/`;
     const truncIngest = truncateLabel(ingestPath, 0);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header contextPrefix={typeLabel} subtitle="Ingestion Folder" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title="Inputs" subtitle="The ingestion folder of this app" keys={K_NEXT_BACK} guidance={{ title: 'Ingestion folder', what: 'Files dropped into the ingestion folder before the run are read by Pass 00 (INGEST) and used in the analysis.' }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1} flexDirection="column">
           <Text>Before starting the assessment, you can drop files into the ingestion folder.</Text>
           <Text>Pass 00 (INGEST) will pick them up and incorporate them into the analysis.</Text>
         </Box>
-        <Box marginTop={1} borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="column" width={guidanceWidth}>
+        <Box marginTop={1} borderStyle="round" borderColor={tokenColor('border')} paddingX={1} flexDirection="column" width={guidanceWidth}>
           <Text><Text bold>Ingestion folder:</Text></Text>
-          <Text color="cyanBright">{truncIngest}</Text>
-          <Text dimColor>Supported: .pdf, .docx, .txt, .md, .yaml, .json, .csv, screenshots</Text>
+          <Text {...tone('accent')}>{truncIngest}</Text>
+          <Text {...tone('muted')}>Supported: .pdf, .docx, .txt, .md, .yaml, .json, .csv, screenshots</Text>
         </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Press <Text bold>Enter</Text> to continue  |  <Text bold>Esc</Text> to go back.</Text>
-        </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2458,17 +2180,22 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     const activeLenses = selectedLenses.length > 0
       ? selectedLenses
       : (workspace ? (scaffold.readWorkspaceLenses?.(workspace) ?? []) : []);
+    const focusedLens = lenses.find(l => l.id === lensCursor) ?? lenses[0];
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header contextPrefix={typeLabel} subtitle="Assessment Lenses" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} title="Assessment Lenses" keys={K_TOGGLE_CONFIRM_BACK} guidance={focusedLens ? { title: `Lens: ${focusedLens.id}`, what: focusedLens.description ?? 'No description available for this lens.', details: [
+                { label: 'Passes', value: focusedLens.passes.length > 0 ? focusedLens.passes.join(', ') : '(none)' },
+                { label: 'Auto-frameworks', value: focusedLens.auto_frameworks.length > 0 ? focusedLens.auto_frameworks.join(', ') : '(none)' },
+              ] } : { title: 'Assessment Lenses', what: 'Lenses pre-configure the pass set and auto-select compliance frameworks.' }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
         <Box marginTop={1} flexDirection="column">
-          <Text dimColor>Lenses pre-configure the pass set and auto-select compliance frameworks.</Text>
-          <Text dimColor>Select lenses matching your assessment goal, or skip with Enter for defaults.</Text>
+          <Text {...tone('muted')}>Lenses pre-configure the pass set and auto-select compliance frameworks.</Text>
+          <Text {...tone('muted')}>Select lenses matching your assessment goal, or skip with Enter for defaults.</Text>
         </Box>
         <Box marginTop={1}>
           <MultiSelect
-            label="Select lenses (space to toggle, Enter to confirm)"
+            label="Select lenses"
+            visibleCount={PICKER_VISIBLE_COUNT}
+            showKeyHints={false}
             options={lenses.map(l => {
               if (l.auto_frameworks.length > 0) {
                 // #1019: show DEMO suffix when only demo variant is installed
@@ -2488,7 +2215,8 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             initialSelected={activeLenses}
             onCursorChange={(v) => setLensCursor(v)}
             onConfirm={(chosen) => {
-              scaffold.saveWorkspaceLenses?.(workspace ?? '', chosen);
+              // #4283: the lens choice applies to this run; the workspace
+              // .swao.yml is written only after a yes to the save question.
               setSelectedLenses(chosen);
               // #0987: pre-populate frameworks from lens auto-selection
               const confirmed = lenses.filter(l => chosen.includes(l.id));
@@ -2511,35 +2239,52 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
               // exactly those passes so the picker shows only the lens-intended selection.
               // Previously, the guard `prev.includes('all') ? prev` silently discarded
               // lens passes when the default 'all' profile was active.
-              if (lensPasses.length > 0) {
-                setInitialPassProfile(lensPasses);
-              }
-              setPhase('input-regimes');
+              // #4499 (supersedes the replace rule of #1074): a lens ADDS its passes to the
+              // app's pass preselection; it never drops a pass (Pass 10 dynamic stayed out).
+              setInitialPassProfile(lensPassPreselection(basePassProfileRef.current, lensPasses));
+              const storedLenses = workspace ? (scaffold.readWorkspaceLenses?.(workspace) ?? []) : [];
+              setLensSaveError(null);
+              setPhase(lensSaveQuestionNeeded(chosen, storedLenses, Boolean(workspace && scaffold.saveWorkspaceLenses))
+                ? 'input-lenses-save'
+                : 'input-regimes');
             }}
             active
             allowEmptyConfirm
           />
         </Box>
-        {(() => {
-          const focusedLens = lenses.find(l => l.id === lensCursor);
-          if (!focusedLens) return null;
-          return (
-            <GuidanceBox
-              title={`Lens: ${focusedLens.id}`}
-              what={focusedLens.description ?? 'No description available for this lens.'}
-              details={[
-                { label: 'Passes', value: focusedLens.passes.length > 0 ? focusedLens.passes.join(', ') : '(none)' },
-                { label: 'Auto-frameworks', value: focusedLens.auto_frameworks.length > 0 ? focusedLens.auto_frameworks.join(', ') : '(none)' },
-              ]}
-              affordances={['Space -- toggle  |  Enter -- confirm or skip (no lens = use defaults)  |  Esc -- back']}
-              onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-            />
-          );
-        })()}
+      </FlowFrame>
+    );
+  }
+
+  // #4283: save-as-default question for the confirmed lenses (starts on No).
+  if (phase === 'input-lenses-save') {
+    return (
+      <FlowFrame {...frame} title="Save as default" subtitle="Assessment lenses" keys={K_PICKER} guidance={{ title: 'Save the lenses as default', what: 'No: the lenses apply to this run only; .swao.yml stays unchanged. Yes: only assessment.lenses in the workspace .swao.yml changes.', ...pickGuidance }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text>Lenses for this run: <Text {...tone('ok')}>{selectedLenses.length > 0 ? selectedLenses.join(', ') : '(none, the defaults apply)'}</Text></Text>
+        {lensSaveError && <Text {...tone('error')}>{lensSaveError}</Text>}
         <Box marginTop={1}>
-          <Text dimColor>Esc to go back.</Text>
+          <SelectInput
+            label="Save these lenses as the workspace default?"
+            options={[...LENS_SAVE_OPTIONS]}
+            initialIndex={0}
+            showKeyHints={false}
+            onCursorChange={onPickCursor}
+            onSelect={(v) => {
+              if (v === LENS_SAVE_YES && workspace && scaffold.saveWorkspaceLenses) {
+                try {
+                  scaffold.saveWorkspaceLenses(workspace, selectedLenses);
+                } catch (err) {
+                  setLensSaveError(`Not saved: ${(err as Error).message}`);
+                  return;
+                }
+              }
+              setPhase('input-regimes');
+            }}
+            active
+          />
         </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2571,42 +2316,93 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
       contributorName: r.contributorName,
     }));
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header contextPrefix={typeLabel} subtitle="Community Frameworks" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
+      <FlowFrame {...frame} ownGuidance>
         <CommunityFrameworkPicker
           app={app}
           options={pickerOptions}
           initialSelected={computedInitialSelected}
           onConfirm={(chosen) => {
+            // #4284: the frameworks apply to this run (--regimes); the app file
+            // changes only on the save-as-default question (starts on No).
             setRegimes(chosen);
-            writeAppRegimes(app, chosen);
-            setPhase('input-passes');
+            setRegimesConfirmed(true);
+            setAppSaveError(null);
+            setPhase(workspace && selectionDiffers(chosen, readAppRegimes(app).filter(r => r !== 'all')) ? 'input-regimes-save' : 'input-passes');
           }}
-          onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
+          onGuidanceOpenChange={onGuidanceOpenChange}
         />
-      </Box>
+      </FlowFrame>
+    );
+  }
+
+  // #4284: save-as-default questions of the run-time choices (start on No).
+  if (phase === 'input-regimes-save' || phase === 'input-passes-save' || phase === 'input-app-llm-save') {
+    const kind = phase === 'input-regimes-save' ? 'regimes' as const : phase === 'input-passes-save' ? 'passes' as const : 'llm' as const;
+    const shown = kind === 'regimes' ? (regimes.length > 0 ? regimes.join(', ') : '(none)')
+      : kind === 'passes' ? (passes.length > 0 ? passes.join(', ') : '(none)')
+        : (runLlmProvider ?? 'workspace-default');
+    const next = (): void => {
+      if (kind === 'regimes') setPhase('input-passes');
+      else if (kind === 'passes') afterPassesConfirmed(passes);
+      else setPhase('input-app-credentials');
+    };
+    return (
+      <FlowFrame {...frame} title="Save as default" subtitle={kind === 'regimes' ? 'Community frameworks' : kind === 'passes' ? 'Passes' : 'LLM provider'} keys={K_PICKER} guidance={{ title: 'Save as default', what: appSaveHint(kind), ...pickGuidance }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text>{kind === 'regimes' ? 'Frameworks' : kind === 'passes' ? 'Passes' : 'LLM provider'} for this run: <Text {...tone('ok')}>{shown}</Text></Text>
+        {appSaveError && <Text {...tone('error')}>{appSaveError}</Text>}
+        <Box marginTop={1}>
+          <SelectInput
+            label="Save as the new default for this app?"
+            visibleCount={PICKER_VISIBLE_COUNT}
+            options={appSaveOptions(kind)}
+            initialIndex={0}
+            showKeyHints={false}
+            onCursorChange={onPickCursor}
+            onSelect={(v) => {
+              if (v === APP_SAVE_YES && workspace) {
+                const edits = kind === 'regimes' ? appDefaultEdits({ kind, regimes })
+                  : kind === 'passes' ? appDefaultEdits({ kind, passes, hasMalwareBlock: appHasMalwareBlock(app) })
+                    : appDefaultEdits({ kind, provider: runLlmProvider ?? 'workspace-default' });
+                const err = saveAppDefault(workspace, app, edits);
+                if (err) { setAppSaveError(err); return; }
+                try { logApp(app, 'info', 'assess.app.default.saved', `Saved the ${kind} of this run as the app default`, { context: { app_id: app, kind } }); } catch { /* best-effort */ }
+                if (kind === 'passes') setInitialPassProfile(passes);
+              }
+              next();
+            }}
+            active
+          />
+        </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-passes') {
     const llmMode = detectedProvider;
     const llmColor = 'green';
+    // #4255: the box follows the highlighted pass (one box per screen, section 9.1).
+    const passLong = PASS_SHORT_TO_LONG[passCursor];
+    const passDesc = passLong ? PASS_DESCRIPTIONS[passLong] : undefined;
+    const passGuidance = passCursor === 'all' || !passDesc || !passLong
+      ? {
+        title: 'All passes',
+        what: `Runs all ${ALL_PASS_COUNT} passes (inv through scope, including dynamic crawl). Static: ~30 s. LLM passes: 3-8 min. Malware (14) is opt-in only.`,
+        details: [
+          { label: 'Static',    value: 'inv, state, sbom, tf, egr, crypto, scope' },
+          { label: 'Dynamic',   value: 'dynamic (Playwright crawl, requires Chromium)' },
+          { label: 'LLM',       value: 'data, ctx, synth, comp, blocks' },
+          { label: 'Next', value: 'Run options: the stats table, the LLM cache, a source path and an iteration number for this run' },
+        ],
+      }
+      : { title: `${passCursor}: ${passLong.replace(/_/g, ' ')}`, what: passDesc.summary, details: passDesc.tip ? [{ label: 'Tip', value: passDesc.tip }] : [] };
     return (
-      <Box flexDirection="column" paddingX={1}>
-        <Header subtitle={typeLabel} />
+      <FlowFrame {...frame} title="Passes" keys={K_PASSES} guidance={passGuidance}>
         <Box flexDirection="column" marginBottom={1}>
           <Box flexDirection="row">
-            <Text>App: <Text color="cyanBright">{app}</Text></Text>
+            <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
             <Text>{'   '}</Text>
-            <Text>LLM: <Text color={llmColor}>{llmMode}</Text><Text dimColor>  (L)</Text></Text>
-          </Box>
-          <Box flexDirection="row">
-            <Text>Stats: <Text color={showStats ? 'green' : 'gray'}>{showStats ? 'on' : 'off'}</Text><Text dimColor>  (S)</Text></Text>
-            <Text>{'   '}</Text>
-            <Text>LLM cache: <Text color={useCassette ? 'yellow' : 'green'}>{useCassette ? 'on (reuse cached)' : 'off (always fresh)'}</Text><Text dimColor>  (C to toggle)</Text></Text>
-            {sourcePath && <><Text>{'   '}</Text><Text>Source: <Text color="green">{sourcePath}</Text><Text dimColor>  (P)</Text></Text></>}
-            {iter !== '1' && <><Text>{'   '}</Text><Text>Iter: <Text color="green">{iter}</Text><Text dimColor>  (I)</Text></Text></>}
+            <Text>LLM: <Text color={llmColor}>{llmMode}</Text></Text>
           </Box>
         </Box>
         <MultiSelect
@@ -2614,59 +2410,47 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
           options={PASS_OPTIONS}
           initialSelected={initialPassProfile}
           allValue="all"
+          showKeyHints={false}
           onCursorChange={(v) => setPassCursor(v)}
           onConfirm={(selected) => {
             setPasses(selected);
-            // #0800: persist the chosen profile so the next run pre-selects it.
-            writeAppPassProfile(app, selected);
-            // #0833: warn before the run if dynamic_analysis is selected but
-            // Chromium is not installed. Runs fresh here so re-entering the
-            // screen after install picks up the new state without a restart.
-            // The bundled playwright-core can use any discovered Chromium via
-            // executablePath -- an npm package check is not needed (#0971).
-            const hasDynamic = selected.includes('dynamic') || selected.includes('all');
-            const chromiumMissing = findInstalledChromium() === null;
-            if (hasDynamic && chromiumMissing) {
-              setPhase('playwright-warn');
-            } else {
-              setPhase('input-app-lz-provider');
-            }
+            // #4284: the passes apply to this run (--passes); the app file changes
+            // only on the save-as-default question (starts on No).
+            setAppSaveError(null);
+            // #4255: the run options of this run come next (Continue is the first entry).
+            setPhase('input-run-options');
           }}
           active
           visibleCount={passVisibleCount}
         />
-        {(() => {
-          if (passCursor === 'all') {
-            return (
-              <GuidanceBox
-                title="All passes"
-                what={`Runs all ${ALL_PASS_COUNT} passes (inv through scope, including dynamic crawl). Static: ~30 s. LLM passes: 3-8 min. Malware (14) excluded -- opt-in only.`}
-                details={[
-                  { label: 'Static',    value: 'inv, state, sbom, tf, egr, crypto, scope' },
-                  { label: 'Dynamic',   value: 'dynamic (Playwright crawl -- requires Chromium)' },
-                  { label: 'LLM',       value: 'data, ctx, synth, comp, blocks' },
-                  { label: 'Stats (S)', value: 'Show per-pass timing + token cost table at end of run' },
-                  { label: 'Cache (C)', value: 'Reuse cached LLM responses -- faster, no API cost for reruns' },
-                ]}
-                affordances={['Space -- toggle  |  A -- all  |  Enter -- run  |  Esc -- back']}
-                onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-              />
-            );
-          }
-          const longName = PASS_SHORT_TO_LONG[passCursor];
-          const desc = longName ? PASS_DESCRIPTIONS[longName] : undefined;
-          if (!desc) return null;
-          return (
-            <GuidanceBox
-              title={`${passCursor} -- ${longName!.replace(/_/g, ' ')}`}
-              what={desc.summary}
-              details={desc.tip ? [{ label: 'Tip', value: desc.tip }] : []}
-              affordances={['Space -- toggle this pass', 'A -- toggle all', 'Enter -- confirm + run', 'Esc -- back to framework selector']}
-              onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-            />
-          );
-        })()}
-      </Box>
+      </FlowFrame>
+    );
+  }
+
+  // #4255 (Design 126 sections 7.7 and 7.10): the options of this run as list
+  // entries (were the letter keys S, C, P and I on the passes step). Continue
+  // is the first entry, so Enter goes on as before; a toggle keeps the cursor.
+  if (phase === 'input-run-options') {
+    const options = appRunOptions({ showStats, useCassette, sourcePath, iter });
+    return (
+      <FlowFrame {...frame} title="Run options" subtitle="Options of this run only; nothing is written to .swao.yml." keys={K_PICKER} guidance={runOptionEntry}>
+        <SelectInput
+          label="Run options"
+          options={options}
+          visibleCount={options.length}
+          showKeyHints={false}
+          onCursorChange={onRunOptionCursor}
+          onSelect={(v) => {
+            if (v === RUN_OPT_STATS) { setShowStats(x => !x); return; }
+            if (v === RUN_OPT_CACHE) { setUseCassette(x => !x); return; }
+            if (v === RUN_OPT_SOURCE) { setPhase('input-source-path'); return; }
+            if (v === RUN_OPT_ITER) { setPhase('input-iter'); return; }
+            if (workspace && selectionDiffers(passes, readAppPassProfile(app))) { setPhase('input-passes-save'); return; }
+            afterPassesConfirmed(passes);
+          }}
+          active
+        />
+      </FlowFrame>
     );
   }
 
@@ -2674,20 +2458,29 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
   // but Chromium is not installed. Operator can proceed or return to pass selection.
   if (phase === 'playwright-warn') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
+      <FlowFrame {...frame} title={"Chromium not installed"} keys={K_SELECT_CONFIRM_BACK} guidance={{ title: "Chromium not installed", what: "Pass 10 (dynamic_analysis) crawls the application UI using a Playwright-controlled Chromium browser. It is safe to skip if you only need static analysis results.", details: [
+            { label: 'Install', value: `npx playwright@${PLAYWRIGHT_VERSION} install chromium` },
+            { label: 'Detect',  value: 'Health Check (the Playwright row shows the installed path)' },
+          ], ...pickGuidance }}>
         <Box marginTop={1} flexDirection="column" borderStyle="single" paddingX={1} width={guidanceWidth}>
-          <Text color="yellow">Pass 10 (dynamic_analysis) requires the Chromium browser, which is not installed.</Text>
-          <Text dimColor>The pass will fail mid-run because no Chromium executable was found.</Text>
-          <Text dimColor>Deselect it or install Chromium to continue.</Text>
+          <Text {...tone('warning')}>Pass 10 (dynamic_analysis) requires the Chromium browser, which is not installed.</Text>
+          <Text {...tone('muted')}>The pass will fail mid-run because no Chromium executable was found.</Text>
+          <Text {...tone('muted')}>Deselect it or install Chromium first.</Text>
         </Box>
         <Box marginTop={1}>
           <SelectInput
             label="Continue anyway?"
+            visibleCount={PICKER_VISIBLE_COUNT}
             options={[
-              { label: 'Yes -- proceed with dynamic_analysis (will fail at runtime)', value: 'yes' },
-              { label: 'No -- return to pass selection', value: 'no' },
+              {
+                label: 'Yes, proceed with dynamic_analysis (will fail at runtime)',
+                value: 'yes',
+                guidance: { title: 'Proceed without Chromium', what: `Keeps Pass 10 (dynamic_analysis) selected; it fails at run time until Chromium is installed (npx playwright@${PLAYWRIGHT_VERSION} install chromium). The other passes run.` },
+              },
+              { label: 'No, return to pass selection', value: 'no', guidance: { title: 'Return to pass selection', what: 'Goes back to the passes to deselect dynamic_analysis, or to keep it once Chromium is installed.' } },
             ]}
+            showKeyHints={false}
+            onCursorChange={onPickCursor}
             onSelect={(value) => {
               if (value === 'yes') {
                 setPhase('input-app-lz-provider');
@@ -2698,60 +2491,41 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
             active
           />
         </Box>
-        <GuidanceBox
-          title="Chromium not installed"
-          what="Pass 10 (dynamic_analysis) crawls the application UI using a Playwright-controlled Chromium browser. It is safe to skip if you only need static analysis results."
-          details={[
-            { label: 'Install', value: `npx playwright@${PLAYWRIGHT_VERSION} install chromium` },
-            { label: 'Detect',  value: 'swao doctor   (Playwright row shows installed path)' },
-          ]}
-          affordances={['Enter -- confirm selection', 'Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-source-path') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header contextPrefix={typeLabel} subtitle="Source Path Override" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>Overrides the source.path field in apps/{app}/.swao.yml for this run only.</Text>
-        <Text dimColor>Leave empty (Enter on blank) to clear the override.</Text>
+      <FlowFrame {...frame} title="Source path" keys={K_CONFIRM_BACK} guidance={{ title: "Source Path Override", what: "Overrides source.path for this run only; it is not written to .swao.yml.", details: [
+            { label: 'Format', value: 'Absolute path (C:/...) or workspace-relative path' },
+            { label: 'Persist', value: 'Edit source.path in apps/{app}/.swao.yml to make it permanent' },
+          ] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text {...tone('muted')}>Overrides the source.path field in apps/{app}/.swao.yml for this run only.</Text>
+        <Text {...tone('muted')}>Leave empty (Enter on blank) to clear the override.</Text>
         <Box marginTop={1}>
           <TextInput
             key="input-source-path"
             label="Source path (absolute or relative to workspace)"
             placeholder={sourcePath || 'C:/path/to/source'}
-            onSubmit={(value) => { setSourcePath(value); setPhase('input-passes'); }}
+            onSubmit={(value) => { setSourcePath(value); setPhase('input-run-options'); }}
             active
           />
         </Box>
-        <GuidanceBox
-          title="Source Path Override"
-          what="Overrides source.path for this run only -- does not persist to .swao.yml."
-          details={[
-            { label: 'Format', value: 'Absolute path (C:/...) or workspace-relative path' },
-            { label: 'Persist', value: 'Edit source.path in apps/{app}/.swao.yml to make it permanent' },
-          ]}
-          affordances={['Enter -- apply override  |  Esc -- back to passes']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-        <Box marginTop={1}>
-          <Text dimColor>Escape to cancel without changing.</Text>
-        </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-iter') {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header contextPrefix={typeLabel} subtitle="Iteration Number" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>Pins the iteration number in the run-manifest. Defaults to 1.</Text>
-        <Text dimColor>Useful for re-running the same assessment with the same iter tag.</Text>
+      <FlowFrame {...frame} title="Iteration" keys={K_CONFIRM_BACK} guidance={{ title: "Iteration Number", what: "Tags the run-manifest with an iteration counter. Useful for comparing repeated runs.", details: [
+            { label: 'Default', value: '1' },
+            { label: 'Usage', value: 'Increment each time you re-run to track assessment evolution' },
+          ] }}>
+        <Text>App: <Text {...tone('accent')}>{app}</Text></Text>
+        <Text {...tone('muted')}>Pins the iteration number in the run-manifest. Defaults to 1.</Text>
+        <Text {...tone('muted')}>Useful for re-running the same assessment with the same iter tag.</Text>
         <Box marginTop={1}>
           <TextInput
             key="input-iter"
@@ -2761,52 +2535,40 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
               const trimmed = (value || '1').trim();
               const n = parseInt(trimmed, 10);
               setIter(Number.isFinite(n) && n > 0 ? String(n) : '1');
-              setPhase('input-passes');
+              setPhase('input-run-options');
             }}
             active
           />
         </Box>
-        <GuidanceBox
-          title="Iteration Number"
-          what="Tags the run-manifest with an iteration counter. Useful for comparing repeated runs."
-          details={[
-            { label: 'Default', value: '1' },
-            { label: 'Usage', value: 'Increment each time you re-run to track assessment evolution' },
-          ]}
-          affordances={['Enter -- confirm  |  Esc -- back to passes']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-        <Box marginTop={1}>
-          <Text dimColor>Escape to cancel without changing.</Text>
-        </Box>
-      </Box>
+      </FlowFrame>
     );
   }
 
   // #2328: pre-flight LLM connectivity check screen.
   // Shown between the last input step and 'running' when a gateway connector is active.
   // #2371: preflight-llm phase delegates to shared PreflightLlmPhase component.
+  // #4256: in the flow frame (header, licence line, step bar on Run).
   if (phase === 'preflight-llm' && preflightConnector) {
     return (
       <PreflightLlmPhase
         connector={preflightConnector}
         apiKey={preflightApiKey}
         app={app}
-        typeLabel={typeLabel}
         onPass={() => { setSkipLlm(false); setPhase('running'); }}
         onBack={() => setPhase('input-app-credentials')}
         onRunWithoutLlm={() => { setSkipLlm(true); setPhase('running'); }}
-        Header={Header}
+        frame={frame}
       />
     );
   }
 
-  // #0407 (sprint-040 round-6): assessment-done summary screen. Pauses
-  // between the final pass [ok] line + the BI export prompt so the
-  // operator can see the green 100% bar, the summary, and decide
-  // explicitly to continue (Enter) or quit (Escape).
+  // #0407 (sprint-040 round-6): assessment-done summary screen.
+  // #4256 (Design 126 section 4.7, owner 2026-11-10 10:51): FinishPanel in the
+  // flow frame with the real run folder, the pass count, the block and LZ fit
+  // verdicts, the degraded or skipped passes and What next; the key hints of
+  // the frame directly above the guidance box.
   if (phase === 'assess-done') {
-    const signalsTotal = lines.filter(l => l.startsWith('[ok]  Pass ') || l.startsWith('[skip]  Pass ')).length;
+    const signalsTotal = lines.filter(isPassResultLine).length;
     const passesLabel = passes.includes('all') ? 'all' : (passes.join(', ').length > 40 ? `${passes.slice(0, 3).join(', ')} +${passes.length - 3} more` : passes.join(', '));
     // #0716: detect connectivity-degraded passes from structured warning lines.
     const degradedPasses = lines
@@ -2821,70 +2583,45 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
     if (lines.some(l => l.includes('No LLM provider configured'))) {
       skippedPassGroups.push({ passes: 'data, ctx, synth, comp, blocks', reason: 'no LLM provider configured' });
     }
+    const runFolder = readAppRunFolder(workspace, app);
+    const challenge: AppChallengeOffer = !onChallenge ? 'none' : skipLlm ? 'no-llm' : !isEnterprise ? 'not-licensed' : 'offer';
+    const finishInput = {
+      app, typeLabel, totalPasses, passesLabel, passFiles: signalsTotal, llm: detectedProvider, skipLlm, runFolder,
+      lzFit: readLzFitVerdicts(workspace, runFolder), blockVerdicts, degradedPasses, skippedPassGroups,
+      detailLines: baselineDecisionLines, logAvailable: !!logFilePath, challenge,
+      // #4499: the default passes this run left out.
+      leftOutPasses: passesLeftOut(passes),
+    };
+    const view = appFinishView(finishInput);
+    if (finishDetails) {
+      return (
+        <FlowFrame {...frame} title="Details of the run" keys={FINISH_DETAILS_KEYS} guidance={{ entry: { title: 'Details of the run', what: 'The verdict of each operational block and the policy baseline decisions of this run.' } }}>
+          {Object.entries(blockVerdicts).map(([k, v]) => (
+            <DetailRow key={k} label={k.charAt(0).toUpperCase() + k.slice(1)} value={v} />
+          ))}
+          {/* #3981: Client LZ Policy Baseline decisions (labels only). */}
+          {baselineDecisionLines.map((l, i) => <Text key={`bd${i}`} wrap="wrap">{`  ${l}`}</Text>)}
+        </FlowFrame>
+      );
+    }
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <ProgressBar value={totalPasses} total={totalPasses} label="done" color="green" />
-        <Text color="green">Assessment complete.</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  App:          <Text color="cyanBright">{app}</Text></Text>
-          <Text>  Passes:       <Text color="cyanBright">{totalPasses} ({passesLabel})</Text></Text>
-          <Text>  LLM:          <Text color="cyanBright">{detectedProvider}</Text></Text>
-          <Text>  Pass files:   <Text color="cyanBright">{signalsTotal} written</Text></Text>
-          <Text>  Outputs:      <Text color="cyanBright">apps/{app}/wsp/passes/ + wsp/runs/&lt;ts&gt;/</Text></Text>
-          {/* #3383: a deterministic-only run makes no LLM call, so the LLM-driven passes and the Stakeholder Challenge were not run. */}
-          {skipLlm && <Text>  Mode:         <Text color="yellow">deterministic only (no LLM)</Text></Text>}
-        </Box>
-        {/* #0928: block assessment summary from 12-blocks.yaml */}
-        {Object.keys(blockVerdicts).length > 0 && (
-          <Box marginTop={1} flexDirection="column">
-            <Text dimColor>  Block assessments:</Text>
-            {(['observability', 'licence', 'testing', 'architecture', 'db', 'integration', 'iam', 'dr'] as const).map(k => {
-              const v = blockVerdicts[k];
-              if (!v) return null;
-              const col = v === 'SATISFACTORY' ? 'green' : v === 'PARTIAL' ? 'yellow' : v === 'UNSATISFACTORY' ? 'red' : 'gray';
-              const label = k.charAt(0).toUpperCase() + k.slice(1);
-              return (
-                <Text key={k}>    <Text dimColor>{label.padEnd(16)}</Text><Text color={col}>{v}</Text></Text>
-              );
-            })}
-          </Box>
-        )}
-        {degradedPasses.length > 0 ? (
-          <Box marginTop={1} flexDirection="column">
-            <Text color="yellow">  {degradedPasses.length} pass{degradedPasses.length > 1 ? 'es' : ''} degraded (LLM connectivity failure): {degradedPasses.join(', ')}</Text>
-            <Text dimColor>  Results are incomplete. Re-run when network access is restored.</Text>
-            {logFilePath ? <Text dimColor>  <Text color="cyanBright">L</Text> -- view retry trace in log</Text> : null}
-          </Box>
-        ) : null}
-        {skippedPassGroups.length > 0 ? (
-          <Box marginTop={1} flexDirection="column">
-            <Text color="yellow">  {skippedPassGroups.length} pass group{skippedPassGroups.length > 1 ? 's' : ''} skipped:</Text>
-            {skippedPassGroups.map(sg => (
-              <Text key={sg.passes} dimColor>    {sg.passes} -- {sg.reason}</Text>
-            ))}
-          </Box>
-        ) : null}
-        <Box marginTop={1} flexDirection="column">
-          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onChallenge && !skipLlm ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- Stakeholder Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
-          {/* #3383: the Stakeholder Challenge is LLM-driven, so it is not offered for a deterministic-only run. */}
-          {onChallenge && skipLlm && <Text dimColor>  Stakeholder Challenge is unavailable for a deterministic-only run (no LLM).</Text>}
-        </Box>
-        <GuidanceBox
-          title="Assessment complete"
-          what="All passes complete. Use Generate Report (4) for text/PDF, or Export BI (6) for the Power BI bundle."
-          details={[
-            { label: 'Run dir', value: `apps/${app}/wsp/runs/<latest>/` },
-          ]}
-          affordances={[
-            ...(logFilePath ? ['L -- view log file'] : []),
-            ...(onChallenge ? [isEnterprise ? 'C -- Stakeholder Challenge' : 'C -- Stakeholder Challenge [Enterprise only]'] : []),
-            'Ctrl+G -- close guidance',
-            'Esc -- main menu',
-          ]}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      <FlowFrame {...frame} keys={FINISH_PANEL_KEYS} guidance={{ entry: appFinishGuidance(finishInput) }}>
+        <FinishPanel
+          title={view.title}
+          level={view.level}
+          rows={view.rows}
+          items={view.items}
+          next={view.next}
+          onSelect={(v) => {
+            if (v === FINISH_MAIN_MENU) { onBack(); return; }
+            if (v === 'details') { setFinishDetails(true); return; }
+            // #0715: the log opens in the OS default viewer (ref: the live path, #0805).
+            if (v === 'log') { if (logFilePathRef.current) openWithDefaultApp(logFilePathRef.current); return; }
+            // #0988 Design 074 Step 8: the challenge offer (cost, roles) before it starts.
+            if (v === 'challenge') setPhase('challenge-prompt');
+          }}
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -2897,270 +2634,63 @@ export function AppAssessmentScreen({ onBack, version, scaffold, onChallenge }: 
         isEnterprise={isEnterprise}
         onConfirm={() => { onChallenge?.(app); }}
         onBack={onBack}
-        Header={Header}
+        frame={frame}
         offer={challengeOfferForApp(workspace, app, assessmentType)} /* #3427 */
       />
     );
   }
 
-  if (phase === 'export-prompt') {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text color="green">Assessment complete -- {totalPasses} passes.</Text>
-        <Box marginTop={1} flexDirection="column" borderStyle="single" paddingX={1}>
-          <Text bold>Emit the BI export bundle now?</Text>
-          <Text dimColor>Required input for the PowerBI dashboard (swao-report.pbit).</Text>
-        </Box>
-        <Box marginTop={1}>
-          <SelectInput
-            label=" "
-            options={[
-              { label: 'Yes -- emit CSV + NDJSON + XLSX (recommended)', value: 'yes' },
-              { label: 'No  -- I will run swao export later',           value: 'no'  },
-            ]}
-            onSelect={(v) => setPhase(v === 'yes' ? 'export-running' : 'done')}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Emit BI export bundle?"
-          what="Exports CSV + NDJSON + XLSX for PowerBI (~2-5 s). You can also run this later from Export BI."
-          affordances={['Up/Down -- Yes/No  |  Enter -- confirm  |  Esc -- skip']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
-    );
-  }
-
-  // running / export-running / done
-  const inExportPhase = phase === 'export-running' || (phase === 'done' && (exportDone || exportLines.length > 0));
-
-  // #0410 (sprint-040 round-9): once export completes successfully, the
-  // assessment-progress panel + LiveOutput are redundant noise (the user
-  // is here for the PowerBI paths). Render a focused "export complete"
-  // view with just the header, the export results panel + GuidanceBox,
-  // and the footer. Operator round-8 feedback: "after I confirmed the
-  // BI export I got the screen showing again the Pass results. this is
-  // wrong I should only see the export screen".
-  if (phase === 'done' && exportDone && exportCode === 0) {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Box>
-          <Text>App: <Text color="cyanBright">{app}</Text></Text>
-          <Text dimColor>  LLM: {detectedProvider}</Text>
-        </Box>
-        <Box flexDirection="column" marginTop={1} borderStyle="single" paddingX={1}>
-          <Text bold color="green">BI export complete -- ready for PowerBI</Text>
-          {exportBundleDir && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text dimColor>1. SWAOExportPath (press <Text color="cyanBright">C</Text> to copy):</Text>
-              <Text bold color="whiteBright">   {exportBundleDir}</Text>
-            </Box>
-          )}
-          {exportPbitPath && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text dimColor>2. App report template (press <Text color="cyanBright">R</Text> to open):</Text>
-              <Text bold color="whiteBright">   {exportPbitPath}</Text>
-            </Box>
-          )}
-          {exportPortfolioPbitPath && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text dimColor>3. Portfolio template (press <Text color="cyanBright">P</Text> to open):</Text>
-              <Text bold color="whiteBright">   {exportPortfolioPbitPath}</Text>
-            </Box>
-          )}
-          {workspace && (
-            <Box flexDirection="column" marginTop={1}>
-              <Text dimColor>4. EvidenceUrlPrefix (press <Text color="cyanBright">E</Text> to copy):</Text>
-              <Text bold color="whiteBright">   file:///{workspace.replace(/\\/g, '/')}/apps/{app}/</Text>
-            </Box>
-          )}
-          {exportActionToast && (
-            <Box marginTop={1}>
-              <Text color="yellow">{exportActionToast}</Text>
-            </Box>
-          )}
-        </Box>
-        <GuidanceBox
-          title="BI export complete"
-          what="Use the hot-keys to open templates and copy paths into PowerBI."
-          details={[
-            { label: 'R / P', value: 'Open report / portfolio template in PowerBI Desktop' },
-            { label: 'C / E', value: 'Copy SWAOExportPath / EvidenceUrlPrefix to clipboard' },
-          ]}
-          affordances={['R/P -- open  |  C/E -- copy path  |  Enter/Esc -- main menu']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-        <Box marginTop={1}>
-          <Text dimColor>Press Enter or Escape to return to menu...</Text>
-        </Box>
-      </Box>
-    );
-  }
-  // #0657: always cap to 5 lines while running so the guidance box + footer
-  // stay visible regardless of which pass is active (including passes that
-  // have no PASS_DESCRIPTIONS entry).  Only expand to the full terminal-
-  // height-aware cap once the assessment is done and the output is static.
-  // #1676: show starting panel until first pass name arrives so the panel area
-  // is never blank during the clone/pre-analysis phase (~0-10% progress).
-  const startPanelVisible = !done && !passName;
-  const passInfoVisible = !done && !!passName && PASS_DESCRIPTIONS[passName] !== undefined;
-  const effectiveLiveLines = done ? maxLiveLines : 5;
   // #2335: on Community/Consultant the challenge module is absent and the LLM
   // orchestrator emits "challenge complete (0 agents)" progress lines. Replace
   // those with a plain "skipped" label so operators are not confused into
   // thinking challenge ran successfully with zero results.
-  const rawDisplayLines = isEnterprise
+  const displayLines = isEnterprise
     ? lines
     : lines.map(l =>
         /\[llm-assessment\].*challenge complete \(0 agents\)/i.test(l)
-          ? l.replace(/challenge complete \(0 agents\)/i, 'challenge -- skipped (requires Enterprise tier)')
+          ? l.replace(/challenge complete \(0 agents\)/i, 'challenge skipped (requires Enterprise tier)')
           : l
       );
-  // #2546: LiveOutput wraps long lines via wrap="wrap" -- no per-line truncation needed.
-  const displayLines = rawDisplayLines;
 
-  // #2371: active running phase delegates to shared RunningPhase component.
+  // #2371 / #4256 (Design 126 sections 4.6 and 7.6, A-20): the run view on
+  // RunPanel in the flow frame; the stage line names the pass and the guidance
+  // follows the run state. Esc asks (AbortDialog), then the run stops (child
+  // tree killed by the run effect's cleanup) and the flow returns to the
+  // Target LZ step, the step that started the run, with the choices kept.
   if (phase === 'running' && !done) {
     return (
       <RunningPhase
-        progressValue={displayProgressValue}
-        progressLabel={passSubLabel ? `${passName} -- ${passSubLabel}` : passName}
-        totalPasses={totalPasses}
-        liveLines={displayLines}
-        passName={passName}
-        typeLabel={typeLabel}
-        onBack={onBack}
-        Header={Header}
+        header={flowHeader}
+        steps={APP_STEPS}
+        current={APP_PHASE_STEP.running}
+        run={{ kind: 'application', app, passName, passSubLabel, completed: completedPasses, total: totalPasses, postStep }}
+        lines={displayLines}
+        onCancel={() => setPhase('input-app-lz-provider')}
+        onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
       />
     );
   }
 
+  // #4256: a run that did not complete ends on FinishPanel (level fail) in the
+  // flow frame: App, exit code, the failed pass, View the log; the cause and
+  // the log path in the guidance box.
+  const failed = failedRunView(typeLabel, app, code, !!logFilePath);
+  const failedItems: FinishItem[] = failedPass
+    ? [{ level: 'fail', label: `Pass ${failedPass.split('_').join(' ')}`, reason: 'failed; the guidance names the likely cause' }]
+    : [];
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={typeLabel} />
-      <ProgressBar
-        value={displayProgressValue}
-        total={totalPasses}
-        label={done ? (code === 0 ? 'done' : `failed at ${passName || 'pre-pass clone'}`) : (passSubLabel ? `${passName} -- ${passSubLabel}` : passName)}
-        color={done ? (code === 0 ? 'green' : 'red') : 'cyan'}
+    <FlowFrame {...frame} keys={FINISH_PANEL_KEYS} guidance={{ entry: failedRunGuidance({ typeLabel, app, code, lastLines: lines.slice(-12).join('\n'), logPath: logFilePath || null, ...(failedPass && PASS_FAIL_ADVICE[failedPass] ? { failedPassAdvice: PASS_FAIL_ADVICE[failedPass] } : {}) }) }}>
+      <FinishPanel
+        title={failed.title}
+        level={failed.level}
+        rows={failed.rows}
+        items={failedItems}
+        next={failed.next}
+        onSelect={(v) => {
+          if (v === 'log') { if (logFilePathRef.current) openWithDefaultApp(logFilePathRef.current); return; }
+          onBack();
+        }}
       />
-      {!done && <Text color="yellow">Running assessment...</Text>}
-      {done && code === 0 && <Text color="green">Assessment complete.  {totalPasses} passes  {lines.filter(l => l.includes('signals emitted')).length} pass files written</Text>}
-      {done && code !== 0 && <Text color="yellow">Assessment finished with warnings (exit {code}).</Text>}
-      <LiveOutput lines={displayLines} maxLines={effectiveLiveLines} label="Output" />
-
-      {/* Pass description / error context panel -- #1676: always visible when running */}
-      {!done && (
-        <Box marginTop={1}>
-          <GuidanceBox
-            title={passInfoVisible ? `Pass info -- ${passName.replace(/_/g, ' ')}` : 'Assessment in Progress'}
-            what={passInfoVisible
-              ? PASS_DESCRIPTIONS[passName]!.summary
-              : (startPanelVisible
-                ? 'Cloning source repository and preparing analysis passes...'
-                : 'Assessment running. Each pass analyses a different workload dimension.')}
-            details={passInfoVisible && PASS_DESCRIPTIONS[passName]!.tip
-              ? [{ label: 'Tip', value: PASS_DESCRIPTIONS[passName]!.tip! }]
-              : undefined}
-            affordances={['Ctrl+G -- toggle this panel', 'Esc -- cancel assessment']}
-            initiallyCollapsed
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
-      )}
-
-      {done && code !== 0 && failedPass && (
-        <Box flexDirection="column" marginTop={1} borderStyle="single" paddingX={1} width={guidanceWidth}>
-          <Text bold color="yellow">[!] Pass {failedPass} failed</Text>
-          <Text dimColor>{PASS_FAIL_ADVICE[failedPass] ?? 'Check the output above for details. Re-run this pass individually after fixing the issue.'}</Text>
-        </Box>
-      )}
-      {done && code !== 0 && (() => {
-        // #0391: error-context GuidanceBox. Surfaces the structured log
-        // path + the most common remediation depending on what we can
-        // detect in the stdout (currently: git clone tree-URL mishap).
-        const lastLines = lines.slice(-12).join('\n');
-        const cloneFailed = /git clone failed/i.test(lastLines);
-        const treeUrl = /\/tree\//i.test(lastLines);
-        const logPath = workspace ? `${workspace}/wsp/logs/portfolio-events-<YYYY-MM>.ndjson` : 'wsp/logs/portfolio-events-<YYYY-MM>.ndjson';
-        return (
-          <GuidanceBox
-            title="Assessment failed -- where to look + how to react"
-            what={cloneFailed
-              ? (treeUrl
-                ? 'The source URL appears to be a GitHub tree-view URL (containing `/tree/<ref>/<subdir>`). SWAO now auto-splits these into clone URL + branch + subdir, but this app was created with the un-split URL stored in `.swao.yml`. Edit `apps/<app>/.swao.yml` to point `source.vcs.url` at the bare repo URL and move the ref/subdir into their own fields, then re-run.'
-                : 'git clone failed before any pass ran. Most common causes: wrong URL, missing VCS token for a private repo, or corporate proxy blocking outbound HTTPS to the git host. Inspect the stderr above for the exact reason; for private repos confirm the token is stored via Setup Step 2.')
-              : 'A pass exited non-zero. The "Pass info" panel above (if visible) explains the most likely cause; the structured log entry carries the full traceback.'}
-            details={[
-              { label: 'Exit code',  value: `${code}` },
-              { label: 'Log file',   value: logPath },
-              { label: 'Tail logs',  value: 'swao log tail --level error' },
-              { label: 'Re-run',     value: cloneFailed ? 'After editing .swao.yml: run Assessment again from the main menu' : 'After fixing the issue, you can re-run a single pass instead of the whole assessment' },
-            ]}
-            affordances={['Enter -- return to main menu', 'Escape -- return to main menu']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        );
-      })()}
-
-      {inExportPhase && (
-        <Box flexDirection="column" marginTop={1} borderStyle="single" paddingX={1}>
-          <Text bold color="cyanBright">BI export</Text>
-          {!exportDone && <Text color="yellow">Emitting CSV + NDJSON + XLSX bundle...</Text>}
-          {exportDone && exportCode === 0 && (
-            <>
-              <Text color="green">Bundle ready.</Text>
-              {exportBundleDir && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text dimColor>1. SWAOExportPath (press <Text color="cyanBright">C</Text> to copy):</Text>
-                  <Text bold color="whiteBright">   {exportBundleDir}</Text>
-                </Box>
-              )}
-              {exportPbitPath && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text dimColor>2. App report template (press <Text color="cyanBright">R</Text> to open):</Text>
-                  <Text bold color="whiteBright">   {exportPbitPath}</Text>
-                </Box>
-              )}
-              {exportPortfolioPbitPath && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text dimColor>3. Portfolio template (press <Text color="cyanBright">P</Text> to open):</Text>
-                  <Text bold color="whiteBright">   {exportPortfolioPbitPath}</Text>
-                </Box>
-              )}
-              {workspace && (
-                <Box flexDirection="column" marginTop={1}>
-                  <Text dimColor>4. EvidenceUrlPrefix (press <Text color="cyanBright">E</Text> to copy; paste into PowerBI's EvidenceUrlPrefix parameter):</Text>
-                  <Text bold color="whiteBright">   file:///{workspace.replace(/\\/g, '/')}/apps/{app}/</Text>
-                </Box>
-              )}
-              {exportActionToast && (
-                <Box marginTop={1}>
-                  <Text color="yellow">{exportActionToast}</Text>
-                </Box>
-              )}
-            </>
-          )}
-          {exportDone && exportCode !== 0 && (
-            <Text color="yellow">Export finished with warnings (exit {exportCode}). Re-run from Main Menu, Export BI.</Text>
-          )}
-          <LiveOutput lines={exportLines} maxLines={8} />
-        </Box>
-      )}
-
-      {phase === 'done' && code === 0 && !exportDone && exportLines.length === 0 && (
-        <Box flexDirection="column" marginTop={1} borderStyle="single" paddingX={1}>
-          <Text dimColor>When you are ready to produce the BI bundle, run:</Text>
-          <Text color="cyanBright">  swao export --app {app} --formats csv,ndjson,xlsx</Text>
-        </Box>
-      )}
-
-      <Box marginTop={1}>
-        <Text dimColor>{done ? 'Press Enter or Escape to return to menu...' : 'Escape to cancel...'}</Text>
-      </Box>
-    </Box>
+    </FlowFrame>
   );
 }

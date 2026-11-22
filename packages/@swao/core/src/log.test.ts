@@ -164,6 +164,19 @@ describe('console mirror', () => {
     errSpy.mockRestore();
     warnSpy.mockRestore();
   });
+
+  it('#4260: logPortfolio with mirror:false writes the warn level to the sink but prints nothing', () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logPortfolio('warn', 'health-check.probe.complete', 'probe: mcp status=binary_unreachable', { mirror: false });
+    logPortfolio('error', 'health-check.probe.complete', 'probe: license status=invalid', { mirror: false });
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(errSpy).not.toHaveBeenCalled();
+    const entries = readNdjson(listSinkPaths(tmpRoot).portfolio!);
+    expect(entries.map((e) => e.level)).toEqual(['warn', 'error']);
+    errSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
 });
 
 describe('console mirror is one line per entry (#3340, CodeQL js/log-injection)', () => {
@@ -488,5 +501,24 @@ describe('event-sequence completeness gate (#2241 #2242 #2243 #2244 #2287 #2060)
     expect(() => assertEventSequenceComplete(paths.portfolio, SEQUENCE_PAIRS)).toThrow(
       /unclosed 'report\.generate\.start'/,
     );
+  });
+});
+
+describe('event messages are dash-normalised (#4462)', () => {
+  it('logPortfolio and logApp write no spaced double hyphen, em dash or en dash', () => {
+    const em = String.fromCharCode(0x2014);
+    const en = String.fromCharCode(0x2013);
+    logPortfolio('info', 'publish.start', 'Publish started -- app: demo, type: app');
+    logApp('demo', 'warn', 'x.y', `Model m is not in the catalogue ${em} proceeding (pages 1${en}3)`);
+    const paths = listSinkPaths(tmpRoot);
+    const portfolio = readFileSync(paths.portfolio, 'utf-8');
+    const app = readFileSync(paths.apps.find((a) => a.appId === 'demo')!.path, 'utf-8');
+    expect(JSON.parse(portfolio.trim().split('\n').at(-1)!).message).toBe('Publish started, app: demo, type: app');
+    expect(JSON.parse(app.trim().split('\n').at(-1)!).message).toBe('Model m is not in the catalogue, proceeding (pages 1-3)');
+    for (const text of [portfolio, app]) {
+      expect(text).not.toContain(' -- ');
+      expect(text).not.toContain(em);
+      expect(text).not.toContain(en);
+    }
   });
 });

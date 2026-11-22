@@ -244,3 +244,54 @@ describe('guardSecretText / guardSecretsDeep (#3415)', () => {
     expect(guardSecretsDeep(clean).value).toBe(clean);
   });
 });
+
+// #4352: DATA-10 shape (prose quoting a fallback password), connection
+// strings and basic auth in URLs. Values are built at run time.
+describe('guardSecretText: DATA-10 shape and connection strings (#4352)', () => {
+  const pw = 'Qx' + 'z'.repeat(8) + '7k';
+  const letters = 'Cn' + 'p'.repeat(9);
+
+  it('masks a quoted fallback password in prose and keeps the finding', () => {
+    const r = guardSecretText(`global-setup.ts: a hard-coded fallback password '${pw}' is used when no E2E_TEST_PASSWORD is set.`);
+    expect(r.text).not.toContain(pw);
+    expect(r.text).toContain(`'Qx***(12)'`);
+    expect(r.text).toContain('E2E_TEST_PASSWORD is set');
+  });
+
+  it('is idempotent on an already-masked DATA-10 derivation', () => {
+    const once = guardSecretText(`fallback password '${pw}' is used`).text;
+    const twice = guardSecretText(once);
+    expect(twice.count).toBe(0);
+    expect(twice.text).toBe(once);
+  });
+
+  it('masks a letters-only connection-string password (Password=x; and Pwd=x;)', () => {
+    for (const key of ['Password', 'Pwd', 'password']) {
+      const r = guardSecretText(`Server=db;User Id=app;${key}=${letters};Encrypt=true`);
+      expect(r.text).not.toContain(letters);
+      expect(r.count).toBe(1);
+    }
+  });
+
+  it('masks a letters-only password as the last connection-string field (JSON config shape)', () => {
+    const r = guardSecretText(`{"ConnectionStrings":{"Db":"Server=db;User Id=app; Password=${letters}"}}`);
+    expect(r.text).not.toContain(letters);
+    expect(r.count).toBe(1);
+    expect(extractCredentialValues(`Server=db;Pwd=${letters}`)).toContain(letters);
+  });
+
+  it('keeps type names and code references outside a connection string', () => {
+    for (const t of ['password: string', 'password = None', 'password: string;', 'token => required;']) {
+      expect(guardSecretText(t).count).toBe(0);
+    }
+  });
+
+  it('masks basic auth in a URL', () => {
+    const r = guardSecretText(`postgres://app:${letters}@db:5432/app`);
+    expect(r.text).not.toContain(letters);
+  });
+
+  it('extractCredentialValues returns the connection-string value', () => {
+    expect(extractCredentialValues(`Data Source=x;Password=${letters};`)).toContain(letters);
+  });
+});

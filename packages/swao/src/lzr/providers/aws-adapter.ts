@@ -14,8 +14,8 @@
 // ================================================================
 
 import { existsSync, readFileSync } from 'fs';
-import { credentialStore } from '@swao/core';
-import { signAwsRequest } from '../util/aws-sign.js';
+import { credentialStore, resolveLzCredentials, LzCredentialExpiredError } from '@swao/core';
+import { readAwsPass23StateForScope } from '@swao/module-landing-zone';
 import type { LandingZoneReadinessResult, LZServiceCheck, LZQuotaCheck, LZPolicyCheck, LZBlockerItem, LZNetworkCheck } from '../../schema/wsp-lzr.js';
 
 // ---------------------------------------------------------------------------
@@ -27,6 +27,9 @@ export interface AwsAdapterConfig {
   landingZoneId: string;
   providerId: string;
   snapshotFile?: string;
+  // #3570: live credentials come from lz:<lzId>:<scopeId>:<field> (Design 120
+  // section 6.2). Without a registered scope the live path does not run.
+  credentialScope?: { lzId: string; scopeId: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -221,11 +224,13 @@ export interface AwsCredentials {
   sessionToken?: string;
 }
 
-export async function resolveAwsCredentials(): Promise<AwsCredentials> {
-  const accessKeyId = await credentialStore.getOrThrow('aws-access-key-id', 'AWS LZR adapter');
-  const secretAccessKey = await credentialStore.getOrThrow('aws-secret-access-key', 'AWS LZR adapter');
-  const sessionToken = await credentialStore.get('aws-session-token') ?? undefined;
-  return { accessKeyId, secretAccessKey, sessionToken };
+// #3570: scoped keys only; the Pass 23 keys aws-access-key-id, ... are moved
+// by moveLegacyLzCredentials() and no longer read (no dual-read fallback).
+// An expired lz:<lz>:<scope>:expires-at throws LzCredentialExpiredError
+// before any request.
+export async function resolveAwsCredentials(scope: { lzId: string; scopeId: string }): Promise<AwsCredentials> {
+  const c = await resolveLzCredentials(credentialStore, scope.lzId, scope.scopeId, ['access-key-id', 'secret-access-key'], ['session-token']);
+  return { accessKeyId: c['access-key-id'], secretAccessKey: c['secret-access-key'], sessionToken: c['session-token'] };
 }
 
 // ---------------------------------------------------------------------------
@@ -244,17 +249,20 @@ export async function runAwsChecks(
   }
 
   // Live mode: resolve credentials then call AWS APIs (#0107 / #0479 C-23 AWS).
-  let creds: AwsCredentials;
+  let scope: { lzId: string; scopeId: string };
   try {
-    creds = await resolveAwsCredentials();
-  } catch {
+    if (!config.credentialScope) throw new Error('no landing zone scope registered');
+    await resolveAwsCredentials(config.credentialScope);
+    scope = config.credentialScope;
+  } catch (err) {
+    if (err instanceof LzCredentialExpiredError) throw err;
     return {
       provider_id: config.providerId,
       landing_zone_id: config.landingZoneId,
       assessed_at: new Date().toISOString(),
       ingestion_strategy: 'cloud_native',
       blockers: [],
-      warnings: [{ check_id: 'LZ-WARN-00', category: 'service', description: 'AWS credentials not found; configure aws-access-key-id and aws-secret-access-key', evidence: [] }],
+      warnings: [{ check_id: 'LZ-WARN-00', category: 'service', description: 'AWS credentials not found; register the landing zone (landing_zones in .swao.yml) and store lz:<lz-id>:<scope-id>:access-key-id and secret-access-key', evidence: [] }],
       service_checks: [],
       quota_checks: [],
       policy_checks: [],
@@ -265,7 +273,10 @@ export async function runAwsChecks(
   }
 
   try {
-    const liveSnapshot = await fetchAwsLandingZoneState(creds, config.region);
+    // #3574 (Design 120 section 7.5): the live reads run on the `aws` driver
+    // transport (read-only allow-list, AWS action guard, endpoint seam).
+    const state = await readAwsPass23StateForScope({ lzId: scope.lzId, scopeId: scope.scopeId, region: config.region, store: credentialStore });
+    const liveSnapshot: AwsSnapshot = { ...state, elasticache_groups: [], config_compliance: { non_compliant_rules: [] } };
     return { ...buildFromSnapshot(liveSnapshot, requiredServices, config), input_type: 'live_api' as const };
   } catch (err) {
     return {
@@ -283,39 +294,4 @@ export async function runAwsChecks(
       input_type: 'live_api' as const,
     };
   }
-}
-
-async function awsFetch(url: URL, creds: AwsCredentials, region: string, service: string): Promise<unknown> {
-  const headers = signAwsRequest({ method: 'GET', url, region, service, ...creds });
-  const resp = await fetch(url.toString(), { headers: headers as unknown as Record<string, string> });
-  if (!resp.ok) throw new Error(`AWS HTTP ${resp.status} from ${url.hostname}`);
-  return resp.json();
-}
-
-async function fetchAwsLandingZoneState(creds: AwsCredentials, region: string): Promise<AwsSnapshot> {
-  const base = `https://eks.${region}.amazonaws.com`;
-
-  // EKS: list clusters then describe each
-  const clustersResp = await awsFetch(new URL(`${base}/clusters`), creds, region, 'eks') as { clusters?: string[] };
-  const clusterNames: string[] = clustersResp.clusters ?? [];
-  const eksRaw = await Promise.all(clusterNames.map(async (name) => {
-    const d = await awsFetch(new URL(`${base}/clusters/${name}`), creds, region, 'eks') as { cluster?: { name: string; status: string; version?: string } };
-    return { name, status: d.cluster?.status ?? 'UNKNOWN', version: d.cluster?.version };
-  }));
-
-  // RDS: list instances via query-string API
-  const rdsUrl = new URL(`https://rds.${region}.amazonaws.com/`);
-  rdsUrl.searchParams.set('Action', 'DescribeDBInstances');
-  rdsUrl.searchParams.set('Version', '2014-10-31');
-  const rdsResp = await awsFetch(rdsUrl, creds, region, 'rds') as Record<string, unknown>;
-  // The RDS response is XML but we parse it as JSON since tests mock it as JSON
-  const rdsInstances = ((rdsResp as { DBInstances?: Array<{ DBInstanceIdentifier?: string; Engine?: string; DBInstanceStatus?: string; EngineVersion?: string }> }).DBInstances ?? [])
-    .map((i) => ({ identifier: i.DBInstanceIdentifier ?? '', engine: i.Engine ?? '', status: i.DBInstanceStatus ?? '', engineVersion: i.EngineVersion }));
-
-  return {
-    eks_clusters: eksRaw,
-    rds_instances: rdsInstances,
-    elasticache_groups: [],
-    config_compliance: { non_compliant_rules: [] },
-  };
 }

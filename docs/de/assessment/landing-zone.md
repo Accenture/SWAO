@@ -13,6 +13,11 @@ Rahmenwerke und liefert eine Fit/Gap-Bewertung je Dienst sowie ein Gesamturteil 
 Die Bewertung ist vollständig deterministisch. Sie ruft kein LLM auf und benötigt keine
 Cloud-Zugangsdaten. Sie steht in allen Lizenzstufen zur Verfügung.
 
+Um zu lesen, was eine **bereitgestellte** Landing Zone tatsächlich anbietet und enthält,
+über die nur lesenden APIs des Anbieters, nutzen Sie die
+[Landing-Zone-Live-Bewertung](/de/assessment/landing-zone-live). Ein Live-Lauf kann auch
+einen Katalog aktualisieren (`swao lz catalogue update --source live`).
+
 ---
 
 ## Was Sie damit tun können
@@ -77,7 +82,7 @@ Rahmenwerken.
 | Anbieter-ID | Plattform | Regionen | Eindeutige Dienste | Rechtsraum des Betreibers | Extraterritoriale Exposition | Katalogstand | Quelle, Vertrauen |
 |---|---|---|---|---|---|---|---|
 | `stackit` | STACKIT | 2: `eu01` (Deutschland), `eu02` (Österreich) | 46 (eu01: 46, eu02: 29) | EU-Rechtsträger | keine erfasst | 2026-09-04 | STACKIT-PIM-API, mittel |
-| `otc` | Open Telekom Cloud / T Cloud Public | 2: `eu-de` (Deutschland), `eu-nl` (Niederlande) | 56 (eu-de: 56, eu-nl: 34) | EU-Rechtsträger | keine erfasst | 2026-08-11 | kuratiert, mittel |
+| `otc` | T Cloud Public (ehemals Open Telekom Cloud) | 2: `eu-de` (Deutschland), `eu-nl` (Niederlande) | 56 (eu-de: 56, eu-nl: 34) | EU-Rechtsträger | keine erfasst | 2026-08-11 | kuratiert, mittel |
 | `delos` | Delos Cloud (nur Deutschland) | 1: `de` | 43 | EU-Rechtsträger | keine erfasst | 2026-08-11 | kuratiert, niedrig |
 | `aws-esc` | AWS European Sovereign Cloud | 1: `eusc-de-east-1` (Deutschland) | 113 | EU-Rechtsträger | keine erfasst | 2026-09-04 | botocore-Endpunkte, hoch |
 | `aws-iso-e` | AWS ISOE Europe (eingestuft) | 1: `eu-isoe-west-1` | 83 | US-Rechtsträger (konservativ, nicht belegt) | CLOUD Act, FISA 702 | 2026-09-04 | botocore-Endpunkte, niedrig (Souveränitätsangaben nicht belegt) |

@@ -585,3 +585,54 @@ export async function runIngestPrePass(opts: IngestPrePassOptions): Promise<Inge
   }
   return manifest;
 }
+
+// ---------------------------------------------------------------------------
+// #4050: documents of an ingestion folder, for the landing zone evaluator
+// ---------------------------------------------------------------------------
+
+/** Extensions read as text when no extracted companion exists. */
+const TEXT_DOCUMENT_EXTS = new Set(['.md', '.markdown', '.txt', '.csv', '.json', '.yaml', '.yml', '.html', '.htm', '.xml']);
+
+/** One routed document: path in the ingestion folder, Pass 00 category, and whether it holds text. */
+export interface IngestedDocument {
+  source: string;
+  category: string;
+  readable: boolean;
+}
+
+function holdsText(path: string): boolean {
+  try {
+    // Extracted companions start with an `<!-- extracted from: ... -->` header (written at
+    // :276, :292, :316); it is not content. Skip that leading header by position rather than
+    // a comment-stripping regex (CodeQL js/incomplete-multi-character-sanitization).
+    let body = readFileSync(path, 'utf-8').trimStart();
+    if (body.startsWith('<!--')) {
+      const end = body.indexOf('-->');
+      body = end < 0 ? '' : body.slice(end + 3);
+    }
+    return body.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * #4050 (Design 120 section 8.4): the documents of a Pass 00 manifest with a
+ * readability flag, for the document-only evaluation of organisational
+ * controls in a Landing Zone Live Assessment. A document is readable when its
+ * extracted companion (PDF, DOCX, XLSX, PPTX) or, for a text format, the routed
+ * copy holds text; images and documents without extraction are not.
+ */
+export function listIngestedDocuments(manifest: IngestManifest | null, workspacePath: string): IngestedDocument[] {
+  if (!manifest) return [];
+  const importsDir = join(workspacePath, manifest.imports_dir);
+  return manifest.files.map((f) => {
+    const companions = f.extracted_path ? (Array.isArray(f.extracted_path) ? f.extracted_path : [f.extracted_path]) : [];
+    const readable = f.extraction === 'none'
+      ? false
+      : companions.length > 0
+        ? companions.some((c) => holdsText(join(importsDir, c)))
+        : TEXT_DOCUMENT_EXTS.has(extname(f.source).toLowerCase()) && holdsText(join(importsDir, f.target));
+    return { source: f.source, category: f.category, readable };
+  }).sort((a, b) => a.source.localeCompare(b.source));
+}

@@ -27,7 +27,7 @@
 // loaded, so a skipped check is visible in the WSP.
 
 import { existsSync, readFileSync } from 'fs';
-import { listSourceFiles, type Signal } from '@swao/core';
+import { listSourceFiles, reportPassProgress, type Signal } from '@swao/core';
 import { collectJvmProject, type JvmProject, type JvmScope, type JvmVersionSource } from './jvm-build-files.js';
 import {
   loadDbCompatibilityCatalogue,
@@ -255,6 +255,8 @@ export function collectDependencyInventory(sourcePath: string, maxDepth = 4): De
   for (const f of listSourceFiles(sourcePath, { purpose: 'manifest', maxDepth, maxFiles: MAX_FILES })) {
     const { abs: full, rel: relPath } = f;
     inv.files.push(relPath);
+    // #4266: synchronous file reads; the sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase: 'inventory:dependency_inventory', files: inv.files.length });
     const lower = f.name.toLowerCase();
     const parse = (fn: (c: string, f: string) => DependencyRef[]): void => {
       const c = readText(full);

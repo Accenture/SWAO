@@ -17,13 +17,17 @@
 // records, so the full loop (clone, spawn, harvest, discard, compare,
 // persist) is verified without any LLM or child process.
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync, readFileSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { orchestrateLegs, cloneLegWorkspace, listRunDirs, assembleGroups, extractLegVerdict, type ResolvedLeg } from './orchestrator.js';
+import { orchestrateLegs, listRunDirs, assembleGroups, extractLegVerdict, type ResolvedLeg } from './orchestrator.js';
+import { prepareLegWorkspace } from './leg-workspace.js';
 import { LEG_ENV } from './leg-recorder.js';
 import { CallRecordSchema, sizeBucket } from './call-record.js';
+
+// Built at run time so the source holds no secret shape (secret-detection gate).
+const FAKE_KEY = 'sk-' + 'abcdefghijklmnopqrstuvwx';
 
 let ws: string;
 
@@ -59,22 +63,22 @@ afterAll(() => {
   if (ws) rmSync(ws, { recursive: true, force: true });
 });
 
-describe('cloneLegWorkspace (#1421)', () => {
-  it('clones sources + inputs, excludes generated artefacts', () => {
-    const clone = cloneLegWorkspace(ws, 'demo-app', 'or--x');
+describe('prepareLegWorkspace (#1421, #4243)', () => {
+  it('copies sources + inputs, excludes generated artefacts', async () => {
+    const prepared = await prepareLegWorkspace({ workspaceRoot: ws, appId: 'demo-app', legId: 'or--x' });
+    const clone = prepared.path;
     try {
       expect(existsSync(join(clone, 'apps', 'demo-app', 'src', 'main.ts'))).toBe(true);
       expect(existsSync(join(clone, 'apps', 'demo-app', 'wsp', 'inputs', 'ctx.md'))).toBe(true);
       expect(existsSync(join(clone, 'apps', 'demo-app', 'wsp', 'runs'))).toBe(false);
       expect(existsSync(join(clone, '.swao.yml'))).toBe(true);
+      expect(prepared.stats.files).toBeGreaterThan(0);
     } finally {
       rmSync(clone, { recursive: true, force: true });
     }
   });
 
-  it('post-copy cleanup removes logs and cache dirs even when cpSync filter bypasses them (#2004)', () => {
-    // Simulate a workspace where wsp/logs and wsp/cache exist (as happens on Windows when
-    // the cpSync filter does not correctly exclude directory trees).
+  it('never copies logs, cache or the app challenge folders (#2004, #4277)', async () => {
     const tmpWs = mkdtempSync(join(tmpdir(), 'swao-clone-2004-'));
     try {
       writeFileSync(join(tmpWs, '.swao.yml'), 'workspace: {}\n', 'utf-8');
@@ -83,25 +87,66 @@ describe('cloneLegWorkspace (#1421)', () => {
       writeFileSync(join(app, 'src', 'main.ts'), 'export const x = 1;\n', 'utf-8');
       mkdirSync(join(app, 'wsp', 'inputs'), { recursive: true });
       writeFileSync(join(app, 'wsp', 'inputs', 'ctx.md'), 'context\n', 'utf-8');
-      mkdirSync(join(app, 'wsp', 'logs'), { recursive: true });
-      writeFileSync(join(app, 'wsp', 'logs', 'app-events-2026-08.ndjson'), '{"ts":"2026-08-19T10:00:00.000Z","code":"old"}\n', 'utf-8');
-      mkdirSync(join(app, 'wsp', 'cache'), { recursive: true });
-      writeFileSync(join(app, 'wsp', 'cache', 'cached.json'), '{}', 'utf-8');
-
-      const clone = cloneLegWorkspace(tmpWs, 'demo-app', 'test-2004');
+      for (const d of ['logs', 'cache', 'challenge-app', 'challenge-lz']) {
+        mkdirSync(join(app, 'wsp', d), { recursive: true });
+        writeFileSync(join(app, 'wsp', d, 'x.yaml'), 'x: 1\n', 'utf-8');
+      }
+      const prepared = await prepareLegWorkspace({ workspaceRoot: tmpWs, appId: 'demo-app', legId: 'test-2004' });
       try {
-        expect(existsSync(join(clone, 'apps', 'demo-app', 'src', 'main.ts'))).toBe(true);
-        expect(existsSync(join(clone, 'apps', 'demo-app', 'wsp', 'inputs', 'ctx.md'))).toBe(true);
-        expect(existsSync(join(clone, 'apps', 'demo-app', 'wsp', 'logs'))).toBe(false);
-        expect(existsSync(join(clone, 'apps', 'demo-app', 'wsp', 'cache'))).toBe(false);
+        const legApp = join(prepared.path, 'apps', 'demo-app');
+        expect(existsSync(join(legApp, 'src', 'main.ts'))).toBe(true);
+        expect(existsSync(join(legApp, 'wsp', 'inputs', 'ctx.md'))).toBe(true);
+        for (const d of ['logs', 'cache', 'challenge-app', 'challenge-lz']) expect(existsSync(join(legApp, 'wsp', d))).toBe(false);
       } finally {
-        rmSync(clone, { recursive: true, force: true });
+        rmSync(prepared.path, { recursive: true, force: true });
       }
     } finally {
       rmSync(tmpWs, { recursive: true, force: true });
     }
   });
+
+  it('copies only source.vcs.subdir of a monorepo clone, without .git (#4243)', async () => {
+    const mono = makeMonorepoWs(40);
+    try {
+      const prepared = await prepareLegWorkspace({ workspaceRoot: mono.ws, appId: 'mono-app', legId: 'mono-leg' });
+      try {
+        const legSrc = join(prepared.path, 'apps', 'mono-app', 'wsp', 'inputs', 'source');
+        expect(existsSync(join(legSrc, 'apps', 'health', 'mono-app', 'src', 'index.ts'))).toBe(true);
+        expect(existsSync(join(legSrc, 'apps', 'other'))).toBe(false);
+        expect(existsSync(join(legSrc, '.git'))).toBe(false);
+        expect(existsSync(join(legSrc, 'apps', 'health', 'mono-app', '.git'))).toBe(false);
+        expect(existsSync(join(prepared.path, 'apps', 'mono-app', 'wsp', 'inputs', 'notes.md'))).toBe(true);
+        expect(prepared.source.subdir).toBe('apps/health/mono-app');
+        expect(prepared.source_copied).toBe(true);
+        // Only the subdir files plus the app's own files, not the 40 sibling-app files or .git.
+        expect(prepared.stats.files).toBeLessThan(10);
+      } finally {
+        rmSync(prepared.path, { recursive: true, force: true });
+      }
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
 });
+
+/** #4243 fixture: an app whose source is a monorepo clone under wsp/inputs/source with vcs.subdir set. */
+function makeMonorepoWs(siblingFiles: number): { ws: string } {
+  const mws = mkdtempSync(join(tmpdir(), 'swao-mono-'));
+  writeFileSync(join(mws, '.swao.yml'), 'workspace: {}\n', 'utf-8');
+  const app = join(mws, 'apps', 'mono-app');
+  mkdirSync(join(app, 'wsp', 'inputs'), { recursive: true });
+  writeFileSync(join(app, '.swao.yml'),
+    'app:\n  id: mono-app\nsource:\n  path: wsp/inputs/source\n  vcs:\n    url: https://example.invalid/org/monorepo.git\n    subdir: apps/health/mono-app\n', 'utf-8');
+  writeFileSync(join(app, 'wsp', 'inputs', 'notes.md'), 'operator notes\n', 'utf-8');
+  const clone = join(app, 'wsp', 'inputs', 'source');
+  mkdirSync(join(clone, '.git', 'objects'), { recursive: true });
+  writeFileSync(join(clone, '.git', 'objects', 'pack'), 'x'.repeat(1000), 'utf-8');
+  mkdirSync(join(clone, 'apps', 'health', 'mono-app', 'src'), { recursive: true });
+  writeFileSync(join(clone, 'apps', 'health', 'mono-app', 'src', 'index.ts'), 'export const app = 1;\n', 'utf-8');
+  mkdirSync(join(clone, 'apps', 'other'), { recursive: true });
+  for (let i = 0; i < siblingFiles; i++) writeFileSync(join(clone, 'apps', 'other', `f${i}.ts`), `export const v${i} = ${i};\n`, 'utf-8');
+  return { ws: mws };
+}
 
 describe('extractLegVerdict (#1483)', () => {
   it('returns null when runs dir absent', () => {
@@ -364,7 +409,9 @@ describe('orchestrateLegs spawnChallenge (#1708)', () => {
       execution: 'serial', repeat: 1,
       weights: { quality: 1 }, keepLegWsp: false, passSuiteVersion: 'v15',
       timestamp: () => '2026-08-14T10:00:00.000Z',
-      spawnLeg: async (leg, _ws2, env) => {
+      spawnLeg: async (leg, legWs2, env) => {
+        // #4291: the leg writes its own application run (challenged by its stakeholder challenge).
+        mkdirSync(join(legWs2, 'apps', 'demo-app', 'wsp', 'runs', '2026-08-14T10-00-05'), { recursive: true });
         appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 500, 0.005)) + '\n');
         return { exitCode: 0, durationMs: 1000 };
       },
@@ -411,7 +458,8 @@ describe('orchestrateLegs spawnChallenge (#1708)', () => {
       execution: 'serial', repeat: 1,
       weights: { quality: 1 }, keepLegWsp: false, passSuiteVersion: 'v15',
       timestamp: () => '2026-08-14T11:00:00.000Z',
-      spawnLeg: async (leg, _ws2, env) => {
+      spawnLeg: async (leg, legWs2, env) => {
+        mkdirSync(join(legWs2, 'apps', 'demo-app', 'wsp', 'runs', '2026-08-14T11-00-05'), { recursive: true });
         appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 700, 0.002)) + '\n');
         return { exitCode: 0, durationMs: 1500 };
       },
@@ -527,6 +575,317 @@ describe('orchestrateLegs stall watchdog (#2008)', () => {
       if (orig === undefined) { delete process.env['SWAO_LEG_STALL_TIMEOUT_MS']; }
       else { process.env['SWAO_LEG_STALL_TIMEOUT_MS'] = orig; }
       rmSync(fastWs, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4243: preparation events, failure capture, status, timing, challenge skip,
+// cancel, preflight hook.
+// ---------------------------------------------------------------------------
+
+interface LogLine { ts: string; level: string; code: string; message: string; context?: Record<string, unknown> }
+const readRunLog = (runDir: string): LogLine[] =>
+  readFileSync(join(runDir, 'log.ndjson'), 'utf-8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l) as LogLine);
+
+describe('orchestrateLegs run lifecycle (#4243)', () => {
+  const twoLegs: ResolvedLeg[] = [
+    { id: 'lc-a', connector: 'anthropic', model: 'model-a', primary: true, costSource: 'billed' },
+    { id: 'lc-b', connector: 'openrouter', model: 'model-b', primary: false, costSource: 'billed' },
+  ];
+  const base = { appId: 'mono-app', execution: 'serial' as const, repeat: 1, weights: { quality: 1 }, keepLegWsp: false, passSuiteVersion: 'v158' };
+
+  it('#4404: a slow hash writes run.prepare.progress between prepare start and complete (stepping clock)', async () => {
+    const mono = makeMonorepoWs(40);
+    // Every Date.now read advances 20 s, so the 15 s interval passes during the hash.
+    let clock = Date.parse('2026-11-14T17:27:26.646Z');
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => (clock += 20_000));
+    try {
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-14T17:27:26.646Z',
+        spawnLeg: async (leg, _legWs, env) => {
+          appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          return { exitCode: 0, durationMs: 10 };
+        },
+      });
+      spy.mockRestore();
+      const lines = readRunLog(result.runDir);
+      const start = lines.findIndex((l) => l.code === 'run.prepare.start');
+      const done = lines.findIndex((l) => l.code === 'run.prepare.complete');
+      const progress = lines.slice(start, done).filter((l) => l.code === 'run.prepare.progress');
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(progress.length).toBeGreaterThan(0);
+      for (const p of progress) {
+        expect(p.context).toMatchObject({ step: 'hash' });
+        expect(typeof p.context?.['files']).toBe('number');
+        expect(typeof p.context?.['bytes']).toBe('number');
+        expect(typeof p.context?.['elapsed_ms']).toBe('number');
+      }
+    } finally {
+      spy.mockRestore();
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('logs run.start first, then hash and copy preparation events with size and duration, scoped to the subdir', async () => {
+    const mono = makeMonorepoWs(40);
+    try {
+      const statusLines: Array<string | null> = [];
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:00:00.000Z',
+        suiteRun: { runTs: '2026-11-09T14-08-36', assessmentType: 'application', passCount: 14 },
+        onStatus: (l) => statusLines.push(l),
+        spawnLeg: async (leg, legWs, env) => {
+          expect(existsSync(join(legWs, 'apps', 'mono-app', 'wsp', 'inputs', 'source', 'apps', 'other'))).toBe(false);
+          appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          return { exitCode: 0, durationMs: 10 };
+        },
+      });
+      const lines = readRunLog(result.runDir);
+      expect(lines[0]!.code).toBe('run.start');
+      expect(lines[0]!.context?.['suite']).toEqual({ run: '2026-11-09T14-08-36', assessment_type: 'application', passes: 14 });
+      expect((lines[0]!.context?.['legs'] as unknown[]).length).toBe(2);
+      const hashDone = lines.find((l) => l.code === 'run.prepare.complete')!;
+      expect(hashDone.context?.['source_files']).toBe(1); // only the subdir file
+      expect(typeof hashDone.context?.['duration_ms']).toBe('number');
+      // inputs hash prunes the clone: notes.md only.
+      expect(hashDone.context?.['inputs_files']).toBe(1);
+      const copyDone = lines.filter((l) => l.code === 'leg.prepare.complete');
+      expect(copyDone).toHaveLength(2);
+      expect(copyDone[0]!.context?.['files']).toBeGreaterThan(0);
+      expect(copyDone[0]!.context?.['source_subdir']).toBe('apps/health/mono-app');
+      expect(lines.some((l) => l.code === 'leg.prepare.start')).toBe(true);
+      expect(statusLines.some((l) => typeof l === 'string' && l.includes('preparing the leg workspace'))).toBe(true);
+      expect(result.status).toBe('complete');
+      const done = lines[lines.length - 1]!;
+      expect(done.code).toBe('run.complete');
+      expect(done.context?.['status']).toBe('complete');
+      expect(done.level).toBe('info');
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('measures preparation with the subdir scope on a large monorepo fixture', async () => {
+    // Before #4243 the leg copy took the whole clone (here 400 sibling files plus .git).
+    const mono = makeMonorepoWs(400);
+    try {
+      const prepared = await prepareLegWorkspace({ workspaceRoot: mono.ws, appId: 'mono-app', legId: 'timing' });
+      try {
+        expect(prepared.stats.files).toBeLessThan(10);
+        expect(prepared.duration_ms).toBeGreaterThanOrEqual(0);
+      } finally {
+        rmSync(prepared.path, { recursive: true, force: true });
+      }
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('a leg that exits 1 is failed: stderr tail stored and logged, workspace kept, no challenge, run failed', async () => {
+    const mono = makeMonorepoWs(2);
+    const keptPaths: string[] = [];
+    try {
+      let challengeCalls = 0;
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:05:00.000Z',
+        spawnLeg: async (_leg, legWs) => {
+          const logDir = join(legWs, 'apps', 'mono-app', 'wsp', 'logs');
+          mkdirSync(logDir, { recursive: true });
+          writeFileSync(join(logDir, 'app-events-2026-11.ndjson'), JSON.stringify({ ts: new Date().toISOString(), code: 'dynamic.start' }) + '\n', 'utf-8');
+          return {
+            exitCode: 1, durationMs: 5,
+            outputTail: '[info] Pass 10 dynamic_analysis starting\n[error] --lz-source live: landing zone lz-prod has no usable live run\napi_key=' + FAKE_KEY + '\n',
+          };
+        },
+        spawnChallenge: async () => { challengeCalls++; return { completed_at: '', agents: [], exit_code: 0 }; },
+        spawnLzChallenge: async () => { challengeCalls++; return { completed_at: '', agents: [], exit_code: 0 }; },
+      });
+      for (const l of result.legs) if (l.workspace) keptPaths.push(l.workspace);
+      expect(challengeCalls).toBe(0);
+      expect(result.status).toBe('failed');
+      expect(result.legs.map((l) => l.status)).toEqual(['failed', 'failed']);
+      expect(result.legs[0]!.reason).toContain('no usable live run');
+      expect(result.legs[0]!.last_phase).toBe('dynamic.start');
+      // Workspace of a failed leg is kept and named.
+      expect(result.legs[0]!.workspace && existsSync(result.legs[0]!.workspace)).toBe(true);
+      // stderr tail stored (redacted).
+      const stderrLog = readFileSync(join(result.runDir, 'calls', 'lc-a.stderr.log'), 'utf-8');
+      expect(stderrLog).toContain('no usable live run');
+      expect(stderrLog).not.toContain(FAKE_KEY);
+      const lines = readRunLog(result.runDir);
+      const failed = lines.find((l) => l.code === 'leg.failed')!;
+      expect(failed.level).toBe('error');
+      expect(failed.context?.['exit']).toBe(1);
+      expect(failed.context?.['last_phase']).toBe('dynamic.start');
+      expect(String(failed.context?.['stderr_tail'])).toContain('no usable live run');
+      const complete = lines.find((l) => l.code === 'leg.complete')!;
+      expect(complete.context?.['status']).toBe('failed');
+      expect(complete.context?.['exit']).toBe(1);
+      expect(complete.level).toBe('error');
+      expect(lines.some((l) => l.code === 'leg.challenge.skip')).toBe(true);
+      expect(lines.some((l) => l.code === 'leg.challenge.start')).toBe(false);
+      // F-2 says the leg died before its first call, not "check the connector".
+      const findingsYaml = readFileSync(join(result.runDir, 'findings.yaml'), 'utf-8');
+      expect(findingsYaml).toContain('failed before its first call');
+      expect(findingsYaml).not.toContain('check the connector configuration');
+      const done = lines[lines.length - 1]!;
+      expect(done.code).toBe('run.complete');
+      expect(done.level).toBe('error');
+      expect(done.context?.['status']).toBe('failed');
+      const status = JSON.parse(readFileSync(join(result.runDir, 'status.json'), 'utf-8')) as { status: string };
+      expect(status.status).toBe('failed');
+      const pub = JSON.parse(readFileSync(join(result.runDir, 'comparison', 'publication-model.json'), 'utf-8')) as { run: { status: string; legs: Record<string, { status: string }> } };
+      expect(pub.run.status).toBe('failed');
+      expect(pub.run.legs['lc-a']!.status).toBe('failed');
+    } finally {
+      for (const p of keptPaths) rmSync(p, { recursive: true, force: true });
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('one complete and one failed leg is partial; F-2 for a clean exit with no calls names the connector', async () => {
+    const mono = makeMonorepoWs(2);
+    try {
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:10:00.000Z',
+        spawnLeg: async (leg, _ws2, env) => {
+          if (leg.id === 'lc-a') appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          return { exitCode: 0, durationMs: 5 };
+        },
+      });
+      for (const l of result.legs) if (l.workspace) rmSync(l.workspace, { recursive: true, force: true });
+      expect(result.status).toBe('partial');
+      expect(result.legs[1]!.status).toBe('failed');
+      const findingsYaml = readFileSync(join(result.runDir, 'findings.yaml'), 'utf-8');
+      expect(findingsYaml).toContain('check the connector configuration');
+      const done = readRunLog(result.runDir).pop()!;
+      expect(done.level).toBe('warn');
+      expect(done.message).toContain('comparison is incomplete');
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('leg.complete wall_clock_ms matches the leg interval; no heartbeat after leg.complete; run duration from run.start', async () => {
+    const mono = makeMonorepoWs(2);
+    const orig = process.env['SWAO_LEG_HEARTBEAT_MS'];
+    process.env['SWAO_LEG_HEARTBEAT_MS'] = '20';
+    try {
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:15:00.000Z',
+        spawnLeg: async (leg, _ws2, env) => {
+          await new Promise<void>((r) => setTimeout(r, 120));
+          appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          return { exitCode: 0, durationMs: 1 }; // host-reported duration is NOT the leg wall clock
+        },
+      });
+      await new Promise<void>((r) => setTimeout(r, 100));
+      const lines = readRunLog(result.runDir);
+      for (const id of ['lc-a', 'lc-b']) {
+        const start = lines.find((l) => l.code === 'leg.start' && l.context?.['leg_id'] === id)!;
+        const doneIdx = lines.findIndex((l) => l.code === 'leg.complete' && l.context?.['leg_id'] === id);
+        const done = lines[doneIdx]!;
+        const interval = Date.parse(done.ts) - Date.parse(start.ts);
+        expect(Math.abs(Number(done.context?.['wall_clock_ms']) - interval)).toBeLessThan(1000);
+        expect(Number(done.context?.['wall_clock_ms'])).toBeGreaterThanOrEqual(100);
+        expect(lines.slice(doneIdx + 1).some((l) => l.code === 'leg.heartbeat' && l.context?.['leg_id'] === id)).toBe(false);
+      }
+      expect(lines.some((l) => l.code === 'leg.heartbeat')).toBe(true);
+      const runStart = lines.find((l) => l.code === 'run.start')!;
+      const runDone = lines.find((l) => l.code === 'run.complete')!;
+      const runInterval = Date.parse(runDone.ts) - Date.parse(runStart.ts);
+      expect(Math.abs(Number(runDone.context?.['duration_ms']) - runInterval)).toBeLessThan(1000);
+    } finally {
+      if (orig === undefined) delete process.env['SWAO_LEG_HEARTBEAT_MS']; else process.env['SWAO_LEG_HEARTBEAT_MS'] = orig;
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('abort cancels the running leg, skips the next one and marks the run folder cancelled', async () => {
+    const mono = makeMonorepoWs(2);
+    try {
+      const ac = new AbortController();
+      const spawned: string[] = [];
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:20:00.000Z',
+        signal: ac.signal,
+        spawnLeg: (leg, _ws2, _env, signal) => new Promise((resolve) => {
+          spawned.push(leg.id);
+          // The host kills its child on abort; here the child never ends otherwise.
+          signal?.addEventListener('abort', () => resolve({ exitCode: null, durationMs: 1 }));
+          setTimeout(() => ac.abort(), 30);
+        }),
+      });
+      expect(spawned).toEqual(['lc-a']);
+      expect(result.status).toBe('cancelled');
+      expect(result.legs.map((l) => l.status)).toEqual(['cancelled', 'cancelled']);
+      const lines = readRunLog(result.runDir);
+      expect(lines.some((l) => l.code === 'run.cancelled')).toBe(true);
+      const status = JSON.parse(readFileSync(join(result.runDir, 'status.json'), 'utf-8')) as { status: string };
+      expect(status.status).toBe('cancelled');
+      expect(lines.pop()!.context?.['status']).toBe('cancelled');
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('a failed preflightLeg ends the leg before any copy (hook for #4244)', async () => {
+    const mono = makeMonorepoWs(2);
+    try {
+      const spawned: string[] = [];
+      const result = await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => '2026-11-09T20:25:00.000Z',
+        preflightLeg: (leg) => (leg.id === 'lc-a' ? { ok: false, reason: 'no usable live run' } : { ok: true }),
+        spawnLeg: async (leg, _ws2, env) => {
+          spawned.push(leg.id);
+          appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          return { exitCode: 0, durationMs: 5 };
+        },
+      });
+      expect(spawned).toEqual(['lc-b']);
+      expect(result.legs[0]!.status).toBe('failed');
+      expect(result.legs[0]!.reason).toContain('preflight failed: no usable live run');
+      const lines = readRunLog(result.runDir);
+      expect(lines.some((l) => l.code === 'leg.preflight.failed')).toBe(true);
+      expect(lines.filter((l) => l.code === 'leg.prepare.start' && l.context?.['leg_id'] === 'lc-a')).toHaveLength(0);
+      expect(lines.filter((l) => l.code === 'leg.complete')).toHaveLength(2);
+      expect(result.status).toBe('partial');
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
+    }
+  });
+
+  it('relays dynamic.skip and dynamic.vision events from the leg (#1997 guard)', async () => {
+    const mono = makeMonorepoWs(2);
+    try {
+      const runStart = '2026-11-09T20:30:00.000Z';
+      const now = new Date();
+      const monthSlug = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      await orchestrateLegs({
+        ...base, workspaceRoot: mono.ws, legs: twoLegs,
+        timestamp: () => runStart,
+        spawnLeg: async (leg, legWs, env) => {
+          appendFileSync(env[LEG_ENV.RECORD]!, JSON.stringify(syntheticRecord(leg.id, leg.connector, leg.model, '03-data', 100, 0.001)) + '\n');
+          const logDir = join(legWs, 'apps', 'mono-app', 'wsp', 'logs');
+          mkdirSync(logDir, { recursive: true });
+          const code = leg.id === 'lc-a' ? 'dynamic.skip' : 'dynamic.vision.complete';
+          writeFileSync(join(logDir, `app-events-${monthSlug}.ndjson`), JSON.stringify({ ts: new Date().toISOString(), code }) + '\n', 'utf-8');
+          return { exitCode: 0, durationMs: 5 };
+        },
+      });
+      const mainLog = readFileSync(join(mono.ws, 'apps', 'mono-app', 'wsp', 'logs', `app-events-${monthSlug}.ndjson`), 'utf-8');
+      expect(mainLog).toContain('"code":"dynamic.skip"');
+      expect(mainLog).toContain('"code":"dynamic.vision.complete"');
+    } finally {
+      rmSync(mono.ws, { recursive: true, force: true });
     }
   });
 });

@@ -24,10 +24,12 @@
  */
 
 import type { Command } from 'commander';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { load as loadYaml } from 'js-yaml';
-import { credentialStore, FEATURE_GATES, findWorkspace, LicenseGuard, LicenseInvalidError, LicenseTierError, type LicenseTier } from '@swao/core';
+import { appKind, credentialStore, FEATURE_GATES, findWorkspace, LicenseGuard, LicenseInvalidError, LicenseTierError, logPortfolioAt, type LicenseTier } from '@swao/core';
+import { selfSpawnCommand } from '@swao/core';
 import { createLlmProvider, createProxyAwareFetch } from '@swao/module-llm-providers';
 import {
   buildPortfolioSummary,
@@ -36,10 +38,16 @@ import {
   runServiceInit,
   runServiceResearch,
   resolveServiceIntake,
-  rankServiceApps,
+  copyIntakeTemplate,
+  IntakeLocationError,
+  rankServiceAppsDetailed,
+  emptyServiceRankMessage,
+  missingFromSummaryNote,
+  readAssessTopN,
   isNotAssessed,
   NOT_ASSESSED_MARK,
   type RankedServiceApp,
+  type ServiceRankDetail,
   type ResolvedIntake,
   type ServiceInitResult,
   type ResearchLlm,
@@ -49,6 +57,13 @@ import { SWAO_VERSION } from '../branding.js';
 import { printLicenseGateError } from '../lib/license-gate-error.js';
 import { buildWorkspaceSwaoYml, runWorkspaceScaffolders } from './init.js';
 import { readLlmPrimaryConfig } from './assess.js';
+import { readStoredServiceIntake } from '../setup/defaults.js';
+import { latestServiceRun, logResearchEstimate, researchPrepareLog, serviceRunLlmFields, ServiceAssessBatchLog } from './service-batch-log.js';
+import { writeServicePortfolioBlock } from '../setup/branches/service-checks.js';
+import { serviceRunFrameworks } from './framework-selection.js';
+import { unknownServiceFrameworks, unknownServiceFrameworksMessage } from '../tui/screens/service-frameworks.js';
+// #4400: re-exported for the callers of the service command module.
+export { serviceRunFrameworks };
 
 export interface ServiceInitCliOptions {
   /** Intake workbook; default: the single .xlsx in wsp/inputs/service-intake/ (#3211). */
@@ -62,6 +77,36 @@ export interface ServiceInitCliOptions {
   keep?: boolean;
   clusterThreshold?: string;
   json?: boolean;
+  /** #4225: copy the blank intake workbook template into wsp/inputs/service-intake/ and stop (no scaffold). */
+  template?: boolean;
+}
+
+/** The hint the "no intake workbook" error carries (#4225, CLI parity with the Setup Intake step). */
+export const INTAKE_TEMPLATE_CLI_HINT = 'or run swao service init --template to copy a blank intake template there and fill it in';
+
+export interface ServiceTemplateCliResult {
+  workspacePath: string;
+  workspaceCreated: boolean;
+  /** Absolute path of the template. */
+  templatePath: string;
+  /** False when a file of that name was there already (kept). */
+  created: boolean;
+  /** The service_portfolio block is present (written now or before). */
+  serviceWorkspace: boolean;
+}
+
+/**
+ * #4225 (owner decision D-3, CLI parity with the Setup Service branch): make
+ * the workspace a service workspace (the `service_portfolio` block with the
+ * intake folder) and copy the blank intake workbook template into
+ * wsp/inputs/service-intake/. An existing template is never overwritten.
+ * No prompt (CI-safe).
+ */
+export async function runServiceTemplateCli(opts: Pick<ServiceInitCliOptions, 'workspace'>): Promise<ServiceTemplateCliResult> {
+  const ws = ensureServiceWorkspace(opts.workspace);
+  const serviceWorkspace = writeServicePortfolioBlock(ws.path);
+  const copy = await copyIntakeTemplate(ws.path);
+  return { workspacePath: ws.path, workspaceCreated: ws.created, templatePath: copy.path, created: copy.created, serviceWorkspace };
 }
 
 /** Resolve the target workspace, creating a minimal one when the directory has no .swao.yml. */
@@ -162,7 +207,19 @@ export async function runServiceInitCli(opts: ServiceInitCliOptions): Promise<{ 
   // #3211: without --from, the workbook (and a column map next to it) comes from
   // wsp/inputs/service-intake/ of the target workspace; never a prompt (CI-safe).
   const target = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd()) ?? process.cwd();
-  const located = opts.from ? null : resolveServiceIntake(target);
+  // #4198 (Design 125 section 5.7): before the folder scan, the workbook and
+  // mapping the Service setup stored (service_portfolio.intake / .mapping).
+  const stored = opts.from ? {} : readStoredServiceIntake(target);
+  let located: ResolvedIntake | null = null;
+  try {
+    located = opts.from ? null
+      : stored.intake ? { intakePath: stored.intake, mappingPath: stored.mapping ?? null }
+        : resolveServiceIntake(target);
+  } catch (e) {
+    // #4225: name the blank template when the intake folder holds no workbook.
+    if (e instanceof IntakeLocationError && /no intake workbook found/.test(e.message)) throw new IntakeLocationError(`${e.message}, ${INTAKE_TEMPLATE_CLI_HINT}`);
+    throw e;
+  }
   const intakePath = opts.from ? resolve(opts.from) : (located as ResolvedIntake).intakePath;
   if (!existsSync(intakePath)) throw new Error(`intake file not found: ${opts.from}`);
   const mappingPath = opts.mapping ? resolve(opts.mapping) : located?.mappingPath ?? undefined;
@@ -191,6 +248,8 @@ export interface ServiceResearchCliOptions {
   dryRun?: boolean;
   /** #3304: skip the four LLM topics (`skipped_by_user`); earlier LLM findings are kept. */
   skipLlm?: boolean;
+  /** #4236: model for the four LLM research topics (default: service_portfolio.research_model, else the primary model). */
+  model?: string;
   json?: boolean;
 }
 
@@ -229,14 +288,26 @@ export interface ResearchLlmResolution {
  * A configured provider that cannot be built does not abort research: the
  * LLM topics are skipped with `llm_unavailable` (as #2201 does for assess).
  */
-export function resolveResearchLlm(workspacePath: string, factory: typeof createLlmProvider = createLlmProvider): ResearchLlmResolution {
+/** #4236: `service_portfolio.research_model` of the workspace .swao.yml, when set. */
+export function readResearchModelSetting(raw: unknown): string | undefined {
+  const sp = raw && typeof raw === 'object' ? (raw as Record<string, unknown>)['service_portfolio'] : undefined;
+  const m = sp && typeof sp === 'object' ? (sp as Record<string, unknown>)['research_model'] : undefined;
+  return typeof m === 'string' && m.trim() ? m.trim() : undefined;
+}
+
+export function resolveResearchLlm(workspacePath: string, factory: typeof createLlmProvider = createLlmProvider, modelOverride?: string): ResearchLlmResolution {
   let cfg: ReturnType<typeof readLlmPrimaryConfig>;
+  let researchModel: string | undefined;
   try {
     const raw = loadYaml(readFileSync(join(workspacePath, '.swao.yml'), 'utf-8'));
     cfg = raw && typeof raw === 'object' ? readLlmPrimaryConfig(raw as Record<string, unknown>) : undefined;
+    researchModel = readResearchModelSetting(raw);
   } catch {
     cfg = undefined; // unreadable .swao.yml: other commands report it; the env vars may still configure an LLM
   }
+  // #4236: a cheaper research model (the --model option, else service_portfolio.research_model).
+  const model = modelOverride?.trim() || researchModel;
+  if (cfg && model) cfg = { ...cfg, model };
   const configured = Boolean(
     cfg?.connector || process.env['SWAO_LLM_CONNECTOR'] || (cfg?.type ?? process.env['SWAO_LLM_PROVIDER']) || cfg?.environments,
   );
@@ -263,6 +334,15 @@ export function formatServiceResearchSummary(result: ServiceResearchResult): str
     for (const [topic, d] of Object.entries(result.topicDistribution ?? {})) {
       lines.push(`    ${topic.padEnd(width)} ${formatDistribution(d)}`);
     }
+    // #4270 / #4238: why a topic had nothing to look up, per reason (no_api_key is a setup gap).
+    const reasons = Object.entries(result.skippedReasons ?? {}).filter(([, byReason]) => Object.keys(byReason).length > 0);
+    if (reasons.length > 0) {
+      lines.push(`  Skipped topics: ${reasons.map(([topic, byReason]) => `${topic} ${Object.entries(byReason).map(([r, n]) => `${r} ${n}`).join(', ')}`).join('; ')}`);
+    }
+    if ((result.failed ?? []).length > 0) {
+      const f = result.failed ?? [];
+      lines.push(`  [warn] Research failed for ${f.length} app(s): ${f.slice(0, 10).map((x) => `${x.appId} (${x.reason})`).join('; ')}${f.length > 10 ? `; +${f.length - 10} more` : ''}`);
+    }
     // #3154: RESEARCH.* signals (KEV, open CVEs, BSI advisories, end of life) per app.
     const counted = result.apps.filter((a) => typeof a.signalCount === 'number');
     if (counted.length > 0) {
@@ -285,18 +365,31 @@ export function formatServiceResearchSummary(result: ServiceResearchResult): str
 }
 
 export async function runServiceResearchCli(opts: ServiceResearchCliOptions, onProgress: (line: string) => void): Promise<ServiceResearchResult> {
+  const prepareStartedAt = Date.now();
+  const workspacePath = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
+  // #4485: the first line of the research child, before any preparation step,
+  // then one phase line per step with its duration (prepare.complete follows in runServiceResearch).
+  const prep = researchPrepareLog(workspacePath, opts.app ?? null);
+  prep.start();
   try {
     LicenseGuard.load().requireFeature('service-assessment');
   } catch (e) {
     if (!(e instanceof LicenseInvalidError)) throw e;
   }
-  const workspacePath = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
   if (!workspacePath || !existsSync(join(workspacePath, '.swao.yml'))) throw new Error('no SWAO workspace found; run swao service init first');
+  prep.phase('check the licence and the workspace');
   // #3289: no tier gate; the LLM topics need only a configured workspace LLM.
   // #3304: with --skip-llm the provider is not built at all (no warning, no LLM call).
-  const llm: ResearchLlmResolution = opts.skipLlm ? { llm: null } : resolveResearchLlm(workspacePath);
+  const llm: ResearchLlmResolution = opts.skipLlm ? { llm: null } : resolveResearchLlm(workspacePath, createLlmProvider, opts.model);
   if (llm.skipReason) onProgress(`[warn] LLM research skipped: ${llm.detail ?? llm.skipReason}`);
+  prep.phase('build the LLM provider');
+  // #4270: the expected LLM calls and cost, logged before the batch starts.
+  if (llm.llm && !opts.dryRun) {
+    logResearchEstimate(workspacePath, { model: llm.llm.model ?? null, ...(opts.app ? { appId: opts.app } : {}) });
+    prep.phase('estimate the research calls');
+  }
   return runServiceResearch({
+    prepareStartedAt,
     workspacePath,
     llm: llm.llm,
     ...(opts.skipLlm ? { skipLlm: true } : {}),
@@ -362,6 +455,30 @@ export const serviceExportUnavailable: RunServiceExport = async () => {
  * (`bi-export`). An unreadable licence counts as Community, so it is refused.
  * The gate runs here, before the injected runExport, on every tier.
  */
+/**
+ * #4457: start and complete (or failed) events of a step of a service child
+ * process that can run for minutes without a line: `<code>.start`, then
+ * `<code>.complete` with `duration_ms` and the context `done` returns, or
+ * `<code>.failed` with the error. Portfolio log of the workspace, never mirrored
+ * to the console (the step prints its own result line). Best effort.
+ */
+export async function timedServiceStep<T>(workspace: string, code: string, label: string, run: () => T | Promise<T>, done: (r: T) => Record<string, unknown> = () => ({})): Promise<T> {
+  const log = (level: 'info' | 'warn', c: string, message: string, context: Record<string, unknown>): void => {
+    try { logPortfolioAt(workspace, level, c, message, { context, mirror: false }); } catch { /* logging never stops a run */ }
+  };
+  const t0 = Date.now();
+  log('info', `${code}.start`, `${label} started`, {});
+  try {
+    const r = await run();
+    const ms = Date.now() - t0;
+    log('info', `${code}.complete`, `${label} complete (${Math.round(ms / 100) / 10} s)`, { duration_ms: ms, ...done(r) });
+    return r;
+  } catch (e) {
+    log('warn', `${code}.failed`, `${label} failed: ${(e as Error).message}`, { duration_ms: Date.now() - t0 });
+    throw e;
+  }
+}
+
 export async function runServiceExportCli(
   opts: ServiceExportCliOptions,
   runExport: RunServiceExport = serviceExportUnavailable,
@@ -371,7 +488,9 @@ export async function runServiceExportCli(
   guard.requireFeature('bi-export');
   const workspacePath = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
   if (!workspacePath || !existsSync(join(workspacePath, '.swao.yml'))) throw new Error('no SWAO workspace found; run swao service init first');
-  const result = await runExport(workspacePath);
+  // #4457: the export (portfolio summary, star schema, workbook) runs for minutes in a large workspace.
+  const result = await timedServiceStep(workspacePath, 'service.export', 'Portfolio export (workbook and star schema)', () => runExport(workspacePath),
+    (r) => ({ app_count: r.appCount, star_schema_tables: r.starSchema.length }));
   if (result.appCount === 0) throw new Error('no service apps in this workspace; run swao service init first');
   return { ...result, workspacePath };
 }
@@ -386,23 +505,147 @@ export interface ServiceRankCliOptions {
  * Read-only selection of the apps to assess first (#3165): the same ranking
  * the TUI uses for "top N", so CI can loop `swao assess --app <id> --type service`.
  */
-export function runServiceRankCli(opts: ServiceRankCliOptions): { workspacePath: string; apps: RankedServiceApp[] } {
+export function runServiceRankCli(opts: ServiceRankCliOptions): { workspacePath: string; apps: RankedServiceApp[]; detail: ServiceRankDetail } {
   const workspacePath = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
   if (!workspacePath || !existsSync(join(workspacePath, '.swao.yml'))) throw new Error('no SWAO workspace found; run swao service init first');
   const top = opts.top !== undefined ? Number.parseInt(opts.top, 10) : undefined;
   if (top !== undefined && (!Number.isInteger(top) || top < 1)) throw new Error('--top must be a positive integer');
-  return { workspacePath, apps: rankServiceApps(workspacePath, top !== undefined ? { top } : {}) };
+  // #4389: the detail names why apps are missing or the list is empty.
+  const detail = rankServiceAppsDetailed(workspacePath, top !== undefined ? { top } : {});
+  return { workspacePath, apps: detail.apps, detail };
 }
 
-export function formatServiceRank(apps: readonly RankedServiceApp[]): string {
-  if (apps.length === 0) return 'No service apps to assess (none scaffolded, or all decommissioned / unused / inactive).';
+export interface ServiceAssessCliOptions {
+  top?: string;
+  /** #4400: one service app instead of the top N (the TUI "One service" scope). */
+  app?: string;
+  /** #4400: comma-separated frameworks for this run; SWAO_APM is always added. */
+  regimes?: string;
+  workspace?: string;
+  dryRun?: boolean;
+}
+
+/** Runs `swao <args>` for one app and returns its exit code; injectable for tests. */
+export type ServiceAssessRunner = (args: string[]) => number;
+
+/**
+ * #3520: one `swao assess --app <id> --type service` per app, as the TUI runs it.
+ * #4400: `regimes` (the framework step, `swao service assess --regimes`) becomes
+ * `--regimes SWAO_APM,<added>`, which the assess command adds to each app's default
+ * frameworks (owner decision 2026-11-15); without it the app default applies and
+ * the assess command adds SWAO_APM when the default lacks it.
+ */
+export function serviceAssessArgs(workspace: string, appId: string, regimes?: readonly string[]): string[] {
+  return ['assess', '--app', appId, '--type', 'service', '--workspace', workspace, ...(regimes ? ['--regimes', serviceRunFrameworks(regimes).join(',')] : [])];
+}
+
+/** #4400: the id of a service app (`assessment.type: service`) under apps/, or an error naming the problem. */
+export function requireServiceApp(workspacePath: string, appId: string): void {
+  const dir = join(workspacePath, 'apps', appId);
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(appId) || !existsSync(join(dir, '.swao.yml'))) throw new Error(`no app "${appId}" under apps/ of ${workspacePath}; swao service rank lists the service apps`);
+  if (appKind(dir) !== 'service') throw new Error(`app "${appId}" is an application, not a service app; assess it with swao assess --app ${appId}`);
+}
+
+/** Default runner: this SWAO binary (or node + script) as a child, output inherited. */
+export const spawnSwaoChild: ServiceAssessRunner = (args) => {
+  // #4241: central self-spawn helper (pkg binary and node dist).
+  const selfCmd = selfSpawnCommand(args);
+  const r = spawnSync(selfCmd.command, selfCmd.args, {
+    stdio: 'inherit',
+    windowsHide: true,
+    env: selfCmd.env,
+  });
+  return r.status ?? 1;
+};
+
+/**
+ * #3520: `swao service assess --top <n>`, the CLI path of the TUI's "Top N by
+ * risk": the first n apps of `swao service rank`, assessed one after another.
+ * N defaults to `service_portfolio.assess_top_n` (20 when unset).
+ */
+export function runServiceAssessCli(
+  opts: ServiceAssessCliOptions,
+  run: ServiceAssessRunner = spawnSwaoChild,
+  log: (line: string) => void = console.log,
+): { workspacePath: string; apps: string[]; failed: string[] } {
+  const workspacePath = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
+  if (!workspacePath || !existsSync(join(workspacePath, '.swao.yml'))) throw new Error('no SWAO workspace found; run swao service init first');
+  // #4400: --regimes adds frameworks to SWAO_APM and each app's defaults for every assessed app.
+  const regimes = opts.regimes !== undefined ? opts.regimes.split(',').map((r) => r.trim()).filter((r) => r !== '' && r !== 'none') : undefined;
+  // #4456: only SWAO_APM and the frameworks installed in the workspace can be added (TUI parity).
+  const unknown = regimes ? unknownServiceFrameworks(workspacePath, regimes) : [];
+  if (unknown.length > 0) throw new Error(unknownServiceFrameworksMessage(unknown));
+  // #4400: --app assesses one service app (the TUI "One service" scope); --top the first n by risk.
+  if (opts.app !== undefined) {
+    if (opts.top !== undefined) throw new Error('--app and --top exclude each other: --app assesses one service app, --top the first n by risk');
+    const id = opts.app.trim();
+    requireServiceApp(workspacePath, id);
+    log(`Assessing the service app ${id} (frameworks: ${serviceRunFrameworks(regimes).join(', ')}${regimes ? '' : ' and the app default'})`);
+    if (opts.dryRun) return { workspacePath, apps: [id], failed: [] };
+    const batch = new ServiceAssessBatchLog(workspacePath, [id], { selection: 'one service app', caller: 'cli.service.assess' });
+    const before = latestServiceRun(workspacePath, id);
+    const t0 = Date.now();
+    const code = run(serviceAssessArgs(workspacePath, id, regimes));
+    const after = latestServiceRun(workspacePath, id);
+    batch.progress({
+      appId: id, status: code === 0 ? 'ok' : 'failed', exitCode: code, durationMs: Date.now() - t0,
+      ...serviceRunLlmFields(workspacePath, id, before, after), // #4457: cost, LLM calls, model
+      ...(code !== 0 ? { reason: `swao assess exited with code ${code}` } : {}),
+    });
+    batch.complete();
+    log(code === 0 ? `Service app ${id} assessed.` : `The assessment of ${id} failed (exit code ${code}).`);
+    return { workspacePath, apps: [id], failed: code === 0 ? [] : [id] };
+  }
+  const top = opts.top !== undefined ? Number(opts.top) : readAssessTopN(workspacePath);
+  if (!Number.isInteger(top) || top < 1) throw new Error('--top must be a positive integer');
+  const detail = rankServiceAppsDetailed(workspacePath, { top });
+  const apps = detail.apps.map((a) => a.id);
+  if (apps.length === 0) {
+    // #4389: name the cause (none scaffolded, or all left out by status).
+    log(emptyServiceRankMessage(detail));
+    return { workspacePath, apps, failed: [] };
+  }
+  log(`Assessing the top ${apps.length} service app(s) by risk${apps.length < top ? ` (${top} requested)` : ''}: ${apps.join(', ')}`);
+  const note = missingFromSummaryNote(detail);
+  if (note) log(note);
+  if (opts.dryRun) return { workspacePath, apps, failed: [] };
+  const failed: string[] = [];
+  // #4273: batch start, one progress line per app, batch complete (portfolio log).
+  const batch = new ServiceAssessBatchLog(workspacePath, apps, { selection: `top ${top} by risk`, caller: 'cli.service.assess' });
+  apps.forEach((id, i) => {
+    log(`[${i + 1}/${apps.length}] ${id}`);
+    const before = latestServiceRun(workspacePath, id);
+    const t0 = Date.now();
+    const code = run(serviceAssessArgs(workspacePath, id, regimes));
+    const after = latestServiceRun(workspacePath, id);
+    if (code !== 0) failed.push(id);
+    batch.progress({
+      appId: id, status: code === 0 ? 'ok' : 'failed', exitCode: code, durationMs: Date.now() - t0,
+      ...serviceRunLlmFields(workspacePath, id, before, after), // #4457: cost, LLM calls, model
+      ...(code !== 0 ? { reason: `swao assess exited with code ${code}` } : {}),
+    });
+  });
+  batch.complete();
+  log(failed.length === 0 ? `All ${apps.length} app(s) assessed.` : `${failed.length} of ${apps.length} app(s) failed: ${failed.join(', ')}`);
+  return { workspacePath, apps, failed };
+}
+
+/**
+ * #4389: `detail` (from rankServiceAppsDetailed) names the cause of an empty list
+ * and notes the service apps the portfolio summary does not list yet.
+ */
+export function formatServiceRank(apps: readonly RankedServiceApp[], detail?: Pick<ServiceRankDetail, 'scaffolded' | 'excludedByStatus' | 'missingFromSummary'>): string {
+  if (apps.length === 0) return detail ? emptyServiceRankMessage(detail) : 'No service apps to assess (none scaffolded, or all decommissioned, unused or inactive).';
   const lines = [`Service apps by priority (${apps.length}): highest SWAO_APM risk first, then integration fan-in`];
   // #3290 (Design 110 D-24): apps without a service assessment run keep their rank but are marked.
   apps.forEach((a, i) => lines.push(`  ${String(i + 1).padStart(3)}. ${a.id}  risk ${a.risk_score ?? 'n/a'}  fan-in ${a.fan_in}  TIME ${a.time_quadrant ?? 'n/a'}${isNotAssessed(a) ? `  [${NOT_ASSESSED_MARK}]` : ''}`));
   const unassessed = apps.filter((a) => isNotAssessed(a)).length;
   if (unassessed > 0) lines.push('', `${unassessed} app(s) marked [${NOT_ASSESSED_MARK}]: no service assessment run yet, so risk and TIME come from intake and research only.`);
+  // #4389: service apps added from apps/ because the summary predates service init.
+  const note = detail ? missingFromSummaryNote(detail) : null;
+  if (note) lines.push('', note);
   lines.push('');
-  lines.push('Assess one: swao assess --app <id> --type service');
+  lines.push('Assess one: swao service assess --app <id>');
   return lines.join('\n');
 }
 
@@ -422,8 +665,21 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
     .option('--keep', 'If the workspace holds service apps from another intake workbook: add the apps of this workbook next to them')
     .option('--cluster-threshold <n>', 'Minimum identical rows that form a cluster (default: 3, or service_portfolio.cluster_threshold)')
     .option('--json', 'Print the result as JSON (no PII values are included)')
+    .option('--template', 'Copy a blank intake workbook template (the recognised columns, no rows) into wsp/inputs/service-intake/ and stop; an existing template is kept')
     .action(async (opts: ServiceInitCliOptions) => {
       try {
+        if (opts.template) {
+          const t = await runServiceTemplateCli(opts);
+          if (opts.json) {
+            console.log(JSON.stringify({ ok: true, workspace: t.workspacePath, template: t.templatePath, created: t.created, service_workspace: t.serviceWorkspace }, null, 2));
+          } else {
+            if (t.workspaceCreated) console.log(`Created workspace .swao.yml at ${t.workspacePath}`);
+            console.log(t.created ? `Blank intake template copied to ${t.templatePath}` : `Intake template already there, kept: ${t.templatePath}`);
+            if (!t.serviceWorkspace) console.log('  [warn] Could not write the service_portfolio block to the workspace .swao.yml.');
+            console.log('Next: fill in one row per service or server, save the workbook, then run swao service init');
+          }
+          return;
+        }
         const { result, workspacePath: ws, workspaceCreated } = await runServiceInitCli(opts);
         if (workspaceCreated && !opts.json) console.log(`Created workspace .swao.yml at ${ws}`);
         if (opts.json) {
@@ -450,22 +706,29 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
     .option('--refresh', 'Re-query every source even when stubs are within their cache period (reviewed stubs are never rewritten)')
     .option('--dry-run', 'Print which stubs would be created or refreshed; no requests, no writes')
     .option('--skip-llm', 'Skip the four LLM topics (vendor profile, certifications, data residency, breach history); earlier LLM findings are kept')
+    .option('--model <id>', 'Model for the four LLM topics, for example a cheaper one than the primary (default: service_portfolio.research_model, else providers.llm.primary.model)')
     .option('--json', 'Print the result as JSON')
     .action(async (opts: ServiceResearchCliOptions) => {
       try {
         const result = await runServiceResearchCli(opts, opts.json ? () => {} : (line) => console.log(line));
         console.log(opts.json ? JSON.stringify(result, null, 2) : formatServiceResearchSummary(result));
+        // #4270: the batch continues past a failed app; the exit code still reports it.
+        if ((result.failed ?? []).length > 0) process.exitCode = 1;
         if (!result.dryRun && !opts.json) {
           try {
             const ws = opts.workspace ? resolve(opts.workspace) : findWorkspace(process.cwd());
             if (ws) {
-              const s = buildPortfolioSummary(ws);
+              // #4457: the rebuild after research (the silence between service.research.complete
+              // and the next step) logs start and complete with the phase times of #4412.
+              let stats: Record<string, unknown> = {};
+              const s = await timedServiceStep(ws, 'service.research.portfolio_summary', 'SWAO_APM portfolio summary rebuild after research',
+                () => buildPortfolioSummary(ws, { onStats: (st) => { stats = { ...st }; } }), () => stats);
               // #3241: headline figures cover assessed apps only; say so.
               console.log(`  SWAO_APM: portfolio risk ${s.portfolio_risk_score ?? 'n/a'}; TIME ${Object.entries(s.time_distribution).filter(([, n]) => n > 0).map(([q, n]) => `${q} ${n}`).join(', ') || 'none'} (over ${s.assessed_count ?? 0} assessed of ${s.app_count} apps)  ->  wsp/portfolio-summary.json`);
               const hubs = [...s.apps].filter((a) => (a.fan_in ?? 0) > 0).sort((a, b) => (b.fan_in ?? 0) - (a.fan_in ?? 0)).slice(0, 5);
               // #3290: the hub ranking marks apps without a service assessment run.
               if (hubs.length > 0) console.log(`  Integration hubs: ${hubs.map((h) => `${h.id} (${h.fan_in} dependents${isNotAssessed(h) ? `, ${NOT_ASSESSED_MARK}` : ''})`).join(', ')}`);
-              const delta = recordPortfolioDelta(ws, s);
+              const delta = await timedServiceStep(ws, 'service.research.portfolio_delta', 'Portfolio delta report', () => recordPortfolioDelta(ws, s), (d) => ({ changes: d.items.length }));
               console.log(`  Delta: ${delta.baseline ? 'baseline established' : `${delta.items.length} change(s)`}  ->  ${delta.reportPath}`);
             }
           } catch (e) {
@@ -500,6 +763,24 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
     });
 
   service
+    .command('assess')
+    .description('Assess the top N service apps by risk, one after another (same order as swao service rank; the TUI "Top N by risk" path), or one service app with --app (the TUI "One service" scope)')
+    .option('--top <n>', 'Number of apps (default: service_portfolio.assess_top_n in .swao.yml, else 20)')
+    .option('--app <id>', 'Assess this one service app instead of the top N (not with --top)')
+    .option('--regimes <ids>', 'Comma-separated community frameworks added to SWAO_APM and each app default for this run; SWAO_APM is always evaluated (default: the app default)')
+    .option('--workspace <dir>', 'Workspace root (default: nearest .swao.yml above the current directory)')
+    .option('--dry-run', 'List the apps that would be assessed, without assessing')
+    .action((opts: ServiceAssessCliOptions) => {
+      try {
+        const r = runServiceAssessCli(opts);
+        if (r.failed.length > 0) process.exitCode = 1;
+      } catch (e) {
+        console.error(`[error] ${(e as Error).message}`);
+        process.exitCode = 1;
+      }
+    });
+
+  service
     .command('rank')
     .description('List service apps in assessment priority order (highest SWAO_APM risk first; decommissioned, unused, inactive left out), for "top N" runs and CI loops')
     .option('--top <n>', 'Only the first n apps')
@@ -508,7 +789,7 @@ export function registerService(program: Command, deps: ServiceDeps = { runExpor
     .action((opts: ServiceRankCliOptions) => {
       try {
         const r = runServiceRankCli(opts);
-        console.log(opts.json ? JSON.stringify({ ok: true, apps: r.apps }, null, 2) : formatServiceRank(r.apps));
+        console.log(opts.json ? JSON.stringify({ ok: true, apps: r.apps, missing_from_summary: r.detail.missingFromSummary }, null, 2) : formatServiceRank(r.apps, r.detail));
       } catch (e) {
         console.error(`[error] ${(e as Error).message}`);
         process.exitCode = 1;

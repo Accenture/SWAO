@@ -119,7 +119,7 @@ The framework source (`framework-meta.yaml`, `controls.yaml` and any supporting 
 - Framework source: <https://github.com/Accenture/SWAO/tree/main/community-frameworks/nca-ccc-2-2024-cst>
 - Overview of all community frameworks: <https://github.com/Accenture/SWAO/tree/main/community-frameworks>
 
-To customise the framework for one engagement, copy the folder `nca-ccc-2-2024-cst` into your workspace at `wsp/inputs/catalogs/community/nca-ccc-2-2024-cst/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework info NCA_CCC_CST` prints the bundled metadata.
+To customise the framework for one engagement, copy the folder `nca-ccc-2-2024-cst` into your workspace at `wsp/inputs/catalogs/community/nca-ccc-2-2024-cst/` and edit the copy there, for example to adjust severities or to add engagement-specific controls. This workspace folder is what SWAO reads; the original bundled with SWAO stays unchanged. Place the copy directly under `community/`, because folders whose name starts with a dot are skipped. Keep `regime_meta.id` unique: if two workspace folders declare the same ID, only one of them is loaded. `swao framework list` lists the frameworks in the workspace.
 
 ## Limitations and notes
 

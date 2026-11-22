@@ -109,8 +109,9 @@ describe('CLI polish -- subcommand descriptions (#0127)', () => {
     expect(doctorHelp).toMatch(/licence|license|credential|playwright/i);
   });
 
-  it('credential --help mentions LZR adapter keys', () => {
-    expect(credHelp).toMatch(/AWS|Azure|meshStack|LZR/i);
+  // #3570: the fixed AWS / Azure LZR keys gave way to scoped landing zone keys.
+  it('credential --help mentions scoped landing zone keys', () => {
+    expect(credHelp).toMatch(/lz:<lz-id>:<scope-id>:<field>/);
   });
 
   it('license --help mentions Community/Consultant/Enterprise tiers', () => {

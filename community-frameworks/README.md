@@ -33,7 +33,9 @@ Each framework is a pair of YAML files:
 | `BSI_C5` | `bsi-c5` | BSI Cloud Computing Compliance Criteria Catalogue (C5:2020) | 62 |
 | `BSI_GRUNDSCHUTZ_2023` | `bsi-grundschutz-2023` | BSI IT-Grundschutz Kompendium Edition 2023 | 105 |
 | `BSI_GRUNDSCHUTZ_PP` | `bsi-grundschutz-plus-plus` | BSI Grundschutz++ (Anwenderkatalog, BSI-Standard 300-1); BSI content under CC BY-SA 4.0 | 1000 |
+| `CLIENT_LZ_POLICY_BASELINE` | `client-lz-policy-baseline` | Client LZ Policy Baseline (German public agency default) | 20 |
 | `COBIT_5` | `cobit-5` | COBIT 5: Governance and Management of Enterprise IT (original SWAO wording) | 37 |
+| `DORA` | `dora` | Digital Operational Resilience Act (Regulation (EU) 2022/2554) with its eight Level 2 acts | 55 |
 | `EC_CSF` | `ec-csf` | EC Cloud Sovereignty Framework v1.2.1 | 34 |
 | `EU_AI_ACT` | `eu-ai-act` | EU Artificial Intelligence Act | 37 |
 | `EU_CRA` | `eu-cra` | EU Cyber Resilience Act (CRA) | 35 |
@@ -50,18 +52,19 @@ Each framework is a pair of YAML files:
 | `PCI_DSS` | `pci-dss` | Payment Card Industry Data Security Standard v4.0 | 5 |
 | `SAMA_CSF` | `sama-csf-v1` | SAMA Cyber Security Framework v1.0 | 30 |
 | `SECNUMCLOUD` | `secnumcloud` | SecNumCloud v3.2: ANSSI Sovereign Cloud Certification | 59 |
+| `SOC_2` | `soc-2` | SOC 2 Trust Services Criteria (criterion ids and SWAO's own descriptions; AICPA criteria text not reproduced) | 61 |
 | `SWAO_APM` | `swao-apm` | SWAO Application Portfolio Management | 72 |
 
 There is no index file: each folder's `framework-meta.yaml` declares its framework, and
-`swao framework list` builds the list from those files.
+`swao framework list` reads those files in a workspace and lists the frameworks there.
 
 ## How to use
 
-Every framework in this directory is also bundled with the SWAO binary. SWAO assesses
-against the frameworks that sit in the workspace; inside a workspace,
-`swao framework install <ID>` copies a bundled framework into the workspace for you.
+SWAO assesses against the frameworks that sit in the workspace. `swao init` seeds a few
+demo frameworks; SWAO installs nothing else and never updates a framework copy in the
+workspace.
 
-To add a framework by hand, for example from a download of this directory, copy the
+To add a framework, for example from a download of this directory, copy the
 framework directory (e.g. `gdpr/`) into the workspace at
 `wsp/inputs/catalogs/community/<folder>/`:
 

@@ -24,9 +24,17 @@ swao assess --portfolio
 # Export aggregated BI bundle
 swao export --portfolio --formats csv,xlsx
 
+# Landing Zone Live Assessment (all LZs): merge the latest live run of every registered landing zone
+swao assess --portfolio --type landing-zone-live [--include-simulated]
+
+# Multi-Cloud Governance (HTML) of that merge
+swao publish --portfolio --block-profile lz-live-portfolio
+
 # Open the portfolio dashboard
 # Open wsp/templates/powerbi/swao-portfolio.pbit in Power BI Desktop
 ```
+
+The two landing zone live lines are explained in [Landing Zone Live Assessment](/assessment/landing-zone-live#portfolio-view-enterprise).
 
 ## Combined portfolio view (application and service apps)
 

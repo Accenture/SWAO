@@ -80,3 +80,20 @@ describe('orchestrateLandingZone (#0567)', () => {
     expect((wsp['lz'] as Record<string, unknown>).overall).toBe('SOVEREIGNTY_BLOCKED');
   });
 });
+
+// #3888 (Design 123 section 8.4, D-12): the app fit carries the baseline deny,
+// and the Pass 11 rule engine decides the same policy as GAP: the two agree.
+describe('orchestrateLandingZone with baselineDenies (#3888, D-12)', () => {
+  it('a needed capability that an enabled service_deny forbids is BLOCKED_BY_POLICY with evidence baseline:<id>, and its control is GAP', async () => {
+    const wsp = orchestrateLandingZone({ region: REGION, scan: SCAN, requiredServices: [{ code: 'kubernetes' }, { code: 'postgresql' }], assessedAt: '2026-11-05', baselineDenies: new Map([['postgresql', 'CPB-SVC-01']]) });
+    const items = ((wsp['lz'] as Record<string, unknown>)['items'] as { service_code: string; verdict: string; evidence?: string[] }[]);
+    const pg = items.find((i) => i.service_code === 'postgresql');
+    expect(pg).toMatchObject({ verdict: 'BLOCKED_BY_POLICY' });
+    expect(pg?.evidence).toContain('baseline:CPB-SVC-01');
+    expect(items.find((i) => i.service_code === 'kubernetes')?.verdict).not.toBe('BLOCKED_BY_POLICY');
+    const { evaluateAppBaselineRules } = await import('../../evaluate/app-baseline-rules.js');
+    const { PolicyBaselineSchema, POLICY_KIND_CATEGORY } = await import('@swao/core');
+    const baseline = PolicyBaselineSchema.parse({ schema_version: '0.1', framework: 'CLIENT_LZ_POLICY_BASELINE', baseline_of: 'CLIENT_LZ_POLICY_BASELINE', catalogue_version: '1.0.0', policies: [{ id: 'CPB-SVC-01', kind: 'service_deny', category: POLICY_KIND_CATEGORY.service_deny, control: 'CPB-SVC-01', state: 'enabled', params: { capabilities: ['postgresql'] }, default_source: 'assumption' }] });
+    expect(evaluateAppBaselineRules({ baseline, source: 'catalogue', needs: ['kubernetes', 'postgresql'], targets: [{ provider: 'aws', region: REGION.id, facts: REGION }] }).get('CPB-SVC-01')?.outcome).toBe('GAP');
+  });
+});

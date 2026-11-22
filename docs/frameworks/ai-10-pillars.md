@@ -124,7 +124,6 @@ Use the demo variant for workshops, training and presentations where a short rep
 ## Get or customise this framework
 
 - Source to view and copy: [github.com/Accenture/SWAO/tree/main/community-frameworks/ai-10-pillars](https://github.com/Accenture/SWAO/tree/main/community-frameworks/ai-10-pillars)
-- Demo variant: [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/ai-10-pillars-demo](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks/ai-10-pillars-demo)
 - Overview of all community frameworks: [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks)
 
 To customise the framework for one engagement, copy the `ai-10-pillars` folder (with `framework-meta.yaml` and `controls.yaml`) into the workspace at `wsp/inputs/catalogs/community/ai-10-pillars/` and edit the copy there. SWAO reads catalogues for the compliance evaluation from this directory, so the workspace copy is the one that counts. Keep the `id` in `regime_meta` unchanged so that `regimes_active` still finds it, and check the copy afterwards with the [health check](/health-check).

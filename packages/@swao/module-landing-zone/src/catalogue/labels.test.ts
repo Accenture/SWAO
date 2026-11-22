@@ -18,8 +18,8 @@ import { lzProviderDisplayName, lzProviderLabel, lzRegionDisplayLabel } from './
 
 describe('lzProviderDisplayName (#3380)', () => {
   it('strips the " service catalogue" boilerplate', () => {
-    expect(lzProviderDisplayName('Open Telekom Cloud / T Cloud Public service catalogue'))
-      .toBe('Open Telekom Cloud / T Cloud Public');
+    expect(lzProviderDisplayName('T Cloud Public service catalogue'))
+      .toBe('T Cloud Public');
     expect(lzProviderDisplayName('GCP service catalogue')).toBe('GCP');
     expect(lzProviderDisplayName('STACKIT service catalogue')).toBe('STACKIT');
   });
@@ -34,16 +34,19 @@ describe('lzProviderDisplayName (#3380)', () => {
   });
 });
 
-describe('lzProviderLabel (#3399)', () => {
-  it('reads as "<id> - <name>"', () => {
-    expect(lzProviderLabel('otc', 'Open Telekom Cloud / T Cloud Public service catalogue'))
-      .toBe('otc - Open Telekom Cloud / T Cloud Public');
+describe('lzProviderLabel (#3399, #4296)', () => {
+  it('reads as the central map pair "<abbreviation>, <full name>"', () => {
+    expect(lzProviderLabel('otc', 'T Cloud Public service catalogue'))
+      .toBe('OTC, T Cloud Public');
     expect(lzProviderLabel('aws-esc', 'AWS European Sovereign Cloud service catalogue'))
-      .toBe('aws-esc - AWS European Sovereign Cloud');
+      .toBe('AWS ESC, AWS European Sovereign Cloud');
+    expect(lzProviderLabel('gcp', 'GCP service catalogue')).toBe('GCP, Google Cloud Platform');
+    expect(lzProviderLabel('stackit', 'STACKIT service catalogue')).toBe('STACKIT');
   });
 
-  it('degrades to the bare id when the cleaned name just repeats it (case-insensitive)', () => {
-    expect(lzProviderLabel('gcp', 'GCP service catalogue')).toBe('gcp');
+  it('uses the cleaned meta name for a provider the map does not know', () => {
+    expect(lzProviderLabel('myprivate', 'My Private Cloud service catalogue')).toBe('MYPRIVATE, My Private Cloud');
+    expect(lzProviderLabel('myprivate', 'myprivate service catalogue')).toBe('MYPRIVATE');
   });
 });
 

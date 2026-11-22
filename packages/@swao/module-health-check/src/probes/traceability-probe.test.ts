@@ -167,6 +167,8 @@ describe('buildTraceabilityProbe (#0170)', () => {
     const portfolio = tmp;
     mkdirSync(join(portfolio, 'apps', 'demo-a'), { recursive: true });
     mkdirSync(join(portfolio, 'apps', 'demo-b'), { recursive: true });
+    writeFileSync(join(portfolio, 'apps', 'demo-a', '.swao.yml'), 'app:\n  id: demo-a\n', 'utf-8');
+    writeFileSync(join(portfolio, 'apps', 'demo-b', '.swao.yml'), 'app:\n  id: demo-b\n', 'utf-8');
     writePass(join(portfolio, 'apps', 'demo-a'), '01-inv.yaml', [
       { id: 'INV-01', source: 'static_analysis', category: 'application', confidence: 'high', evidence: [], derivation: 'Padded derivation for the constraint sake' },
     ]);
@@ -223,6 +225,7 @@ traceability:
     // returned single-app mode because it checked root wsp/ first.
     mkdirSync(join(tmp, 'wsp'), { recursive: true }); // portfolio-level events dir (no passes/)
     mkdirSync(join(tmp, 'apps', 'sovereign-health'), { recursive: true });
+    writeFileSync(join(tmp, 'apps', 'sovereign-health', '.swao.yml'), 'app:\n  id: sovereign-health\n', 'utf-8');
     writePass(join(tmp, 'apps', 'sovereign-health'), '01-inv.yaml', [
       { id: 'INV-01', source: 'static_analysis', category: 'application', confidence: 'high', evidence: [], derivation: 'Padded derivation for the constraint sake', outcome: 'positive', derivation_chain: ['PKG-01'] },
     ]);
@@ -234,8 +237,31 @@ traceability:
 
   it('reports informative absent message when apps with wsp/ exist but none have been assessed', () => {
     mkdirSync(join(tmp, 'apps', 'demo-app', 'wsp'), { recursive: true }); // wsp/ but no passes/
+    writeFileSync(join(tmp, 'apps', 'demo-app', '.swao.yml'), 'app:\n  id: demo-app\n', 'utf-8');
     const r = buildTraceabilityProbe(tmp);
     expect(r.status).toBe('absent');
-    expect(r.message).toMatch(/app\(s\) found but none have completed assessment runs/);
+    expect(r.message).toMatch(/1 app\(s\) found but none have completed assessment runs/);
+  });
+
+  it('fresh workspace with an empty apps/ and a root wsp/ reports no apps, not 1 app (#4112)', () => {
+    // The setup wizard creates the root wsp/ for portfolio events and logs; apps/ is empty.
+    mkdirSync(join(tmp, 'wsp', 'logs'), { recursive: true });
+    mkdirSync(join(tmp, 'apps'), { recursive: true });
+    writeFileSync(join(tmp, '.swao.yml'), 'workspace:\n  name: fresh\n', 'utf-8');
+    const r = buildTraceabilityProbe(tmp);
+    expect(r.status).toBe('absent');
+    expect(r.apps).toHaveLength(0);
+    expect(r.message).toBe('no apps configured yet (run Assessment to add an app)');
+  });
+
+  it('counts only apps/<id>/ folders with an app .swao.yml (#4112)', () => {
+    mkdirSync(join(tmp, 'apps', 'real-app', 'wsp'), { recursive: true });
+    writeFileSync(join(tmp, 'apps', 'real-app', '.swao.yml'), 'app:\n  id: real-app\n', 'utf-8');
+    mkdirSync(join(tmp, 'apps', 'placeholder', 'wsp'), { recursive: true }); // no .swao.yml
+    mkdirSync(join(tmp, 'apps', '.cache'), { recursive: true });
+    writeFileSync(join(tmp, 'apps', 'README.md'), '# apps\n', 'utf-8');
+    const r = buildTraceabilityProbe(tmp);
+    expect(r.status).toBe('absent');
+    expect(r.message).toBe('1 app(s) found but none have completed assessment runs yet');
   });
 });

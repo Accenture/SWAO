@@ -1,0 +1,420 @@
+# SWAO Community Framework: Client LZ Policy Baseline (German public agency default)
+#
+# Schema: RegimeCatalogueSchema (design 029 section 4.5; design 018 section 2.1).
+# Design 123 sections 6.1 and 6.2 (#3863).
+#
+# One control per shipped policy of the sibling policy-baseline.yaml, with the
+# same id (CPB-<CAT>-NN). The control gives the publication its text, severity
+# and source mapping; the policy settings (state, parameters) live in
+# policy-baseline.yaml. maps_to names the shipped SWAO control ids each default
+# derives from (BSI C5 and BSI IT-Grundschutz 2023 paraphrases; reviewers check
+# the official text). A control whose default is an assumption only has no
+# maps_to entry and says so in its references.
+#
+# A client that adds a policy (X-<PREFIX>-<CAT>-NN, D-09) adds a control with
+# the same id here (Design 123 section 7.3).
+#
+# Tags: one category.<category> and one kind.<kind> axis per control (#0348 taxonomy).
+#
+# Severity: critical and high become the check severity blocker, medium a
+# warning, low an info (Design 123 section 8.2).
+
+regime_meta:
+  id: CLIENT_LZ_POLICY_BASELINE
+  name: "Client LZ Policy Baseline (German public agency default)"
+  version: "1.0.0"
+  scope: community
+  authority: "SWAO default for a German public agency; not an official publication"
+  contributor:
+    name: "SWAO Development Team (Accenture)"
+    email: "https://github.com/Accenture/SWAO/discussions"
+    url: "https://github.com/Accenture/SWAO"
+  applicability_hints: [de_sovereign, public_sector, german_public_sector, cloud]
+  description: >-
+    Normalised, cross-CSP landing zone policy baseline with a German public
+    agency default. One control per policy of policy-baseline.yaml.
+  references:
+    - "https://accenture.github.io/SWAO/en/"
+  last_reviewed: "2026-11-05"
+  catalogue_version: "1.0.0"
+
+controls:
+  # ===========================================================================
+  # RES: data residency
+  # ===========================================================================
+  - id: CPB-RES-01
+    pillar: "RES: Data residency"
+    title: "Data stays in the allowed countries"
+    description: >-
+      Every region the landing zone uses, and every region it offers for the
+      workload, lies in an allowed country (default Germany). Data at rest and
+      its processing stay inside that set.
+    severity_default: critical
+    assessment_type_scope: [app, lz]
+    tags: [category.data_residency, kind.region_residency]
+    references:
+      - "BSI_C5_DAT-02 (frameworks/bsi-c5/controls.yaml:1165)"
+      - "BSI_OPS22_A3 (frameworks/bsi-grundschutz-2023/controls.yaml:672)"
+      - "EVB-IT Cloud place of processing: assumption"
+    maps_to: [BSI_C5_DAT-02, BSI_OPS22_A3]
+    remediation: >-
+      Restrict the landing zone to regions in the allowed countries; deny other
+      regions with a tenant policy; move resources found outside the set.
+
+  - id: CPB-RES-02
+    pillar: "RES: Data residency"
+    title: "Operator jurisdiction and extraterritorial exposure"
+    description: >-
+      The regions in use are operated by an entity of an allowed jurisdiction
+      (default an EU entity) and carry none of the forbidden extraterritorial
+      legal exposures (default US CLOUD Act and FISA 702).
+    severity_default: critical
+    assessment_type_scope: [app, lz]
+    tags: [category.data_residency, kind.region_residency]
+    references:
+      - "SWAO BSI C5 sovereignty gate D-LZ-07 (frameworks/bsi-c5/framework-meta.yaml:39-51)"
+      - "Application to every public agency workload: assumption"
+    maps_to: []
+    remediation: >-
+      Choose regions operated by an EU entity without extraterritorial exposure,
+      or a sovereign offering of the CSP.
+
+  - id: CPB-RES-03
+    pillar: "RES: Data residency"
+    title: "Regions hold the required attestations"
+    description: >-
+      Every region in use holds the required attestations (default a BSI C5
+      attestation) for the services the workload uses.
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.data_residency, kind.region_residency]
+    references:
+      - "BSI_C5_COM-03 (frameworks/bsi-c5/controls.yaml:1043)"
+      - "frameworks/bsi-c5/framework-meta.yaml:50-51"
+      - "Deutsche Verwaltungscloud-Strategie as the entry criterion: assumption"
+    maps_to: [BSI_C5_COM-03]
+    remediation: >-
+      Use only regions and services covered by a current attestation report;
+      keep the report with the assessment evidence.
+
+  # ===========================================================================
+  # SVC: service control
+  # ===========================================================================
+  - id: CPB-SVC-01
+    pillar: "SVC: Service control"
+    title: "Managed AI and ML services are not used without approval"
+    description: >-
+      Managed AI and ML services (large language models, inference, training,
+      speech, translation, vision, language processing) process content outside
+      the client's own systems. They are neither enabled nor deployed unless a
+      separate approval exists. Ships disabled; a demonstration enables it.
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.service_control, kind.service_deny]
+    references:
+      - "Restricted service list where sovereignty requires it (D-02, D-06): assumption"
+    maps_to: []
+    remediation: >-
+      Deny the capabilities with a tenant policy, or record the approval and
+      take the capability off the list.
+
+  - id: CPB-SVC-02
+    pillar: "SVC: Service control"
+    title: "Only allow-listed services are deployed"
+    description: >-
+      Every deployed service belongs to an allowed capability. Example
+      allow-list for an allow-list operating model; ships disabled because the
+      deny model is the default.
+    severity_default: medium
+    assessment_type_scope: [app, lz]
+    tags: [category.service_control, kind.service_allow_list]
+    references:
+      - "Example allow-list of the SWAO capability vocabulary (D-06): assumption"
+    maps_to: []
+    remediation: >-
+      Remove or migrate deployed services outside the allow-list, or extend the
+      list after review.
+
+  - id: CPB-SVC-03
+    pillar: "SVC: Service control"
+    title: "Managed PostgreSQL is not used"
+    description: >-
+      Demonstration policy for a client rule that forbids a managed database
+      service: managed PostgreSQL is neither enabled nor deployed. Ships
+      disabled; a demonstration enables it with one line.
+    severity_default: medium
+    assessment_type_scope: [app, lz]
+    tags: [category.service_control, kind.service_deny]
+    references:
+      - "Demonstration value (D-06): assumption"
+    maps_to: []
+    remediation: >-
+      Deny the managed PostgreSQL service with a tenant policy and run the
+      database on an approved platform.
+
+  # ===========================================================================
+  # ENC: encryption
+  # ===========================================================================
+  - id: CPB-ENC-01
+    pillar: "ENC: Encryption"
+    title: "Stored data is encrypted with customer-managed keys"
+    description: >-
+      Storage and database services encrypt data at rest with keys of at least
+      the required custody (default customer-managed) held in a key management
+      service.
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.encryption, kind.encryption_at_rest]
+    references:
+      - "BSI_C5_CRY-01 (frameworks/bsi-c5/controls.yaml:421)"
+      - "BSI_C5_CRY-02 (frameworks/bsi-c5/controls.yaml:442)"
+      - "BSI_CON1_A2 (frameworks/bsi-grundschutz-2023/controls.yaml:314)"
+      - "BSI_CON1_A4 (frameworks/bsi-grundschutz-2023/controls.yaml:330)"
+      - "customer-managed rather than byok or hyok: assumption"
+    maps_to: [BSI_C5_CRY-01, BSI_C5_CRY-02, BSI_CON1_A2, BSI_CON1_A4]
+    remediation: >-
+      Create keys in the CSP key management service and configure every
+      storage and database resource to use them.
+
+  - id: CPB-ENC-02
+    pillar: "ENC: Encryption"
+    title: "Endpoints enforce the TLS floor"
+    description: >-
+      Load balancer, API gateway and CDN endpoints accept only TLS at or above
+      the required version (default 1.2).
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.encryption, kind.encryption_in_transit]
+    references:
+      - "BSI_C5_PI-03 (frameworks/bsi-c5/controls.yaml:1266)"
+      - "Version floor 1.2 following BSI TR-02102-2: assumption"
+    maps_to: [BSI_C5_PI-03]
+    remediation: >-
+      Select a TLS policy with the required minimum version on every listener
+      and endpoint.
+
+  # ===========================================================================
+  # NET: network exposure
+  # ===========================================================================
+  - id: CPB-NET-01
+    pillar: "NET: Network exposure"
+    title: "No public exposure outside the allowed entry points"
+    description: >-
+      Public IP addresses and internet-facing endpoints exist only on the
+      allowed capabilities (default load balancer, WAF and API gateway).
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.network_exposure, kind.no_public_exposure]
+    references:
+      - "BSI_C5_COS-01 (frameworks/bsi-c5/controls.yaml:506)"
+      - "BSI_NET11_A2 (frameworks/bsi-grundschutz-2023/controls.yaml:1153)"
+    maps_to: [BSI_C5_COS-01, BSI_NET11_A2]
+    remediation: >-
+      Remove public IPs from other resources and publish services through the
+      allowed entry points.
+
+  - id: CPB-NET-02
+    pillar: "NET: Network exposure"
+    title: "Admin ports are not open to the internet"
+    description: >-
+      No security group or firewall rule opens an administration port (default
+      SSH 22 and RDP 3389) to an internet source range.
+    severity_default: critical
+    assessment_type_scope: [app, lz]
+    tags: [category.network_exposure, kind.no_open_admin_ingress]
+    references:
+      - "BSI_C5_COS-02 (frameworks/bsi-c5/controls.yaml:527)"
+      - "BSI_C5_COS-03 (frameworks/bsi-c5/controls.yaml:546)"
+      - "BSI_NET32_A1 (frameworks/bsi-grundschutz-2023/controls.yaml:1185)"
+      - "Port list: assumption"
+    maps_to: [BSI_C5_COS-02, BSI_C5_COS-03, BSI_NET32_A1]
+    remediation: >-
+      Close the rules and use a bastion, VPN or the CSP session manager for
+      administration.
+
+  - id: CPB-NET-03
+    pillar: "NET: Network exposure"
+    title: "Database ports are not open to the internet"
+    description: >-
+      No security group or firewall rule opens a database port (default 1433,
+      3306, 5432, 6379, 27017) to an internet source range.
+    severity_default: critical
+    assessment_type_scope: [app, lz]
+    tags: [category.network_exposure, kind.no_open_admin_ingress]
+    references:
+      - "Sources of CPB-NET-02"
+      - "BSI_APP43_A1 (frameworks/bsi-grundschutz-2023/controls.yaml:952)"
+      - "Port list: assumption"
+    maps_to: [BSI_C5_COS-02, BSI_C5_COS-03, BSI_NET32_A1, BSI_APP43_A1]
+    remediation: >-
+      Close the rules and reach databases over private networks only.
+
+  # ===========================================================================
+  # IAM: identity
+  # ===========================================================================
+  - id: CPB-IAM-01
+    pillar: "IAM: Identity"
+    title: "MFA is required for privileged access"
+    description: >-
+      Every privileged account of the tenant signs in with multi-factor
+      authentication.
+    severity_default: critical
+    assessment_type_scope: [app, lz]
+    tags: [category.identity, kind.privileged_mfa]
+    references:
+      - "BSI_C5_IDM-02 (frameworks/bsi-c5/controls.yaml:326)"
+    maps_to: [BSI_C5_IDM-02]
+    remediation: >-
+      Enforce MFA for privileged roles in the identity service of the CSP.
+
+  - id: CPB-IAM-02
+    pillar: "IAM: Identity"
+    title: "Long-lived access keys are rotated"
+    description: >-
+      No long-lived access key is older than the maximum age (default 90 days).
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.identity, kind.credential_age]
+    references:
+      - "BSI_C5_IDM-05 (frameworks/bsi-c5/controls.yaml:381)"
+      - "BSI_C5_CRY-03 (frameworks/bsi-c5/controls.yaml:463)"
+      - "90 days: assumption"
+    maps_to: [BSI_C5_IDM-05, BSI_C5_CRY-03]
+    remediation: >-
+      Rotate or delete old keys; prefer short-lived credentials and workload
+      identities.
+
+  # ===========================================================================
+  # LOG: logging
+  # ===========================================================================
+  - id: CPB-LOG-01
+    pillar: "LOG: Logging"
+    title: "The CSP audit trail is on in every region in use"
+    description: >-
+      The CSP audit trail records management events in every region the landing
+      zone uses.
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.logging, kind.audit_trail]
+    references:
+      - "BSI_C5_OPS-06 (frameworks/bsi-c5/controls.yaml:685)"
+      - "BSI_C5_SIM-01 (frameworks/bsi-c5/controls.yaml:944)"
+      - "BSI_DER1_A2 (frameworks/bsi-grundschutz-2023/controls.yaml:740)"
+    maps_to: [BSI_C5_OPS-06, BSI_C5_SIM-01, BSI_DER1_A2]
+    remediation: >-
+      Enable the audit trail service for every region in use and send it to a
+      protected store.
+
+  - id: CPB-LOG-02
+    pillar: "LOG: Logging"
+    title: "Audit logs are kept for the minimum period"
+    description: >-
+      Audit logs are retained at least for the minimum period (default 180
+      days).
+    severity_default: medium
+    assessment_type_scope: [app, lz]
+    tags: [category.logging, kind.log_retention]
+    references:
+      - "Sources of CPB-LOG-01 for the need"
+      - "180 days: assumption (D-05)"
+    maps_to: [BSI_C5_OPS-06, BSI_C5_SIM-01, BSI_DER1_A2]
+    remediation: >-
+      Set the retention of the audit log store to the minimum period or longer.
+
+  # ===========================================================================
+  # TAG: tagging
+  # ===========================================================================
+  - id: CPB-TAG-01
+    pillar: "TAG: Tagging"
+    title: "Resources carry the required tag keys"
+    description: >-
+      Every resource carries the required tag keys (default owner and
+      data-classification), so the inventory names an owner and a protection
+      class.
+    severity_default: low
+    assessment_type_scope: [app, lz]
+    tags: [category.tagging, kind.required_tags]
+    references:
+      - "BSI_C5_OPS-04 (frameworks/bsi-c5/controls.yaml:645)"
+      - "BSI_C5_DAT-01 (frameworks/bsi-c5/controls.yaml:1146)"
+      - "Key names: assumption"
+    maps_to: [BSI_C5_OPS-04, BSI_C5_DAT-01]
+    remediation: >-
+      Add the tag keys to every resource and enforce them with a tag policy.
+
+  # ===========================================================================
+  # AVL: availability
+  # ===========================================================================
+  - id: CPB-AVL-01
+    pillar: "AVL: Availability"
+    title: "Allowed regions offer enough availability zones"
+    description: >-
+      The allowed regions offer at least the minimum number of availability
+      zones (default 2) for a redundant deployment.
+    severity_default: medium
+    assessment_type_scope: [app, lz]
+    tags: [category.availability, kind.min_availability_zones]
+    references:
+      - "BSI_C5_AVL-03 (frameworks/bsi-c5/controls.yaml:744)"
+      - "The number 2: assumption"
+    maps_to: [BSI_C5_AVL-03]
+    remediation: >-
+      Deploy into regions with enough availability zones, or document the
+      accepted risk.
+
+  # ===========================================================================
+  # BCK: resilience
+  # ===========================================================================
+  - id: CPB-BCK-01
+    pillar: "BCK: Resilience"
+    title: "Stateful resources have a backup policy"
+    description: >-
+      Block storage, databases and file storage have a backup policy of the
+      CSP backup service or of the service itself.
+    severity_default: high
+    assessment_type_scope: [app, lz]
+    tags: [category.resilience, kind.backup_configured]
+    references:
+      - "BSI_C5_AVL-04 (frameworks/bsi-c5/controls.yaml:763)"
+      - "BSI_CON3_A2 (frameworks/bsi-grundschutz-2023/controls.yaml:378)"
+    maps_to: [BSI_C5_AVL-04, BSI_CON3_A2]
+    remediation: >-
+      Attach a backup policy to every stateful resource and test the restore.
+
+  # ===========================================================================
+  # COST: cost
+  # ===========================================================================
+  - id: CPB-COST-01
+    pillar: "COST: Cost"
+    title: "A budget or cost alert is configured"
+    description: >-
+      The landing zone scope has a budget or cost alert, so spending above the
+      plan is noticed.
+    severity_default: low
+    assessment_type_scope: [app, lz]
+    tags: [category.cost, kind.budget_alerts]
+    references:
+      - "Common public-sector budget rule, no security source: assumption"
+    maps_to: []
+    remediation: >-
+      Create a budget with an alert for the scope in the CSP cost service.
+
+  # ===========================================================================
+  # PRT: portability
+  # ===========================================================================
+  - id: CPB-PRT-01
+    pillar: "PRT: Portability"
+    title: "A data export and exit path is documented"
+    description: >-
+      A documented data export and exit path exists for the workload. Not
+      observable from live read-only data; listed as a manual evidence item.
+    severity_default: medium
+    assessment_type_scope: [app, lz]
+    tags: [category.portability, kind.documented_exit]
+    references:
+      - "BSI_C5_PSS-01 (frameworks/bsi-c5/controls.yaml:1065)"
+      - "BSI_C5_BCP-02 (frameworks/bsi-c5/controls.yaml:1124)"
+    maps_to: [BSI_C5_PSS-01, BSI_C5_BCP-02]
+    remediation: >-
+      Document the export formats, tools and steps, and test the export once a
+      year.

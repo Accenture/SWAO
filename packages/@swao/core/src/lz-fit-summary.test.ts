@@ -25,6 +25,21 @@ describe('lzCatCheckResult (#3402, shared with the publication extractor)', () =
   });
 });
 
+describe('live verdicts (#3569, Design 120 section 5.3)', () => {
+  it('BLOCKED_BY_POLICY is a blocker, UNVERIFIED is not', () => {
+    expect(lzCatCheckResult('BLOCKED_BY_POLICY')).toBe('fail');
+    expect(lzCatCheckResult('UNVERIFIED')).toBe('not_applicable');
+  });
+  it('counts BLOCKED_BY_POLICY but not UNVERIFIED as a blocker', () => {
+    expect(countLzFitBlockers([
+      { verdict: 'BLOCKED_BY_POLICY' },
+      { verdict: 'UNVERIFIED' },
+      { verdict: 'UNVERIFIED' },
+      { verdict: 'SUPPORTED' },
+    ])).toBe(1);
+  });
+});
+
 describe('countLzFitBlockers (#3402)', () => {
   it('counts only the failing items (not SUPPORTED or AVAILABLE_NOT_ENABLED)', () => {
     expect(countLzFitBlockers([

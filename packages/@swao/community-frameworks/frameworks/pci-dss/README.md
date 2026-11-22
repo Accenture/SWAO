@@ -20,7 +20,7 @@
 **Framework ID:** `PCI_DSS`
 **Version:** PCI DSS v4.0 (effective March 2024)
 **Authority:** PCI Security Standards Council (PCI SSC)
-**SWAO tier:** Community (install required -- `swao framework install PCI_DSS`)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/pci-dss/`)
 **Controls:** Payment Card Industry Data Security Standard controls (PoC depth; deeper catalogue in progress)
 
 ## What this framework evaluates
@@ -41,7 +41,8 @@ requirement.
 Install the framework into the workspace, then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```bash
-swao framework install PCI_DSS
+# copy this folder from the GitHub repository into the workspace
+cp -r pci-dss <workspace>/wsp/inputs/catalogs/community/pci-dss
 ```
 
 ```yaml
@@ -64,7 +65,8 @@ assessment:
 ## Customising this framework
 
 ```bash
-swao framework install PCI_DSS
+# copy this folder from the GitHub repository into the workspace
+cp -r pci-dss <workspace>/wsp/inputs/catalogs/community/pci-dss
 ```
 
 The installed copy at `wsp/inputs/catalogs/community/pci-dss/controls.yaml` overrides the bundled

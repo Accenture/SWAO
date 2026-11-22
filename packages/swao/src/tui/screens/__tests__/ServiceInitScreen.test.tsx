@@ -16,19 +16,23 @@
 // TUI [2] Service Portfolio Assessment intake screen (#3075, Design 103 §3.6).
 import { describe, it, expect, afterAll } from 'vitest';
 import React from 'react';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { communityFrameworksDir } from '@swao/community-frameworks';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { render } from 'ink-testing-library';
 import {
   ServiceInitScreen, ServiceAssessSummary, buildServiceAssessArgs, buildServiceInitArgs, buildServiceExportArgs, buildServiceResearchArgs,
-  lineColor, readServiceAssessOutcome, readServiceRunPointer,
+  readServiceAssessOutcome, readServiceRunPointer,
   defaultServiceIntake, estimateAssessment, formatDuration, parsePassProgress, parseResearchProgress,
-  finishedKeyAction, rerunAffordances, serviceGuidanceDetails, SERVICE_COLUMN_MAPPING_DOCS_URL,
-  previewServiceInit, type ServiceChildRunner, type ServiceInitPreview,
-  planScope, scopeConfirmationLines, scopeTag, needsScopeConfirmation, RESEARCH_LLM_CALLS_PER_APP, MIN_ASSESS_LLM_CALLS_PER_APP,
+  serviceFinishMenu, serviceFinishTitle, serviceFinishGuidance, serviceOutputsRow, serviceGuidanceDetails, SERVICE_COLUMN_MAPPING_DOCS_URL,
+  previewServiceInit, vendorWarningOf, type ServiceChildRunner, type ServiceInitPreview,
+  planScope, scopeConfirmationLines, scopeTag, needsScopeConfirmation, RESEARCH_LLM_CALLS_PER_APP, MIN_ASSESS_LLM_CALLS_PER_APP, serviceConfirmRows, serviceBackPhase,
 } from '../ServiceInitScreen.js';
 
+// #4255: the confirmation is a ConfirmPanel; its rows are label and value columns, values wrap.
+const CONFIRM_TITLE = 'Start the Service Portfolio Assessment';
+const flat = (frame: string | undefined): string => (frame ?? '').replace(/\s+/g, ' ');
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
 
@@ -66,12 +70,6 @@ describe('ServiceInitScreen', () => {
     // #3304: the TUI equivalent of --skip-llm.
     expect(buildServiceResearchArgs('/ws', { skipLlm: true })).toEqual(['service', 'research', '--workspace', '/ws', '--skip-llm']);
     expect(buildServiceExportArgs('/ws')).toEqual(['service', 'export', '--workspace', '/ws']);
-  });
-
-  it('highlights the SCAFFOLD signal count and the manual-classification prompt', () => {
-    expect(lineColor('  SCAFFOLD signals : 4 (written to x)')).toBe('cyan');
-    expect(lineColor('2 app(s) could not be auto-classified. Review and assign infra_category manually:')).toBe('yellow');
-    expect(lineColor('[error] Scaffold halted')).toBe('red');
   });
 
   it('assesses each service app with --type service, one app per run (#3144, Community tier)', () => {
@@ -163,7 +161,7 @@ describe('ServiceInitScreen sprint 151 flow (#3164, #3165, #3166, #3169, #3211)'
     r.stdin.write('\r');
     await tick();
     const mappingFrame = r.lastFrame() ?? '';
-    expect(mappingFrame).toContain('Press Enter to detect the columns from the headers (recommended)');
+    expect(mappingFrame).toContain('Leave it empty to detect the columns from the headers (recommended)');
     expect(mappingFrame).not.toMatch(/: :/);
     r.stdin.write('\r');
     await tick();
@@ -171,11 +169,20 @@ describe('ServiceInitScreen sprint 151 flow (#3164, #3165, #3166, #3169, #3211)'
     const llmFrame = r.lastFrame() ?? '';
     expect(llmFrame).toContain('LLM research of vendor profile, certifications, data residency and breach history?');
     expect(llmFrame).toContain('Skip LLM research for this run');
+    // #4230: the guidance box follows the highlighted option (one entry per option).
+    expect(llmFrame).toContain('Run LLM research   (Ctrl+G for guidance)');
+    r.stdin.write('\u001B[B');
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('Skip LLM research   (Ctrl+G for guidance)');
+    r.stdin.write('\u001B[A');
+    await tick();
     r.stdin.write('\r');
     await tick();
     const scopeFrame = r.lastFrame() ?? '';
-    expect(scopeFrame).toContain('What should SWAO run? (no further questions after this)');
-    expect(scopeFrame).toContain('assess the top 20 by risk');
+    expect(scopeFrame).toContain('Top N by risk   (Ctrl+G for guidance)');
+    expect(scopeFrame).toContain('What should SWAO run? (Top N asks for N next; the frameworks follow)');
+    expect(scopeFrame).toContain('assess the top N by risk');
+    expect(scopeFrame).toContain('default 20');
     expect(scopeFrame).toContain('Scaffold and research only');
     r.unmount();
   });
@@ -187,20 +194,24 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
   const DOWN = '\u001B[B';
   const ROWS = 40;
 
-  it('maps finished-screen keys to single-stage re-runs, offering only what is available', () => {
+  it('#4238: the What next menu offers only what is available, in plain words with the CLI in the guidance', () => {
     const full = { assessApps: 20, export: true };
-    expect(finishedKeyAction('r', {}, full)).toBe('research');
-    expect(finishedKeyAction('A', {}, full)).toBe('assess');
-    expect(finishedKeyAction('e', {}, full)).toBe('export');
-    expect(finishedKeyAction('q', {}, full)).toBe('back');
-    expect(finishedKeyAction('', { return: true }, full)).toBe('back');
-    expect(finishedKeyAction('', { escape: true }, full)).toBe('back');
+    expect(serviceFinishMenu(full).map((o) => o.label)).toEqual([
+      'Show the priority list', 'Show details', 'Re-run the research', 'Re-assess the same 20 apps', 'Re-run the portfolio workbook export',
+    ]);
+    // #4238: Publish first when apps were assessed; Open the portfolio workbook when this run wrote it.
+    expect(serviceFinishMenu(full, { publishApps: 2, workbook: true }).map((o) => o.value)).toEqual(['publish', 'rank', 'workbook', 'details', 'research', 'assess', 'export']);
+    expect(serviceFinishMenu(full, { publishApps: 1 })[0]!.label).toBe('Publish the HTML report of the assessed app');
+    expect(serviceFinishGuidance(full, { publishApps: 2, workbook: true, workspace: 'C:/ws' }).what).toContain('Workspace: C:/ws.');
+    expect(serviceOutputsRow([{ appId: 'a1', exitCode: 0, run: 'runs/2026-11-09T15-14-37', skipped: 0 }, { appId: 'a2', exitCode: 1, run: null, skipped: null }], true)).toBe('apps/a1/wsp/runs/2026-11-09T15-14-37/; wsp/reports/ and wsp/star-schema/');
+    expect(serviceOutputsRow([], false)).toBeNull();
     const none = { assessApps: 0, export: false };
-    expect(finishedKeyAction('a', {}, none)).toBeNull();
-    expect(finishedKeyAction('e', {}, none)).toBeNull();
-    expect(finishedKeyAction('x', {}, full)).toBeNull();
-    expect(rerunAffordances(full)).toEqual(['R -- re-run research', 'A -- re-assess the same 20 app(s)', 'E -- re-run the export', 'Enter / Esc / Q -- back']);
-    expect(rerunAffordances(none)).toEqual(['R -- re-run research', 'Enter / Esc / Q -- back']);
+    expect(serviceFinishMenu(none).map((o) => o.value)).toEqual(['rank', 'details', 'research']);
+    expect(serviceFinishGuidance(full).cli).toContain('swao service rank');
+    expect(serviceFinishGuidance(full).what).not.toContain('swao');
+    expect(serviceFinishGuidance(none).cli).not.toContain('swao service export');
+    expect(serviceFinishTitle('Service Portfolio Assessment complete.')).toEqual({ title: 'Service Portfolio Assessment complete', reason: null });
+    expect(serviceFinishTitle('Stopped before the assessment: 0 service app(s) after the scaffold, but 2 were confirmed. Nothing was assessed.').title).toBe('Service Portfolio Assessment stopped');
   });
 
   it('links the Column mapping docs page in the guidance panel and at the column-map question', async () => {
@@ -265,13 +276,15 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
     r.stdin.write('\r');
     await tick();
     holdApp = 'hosapp150';
-    expect(r.lastFrame() ?? '').toContain('assess every app (300 apps, about 15 h to 20 h)');
+    expect(r.lastFrame() ?? '').toContain('assess every app (300 apps, assessment about 15 h to 20 h)');
     r.stdin.write(DOWN);
     await tick();
     r.stdin.write('\r');
     await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
     // #3518: "all" is confirmed with the count first; nothing runs before Enter.
-    expect(r.lastFrame() ?? '').toContain('Apps to assess: 300');
+    expect(flat(r.lastFrame())).toContain('Apps to assess 300');
     expect(calls).toEqual([]);
     r.stdin.write('\r');
     await tick(100);
@@ -284,47 +297,86 @@ describe('ServiceInitScreen follow-ups (#3220)', () => {
 
     // Research stage, held at 150 of 300.
     let frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Stage 2/4');
-    expect(frame).toContain('Research 150/300 apps');
+    // #4237 / #4256: RunPanel; the stage line names the stage, the item bar counts the apps.
+    expect(frame).toContain('Stage 2 of 4');
+    expect(frame).toContain('150 of 300 apps researched');
+    expect(frame).not.toContain(' -- ');
     check(frame);
     release!();
     await tick(400);
 
     // Assessment stage, held at the 151st app.
     frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Stage 3/4');
+    expect(frame).toContain('Stage 3 of 4');
     expect(frame).toContain('Assessing service apps (All 300)');
-    expect(frame).toContain('App 151/300: hosapp150');
-    expect(frame).toContain('Pass compliance evaluation');
+    expect(frame).toContain('App 151 of 300: hosapp150, pass compliance evaluation');
+    expect(frame).toContain('150 of 300 apps assessed');
+    expect(frame).not.toContain(' -- ');
     check(frame);
     release!();
     await tick(600);
 
     frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Service Portfolio Assessment complete.');
-    expect(frame).toContain('Service assessments: 300/300 complete');
-    expect(frame).toContain('+292 more');
-    expect(frame).toContain('Keys: R -- re-run research | A -- re-assess the same 300 app(s) | Enter / Esc / Q -- back');
+    // #4238: FinishPanel with a short summary and the What next menu; the details sit behind Show details.
+    expect(frame).toContain('Service Portfolio Assessment complete');
+    expect(frame).toContain('300 of 300 apps complete');
+    expect(frame).toContain('What next');
+    expect(frame).toContain('Re-assess the same 300 apps');
+    expect(frame).toContain('Back to main menu');
+    // #4238: publish the assessed apps from the menu; #4256: the real run folder, no placeholder, no workspace line under the header.
+    expect(frame).toContain('Publish the HTML reports of the 300 assessed apps');
+    expect(frame.replace(/\s+/g, ' ')).toContain('apps/hosapp000/wsp/runs/t1/ and the run folders of 299 more apps');
+    expect(frame).not.toContain('apps/<id>/');
+    expect(frame).not.toContain('Workspace: ');
+    expect(frame.split('\n').filter((l) => l.includes('Enter')).length).toBe(1);
+    expect(frame).not.toContain(' -- ');
+    expect(frame).not.toContain('hosapp000:');
     check(frame);
     expect(calls.filter((c) => c[0] === 'assess')).toHaveLength(300);
 
-    // R: research again, no questions.
-    r.stdin.write('r');
+    // Show details (third entry), then back to the finish screen.
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r');
+    await tick(100);
+    frame = r.lastFrame() ?? '';
+    expect(frame).toContain('Details of the run');
+    expect(frame).toContain('hosapp000: skipped pass count unavailable');
+    expect(frame).toContain('more lines');
+    check(frame);
+    r.stdin.write('\r');
+    await tick(100);
+    expect(r.lastFrame() ?? '').toContain('What next');
+
+    // Re-run the research, no questions (fourth entry).
+    for (let i = 0; i < 3; i++) { r.stdin.write(DOWN); await tick(); }
+    r.stdin.write('\r');
     await tick(200);
     frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Research re-run complete.');
+    expect(frame).toContain('Research re-run complete');
     expect(calls.filter((c) => c[1] === 'research')).toHaveLength(2);
     expect(calls.filter((c) => c[1] === 'research').every((c) => c.includes('--skip-llm'))).toBe(true);
     expect(calls.filter((c) => c[1] === 'init')).toHaveLength(1);
     check(frame);
 
-    // A: the same 300 apps again.
-    r.stdin.write('a');
+    // Re-assess the same 300 apps (fifth entry).
+    for (let i = 0; i < 4; i++) { r.stdin.write(DOWN); await tick(); }
+    r.stdin.write('\r');
     await tick(600);
     frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Assessment re-run complete for the same 300 app(s).');
+    expect(frame).toContain('Assessment re-run complete for the same 300 app(s)');
     expect(calls.filter((c) => c[0] === 'assess')).toHaveLength(600);
     check(frame);
+    // #4238: Publish the HTML reports (first entry) runs swao publish --app <id> per assessed app.
+    r.stdin.write('\r');
+    await tick(600);
+    frame = r.lastFrame() ?? '';
+    expect(frame).toContain('Publish the HTML reports');
+    expect(frame).toContain('hosapp000: published (apps/hosapp000/wsp/publications/)');
+    expect(calls.filter((c) => c[0] === 'publish')).toHaveLength(300);
+    expect(calls.find((c) => c[0] === 'publish')).toEqual(['publish', '--app', 'hosapp000', '--workspace', ws]);
     r.unmount();
   }, 60_000); // #3294 (D-32): 30 s timed out under full-suite load; 12 s alone
 });
@@ -370,7 +422,7 @@ describe('ServiceInitScreen second intake workbook (#3521)', () => {
     const calls: string[][] = [];
     const r = await toConflictQuestion(async (args) => { calls.push(args); return 0; });
     const frame = r.lastFrame() ?? '';
-    expect(frame).toContain('already holds 3 service app(s) from another intake workbook (first.xlsx)');
+    expect(frame.replace(/\s+/g, ' ')).toContain('already holds 3 service app(s) from another intake workbook (first.xlsx)');
     expect(frame).toContain('second.xlsx (2 apps)');
     r.stdin.write('\r'); // Back (first option)
     await tick();
@@ -405,6 +457,7 @@ describe('ServiceInitScreen scope confirmation (#3518)', () => {
   const tick = (ms = 60) => new Promise((r) => setTimeout(r, ms));
   const DOWN = '\u001B[B';
   const ESC = '\u001B';
+  const LEFT = '\u001B[D';
 
   it('computes count, duration and LLM calls per scope', () => {
     const all = planScope('all', 461, { skipLlmResearch: false });
@@ -436,11 +489,12 @@ describe('ServiceInitScreen scope confirmation (#3518)', () => {
     expect(needsScopeConfirmation('none', ws)).toBe(false);
   });
 
-  async function toScopeQuestion(plannedApps: number, runChild: ServiceChildRunner) {
+  async function toScopeQuestion(plannedApps: number, runChild: ServiceChildRunner, swaoYml?: string, extra: Partial<ServiceInitPreview> = {}) {
     const ws = mkdtempSync(join(tmpdir(), 'swao-svc-tui-3518-'));
     dirs.push(ws);
+    if (swaoYml) writeFileSync(join(ws, '.swao.yml'), swaoYml);
     const ids = Array.from({ length: plannedApps }, (_, i) => `app${String(i).padStart(4, '0')}`);
-    const preview: ServiceInitPreview = { sourceName: 'inventory.xlsx', plannedAppIds: ids, existingServiceAppIds: [], conflict: { appIds: [], sources: [] } };
+    const preview: ServiceInitPreview = { sourceName: 'inventory.xlsx', plannedAppIds: ids, existingServiceAppIds: [], conflict: { appIds: [], sources: [] }, ...extra };
     const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} previewInit={async () => preview} />);
     await tick();
     r.stdin.write('inventory.xlsx');
@@ -454,39 +508,164 @@ describe('ServiceInitScreen scope confirmation (#3518)', () => {
     return r;
   }
 
-  it('selecting "all" renders the confirmation with count and estimate; Esc returns to the scope question without spawning a child', async () => {
+  // #4489: the Column map gave no vendor column; the scope question says so before the run.
+  it('warns on the scope question when no column maps to vendor.name', async () => {
+    const warning = 'no column maps to vendor.name: 0 of 3 apps have a vendor name; CVE lookups and vendor consolidation need a vendor column';
+    const r = await toScopeQuestion(3, async () => 0, undefined, { vendorWarning: warning });
+    const frame = flat(r.lastFrame() ?? '');
+    expect(frame).toContain('Column map');
+    expect(frame).toContain('0 of 3 apps have a vendor name');
+    expect(vendorWarningOf(['other', warning])).toBe(warning);
+    expect(vendorWarningOf(['other'])).toBeUndefined();
+    r.unmount();
+  });
+
+  it('selecting "all" renders the confirmation with count and estimate; Esc asks, the left arrow returns to the scope question without spawning a child', async () => {
     const calls: string[][] = [];
     const r = await toScopeQuestion(461, async (args) => { calls.push(args); return 0; });
-    expect(r.lastFrame() ?? '').toContain('assess every app (461 apps, about 23 h to 31 h)');
+    expect(r.lastFrame() ?? '').toContain('assess every app (461 apps, assessment about 23 h to 31 h)');
     r.stdin.write(DOWN);
     await tick();
     r.stdin.write('\r');
     await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
     const frame = r.lastFrame() ?? '';
-    expect(frame).toContain('Confirm what SWAO will run:');
-    expect(frame).toContain('Scope: All apps');
-    expect(frame).toContain('Apps to assess: 461');
-    expect(frame).toContain('Estimated assessment time: about 23 h to 31 h');
-    expect(frame).toContain('LLM calls: research 1844; assessment at least 1844');
-    expect(frame).toContain('Esc -- back to the scope question');
+    expect(frame).toContain(CONFIRM_TITLE);
+    expect(flat(frame)).toContain('Scope All apps');
+    expect(flat(frame)).toContain('Apps to assess 461');
+    // #4374: the time includes the research stage, each part with its basis.
+    expect(flat(frame)).toContain('Estimated time about 25.1 h to 32.8 h');
+    expect(flat(frame)).toContain('Research time 2.0 h (1844 call(s) x 4.0 s per call, typical value, not measured yet)');
+    expect(frame).not.toContain('Estimated assessment time');
+    expect(flat(frame)).toContain('LLM calls research 1844; assessment at least 1844');
+    // #4236: Design 126 KeyHints, no double dash (#4235); the cost line is always shown.
+    // #4255 (Design 126 sections 7.2 and 7.4): the left arrow goes back, Esc aborts the flow.
+    expect(frame).toContain('← back to the frameworks'); // #4400
+    expect(frame).toContain('Esc abort');
+    expect(frame).not.toContain('Enter -- start');
+    expect(flat(frame)).toContain('Expected cost ');
     expect(calls).toEqual([]);
-    r.stdin.write(ESC);
+    r.stdin.write(ESC); // asks first: the flow is dirty after the intake step
     await tick(120);
-    expect(r.lastFrame() ?? '').toContain('What should SWAO run? (no further questions after this)');
+    expect(r.lastFrame() ?? '').toContain('Abort the assessment?');
+    r.stdin.write(ESC); // stay
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain(CONFIRM_TITLE);
+    r.stdin.write(LEFT);
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain('Add community frameworks to this run'); // #4400: back to the framework step
+    r.stdin.write(LEFT);
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain('What should SWAO run? (Top N asks for N next; the frameworks follow)');
     expect(calls).toEqual([]);
+    r.unmount();
+  });
+
+  it('#4236: above 25 USD the first Enter asks a second confirmation; Tab switches to the cheaper research model', async () => {
+    const calls: string[][] = [];
+    const yml = ['wsp_version: "0.9"', 'providers:', '  llm:', '    primary:', '      type: anthropic', '      model: claude-opus-4-7', ''].join('\n');
+    const r = await toScopeQuestion(461, async (args) => { calls.push(args); return 0; }, yml);
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r'); // all apps
+    await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
+    let frame = r.lastFrame() ?? '';
+    expect(flat(frame)).toContain('Expected cost about');
+    expect(flat(frame)).toContain('Research model Cheaper research model available: claude-haiku-4-5');
+    expect(frame).toContain('Enter confirm the scope');
+    expect(frame).not.toContain(' -- start');
+    r.stdin.write('\t'); // cheaper research model
+    await tick();
+    expect(flat(r.lastFrame())).toContain('Research model claude-haiku-4-5 for this run');
+    r.stdin.write('\r'); // first Enter: still above 25 USD (1844 research calls)
+    await tick();
+    frame = r.lastFrame() ?? '';
+    expect(flat(frame)).toMatch(/The expected cost \d+\.\d\d USD is above 25\.00 USD\. Confirm the cost once more to start the run\./);
+    expect(calls).toEqual([]);
+    r.stdin.write(LEFT); // #4255: the back key withdraws the cost confirmation, stays on the step
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain(CONFIRM_TITLE);
+    expect(flat(r.lastFrame())).not.toContain("Confirm the cost once more");
+    r.stdin.write('\r');
+    await tick();
+    r.stdin.write('\r'); // second confirmation
+    await tick(400);
+    expect(calls.filter((c) => c[0] === 'service' && c[1] === 'init')).toHaveLength(1);
+    const research = calls.find((c) => c[0] === 'service' && c[1] === 'research');
+    if (research) expect(research).toEqual(expect.arrayContaining(['--model', 'claude-haiku-4-5']));
     r.unmount();
   });
 
   it('a fast double Enter on the confirmation starts the pipeline exactly once', async () => {
     const calls: string[][] = [];
     const r = await toScopeQuestion(2, async (args) => { calls.push(args); return 0; });
-    r.stdin.write('\r'); // top 20
+    r.stdin.write('\r'); // top N
     await tick();
-    expect(r.lastFrame() ?? '').toContain('Confirm what SWAO will run:');
+    expect(r.lastFrame() ?? '').toContain('How many apps by risk?');
+    r.stdin.write('\r'); // keep the default N
+    await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
+    expect(r.lastFrame() ?? '').toContain(CONFIRM_TITLE);
     r.stdin.write('\r'); // confirm
     r.stdin.write('\r'); // second Enter before the re-render
     await tick(400);
     expect(calls.filter((c) => c[0] === 'service' && c[1] === 'init')).toHaveLength(1);
+    r.unmount();
+  });
+
+  it('#4230: with the guidance box open Esc closes the box only and Enter starts no paid run', async () => {
+    const calls: string[][] = [];
+    const r = await toScopeQuestion(2, async (args) => { calls.push(args); return 0; });
+    r.stdin.write('\r'); // top N
+    await tick();
+    r.stdin.write('\r'); // keep the default N
+    await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
+    expect(r.lastFrame() ?? '').toContain(CONFIRM_TITLE);
+    r.stdin.write('\u0007'); // Ctrl+G opens the box
+    await tick();
+    r.stdin.write('\r');
+    await tick(200);
+    expect(calls).toEqual([]);
+    r.stdin.write(ESC); // closes the box, stays on the confirmation
+    await tick(120);
+    expect(r.lastFrame() ?? '').toContain(CONFIRM_TITLE);
+    r.stdin.write('\r');
+    await tick(400);
+    expect(calls.filter((c) => c[0] === 'service' && c[1] === 'init')).toHaveLength(1);
+    r.unmount();
+  });
+
+  it('Top N (#3520): an out-of-range N is refused, a valid N is confirmed', async () => {
+    const calls: string[][] = [];
+    const r = await toScopeQuestion(2, async (args) => { calls.push(args); return 0; });
+    r.stdin.write('\r'); // top N
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('How many apps by risk? (1 to 2; default 2)');
+    r.stdin.write('\u007F'); // clear the default
+    await tick();
+    r.stdin.write('5');
+    await tick();
+    r.stdin.write('\r');
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('Enter a whole number from 1 to 2.');
+    r.stdin.write('\u007F');
+    await tick();
+    r.stdin.write('1');
+    await tick();
+    r.stdin.write('\r');
+    await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
+    const frame = r.lastFrame() ?? '';
+    expect(frame).toContain(CONFIRM_TITLE);
+    expect(flat(frame)).toContain('Scope Top 1 by risk');
+    expect(calls).toEqual([]);
     r.unmount();
   });
 
@@ -497,11 +676,136 @@ describe('ServiceInitScreen scope confirmation (#3518)', () => {
     await tick();
     r.stdin.write('\r'); // all
     await tick();
+    r.stdin.write('\r'); // #4400: the framework step (SWAO_APM fixed)
+    await tick();
     r.stdin.write('\r'); // confirm 2 apps
     await tick(400);
     // The mock init writes no app folder, so the workspace holds 0 apps, not the 2 confirmed.
-    expect(r.lastFrame() ?? '').toContain('Stopped before the assessment: 0 service app(s) after the scaffold, but 2 were confirmed');
+    const stopped = (r.lastFrame() ?? '').replace(/\s+/g, ' ');
+    expect(stopped).toContain('Service Portfolio Assessment stopped');
+    expect(stopped).toContain('Stopped before the assessment: 0 service app(s) after the scaffold, but 2 were confirmed');
     expect(calls.some((c) => c[0] === 'assess')).toBe(false);
     r.unmount();
+  });
+
+  it('#4400: One service picks one service app, keeps SWAO_APM fixed and passes an added framework to --regimes', async () => {
+    const ws = mkdtempSync(join(tmpdir(), 'swao-svc-tui-4400-'));
+    dirs.push(ws);
+    for (const id of ['app0000', 'app0001']) {
+      mkdirSync(join(ws, 'apps', id), { recursive: true });
+      writeFileSync(join(ws, 'apps', id, '.swao.yml'), ['app_id: ' + id, 'assessment:', '  type: service', ''].join(String.fromCharCode(10)));
+    }
+    // #4456: only frameworks installed in the workspace are offered.
+    cpSync(join(communityFrameworksDir, 'nis2'), join(ws, 'wsp', 'inputs', 'catalogs', 'community', 'nis2'), { recursive: true });
+    const calls: string[][] = [];
+    const runChild: ServiceChildRunner = async (args) => { calls.push(args); return 0; };
+    const preview: ServiceInitPreview = { sourceName: 'inventory.xlsx', plannedAppIds: ['app0000', 'app0001', 'app0002'], existingServiceAppIds: ['app0000', 'app0001'], conflict: { appIds: [], sources: [] } };
+    const r = render(<ServiceInitScreen onBack={() => {}} workspacePath={ws} runChild={runChild} previewInit={async () => preview} />);
+    await tick();
+    r.stdin.write('inventory.xlsx');
+    await tick();
+    r.stdin.write('\r'); // intake
+    await tick();
+    r.stdin.write('\r'); // column map
+    await tick();
+    r.stdin.write('\r'); // LLM research: run
+    await tick(120);
+    for (let i = 0; i < 3; i++) { r.stdin.write(DOWN); await tick(); }
+    expect(r.lastFrame() ?? '').toContain('One service: pick one service app');
+    r.stdin.write('\r'); // One service
+    await tick();
+    expect(r.lastFrame() ?? '').toContain('Which service app should SWAO assess?');
+    expect(r.lastFrame() ?? '').toContain('app0002');
+    r.stdin.write(DOWN);
+    await tick();
+    r.stdin.write('\r'); // app0001
+    await tick(120);
+    let frame = r.lastFrame() ?? '';
+    expect(frame).toContain('SWAO_APM');
+    expect(frame).toContain('always evaluated in a service run');
+    expect(frame).toContain('Add community frameworks to this run');
+    expect(frame).toContain('NIS2');
+    expect(frame).toContain('More frameworks: copy a framework folder into wsp/inputs/catalogs/community/<folder>/');
+    r.stdin.write(' '); // add the first offered framework
+    await tick();
+    r.stdin.write('\r');
+    await tick(120);
+    frame = r.lastFrame() ?? '';
+    expect(frame).toContain(CONFIRM_TITLE);
+    expect(flat(frame)).toContain('Scope One service (app0001)');
+    expect(flat(frame)).toContain('Apps to assess 1');
+    expect(flat(frame)).toMatch(/Frameworks SWAO_APM \(always evaluated\), [A-Z0-9_]+/);
+    expect(calls).toEqual([]);
+    r.stdin.write('\r'); // start
+    await tick(400);
+    // The picked app has a folder: no scaffold; research and assessment of that app only.
+    expect(calls.some((c) => c[1] === 'init')).toBe(false);
+    expect(calls.find((c) => c[1] === 'research')).toEqual(expect.arrayContaining(['--app', 'app0001']));
+    const assess = calls.filter((c) => c[0] === 'assess');
+    expect(assess).toHaveLength(1);
+    expect(assess[0]!.slice(0, 3)).toEqual(['assess', '--app', 'app0001']);
+    const regimes = assess[0]![assess[0]!.indexOf('--regimes') + 1]!.split(',');
+    expect(regimes[0]).toBe('SWAO_APM');
+    expect(regimes).toHaveLength(2);
+    // #4457: every pipeline step logs start and complete in the portfolio log.
+    const logDir = join(ws, 'wsp', 'logs');
+    const steps = readdirSync(logDir).filter((f) => f.startsWith('portfolio-events-')).flatMap((f) => readFileSync(join(logDir, f), 'utf-8').split(String.fromCharCode(10)).filter(Boolean))
+      .map((l) => JSON.parse(l) as { code: string; context: Record<string, unknown> }).filter((e) => e.code.startsWith('service.pipeline.step.'))
+      .map((e) => `${e.code.slice('service.pipeline.step.'.length)}:${String(e.context['step'])}`);
+    expect(steps.slice(0, 6)).toEqual(['start:discover', 'complete:discover', 'start:research', 'complete:research', 'start:assess', 'complete:assess']);
+    r.unmount();
+  });
+});
+
+// #4255 (Design 126 section 4.4): the confirmation lines as ConfirmPanel rows.
+describe('serviceConfirmRows (#4255)', () => {
+  it('splits "Label: value" lines, shortens the long labels, keeps a line without a label as a note', () => {
+    const rows = serviceConfirmRows(
+      ['Scope: All apps', 'Service apps after the scaffold: 461', 'Estimated assessment time: about 23 h'],
+      ['Research ranks all 461 apps to pick the top 10', 'Expected cost: about 3.10 USD'],
+      'Cheaper research model available: claude-haiku-4-5; Tab switches to it',
+    );
+    expect(rows).toEqual([
+      { label: 'Scope', value: 'All apps' },
+      { label: 'Service apps', value: '461' },
+      { label: 'Assessment time', value: 'about 23 h' },
+      { label: 'Note', value: 'Research ranks all 461 apps to pick the top 10' },
+      { label: 'Expected cost', value: 'about 3.10 USD' },
+      { label: 'Research model', value: 'Cheaper research model available: claude-haiku-4-5; Tab switches to it' },
+    ]);
+  });
+});
+
+// #4400: the One service scope and the framework step.
+describe('One service and the framework step (#4400)', () => {
+  it('builds the research and assessment arguments of one service app, SWAO_APM first', () => {
+    expect(buildServiceResearchArgs('/ws', { app: 'app0001' })).toEqual(['service', 'research', '--workspace', '/ws', '--app', 'app0001']);
+    expect(buildServiceAssessArgs('/ws', 'app0001', ['NIS2', 'SWAO_APM'])).toEqual(['assess', '--app', 'app0001', '--type', 'service', '--workspace', '/ws', '--regimes', 'SWAO_APM,NIS2']);
+    expect(buildServiceAssessArgs('/ws', 'app0001', [])).toEqual(['assess', '--app', 'app0001', '--type', 'service', '--workspace', '/ws', '--regimes', 'SWAO_APM']);
+  });
+
+  it('plans one app, one research, and names the app and the frameworks on the confirmation', () => {
+    const plan = planScope('one', 234, { skipLlmResearch: false });
+    expect(plan).toMatchObject({ assessApps: 1, researchLlmCalls: RESEARCH_LLM_CALLS_PER_APP, assessLlmCallsMin: MIN_ASSESS_LLM_CALLS_PER_APP });
+    expect(scopeTag('one', 1)).toBe('One service');
+    const lines = scopeConfirmationLines(plan, { app: 'app0001', frameworks: ['NIS2'] });
+    expect(lines[0]).toBe('Scope: One service (app0001)');
+    expect(lines).toContain('Frameworks: SWAO_APM (always evaluated), NIS2');
+  });
+
+  it('the back key walks the framework step back to its scope detail', () => {
+    expect(serviceBackPhase('frameworks', 'one')).toBe('pick-app');
+    expect(serviceBackPhase('frameworks', 'top')).toBe('top-n');
+    expect(serviceBackPhase('frameworks', 'all')).toBe('scope');
+    expect(serviceBackPhase('pick-app', 'one')).toBe('scope');
+    expect(serviceBackPhase('confirm', 'none')).toBe('scope');
+    expect(serviceBackPhase('confirm', 'top')).toBe('frameworks');
+  });
+
+  it('the TUI hints never name swao assess --type service (Design 103 section 3.6)', () => {
+    const cli = serviceGuidanceDetails().find((d) => d.label === 'CLI')!.value;
+    expect(cli).toContain('swao service assess --app <id>');
+    expect(cli).not.toContain('--type service');
+    expect(serviceFinishGuidance({ assessApps: 2, export: true }).cli).not.toContain('--type service');
   });
 });

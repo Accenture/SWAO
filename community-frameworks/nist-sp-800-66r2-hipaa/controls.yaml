@@ -113,7 +113,8 @@ controls:
       incident tracking reports.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.8.15, SOC_2_CC7.2]
@@ -311,7 +312,8 @@ controls:
       discrepancies.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.8.15, SOC_2_CC7.2]
@@ -371,7 +373,8 @@ controls:
       exact copies of ePHI.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: DR }
+      - { signal_prefix: STATE }
+      - { signal_prefix: TF }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.8.13, SOC_2_A1.3]
@@ -390,7 +393,8 @@ controls:
       ePHI-handling systems and data.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: DR }
+      - { signal_prefix: STATE }
+      - { signal_prefix: TF }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.5.29, ISO_27001_A.5.30, SOC_2_A1.3]
@@ -689,7 +693,8 @@ controls:
       of equipment.
     severity_default: medium
     evidence_basis:
-      - { signal_prefix: DR }
+      - { signal_prefix: STATE }
+      - { signal_prefix: TF }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.8.13, SOC_2_A1.3]
@@ -733,7 +738,7 @@ controls:
       - { context_input: "evidence/tec-02-emergency-access.md" }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.5.15, SOC_2_CC6.6]
+    maps_to: [ISO_27001_A.5.15, SOC_2_CC6.1]
     remediation: "Document a break-glass procedure with named approvers; emit a high-priority alert on every break-glass invocation; review usage monthly."
 
     tags:
@@ -789,7 +794,8 @@ controls:
       use ePHI.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: []
     overrides: []
     maps_to: [ISO_27001_A.8.15, SOC_2_CC7.2]
@@ -811,7 +817,7 @@ controls:
       - { signal_prefix: CRYPTO }
     references: []
     overrides: []
-    maps_to: [ISO_27001_A.8.24, SOC_2_PI1.1]
+    maps_to: [ISO_27001_A.8.24, SOC_2_PI1.5]
     remediation: "Use cryptographic checksums (digital signatures, HMAC, append-only audit ledger) for ePHI records; alert on integrity failures."
 
     tags:

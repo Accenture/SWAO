@@ -20,7 +20,7 @@ import { loadPassCatalog, compileRegexMatcher, scanCatalogueRules, MatchModeSche
 import type { PassContext, PassResult } from '@swao/core';
 import type { LlmPassResponse } from './types.js';
 import type { Signal } from '@swao/core';
-import { SIGNAL_SCHEMA_HINT, normalizeSignal, maskKnownSecret, guardSecretsDeep, guardSecretText, extractCredentialValues, listSourceFiles, getSourceScope } from '@swao/core';
+import { SIGNAL_SCHEMA_HINT, normalizeSignal, maskKnownSecret, guardSecretsDeep, guardSecretText, extractCredentialValues, listSourceFiles, getSourceScope, reportPassProgress } from '@swao/core';
 import { llmSkipResult, llmInvalidResponseResult } from './llm-skip.js';
 
 // ---- #1144 Saudi CCC tier helpers ----
@@ -120,7 +120,10 @@ function collectDataFiles(
   // ---- 3. Walk tree: schemas + privacy-relevant source files ----
   // #3428: central source scope (canonical skips; same depth guard as the
   // old walk(sourcePath, 0) with `depth > 7` return).
+  let walked = 0;
   for (const f of listSourceFiles(sourcePath, { purpose: 'code', maxDepth: 7 })) {
+    // #4300: synchronous reads, reported per file; the sink of `swao assess` writes by elapsed time.
+    reportPassProgress({ phase: 'data:file_selection', files: ++walked });
     const full = f.abs;
     const entry = f.name;
     if (seen.has(full)) continue;
@@ -148,6 +151,7 @@ function collectDataFiles(
     const authPatterns = ['auth', 'user', 'account', 'profile', 'settings', 'delete', 'export', 'consent'];
     // #3428: central source scope (same depth guard as the old walkForHandlers).
     for (const f of listSourceFiles(sourcePath, { purpose: 'code', maxDepth: 7 })) {
+      reportPassProgress({ phase: 'data:handler_selection', files: ++walked });
       const full = f.abs;
       if (seen.has(full)) continue;
       try {
@@ -261,7 +265,7 @@ function runDeterministicPiiScan(
     rules.push({ key: String(entry.id), matcher: c.matcher, via: 'pattern' });
   }
   // One signal per PII pattern id, first file (walk order) and first line win.
-  const scan = scanCatalogueRules(allFiles, rules, { maxHitsPerKey: 1 });
+  const scan = scanCatalogueRules(allFiles, rules, { maxHitsPerKey: 1, progressPhase: 'data:pii_scan' });
 
   for (const entry of catalogue.entries) {
     const first = scan.hits.get(String(entry.id))?.[0];
@@ -315,7 +319,8 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
   }
 
   // #1144: detect Saudi CCC regimes to extend the prompt with data-tier classification
-  const activeRegimes = readRegimesActive(workspacePath);
+  // #4284: the run-time framework selection (--regimes) wins over the file selection.
+  const activeRegimes = ctx.regimesActive ?? readRegimesActive(workspacePath);
   const saudiCccActive = activeRegimes.some(r => SAUDI_CCC_REGIMES.has(r));
 
   // #3403: in tag mode the model is told which files are test code (exclude
@@ -352,7 +357,7 @@ export async function runDataPass(ctx: PassContext): Promise<PassResult> {
   }
   if (!parsed) {
     // #3415: the raw response may echo a secret; the console line is guarded.
-    console.warn(`[warn] DATA pass: LLM response truncated or non-JSON -- signals skipped.\n${guardSecretText(maskKnownSecretsDeep(raw, sourceSecrets) as string).text.slice(0, 200)}`);
+    console.warn(`[warn] DATA pass: LLM response truncated or non-JSON, signals skipped.\n${guardSecretText(maskKnownSecretsDeep(raw, sourceSecrets) as string).text.slice(0, 200)}`);
     // #3158: follow the llmSkipResult convention (not_applicable + DATA-00)
     // instead of a 0-signal `stub`, which read as stub data downstream.
     return llmInvalidResponseResult({

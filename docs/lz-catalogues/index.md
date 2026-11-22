@@ -2,7 +2,7 @@
 
 A Landing Zone catalogue describes one cloud provider as SWAO sees it: its regions, the sovereignty facts of each region (residency country, operator jurisdiction, extraterritorial exposure, certifications) and the platform services each region offers, with the capabilities they fulfil and the key custody models they support. Each catalogue is one JSON file, `lz-catalogues/<provider>.json`, with a `meta` block (name, last update, source, confidence, region count) and a `regions` list.
 
-SWAO ships **10 catalogues**: four hyperscaler catalogues (AWS, Microsoft Azure, Google Cloud, Oracle Cloud Infrastructure), three sovereign offerings of hyperscalers (AWS European Sovereign Cloud, AWS ISOE Europe, Azure Local) and three European providers (Delos Cloud, Open Telekom Cloud / T Cloud Public, STACKIT).
+SWAO ships **10 catalogues**: four hyperscaler catalogues (AWS, Microsoft Azure, Google Cloud, Oracle Cloud Infrastructure), three sovereign offerings of hyperscalers (AWS European Sovereign Cloud, AWS ISOE Europe, Azure Local) and three European providers (Delos Cloud, T Cloud Public (formerly Open Telekom Cloud), STACKIT).
 
 ## How SWAO uses a catalogue
 
@@ -35,7 +35,7 @@ To correct a fact, add a region or describe a private cloud, copy a catalogue in
 | [Delos Cloud](/lz-catalogues/delos) | `delos` | EU entity | 1 | curated | low | 2026-08-11 |
 | [Google Cloud Platform](/lz-catalogues/gcp) | `gcp` | US entity | 42 | automated | medium | 2026-09-04 |
 | [Oracle Cloud Infrastructure](/lz-catalogues/oci) | `oci` | US entity, EU entity | 6 | curated | medium | 2026-09-20 |
-| [Open Telekom Cloud / T Cloud Public](/lz-catalogues/otc) | `otc` | EU entity | 2 | curated | medium | 2026-08-11 |
+| [T Cloud Public](/lz-catalogues/otc) | `otc` | EU entity | 2 | curated | medium | 2026-08-11 |
 | [STACKIT](/lz-catalogues/stackit) | `stackit` | EU entity | 2 | automated | medium | 2026-09-04 |
 
 <!-- lz-catalogue-facts:end -->

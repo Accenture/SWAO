@@ -16,7 +16,8 @@
 export type { LlmProvider, LlmUsage, LlmTrace, LlmTool, LlmCompletion, LlmToolChatParams, EmbeddingProvider, EmbeddingResult } from './types.js';
 // #3301: per-call usage accessors (prefer the result's own usage over getLastUsage).
 export { completeWithUsage, completeVisionWithUsage, completeWithToolsWithUsage } from './completion.js';
-export { anthropicCostUsd } from './types.js';
+export { anthropicCostUsd, anthropicTableRates, openaiTableRates, ratedUsageCost } from './types.js';
+export type { CostRates } from './types.js';
 export { OpenLlmProvider, OpenLlmEmbeddingProvider, buildFetchDispatcher } from './open-llm-provider.js';
 // #3381 / #3385: connectivity checks with the connector's TLS and proxy rules.
 export { connectorPostJson, openAiChatCompletionsUrl, createProxyAwareFetch, type ConnectorFetchResult, type ProxyAwareResponse } from './gateway/connector-fetch.js';
@@ -28,6 +29,7 @@ export { ConnectivityFailureError, LlmToolsUnsupportedError } from './errors.js'
 export {
   requestLlmWithRetry,
   withLlmAttemptLimit,
+  withLlmCaller,
   resolveLlmIdleTimeoutMs,
   classifyLlmHttpStatus,
   LlmHttpStatusError,
@@ -76,16 +78,28 @@ export type {
   ParseConnectorResult,
 } from './gateway/connector-schema.js';
 export { listConnectors, getConnector, seedBundledConnectors, resolveBundledConnectorsDir, updateBundledConnectors, PRIVATE_SEED_MARKER, isPrivateSeedConnector } from './gateway/connector-loader.js';
+// #4491: an outdated workspace seed and the bundled price fallback.
+export { connectorSeedStatus, outdatedWorkspaceConnectors, seedStatusText, bundledModelPrice } from './gateway/connector-loader.js';
+export type { ConnectorSeedStatus } from './gateway/connector-loader.js';
 export type { ConnectorUpdateResult } from './gateway/connector-loader.js';
 export { listLocalConnectors } from './gateway/local-connectors.js';
 export type { LocalConnectorInfo } from './gateway/local-connectors.js';
 export type { LoadedConnector, ListConnectorsResult } from './gateway/connector-loader.js';
-export { createProviderFromConnector } from './gateway/resolve.js';
-export { buildLlmGatewayProbe, llmGatewayProbeContribution, classifyPingFailure } from './gateway/gateway-probe.js';
+export { createProviderFromConnector, connectorModelHasPrice, isOpenRouterConnector, modelRates } from './gateway/resolve.js';
+export type { ModelRates } from './gateway/resolve.js';
+export { buildLlmGatewayProbe, llmGatewayProbeContribution, classifyPingFailure, checkConnectorModel } from './gateway/gateway-probe.js';
 export { resolveModelAlias, isAlias } from './gateway/alias-resolver.js';
 export { scaffoldWorkspaceGateway, copyConnectorToWorkspace } from './gateway/scaffold.js';
-export { discoverModels, mergeDiscoveredModels, writeWorkspaceConnector } from './gateway/discovery.js';
-export type { DiscoveredModel, DiscoverResult } from './gateway/discovery.js';
+export {
+  discoverModels, mergeDiscoveredModels, writeWorkspaceConnector,
+  // #4475: live model discovery per protocol, served marking, one refresh for pickers and CLI.
+  discoveryEnabled, discoveryUrl, isModelServed, servedAlternatives, refreshConnectorModels,
+  discoveryFallbackText, discoveryOffOnMachine, PICKER_DISCOVERY_TIMEOUT_MS,
+  // #4500: ids the chat route cannot serve (OpenRouter :batch variants).
+  isChatServableId,
+} from './gateway/discovery.js';
+export type { DiscoveredModel, DiscoverResult, DiscoveryFailure, ModelRefresh, AwsCredentialSource } from './gateway/discovery.js';
 export type { ConnectorProvenance, ResolvedGatewayProvider } from './gateway/resolve.js';
+export type { ConnectorModelCheck } from './gateway/gateway-probe.js';
 export { getLastGatewayProvenance } from './factory.js';
 export type { OpenLlmGatewayOpts } from './open-llm-provider.js';

@@ -15,6 +15,8 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Text, useStdout } from 'ink';
+import { headerRuleWidth } from './header-width.js';
+import { tone } from '../theme.js';
 
 interface LiveOutputProps {
   lines: string[];
@@ -41,11 +43,13 @@ export function LiveOutput({ lines, maxLines = 20, label, maxWidth, wrapMode }: 
     return () => { stdout.off('resize', onResize); };
   }, [stdout]);
 
-  const displayWidth = maxWidth != null ? Math.min(cols, maxWidth) : cols;
+  // #4110: never wider than the header rule (shared helper), also on wide terminals.
+  const ruleWidth = headerRuleWidth(cols);
+  const displayWidth = maxWidth != null ? Math.min(ruleWidth, maxWidth) : ruleWidth;
   const visible = lines.slice(-maxLines);
   return (
     <Box flexDirection="column" marginTop={1} width={displayWidth}>
-      {label && <Text dimColor>--- {label} ---</Text>}
+      {label && <Text {...tone('muted')}>--- {label} ---</Text>}
       {visible.map((line, i) => (
         <Text key={i} wrap={wrapMode ?? 'truncate-end'}>
           {wrapMode === 'wrap' ? line : line.slice(0, displayWidth).trimEnd()}

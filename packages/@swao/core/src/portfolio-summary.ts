@@ -25,6 +25,8 @@
  */
 
 import { z } from 'zod';
+import { LZ_LIVE_HIERARCHY_NODE_KINDS, LzLiveReadOnlySchema } from './lz-live-scan.js';
+import { LZ_SOURCES } from './lz-source.js';
 
 export const TIME_QUADRANTS = ['Tolerate', 'Invest', 'Migrate', 'Migrate-Critical', 'Eliminate'] as const;
 export const TimeQuadrantSchema = z.enum(TIME_QUADRANTS);
@@ -116,6 +118,8 @@ export const PortfolioAppSchema = z.object({
   // Rule (owner, 2026-10-21): only real workspace data; no invented fields.
   /** Section 8: where `seven_r_label` came from (synthesis / derived_from_time / analyst). */
   seven_r_source: SevenRSourceSchema.optional(),
+  /** #4287 (D-9): the synthesis 7R verdict when the 7R to TIME matching replaced it (`seven_r_source: derived_from_time`); absent otherwise. */
+  seven_r_synthesis: z.string().optional(),
   /** 0..1 fraction of the framework's controls that were scored for this app. */
   coverage_score: Fraction.nullable().optional(),
   /** Finding counts keyed by severity (`critical`, `high`, `medium`, `low`, `info`). */
@@ -157,7 +161,20 @@ export const PortfolioAppSchema = z.object({
     region: z.string(),
     verdict: z.string(),
     blockers: z.number().int().nonnegative(),
+    /** #3822 (Design 120 section 11.2, item 4): `observed` = fit against a live
+     *  application scope; absent = the LZ catalogue run (catalogue confidence). */
+    confidence: z.enum(['observed']).optional(),
+    /** #3822: the landing zone and application scope of an observed fit. */
+    lz_id: z.string().optional(),
+    scope_id: z.string().optional(),
+    /** #3822: the scope was served by a mock CSP (Design 121 section 10). */
+    simulated: z.boolean().optional(),
   })).optional(),
+  /** #3873 (Design 123 sections 8.4 and 9.2): LZ evidence source of the app's
+   *  latest run (`run-context.yaml` lz_source, #3887): `catalogue` = static
+   *  catalogue, `live` = live LZ results. Absent when the run had no LZ fit or
+   *  predates #3887. Additive (WSP 0.11). */
+  lz_source: z.enum(LZ_SOURCES).optional(),
   /** Most recent run's timestamp, SWAO version, and LLM model (provenance). */
   last_assessed_at: z.string().nullable().optional(),
   swao_version: z.string().nullable().optional(),
@@ -170,6 +187,82 @@ export const PortfolioAppSchema = z.object({
   code_health: CodeHealthKpisSchema.optional(),
 });
 export type PortfolioApp = z.infer<typeof PortfolioAppSchema>;
+
+/**
+ * Design 120 section 11.3 (#3569): one entry per registered landing zone with
+ * a live assessment, written by the portfolio aggregator from the merged live
+ * scans (`lz-live-merged.yaml`). Counts, not lists, so the hub tile stays small.
+ */
+export const LandingZoneLiveSummarySchema = z.object({
+  lz_id: z.string().min(1),
+  provider: z.string().min(1),
+  scopes: z.array(z.object({
+    id: z.string().min(1),
+    kind: z.enum(['platform', 'application']),
+    observed_at: z.string().min(1),
+    read_only: LzLiveReadOnlySchema,
+  })),
+  /** Number of regions with live status `enabled` in the merged scan. */
+  regions_enabled: z.number().int().nonnegative(),
+  /** Number of services enabled in at least one region. */
+  services_enabled: z.number().int().nonnegative(),
+  /** Share of enabled services with IaC level `full`, 0..100. */
+  iac_full_pct: z.number().min(0).max(100),
+  /** Service light counts per selected framework id. */
+  framework_lights: z.record(z.string(), z.object({
+    green: z.number().int().nonnegative(),
+    amber: z.number().int().nonnegative(),
+    red: z.number().int().nonnegative(),
+    grey: z.number().int().nonnegative(),
+  })),
+  checks: z.object({
+    pass: z.number().int().nonnegative(),
+    fail: z.number().int().nonnegative(),
+    warn: z.number().int().nonnegative(),
+    /** #3873 (#3864 status `unverified`, Design 123 section 5.3): checks whose
+     *  evidence was not observed. Optional so summaries written before #3873 parse. */
+    unverified: z.number().int().nonnegative().optional(),
+  }),
+  /** #3873 (Design 123 section 9.2): client policy baseline fit of this landing
+   *  zone, from the portfolio merge's baseline_comparison (#3872). `fit_ready`
+   *  READY policies of `fit_total` enabled ones; NEEDS_VERIFICATION is never fit.
+   *  `same_baseline` false: assessed with other baseline settings (hash) than the
+   *  reference, so the counts are not comparable with the other landing zones.
+   *  Absent when no baseline was evaluated. */
+  baseline: z.object({
+    framework: z.string().min(1),
+    fit_ready: z.number().int().nonnegative(),
+    fit_total: z.number().int().nonnegative(),
+    needs_verification: z.number().int().nonnegative(),
+    blocked: z.number().int().nonnegative(),
+    same_baseline: z.boolean(),
+  }).strict().optional(),
+  /** #3873 (Design 123 sections 5.6 and 9.2): tenant tree summary from the
+   *  merged estate.hierarchy (#3880). Counts per normalised node kind and the
+   *  number of levels (a lone root is depth 1). No node id, label or native name. */
+  hierarchy: z.object({
+    nodes_by_kind: z.partialRecord(z.enum(LZ_LIVE_HIERARCHY_NODE_KINDS), z.number().int().nonnegative()),
+    depth: z.number().int().nonnegative(),
+  }).strict().optional(),
+  /** #4050 (Design 120 section 8.4): organisational controls decided from the landing
+   *  zone ingestion folder (SATISFIED or PARTIAL) of the evaluated ones (N/A left out). */
+  organisational: z.object({
+    documents: z.number().int().nonnegative(),
+    decided: z.number().int().nonnegative(),
+    evaluated: z.number().int().nonnegative(),
+  }).strict().optional(),
+  /** Scope ids older than the staleness window (Design 120 section 11.1). */
+  stale_scopes: z.array(z.string()),
+  /** #3584: registered scopes without a scan (listed, never dropped). */
+  missing_scopes: z.array(z.string()).optional(),
+  /** #3584 (Design 121 section 10, item 5): an included scope is simulated; the tile shows [SIM]. */
+  simulated: z.boolean().optional(),
+  /** #3584: simulated scopes left out of the merge (no --include-simulated). */
+  excluded_simulated_scopes: z.array(z.string()).optional(),
+  /** #3584: run folder of the landing zone the entry comes from (provenance). */
+  run_id: z.string().optional(),
+});
+export type LandingZoneLiveSummary = z.infer<typeof LandingZoneLiveSummarySchema>;
 
 export const PortfolioSummarySchema = z.object({
   generated_at: z.string(),
@@ -217,5 +310,7 @@ export const PortfolioSummarySchema = z.object({
     apps: z.array(z.string()),
     effort_days: z.number().nonnegative(),
   })).optional(),
+  /** Design 120 section 11.3 (#3569): additive; absent in summaries without live LZ assessments. */
+  landing_zones: z.array(LandingZoneLiveSummarySchema).optional(),
 });
 export type PortfolioSummary = z.infer<typeof PortfolioSummarySchema>;

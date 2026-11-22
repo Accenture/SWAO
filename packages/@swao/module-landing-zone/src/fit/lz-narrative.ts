@@ -24,6 +24,7 @@
  */
 
 import type { LzFitReport, LzOverallVerdict, LzFitVerdict } from './lz-fit.js';
+import { LZ_HARD_BLOCKING_VERDICTS } from './lz-fit.js';
 
 // ---------------------------------------------------------------------------
 // Exported interfaces
@@ -94,12 +95,6 @@ export interface LzSovereigntyFactsInput {
 // Narrative generator
 // ---------------------------------------------------------------------------
 
-/** Verdicts where the service check did not pass -- used in M-gap counting. */
-const HARD_BLOCKING_VERDICTS: ReadonlySet<LzFitVerdict> = new Set([
-  'NOT_AVAILABLE_IN_REGION',
-  'VERSION_MISMATCH',
-  'CAPABILITY_MISSING',
-]);
 
 /**
  * Generate a deterministic LzVerdictNarrative from a computed LzFitReport.
@@ -151,10 +146,17 @@ export function generateLzNarrative(opts: {
     reason: item.detail,
   }));
 
-  // Hard-blocking gaps (NOT_AVAILABLE_IN_REGION, VERSION_MISMATCH, CAPABILITY_MISSING).
-  const failedItems = fit.items.filter(i => HARD_BLOCKING_VERDICTS.has(i.verdict));
+  // Hard-blocking gaps: the shared set of lz-fit.ts (NOT_AVAILABLE_IN_REGION,
+  // VERSION_MISMATCH, CAPABILITY_MISSING, BLOCKED_BY_POLICY). Policy blocks are
+  // named separately: the service is offered but the tenant denies its use.
+  const failedItems = fit.items.filter(i => LZ_HARD_BLOCKING_VERDICTS.has(i.verdict));
   const failedCount = failedItems.length;
   const failedNames = failedItems.map(i => i.service_code).join(', ');
+  const policyItems = failedItems.filter(i => i.verdict === 'BLOCKED_BY_POLICY');
+  const missingItems = failedItems.filter(i => i.verdict !== 'BLOCKED_BY_POLICY');
+  // UNVERIFIED (Design 120 section 5.3, #3569): the scope could not tell.
+  const unverifiedItems = fit.items.filter(i => i.verdict === 'UNVERIFIED');
+  const unverifiedNames = unverifiedItems.map(i => i.service_code).join(', ');
   const totalAssessed = fit.items.length;
 
   // Deterministic summary headline per verdict.
@@ -170,14 +172,30 @@ export function generateLzNarrative(opts: {
         // #3497: only documentation-evidenced (low-confidence) requirements are missing.
         ? `Passes sovereignty; ${failedCount} service primitive(s) evidenced only by documentation are not offered: ${failedNames}.` +
           ` Confirm these requirements before treating them as blockers.`
-        : `Insufficient service evidence -- ${totalAssessed} service primitive(s) assessed, baseline coverage incomplete.` +
-          ` Manual verification required before issuing a production READY verdict.`;
+        : unverifiedItems.length > 0
+          // #3569: the live scope could not read these services (permission or API gap).
+          ? `Passes sovereignty; ${unverifiedItems.length} service primitive(s) could not be verified in this scope: ${unverifiedNames}.` +
+            ` Grant the missing read permissions or assess a scope that can read them before treating the landing zone as ready.`
+          : `Insufficient service evidence -- ${totalAssessed} service primitive(s) assessed, baseline coverage incomplete.` +
+            ` Manual verification required before issuing a production READY verdict.`;
       break;
     case 'BLOCKED':
       if (sovereigntyPassed) {
-        // Standard path: sovereignty passes, one or more service primitives unavailable.
-        summary_headline =
-          `Passes sovereignty; blocked on ${failedCount} missing service primitive(s): ${failedNames}.`;
+        // Standard path: sovereignty passes, one or more service primitives
+        // unavailable or denied by tenant policy (#3569).
+        const missingNames = missingItems.map(i => i.service_code).join(', ');
+        const policyNames = policyItems.map(i => i.service_code).join(', ');
+        if (policyItems.length === 0) {
+          summary_headline =
+            `Passes sovereignty; blocked on ${failedCount} missing service primitive(s): ${failedNames}.`;
+        } else if (missingItems.length === 0) {
+          summary_headline =
+            `Passes sovereignty; blocked by tenant policy on ${policyItems.length} service primitive(s): ${policyNames}.`;
+        } else {
+          summary_headline =
+            `Passes sovereignty; blocked on ${missingItems.length} missing service primitive(s): ${missingNames};` +
+            ` and by tenant policy on ${policyItems.length}: ${policyNames}.`;
+        }
       } else {
         // Unusual path: computeLzFit forces SOVEREIGNTY_BLOCKED when sovFails exist,
         // so BLOCKED + !sovereigntyPassed is unreachable through the standard engine.
@@ -217,6 +235,14 @@ export function generateLzNarrative(opts: {
       .map(i => `${i.service_code} (${i.verdict}${i.label ? `, ${i.label}` : ''})`)
       .join('; ');
     bodyParts.push(`Service gaps identified: ${gapDetails}.`);
+    if (unverifiedItems.length > 0) {
+      bodyParts.push(`Not verifiable in this scope (permission or API gap): ${unverifiedNames}.`);
+    }
+  } else if (unverifiedItems.length > 0) {
+    bodyParts.push(
+      `${unverifiedItems.length} of ${totalAssessed} service primitive(s) could not be verified in this scope ` +
+      `(permission or API gap): ${unverifiedNames}. The live scan recorded them as unknown, never as missing.`,
+    );
   } else if (fit.overall === 'READY' || fit.overall === 'READY_WITH_CHANGES') {
     bodyParts.push(
       `All ${totalAssessed} required service primitive(s) are available in this landing zone.`,

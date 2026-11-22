@@ -26,6 +26,7 @@ import {
   readWorkspaceLenses,
   writeWorkspaceLenses,
 } from './lenses.js';
+import { INIT_TEMPLATE, INIT_WORKSPACE_YML } from '../__tests__/fixtures/init-workspace-yml.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -170,5 +171,53 @@ describe('remove lens logic (#0455)', () => {
     writeWorkspaceLenses(yml, updated);
     const result = readWorkspaceLenses(yml);
     expect(result).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. #4283: the lens save is a minimal patch of the commented init template
+// ---------------------------------------------------------------------------
+describe('writeWorkspaceLenses keeps the workspace file (#4283)', () => {
+  // INIT_TEMPLATE: the swao init template fixture (__tests__/fixtures/init-workspace-yml.ts).
+
+  it('the fixture matches the swao init template lines', () => {
+    const src = readFileSync(join(__dirname, 'init.ts'), 'utf-8');
+    for (const line of INIT_TEMPLATE.split('\n')) {
+      if (line === '' || /"(Example|EX|Lead|2026-11-09)"|type: pattern/.test(line)) continue;
+      expect(src).toContain(line);
+    }
+  });
+
+  function initWorkspace(name: string): string {
+    const dir = join(TMP_DIR, name);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, '.swao.yml'), INIT_WORKSPACE_YML, 'utf-8');
+    return dir;
+  }
+
+  it('changes nothing but the added lenses lines', () => {
+    const dir = initWorkspace('minimal-patch');
+    const yml = join(dir, '.swao.yml');
+    const before = readFileSync(yml, 'utf-8');
+    expect(writeWorkspaceLenses(yml, ['security-focus'])).toBe(true);
+    const after = readFileSync(yml, 'utf-8');
+    expect(after.startsWith(before.trimEnd())).toBe(true);
+    expect(after.slice(before.trimEnd().length).trim()).toBe('assessment:\n  lenses: [security-focus]');
+    expect(after).toContain('  assessment_types: [application]');
+    expect(after).toMatch(/^ {2}setup_state: \{ application: \{ state: /m);
+    // A second save edits the lenses line in place.
+    writeWorkspaceLenses(yml, ['security-focus', 'data-governance']);
+    expect(readFileSync(yml, 'utf-8')).toBe(after.replace('[security-focus]', '[security-focus, data-governance]'));
+    // Removing every lens restores the original text (no `lenses: []`).
+    writeWorkspaceLenses(yml, []);
+    expect(readFileSync(yml, 'utf-8')).toBe(before);
+  });
+
+  it('an empty selection without a lenses key writes nothing', () => {
+    const dir = initWorkspace('empty-selection');
+    const yml = join(dir, '.swao.yml');
+    const before = readFileSync(yml, 'utf-8');
+    expect(writeWorkspaceLenses(yml, [])).toBe(false);
+    expect(readFileSync(yml, 'utf-8')).toBe(before);
   });
 });

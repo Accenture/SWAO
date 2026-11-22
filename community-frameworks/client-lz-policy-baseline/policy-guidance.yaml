@@ -1,0 +1,400 @@
+# SWAO Client LZ Policy Baseline: consultation guidance (Design 123 section 17.4; #4128).
+#
+# Schema: PolicyGuidanceSchema 0.1 (@swao/core policy-guidance.ts).
+# Read by the MCP baseline consultation (swao_baseline_explain and the prompt
+# swao_baseline_consult) from the shipped baseline bundled with SWAO, never
+# from a client copy. Per policy: the deciding question for the stakeholders,
+# the options (a parameter fragment of the policy's kind, optionally a state)
+# with pros, cons and a source, and considerations. A source cites the shipped
+# SWAO control ids with file and line, in the form of default_source in
+# policy-baseline.yaml, or is the literal "assumption" for a statement without
+# a source in the repository. Per-kind entries are the fallback for
+# client-added X- policies.
+#
+# STATUS: agent draft, owner-reviewed 2026-11-09 (Design 123 section
+# 17.11, O-4). The pros and cons are client-facing prose; they are not legal
+# or official advice and do not replace the reading of the cited standards.
+schema_version: "0.1"
+framework: CLIENT_LZ_POLICY_BASELINE
+status: reviewed
+policies:
+  # ---------------------------------------------------------------- data_residency
+  CPB-RES-01:
+    question: "In which countries may the workload data be stored and processed?"
+    options:
+      - params: { allowed_countries: [DE] }
+        summary: "Germany only (the shipped default for a German public agency)."
+        pros: ["Matches a place of processing fixed to Germany by the buyer.", "The simplest rule to explain to auditors."]
+        cons: ["Excludes EU regions outside Germany, which narrows the choice of providers and regions."]
+        source: "BSI_C5_DAT-02 data residency (frameworks/bsi-c5/controls.yaml:1165); BSI_OPS22_A3 (frameworks/bsi-grundschutz-2023/controls.yaml:672); place of processing fixed to Germany: assumption"
+      - params: { allowed_countries: [EU] }
+        summary: "Any EU member state."
+        pros: ["More regions and providers qualify.", "Fits a data protection rule that only requires processing inside the EU."]
+        cons: ["Does not meet a contractual or legal requirement for processing in Germany only."]
+        source: "BSI_C5_DAT-02 data residency (frameworks/bsi-c5/controls.yaml:1165); EU as the accepted area: assumption"
+    considerations:
+      - "The live result is the union of every selected framework (D-11): when another selected framework accepts EU, a Germany-only value does not decide alone."
+      - "Residency is evaluated against the regions a scope uses; a candidate value never makes an unverified scope pass."
+  CPB-RES-02:
+    question: "Must the cloud operator be an EU entity without exposure to extraterritorial access laws?"
+    options:
+      - params: { allowed_operator_jurisdictions: [EU-entity], forbid_exposure: [us_cloud_act, fisa_702] }
+        summary: "EU operator, no exposure to the US CLOUD Act or FISA 702 (the shipped default)."
+        pros: ["The strongest sovereignty position of the baseline."]
+        cons: ["Excludes regions of providers whose parent company is subject to these laws, even when the data stays in the EU."]
+        source: "SWAO reading of BSI C5 for the sovereignty gate, D-LZ-07 (frameworks/bsi-c5/framework-meta.yaml:39-51); applying it to every workload: assumption"
+      - params: { allowed_operator_jurisdictions: [EU-entity] }
+        summary: "EU operator only; extraterritorial exposure is reviewed per workload instead."
+        pros: ["More providers qualify; exposure is judged where the data classification needs it."]
+        cons: ["The live baseline no longer flags exposure; the review must happen elsewhere and be documented."]
+        source: "assumption"
+    considerations:
+      - "Operator jurisdiction comes from the catalogue region facts, not from a live read of the tenant."
+  CPB-RES-03:
+    question: "Which attestations must a region hold before workloads may use it?"
+    options:
+      - params: { required_certifications: [BSI_C5] }
+        summary: "A BSI C5 attestation (the shipped default)."
+        pros: ["C5 is the common entry criterion for cloud services in German public administration."]
+        cons: ["Regions without a current C5 attestation are excluded even when they hold other certifications."]
+        source: "BSI_C5_COM-03 C5 attestation (frameworks/bsi-c5/controls.yaml:1043); frameworks/bsi-c5/framework-meta.yaml:50-51; C5 as the entry criterion: assumption"
+      - state: disabled
+        params: {}
+        summary: "Not checked in the baseline; attestations are checked in procurement."
+        pros: ["Regions are not excluded before the procurement review."]
+        cons: ["The live result no longer shows regions without the attestation."]
+        source: "assumption"
+    considerations:
+      - "Attestations are catalogue facts per region; keep the catalogue current before deciding on the live result."
+  # ---------------------------------------------------------------- service_control
+  CPB-SVC-01:
+    question: "May teams use managed AI and machine learning services without a separate approval?"
+    options:
+      - state: disabled
+        params: {}
+        summary: "Not enforced (the shipped default): managed AI services are allowed."
+        pros: ["No friction for teams that already use approved AI services."]
+        cons: ["Content may be processed by managed AI services outside the client's own systems without a review."]
+        source: "assumption"
+      - state: enabled
+        params: { capabilities: [managed_llm, ml_inference, ml_training, ml_speech, ml_translation, ml_vision, ml_nlp] }
+        summary: "Denied: any managed AI or ML service fails the policy until it is approved."
+        pros: ["Makes every use of managed AI visible in the live result."]
+        cons: ["Approved uses still show as failures until the policy or the capability list is narrowed."]
+        source: "assumption"
+    considerations:
+      - "The capability tags must exist in the LZ catalogue vocabulary; the health check warns about tags no catalogue uses."
+  CPB-SVC-02:
+    question: "Does the organisation work with an allow-list of services rather than a deny-list?"
+    options:
+      - state: disabled
+        params: {}
+        summary: "No allow-list (the shipped default); service control works with deny policies."
+        pros: ["Teams can use new services without a baseline change."]
+        cons: ["New services are not reviewed before use."]
+        source: "assumption"
+      - state: enabled
+        params: {}
+        summary: "Allow-list: only the listed capabilities may be used."
+        pros: ["Every service in use has been reviewed."]
+        cons: ["Every new service needs a baseline change before teams may use it."]
+        source: "assumption"
+    considerations:
+      - "Enabling the allow-list keeps the shipped capability list unless params change it; review the list with the platform team first."
+  CPB-SVC-03:
+    question: "Must a specific managed service be kept out of the landing zone (the shipped example: managed PostgreSQL)?"
+    options:
+      - state: disabled
+        params: {}
+        summary: "Not enforced (the shipped default); the policy is a demonstration."
+        pros: ["No effect on teams."]
+        cons: ["None for the baseline; the example only shows how a single service is denied."]
+        source: "assumption"
+      - state: enabled
+        params: { capabilities: [postgresql] }
+        summary: "Deny managed PostgreSQL."
+        pros: ["Shows how a deny decision appears per landing zone in the live result."]
+        cons: ["Fails every scope that runs managed PostgreSQL."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- encryption
+  CPB-ENC-01:
+    question: "Who must control the keys that encrypt stored data?"
+    options:
+      - params: { min_key_custody: provider-managed }
+        summary: "Provider-managed keys are enough."
+        pros: ["No key management effort for the teams."]
+        cons: ["The provider controls the keys; weaker against provider access."]
+        source: "BSI_C5_CRY-02 encryption at rest (frameworks/bsi-c5/controls.yaml:442); provider-managed as sufficient: assumption"
+      - params: { min_key_custody: customer-managed }
+        summary: "Customer-managed keys in the provider's key service (the shipped default)."
+        pros: ["The client controls key use and rotation."]
+        cons: ["Key management effort; not every service supports customer-managed keys in every region."]
+        source: "BSI_C5_CRY-01 key management (frameworks/bsi-c5/controls.yaml:421); BSI_CON1_A2 key management (frameworks/bsi-grundschutz-2023/controls.yaml:314); customer-managed rather than byok or hyok: assumption"
+      - params: { min_key_custody: byok }
+        summary: "Bring your own key."
+        pros: ["Key material originates outside the provider."]
+        cons: ["Higher effort and fewer services support it."]
+        source: "assumption"
+    considerations:
+      - "Key custody per service is a catalogue fact; the estate side depends on what the provider APIs expose."
+  CPB-ENC-02:
+    question: "Which minimum TLS version must public and internal endpoints enforce?"
+    options:
+      - params: { min_tls_version: "1.2" }
+        summary: "TLS 1.2 or higher (the shipped default)."
+        pros: ["Supported by almost every client and service."]
+        cons: ["Allows the older of the two current versions."]
+        source: "BSI_C5_PI-03 encrypted transmission (frameworks/bsi-c5/controls.yaml:1266); floor 1.2 following BSI TR-02102-2: assumption (TR not in the repository)"
+      - params: { min_tls_version: "1.3" }
+        summary: "TLS 1.3 only."
+        pros: ["Only the current protocol version."]
+        cons: ["Older clients and some managed endpoints cannot connect or cannot be configured that way."]
+        source: "assumption"
+    considerations:
+      - "The value is a string in YAML (\"1.2\" or \"1.3\")."
+  # ---------------------------------------------------------------- network_exposure
+  CPB-NET-01:
+    question: "Which entry points may be reachable from the internet?"
+    options:
+      - params: { allow_capabilities: [load_balancer, waf, api_gateway] }
+        summary: "Only load balancers, web application firewalls and API gateways (the shipped default)."
+        pros: ["Every public path passes a controlled entry point."]
+        cons: ["Directly exposed services fail even when they are protected otherwise."]
+        source: "BSI_C5_COS-01 network segmentation (frameworks/bsi-c5/controls.yaml:506); BSI_NET11_A2 segmentation (frameworks/bsi-grundschutz-2023/controls.yaml:1153)"
+      - params: { allow_capabilities: [waf] }
+        summary: "Only web application firewalls."
+        pros: ["A single, inspected entry point."]
+        cons: ["Load balancers and gateways behind no firewall fail; more redesign for existing workloads."]
+        source: "assumption"
+    considerations: []
+  CPB-NET-02:
+    question: "Which administration ports must never be open to the whole internet?"
+    options:
+      - params: { ports: [22, 3389] }
+        summary: "SSH and RDP (the shipped default)."
+        pros: ["Covers the two most common remote administration paths."]
+        cons: ["Other administration ports are not checked."]
+        source: "BSI_C5_COS-02 firewall rules (frameworks/bsi-c5/controls.yaml:527); BSI_C5_COS-03 remote access (frameworks/bsi-c5/controls.yaml:546); port list: assumption"
+      - params: { ports: [22, 3389, 5985, 5986] }
+        summary: "SSH, RDP and Windows remote management."
+        pros: ["Also covers remote management of Windows servers."]
+        cons: ["More findings to review where these ports are open on purpose behind other controls."]
+        source: "assumption"
+    considerations:
+      - "forbidden_sources defines what counts as the whole internet (0.0.0.0/0 and ::/0 by default)."
+  CPB-NET-03:
+    question: "Which database ports must never be open to the whole internet?"
+    options:
+      - params: { ports: [1433, 3306, 5432, 6379, 27017] }
+        summary: "SQL Server, MySQL, PostgreSQL, Redis and MongoDB (the shipped default)."
+        pros: ["Covers the common database engines."]
+        cons: ["Engines on other ports are not checked."]
+        source: "Sources of CPB-NET-02 plus BSI_APP43_A1 database access control (frameworks/bsi-grundschutz-2023/controls.yaml:952); port list: assumption"
+      - params: { ports: [1433, 1521, 3306, 5432, 6379, 9200, 27017] }
+        summary: "Add Oracle and search engine ports."
+        pros: ["Wider coverage for estates with these engines."]
+        cons: ["More findings to review."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- identity
+  CPB-IAM-01:
+    question: "Must every privileged account use multi-factor authentication?"
+    options:
+      - state: enabled
+        params: {}
+        summary: "Yes (the shipped default)."
+        pros: ["Protects the accounts with the largest impact."]
+        cons: ["Break-glass and automation accounts need a documented exception."]
+        source: "BSI_C5_IDM-02 MFA for privileged access (frameworks/bsi-c5/controls.yaml:326)"
+      - state: disabled
+        params: {}
+        summary: "Not evaluated in the landing zone (MFA is enforced in a central identity provider)."
+        pros: ["Avoids findings where the provider cannot see the central MFA."]
+        cons: ["The live result no longer shows MFA gaps."]
+        source: "assumption"
+    considerations:
+      - "Where MFA is enforced by a federated identity provider, the CSP may not observe it; the result is then unverified, never a pass."
+  CPB-IAM-02:
+    question: "How old may a long-lived access key be before it must be rotated?"
+    options:
+      - params: { max_age_days: 90 }
+        summary: "90 days (the shipped default)."
+        pros: ["A common rotation period."]
+        cons: ["Requires automated rotation for service accounts."]
+        source: "BSI_C5_IDM-05 service accounts (frameworks/bsi-c5/controls.yaml:381); BSI_C5_CRY-03 rotation (frameworks/bsi-c5/controls.yaml:463); 90 days: assumption"
+      - params: { max_age_days: 180 }
+        summary: "180 days."
+        pros: ["Less rotation effort."]
+        cons: ["A leaked key stays valid longer."]
+        source: "assumption"
+      - params: { max_age_days: 30 }
+        summary: "30 days."
+        pros: ["Short exposure of a leaked key."]
+        cons: ["Only practical with fully automated rotation."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- logging
+  CPB-LOG-01:
+    question: "Must the provider audit trail be on in every region, or only in the regions in use?"
+    options:
+      - params: { all_regions: true }
+        summary: "Every region (the shipped default)."
+        pros: ["Activity in an unexpected region is recorded too."]
+        cons: ["Some providers charge per region or per trail."]
+        source: "BSI_C5_OPS-06 logging and monitoring (frameworks/bsi-c5/controls.yaml:685); BSI_C5_SIM-01 event monitoring (frameworks/bsi-c5/controls.yaml:944); BSI_DER1_A2 central logging (frameworks/bsi-grundschutz-2023/controls.yaml:740)"
+      - params: { all_regions: false }
+        summary: "Only the regions in use."
+        pros: ["Lower cost and fewer trails to manage."]
+        cons: ["Activity in other regions may go unrecorded."]
+        source: "assumption"
+    considerations: []
+  CPB-LOG-02:
+    question: "For how many days must audit logs be kept?"
+    options:
+      - params: { min_days: 180 }
+        summary: "180 days (the shipped default)."
+        pros: ["Covers most incident investigations."]
+        cons: ["May be shorter than an archive or contract rule."]
+        source: "Sources of CPB-LOG-01 for the need; 180 days: assumption (D-05)"
+      - params: { min_days: 365 }
+        summary: "One year."
+        pros: ["Covers a full audit cycle."]
+        cons: ["Higher storage cost."]
+        source: "assumption"
+      - params: { min_days: 90 }
+        summary: "90 days."
+        pros: ["Lower storage cost."]
+        cons: ["Late-detected incidents may lack logs."]
+        source: "assumption"
+    considerations:
+      - "Where the retention of the log store cannot be read, the result is unverified, never a pass."
+  # ---------------------------------------------------------------- tagging
+  CPB-TAG-01:
+    question: "Which tag keys must every resource carry?"
+    options:
+      - params: { keys: [owner, data-classification] }
+        summary: "Owner and data classification (the shipped default)."
+        pros: ["Supports the asset inventory and classification with two keys."]
+        cons: ["Cost allocation needs another key."]
+        source: "BSI_C5_OPS-04 asset inventory (frameworks/bsi-c5/controls.yaml:645); BSI_C5_DAT-01 classification (frameworks/bsi-c5/controls.yaml:1146); key names: assumption"
+      - params: { keys: [owner, data-classification, cost-centre] }
+        summary: "Add a cost centre."
+        pros: ["Also supports cost allocation."]
+        cons: ["More resources fail until every team tags them."]
+        source: "assumption"
+    considerations:
+      - "Use the tag key names of the organisation's existing tagging standard, if there is one."
+  # ---------------------------------------------------------------- availability
+  CPB-AVL-01:
+    question: "How many availability zones must an allowed region offer?"
+    options:
+      - params: { min: 2 }
+        summary: "Two (the shipped default)."
+        pros: ["Allows zone-redundant designs in most regions."]
+        cons: ["Single-zone regions are excluded."]
+        source: "BSI_C5_AVL-03 geographic redundancy (frameworks/bsi-c5/controls.yaml:744); the number 2: assumption"
+      - params: { min: 3 }
+        summary: "Three."
+        pros: ["Supports quorum-based designs."]
+        cons: ["Fewer regions qualify."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- resilience
+  CPB-BCK-01:
+    question: "Which stateful resources must have a backup policy?"
+    options:
+      - params: { applies_to: [block_storage, postgresql, mysql, nosql_database, file_storage] }
+        summary: "Block, file and database storage (the shipped default)."
+        pros: ["Covers the common stateful services."]
+        cons: ["Object storage relies on versioning or replication instead."]
+        source: "BSI_C5_AVL-04 backup (frameworks/bsi-c5/controls.yaml:763); BSI_CON3_A2 backup concept (frameworks/bsi-grundschutz-2023/controls.yaml:378)"
+      - params: { applies_to: [block_storage, postgresql, mysql, nosql_database, file_storage, object_storage] }
+        summary: "Also object storage."
+        pros: ["No stateful service without a backup rule."]
+        cons: ["More findings where object storage is protected by versioning only."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- cost
+  CPB-COST-01:
+    question: "Must every landing zone have a budget or cost alert?"
+    options:
+      - params: { required: true }
+        summary: "Yes (the shipped default)."
+        pros: ["Unexpected spend is noticed early."]
+        cons: ["Someone must own and answer the alerts."]
+        source: "assumption"
+      - state: disabled
+        params: {}
+        summary: "Not evaluated (cost control happens outside the landing zone)."
+        pros: ["No findings where a central FinOps tool handles budgets."]
+        cons: ["The live result no longer shows missing budgets."]
+        source: "assumption"
+    considerations: []
+  # ---------------------------------------------------------------- portability
+  CPB-PRT-01:
+    question: "Must a data export and exit path be documented for the landing zone?"
+    options:
+      - state: enabled
+        params: {}
+        summary: "Yes (the shipped default); a manual evidence item."
+        pros: ["Supports an exit strategy as part of the sourcing decision."]
+        cons: ["Needs a maintained document; never decided from live data."]
+        source: "BSI_C5_PSS-01 data export (frameworks/bsi-c5/controls.yaml:1065); BSI_C5_BCP-02 exit strategy (frameworks/bsi-c5/controls.yaml:1124)"
+      - state: disabled
+        params: {}
+        summary: "Not tracked in the baseline."
+        pros: ["No manual evidence item."]
+        cons: ["The exit path is not visible in the assessment."]
+        source: "assumption"
+    considerations:
+      - "Always not observable from live data; the live result stays unverified."
+kinds:
+  region_residency:
+    question: "Which countries, operator jurisdictions, exposures or attestations does this residency policy require?"
+    considerations: ["The live result is the union of every selected framework (D-11)."]
+  service_deny:
+    question: "Which service capabilities must not be used?"
+    considerations: ["Use capability tags of the LZ catalogue vocabulary."]
+  service_allow_list:
+    question: "Which service capabilities may be used, and nothing else?"
+    considerations: ["Use capability tags of the LZ catalogue vocabulary."]
+  encryption_at_rest:
+    question: "Who must control the keys for stored data, and for which capabilities?"
+    considerations: []
+  encryption_in_transit:
+    question: "Which minimum TLS version applies, and to which capabilities?"
+    considerations: []
+  no_public_exposure:
+    question: "Which capabilities may be reachable from the internet?"
+    considerations: []
+  no_open_admin_ingress:
+    question: "Which ports must never be open to which sources?"
+    considerations: []
+  privileged_mfa:
+    question: "Must privileged accounts in scope use multi-factor authentication?"
+    considerations: []
+  credential_age:
+    question: "How old may a long-lived credential be?"
+    considerations: []
+  audit_trail:
+    question: "Where must the audit trail be on?"
+    considerations: []
+  log_retention:
+    question: "For how many days must the logs be kept?"
+    considerations: []
+  required_tags:
+    question: "Which tag keys are required?"
+    considerations: []
+  min_availability_zones:
+    question: "How many availability zones are required?"
+    considerations: []
+  backup_configured:
+    question: "Which capabilities need a backup policy?"
+    considerations: []
+  budget_alerts:
+    question: "Is a budget or cost alert required?"
+    considerations: []
+  documented_exit:
+    question: "Must an exit path be documented?"
+    considerations: ["Never observable from live data."]

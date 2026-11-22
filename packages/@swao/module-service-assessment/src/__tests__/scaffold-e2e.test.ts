@@ -124,13 +124,15 @@ describe('swao service init: default template workbook (20 rows)', () => {
     doc['generated_fields'] = (doc['generated_fields'] as string[]).filter((k) => k !== 'infra_category');
     doc['analyst_notes'] = 'kept';
     const { dump } = await import('js-yaml');
-    writeFileSync(p, dump(doc));
+    // #4283: an analyst comment survives the refresh (minimal patch, no whole-file dump).
+    writeFileSync(p, `# analyst comment, kept by --refresh\n${dump(doc)}`);
 
     const again = await runServiceInit({ workspacePath: ws, intakePath: join(ws, 'intake.xlsx') });
     expect(again.ok && again.write.skippedExisting).toHaveLength(16);
     const refreshed = await runServiceInit({ workspacePath: ws, intakePath: join(ws, 'intake.xlsx'), refresh: true });
     expect(refreshed.ok && refreshed.write.refreshed).toHaveLength(16);
     expect(appYml(ws, 'hosapp098')).toMatchObject({ infra_category: 'INFRA_WORKPLACE_PRINT', analyst_notes: 'kept', app_name: 'Room Booking' });
+    expect(readFileSync(p, 'utf-8')).toContain('# analyst comment, kept by --refresh');
   });
 });
 

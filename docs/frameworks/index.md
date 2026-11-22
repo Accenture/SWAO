@@ -24,9 +24,9 @@ The framework sources are public. Browse and copy them from GitHub:
 - [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks): the community catalogue folder
 - [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks): the bundled set, including COBIT 5, DORA, ISO/IEC 27001, SOC 2, and all demo variants
 
-SWAO assesses against the frameworks that sit in the workspace under `wsp/inputs/catalogs/community/<folder>/`; there is no separate installation step. Inside a workspace, `swao framework install <ID>` copies a bundled framework into that folder, and `swao framework list` shows the bundled IDs (read from each folder's `framework-meta.yaml`). To adapt a framework for one engagement, edit that copy; the workspace copy takes precedence over the bundled one. To add your own framework, create a new folder with the same two files.
+SWAO assesses against the frameworks that sit in the workspace under `wsp/inputs/catalogs/community/<folder>/`; there is no separate installation step. New workspaces contain the demo frameworks; to add another, copy its folder from the [GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) into that folder. `swao framework list` lists the frameworks in the workspace (read from each folder's `framework-meta.yaml`). To adapt a framework for one engagement, edit that copy; the workspace copy takes precedence over the bundled one. To add your own framework, create a new folder with the same two files.
 
-COBIT 5 ships again, with its control text rewritten in original SWAO wording; `swao framework install COBIT_5` copies it into the workspace like any other bundled framework. See [COBIT 5](/frameworks/cobit-5).
+COBIT 5 ships again, with its control text rewritten in original SWAO wording; copy it into the workspace from the GitHub repository like any other community framework. See [COBIT 5](/frameworks/cobit-5).
 
 ## Framework catalogue
 
@@ -36,8 +36,9 @@ COBIT 5 ships again, with its control text rewritten in original SWAO wording; `
 | [BSI C5:2020](/frameworks/bsi-c5) | `BSI_C5` | BSI | 62 | none |
 | [BSI IT-Grundschutz Kompendium 2023](/frameworks/bsi-grundschutz-2023) | `BSI_GRUNDSCHUTZ_2023` | BSI | 105 | `BSI_GRUNDSCHUTZ_2023_DEMO` (11) |
 | [BSI Grundschutz++](/frameworks/bsi-grundschutz-plus-plus) | `BSI_GRUNDSCHUTZ_PP` | BSI | 1000 | none |
+| [Client LZ Policy Baseline (German public agency default)](/frameworks/client-lz-policy-baseline) | `CLIENT_LZ_POLICY_BASELINE` | SWAO Development Team | 20 | none |
 | [COBIT 5](/frameworks/cobit-5) | `COBIT_5` | ISACA | 37 | none |
-| [Digital Operational Resilience Act](/frameworks/dora) | `DORA` | European Union (Regulation 2022/2554) | 31 | `DORA_DEMO` (12) |
+| [Digital Operational Resilience Act](/frameworks/dora) | `DORA` | European Union (Regulation 2022/2554) | 55 | `DORA_DEMO` (12) |
 | [EC Cloud Sovereignty Framework v1.2.1](/frameworks/ec-csf) | `EC_CSF` | European Commission (DIGIT) | 34 | none |
 | [EU Artificial Intelligence Act](/frameworks/eu-ai-act) | `EU_AI_ACT` | European Union (Regulation 2024/1689) | 37 | none |
 | [EU Cyber Resilience Act](/frameworks/eu-cra) | `EU_CRA` | European Union (Regulation 2024/2847) | 35 | none |
@@ -55,10 +56,10 @@ COBIT 5 ships again, with its control text rewritten in original SWAO wording; `
 | [PCI DSS v4.0](/frameworks/pci-dss) | `PCI_DSS` | PCI Security Standards Council | 5 | none |
 | [SAMA Cyber Security Framework](/frameworks/sama-csf-v1) | `SAMA_CSF` | Saudi Arabian Monetary Authority (SAMA) | 30 | none |
 | [SecNumCloud v3.2](/frameworks/secnumcloud) | `SECNUMCLOUD` | ANSSI | 59 | none |
-| [SOC 2 Trust Services Criteria](/frameworks/soc-2) | `SOC_2` | AICPA | 64 | `SOC_2_DEMO` (12) |
+| [SOC 2 Trust Services Criteria](/frameworks/soc-2) | `SOC_2` | AICPA | 61 | `SOC_2_DEMO` (12) |
 | [SWAO Application Portfolio Management](/frameworks/swao-apm) | `SWAO_APM` | SWAO Development Team | 72 | none |
 
-Control counts are taken from each framework's `controls.yaml`. `PCI_DSS` is a starter catalogue with 5 controls. `SWAO_APM` is used by the [Service Portfolio Assessment](/service-assessment/) and `LLM_SELECTION` by the [LLM Assessment](/assessment/llm).
+Control counts are taken from each framework's `controls.yaml`. `PCI_DSS` is a starter catalogue with 5 controls. `SWAO_APM` is used by the [Service Portfolio Assessment](/service-assessment/) and `LLM_SELECTION` by the [LLM Assessment](/assessment/llm). `CLIENT_LZ_POLICY_BASELINE` is a policy baseline the client copies and edits (its policies are in `policy-baseline.yaml`); its controls are decided by rule from landing zone evidence, never by an LLM (see the [Landing Zone Live Assessment](/assessment/landing-zone-live#client-lz-policy-baseline)).
 
 ## Demo variants
 

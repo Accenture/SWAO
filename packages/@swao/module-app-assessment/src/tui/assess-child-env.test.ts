@@ -14,7 +14,7 @@
 // ================================================================
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildChildEnv } from './AssessScreen.js';
+import { buildChildEnv } from './assess-helpers.js';
 
 // buildChildEnv copies process.env; clear LLM vars so a developer machine's
 // environment cannot leak into the assertions.

@@ -1,0 +1,44 @@
+# Service-to-control mapping (Design 120 §8.2, #3578).
+# Framework: EU Artificial Intelligence Act. Keyed by SWAO capability tags (LZ catalogue `fulfills`).
+# Drafted by keyword classification of control titles (scripts/draft-service-controls.py)
+# plus a model review recorded in scripts/service-controls-overrides.yaml; not human-reviewed
+# (confidence: derived, Q-23). A human reviewer sets confidence: curated.
+# Capability tags without a row stay grey.
+schema_version: "0.1"
+framework: EU_AI_ACT
+mappings:
+  - capability: managed_llm
+    controls: [AIACT_GP_01, AIACT_GP_03, AIACT_GP_05, AIACT_GP_06]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_inference
+    controls: [AIACT_HR_09, AIACT_HR_06, AIACT_HR_12, AIACT_HR_11]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_training
+    controls: [AIACT_HR_02, AIACT_HR_03, AIACT_HR_04, AIACT_GP_02]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_nlp
+    controls: [AIACT_TR_01, AIACT_TR_04, AIACT_HR_06]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_speech
+    controls: [AIACT_TR_02, AIACT_TR_01, AIACT_HR_06]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_translation
+    controls: [AIACT_TR_04, AIACT_HR_11]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"
+  - capability: ml_vision
+    controls: [AIACT_TR_02, AIACT_TR_03, AIACT_HR_06, AIACT_HR_07]
+    relevance: configure
+    confidence: derived
+    source: "keyword draft (scripts/draft-service-controls.py) plus model review against controls.yaml, 2026-11-02, not human-reviewed"

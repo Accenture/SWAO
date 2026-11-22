@@ -33,11 +33,16 @@ import { render } from 'ink';
 import { appendFileSync, mkdirSync } from 'node:fs';
 import React from 'react';
 import { App } from './App.js';
+import type { SetupRunMode } from '../setup/types.js';
 import type { MenuTarget } from './screens/MainMenu.js';
-import { SWAO_VERSION } from '../branding.js';
+import { SWAO_BUILD_SUFFIX, SWAO_BUILD_TAG, SWAO_VERSION } from '../branding.js';
+import { setHeaderBuildTag } from '@swao/tui-kit';
 import { LicenseGuard } from '../license/license-guard.js';
 import { findWorkspace } from '@swao/core';
 import { killAllChildren, killMcpServer } from './child-process-registry.js';
+import { startTuiMcpServer } from './mcp-server-slot.js';
+import { TuiCrashOverlay, handleProcessCrash, reportTuiCrash } from './crash-report.js';
+import { createCtrlCGuard, installCtrlCGuard } from './ctrl-c-guard.js';
 
 type Screen = 'type-select' | 'main' | MenuTarget;
 
@@ -67,15 +72,17 @@ class TuiErrorBoundary extends React.Component<
 const ENTER_ALT_SCREEN = '\x1B[?1049h\x1B[H';
 const EXIT_ALT_SCREEN  = '\x1B[?1049l';
 
-export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise<void> {
+export async function runTuiInAltScreen(initialScreen: Screen = 'main', opts?: { setupMode?: SetupRunMode }): Promise<void> {
   // #0381: set the terminal/process title so the OS tab + window-list show
   // the full product name instead of "swao-win.exe" (default for pkg
   // binaries on Windows; "node" on Linux/macOS dev runs).
-  try { process.title = 'SWAO -- Sovereign Workload Assessment & Onboarding'; } catch { /* read-only on some platforms; non-fatal */ }
+  // #4430: every screen header names the build (commit, date or tag).
+  setHeaderBuildTag(SWAO_BUILD_TAG);
+  try { process.title = 'SWAO, Sovereign Workload Assessment & Onboarding'; } catch { /* read-only on some platforms; non-fatal */ }
   // OSC 0 (set window title) covers terminals that don't honour process.title
   // -- Windows Terminal, iTerm2, GNOME Terminal all respect this even when
   // process.title isn't propagated.
-  process.stdout.write('\x1b]0;SWAO -- Sovereign Workload Assessment & Onboarding\x07');
+  process.stdout.write('\x1b]0;SWAO, Sovereign Workload Assessment & Onboarding\x07');
 
   // #0830 (Option B): write a visible line to the main buffer before opening
   // the alt-screen. Gives the operator immediate feedback after JS starts
@@ -122,7 +129,7 @@ export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise
       '  Sovereign Workload Assessment and Onboarding\n' +
       `  ${platformStr} launcher\n` +
       '\n' +
-      `  v${SWAO_VERSION}  --  ${editionStr} Edition  --  Apache 2.0\n` +
+      `  v${SWAO_VERSION}${SWAO_BUILD_SUFFIX}, ${editionStr} Edition, Apache 2.0\n` +
       '\n' +
       '  Website       :  https://steady-echo-yp4z.here.now/\n' +
       '  Technical Docs:  https://accenture.github.io/SWAO/en/\n' +
@@ -147,12 +154,18 @@ export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise
   process.once('SIGINT',  () => { cleanup(); process.exit(130); });
   process.once('SIGTERM', () => { cleanup(); process.exit(143); });
 
+  // #4392 (Design 116 section 12.6): the HTTP MCP server for Claude Code and the
+  // Claude Desktop Code tab, pinned to the open workspace, in the background
+  // (the first frame does not wait). Enterprise registers the starter; in
+  // Community and Consultant this is a silent no-op. SWAO Chat starts its own
+  // when opened directly (`swao chat`), so the chat screen is left out here.
+  if (initialScreen !== 'chat') void startTuiMcpServer({ workspace: findWorkspace(process.cwd()) });
+
   // #0766: catch unhandled exceptions / rejections before Ink starts so any
   // async throw (inside an assessment child-process callback, a failed render,
   // or a promise that escapes the React tree) is captured rather than silently
   // crashing the terminal with the alt-screen buffer still active.
-  const crashLog = (err: unknown): void => {
-    restore();
+  const writeCrashRecord = (err: unknown): void => {
     const now = new Date();
     const entry = JSON.stringify({
       ts: now.toISOString(), level: 'fatal', scope: 'process', code: 'process.crash',
@@ -167,6 +180,9 @@ export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise
       const dateStr = now.toISOString().slice(0, 10);
       appendFileSync(`${logsDir}/crash-${dateStr}.ndjson`, entry, 'utf-8');
     } catch { /* best-effort -- never block exit */ }
+  };
+  const exitAfterCrash = (err: unknown): void => {
+    restore();
     try {
       process.stderr.write(
         `\n[SWAO] Fatal error: ${err instanceof Error ? err.message : String(err)}\n` +
@@ -175,20 +191,51 @@ export async function runTuiInAltScreen(initialScreen: Screen = 'main'): Promise
     } catch { /* terminal gone */ }
     process.exit(1);
   };
-  process.on('uncaughtException',   crashLog);
-  process.on('unhandledRejection',  crashLog);
+  const crashLog = (err: unknown): void => { writeCrashRecord(err); exitAfterCrash(err); };
+  // #4345: an uncaught exception or unhandled rejection (a key handler, a
+  // timer, a promise) writes tui.crash to the portfolio log with the screen
+  // and the step, then the root ErrorPanel replaces the app so the window
+  // does not vanish (Enter exits with code 1). The crash-*.ndjson record of
+  // #0766 is kept. Without a mounted overlay the process exits as before.
+  const processCrash = (origin: 'uncaughtException' | 'unhandledRejection') => (err: unknown): void => {
+    writeCrashRecord(err);
+    handleProcessCrash(err, origin, () => exitAfterCrash(err));
+  };
+  process.on('uncaughtException',   processCrash('uncaughtException'));
+  process.on('unhandledRejection',  processCrash('unhandledRejection'));
+  // #4379 (Design 126 section 7.11): Ctrl+C asks first. The guard takes every
+  // Ctrl+C byte out of Ink's input; the first shows "Press Ctrl+C again to quit
+  // SWAO", a second within 2 seconds marks the exit cause ctrl_c (#4345, so
+  // wizard.abort names it) and unmounts Ink, which resolves waitUntilExit and
+  // the finally block leaves the alternate screen as on any exit.
+  let unmountInk: (() => void) | null = null;
+  const ctrlCGuard = createCtrlCGuard({ onQuit: () => { setImmediate(() => { unmountInk?.(); }); } });
+  const uninstallCtrlC = installCtrlCGuard(process.stdin as unknown as { read: (size?: number) => unknown }, ctrlCGuard);
 
   try {
     // Wrap in TuiErrorBoundary so React render errors are captured and written
     // to crash.ndjson. Without the boundary, Ink's internal error handler resolves
     // waitUntilExit() silently and the process exits 0 with no crash record.
-    const { waitUntilExit } = render(
-      React.createElement(TuiErrorBoundary, { onCrash: crashLog },
-        React.createElement(App, { initialScreen }),
+    // #4345: screens and wizard steps have their own TuiCrashBoundary (ErrorPanel,
+    // Back); this one only sees an error of the root itself.
+    const exitWithCrash = (code: number): void => { restore(); process.exit(code); };
+    const { waitUntilExit, unmount } = render(
+      React.createElement(TuiErrorBoundary, { onCrash: (err: unknown) => { reportTuiCrash(err, 'uncaughtException'); crashLog(err); } },
+        React.createElement(TuiCrashOverlay, { exit: exitWithCrash },
+          // #4123: App renders inside the constant-height TerminalFrame (App.tsx).
+          React.createElement(App, { initialScreen, ...(opts?.setupMode ? { setupMode: opts.setupMode } : {}) }),
+        ),
       ),
+      // #4379: the Ctrl+C guard owns Ctrl+C; Ink never ends the app on it.
+      { exitOnCtrlC: false },
     );
+    unmountInk = unmount;
     await waitUntilExit();
   } finally {
+    uninstallCtrlC();
+    ctrlCGuard.dispose();
+    // #4392: the MCP server this TUI started stops with it (a live child would also keep the process alive).
+    killMcpServer();
     restore();
   }
 }

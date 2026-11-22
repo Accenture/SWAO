@@ -48,7 +48,7 @@ patterns:
       - HealthCheckResult
       - '@godaddy/terminus'
     weight: 1.0
-    sovereign_relevance: "Health endpoints are required by all sovereign Kubernetes platforms (OTC CCE, STACKIT SKE) for pod lifecycle management."
+    sovereign_relevance: "Health endpoints are required by all sovereign Kubernetes platforms (T Cloud Public CCE, STACKIT SKE) for pod lifecycle management."
 
   - id: PAT-04
     pattern: graceful_shutdown_handler

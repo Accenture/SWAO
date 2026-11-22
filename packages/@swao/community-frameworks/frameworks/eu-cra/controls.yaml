@@ -211,7 +211,8 @@ controls:
       Where technically feasible, logs shall be exportable by the user.
     severity_default: medium
     evidence_basis:
-      - signal_prefix: OBS
+      - signal_prefix: TF
+      - signal_prefix: CTX
     maps_to:
       - ISO_27001_A.8.15
     references:

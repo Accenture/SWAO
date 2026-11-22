@@ -86,7 +86,7 @@ const DISPLAY = {
   delos: { en: 'Delos Cloud', de: 'Delos Cloud' },
   gcp: { en: 'Google Cloud Platform', de: 'Google Cloud Platform' },
   oci: { en: 'Oracle Cloud Infrastructure', de: 'Oracle Cloud Infrastructure' },
-  otc: { en: 'Open Telekom Cloud / T Cloud Public', de: 'Open Telekom Cloud / T Cloud Public' },
+  otc: { en: 'T Cloud Public', de: 'T Cloud Public' },
   stackit: { en: 'STACKIT', de: 'STACKIT' },
 };
 

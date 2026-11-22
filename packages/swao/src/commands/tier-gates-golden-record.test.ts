@@ -114,13 +114,13 @@ describe('#3320 report --format html licence gate (FEATURE_GATES html-report = c
     return (p: Command) => registerReport(p, { runForApp: async () => ({ ok: true }) as never, renderHtml });
   }
 
-  it('community: [LICENSE] block, exit 1, renderer never called', async () => {
+  it('community: [LICENSE] block, exit 2 (ADR-0055, #3844), renderer never called', async () => {
     const renderHtml = vi.fn(async () => 'x.html');
     const ws = mkdtempSync(join(tmpdir(), 'swao-report-html-'));
     try {
       const r = await run(registerWithSpy(renderHtml), ['report', '--app', 'demo', '--format', 'html', '--workspace', ws]);
       expect(r.threw).toBeUndefined();
-      expect(r.exitCode).toBe(1);
+      expect(r.exitCode).toBe(2);
       expect(r.err).toContain('[LICENSE] swao report --format html (HTML Report) requires a Consultant licence.');
       expect(renderHtml).not.toHaveBeenCalled();
     } finally {
@@ -207,11 +207,11 @@ describe('#3321 / #3323 Community tier stubs (community-stubs.ts)', () => {
 // ---------------------------------------------------------------------------
 
 describe('#3324 swao unipipe licence gate (FEATURE_GATES unipipe = enterprise)', () => {
-  it.each(['community', 'consultant'] as const)('%s: [LICENSE] block, exit 1', async (tier) => {
+  it.each(['community', 'consultant'] as const)('%s: [LICENSE] block, exit 2 (ADR-0055, #3844)', async (tier) => {
     useTier(tier);
     const r = await run(registerUnipipe, ['unipipe']);
     expect(r.threw).toBeUndefined();
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(2);
     expect(r.err).toContain('[LICENSE] swao unipipe requires an Enterprise licence.');
   });
 
@@ -245,8 +245,11 @@ describe('#3324 scaffoldPowerBiTemplates follows FEATURE_GATES bi-templates (con
         expect(dirExists).toBe(false);
         expect(result.copiedFiles).toEqual([]);
       } else {
+        // #4226 (D-2): the bundled templates are copied, never an empty folder.
         expect(dirExists).toBe(true);
-        expect(readdirSync(result.templatesDir).length + result.warnings.length).toBeGreaterThan(0);
+        expect(result.warnings).toEqual([]);
+        expect(result.copiedFiles).toEqual(['swao-report.pbit', 'swao-portfolio.pbit']);
+        expect(readdirSync(result.templatesDir).sort()).toEqual(['swao-portfolio.pbit', 'swao-report.pbit']);
       }
     } finally {
       rmSync(ws, { recursive: true, force: true });

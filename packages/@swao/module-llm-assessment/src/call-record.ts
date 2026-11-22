@@ -50,6 +50,12 @@ export const CallRecordSchema = z.object({
     model: z.string().min(1),
     connector_sha256: z.string().optional(),
   }),
+  /**
+   * #4476: the model the provider actually called (read from the wrapped
+   * provider), next to the leg's configured model. Differs from leg.model
+   * only when a call bypassed the leg's connector and model override.
+   */
+  model_called: z.string().min(1).optional(),
   pass_id: z.string().min(1),          // e.g. "04-ctx"
   call_site: z.string().min(1),        // registry site (092 s3.4)
   call_index: z.number().int().nonnegative(), // iteration within looping sites
@@ -74,7 +80,8 @@ export const CallRecordSchema = z.object({
   }),
   cost_usd: z.object({
     computed: z.number().nonnegative().nullable(), // null = no price row (092 s4)
-    source: z.enum(['billed', 'configured', 'local']),
+    // #4372: 'unpriced' = no price known for the call (computed null).
+    source: z.enum(['billed', 'configured', 'local', 'unpriced']),
   }),
   quality: z.object({
     parse_valid: z.boolean(),

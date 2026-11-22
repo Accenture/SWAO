@@ -24,9 +24,9 @@ Die Quellen der Rahmenwerke sind öffentlich. Sie können sie auf GitHub ansehen
 - [github.com/Accenture/SWAO/tree/main/community-frameworks](https://github.com/Accenture/SWAO/tree/main/community-frameworks): der Ordner mit dem Community-Katalog
 - [github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks](https://github.com/Accenture/SWAO/tree/main/packages/@swao/community-frameworks/frameworks): der mitgelieferte Satz, einschließlich COBIT 5, DORA, ISO/IEC 27001, SOC 2 und aller Demo-Varianten
 
-SWAO bewertet gegen die Rahmenwerke, die im Workspace unter `wsp/inputs/catalogs/community/<ordner>/` liegen; einen eigenen Installationsschritt gibt es nicht. Innerhalb eines Workspace kopiert `swao framework install <ID>` ein mitgeliefertes Rahmenwerk in diesen Ordner, und `swao framework list` zeigt die mitgelieferten IDs (gelesen aus der `framework-meta.yaml` jedes Ordners). Um ein Rahmenwerk für ein Engagement anzupassen, bearbeiten Sie diese Kopie; die Workspace-Kopie hat Vorrang vor der mitgelieferten. Für ein eigenes Rahmenwerk legen Sie einen neuen Ordner mit denselben zwei Dateien an.
+SWAO bewertet gegen die Rahmenwerke, die im Workspace unter `wsp/inputs/catalogs/community/<ordner>/` liegen; einen eigenen Installationsschritt gibt es nicht. Neue Workspaces enthalten die Demo-Rahmenwerke; für ein weiteres kopieren Sie seinen Ordner aus dem [GitHub-Repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks) in diesen Ordner. `swao framework list` listet die Rahmenwerke im Workspace (gelesen aus der `framework-meta.yaml` jedes Ordners). Um ein Rahmenwerk für ein Engagement anzupassen, bearbeiten Sie diese Kopie; die Workspace-Kopie hat Vorrang vor der mitgelieferten. Für ein eigenes Rahmenwerk legen Sie einen neuen Ordner mit denselben zwei Dateien an.
 
-COBIT 5 wird wieder ausgeliefert, mit Control-Texten in eigenen SWAO-Formulierungen; `swao framework install COBIT_5` kopiert es wie jedes andere mitgelieferte Rahmenwerk in den Workspace. Siehe [COBIT 5](/de/frameworks/cobit-5).
+COBIT 5 wird wieder ausgeliefert, mit Control-Texten in eigenen SWAO-Formulierungen; kopieren Sie es wie jedes andere Community-Rahmenwerk aus dem GitHub-Repository in den Workspace. Siehe [COBIT 5](/de/frameworks/cobit-5).
 
 ## Katalog der Rahmenwerke
 
@@ -36,8 +36,9 @@ COBIT 5 wird wieder ausgeliefert, mit Control-Texten in eigenen SWAO-Formulierun
 | [BSI C5:2020](/de/frameworks/bsi-c5) | `BSI_C5` | BSI | 62 | keine |
 | [BSI IT-Grundschutz-Kompendium 2023](/de/frameworks/bsi-grundschutz-2023) | `BSI_GRUNDSCHUTZ_2023` | BSI | 105 | `BSI_GRUNDSCHUTZ_2023_DEMO` (11) |
 | [BSI Grundschutz++](/de/frameworks/bsi-grundschutz-plus-plus) | `BSI_GRUNDSCHUTZ_PP` | BSI | 1000 | keine |
+| [Client LZ Policy Baseline (Vorgabe für eine deutsche Behörde)](/de/frameworks/client-lz-policy-baseline) | `CLIENT_LZ_POLICY_BASELINE` | SWAO Development Team | 20 | keine |
 | [COBIT 5](/de/frameworks/cobit-5) | `COBIT_5` | ISACA | 37 | keine |
-| [Verordnung über die digitale operationale Resilienz (DORA)](/de/frameworks/dora) | `DORA` | Europäische Union (Verordnung 2022/2554) | 31 | `DORA_DEMO` (12) |
+| [Verordnung über die digitale operationale Resilienz (DORA)](/de/frameworks/dora) | `DORA` | Europäische Union (Verordnung 2022/2554) | 55 | `DORA_DEMO` (12) |
 | [Cloud-Souveränitätsrahmen der Europäischen Kommission v1.2.1](/de/frameworks/ec-csf) | `EC_CSF` | Europäische Kommission (DIGIT) | 34 | keine |
 | [KI-Verordnung der EU](/de/frameworks/eu-ai-act) | `EU_AI_ACT` | Europäische Union (Verordnung 2024/1689) | 37 | keine |
 | [Cyberresilienzverordnung der EU](/de/frameworks/eu-cra) | `EU_CRA` | Europäische Union (Verordnung 2024/2847) | 35 | keine |
@@ -55,10 +56,10 @@ COBIT 5 wird wieder ausgeliefert, mit Control-Texten in eigenen SWAO-Formulierun
 | [PCI DSS v4.0](/de/frameworks/pci-dss) | `PCI_DSS` | PCI Security Standards Council | 5 | keine |
 | [SAMA Cyber Security Framework](/de/frameworks/sama-csf-v1) | `SAMA_CSF` | Saudi Arabian Monetary Authority (SAMA) | 30 | keine |
 | [SecNumCloud v3.2](/de/frameworks/secnumcloud) | `SECNUMCLOUD` | ANSSI | 59 | keine |
-| [SOC 2 Trust Services Criteria](/de/frameworks/soc-2) | `SOC_2` | AICPA | 64 | `SOC_2_DEMO` (12) |
+| [SOC 2 Trust Services Criteria](/de/frameworks/soc-2) | `SOC_2` | AICPA | 61 | `SOC_2_DEMO` (12) |
 | [SWAO Application Portfolio Management](/de/frameworks/swao-apm) | `SWAO_APM` | SWAO Development Team | 72 | keine |
 
-Die Anzahl der Kontrollen stammt aus der jeweiligen `controls.yaml`. `PCI_DSS` ist ein Einstiegskatalog mit 5 Kontrollen. `SWAO_APM` nutzt die [Service-Portfolio-Bewertung](/de/service-assessment/), `LLM_SELECTION` die [LLM-Bewertung](/de/assessment/llm).
+Die Anzahl der Kontrollen stammt aus der jeweiligen `controls.yaml`. `PCI_DSS` ist ein Einstiegskatalog mit 5 Kontrollen. `SWAO_APM` nutzt die [Service-Portfolio-Bewertung](/de/service-assessment/), `LLM_SELECTION` die [LLM-Bewertung](/de/assessment/llm). `CLIENT_LZ_POLICY_BASELINE` ist eine Richtlinien-Baseline, die der Kunde kopiert und bearbeitet (ihre Richtlinien stehen in `policy-baseline.yaml`); ihre Kontrollen werden nach Regeln aus dem Nachweis der Landing Zone entschieden, nie von einem LLM (siehe [Landing-Zone-Live-Bewertung](/de/assessment/landing-zone-live#client-lz-policy-baseline)).
 
 ## Demo-Varianten
 

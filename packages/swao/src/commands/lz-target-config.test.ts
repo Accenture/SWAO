@@ -19,7 +19,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { resolveRunLzTargets, readWorkspaceAssessment } from './lz-target-config.js';
+import { resolveRunLzTargets, readWorkspaceAssessment, attributeLzTargets } from './lz-target-config.js';
 
 const REGIONS: Record<string, Array<{ id: string; sovereignty: { residency_country: string }; services: unknown[] }>> = {
   azure: [
@@ -73,5 +73,21 @@ describe('resolveRunLzTargets (#3281)', () => {
     expect(readWorkspaceAssessment(ws)).toEqual({ landing_zone: { targets: ['aws:eu-central-1'] } });
     writeFileSync(join(ws, '.swao.yml'), 'assessment:\n  landing_zone:\n    targets: [nocolon]\n');
     expect(readWorkspaceAssessment(ws)).toBeUndefined();
+  });
+});
+
+// #4285: targets passed on the command line (the TUI passes its picks this way)
+// that equal the set-up targets keep the set-up origin and its geography resolution.
+describe('attributeLzTargets (#4285)', () => {
+  const configured = { targets: [{ provider: 'azure', region: 'germanywestcentral' }, { provider: 'otc', region: 'eu-de' }], source: 'workspace:assessment.landing_zone.targets' as const, resolved: [{ requested: 'azure:germany', resolved: 'azure:germanywestcentral', geography: 'germany' }] };
+  it('the accepted preselection is attributed to the set-up key, with the geography resolution', () => {
+    const run = { targets: [{ provider: 'otc', region: 'eu-de' }, { provider: 'azure', region: 'germanywestcentral' }], source: 'cli:--lz-cat-targets' as const, resolved: [] };
+    expect(attributeLzTargets(run, configured)).toEqual({ source: 'workspace:assessment.landing_zone.targets', resolved: configured.resolved });
+  });
+  it('a changed selection keeps the CLI source; a flag-free run keeps its own', () => {
+    const run = { targets: [{ provider: 'azure', region: 'northeurope' }], source: 'cli:--lz-cat-targets' as const, resolved: [] };
+    expect(attributeLzTargets(run, configured)).toEqual({ source: 'cli:--lz-cat-targets', resolved: [] });
+    expect(attributeLzTargets(configured, configured).source).toBe('workspace:assessment.landing_zone.targets');
+    expect(attributeLzTargets(run, { targets: [], source: 'none', resolved: [] }).source).toBe('cli:--lz-cat-targets');
   });
 });

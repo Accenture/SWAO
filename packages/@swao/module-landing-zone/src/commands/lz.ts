@@ -26,9 +26,12 @@ import {
   loadLzComingSoon,
   resolveProviderCatalogue,
 } from '../catalogue/loader.js';
+import { registerLzLive } from '../live/cli.js';
 
 /**
  * `swao lz` command group (Design 056, #0567). Community surface:
+ *   swao lz connect <lz-id> ...        register a live scope, store credentials, probe (#3571)
+ *   swao lz probe <lz-id>              read-only probe per scope (#3571)
  *   swao lz catalogue list             list provider catalogues (workspace-refreshed or bundled)
  *   swao lz catalogue show <provider>  show a provider's regions + services
  *   swao lz fit --app <id> --provider <p> --region <r>   fit the app's scan
@@ -210,4 +213,7 @@ export function registerLz(program: Command): void {
       );
       console.log('[lz fit] Run `swao assess --type landing-zone --app <id>` for the full fit report (scan + catalogue + framework sovereignty).');
     });
+
+  // #3571: live landing zones (Design 120 section 13.2).
+  registerLzLive(lz);
 }

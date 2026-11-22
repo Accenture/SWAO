@@ -25,6 +25,9 @@ import { useEffect, useState } from 'react';
 import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { Box, Text, useInput } from 'ink';
+import { tone } from '../theme.js';
+import { SelectInput, type SelectOption } from './SelectInput.js';
+import type { GuidanceEntry } from './guidance-entry.js';
 
 export interface SelectedRunContext {
   assessmentType: string;
@@ -117,9 +120,37 @@ export function loadEntries(wspDir: string): TypeEntry[] {
   return entries.sort((a, b) => a.assessmentType.localeCompare(b.assessmentType));
 }
 
+/**
+ * #4213 (Design 126 section 9, gate G-05h): the guidance entry of one app of an
+ * "assessed application" picker (Generate Report, Export BI, Stakeholder
+ * Challenge): the app, its assessment runs (type and the latest run) and what
+ * the screen does with it on Enter (`purpose`, one sentence);
+ * `cli` is the command of the screen, `<id>` or `<app>` stands for the app.
+ */
+export function assessedAppGuidance(appId: string, wspDir: string, purpose: string, cli?: string): GuidanceEntry {
+  const entries = loadEntries(wspDir);
+  let runs = entries.map((e) => `${displayName(e.assessmentType)}, latest run ${e.runTimestamp}`).join('; ');
+  if (!runs) {
+    // A workspace with only the untyped pointer apps/<id>/wsp/latest.txt.
+    const pointer = join(wspDir, 'latest.txt');
+    const raw = existsSync(pointer) ? readFileSync(pointer, 'utf-8').trim() : '';
+    runs = raw ? `latest run ${formatRunTs(raw.startsWith('runs/') ? raw.slice(5) : raw)}` : 'no run pointer found';
+  }
+  return {
+    title: appId,
+    what: purpose,
+    sections: [{ label: 'Runs', text: runs }],
+    ...(cli ? { cli: cli.replace(/<id>|<app>/g, appId) } : {}),
+  };
+}
+
+/** #4213: the options of an assessed application picker, one guidance entry per app. */
+export function assessedAppOptions(workspace: string, apps: readonly string[], purpose: string, cli?: string): SelectOption[] {
+  return apps.map((a) => ({ label: a, value: a, guidance: assessedAppGuidance(a, join(workspace, 'apps', a, 'wsp'), purpose, cli) }));
+}
+
 export function RunContextPicker({ wspDir, onSelect, onCancel }: RunContextPickerProps): JSX.Element {
   const entries = loadEntries(wspDir);
-  const [idx, setIdx] = useState(0);
   const [autoSelected, setAutoSelected] = useState(false);
 
   useEffect(() => {
@@ -129,22 +160,17 @@ export function RunContextPicker({ wspDir, onSelect, onCancel }: RunContextPicke
     }
   }, [autoSelected, entries, onSelect]);
 
+  // #4343 (Design 126 sections 4.2 and 7.9, B-2, B-3): the rows are a SelectInput (the
+  // central cursor and its key hint line); this picker reads only the cancel keys.
   useInput((input, key) => {
     if (entries.length <= 1) return;
-    if (key.escape) { onCancel?.(); return; }
-    if (key.upArrow)   setIdx(i => Math.max(0, i - 1));
-    if (key.downArrow) setIdx(i => Math.min(entries.length - 1, i + 1));
-    if (key.return) {
-      const e = entries[idx];
-      if (e) onSelect({ assessmentType: e.assessmentType, runTimestamp: e.runTimestamp });
-    }
-    if (input === '0') { onCancel?.(); }
+    if (key.escape || input === '0') onCancel?.();
   });
 
   if (entries.length === 0) {
     return (
       <Box>
-        <Text dimColor>No assessment runs found in {wspDir}.</Text>
+        <Text {...tone('muted')}>No assessment runs found in {wspDir}.</Text>
       </Box>
     );
   }
@@ -152,24 +178,26 @@ export function RunContextPicker({ wspDir, onSelect, onCancel }: RunContextPicke
   if (entries.length === 1) {
     return (
       <Box>
-        <Text dimColor>Using {displayName(entries[0]!.assessmentType)} run ({entries[0]!.runTimestamp}).</Text>
+        <Text {...tone('muted')}>Using {displayName(entries[0]!.assessmentType)} run ({entries[0]!.runTimestamp}).</Text>
       </Box>
     );
   }
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text bold color="cyanBright">Multiple assessment types found. Select the run to use:</Text>
+      <Text {...tone('brand')}>Multiple assessment types found. Select the run to use:</Text>
       <Box flexDirection="column" marginTop={1}>
-        {entries.map((e, i) => (
-          <Box key={e.assessmentType}>
-            <Text color={i === idx ? 'cyan' : undefined}>{i === idx ? '> ' : '  '}</Text>
-            <Text color={i === idx ? 'cyan' : undefined}>{e.label}</Text>
-          </Box>
-        ))}
-      </Box>
-      <Box marginTop={1}>
-        <Text dimColor>Up/Down to select  |  Enter to confirm  |  Esc to cancel</Text>
+        <SelectInput
+          label=""
+          options={entries.map((e) => ({ label: e.label, value: e.assessmentType }))}
+          visibleCount={Math.min(entries.length, 8)}
+          // The host screen (Report, Publish HTML) draws the key hint line.
+          showKeyHints={false}
+          onSelect={(v) => {
+            const e = entries.find((x) => x.assessmentType === v);
+            if (e) onSelect({ assessmentType: e.assessmentType, runTimestamp: e.runTimestamp });
+          }}
+        />
       </Box>
     </Box>
   );

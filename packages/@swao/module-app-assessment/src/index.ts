@@ -24,7 +24,6 @@ import type {
   WspResult,
 } from '@swao/core';
 import { AssessmentTypeScreen } from './tui/AssessmentTypeScreen.js';
-import { AssessScreen } from './tui/AssessScreen.js';
 import { AppAssessmentScreen } from './tui/assess/AppAssessmentScreen.js';
 import { LzAssessmentScreen } from './tui/assess/LzAssessmentScreen.js';
 import { assessOrchestrator } from './orchestrator.js';
@@ -96,6 +95,7 @@ export type { AcceptedRun } from './commands/accept.js';
 export { registerMigrateWorkspace } from './commands/migrate-workspace.js';
 export { registerDiff } from './commands/diff.js';
 export { registerNormalize, runNormalize } from './commands/normalize.js';
+export { lastPassName, completedPassCount, passSubProgress, isPassResultLine } from './commands/pass-progress-line.js';
 export type { NormalizeOptions, NormalizeResult, NormalizeReportEntry } from './commands/normalize.js';
 export {
   derivePlanForRun,
@@ -107,8 +107,8 @@ export {
 } from './commands/derive-plan.js';
 export type { DerivePlanResult } from './commands/derive-plan.js';
 
-export { runIngestPrePass, classifyIngestFile } from './passes/pass-00-ingest.js';
-export type { IngestManifest, IngestedFile, IngestCategory, IngestPrePassOptions } from './passes/pass-00-ingest.js';
+export { runIngestPrePass, classifyIngestFile, listIngestedDocuments } from './passes/pass-00-ingest.js';
+export type { IngestManifest, IngestedFile, IngestCategory, IngestPrePassOptions, IngestedDocument } from './passes/pass-00-ingest.js';
 export {
   AssessOrchestrator,
   assessOrchestrator,
@@ -165,6 +165,9 @@ const lzrContributionRun = async (): Promise<PassResult> => {
 // The application-assessment passes, registered as PassContribution[].
 // id matches the assess.ts PASS_MAP key; signal_prefix / name match each
 // pass's emitted PassHeader.
+// #3766: baseline LZ checks for the Landing Zone Live Assessment (Design 120 section 7.3)
+export { loadLzrChecksCatalogue, getChecksForProvider } from './catalogue/lzr-checks-catalogue.js';
+export type { LzrCheck } from './catalogue/lzr-checks-catalogue.js';
 export const passContributions: PassContribution[] = [
   { id: 'inv', name: 'inventory', signal_prefix: 'INV', run: runInvPass },
   { id: 'state', name: 'state_analysis', signal_prefix: 'STATE', run: runStatePass },
@@ -236,16 +239,24 @@ export const commandContributions: CommandContribution[] = [
 // direct import today (App.tsx); the contribution is the declarative record.
 export { AssessmentTypeScreen } from './tui/AssessmentTypeScreen.js';
 export type { AssessmentType } from './tui/AssessmentTypeScreen.js';
-export { AssessScreen } from './tui/AssessScreen.js';
-export type { AssessScaffold, AppYamlOptions, LzCatalogueHint, LzCatalogueEntry, LzCatalogueRegion, LensDef } from './tui/AssessScreen.js';
-// Design 098 -- extracted typed screens (#2369, #2370). AssessScreen stays
-// exported for test-import compatibility; App.tsx routes to these directly.
+// #4283 (d): the app rename writer, exported so the host's template test can
+// start it from the `swao init` app template.
+export { renameAppYmlText } from './tui/assess/app-rename-yml.js';
+export type { RenameAppYmlResult } from './tui/assess/app-rename-yml.js';
+// #4344: the legacy AssessScreen.tsx is retired; its host-injected types and
+// shared helpers live in tui/assess-helpers.ts. App.tsx routes the extracted
+// typed screens of Design 098 (#2369, #2370) directly.
+export type { AssessScaffold, AppYamlOptions, LzCatalogueHint, LzCatalogueEntry, LzCatalogueRegion, LensDef } from './tui/assess-helpers.js';
 export { AppAssessmentScreen } from './tui/assess/AppAssessmentScreen.js';
 export { LzAssessmentScreen } from './tui/assess/LzAssessmentScreen.js';
+// #3588: Landing Zone Live Assessment screen (Design 120 section 14.3)
+export { LzLiveAssessmentScreen } from './tui/assess/LzLiveAssessmentScreen.js';
+export type { LiveCliRunner } from './tui/assess/LzLiveAssessmentScreen.js';
+// #3885: done-menu table and argv, for the CLI/TUI parity test of the lz subcommands.
+export { LIVE_DONE_ACTIONS, doneActionArgs } from './tui/assess/lz-live-flow.js';
 
 export const tuiScreens: TuiScreenContribution[] = [
   { name: 'AssessmentTypeScreen', tier: 'community', component: AssessmentTypeScreen },
-  { name: 'AssessScreen', tier: 'community', component: AssessScreen },
   { name: 'AppAssessmentScreen', tier: 'community', component: AppAssessmentScreen },
   { name: 'LzAssessmentScreen', tier: 'community', component: LzAssessmentScreen },
 ];

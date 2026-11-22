@@ -753,3 +753,34 @@ describe('#3431: deterministic scores in wsp.yaml overall', () => {
     }
   });
 });
+
+describe('buildEvidenceCatalogue normalises refs (#4463, #4465)', () => {
+  const abs = 'C:/swao/ws/apps/sh/wsp/inputs/source/apps/health/sh';
+  const { catalogue, index } = buildEvidenceCatalogue(
+    [
+      { id: 'MAL-03', severity: 'high', evidence: [`${abs}/api/tests/platform_test.rs:113 (generic-api-key)`, `curl-auth-header: ${abs}/docs/m.md:12`] },
+      { id: 'CTX-06', severity: 'low', evidence: ['wsp/inputs/ directory listing shows only terraform/lz-*-snapshot.json and README.md', 'portability_score=0.84', 'api/Cargo.toml:16'] },
+    ],
+    {},
+    '2026-11-16',
+    { sourceSubdir: 'apps/health/sh' },
+  );
+
+  it('keys absolute secret-scan locations relative to the scanned source, no operator path in ids or paths', () => {
+    const dump = JSON.stringify({ catalogue, index: Object.values(index) });
+    expect(dump).not.toMatch(/[A-Za-z]:[/]/);
+    expect(dump).not.toContain('SWAO-WS');
+    expect(index['api/tests/platform_test.rs:113 (generic-api-key)']).toBe('EVD-API-TESTS-PLATFORM_TEST-RS-113');
+    expect(index[`${abs}/api/tests/platform_test.rs:113 (generic-api-key)`]).toBe('EVD-API-TESTS-PLATFORM_TEST-RS-113');
+    expect(index['docs/m.md:12 (curl-auth-header)']).toBe('EVD-DOCS-M-MD-12');
+  });
+
+  it('source_path names the file below the source subdir', () => {
+    expect(catalogue['EVD-API-CARGO-TOML-16']?.source_path).toBe('wsp/inputs/source/apps/health/sh/api/Cargo.toml');
+  });
+
+  it('skips evidence notes like absence statements', () => {
+    expect(Object.keys(index).some(k => k.startsWith('wsp/inputs/ directory listing'))).toBe(false);
+    expect(index['portability_score=0.84']).toBeUndefined();
+  });
+});

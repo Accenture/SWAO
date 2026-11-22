@@ -37,7 +37,8 @@ export interface VcsAuthProbeResult {
     app_id: string;
     vcs_url: string | null;
     host: string | null;
-    outcome: 'ok' | 'auth-failed' | 'not-found' | 'network-unreachable' | 'no-token' | 'no-vcs-config' | 'skip-non-https' | 'skip-fixture-host' | 'skip-deadline';
+    /** #4222: `public` = no token stored and an anonymous ls-remote succeeded; `no-token` = no token stored and anonymous access failed. */
+    outcome: 'ok' | 'public' | 'auth-failed' | 'not-found' | 'network-unreachable' | 'no-token' | 'no-vcs-config' | 'skip-non-https' | 'skip-fixture-host' | 'skip-deadline';
     hint: string;
   }>;
   message: string;

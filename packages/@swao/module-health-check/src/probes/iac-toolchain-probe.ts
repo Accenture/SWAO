@@ -21,8 +21,12 @@
 // the CLI installed.
 
 import { spawnSync } from 'child_process';
+import { readdirSync } from 'fs';
+import { basename, join } from 'path';
+import { meterStep } from '../probe-meter.js';
 
-export type IaCToolchainStatus = 'ok' | 'warn';
+/** #4224: `info` = no tool found and no IaC source in the workspace (nothing to validate). */
+export type IaCToolchainStatus = 'ok' | 'warn' | 'info';
 
 export interface IaCToolEntry {
   name: 'terraform' | 'opentofu' | 'pulumi' | 'checkov' | 'kics';
@@ -102,22 +106,80 @@ function detectTool(cmd: string, versionArgs: string[]): { available: boolean; v
   }
 }
 
-export function buildIaCToolchainProbe(): IaCToolchainProbeResult {
+// #4224: file names that make a workspace an IaC workspace (Pass 06 inputs).
+const IAC_SOURCE_RE = /\.(tf|tfvars|tfstate)$|\.tf\.json$|^Pulumi\.ya?ml$/i;
+const IAC_SCAN_SKIP = new Set(['node_modules', '.git', 'logs', 'dist', 'runs']);
+const IAC_SCAN_MAX_DEPTH = 8;
+const IAC_SCAN_MAX_ENTRIES = 20_000;
+
+/**
+ * #4224: true when the workspace holds at least one IaC source file
+ * (.tf, .tfvars, .tfstate, .tf.json, Pulumi.yaml). A bounded walk: depth
+ * IAC_SCAN_MAX_DEPTH, at most IAC_SCAN_MAX_ENTRIES entries, skipping
+ * node_modules, .git, logs, dist and run folders.
+ */
+export function workspaceHasIacSources(workspacePath: string, stats?: { dirs: number; entries: number }): boolean {
+  let seen = 0;
+  // #4461 (owner dev10: IaC source scan 11.4 s of a 15.3 s probe): a `wsp`
+  // folder holds what SWAO writes; only its `inputs` (uploaded and cloned
+  // sources, terraform) can hold IaC sources, and `inputs/research` holds the
+  // research stubs of a service app. Pruning them takes the 234 wsp trees of a
+  // service portfolio out of the walk.
+  const walk = (dir: string, depth: number, parent: string): boolean => {
+    if (depth > IAC_SCAN_MAX_DEPTH) return false;
+    let entries: import('fs').Dirent[];
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return false; }
+    if (stats) stats.dirs += 1;
+    for (const e of entries) {
+      if (++seen > IAC_SCAN_MAX_ENTRIES) return false;
+      if (stats) stats.entries += 1;
+      if (e.isFile() && IAC_SOURCE_RE.test(e.name)) return true;
+    }
+    const here = basename(dir);
+    for (const e of entries) {
+      if (!e.isDirectory() || IAC_SCAN_SKIP.has(e.name)) continue;
+      if (here === 'wsp' && e.name !== 'inputs') continue;
+      if (here === 'inputs' && parent === 'wsp' && e.name === 'research') continue;
+      if (walk(join(dir, e.name), depth + 1, here)) return true;
+    }
+    return false;
+  };
+  return walk(workspacePath, 0, '');
+}
+
+/**
+ * #1328 / #4224: every IaC tool is optional (Pass 06 reads IaC files without
+ * one), as the Tools step of the Application setup rates them. The probe is ok
+ * when at least one tool is found (the missing ones named as a note), warns only
+ * when none is found and the workspace holds IaC sources, and is info when
+ * none is found and there is nothing to validate. Without a workspace path the
+ * IaC sources are unknown, so no tool found warns.
+ */
+export function buildIaCToolchainProbe(workspacePath?: string): IaCToolchainProbeResult {
   const tools: IaCToolEntry[] = TOOL_DEFS.map(({ name, cmd, versionArgs }) => {
-    const { available, version } = detectTool(cmd, versionArgs);
+    const { available, version } = meterStep(`detect ${cmd}`, () => detectTool(cmd, versionArgs));
     return { name, available, version, required: false as const };
   });
 
   const absent = tools.filter((t) => !t.available);
 
   if (absent.length === tools.length) {
-    return {
-      status: 'warn',
-      tools,
-      message:
-        'No IaC toolchain found on PATH. Install terraform, tofu, pulumi, or checkov to ' +
-        'enable IaC source scanning (swao assess --passes iac).',
-    };
+    const hasSources = workspacePath === undefined || meterStep('IaC source scan', () => workspaceHasIacSources(workspacePath));
+    return hasSources
+      ? {
+        status: 'warn',
+        tools,
+        message:
+          'No IaC toolchain found on PATH. Install terraform, tofu, pulumi, or checkov to ' +
+          'enable IaC source scanning (swao assess --passes iac).',
+      }
+      : {
+        status: 'info',
+        tools,
+        message:
+          'No IaC toolchain found on PATH and no IaC sources in the workspace; nothing to validate. ' +
+          'All IaC tools are optional (Pass 06 reads IaC files without them).',
+      };
   }
 
   const found = tools
@@ -125,11 +187,10 @@ export function buildIaCToolchainProbe(): IaCToolchainProbeResult {
     .map((t) => formatToolVersion(t.name, t.version))
     .join(', ');
   const missing = absent.map((t) => t.name);
-  const status: IaCToolchainStatus = absent.length > 0 ? 'warn' : 'ok';
   const message =
     absent.length > 0
-      ? `IaC toolchain (partial): ${found}. Not found: ${missing.join(', ')}.`
+      ? `IaC toolchain ready: ${found}. Not found (optional): ${missing.join(', ')}.`
       : `IaC toolchain ready: ${found}.`;
 
-  return { status, tools, message };
+  return { status: 'ok', tools, message };
 }

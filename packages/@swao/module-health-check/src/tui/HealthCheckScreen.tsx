@@ -13,19 +13,25 @@
 //
 // ================================================================
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { Box, Text, useInput } from 'ink';
+// #4257 (TUI-13, Design 126 sections 3, 4.8 and 7.6): the Health Check screen
+// on ScreenLayout. The probe list shows one StatusRow per probe with the
+// reason of a warn or fail result on its second line; the guidance box shows
+// the selected probe. While the probes run, Esc cancels at once (Q-09); when
+// they are done, Enter and Esc return to the main menu.
+
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Text, useInput } from 'ink';
 import { spawn } from 'child_process';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { LicenseGuard, findWorkspace } from '@swao/core';
-import { HeaderView, ProgressBar, type LicenseStateView } from '@swao/tui-kit';
+import { selfSpawnCommand } from '@swao/core';
+import {
+  ScreenLayout, ProgressBar, DetailRow, KEY_HINTS, guidanceOwnsKey, tone, type GuidanceEntry, type LicenseStateView,
+} from '@swao/tui-kit';
 import { HealthCheckProbeList } from './components/HealthCheckProbeList.js';
 import { parseHealthCheckOutput } from './components/health-check-parse.js';
 
-
-const BIN  = process.execPath;
-const SELF = process.argv[1] as string;
 
 interface HealthCheckScreenProps {
   onBack: () => void;
@@ -52,28 +58,26 @@ export function HealthCheckScreen({ onBack, version }: HealthCheckScreenProps) {
     }
   }, []);
 
-  // Local master-banner wrapper: closes over the host-injected version + the
-  // licence state (LicenseGuard is in @swao/core). Memoised for a stable
-  // identity so HeaderView (which holds resize state) does not remount. Lets
-  // the existing `<Header subtitle=... />` call site stay unchanged. Mirrors
-  // the #0553 AssessScreen pattern.
-  const Header = useMemo(() => {
+  // Blocks 1 and 2: the host-injected version and the licence state (LicenseGuard is in @swao/core).
+  const header = useMemo(() => {
     let licenseState: LicenseStateView | null = null;
     let licenseError: string | null = null;
     try { licenseState = LicenseGuard.load().state as LicenseStateView; }
     catch (e) { licenseError = (e as Error).message; }
-    return function Header(props: { subtitle?: string; stepInfo?: string; hideLicenseStatus?: boolean }): JSX.Element {
-      return <HeaderView {...props} version={version} licenseState={licenseState} licenseError={licenseError} />;
-    };
+    return { subtitle: 'Health Check', version, licenseState, licenseError };
   }, [version]);
 
+  const [probeEntry, setProbeEntry] = useState<GuidanceEntry | undefined>(undefined);
+  const onCursorEntry = useCallback((e: GuidanceEntry | undefined) => { setProbeEntry(e); }, []);
+
   useEffect(() => {
-    const child = spawn(BIN, [SELF, 'health-check'], {
+    const selfCmd = selfSpawnCommand(['health-check']);
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      // #1234: use parent env unchanged. PKG_EXECPATH='' prevents child VFS init
-      // and causes 0 probes. SELF as argv[1] lets the pkg splice work correctly.
-      // Contrast: MCP spawns (server.ts) omit SELF and STILL need PKG_EXECPATH=''.
-      env: process.env,
+      // #4241: the central helper (no script path in the binary, PKG_EXECPATH '').
+      // The 0-probe failure of #1234 came from the mixed form (script path plus
+      // PKG_EXECPATH ''), which the helper never produces.
+      env: selfCmd.env,
     });
 
     // #1080: buffer partial lines across chunk boundaries so HEADER_RE always
@@ -114,54 +118,56 @@ export function HealthCheckScreen({ onBack, version }: HealthCheckScreenProps) {
     return { parsedProbeCount: probes.length, totalProbeCount: last?.total ?? 0 };
   }, [lines]);
 
-  // #0798: guard navigation so Escape does not fire while GuidanceBox is expanded.
+  // #0798 / #4230 (Design 126 section 7.8): an open guidance box owns Esc, PgUp
+  // and PgDn only; Enter still finishes with the box open.
   const guidanceOpenRef = useRef(false);
   useInput((_input, key) => {
-    if (guidanceOpenRef.current) return;
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
     if (done && (key.return || key.escape)) onBack();
     if (!done && key.escape) onBack();
   });
 
+  const entry: GuidanceEntry = probeEntry ?? {
+    title: 'Health Check',
+    what: done
+      ? 'The health check ran no probes on this screen. Run it from a terminal to see its full output.'
+      : 'Checks the licence, the LLM gateway, the tools and the inputs of this workspace, one probe after the other.',
+    cli: 'swao health-check',
+  };
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="Health Check" />
+    <ScreenLayout
+      header={header}
+      title={{ title: 'Health Check', subtitle: 'Licence, LLM, tools and inputs of this workspace, one row per probe.' }}
+      keys={done ? KEY_HINTS.lastStep : KEY_HINTS.run}
+      guidance={{ entry, onOpenChange: (open) => { guidanceOpenRef.current = open; } }}
+    >
       {engagementInfo && (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text>  Engagement: <Text color="cyanBright">{engagementInfo.name}</Text>
-            {engagementInfo.code ? <Text dimColor>  ({engagementInfo.code})</Text> : null}
-          </Text>
-          {engagementInfo.lead && <Text>  Lead: <Text dimColor>{engagementInfo.lead}</Text></Text>}
-        </Box>
+        <>
+          <DetailRow label="Engagement" value={engagementInfo.code ? `${engagementInfo.name} (${engagementInfo.code})` : engagementInfo.name} labelWidth={12} />
+          {engagementInfo.lead && <DetailRow label="Lead" value={engagementInfo.lead} labelWidth={12} />}
+          <Text> </Text>
+        </>
       )}
-      {!done && <Text color="yellow">Running environment checks...</Text>}
-      {/* #2841: progress bar -- shown while probes are streaming and [N/M] is parseable */}
+      {!done && <Text {...tone('muted')}>Running environment checks...</Text>}
+      {/* #2841: progress bar while probes are streaming and [N/M] is parseable */}
       {!done && totalProbeCount > 0 && (
-        <Box marginTop={1}>
-          <ProgressBar
-            value={parsedProbeCount}
-            total={totalProbeCount}
-            label={`${parsedProbeCount}/${totalProbeCount} probes`}
-            color="cyan"
-            width={28}
-          />
-        </Box>
+        <ProgressBar value={parsedProbeCount} total={totalProbeCount} label={`${parsedProbeCount}/${totalProbeCount} probes`} width={28} />
       )}
       <HealthCheckProbeList
         lines={lines}
         done={done}
         active={true}
-        onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
+        guidance="none"
+        onCursorEntry={onCursorEntry}
+        canPage={() => !guidanceOpenRef.current}
       />
       {/* #2744: only show "All probes passed" when probes were actually parsed.
-           An empty probe list with exit 0 means output was not captured -- show a
-           diagnostic hint instead so the operator is not misled into thinking the
-           workspace is healthy when the health-check produced no visible output. */}
-      {done && code === 0 && parsedProbeCount > 0 && <Text color="green">All probes passed.</Text>}
-      {done && code === 0 && parsedProbeCount === 0 && <Text color="yellow">Health check ran no probes -- run `swao health-check` for details.</Text>}
-      {done && code !== 0 && <Text color="yellow">One or more probes need attention.</Text>}
-      <Box marginTop={1}>
-        <Text dimColor>{done ? 'Press Enter or Escape to return to menu...' : 'Press Escape to cancel...'}</Text>
-      </Box>
-    </Box>
+           An empty probe list with exit 0 means output was not captured: say so,
+           so the operator is not misled into thinking the workspace is healthy. */}
+      {done && code === 0 && parsedProbeCount > 0 && <Text {...tone('ok')}>All probes passed.</Text>}
+      {done && code === 0 && parsedProbeCount === 0 && <Text {...tone('warning')}>The health check ran no probes; the guidance names the command to run it in a terminal.</Text>}
+      {done && code !== 0 && <Text {...tone('warning')}>One or more probes need attention.</Text>}
+    </ScreenLayout>
   );
 }

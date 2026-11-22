@@ -44,7 +44,7 @@ import { join } from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { load } from 'js-yaml';
 import { buildAuthenticatedCloneUrl, vcsTokenKey } from '../providers/vcs/auth.js';
-import { CredentialStore } from '@swao/core';
+import { CredentialStore, listWorkspaceApps } from '@swao/core';
 // Result types moved to @swao/core (#0573) so @swao/module-health-check's formatters can
 // type them without importing the host; this builder stays host-coupled
 // (`git ls-remote`) and is injected into @swao/module-health-check by the host.
@@ -144,6 +144,33 @@ export function runGitLsRemote(
   });
 }
 
+/**
+ * #4222: classify an anonymous ls-remote (no token stored). Success means the
+ * repository is public; a network error keeps the unreachable outcome; any
+ * other failure (401, 403, 404, "could not read Username") means the
+ * repository needs a token, so it stays `no-token`, never a failure.
+ */
+export function classifyAnonymousLsRemote(
+  stderr: string,
+  exit: number | null,
+  tokenKey: string,
+): { outcome: 'public' | 'no-token' | 'network-unreachable'; hint: string } {
+  const c = classifyLsRemote(stderr, exit);
+  if (c.outcome === 'ok') return { outcome: 'public', hint: 'public, no token needed (anonymous ls-remote returned 0)' };
+  if (c.outcome === 'network-unreachable') return { outcome: 'network-unreachable', hint: c.hint };
+  return {
+    outcome: 'no-token',
+    hint: `Anonymous access failed, so the repository is private (or the address is wrong). Private repositories need a token: set it via \`swao credential set ${tokenKey} <pat>\`.`,
+  };
+}
+
+/** #4222: the ls-remote runner (injectable so tests never reach the network). */
+export type LsRemoteRunner = (args: string[], timeoutMs: number, extraEnv: Record<string, string>) => Promise<LsRemoteRun>;
+
+export interface VcsAuthProbeDeps {
+  lsRemote?: LsRemoteRunner;
+}
+
 function classifyLsRemote(
   stderr: string,
   exit: number | null,
@@ -184,10 +211,12 @@ function classifyLsRemote(
 
 export async function buildVcsAuthProbe(
   workspacePath: string,
-  // Injected store enables test isolation without network calls (tests pass
-  // an empty-dir store to guarantee no-token for all HTTPS URLs).
+  // Injected store enables test isolation (tests pass an empty-dir store).
   store = new CredentialStore(),
+  // #4222: injected ls-remote runner; tests pass a fake so no network call is made.
+  deps: VcsAuthProbeDeps = {},
 ): Promise<VcsAuthProbeResult> {
+  const lsRemote: LsRemoteRunner = deps.lsRemote ?? ((args, timeoutMs, extraEnv) => runGitLsRemote(args, timeoutMs, 'git', extraEnv));
   const appsDir = join(workspacePath, 'apps');
   if (!existsSync(appsDir)) {
     return {
@@ -209,9 +238,12 @@ export async function buildVcsAuthProbe(
 
   const appResults: VcsAuthProbeResult['apps'] = [];
   const probeStarted = Date.now();
+  // #4490: service apps (assessment.type: service, the app index of #4484) have no source to clone.
+  const serviceIds = new Set(listWorkspaceApps(workspacePath).filter((a) => a.kind === 'service').map((a) => a.id));
 
   for (const appId of entries) {
     if (appId.startsWith('.')) continue;
+    if (serviceIds.has(appId)) continue;
     const appDir = join(appsDir, appId);
     const swaoYmlPath = join(appDir, '.swao.yml');
     if (!existsSync(swaoYmlPath)) continue;
@@ -280,26 +312,6 @@ export async function buildVcsAuthProbe(
       storedToken = undefined;
     }
 
-    if (!storedToken) {
-      const expectedKey = vcsTokenKey(vcsUrl);
-      appResults.push({
-        app_id: appId,
-        vcs_url: vcsUrl,
-        host,
-        outcome: 'no-token',
-        hint: `No token in credential store for this provider. Set via \`swao credential set ${expectedKey} <pat>\` -- skipping ls-remote check.`,
-      });
-      continue;
-    }
-
-    const schemeOverride = cfg.source?.vcs?.token_scheme as
-      | 'x-access-token'
-      | 'oauth2'
-      | 'x-token-auth'
-      | 'token-as-username'
-      | undefined;
-    const { cloneUrl } = buildAuthenticatedCloneUrl(vcsUrl, storedToken, schemeOverride);
-
     // #2749: read proxy + TLS settings from source.vcs block.
     const gitProxy = cfg.source?.vcs?.git_proxy;
     const sslVerify = cfg.source?.vcs?.ssl_verify;
@@ -321,10 +333,31 @@ export async function buildVcsAuthProbe(
       continue;
     }
 
-    const result = await runGitLsRemote(
+    if (!storedToken) {
+      // #4222: no token stored: try anonymous access (a public repository needs
+      // none). `credential.helper=` keeps git from using a cached credential, so
+      // a success really means public. Same deadline and proxy settings.
+      const anon = await lsRemote(
+        ['-c', 'credential.helper=', 'ls-remote', '--exit-code', vcsUrl, 'HEAD'],
+        Math.min(LS_REMOTE_TIMEOUT_MS, remaining),
+        gitConfigEnv,
+      );
+      const { outcome, hint } = classifyAnonymousLsRemote(anon.stderr, anon.status, vcsTokenKey(vcsUrl));
+      appResults.push({ app_id: appId, vcs_url: vcsUrl, host, outcome, hint });
+      continue;
+    }
+
+    const schemeOverride = cfg.source?.vcs?.token_scheme as
+      | 'x-access-token'
+      | 'oauth2'
+      | 'x-token-auth'
+      | 'token-as-username'
+      | undefined;
+    const { cloneUrl } = buildAuthenticatedCloneUrl(vcsUrl, storedToken, schemeOverride);
+
+    const result = await lsRemote(
       ['ls-remote', '--exit-code', cloneUrl, 'HEAD'],
       Math.min(LS_REMOTE_TIMEOUT_MS, remaining),
-      'git',
       gitConfigEnv,
     );
     const { outcome, hint } = classifyLsRemote(result.stderr, result.status);
@@ -346,9 +379,12 @@ export async function buildVcsAuthProbe(
       message: 'No apps with .swao.yml under apps/.',
     };
   }
-  const checked = appResults.filter((r) => r.outcome === 'ok' || r.outcome === 'auth-failed' || r.outcome === 'not-found' || r.outcome === 'network-unreachable');
+  const checked = appResults.filter((r) => r.outcome === 'ok' || r.outcome === 'public' || r.outcome === 'auth-failed' || r.outcome === 'not-found' || r.outcome === 'network-unreachable');
   const failed = appResults.filter((r) => r.outcome === 'auth-failed' || r.outcome === 'not-found' || r.outcome === 'network-unreachable');
   const okCount = appResults.filter((r) => r.outcome === 'ok').length;
+  const publicCount = appResults.filter((r) => r.outcome === 'public').length;
+  // #4222: no token stored and anonymous access failed: the repository needs a token.
+  const needToken = appResults.filter((r) => r.outcome === 'no-token');
 
   let status: VcsAuthProbeStatus;
   let message: string;
@@ -356,12 +392,19 @@ export async function buildVcsAuthProbe(
     status = 'fail';
     const failNames = failed.map((r) => `${r.app_id}=${r.outcome}`).join(', ');
     message = `${failed.length} of ${appResults.length} app(s) failed VCS auth: ${failNames}`;
+  } else if (needToken.length > 0) {
+    status = 'warn';
+    message = `${needToken.length} of ${appResults.length} app(s) need a token (anonymous access failed, private repository): ${needToken.map((r) => r.app_id).join(', ')}`;
   } else if (checked.length === 0) {
     status = 'info';
-    message = `${appResults.length} app(s) skipped (no VCS config, no token, non-HTTPS, or fixture host).`;
+    message = `${appResults.length} app(s) skipped (no VCS config, non-HTTPS, fixture host or time limit).`;
   } else {
     status = 'ok';
-    message = `${okCount} of ${appResults.length} app(s) authenticated against their VCS host.`;
+    const parts = [
+      ...(okCount > 0 ? [`${okCount} authenticated with the stored token`] : []),
+      ...(publicCount > 0 ? [`${publicCount} public, no token needed`] : []),
+    ];
+    message = `${okCount + publicCount} of ${appResults.length} app(s) reachable: ${parts.join(', ')}.`;
   }
 
   return { status, apps: appResults, message };

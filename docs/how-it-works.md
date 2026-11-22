@@ -58,14 +58,17 @@ If this is your first time, start here. The wizard asks:
 2. **LLM provider** - Anthropic Claude, OpenAI, Amazon Bedrock Gateway, a local Ollama model, or a deterministic
    stub for offline use.
 3. **Credentials** - the API key for the chosen provider, stored in the SWAO credential store.
-4. **Health check** - a first run of the pre-flight checks.
-5. **Claude Desktop** and 6. **Playwright** - optional integrations (MCP server, browser for dynamic analysis).
-7. **Ready** - a summary of the next steps.
+4. **LZ Connections** - optional: register a live landing zone.
+5. **MCP Client** and 6. **Playwright** - optional integrations (MCP server for Claude Desktop, Claude Code, Kilo,
+   Cursor or VS Code; browser for dynamic analysis).
+7. **Test Code** - how assessments treat test code.
+8. **Health check** - the pre-flight checks of the finished configuration.
+9. **Ready** - the health-check result and a summary of the next steps.
 
 The wizard creates a ready-to-use workspace folder on disk. New workspaces contain the four
 demo frameworks (`GDPR_DEMO`, `AI_10_PILLARS_DEMO`, `NIST_SP_800_66R2_DEMO`,
-`BSI_GRUNDSCHUTZ_2023_DEMO`). Copy more into the workspace at any time with `swao framework install <ID>`;
-`swao framework list` shows the IDs. You choose the frameworks for each app when you run
+`BSI_GRUNDSCHUTZ_2023_DEMO`). Copy more into `wsp/inputs/catalogs/community/` at any time from
+[GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks); `swao framework list` lists the frameworks in the workspace. You choose the frameworks for each app when you run
 the assessment.
 
 ### Health Check

@@ -26,9 +26,11 @@ import type {
   ComplianceEvaluatorContribution,
   SwaoModuleManifest,
 } from '@swao/core';
-import { loadRegimeRegistry, loadRegimeCatalogue, appliesWhenMatches, NOT_EVALUATED_RATIONALE_PREFIX, type ComplianceNotEvaluatedReason } from '@swao/core';
-import { signalEvidenceKind, signalDetectionMethod, evidencePaths, isTestPath, UNVERIFIED_EVIDENCE_RATIONALE_PREFIX, formatEvidenceBasis, type EvidenceKind } from '@swao/core';
+import { passLabel, loadRegimeRegistry, loadRegimeCatalogue, resolveRegimeCatalogue, appliesWhenMatches, NOT_EVALUATED_RATIONALE_PREFIX, type ComplianceNotEvaluatedReason } from '@swao/core';
+import { loadPolicyBaseline, type BaselineControlContribution, type BaselineControlDecisions } from '@swao/core';
+import { signalEvidenceKind, signalDetectionMethod, evidencePaths, isTestPath, citesDocumentEvidence, UNVERIFIED_EVIDENCE_RATIONALE_PREFIX, formatEvidenceBasis, type EvidenceKind } from '@swao/core';
 import { communityCatalogueContribution } from './community-catalogue.js';
+import { communityFrameworksDir } from '@swao/community-frameworks';
 
 // Cross-cutting "no LLM provider" marker. The same literal is the de-facto
 // contract across the host (doctor, assess, data-quality-banner), core
@@ -142,6 +144,9 @@ interface CatalogControl {
   assessment_type_scope?: string[];
   // #3426: catalogue evidence basis (context_input names the expected input).
   evidence_basis?: Array<Record<string, unknown>>;
+  // #3962: `governance` marks an organisational control (Design 104 section 5.2):
+  // a verdict needs organisational document evidence (requireOrganisationalEvidence).
+  layer?: string;
 }
 
 interface RegimeCatalog {
@@ -172,6 +177,9 @@ interface EvaluatedControl {
   missing_input?: string[];
   // #3414: present when the evidence-quality guard capped a model GAP.
   verdict_guard?: VerdictGuard;
+  // #3981: a Client LZ Policy Baseline control decided over several LZ targets
+  // or live scopes: each one's outcome, ranked worst first (Design 123 section 8.4).
+  baseline_contributions?: BaselineControlContribution[];
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +385,63 @@ export function downgradeUnsupportedGap(
   };
 }
 
+// ---------------------------------------------------------------------------
+// #3962: organisational controls never pass without organisational evidence
+// ---------------------------------------------------------------------------
+
+/**
+ * A cited signal that is organisational evidence: it cites a document (or only
+ * documents and records), not code (a CTX signal over a file the operator put in the app's
+ * `ingestion/` folder, which Pass 00 routes into wsp/inputs/; a CMDB or
+ * runbook record). With `expected` (the control's context_input names) the
+ * cited document's path must contain one of them (lower case, non-alphanumerics
+ * as `_`), so an unrelated or blank document does not unlock the control.
+ * Test-only documents and insufficient-input markers do not count.
+ */
+export function isOrganisationalEvidenceSignal(s: Signal | undefined, sourceRoot?: string, expected: readonly string[] = []): boolean {
+  if (!s || isInsufficientInputSignal(s.id)) return false;
+  // With expected inputs the cited document must be named after one of them.
+  if (expected.length > 0) return citesDocumentEvidence(s, sourceRoot, expected);
+  return complianceEvidenceKind(s, sourceRoot) === 'document' || citesDocumentEvidence(s, sourceRoot);
+}
+
+/**
+ * #3962 post-check over an LLM verdict for a control marked `layer: governance`
+ * (an organisational control such as a policy, a register or a plan). A
+ * SATISFIED or PARTIAL verdict that cites no organisational evidence signal
+ * becomes UNKNOWN with `not_evaluated_reason: insufficient_evidence` (shown as
+ * needs verification): code or infrastructure signals cannot show that a
+ * document exists or is approved, and missing evidence is never a pass. GAP,
+ * N_A and UNKNOWN, and every control without `layer: governance`, are
+ * returned unchanged (GAP has its own checks, #3426 and #3414).
+ */
+export function requireOrganisationalEvidence(
+  control: EvaluatedControl,
+  catalogControl: Pick<CatalogControl, 'layer' | 'evidence_basis'>,
+  signalsById: ReadonlyMap<string, Signal>,
+  sourceRoot?: string,
+): EvaluatedControl {
+  if (catalogControl.layer !== 'governance') return control;
+  if (control.outcome !== 'SATISFIED' && control.outcome !== 'PARTIAL') return control;
+  const expected = contextInputsOf(catalogControl);
+  if (control.signal_refs.some((id) => isOrganisationalEvidenceSignal(signalsById.get(id), sourceRoot, expected))) return control;
+  const missing = expected.length > 0 ? `; missing input: ${expected.join(', ')}` : '';
+  const cited = control.signal_refs.length > 0 ? ` citing only ${control.signal_refs.join(', ')}` : ' without a cited signal';
+  return {
+    ...control,
+    outcome: 'UNKNOWN',
+    status: 'UNKNOWN',
+    not_evaluated_reason: 'insufficient_evidence',
+    ...(expected.length > 0 ? { missing_input: expected } : {}),
+    rationale: `${NOT_EVALUATED_RATIONALE_PREFIX.insufficient_evidence}${missing}). The model proposed ${control.outcome}${cited}, but this organisational control needs one of its expected documents as evidence (put them, named after the expected input, into the app's ingestion folder); missing evidence is never a pass. Model rationale: ${control.rationale}`,
+    evidence_ids: [],
+    remediation: expected.length > 0
+      ? `Supply ${expected.join(', ')} in the app's ingestion folder and re-run the assessment.`
+      : "Supply the organisational documents in the app's ingestion folder and re-run the assessment.",
+    assessor: 'rule_engine',
+  };
+}
+
 // Resolve the current run's passes/ dir via latest.txt. Falls back to
 // the legacy flat <wspDir>/passes/ if no run is recorded yet.
 function resolvePassesDir(workspacePath: string): string {
@@ -448,22 +513,49 @@ function resolveWorkspaceRoot(workspacePath: string): string {
   return resolve(workspacePath, '..', '..');
 }
 
+/**
+ * #4286 (D-10): the regime catalogue through the shared community framework
+ * resolver of @swao/core: the workspace copy under wsp/inputs/catalogs/community
+ * first, then the bundled copy. The SWAO_APM scorer resolves through the same
+ * function, so Pass 11 and apm-score.json never disagree on whether a
+ * framework exists.
+ */
 function loadRegimeCatalog(workspaceRoot: string, regimeId: string): RegimeCatalog | null {
-  const catalogsDir = join(workspaceRoot, 'wsp', 'inputs', 'catalogs');
-  if (!existsSync(catalogsDir)) return null;
-  let registry;
-  try {
-    registry = loadRegimeRegistry(catalogsDir);
-  } catch {
-    return null;
-  }
-  const resolved = registry.byId.get(regimeId);
+  const resolved = resolveRegimeCatalogue(workspaceRoot, regimeId, communityFrameworksDir);
   if (!resolved) return null;
   try {
     return loadRegimeCatalogue(resolved.catalogueFile) as unknown as RegimeCatalog;
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// #3888: Client LZ Policy Baseline controls are decided by rule, never by the LLM
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the installed framework folder of `regimeId` holds a
+ * policy-baseline.yaml (Design 123 section 7.2), valid or not: its controls
+ * are decided by the baseline rule engine (Design 123 section 8.4, CP-4).
+ */
+export function isPolicyBaselineRegime(workspaceRoot: string, regimeId: string): boolean {
+  // #4286: the same resolver as loadRegimeCatalog (workspace copy, then bundled).
+  const resolved = resolveRegimeCatalogue(workspaceRoot, regimeId, communityFrameworksDir);
+  if (!resolved) return false;
+  try {
+    return loadPolicyBaseline(resolved.dir, regimeId).status !== 'absent';
+  } catch {
+    return false;
+  }
+}
+
+/** A baseline control: the host's rule decision, else UNKNOWN by rule with the reason. */
+function baselineRuleControl(c: CatalogControl, assessedAt: string, regimeId: string, decisions: BaselineControlDecisions | undefined): EvaluatedControl {
+  const d = decisions?.regimes[regimeId]?.[c.id];
+  if (d) return { ...fallbackControl(c, assessedAt, d.rationale), outcome: d.outcome, status: d.outcome, ...(d.contributions ? { baseline_contributions: d.contributions } : {}) };
+  const why = decisions?.reason ?? (decisions ? `no decision for ${c.id} against the ${decisions.source} LZ source` : 'no LZ source was evaluated in this run (no LZ target, no live run, or --no-lz-fit)');
+  return fallbackControl(c, assessedAt, `Client LZ policy baseline control, decided by rule only: ${why}; marked UNKNOWN, no LLM evaluation.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -491,7 +583,7 @@ export function assessmentScopeTokens(assessmentType: string | undefined): Asses
       return ['app', 'aud'];
     case 'landing-zone':
     case 'landing-zone-catalog':
-    case 'landing-zone-customer':
+    case 'landing-zone-live':
       return ['lz'];
     case 'llm':
       return ['llm'];
@@ -825,7 +917,8 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
   const { workspacePath, iter, assessedAt, llm, passesDir } = ctx;
 
   const signals = loadAllSignals(workspacePath, passesDir);
-  const regimeIds = loadSelectedRegimes(workspacePath);
+  // #4284: the run-time framework selection (--regimes) wins over the file selection.
+  const regimeIds = ctx.regimesActive ?? loadSelectedRegimes(workspacePath);
   const applicabilityCtx = loadApplicabilityContext(workspacePath, ctx.assessmentType);
   const workspaceRoot = resolveWorkspaceRoot(workspacePath);
 
@@ -883,15 +976,17 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
   let regimeProgress = 0;
   const reportProgress = (regimeId: string): void => {
     regimeProgress += 1;
-    console.log(`[progress] Pass 11 -- ${regimeId} (${regimeProgress}/${regimeIds.length})`);
+    console.log(`[progress] ${passLabel(11, regimeId)} (${regimeProgress}/${regimeIds.length})`); // #4402
   };
   const catalogs = regimeIds.map((regimeId) => loadRegimeCatalog(workspaceRoot, regimeId));
   // #3425: decide applicability once per control; only `evaluate` controls are
   // batched for the LLM (phase A) and consumed in the same order (phase B).
   const decisions = catalogs.map((catalog) =>
     (catalog?.controls ?? []).map((c) => controlApplicability(c, applicabilityCtx)));
+  // #3888 (Design 123 section 8.4, CP-4): a policy baseline regime never reaches the LLM.
+  const baselineRegime = regimeIds.map((id, r) => catalogs[r] !== null && isPolicyBaselineRegime(workspaceRoot, id));
   const evaluable = catalogs.map((catalog, r) =>
-    (catalog?.controls ?? []).filter((_, i) => decisions[r]![i]!.kind === 'evaluate'));
+    baselineRegime[r] ? [] : (catalog?.controls ?? []).filter((_, i) => decisions[r]![i]!.kind === 'evaluate'));
 
   // #3222 phase A: send every regime's batch prompts concurrently (bounded by
   // the provider's limit, #3284: complianceLlmConcurrency). Prompts are built exactly as before; a
@@ -937,10 +1032,12 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       signalCounter += 1;
       summarySignals.push({
         id: `COMP-${String(signalCounter).padStart(2, '0')}`,
-        source: 'llm_inference',
+        // #4286: a deterministic catalogue lookup, not a model verdict.
+        source: 'static_analysis',
+        assessor: 'rule_engine',
         category: 'application',
         severity: 'medium',
-        derivation: `Regime ${regimeId} is listed in .swao.yml but no catalog found under wsp/inputs/catalogs/{standard,community}/. Run 'swao init --reconfigure' to refresh standard catalogs, or 'swao framework install ${regimeId}' for community frameworks.`,
+        derivation: `Regime ${regimeId} is listed in .swao.yml but no framework with this id was found, neither in the workspace (wsp/inputs/catalogs/community/) nor among the community frameworks bundled with SWAO. Check the id for a typo, or copy the framework folder from https://github.com/Accenture/SWAO/tree/main/community-frameworks into wsp/inputs/catalogs/community/<folder>/ (#4126, #4286).`,
         evidence: [],
         confidence: 'high',
       } as Signal);
@@ -1028,9 +1125,11 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
           assessed_at: assessedAt,
           tags: c.tags ?? [],
         }, c, signalsById);
+        // #3962: an organisational control needs organisational document evidence.
+        const organisational = requireOrganisationalEvidence(checked, c, signalsById, sourceRoot);
         // #3414: then the evidence-quality guard (a surviving GAP needs one
         // verified signal), then the evidence-basis line on the rationale.
-        const guarded = guardUnverifiedGap(checked, signalsById, sourceRoot);
+        const guarded = guardUnverifiedGap(organisational, signalsById, sourceRoot);
         if (guarded.verdict_guard) {
           evidenceGuard.push({ regime: regimeMeta.id, control: c.id, ...guarded.verdict_guard });
           console.warn(
@@ -1049,6 +1148,7 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
       const decision = decisions[r]![i]!;
       switch (decision.kind) {
         case 'evaluate':
+          if (baselineRegime[r]) return baselineRuleControl(c, assessedAt, regimeId, ctx.baselineDecisions);
           return llmEvaluated.get(c.id) ?? (llm
             ? llmUnavailableControl(c, assessedAt, llmUnavailableRationale(undefined, null, true))
             : fallbackControl(c, assessedAt, 'No LLM provider configured; control marked UNKNOWN. Re-run with a real LLM for evaluation.'));
@@ -1066,7 +1166,8 @@ export async function runCompliancePass(ctx: PassContext): Promise<PassResult> {
 
     regimesOut.push({
       ...regimeMeta,
-      status: regimeEvaluationStatus(evaluated, Boolean(llm)),
+      // #3888: a baseline regime needs no LLM, so it is never pending-llm.
+      status: regimeEvaluationStatus(evaluated, Boolean(llm) || baselineRegime[r] === true),
       controls: evaluated,
     });
 

@@ -130,7 +130,7 @@ const EXPECTED_CLI_COMMANDS = new Set([
   'regime-select',
   'generate-tf',
   'log',                          // #0327 -- WSP-scoped event log; CLI-only (no TUI screen, see CLI_ONLY)
-  'framework',                    // #0324 sprint-036 -- Community Frameworks management; CLI-only (no TUI screen yet)
+  'framework',                    // #0324 sprint-036 -- Community Frameworks: list only since #4126; TUI counterpart is the framework picker (CLI_ONLY)
   'publish',                      // #0432 -- Mode A/B publication; TUI: PublishScreen (item 5 on main menu)
   'lenses',                       // #0455 -- SWAO Prism lens management; TUI: LensesScreen (Tools submenu)
   'normalize',                    // #0442 -- Input Normalizer; CLI-only (batch file processing, no TUI yet)
@@ -142,7 +142,7 @@ const EXPECTED_CLI_COMMANDS = new Set([
   'support-bundle',               // #1477 sprint-116 -- PII-free diagnostic archive; TUI: SupportBundleScreen (Tools submenu)
   'unipipe',                      // #1652 sprint-121 -- meshcloud UniPipe integration stub; CLI-only (TUI deferred)
   'machine-id',                   // #2128 sprint-128 -- print machine fingerprint; CLI-only
-  'llm',                          // #1558 -- LLM workload assessment command group; TUI path goes through AssessScreen (--type llm)
+  'llm',                          // #1558 -- LLM workload assessment command group; TUI path goes through AssessmentTypeScreen (LLM Assessment)
   'llm-gateway',                  // #3388 sprint-152 -- llm-gateway update; TUI: LlmGatewayUpdateScreen (Tools submenu)
   'chat',                         // #2779 sprint-135 -- multi-turn portfolio chat (Enterprise); TUI: ChatScreen (Tools submenu)
   'service',                      // #3075 sprint-150 -- Service Portfolio Assessment; TUI: ServiceInitScreen via AssessmentTypeScreen [2]
@@ -155,7 +155,7 @@ const EXPECTED_CLI_COMMANDS = new Set([
 // live in the private premium tree when the private monorepo is checked out. Public CI omits them.
 const EXPECTED_TUI_SCREENS = new Set([
   // Screens that wrap a CLI command
-  'AssessScreen',
+  // #4344: the legacy AssessScreen and LzCatalogueManageScreen are retired.
   ...(PREMIUM_PRESENT ? ['ChallengeScreen'] : []),  // Enterprise-gated (private premium tree)
   'CredentialScreen',
   'HealthCheckScreen',
@@ -170,7 +170,6 @@ const EXPECTED_TUI_SCREENS = new Set([
   'LensesScreen',             // #0455 -- swao lenses; Tools submenu
   'LzCatalogueUpdateScreen',  // #0872 -- swao lz catalogue update; Tools submenu
   'LlmGatewayUpdateScreen',   // #3388 -- swao llm-gateway update; Tools submenu
-  'LzCatalogueManageScreen',  // #1436 -- swao lz catalogue copy/new/list; Tools submenu (Community+)
   'ServeScreen',              // #0438 -- swao publish --serve; launched from PublishScreen
   'IngestScreen',             // #0967 -- swao ingest; Tools submenu (key 5)
   'SupportBundleScreen',      // #1477 sprint-116 -- swao support-bundle; Tools submenu
@@ -178,6 +177,7 @@ const EXPECTED_TUI_SCREENS = new Set([
   'UpgradePromptScreen',      // #2128 sprint-128 -- version upgrade nudge; shown when newer release detected
   'ChatScreen',               // #2778 sprint-135 -- multi-turn portfolio chat (Enterprise); Tools submenu key 6
   'ServiceInitScreen',        // #3075 sprint-150 -- swao service init; reached via AssessmentTypeScreen 'service'
+  'LzConnectionsScreen',      // #3589 -- swao lz list / connect / probe / remove; Tools submenu key 9 + Setup Wizard optional step
   // Navigation / help screens (TUI-only, no CLI counterpart)
   'HelpScreen',
   'MainMenu',
@@ -195,7 +195,6 @@ const CLI_ONLY = new Map<string, string>([
   ['install-playwright', 'TODO #0259 -- DoctorScreen should offer an Install button'],
   ['migrate-workspace', 'one-shot operator helper; not on the daily-driver path'],
   ['log', '#0327 -- diagnostic log reader; expert operator path, not TUI-surfaced'],
-  ['framework', '#0324 sprint-036 -- Community Frameworks command surface; TUI screen carries to #0339 follow-up'],
   ['normalize', '#0442 -- Input Normalizer; batch file processing; no TUI screen in v1 (sprint-047)'],
   ['diff', '#0477 sprint-053 -- assessment run comparison; operator expert path; no TUI surface yet'],
   ['accept', '#0477 sprint-053 -- accepted-run lock management; CLI-only workflow'],
@@ -205,7 +204,8 @@ const CLI_ONLY = new Map<string, string>([
   ['generate-tf', '#0018 -- Terraform HCL generator; GenerateTfScreen exists but is CLI-also'],
   ['unipipe', '#1652 sprint-121 -- meshcloud UniPipe integration stub; TUI screen deferred post-v0.11.0'],
   ['machine-id', '#2128 sprint-128 -- print machine fingerprint; operator diagnostic, no TUI surface'],
-  ['llm', '#1558 -- LLM workload assessment command group; TUI path goes through AssessScreen with --type llm'],
+  ['llm', '#1558 -- LLM workload assessment command group; TUI path goes through AssessmentTypeScreen (LLM Assessment)'],
+  ['framework', '#4126 -- framework list only; the TUI lists the same workspace frameworks in the framework picker of the assessment flow (CommunityFrameworkPicker), not a screen'],
 ]);
 
 function listCliCommandsFromIndex(): Set<string> {
@@ -266,9 +266,9 @@ describe('CLI/TUI parity gate (#0261)', () => {
   it('every CLI command either has a TUI screen or is on the intentionally-CLI-only list', () => {
     const screens = listTuiScreens();
     // Map a CLI command name to its expected TUI screen name. Loose-match:
-    // 'assess' -> 'AssessScreen', 'regime-select' -> 'RegimeSelectorScreen', etc.
+    // 'assess' -> 'AssessmentTypeScreen', 'regime-select' -> 'RegimeSelectorScreen', etc.
     const screenByCommand: Record<string, string> = {
-      assess: 'AssessScreen',
+      assess: 'AssessmentTypeScreen',    // #4344: the assessment type picker routes to the typed flows
       credential: 'CredentialScreen',
       'health-check': 'HealthCheckScreen',
       export: 'ExportBiScreen',
@@ -351,7 +351,7 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_portfolio_summary',
   'swao_lzr_weights',
   'swao_publish',
-  'swao_publish_site',
+  'swao_publish_site', // #4066: defined (handler kept) but unlisted; use swao_publish with mode site
   'swao_read_challenge',
   'swao_lenses',
   'swao_normalize',
@@ -361,6 +361,19 @@ const EXPECTED_MCP_TOOLS = new Set([
   'swao_lz_catalogue_list',
   'swao_lz_catalogue_show',
   'swao_lz_fit',
+  // #3982: Landing Zone Live read tools.
+  'swao_lz_live_runs',
+  'swao_lz_live_posture',
+  'swao_lz_live_baseline',
+  'swao_lz_live_hierarchy',
+  'swao_lz_live_portfolio',
+  'swao_lz_app_fit',
+  // #4128: guided baseline consultation (Design 123 section 17); no CLI counterpart (the baseline file is edited by hand).
+  'swao_baseline_list',
+  'swao_baseline_explain',
+  'swao_baseline_impact',
+  'swao_baseline_propose',
+  'swao_baseline_apply',
   // Sprint-104 M32 MCP Integration tools (#1172-#1194).
   'swao_annotate',
   'swao_cloud_provider_catalogue',
@@ -415,6 +428,13 @@ const MCP_CLI_MAP: Record<string, string> = {
   swao_lz_catalogue_list:   'lz',
   swao_lz_catalogue_show:   'lz',
   swao_lz_fit:              'lz',
+  // #3982: the live read tools read what `swao lz` and `swao assess --type landing-zone-live` write.
+  swao_lz_live_runs:        'lz',
+  swao_lz_live_posture:     'lz',
+  swao_lz_live_baseline:    'lz',
+  swao_lz_live_hierarchy:   'lz',
+  swao_lz_live_portfolio:   'assess',
+  swao_lz_app_fit:          'assess',
   // #3213: every Service Portfolio Assessment tool maps to `swao service` (init / research / export / rank
   // read the same artefacts the read tools expose).
   swao_service_portfolio:    'service',
@@ -450,5 +470,48 @@ describe('CLI/MCP parity gate (#0673)', () => {
         `MCP tool "${mcpTool}" maps to CLI command "${cliCmd}" which is not registered`,
       ).toBe(true);
     }
+  });
+});
+
+// #4126 (owner decision 2026-11-08): `swao framework install`, `uninstall`,
+// `info` and `baseline show | diff | upgrade | copy` are removed in the CLI and
+// the TUI together (Tools > Frameworks, FrameworksScreen, frameworks-flow.ts).
+// Neither surface may offer them again on its own.
+describe('CLI/TUI parity -- framework install and baseline removed (#4126)', () => {
+  const FRAMEWORK_TS = join(COMMANDS_DIR, 'framework.ts');
+  it('the framework command registers list only', () => {
+    const cli = readFileSync(FRAMEWORK_TS, 'utf-8');
+    const subs = [...cli.matchAll(/\.command\(\s*'([a-z]+)/g)].map((m) => m[1]);
+    expect(subs).toEqual(['framework', 'list']);
+  });
+  it('no removed source file or TUI screen remains', () => {
+    for (const f of ['framework-baseline.ts']) expect(existsSync(join(COMMANDS_DIR, f)), f).toBe(false);
+    for (const f of ['frameworks-flow.ts', 'FrameworksScreen.tsx']) expect(existsSync(join(TUI_SCREENS_DIR, f)), f).toBe(false);
+  });
+  it('the TUI menus offer no Frameworks entry and name no removed command', () => {
+    const menus = ['ToolsMenu.tsx', 'main-menu-items.ts', 'MainMenu.tsx']
+      .map((f) => join(TUI_SCREENS_DIR, f))
+      .filter((f) => existsSync(f))
+      .map((f) => readFileSync(f, 'utf-8'))
+      .join('\n');
+    expect(menus).not.toMatch(/target:\s*'frameworks'/);
+    expect(menus).not.toMatch(/label:\s*'Frameworks'/);
+    expect(menus).not.toMatch(/swao framework (install|uninstall|info|baseline)/);
+  });
+  it('no hint in the product source names a removed framework command', () => {
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === 'node_modules' || e.name === 'dist' || e.name === '__tests__' || e.name.startsWith('.')) continue;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) {
+          if (/swao framework (install|uninstall|info|baseline)\b/.test(readFileSync(p, 'utf-8'))) offenders.push(p);
+        }
+      }
+    };
+    walk(join(REPO_ROOT, 'packages'));
+    if (existsSync(PREMIUM_PACKAGES_ROOT)) walk(PREMIUM_PACKAGES_ROOT); // premium tree (MCP tools, portal) when checked out
+    expect(offenders).toEqual([]);
   });
 });

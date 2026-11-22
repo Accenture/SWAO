@@ -29,6 +29,7 @@ import { HealthCheckScreen } from './tui/HealthCheckScreen.js';
 import { buildTraceabilityProbe } from './probes/traceability-probe.js';
 import { buildScopeProbe } from './probes/scope-probe.js';
 import { buildPrerequisitesProbe } from './probes/prerequisites-probe.js';
+import { PROBE_APPLIES_TO } from './probe-scope.js';
 
 /**
  * @swao/module-health-check -- the health-check / health-check-pii / health-check-tags
@@ -44,7 +45,13 @@ import { buildPrerequisitesProbe } from './probes/prerequisites-probe.js';
 
 // Commands + payload builder (the host's CLI bootstrap calls these; registerHealthCheck
 // + buildHealthCheckPayload take the injected host probe builders).
-export { registerHealthCheck, buildHealthCheckPayload, buildHealthCheckLogContext, computeFailedProbes, formatHealthCheckSummaryLine } from './commands/health-check.js';
+export { registerHealthCheck, buildHealthCheckPayload, buildHealthCheckLogContext, computeFailedProbes, computeWarnedProbes, formatHealthCheckSummaryLine, formatHealthCheckWarningsLine, formatHealthCheckCompleteMessage, probeLineLogLevel, SERVICE_PROBES_SKIPPED_NAME } from './commands/health-check.js';
+// #4262: the service workspace detector of the service probes (one marker for probes and wizard).
+export { isServiceWorkspace, serviceWorkspaceState, SERVICE_INTAKE_MISSING, buildServiceProbes } from './probes/service-probes.js';
+// #4262: the service-scoped probes outside the runner (wizard parity tests).
+export { buildIntakeMappingProbe } from './probes/intake-mapping-probe.js';
+export { buildApmWeightsProbe } from './probes/apm-weights-probe.js';
+export type { ServiceWorkspaceState } from './probes/service-probes.js';
 export type {
   HealthCheckHostDeps,
   HealthCheckPayload,
@@ -70,12 +77,17 @@ export { registerHealthCheckTags } from './commands/health-check-tags.js';
 // (compliance catalogues probe is exercised by sprint-037 GDPR suites; the BI
 // export probe test stays host-side because it drives the host star writers).
 export { buildMcpProbe, claudeDesktopConfigPath } from './probes/claude-desktop.js';
+export { probeMcpHttpEndpoint, formatMcpHttpProbeDetail, MCP_HTTP_DEFAULT_PORT, WELCOME_WORKSPACE_RE, WELCOME_BINARY_RE } from './probes/mcp-http.js';
+export type { McpHttpProbeResult, McpHttpProbeStatus, McpHttpProbeOptions } from './probes/mcp-http.js';
 export type { McpProbeResult, McpProbeStatus, McpStaleEntry } from './probes/claude-desktop.js';
 export { buildCommunityFrameworksProbe } from './probes/compliance-catalogues-probe.js';
 export type {
   CommunityFrameworksProbeResult,
   CommunityFrameworksProbeStatus,
   CommunityFrameworkSummary,
+  ServiceMappingSummary,
+  PolicyBaselineSummary, // #3869
+  CommunityFrameworksProbeOptions,
 } from './probes/compliance-catalogues-probe.js';
 export { buildTraceabilityProbe, computeAppTraceability, DEFAULT_TARGETS } from './probes/traceability-probe.js';
 export type {
@@ -97,6 +109,10 @@ export { buildIngestionProbe } from './probes/ingestion-probe.js';
 export type { IngestionProbeResult, IngestionProbeStatus } from './probes/ingestion-probe.js';
 export { buildWspMetadataProbe } from './probes/wsp-metadata-probe.js';
 export type { WspMetadataProbeResult, WspMetadataProbeStatus } from './probes/wsp-metadata-probe.js';
+// #3589: probe [26] LZ connections and the probe line formatters the screens contract pins.
+export { buildLzConnectionsProbe, formatLzConnectionScopeLines, lzScopeStateWords, LZ_PROBE_STALE_DAYS, LZ_PROBE_AGAIN } from './probes/lz-connections-probe.js';
+export type { LzConnectionsProbeResult, LzConnectionScopeResult, LzConnectionScopeState } from './probes/lz-connections-probe.js';
+export { formatLzConnectionsProbeLine, formatCommunityFrameworksProbeLine } from './commands/health-check.js';
 export type {
   TagConsistencyProbeResult,
   TagConsistencyStatus,
@@ -107,6 +123,12 @@ export type {
 // TUI screen contributed by this module (#0573). The host renders it via direct
 // import today (App.tsx) and injects the SWAO version (branding is host-only).
 export { HealthCheckScreen } from './tui/HealthCheckScreen.js';
+// #4190 SET-01 (Design 125 section 6): probe scopes per setup branch.
+export { HEALTH_PROBE_KEYS, PROBE_APPLIES_TO, isHealthProbeKey, isProbeInScope, probesForScope, branchOwnProbes } from './probe-scope.js';
+// #4197 SET-08: scoped health check.
+export { CHECK_APPLIES_TO, isCheckInScope, scopedProbeLineEmitter, notInScopeProbe, NOT_IN_SCOPE_STATUS } from './probe-scope.js';
+export { buildScopedHealthCheckPayload, filterHealthCheckPayload, parseHealthCheckScope } from './commands/health-check.js';
+export type { HealthProbeKey } from './probe-scope.js';
 export { HealthCheckProbeList } from './tui/components/HealthCheckProbeList.js';
 export { parseHealthCheckOutput, probeAction, summariseHealthCheckOutput } from './tui/components/health-check-parse.js';
 export type { HealthCheckProbe, HealthCheckOutputSummary } from './tui/components/health-check-parse.js';
@@ -127,6 +149,7 @@ export const probes: ProbeContribution[] = [
   {
     id: 'traceability',
     name: 'traceability',
+    applies_to: PROBE_APPLIES_TO.traceability, // #4190
     run: async (ctx: WorkspaceContext) => {
       const r = buildTraceabilityProbe(ctx.workspacePath);
       return { ok: r.status === 'ok' || r.status === 'absent', message: r.message };
@@ -135,6 +158,7 @@ export const probes: ProbeContribution[] = [
   {
     id: 'scope',
     name: 'scope_coverage',
+    applies_to: PROBE_APPLIES_TO.scope, // #4190
     run: async (ctx: WorkspaceContext) => {
       const r = buildScopeProbe(ctx.workspacePath);
       return { ok: r.status !== 'warn', message: r.message };
@@ -143,6 +167,7 @@ export const probes: ProbeContribution[] = [
   {
     id: 'prerequisites',
     name: 'prerequisites',
+    applies_to: PROBE_APPLIES_TO.prerequisites, // #4190
     run: async ({ workspacePath }) => {
       const r = buildPrerequisitesProbe(workspacePath, { codeHealthTools: await detectCodeHealthTools(fileBackedToolRunner, undefined, PROBE_DETECT_OPTIONS) }); // #3487
       return { ok: r.status !== 'fail', message: r.message };

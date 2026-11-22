@@ -98,7 +98,7 @@ controls:
       - { context_input: "evidence/02-art-5-1-c-data-minimisation.md" }
     references: ["https://gdpr-info.eu/art-5-gdpr/"]
     overrides: [GDPR_Art_5]
-    maps_to: [ISO_27001_A.5.34, SOC_2_C1.1, AI10P-DAT-02]
+    maps_to: [ISO_27001_A.5.34, SOC_2_P3.1, AI10P-DAT-02]
     remediation: "Audit collected fields against the purpose registry; drop unused attributes; design new collection minimal-first."
 
     tags:
@@ -119,7 +119,7 @@ controls:
       - { manual_questionnaire: "evidence/02-art-5-1-d-accuracy-questionnaire.yaml" }
     references: ["https://gdpr-info.eu/art-5-gdpr/"]
     overrides: [GDPR_Art_5]
-    maps_to: [ISO_27001_A.8.10, SOC_2_PI1.4]
+    maps_to: [ISO_27001_A.8.10, SOC_2_P7.1]
     remediation: "Wire a self-service rectification flow; instrument data-quality metrics; reconcile against source systems."
 
     tags:
@@ -417,7 +417,7 @@ controls:
       - { manual_questionnaire: "evidence/03-art-15-access-questionnaire.yaml" }
     references: ["https://gdpr-info.eu/art-15-gdpr/"]
     overrides: []
-    maps_to: [ISO_27001_A.5.34, SOC_2_C1.1]
+    maps_to: [ISO_27001_A.5.34, SOC_2_P5.1, SOC_2_P6.7]
     remediation: "Stand up a self-service access portal or a documented manual workflow with the 30-day SLA; verify the format covers every Art 15(1)(a)-(h) element."
 
     tags:
@@ -656,7 +656,7 @@ controls:
       - { context_input: "evidence/04-art-24-controller-responsibility.md" }
     references: ["https://gdpr-info.eu/art-24-gdpr/"]
     overrides: []
-    maps_to: [ISO_27001_A.5.1, SOC_2_CC1.4]
+    maps_to: [ISO_27001_A.5.1, SOC_2_P8.1]
     remediation: "Publish the controller's data-protection policy; map each policy clause to the operational control evidencing it."
 
     tags:
@@ -902,7 +902,8 @@ controls:
       in a timely manner in the event of a physical or technical incident.
     severity_default: high
     evidence_basis:
-      - { signal_prefix: OBS }
+      - { signal_prefix: TF }
+      - { signal_prefix: CTX }
     references: ["https://gdpr-info.eu/art-32-gdpr/"]
     overrides: [GDPR_Art_32]
     maps_to: [ISO_27001_A.5.30, SOC_2_A1.2]

@@ -9,6 +9,262 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-20
+
+Minor release. It adds the Landing Zone Live Assessment with read-only drivers for T Cloud
+Public, AWS, Microsoft Azure and STACKIT, the Client LZ Policy Baseline community framework,
+one standard for every terminal screen (Design 126) and for every HTML publication
+(Design 127), watchdogs and live model lists for the LLM Assessment, and refreshes the
+landing-zone catalogues.
+
+### Added
+
+- Landing Zone Live Assessment (to Design 120): SWAO reads a deployed landing
+  zone through the provider's read-only APIs, with drivers for Open Telekom Cloud / T Cloud
+  Public (`otc`), AWS (`aws`), Microsoft Azure (`azure`) and STACKIT (`stackit`).
+  - `swao lz connect`, `probe`, `list` and `remove` register a landing zone and its
+    platform and application scopes in the workspace `.swao.yml` (`landing_zones:`, never a
+    credential). They store the credentials in the vault as `lz:<lz-id>:<scope-id>:<field>`
+    (from a file or standard input, never on the command line) and probe that every
+    credential is read-only. Available in every edition.
+  - A probe result of `unverifiable` or `refused` stops the scope unless
+    `--accept-unverified-read-only` or `--accept-write-capable-credentials` is passed for
+    that run. The flag is stamped into the scan and the manifest. Whatever the flags, only
+    read requests are ever sent.
+  - `swao assess --type landing-zone-live --lz <lz-id>` and `swao lz scan --mode live`
+    (Consultant) collect regions, services, guardrails, resources, quotas and activity per
+    scope. Sources a provider does not offer yet are listed as `not_collected`. The run
+    folder `landing-zones/<lz-id>/wsp/runs/<run-id>/` holds one scan per scope, the merged
+    view, the observed live catalogue, the run manifest and the run status, with the
+    differences to the previous run.
+  - `swao publish --lz-live <lz-id>` (Consultant) publishes the run. In the terminal
+    interface: Tools > Landing Zone Connections (also a workspace setup step), Run
+    Assessment > Landing Zone Live Assessment, and Publish HTML > Landing Zone Live View.
+  - `swao lz catalogue update --source live --lz <lz-id> [--run <ts>] [--new <slug>]`
+    (Consultant) adds the observed offering to a landing zone catalogue, or builds a new
+    catalogue. It is also available in Tools > Update LZ Catalogue. Additions only: no
+    service is retired and the confidence is never raised.
+  - `swao assess --portfolio --type landing-zone-live [--include-simulated]` and
+    `swao publish --portfolio --block-profile lz-live-portfolio` (Enterprise) merge every
+    landing zone into a multi-cloud governance view, which also appears in the portfolio
+    summary and the portfolio terminal screen.
+  - Health check probe 26 "LZ connections" reports the read-only state of every registered
+    scope. It never fails the check.
+  - Runs against a simulated provider are marked as simulated in the scan, the manifest,
+    the CLI output and the publication banner. They are refused as a catalogue source and
+    left out of the portfolio merge unless `--include-simulated` is passed.
+  - Drivers not yet verified on a live tenant are offered only when named in
+    `SWAO_LZ_UNVERIFIED_DRIVERS`. User guide: `docs/assessment/landing-zone-live.md`
+    (English and German).
+  - Open Telekom Cloud access keys: the `otc` driver also accepts `--auth aksk`
+    (vault fields `access-key-id`, `secret-access-key`, optional `session-token` for a
+    temporary key; requests signed with `SDK-HMAC-SHA256`). A temporary key probes as
+    `unverifiable`, so a run needs `--accept-unverified-read-only`.
+  - A token rejected with HTTP 401 during a run stops that scope at once instead of
+    recording the remaining sources as not collected; throttling (HTTP 429, and 503 with
+    `Retry-After`) is retried up to 3 times within 60 seconds per request, honouring
+    `Retry-After`.
+  - Driver registration: `otc`, `aws` and `stackit` are verified on a live tenant
+    and offered in every build; `azure` still needs `SWAO_LZ_UNVERIFIED_DRIVERS=azure`. The
+    minimal role sets in the drivers' `ROLES.md` remain unverified.
+  - Publication content: regions per country with a service matrix per category;
+    services with category, IaC level and lowest observed price columns and filters; the
+    estate with workloads, quotas, tag coverage and the changes since the previous run.
+  - Observed landing zone fit: an application scope linked to an app gives that
+    app an observed fit in the portfolio merge (`app_fits`, `lz_fit` with
+    `confidence: observed`, its own row in the hub publication).
+  - `swao lz diff <lz-id> [--from <ts>] [--to <ts>] [--scope <id>]` (Consultant)
+    compares two live runs per scope; also "Diff vs previous run" in the terminal
+    interface.
+  - A tier refusal of a live command prints the `[LICENSE]` block naming the required
+    licence and exits 2.
+- Client LZ Policy Baseline (to Design 123): a community framework
+  (`client-lz-policy-baseline`, id `CLIENT_LZ_POLICY_BASELINE`) that writes a client's own
+  landing zone rules down once as normalised policies, so SWAO measures the landing zones of
+  several providers against the same rules. SWAO only reads; it never enforces a policy.
+  - The shipped default is a fully populated ruleset for a German public agency: 20
+    policies in 11 categories (residency in Germany, service deny and allow lists, encryption
+    at rest and in transit, network exposure, identity, logging, tagging, availability
+    zones, backup, budget alerts, documented exit). Each default cites its source control or
+    is marked as an assumption; the framework README lists every assumed value. The service
+    deny and allow example sets, including "managed PostgreSQL forbidden", ship disabled.
+  - `swao framework install client-lz-policy-baseline` copies it into the workspace, where
+    the client edits `policy-baseline.yaml`. `swao framework baseline show`, `diff`,
+    `upgrade` and `copy` review, compare, upgrade (new shipped policies arrive as `not_set`,
+    the client's settings are kept, backups are written) and duplicate a baseline; also
+    Tools > Frameworks in the terminal interface. The health check validates every
+    baseline copy and warns on `not_set` policies and a stale copy. Community.
+  - Landing Zone Live Assessment with `--frameworks client-lz-policy-baseline`
+    (Consultant): per scope an offering verdict and an estate status per policy, read-only
+    posture collectors for T Cloud Public, AWS and STACKIT (Azure verified against mocks
+    only), the tenant hierarchy (`swao lz hierarchy`) and a baseline light column per
+    service.
+  - Application Assessment against the baseline (`swao regime-select --app <id>`) with the
+    static LZ catalogue (live landing zone data is read only by the Landing Zone Live
+    Assessment, see Fixed).
+    The controls are decided by rule, never by an LLM, worst-of over the targets or scopes,
+    with the ranked contributions kept so the second and third worst stay reportable
+    (`baseline-decisions.json`, the publication row detail, the terminal interface).
+    `--lz-cat-targets` accepts `provider:region` and `provider/region`.
+  - Evidence references (`ev:` refs) on every finding of a live run; the native id and the
+    console link stay in the run's local `evidence-refs.json` and are resolved with
+    `swao lz evidence <ref> [--open]`.
+  - Publications: baseline blocks in `swao publish --lz-live <lz-id>` and the cross-provider
+    comparison `swao publish --portfolio --block-profile lz-live-baseline-comparison`
+    (Enterprise), with a fit score per landing zone, the same-baseline rule and the
+    provenance of every merged requirement. The WSP schema generation is 0.11
+    (`landing_zones[].baseline`, `hierarchy`, `lz_source`). User guide: section "Client LZ
+    Policy Baseline" of `docs/assessment/landing-zone-live.md` and the framework page
+    `docs/frameworks/client-lz-policy-baseline.md` (English and German).
+- Service Portfolio Assessment: "Top N by risk" in the terminal interface asks for N
+  (default 20, or `service_portfolio.assess_top_n` in the workspace `.swao.yml`; at most the
+  number of service apps), and the new `swao service assess --top <n> [--dry-run]` assesses
+  the first n apps of `swao service rank` in one command.
+- One standard for every terminal screen (Design 126): a fixed screen anatomy
+  (title, step bar, a guidance box that explains the highlighted option, key hints from one
+  verb list), central status words and colour tokens, run screens that Esc cancels, finish
+  screens with a "What next" menu and error screens with recovery options. Esc steps back and
+  asks before it aborts a flow; Ctrl+C asks before SWAO quits. No screen shows CLI syntax, a
+  flag, an em dash, an en dash or a double hyphen. Every filterable list shows its filter
+, app pickers are bounded and grouped and draw before the workspace scan, and
+  the landing zone region pickers group the regions by country.
+- One standard for every HTML publication (Design 127, ADR-0073 to ): one page
+  shell for all publication types, a central status map, shared tables with a sticky header
+  and export, shared KPI tiles, charts and legends, footers with provenance, a theme that
+  follows the operating system and prints light, AA contrast, cross references between
+  findings, checks, controls and views, and a size budget. Every evidence reference of an
+  application publication links, or is shown as a note, an absence or a file that is not in
+  the inputs.
+- LLM Assessment:
+  - Model pickers and `swao llm models` list the models the platform serves, read live
+; a model that is not served is never offered.
+  - Each leg is checked with `assess --preflight` before its workspace is copied, so a leg
+    that cannot start fails at once with its real error.
+  - A stalled leg or leg challenge is stopped by a watchdog and a total time limit, and its
+    whole process tree is ended. The limits can be set with
+    `SWAO_LEG_STALL_TIMEOUT_MS`, `SWAO_LEG_MAX_MS`, `SWAO_CHALLENGE_STALL_TIMEOUT_MS` and
+    `SWAO_CHALLENGE_MAX_MS`. A leg that did not finish is listed without score and rank
+, and the run totals include the challenge calls and their cost.
+  - Estimates per model price, from measured runs where they exist.
+- Landing Zone Live: `swao lz credentials refresh` signs in to AWS SSO and stores new session
+  keys, with an optional `aws_profile` on an AWS scope and a terminal action "Refresh the AWS
+  SSO session"; `swao lz connect --credentials-from` reuses the stored credentials of
+  another scope of the same provider.
+- Service Portfolio Assessment: `swao service assess --app` and `--regimes`, and every service
+  run evaluates SWAO_APM; the run confirmation shows the expected cost in USD and asks
+  twice above 25 USD.
+- MCP server (Enterprise): the terminal interface starts the HTTP MCP server pinned to
+  the open workspace and stops it on exit; the health check probes the HTTP MCP endpoint and
+  names the binary and workspace that own it; `swao init --no-save-default` keeps the saved
+  default workspace.
+
+### Changed
+
+- Smaller MCP tool list (Design 116): the `full` profile lists 63 tools in about 9,800
+  tokens (was 64 tools, about 12,100). `swao_publish_site` is no longer listed; use
+  `swao_publish` with `mode: site` (a direct call still works and starts with a
+  `[Deprecated]` notice). `workspace_path` no longer carries a description on every tool;
+  the server instructions explain it once, and a server started with `--workspace` hides it
+  as before. `app_id` no longer advertises its pattern; invalid ids are still refused with
+  the same message. SWAO Chat starts its MCP server pinned to its workspace (`--workspace`).
+  Budgets: starter 630, assess 2,720, full 10,820 tokens.
+
+- DORA community framework, catalogue 2.0.0: 55 controls across the five DORA
+  pillars (was 31), each citing the article, paragraph and point of Regulation (EU)
+  2022/2554 and the article of the Level 2 act where one applies; all eight Level 2 acts
+  are covered (Delegated Regulations 2024/1774, 2024/1772, 2024/1773, 2025/301, 2025/532,
+  2025/1190; Implementing Regulations 2024/2956, 2025/302). Incident reporting time limits
+  follow 2025/301 Art. 5; values DORA leaves to the entity are asked for, not invented.
+  Seven ids that named the wrong article are corrected; the old ids stay resolvable
+  through the new control-level `replaces:`. Organisational controls (`layer: governance`)
+  take their evidence from the documents in the app's `ingestion/` folder and are never
+  passed without one of their expected documents (file named after the expected input). Cross-maps to NIS2, BSI C5, EUCS and GDPR; DORA is
+  offered for landing zone assessments and has a standalone copy in `community-frameworks/`.
+  Every citation is verified against the EUR-Lex text of the regulation and of the eight
+  Level 2 acts; the demo subset DORA_DEMO (0.2.0) uses the 2.0.0 ids, and its old ids
+  DORA_Art_15 and DORA_Art_17 stay resolvable through `replaces:`.
+
+- T Cloud Public naming: Deutsche Telekom renamed Open Telekom Cloud to T Cloud
+  Public in early 2026. SWAO now uses the new name in user-facing text: the `otc` Landing
+  Zone catalogue name and picker label (`otc - T Cloud Public`), publication provider
+  badges and matrix headers, CLI log output, the reference catalogues under `controls/`,
+  the landing page and the documentation ("T Cloud Public (formerly Open Telekom Cloud)"
+  at first mention). The provider id stays `otc`: `.swao.yml` files, vault keys,
+  `--lz-provider otc` and catalogue file names do not change.
+- Inline LZ fit of the Application Assessment: Pass 09 uses only the landing zone
+  targets selected for the run; a market scan over the bundled catalogues is an opt-in entry
+  of the Target LZ step and is marked with a lower confidence.
+- `.swao.yml` writes: the Setup steps, the lens
+  confirmation, the service intake, the landing zone registration and the app rename write
+  through one minimal-patch writer that keeps comments and fills the commented init templates
+  in place instead of appending a second block. Framework, pass and LLM choices of a single
+  app run no longer rewrite the app `.swao.yml`; saving them as the default asks first.
+- Version output: release and edition builds print the plain version; the build
+  commit and date show only in the developer binary.
+- Bundled LLM connector catalogues list the currently served models with a 90-day review
+  gate; an outdated, unedited workspace connector seed is offered for update.
+- Faster start and runs: command modules load per invocation, the health check reads
+  the app inputs concurrently, and the portfolio summary is rebuilt incrementally
+.
+
+### Fixed
+
+- Application Assessment of an app linked to a landing zone (owner decisions
+  2026-11-06 and 2026-11-09): every assessment type except `landing-zone-live` uses the
+  static LZ catalogue, in every edition. A live landing zone scope linked to the app in
+  `landing_zones[].scopes[].app` no longer switches the app to live data and no longer stops
+  `swao assess --app` before the first pass when no live run exists; the run shows a warning
+  that names the link and `swao assess --type landing-zone-live --lz <lz-id>`, and
+  `run-context.yaml` records `lz_source: catalogue` and the reason (`lz_source_reason`).
+  `--lz-source live`, `--lz` and `--scope` in an app run are refused with exit 1 before any
+  pass. Without configured catalogue targets the targets are seeded from the linked landing
+  zone (its scope regions in `.swao.yml`, else the regions in use of its latest live run) and
+  recorded in `lz_source_reason` (`seeded_targets`, `seed_source`); configured targets win.
+  The terminal interface shows the same warning and pre-fills the seeded targets in the
+  Target LZ step. When nothing can be seeded, or with `--no-lz-fit` (Esc in the terminal
+  interface), the notice says that nothing was assessed against the catalogue.
+- Licence gates (owner decision 2026-11-05, ADR-0055): a command refused by its
+  licence tier now exits 2 everywhere. `swao report`, `swao chat`, `swao mcp`,
+  `swao assess --portfolio`, `swao service export`, `swao unipipe`, `swao init --powerbi`
+  and `swao export --portfolio` exited 1 before; `swao publish`, `swao lz catalogue update`
+  and the Community and Consultant command stubs already exited 2. An invalid licence
+  file still exits 3.
+- Credential vault and licence state writes: on Windows a write that
+  meets a short file lock (for example from a virus scanner) is retried a few times before
+  it fails. It no longer fails at the first lock. The write stays atomic.
+- Packaged binary: module screens, the LZ Live probe and the MCP version probe
+  start their sub-process through one self-spawn helper, and the health check app-input
+  prefetch works in the binary.
+- Publications: the Engagement Hub names the engagement or the workspace folder, never the
+  absolute workspace path; a service run matches its selected landing zone like an
+  application run, and the page never says that none was matched next to a fit; the
+  inputs folder and signal references link; the Power BI export normalises
+  dashes in every cell; control references link only http(s) URLs.
+- Health check: probe levels, warning counts and the summary agree, and a
+  version check is never reported as "not found" when the event loop was busy past its
+  deadline.
+
+### Security
+
+- Dependencies: `hono` 4.13.18 (GHSA-46wx-v44x-9hh2, GHSA-4m76-xfj5-7975,
+  GHSA-h7mg-cq63-vhpq, GHSA-4h7h-rv7c-7m2v, GHSA-3gg2-335m-rxc6) and `@hono/node-server`
+  2.1.8 (GHSA-qv5m-9pm6-hqp3, GHSA-jpvv-r467-5p4w), moderate and low.
+- Regular expressions with overlapping repetitions in the new evidence, pass progress and
+  landing zone helpers were replaced by linear-time string code (CodeQL
+  js/polynomial-redos).
+
+### Known issues
+
+- A failed LLM Assessment (no leg completes) still exits with code 0; check the run status
+  on screen or in the run folder.
+- Context-ingestion prose lines can still count as unresolved evidence references in a
+  service publication; they are shown as unlinked text.
+- Landing zone catalogues: the AWS VM prices of the service cost model are from 2026-11-01
+  (the AWS price download timed out during the refresh); the OCI BSI C5 scope was not
+  re-verified (the Oracle compliance portal refused automated access); Delos Cloud services
+  stay preview or announced until a certificate is issued; the residency of the Azure region
+  `portland` stays UNKNOWN.
+
 ## [1.6.1] - 2026-11-03
 
 ### Security
@@ -16,8 +272,10 @@ and SWAO adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Dependencies: `@hono/node-server` 2.1.3 (GHSA-rmxm-3fg6-px4f) and `qs` 6.16.1
   (GHSA-6pq8-jhm2-2vcw); `glob` 14.0.2 (GHSA-3g3m-2fjr-6pw4) under `@fastify/static`, which also
   lifts `minimatch` to 11 (GHSA-g3hv-75wg-m249) there and under `typescript-eslint` (development
-  only). The minimatch 3 and 5 copies under the Enterprise workbook export (`exceljs` >
-  `archiver`) remain open pending an owner decision.
+  only). The minimatch 3 and 5 copies that come in through `exceljs` > `archiver`, which
+  every edition bundles (Community included), are accepted: no untrusted glob pattern reaches
+  them, and the fix needs an eight-major update (owner decision 2026-11-02; corrected here
+  after the release).
 
 ### Changed
 

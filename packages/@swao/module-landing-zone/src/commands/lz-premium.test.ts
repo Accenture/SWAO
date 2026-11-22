@@ -38,6 +38,7 @@ import type { LicensePayload } from '@swao/core';
 import { registerLz } from './lz.js';
 import { registerLzCatalogueUpdate } from './lz-premium.js';
 import { discoverLzCatalogues } from '../catalogue/loader.js';
+import { AZURE_SOVEREIGNTY_PINS } from '../catalogue/sovereignty-pins.js';
 
 // ---------------------------------------------------------------------------
 // Shared temp home (redirected via _paths so LicenseGuard.load() is sandboxed)
@@ -731,6 +732,49 @@ describe('lz catalogue update -- Azure Retail Prices API mock-server (#0869)', (
     expect((azureJson as unknown as { meta: { source: { mode: string } } }).meta.source.mode).toBe('api');
     const index = JSON.parse(readFileSync(join(fakeCatDir, 'index.json'), 'utf-8')) as { catalogues: unknown[] };
     expect(index.catalogues).toEqual([]);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('#4060: the refresh overlay pins win over a previous UNKNOWN residency; an unpinned region stays UNKNOWN', async () => {
+    const fakeCatDir = join(TEMP_HOME, 'lz-catalogues-azure-pins');
+    mkdirSync(fakeCatDir, { recursive: true });
+    // The previous catalogue carries the UNKNOWN placeholder the #4060 regions had before.
+    writeFileSync(join(fakeCatDir, 'azure.json'), JSON.stringify({
+      meta: { schema_version: '0.1', name: 'Azure service catalogue', provider: 'azure', last_updated: '2026-11-01', source: { mode: 'api', tool: 'retail-prices-api' }, confidence: 'high', regions_count: 1 },
+      regions: [{ id: 'southwestus', country: 'UNKNOWN', sovereignty: { residency_country: 'UNKNOWN', operator_jurisdiction: 'US-entity', extraterritorial_exposure: ['us_cloud_act', 'fisa_702'], certifications: ['ISO_27001'] }, services: [] }],
+    }), 'utf-8');
+
+    stubConsultantGuard();
+    const row = (armRegionName: string) => ({ serviceName: 'Virtual Machines', armRegionName, retailPrice: 1, unitOfMeasure: '1 Hour', type: 'Consumption', isPrimaryMeterRegion: true });
+    const page = { Items: ['southwestus', 'israelnorthwest', 'malaysiasouth', 'westcentralusfre', 'portland'].map(row), NextPageLink: null, Count: 5 };
+    vi.stubGlobal('fetch', vi.fn().mockImplementationOnce(async () => ({ ok: true, json: async () => page })));
+    vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => { throw new Error('process.exit:' + String(_code ?? '')); });
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    const program = new Command();
+    program.exitOverride();
+    registerLz(program);
+    registerLzCatalogueUpdate(program);
+    await program.parseAsync(['node', 'swao', 'lz', 'catalogue', 'update', '--provider', 'azure', '--catalogues-dir', fakeCatDir, '--skip-prices']);
+
+    expect(vi.mocked(process.exit)).not.toHaveBeenCalled();
+    const azureJson = JSON.parse(readFileSync(join(fakeCatDir, 'azure.json'), 'utf-8')) as {
+      regions: Array<{ id: string; country: string; sovereignty: { residency_country: string; operator_jurisdiction: string } }>;
+    };
+    const residency = Object.fromEntries(azureJson.regions.map((r) => [r.id, [r.country, r.sovereignty.residency_country]]));
+    expect(residency).toEqual({
+      israelnorthwest: ['IL', 'IL'],
+      malaysiasouth: ['MY', 'MY'],
+      portland: ['UNKNOWN', 'UNKNOWN'],
+      southwestus: ['US', 'US'],
+      westcentralusfre: ['US', 'US'],
+    });
+    // The pinned facts are written exactly as the overlay pins hold them.
+    for (const id of ['israelnorthwest', 'malaysiasouth', 'southwestus', 'westcentralusfre']) {
+      const r = azureJson.regions.find((x) => x.id === id)!;
+      expect(r.sovereignty).toEqual(AZURE_SOVEREIGNTY_PINS[id]);
+    }
 
     vi.unstubAllGlobals();
   });

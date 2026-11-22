@@ -1,11 +1,12 @@
 // writeLlmLegsToSwaoYml + buildResolvedLegs -- extracted from LlmAssessmentScreen.tsx (#2376).
-// Pure file-system helpers; no React state.
+// Pure file-system helpers; no React state. #4198: the writer runs only after
+// the explicit "save as the new default" answer (Design 125 section 5.7).
 
-import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { load, dump as yamlDump } from 'js-yaml';
+import { patchSwaoYmlFileOrThrow } from '@swao/core';
 import type { ResolvedLeg } from '@swao/module-llm-assessment';
 import type { PendingLeg } from './types.js';
+import { legCostSource } from '../../../commands/llm-leg-cost.js';
 
 interface LegDef {
   connector: string;
@@ -17,23 +18,21 @@ export function writeLlmLegsToSwaoYml(
   wp: string,
   legs: Array<{ connector: string; model?: string; primary?: boolean }>,
 ): void {
-  const yamlPath = join(wp, '.swao.yml');
-  let raw: Record<string, unknown> = {};
-  try {
-    const existing = load(readFileSync(yamlPath, 'utf8')) as Record<string, unknown>;
-    if (existing && typeof existing === 'object') raw = existing;
-  } catch { /* fresh file */ }
-  raw['llm_assessment'] = {
-    ...(typeof raw['llm_assessment'] === 'object' && raw['llm_assessment'] !== null
-      ? (raw['llm_assessment'] as Record<string, unknown>)
-      : {}),
-    legs,
-  };
-  writeFileSync(
-    yamlPath,
-    '# .swao.yml -- SWAO workspace configuration\n' + yamlDump(raw),
-    'utf-8',
-  );
+  // #4283: minimal patch of llm_assessment.legs only; every comment, the key
+  // order and the other keys of the workspace file stay (Design 125 section 7).
+  patchSwaoYmlFileOrThrow(join(wp, '.swao.yml'), [{ path: ['llm_assessment', 'legs'], value: legs }], { createIfMissing: true });
+}
+
+/**
+ * #4198: the llm_assessment.legs entries of confirmed legs, for the explicit
+ * "save as the new default" answer (Design 125 section 5.7).
+ */
+export function legDefsOf(resolved: ReadonlyArray<Pick<ResolvedLeg, 'connector' | 'model' | 'primary'>>): LegDef[] {
+  return resolved.map((l) => ({
+    connector: l.connector,
+    model: l.model,
+    ...(l.primary ? { primary: true as const } : {}),
+  }));
 }
 
 export function buildResolvedLegs(pending: PendingLeg[]): { legDefs: LegDef[]; resolved: ResolvedLeg[] } {
@@ -47,7 +46,8 @@ export function buildResolvedLegs(pending: PendingLeg[]): { legDefs: LegDef[]; r
     connector: l.connectorId,
     model: l.model,
     primary: i === 0,
-    costSource: (l.connectorId === 'ollama' ? 'local' : 'billed') as 'local' | 'billed',
+    // #4372: same decision as the CLI (commands/llm-leg-cost.ts).
+    costSource: legCostSource(l.connectorId),
   }));
   return { legDefs, resolved };
 }

@@ -13,14 +13,21 @@
 //
 // ================================================================
 
-import { useState, useRef, useMemo } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
-import { GuidanceBox, isAllowed } from '@swao/tui-kit';
-import type { LicenseStateView, LicenseTier } from '@swao/tui-kit';
-import { Header } from '../components/Header.js';
-import { LicenseGuard } from '../../license/license-guard.js';
+// #4257 (TUI-13, Design 126 sections 3, 4.1 and 7): the main menu on
+// ScreenLayout with the central numbered SelectInput, the menu key hints and
+// one guidance entry per entry (#4230). Esc asks "Exit SWAO?" through the
+// AbortDialog (Q-03 decided); the "0 Exit" entry stays visible and exits at once.
+
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Text, useApp, useInput } from 'ink';
+import {
+  ScreenLayout, SelectInput, KEY_HINTS, isAllowed, tone, useFlowNavigation, useOptionGuidance,
+  type GuidanceEntry, type LicenseTier, type SelectOption,
+} from '@swao/tui-kit';
+import { useScreenHeader } from '../components/screen-header.js';
 import { SWAO_LANDING_URL } from '../../branding.js';
 import { ITEMS, MENU_INFO, type MenuItem, type MenuTarget } from './main-menu-items.js';
+import { formatTuiMcpServerState, useTuiMcpServerState } from '../mcp-server-slot.js';
 
 // #3476: menu data moved to main-menu-items.ts (plain module, shared with the MCP start prompt).
 export type { MenuTarget } from './main-menu-items.js';
@@ -30,58 +37,105 @@ interface MainMenuProps {
   suggestedNext?: MenuTarget;
   /** #2579: cursor returns to this item when navigating back from a sub-screen. */
   lastVisited?: MenuTarget;
-  /** ESC navigates back to the Assessment Type screen when provided. */
+  /** Esc leaves to this screen at once when provided (no exit question). */
   onBack?: () => void;
   /** Called when a tier-gated item is activated without sufficient licence. */
   onUpgradeNeeded?: (feature: string, tier: Exclude<LicenseTier, 'community'>, description: string) => void;
 }
 
+/** Value of the "0 Exit" entry (no MenuTarget). */
+const EXIT_VALUE = '__exit';
+
+const EXIT_GUIDANCE: GuidanceEntry = {
+  title: 'Exit',
+  what: 'Close SWAO. The workspace, its runs and the settings stay on disk; nothing is lost.',
+  sections: [{ label: 'Next', text: 'Start SWAO again from the workspace folder to pick up where you left off.' }],
+};
+
+const MENU_GUIDANCE: GuidanceEntry = {
+  title: 'Main menu',
+  what: 'Pick a task. Workspace Setup first, then Health Check, then Run Assessment.',
+};
+
+/** The tier or availability badge of an entry, shown in its description column. */
+function badge(item: MenuItem, tierBlocked: boolean): string {
+  if (tierBlocked) return item.tierRequired === 'enterprise' ? '[Enterprise]' : '[Consultant+]';
+  if (item.comingSoon) return '[Coming soon]';
+  return '';
+}
+
+/** Menu entries as picker options with their guidance entry (exported for tests). */
+export function mainMenuOptions(
+  isBlocked: (item: MenuItem) => boolean,
+  suggested?: MenuTarget,
+): SelectOption[] {
+  const entries = ITEMS.map((item): SelectOption => {
+    const info = MENU_INFO[item.target];
+    const b = badge(item, isBlocked(item));
+    const hint = suggested === item.target && !isBlocked(item) ? 'suggested next' : '';
+    return {
+      label: item.label,
+      value: item.target,
+      number: item.key,
+      detail: [b, item.detail, hint].filter((s) => s !== '').join('  '),
+      guidance: {
+        title: item.label,
+        what: info.what,
+        sections: [
+          { label: 'When to use', text: info.use },
+          { label: 'Deliverables', text: info.output },
+        ],
+        ...(item.cli ? { cli: item.cli } : {}),
+      },
+    };
+  });
+  return [...entries, { label: 'Exit', value: EXIT_VALUE, number: '0', guidance: EXIT_GUIDANCE }];
+}
+
+/** #4392: the frame footer: the MCP server state (when there is one), then the landing page. */
+export function mainMenuFooter(mcpLine: string | null): string {
+  const info = `Further information: ${SWAO_LANDING_URL}`;
+  return mcpLine ? `${mcpLine}. ${info}` : info;
+}
+
 export function MainMenu({ onSelect, suggestedNext, lastVisited, onBack, onUpgradeNeeded }: MainMenuProps) {
   const { exit } = useApp();
+  const header = useScreenHeader('Main Menu');
+  const licenseState = header.licenseState ?? { tier: 'community' as const, assessmentCount: 0, firstRun: '' };
 
-  // Load licence state once (same pattern as LzCatalogueUpdateScreen).
-  const licenseState = useMemo<LicenseStateView>(() => {
-    try {
-      return LicenseGuard.load().state as LicenseStateView;
-    } catch {
-      return { tier: 'community', assessmentCount: 0, firstRun: '' };
-    }
-  }, []);
-
-  // #2579: restore cursor to lastVisited when returning from a sub-screen;
-  // fall back to suggestedNext for initial entry (virgin session).
-  const initialIdx = lastVisited
-    ? Math.max(0, ITEMS.findIndex(it => it.target === lastVisited))
-    : suggestedNext
-    ? Math.max(0, ITEMS.findIndex(it => it.target === suggestedNext))
-    : 0;
-
-  const [idx, setIdx] = useState(initialIdx);
-  // #0248: once the operator has navigated (arrow keys or a shortcut
-  // that lands them on a row other than the suggested one), suppress
-  // the green "suggested next" hint. Its purpose was to nudge; once
-  // the operator has chosen otherwise, the nudge has served its
-  // purpose and the visual clutter should go away.
-  const [hasNavigated, setHasNavigated] = useState(false);
   // Inline message for comingSoon items activated by Enterprise users (#2312).
   const [comingSoonMsg, setComingSoonMsg] = useState('');
-  // #0813: guard prevents Escape/Enter from navigating away while guidance is open.
-  const guidanceOpenRef = useRef(false);
-  // #0816: useRef mirrors the stale-closure fix from SelectInput #0805. Ink
-  // re-registers useInput on every render; the old handler can fire with a
-  // stale idx during screen transitions. Refs always hold the live value.
-  const idxRef = useRef(idx);
-  idxRef.current = idx;
-  const hasNavigatedRef = useRef(hasNavigated);
-  hasNavigatedRef.current = hasNavigated;
-  // Stable ref to licenseState to avoid stale closure in useInput.
-  const licenseStateRef = useRef(licenseState);
-  licenseStateRef.current = licenseState;
+  // #0248: the "suggested next" hint goes once the operator moves the cursor.
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const mounted = useRef(false);
+
+  // Q-03: Esc asks "Exit SWAO?"; with onBack the menu is a sub-screen and leaves at once.
+  const nav = useFlowNavigation({ steps: ['Main menu'], dirty: !onBack, what: 'exit', onExit: onBack ?? exit });
+
+  const isBlocked = useCallback(
+    (item: MenuItem): boolean => !!item.tierRequired && !isAllowed(licenseState, item.tierRequired),
+    [licenseState],
+  );
+  const options = useMemo(
+    () => mainMenuOptions(isBlocked, hasNavigated ? undefined : suggestedNext),
+    [isBlocked, suggestedNext, hasNavigated],
+  );
+
+  // #2579: restore the cursor to lastVisited; fall back to suggestedNext on first entry.
+  const start = lastVisited ?? suggestedNext;
+  const initialIndex = start ? Math.max(0, ITEMS.findIndex((it) => it.target === start)) : 0;
+
+  const guidance = useOptionGuidance(MENU_GUIDANCE);
+  // #4392: the HTTP MCP server state (Enterprise; nothing in Community and Consultant).
+  const mcpLine = formatTuiMcpServerState(useTuiMcpServerState());
 
   /** Activate an item: enforce tier gate, then comingSoon gate, then route. */
-  const activateItem = (item: MenuItem) => {
-    if (item.tierRequired && !isAllowed(licenseStateRef.current, item.tierRequired)) {
-      if (onUpgradeNeeded) onUpgradeNeeded(item.label, item.tierRequired, item.detail);
+  const activate = (value: string): void => {
+    if (value === EXIT_VALUE) { exit(); return; }
+    const item = ITEMS.find((it) => it.target === value);
+    if (!item) return;
+    if (isBlocked(item)) {
+      if (onUpgradeNeeded && item.tierRequired) onUpgradeNeeded(item.label, item.tierRequired, item.detail);
       return;
     }
     if (item.comingSoon) {
@@ -91,107 +145,37 @@ export function MainMenu({ onSelect, suggestedNext, lastVisited, onBack, onUpgra
     onSelect(item.target);
   };
 
-  useInput((input, key) => {
-    // #2304: Enter activates the highlighted item even when the GuidanceBox is
-    // expanded. GuidanceBox closes itself on Enter; the parent handler must also
-    // fire (per GuidanceBox #1412 intent) or the shell/menu item is never reached.
-    if (guidanceOpenRef.current && !key.return && !key.upArrow && !key.downArrow) return;
-    // Clear any inline coming-soon message on the next keypress.
+  // The shell entry has a letter key (Windows only); the picker reads digits only.
+  useInput((input) => {
     if (comingSoonMsg) setComingSoonMsg('');
-    if (key.upArrow) {
-      setIdx(i => Math.max(0, i - 1));
-      setHasNavigated(true);
-    }
-    if (key.downArrow) {
-      setIdx(i => Math.min(ITEMS.length - 1, i + 1));
-      setHasNavigated(true);
-    }
-    if (key.return) {
-      const item = ITEMS[idxRef.current];
-      if (item) activateItem(item);
-      return;
-    }
-    // ESC = back when onBack is provided; at top level ESC does nothing (#2554: no silent exit).
-    // Use 0 (or the Exit item) to exit SWAO from the main menu.
-    if (key.escape) { if (onBack) { onBack(); } return; }
-    if (input === '0') { exit(); return; }
-
-    const shortcut = ITEMS.find(it => it.key === input);
-    if (shortcut) {
-      if (shortcut.target !== suggestedNext) setHasNavigated(true);
-      activateItem(shortcut);
-    }
-  });
-
-  const activeItem = ITEMS[idx];
-  const info = activeItem ? MENU_INFO[activeItem.target] : undefined;
+    const shortcut = ITEMS.find((it) => it.key === input && !/^[0-9]$/.test(it.key));
+    if (shortcut) activate(shortcut.target);
+  }, { isActive: nav.contentActive });
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle="Main Menu" />
-      <Box flexDirection="column" marginTop={1}>
-        {ITEMS.map((item, i) => {
-          const active = i === idx;
-          const tierBlocked = !!item.tierRequired && !isAllowed(licenseState, item.tierRequired);
-          // #2615: never highlight a tier-gated item as "suggested next" on a lower tier.
-          const isSuggested =
-            suggestedNext && item.target === suggestedNext && !active && !hasNavigated && !tierBlocked;
-          // #2605: tier-gated items remain fully visible (badge signals the gate);
-          // only items truly unavailable to all tiers (comingSoon without a tier
-          // requirement) are dimmed so the visual treatment is consistent across
-          // MainMenu and ToolsMenu.
-          const comingSoonOnly = !!item.comingSoon && !tierBlocked;
-          return (
-            <Box key={item.key}>
-              <Text
-                color={comingSoonOnly ? undefined : (active ? 'cyan' : isSuggested ? 'green' : undefined)}
-                bold={active && !comingSoonOnly}
-                dimColor={comingSoonOnly}
-              >
-                {active ? ' ❯ ' : '   '}
-                {item.key}{'  '}{item.label}
-              </Text>
-              {/* #2560: all tier badges use yellow so they are visually consistent */}
-              {tierBlocked && (
-                <Text color="yellow">
-                  {'  '}{item.tierRequired === 'enterprise' ? '[Enterprise]' : '[Consultant+]'}
-                </Text>
-              )}
-              {item.comingSoon && !tierBlocked && <Text dimColor>{'  [Coming soon]'}</Text>}
-              <Text dimColor>{'  '}{item.detail}</Text>
-              {isSuggested && <Text color="green" dimColor>  {'<-'} suggested next</Text>}
-            </Box>
-          );
-        })}
-        <Box marginTop={1}>
-          <Text dimColor>   0  Exit</Text>
-        </Box>
-      </Box>
-
-      {comingSoonMsg && (
-        <Box marginTop={1} borderStyle="single" borderColor="yellow" paddingX={1}>
-          <Text color="yellow">{comingSoonMsg}</Text>
-        </Box>
-      )}
-
-      {info && (
-        <GuidanceBox
-          title={activeItem!.label}
-          what={info.what}
-          details={[
-            { label: 'When to use', value: info.use },
-            { label: 'Deliverables', value: info.output },
-          ]}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      )}
-
-      <Box marginTop={1}>
-        <Text dimColor>Arrow keys or number to select   Enter to open   0 to exit</Text>
-      </Box>
-      <Box>
-        <Text><Text dimColor>Further information: </Text><Text bold color="cyanBright">{SWAO_LANDING_URL}</Text></Text>
-      </Box>
-    </Box>
+    <ScreenLayout
+      header={header}
+      keys={KEY_HINTS.menu}
+      guidance={{ entry: guidance.entry, onOpenChange: nav.onGuidanceOpenChange }}
+      footer={mainMenuFooter(mcpLine)}
+    >
+      <SelectInput
+        label="Main menu"
+        options={options}
+        numbered
+        visibleCount={options.length}
+        showKeyHints={false}
+        initialIndex={initialIndex}
+        active={nav.contentActive}
+        onSelect={activate}
+        onCursorChange={(value, option) => {
+          if (mounted.current && value !== suggestedNext) setHasNavigated(true);
+          mounted.current = true;
+          guidance.onCursorChange(value, option);
+        }}
+      />
+      {comingSoonMsg !== '' && <Text {...tone('warning')}>{comingSoonMsg}</Text>}
+      {nav.dialog}
+    </ScreenLayout>
   );
 }

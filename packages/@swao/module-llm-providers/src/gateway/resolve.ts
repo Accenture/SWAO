@@ -20,12 +20,14 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { CredentialStore, logPortfolio } from '@swao/core';
 import type { LlmProvider } from '../types.js';
+import { anthropicTableRates } from '../types.js';
 import { AnthropicLlmProvider } from '../anthropic.js';
 import { BedrockLlmProvider } from '../bedrock.js';
 import { OllamaLlmProvider } from '../ollama.js';
 import { OpenLlmProvider } from '../open-llm-provider.js';
 import { applyLlmConcurrency } from '../concurrency.js';
 import type { LoadedConnector } from './connector-loader.js';
+import { bundledModelPrice } from './connector-loader.js';
 import type { Connector } from './connector-schema.js';
 
 /** Provenance recorded in run-manifest (#1401): which file, which bytes,
@@ -85,7 +87,7 @@ function applyEnvironment(connector: Connector, envName?: string): EffectiveConn
  *  script (parent process) takes precedence over a potentially expired vault entry
  *  when this function runs in a spawned subprocess.
  *  Key NAMES only ever appear in logs and errors, never values. */
-function resolveCredential(connector: Connector): string | undefined {
+export function resolveCredential(connector: Connector): string | undefined {
   const { credential_key, env_var } = connector.auth;
   if (env_var) {
     const v = process.env[env_var];
@@ -165,6 +167,51 @@ function resolveCost(connector: Connector, model: string):
   return undefined;
 }
 
+/**
+ * #4372: true when the call will be priced: connector rates for `model` (catalogue
+ * cost or cost_per_token), or, for the Anthropic and Bedrock protocols, the
+ * built-in Anthropic list-price table the drivers use as the last fallback.
+ */
+export function connectorModelHasPrice(connector: Connector, model: string): boolean {
+  if (resolveCost(connector, model) !== undefined) return true;
+  return (connector.protocol === 'anthropic-messages' || connector.protocol === 'bedrock') && anthropicTableRates(model) !== undefined;
+}
+
+/** #4497: rates of one model with their source, for the cost estimates. */
+export interface ModelRates { inputPerMillion: number; outputPerMillion: number; source: 'connector' | 'bundled' | 'price table' }
+
+/**
+ * #4497 (#4491): the rates of a model for an estimate: the workspace connector
+ * file (curated, discovery price or cost_per_token), else the packaged
+ * catalogue (bundled price), else the Anthropic code table (Anthropic and
+ * Bedrock connectors, or no connector). Undefined: no price known.
+ */
+export function modelRates(connector: Connector | undefined, model: string): ModelRates | undefined {
+  if (connector) {
+    const own = resolveCost(connector, model);
+    if (own) return { ...own, source: 'connector' };
+    const b = bundledModelPrice(connector.id, model);
+    if (b) return { inputPerMillion: b.input_per_million, outputPerMillion: b.output_per_million, source: 'bundled' };
+    if (connector.protocol !== 'anthropic-messages' && connector.protocol !== 'bedrock') return undefined;
+  }
+  const t = anthropicTableRates(model);
+  return t ? { ...t, source: 'price table' } : undefined;
+}
+
+/**
+ * #4372: OpenRouter connectors (id `openrouter`, or a base URL on the
+ * openrouter.ai host) get usage accounting, so the billed cost per call is
+ * recorded even when the connector carries no rates.
+ */
+export function isOpenRouterConnector(connectorId: string, baseUrl: string | undefined): boolean {
+  if (connectorId === 'openrouter') return true;
+  if (!baseUrl) return false;
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return host === 'openrouter.ai' || host.endsWith('.openrouter.ai');
+  } catch { return false; }
+}
+
 /** Deduplicates per-session model-not-in-catalogue warnings (#2900).
  *  Key: `${connectorId}:${modelId}` -- one warning per connector+model pair. */
 const _warnedModelCatalogueKeys = new Set<string>();
@@ -201,7 +248,7 @@ export function createProviderFromConnector(
       logPortfolio(
         'warn',
         'provider.llm.gateway.model-not-in-catalogue',
-        `Model '${opts.model}' is not in connector '${connector.id}' catalogue -- proceeding (catalogue is advisory)`,
+        `Model '${opts.model}' is not in connector '${connector.id}' catalogue; proceeding (catalogue is advisory)`,
         { context: { connector: connector.id, model: opts.model, catalogue: catalogue.map(m => m.id) } },
       );
     }
@@ -268,6 +315,8 @@ export function createProviderFromConnector(
           authScheme: connector.auth.scheme,
           requestOverrides: connector.request_overrides,
           maxTokens,
+          // #4372: OpenRouter reports the billed cost per call when asked.
+          usageAccounting: isOpenRouterConnector(connector.id, effectiveBaseUrl),
           // #1691: thread appId for dual-logging to app-events.
           appId: opts?.appId,
           // #2894 Part B: scoped undici Agent when tls.reject_unauthorized: false.
@@ -285,7 +334,10 @@ export function createProviderFromConnector(
       break;
     case 'anthropic-messages':
       // #3284: appId threaded so events also reach the app log.
-      provider = new AnthropicLlmProvider(apiKey, model, temperature, maxTokens, effectiveBaseUrl, opts?.appId);
+      // #4372: the connector yaml rates price the call (configured), the
+      // built-in list-price table is the last fallback (configured, same rule
+      // as Bedrock and connectorModelHasPrice); neither gives unpriced.
+      provider = new AnthropicLlmProvider(apiKey, model, temperature, maxTokens, effectiveBaseUrl, opts?.appId, cost, true);
       break;
     case 'ollama':
       provider = new OllamaLlmProvider(model, effectiveBaseUrl, temperature, seed, cost, opts?.appId);

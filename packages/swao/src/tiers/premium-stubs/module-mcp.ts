@@ -21,7 +21,7 @@
  * import fails the build ("No matching export") instead of shipping silently.
  *
  * Behaviour: `swao mcp` keeps its command tree, options and help text; every
- * action prints the same [LICENSE] block as before and exits 1 (`mcp install`
+ * action prints the same [LICENSE] block as before and exits 2 (#3844; `mcp install`
  * through the host gate, which adds the binary-edition hint). The real
  * `mcp profiles` measured the live tool definitions; here it refuses like the
  * rest of `swao mcp` (Design 122 B-01). The wizard helpers are only reached after the MCP registration gate, which
@@ -31,7 +31,7 @@
 import type { Command } from 'commander';
 import { basename } from 'node:path';
 import { LicenseGuard, type LicenseTier } from '@swao/core';
-import { printLicenseGateError } from '../../lib/license-gate-error.js';
+import { formatLicenseGateError } from '../../lib/license-gate-error.js';
 
 /** Same literal as the real module (client-install.ts); pinned by premium-stubs.test.ts. */
 export const DEFAULT_MCP_HTTP_URL = 'http://localhost:3737/mcp';
@@ -59,12 +59,16 @@ export function binaryEditionLabel(execPath = process.execPath, env = process.en
   return tier === 'community' ? 'Community' : tier === 'consultant' ? 'Consultant' : undefined;
 }
 
-/** Prints the refusal for `label` and exits 1 (the exit code `swao mcp` and `swao chat` used before). */
+/**
+ * Prints the refusal for `label` and exits 2, the tier-refusal exit code of
+ * ADR-0055 section 3 (#3844). The edition line follows the [LICENSE] block
+ * (before #3844 printLicenseGateError exited first, so it never printed).
+ */
 export function refuseEnterpriseFeature(label: string, what: string): never {
-  printLicenseGateError(label, 'enterprise', currentTier());
+  console.error(formatLicenseGateError(label, 'enterprise', currentTier()));
   const edition = binaryEditionLabel();
   if (edition) console.error(`This is the ${edition} binary; ${what} ships in the Enterprise binary (swao-enterprise-<os>-<arch>).`);
-  process.exit(1);
+  process.exit(2);
 }
 
 /** Same stderr text and exit code as requireMcpLicence in the real commands/mcp.ts. */
@@ -76,7 +80,7 @@ function refuseMcpServer(label: string): never {
     `To upgrade: swao license request --tier enterprise\n` +
     `Contact: ${LICENSE_CONTACT_URL}\n`,
   );
-  process.exit(1);
+  process.exit(2);
 }
 
 function notInThisEdition(name: string): never {
@@ -142,7 +146,7 @@ export function registerMcp(program: Command, _deps?: unknown, _version = '', in
         'copy in the same folder named for the running tier, swao-enterprise-win-x64.exe on Windows; ' +
         'a source run registers node plus the script path). Enterprise. Safe to re-run.',
       )
-      .option('--client <name>', `MCP client to configure: ${MCP_CLIENT_NAMES.join(', ')} (omit for the Claude Desktop multi-config update)`)
+      .option('--client <names>', `MCP client(s) to configure, comma-separated for several (claude-desktop,claude-code): ${MCP_CLIENT_NAMES.join(', ')} (omit for the Claude Desktop multi-config update)`)
       .option('--scope <scope>', 'With --client: user (default) or project (config in the current folder)')
       .option('--transport <transport>', 'With --client: stdio or http (default http for claude-code, stdio otherwise)')
       .option('--url <url>', 'With --client and --transport http: server URL (default http://localhost:3737/mcp)')

@@ -198,7 +198,7 @@ export function useLlmPing(options: UseLlmPingOptions): LlmPingResult & { trigge
           const errText = await resp.text().catch(() => '');
           update({
             status: 'fail',
-            message: `HTTP ${resp.status} -- ${errText.slice(0, 80)}`,
+            message: `HTTP ${resp.status}: ${errText.slice(0, 80)}`,
             permanent: isPermanentFailure(resp.status),
           });
         }
@@ -210,7 +210,7 @@ export function useLlmPing(options: UseLlmPingOptions): LlmPingResult & { trigge
             status: 'fail',
             // #2894 Part A: surface the TLS cause immediately with actionable guidance.
             message:
-              'TLS certificate error -- endpoint is reachable but its cert is not trusted ' +
+              'TLS certificate error: the endpoint is reachable but its certificate is not trusted ' +
               'by Node.js. Fix: set NODE_TLS_REJECT_UNAUTHORIZED=0 before launching SWAO, ' +
               'or set tls.reject_unauthorized: false in the connector YAML.',
             permanent: false,

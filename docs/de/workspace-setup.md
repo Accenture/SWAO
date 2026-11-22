@@ -1,37 +1,99 @@
 # 1. Workspace-Setup
 
-Der **Workspace-Setup-Assistent** startet bei Auswahl von Option 1 im SWAO-Hauptmenü. Er initialisiert Ihren Engagement-Ordner und schreibt eine `.swao.yml`-Konfigurationsdatei in einem geführten Ablauf.
+Der **Workspace-Setup-Assistent** startet bei Auswahl von Option 1 im SWAO-Hauptmenü. Er hat zwei Teile: ein allgemeines Workspace-Setup, das jeder Workspace braucht, und je Bewertungsart ein kurzes eigenes Setup. Sie richten nur die Bewertungsarten ein, die Sie ausführen werden, jetzt oder später.
 
-## Was der Assistent konfiguriert
+## Erster Start
+
+1. **Workspace-Setup** (jeder Workspace).
+2. **Welche Bewertungen werden Sie ausführen?** Wählen Sie eine oder mehrere der fünf Bewertungsarten.
+3. **Ein Setup je gewählter Art**, in der Reihenfolge unten. Jedes endet mit einem Health Check, der nur diese Art abdeckt, und einer eigenen Zusammenfassung Fertig.
+
+Die Schrittleiste zeigt die Schritte des aktuellen Teils. Während des Setups einer Bewertungsart erscheint der abgeschlossene Workspace-Teil als ein Eintrag **Workspace**, und der Untertitel nennt die Art, zum Beispiel *Setup: Landing Zone Live Assessment*.
+
+## Workspace-Setup
 
 | Schritt | Was er tut |
 |---|---|
-| Workspace | Engagement-Name, Kundenkürzel, verantwortliche Person und Verzeichnis; erstellt die Engagement-Ordnerstruktur |
-| LLM-Anbieter | Konfiguriert den KI-Anbieter: Anthropic, OpenAI, Amazon Bedrock Gateway, Ollama |
-| Zugangsdaten | Speichert API-Schlüssel und Vault-Referenzen über `swao credential set` |
-| LZ-Ziele | Optional: Anbieter aus dem Landing-Zone-Katalog wählen, dann je Anbieter eine oder mehrere Geografien (zum Beispiel `europe`, angezeigt mit ihrer Standardregion) oder Regions-IDs. Schreibt `assessment.landing_zone.targets` in die Workspace-`.swao.yml`; jeder Anwendungslauf prüft danach diese Ziele. Mit `S` überspringen |
-| Health Check | Führt die Vorabprüfungen einmal aus |
-| Claude Desktop, Playwright | Optionale Integrationen: MCP-Server-Konfiguration und Browser für die dynamische Analyse |
-| Testcode | Wie Bewertungen Testcode behandeln: gesamten Code analysieren (Standard), gesamten Code analysieren und Testcode-Befunde kennzeichnen, oder Testcode ausschließen. Schreibt `assessment.test_code.mode` in die Workspace-`.swao.yml`. Mit `Esc` bleibt die bisherige Einstellung |
+| Init | Engagement-Name, Kundenkürzel, verantwortliche Person und Verzeichnis; erstellt die Engagement-Ordnerstruktur und legt vier Demo-Rahmenwerke an |
+| LLM | Primärer und optionaler zweiter LLM-Anbieter und Modell: Anthropic, OpenAI, Amazon Bedrock Gateway, Ollama und die weiteren Gateway-Konnektoren |
+| Zugangsdaten | Speichert die LLM-Schlüssel im Credential-Vault und prüft die Verbindung |
+| MCP Client | Registriert SWAO in Claude Desktop, Claude Code, Kilo, Cursor oder VS Code (Enterprise) |
+| Health Check | Führt die allgemeinen Prüfungen aus: Lizenz, Engagement-Metadaten, Credential-Vault, LLM-Gateway, MCP und Community-Rahmenwerke |
+| Bewertungen | Auswahl der Bewertungsarten; gespeichert als `workspace.assessment_types` in der Workspace-`.swao.yml` |
 
-Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere Community-Rahmenwerke kopieren Sie mit
-`swao framework install <ID>` in den Workspace und wählen sie je App beim Ausführen einer Bewertung.
+Bewertungsarten, die Ihre Lizenzstufe nicht ausführen kann, erscheinen ausgegraut mit der benötigten Stufe. Das Landing Zone Live Assessment braucht Consultant; die anderen vier laufen auf jeder Stufe.
 
-![Workspace-Setup-Assistent in der Terminaloberfläche bei Schritt 1 von 7 mit der Abfrage des Workspace-Verzeichnisses](../samples/11-tui-workspace-setup.png)
-*Der Workspace-Setup-Assistent bei Schritt 1 (Init). Die Fortschrittspunkte zeigen die folgenden Schritte. Aufgenommen mit einer früheren SWAO-Version; der aktuelle Assistent bietet zusätzlich den Schritt LZ-Ziele.*
+## Setup je Bewertungsart
+
+| Bewertungsart | Schritte | Der Health Check prüft |
+|---|---|---|
+| Application Assessment | App, Quellzugriff, Playwright-Browser, Testcode, Scanner und IaC-Werkzeuge | Voraussetzungen, IaC-Werkzeuge, Playwright, VCS-Zugriff, Importe, Ingestion, Scope, Rückverfolgbarkeit, BI-Export |
+| Service Portfolio Assessment | Service-Workspace, Intake-Arbeitsmappen im Portfolio-Ingestion-Ordner, Bewertungsgrundlagen | Service-Workspace, Intake-Zuordnung, APM-Gewichte, Anbieterkatalog, Recherche-Cache, Clusterbildung, PII-Prüfprotokoll, Delta-Snapshot, Rahmenwerk-Controls |
+| Landing Zone Catalog Assessment | Kataloge je Anbieter (mitgeliefert, im Workspace und selbst definiert), Ziele, Katalog-Aktualisierung | LZ-Katalogabdeckung, Community-Rahmenwerke |
+| Landing Zone Live Assessment | Landing Zones und Scopes mit Zugangsdaten, Lese-Probe, Client LZ Policy Baseline, Organisationsnachweise | LZ-Verbindungen, Credential-Vault, Community-Rahmenwerke |
+| LLM Assessment | Zwei bis fünf LLM-Konnektoren zum Vergleich, die bewertete App (braucht ein abgeschlossenes Application Assessment) | LLM-Gateway |
+
+Jeder Health Check führt zusätzlich die allgemeinen Prüfungen aus. Eine Prüfung, die nicht zur Art gehört, wird weder ausgeführt noch aufgelistet. Die Zusammenfassung Fertig zeigt das Ergebnis (`ready` oder `needs attention`), die fehlgeschlagenen und gewarnten Prüfungen sowie, was eingerichtet ist oder fehlt. Der Zustand jeder Art wird als `workspace.setup_state` in der Workspace-`.swao.yml` gespeichert, damit das Setup-Menü ihn anzeigen kann.
+
+## Später: eine weitere Art einrichten
+
+Öffnen Sie Setup erneut im Hauptmenü. Ein bereits eingerichteter Workspace bietet:
+
+- **Bewertungsart einrichten**: die fünf Arten mit ihrem Zustand (`not set up`, `ready`, `needs attention`); die Auswahl einer Art führt nur deren Setup aus;
+- **Workspace-Setup**: den allgemeinen Teil erneut;
+- **Vollständiges Setup**: den allgemeinen Teil, dann die Auswahl der Arten.
+
+Jeder Schritt zeigt den aktuellen Wert; Enter behält ihn. Ein Setup kann jederzeit erneut ausgeführt werden.
+
+Bestehende Workspaces: Beim ersten Start nach dem Update hält SWAO die Arten, die ein Workspace bereits nutzt (Apps mit Läufen, ein Block `service_portfolio`, `assessment.landing_zone.targets`, `landing_zones`, Läufe des LLM Assessment), in `workspace.assessment_types` fest. Sonst ändert sich nichts.
+
+## Setup-Werte sind die Vorgaben der Bewertungen
+
+Was ein Setup speichert, ist beim Ausführen der Bewertung vorausgewählt. Sie können es zur Laufzeit ändern; die Änderung wird nur gespeichert, wenn Sie sie als neue Vorgabe sichern.
+
+| Bewertungsart | Gespeichert in `.swao.yml` | Vorausgewählt in |
+|---|---|---|
+| Application | `apps/<id>/.swao.yml`, `assessment.test_code.mode` | der App-Auswahl (eine einzelne App wird automatisch gewählt) |
+| Service Portfolio | `service_portfolio.intake`, `service_portfolio.mapping` | der Intake-Auswahl |
+| Landing Zone Catalog | `assessment.landing_zone.targets` | der Zielliste |
+| Landing Zone Live | `landing_zones[]`, `landing_zones[].frameworks` | der Auswahl von Landing Zone, Scope und Rahmenwerken |
+| LLM | `assessment.llm.candidates`, `assessment.llm.subject_app` | der Konnektorliste und der App-Auswahl |
+
+Ältere Felder werden weiterhin gelesen: `service_portfolio.source` für den Intake sowie `llm_assessment.legs` und `llm_assessment.default_app` für die LLM-Konnektoren und die bewertete App.
+
+![Workspace-Setup-Assistent in der Terminaloberfläche bei Schritt 1 mit der Abfrage des Workspace-Verzeichnisses](../samples/11-tui-workspace-setup.png)
+*Der Workspace-Setup-Assistent bei Schritt 1 (Init). Aufgenommen mit einer früheren SWAO-Version.*
 
 ## CLI-Äquivalent
 
 ```bash
+# Allgemeines Workspace-Setup
 swao init mein-engagement --name app-crm-01
 swao credential set anthropic-api-key <ihr-api-schluessel>
-swao framework install GDPR
-swao regime-select --app app-crm-01 --regimes GDPR
-# LZ-Ziele: je Lauf übergeben oder assessment.landing_zone.targets in der .swao.yml setzen
+
+# Setup einer Bewertungsart im Assistenten öffnen
+swao setup --type application
+
+# Eine Bewertungsart ohne Assistent prüfen (Skripte, CI)
+swao setup --type lz-live --non-interactive
+swao setup --type service --non-interactive --json
+
+# Health Check einer Bewertungsart
+swao health-check --type llm
+```
+
+`--type` nimmt `application`, `service`, `lz-catalog`, `lz-live` oder `llm` (`swao health-check` zusätzlich `generic`). `swao setup --type <art> --non-interactive` führt den Health Check dieser Art aus, speichert ihren Zustand, gibt die fehlgeschlagenen und gewarnten Prüfungen und die fehlenden Punkte aus und endet mit Exit-Code 1, wenn die Art Aufmerksamkeit braucht. Ohne `--type` führt `swao health-check` wie bisher alle Prüfungen aus.
+
+Landing-Zone-Katalogziele lassen sich auch je Lauf übergeben:
+
+```bash
 swao assess --app app-crm-01 --lz-cat-targets azure:europe,stackit:eu01
 ```
 
 Eine App-`.swao.yml` und `--lz-cat-targets` haben Vorrang vor den Workspace-Zielen. Eine Geografie wird zur Laufzeit in ihre Standardregion aufgelöst; der Anwendungslauf hält angeforderte, aufgelöste und übersprungene Ziele in `run-status.json` fest, und ein übersprungenes Ziel kennzeichnet den Lauf als `partial`. Der Textbericht (`swao report`) zeigt sie unter **Landing Zone Catalogue Fit**.
+
+Neue Workspaces enthalten vier Demo-Rahmenwerke. Weitere Community-Rahmenwerke kopieren Sie von
+[GitHub](https://github.com/Accenture/SWAO/tree/main/community-frameworks) in den Workspace (`wsp/inputs/catalogs/community/<ordner>/`) und wählen sie je App beim Ausführen einer Bewertung.
 
 ## Testcode
 
@@ -55,6 +117,6 @@ Testcode wird über eingebaute Regeln erkannt (`src/test/`, `test/`, `tests/`, `
 
 ## Nach dem Setup
 
-Führen Sie einen [Health Check](/de/health-check) durch, um sicherzustellen, dass alle Vorabprüfungen erfolgreich sind, bevor Sie eine Bewertung starten.
+Führen Sie jederzeit einen [Health Check](/de/health-check) aus; `swao health-check --type <art>` prüft eine Bewertungsart.
 
 Siehe auch: [Wie SWAO funktioniert](/de/how-it-works)

@@ -17,8 +17,8 @@
  * bundles (#3348 B-02, Design 122). SWAO Chat (F-112) is Enterprise-only and
  * runs on the MCP tools, so build-lib.mjs replaces the chat command for those
  * tiers. Same command name, description and options as the real one, so
- * `swao --help` is unchanged; running it prints the [LICENSE] block and exits 1,
- * as before.
+ * `swao --help` is unchanged; running it prints the [LICENSE] block and exits 2
+ * (ADR-0055, #3844).
  */
 
 import type { Command } from 'commander';

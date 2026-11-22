@@ -20,7 +20,7 @@
 **Framework ID:** `COBIT_5`
 **Version:** COBIT 5 (ISACA, 2012, ISBN 978-1-60420-237-3)
 **Authority:** ISACA
-**SWAO tier:** Community (shipped with SWAO; `swao framework install COBIT_5` copies it into the workspace)
+**SWAO tier:** Community (copy this folder from the GitHub repository into `wsp/inputs/catalogs/community/cobit-5/`)
 **Controls:** 37 process controls across 5 COBIT 5 domains
 
 ## What this framework evaluates
@@ -38,8 +38,7 @@ board-level IT governance review, or regulatory alignment across multiple framew
 ## How to activate in SWAO
 
 Copy this `cobit-5/` folder into the workspace at
-`<workspace>/wsp/inputs/catalogs/community/cobit-5/` (`swao framework install COBIT_5`
-does this for you), then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
+`<workspace>/wsp/inputs/catalogs/community/cobit-5/` (from the [GitHub repository](https://github.com/Accenture/SWAO/tree/main/community-frameworks)), then add it to the app's `.swao.yml` (`apps/<app-id>/.swao.yml`):
 
 ```yaml
 assessment:

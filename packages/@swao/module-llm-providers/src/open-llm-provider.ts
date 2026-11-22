@@ -85,6 +85,9 @@ type ChatCompletion = {
     /** OpenAI/OpenRouter breakdown; reasoning tokens are INCLUDED in
      *  completion_tokens, so cost already counts them (#1397). */
     completion_tokens_details?: { reasoning_tokens?: number };
+    /** #4372: OpenRouter usage accounting: the billed cost of the call in USD
+     *  (credits), present when the request asked for it (usage.include). */
+    cost?: number;
   };
 };
 
@@ -170,6 +173,12 @@ export interface OpenLlmGatewayOpts {
   requestOverrides?: Record<string, unknown>;
   /** Max output tokens override (connector.defaults.max_tokens). */
   maxTokens?: number;
+  /**
+   * #4372: ask the gateway for usage accounting (OpenRouter: request body
+   * `usage: { include: true }`, response `usage.cost` in USD) and record the
+   * billed cost per call. Set by the gateway resolver for OpenRouter only.
+   */
+  usageAccounting?: boolean;
   /** App id for dual-logging to app-events alongside portfolio-events (#1691). */
   appId?: string;
   /** #2894 Part B: when false, TLS cert validation is disabled for this connector
@@ -331,6 +340,24 @@ export class OpenLlmProvider implements LlmProvider {
     return this.lastContentSource;
   }
 
+  /** #4372: request-body field for usage accounting (empty unless enabled). */
+  private usageAccountingBody(): Record<string, unknown> {
+    return this.gateway.usageAccounting ? { usage: { include: true } } : {};
+  }
+
+  /** #4372: billed cost of one response when usage accounting is on and the gateway sent it. */
+  private billedCost(data: ChatCompletion): number | undefined {
+    if (!this.gateway.usageAccounting) return undefined;
+    const c = data.usage?.cost;
+    return typeof c === 'number' && Number.isFinite(c) && c >= 0 ? c : undefined;
+  }
+
+  /** #4372: source of a cost value: billed (gateway), configured (rates) or none. */
+  private costSourceOf(billed: number | undefined): 'billed' | 'configured' | 'none' {
+    if (billed !== undefined) return 'billed';
+    return this.costPerToken ? 'configured' : 'none';
+  }
+
   private costOf(inputTokens: number, outputTokens: number): number {
     return this.costPerToken
       ? (inputTokens * this.costPerToken.inputPerMillion + outputTokens * this.costPerToken.outputPerMillion) / 1_000_000
@@ -468,7 +495,12 @@ export class OpenLlmProvider implements LlmProvider {
   private recordUsage(data: ChatCompletion): LlmUsage {
     const inputTokens = data.usage?.prompt_tokens ?? 0;
     const outputTokens = data.usage?.completion_tokens ?? 0;
-    const usage: LlmUsage = { input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: this.costOf(inputTokens, outputTokens) };
+    const billed = this.billedCost(data);
+    const usage: LlmUsage = {
+      input_tokens: inputTokens, output_tokens: outputTokens,
+      cost_usd: billed ?? this.costOf(inputTokens, outputTokens),
+      cost_source: this.costSourceOf(billed),
+    };
     this.lastUsage = usage;
     return usage;
   }
@@ -488,6 +520,7 @@ export class OpenLlmProvider implements LlmProvider {
       image_url: { url: `data:image/jpeg;base64,${img.toString('base64')}` },
     }));
     const body = JSON.stringify({
+      ...this.usageAccountingBody(),
       model: this.model,
       max_completion_tokens: this.gateway.maxTokens ?? DEFAULT_MAX_TOKENS,
       messages: [
@@ -538,9 +571,12 @@ export class OpenLlmProvider implements LlmProvider {
 
     let inTotal = 0;
     let outTotal = 0;
+    // #4372: billed cost summed over iterations; undefined once one iteration lacks it.
+    let billedTotal: number | undefined = 0;
     let usage: LlmUsage | undefined;
     for (let i = 0; i < maxIterations; i++) {
       const body = JSON.stringify({
+        ...this.usageAccountingBody(),
         model: this.model,
         messages: chatMessages,
         tools: openAiTools,
@@ -556,7 +592,13 @@ export class OpenLlmProvider implements LlmProvider {
       });
       inTotal += json.usage?.prompt_tokens ?? 0;
       outTotal += json.usage?.completion_tokens ?? 0;
-      usage = { input_tokens: inTotal, output_tokens: outTotal, cost_usd: this.costOf(inTotal, outTotal) };
+      const iterBilled = this.billedCost(json);
+      billedTotal = billedTotal !== undefined && iterBilled !== undefined ? billedTotal + iterBilled : undefined;
+      usage = {
+        input_tokens: inTotal, output_tokens: outTotal,
+        cost_usd: billedTotal ?? this.costOf(inTotal, outTotal),
+        cost_source: this.costSourceOf(billedTotal),
+      };
       this.lastUsage = usage;
 
       const choice = json.choices?.[0];
@@ -611,6 +653,7 @@ export class OpenLlmProvider implements LlmProvider {
     for (const k of RESERVED_BODY_KEYS) delete overrides[k];
     const body = JSON.stringify({
       response_format: { type: 'json_object' },
+      ...this.usageAccountingBody(),
       ...overrides,
       model: this.model,
       max_completion_tokens: this.gateway.maxTokens ?? DEFAULT_MAX_TOKENS,

@@ -14,9 +14,9 @@
 // ================================================================
 
 /**
- * E2E tests for the compiled swao-enterprise-win.exe binary.
+ * E2E tests for the compiled swao-enterprise-win-x64.exe binary.
  *
- * Skipped automatically when dist-bin/swao-enterprise-win.exe does not exist
+ * Skipped automatically when dist-bin/swao-enterprise-win-x64.exe does not exist
  * (i.e. normal CI runs that have not built the binary).
  * Run explicitly after `bash scripts/build-binary.sh --win`.
  */
@@ -139,7 +139,7 @@ function run(args: string[], cwd: string = WORKSPACE): { stdout: string; stderr:
   }, args[0] === 'assess' ? 180_000 : 60_000);
 }
 
-describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
+describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win-x64.exe', () => {
 
   // ── Binary sanity ────────────────────────────────────────────────────────
 
@@ -195,25 +195,19 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
 
   // ── framework subcommand (sprint-037 #0344) ──────────────────────────────
 
-  it('framework list against the bundled binary lists all 3 bundled community frameworks', () => {
+  // #4126: framework list shows the workspace frameworks and where to get more.
+  it('framework list exits 0 and points to the GitHub repository for more frameworks', () => {
     const { stdout, stderr, status } = run(['framework', 'list']);
     const combined = stdout + stderr;
     expect(status).toBe(0);
-    // All bundled frameworks must appear in the binary's listing -- proves
-    // the pkg.assets `../../community-frameworks/**` glob shipped them.
-    // COBIT_5 ships again in original wording (#3292) but has no registry entry.
-    expect(combined).toContain('GDPR');
-    expect(combined).toContain('AI_10_PILLARS');
-    expect(combined).toContain('NIST_SP_800_66R2');
-    // The "folder not found" error message must NOT appear -- it would
-    // mean resolveBundledRoot returned null in the pkg runtime.
-    expect(combined).not.toContain('bundled community-frameworks/ folder not found');
+    expect(combined).toContain('github.com/Accenture/SWAO/tree/main/community-frameworks');
   });
 
-  it('framework info GDPR prints contributor from the embedded asset', () => {
-    const { stdout, status } = run(['framework', 'info', 'GDPR']);
-    expect(status).toBe(0);
-    expect(stdout).toContain('SWAO Development Team (Accenture)');
+  it('framework info, install, uninstall and baseline are not commands any more (#4126)', () => {
+    for (const sub of ['info', 'install', 'uninstall', 'baseline']) {
+      const { status } = run(['framework', sub, 'GDPR']);
+      expect(status, sub).not.toBe(0);
+    }
   });
 
   // #0337: --passes filter must gate Pass 10 (dynamic_analysis); previously
@@ -230,30 +224,29 @@ describe.skipIf(!hasBinary)('binary E2E -- swao-enterprise-win.exe', () => {
     expect(combined).not.toMatch(/Dynamic analysis failed/);
   });
 
-  // #0337 Part B: when Pass 10 IS requested (--passes inv,dynamic), the
-  // bundled binary's playwright stub must throw the EXPLICIT "playwright
-  // is not bundled" message with the operator-facing remediation, not
-  // the cryptic "undefined is not a function" / "Cannot read properties
-  // of undefined" that the original stub produced. The crawl still fails
-  // (the binary cannot ship playwright); the failure is just legible.
-  // Skipped when Chromium is installed: the binary uses host playwright and
-  // shows "using host-installed playwright-core" instead of "not bundled".
-  it.skipIf(chromiumOnHost)('assess --passes inv,dynamic surfaces the explicit "playwright not bundled" message in the binary (#0337 Part B)', () => {
+  // #0337 Part B: when Pass 10 IS requested (--passes inv,dynamic) and the
+  // host has no Chromium, the binary must say so in plain words with the
+  // operator-facing remediation, not the cryptic "undefined is not a
+  // function" / "Cannot read properties of undefined" of the original stub.
+  // Since #4272 a pre-run probe (assess.ts, dynamic.playwright-absent) finds
+  // the missing browser before Pass 10 runs, so the live crawl is skipped
+  // with a warning and the run completes; the stub's own "playwright is not
+  // bundled" message is pinned by playwright-stub.test.ts.
+  // Skipped when Chromium is installed: the binary uses host playwright.
+  it.skipIf(chromiumOnHost)('assess --passes inv,dynamic names the missing Chromium and the remediation in the binary (#0337 Part B, #4272)', () => {
     const { stdout, stderr, status } = run(
       ['assess', '--app', 'sovereign-health', '--passes', 'inv,dynamic'],
     );
     const combined = stdout + stderr;
     expect(status).toBe(0);
     expect(combined).toContain('Pass 01');
-    expect(combined).toMatch(/Running Pass 10/);
-    expect(combined).toMatch(/Dynamic analysis failed/);
-    // The whole point of #0337 Part B: error message is explicit, not cryptic.
-    expect(combined).toMatch(/playwright is not bundled in the swao binary/);
+    // The whole point of #0337 Part B: the message is explicit, not cryptic.
+    expect(combined).toMatch(/Pass 10 live crawl unavailable: Chromium browser not found/);
     expect(combined).not.toMatch(/undefined is not a function/);
     expect(combined).not.toMatch(/Cannot read properties of undefined/);
     // Operator-facing remediation must be in the message
-    expect(combined).toMatch(/--no-crawl/);
-  });
+    expect(combined).toMatch(/swao install-playwright/);
+  }, 200_000); // #3496: when this assess runs first it pays the one-time first-open cost
 
   it('assess runs crypto pass against sovereign-health', () => {
     const { stdout, stderr, status } = run(
@@ -924,10 +917,10 @@ for (const [tierName, bin, present] of TIER_BINARIES) {
       LOCALAPPDATA: home, APPDATA: home,
     });
 
-    it('#3318 chat prints the Enterprise [LICENSE] block and exits 1, no stack trace', () => {
+    it('#3318 chat prints the Enterprise [LICENSE] block and exits 2 (ADR-0055, #3844), no stack trace', () => {
       const { stdout, stderr, status } = runTier(['chat']);
       const combined = stdout + stderr;
-      expect(status).toBe(1);
+      expect(status).toBe(2);
       expect(combined).toContain('[LICENSE] swao chat requires an Enterprise licence.');
       expect(combined).not.toMatch(/LicenseTierError|unhandledRejection|at\s+\w+\s+\(/);
     });
@@ -940,9 +933,9 @@ for (const [tierName, bin, present] of TIER_BINARIES) {
       expect(combined).not.toMatch(/Premium|swao\.accenture\.com/);
     });
 
-    it('#3320 report --format html prints the Consultant [LICENSE] block and exits 1', () => {
+    it('#3320 report --format html prints the Consultant [LICENSE] block and exits 2 (ADR-0055, #3844)', () => {
       const { stdout, stderr, status } = runTier(['report', '--app', 'nonexistent', '--format', 'html', '--workspace', ws]);
-      expect(status).toBe(1);
+      expect(status).toBe(2);
       expect(stdout + stderr).toContain('[LICENSE] swao report --format html (HTML Report) requires a Consultant licence.');
     });
 

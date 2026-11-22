@@ -19,15 +19,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { spawn } from 'child_process';
-import { appendFileSync, existsSync, readdirSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
+import { appendFileSync, existsSync, readdirSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { load as loadYaml, dump as dumpYaml } from 'js-yaml';
-import { CredentialStore, LicenseGuard, findWorkspace, logApp, resolveLzTargets, lzTargetLabel, setLzTargetsInSwaoYml } from '@swao/core';
-import { openWithDefaultApp } from '@swao/core';
-import { HeaderView, isAllowed, type LicenseStateView, type LicenseTier } from '@swao/tui-kit';
+import { load as loadYaml } from 'js-yaml';
+import { CredentialStore, LicenseGuard, findWorkspace, logApp, resolveLzTargets, lzTargetLabel, patchSwaoYmlText, stripCommentedLzTargetsTemplate } from '@swao/core';
+import { selfSpawnCommand, providerLabel as centralProviderLabel, parseLzRunMarker, parsePostStepLine, type LzRunMarker, type PostStepLine } from '@swao/core';
+import { openWithDefaultApp, treeKillPid } from '@swao/core';
+import { ConfirmPanel, CONFIRM_PANEL_KEYS, KEY_HINTS, PICKER_VISIBLE_COUNT, isAllowed, terminalFrameWidth, tone, useFlowNavigation, useOptionGuidance, type GuidanceEntry, type KeyHint, type LicenseStateView, type LicenseTier, type SelectOption } from '@swao/tui-kit';
+import { FlowFrame } from './shared/flow-frame.js';
+import { CRED_API_PREFIX, CRED_CONTINUE, CRED_LLM, CRED_VCS_TOKEN, CRED_VCS_URL, LZ_CATALOG_PHASE_STEP, LZ_CATALOG_PRE_RUN, LZ_CATALOG_STEPS, lzCatalogBackPhase, lzCredentialOptions, type LzPhase } from './lz-catalog-flow.js';
 import { TextInput } from '@swao/tui-kit';
 import { MultiSelect } from '@swao/tui-kit';
-import { GuidanceBox } from '@swao/tui-kit';
+import { SelectInput } from '@swao/tui-kit';
+import { guidanceOwnsKey, FinishPanel, FINISH_MAIN_MENU, FINISH_PANEL_KEYS, type FinishItem } from '@swao/tui-kit';
+import { lzFinishGuidance, lzFinishView, type LzChallengeOffer } from './lz-finish.js';
+import { failedRunGuidance, failedRunView } from './app-finish.js';
 import { LzCatalogPicker, applyLzCuratedLabels } from '@swao/tui-kit';
 import { LlmModelPicker, formatLlmCurrentLabel } from '@swao/tui-kit';
 import { PasswordInput } from '@swao/tui-kit';
@@ -44,13 +50,16 @@ import {
   buildLzProviderGuidance,
   readLastRunLzTargets,
   insertCountryHeaders,
+  lzRegionRowGuidance,
+  normaliseLzGateFrameworks,
   type AssessScaffold,
   type LzCatalogueHint,
-} from '../AssessScreen.js';
+} from '../assess-helpers.js';
 import { listLocalConnectors as sharedListLocalConnectors } from '@swao/module-llm-providers';
-
-const BIN  = process.execPath;
-const SELF = process.argv[1] as string;
+import { lzTargetPrefill, lzPhaseAfterCredentials, lzTargetsForChoice, type LzTargetPrefill } from './lz-target-prefill.js';
+import { deriveLzGapType, lzBlockedGapLabel, type LzGapType } from './lz-gap-type.js';
+import { setupLzTargetsFor, setupLzTargetsLine, setupTargetsNotOffered, providersWithoutRegion, providersWithoutRegionNotice } from './setup-lz-targets.js';
+import { APP_SAVE_YES, appDefaultEdits, appRunChoiceArgs, runAppLlmConfig, appSaveHint, appSaveOptions, saveAppDefault } from './app-run-defaults.js';
 
 const _tuiDebugPath = process.env['SWAO_TUI_DEBUG']
   ? join(process.cwd(), 'wsp', 'logs', 'tui-debug.log')
@@ -72,15 +81,24 @@ function readStoredCredentials(): Record<string, string> {
 // assessment.landing_zone.targets (the key the CLI reads; the deprecated
 // assessment.lz_cat_targets is removed) so `swao assess --type
 // landing-zone-catalog` finds them without --lz-cat-targets.
+// #4285: through the minimal-patch writer (only assessment.landing_zone.targets
+// changes, the deprecated assessment.lz_cat_targets is removed; comments stay).
+// For an explicit save-as-default only: no screen calls it on a run (ADR-0067).
 export function persistLzCatTargets(workspace: string | null, appId: string, targets: string[]): void {
   if (!workspace || !appId || targets.length === 0) return;
+  const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
+  if (!existsSync(ymlPath)) return;
+  const unique = [...new Set(targets.map((t) => t.trim()).filter(Boolean))];
+  // #4320: the commented `# landing_zone:` template of the app file goes when
+  // the live key is written, so uncommenting it can never give a second key.
   try {
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    const yml = (loadYaml(readFileSync(ymlPath, 'utf-8')) ?? {}) as Record<string, unknown>;
-    setLzTargetsInSwaoYml(yml, targets);
-    writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-  } catch { /* best-effort -- never block the UI */ }
+    const raw = readFileSync(ymlPath, 'utf-8');
+    const r = patchSwaoYmlText(stripCommentedLzTargetsTemplate(raw), [
+      { path: ['assessment', 'landing_zone', 'targets'], value: unique },
+      { path: ['assessment', 'lz_cat_targets'], value: undefined },
+    ], { adoptCommentedTemplates: true });
+    if (r.ok && r.text !== raw) writeFileSync(ymlPath, r.text, 'utf-8');
+  } catch { /* best-effort, as before: a refused patch leaves the file unchanged */ }
 }
 
 // #3281: the targets the CLI would use (app .swao.yml, then workspace .swao.yml;
@@ -164,22 +182,6 @@ const listLocalConnectors = sharedListLocalConnectors;
 
 // LZ-only phase set. Shared credential-hub sub-phases + running/done phases are included.
 // Playwright phases are absent -- LZ is a static catalogue comparison, no crawler.
-type LzPhase =
-  | 'input-app'
-  | 'input-app-credentials'
-  | 'input-app-cred-vcs-url'
-  | 'input-app-cred-vcs-token'
-  | 'input-app-cred-api-token'
-  | 'input-app-llm'
-  | 'input-lz-provider'
-  | 'input-lz-frameworks'
-  | 'input-lz-region'
-  | 'preflight-llm'
-  | 'running'
-  | 'assess-done'
-  | 'challenge-prompt'
-  | 'done';
-
 interface LzAssessmentScreenProps {
   onBack: () => void;
   version: string;
@@ -188,6 +190,20 @@ interface LzAssessmentScreenProps {
 }
 
 const API_TOKEN_PAGE_SIZE = 9;
+
+/** #4256: the run folder of an LZ Catalog run, relative to the workspace, from latest-landing-zone-catalog.txt. */
+export function lzRunFolder(app: string, latestPath: string): string {
+  const rel = latestPath.trim().split('\\').join('/').replace(/^\.\//, '').replace(/\/+$/, '');
+  return `apps/${app}/wsp/${rel}/`;
+}
+
+/** #4255 (Design 126 sections 7.4 and 7.9): key hints of the phases before the run. Esc aborts the
+ *  flow; the left arrow (Shift+Tab in a text input) goes back one step with the values kept. */
+const K_TEXT: readonly KeyHint[] = KEY_HINTS.textInput;
+const K_PICKER: readonly KeyHint[] = KEY_HINTS.picker;
+const K_SAVE_EMPTY_SKIPS: readonly KeyHint[] = [{ key: 'Enter', verb: 'save', object: '(empty skips)' }, { key: 'Shift+Tab', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
+const K_MULTI: readonly KeyHint[] = [{ key: '↑↓', verb: 'select' }, { key: 'Space', verb: 'toggle' }, { key: 'A', verb: 'toggle', object: 'all' }, { key: 'Enter', verb: 'next' }, { key: '←', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
+const K_FILTER: readonly KeyHint[] = [{ key: 'Type', verb: 'filter' }, { key: 'Enter', verb: 'next' }, { key: 'Shift+Tab', verb: 'back' }, { key: 'Esc', verb: 'abort' }];
 
 export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }: LzAssessmentScreenProps): JSX.Element | null {
   const workspace = findWorkspace(process.cwd());
@@ -199,18 +215,14 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   }, []);
   const isEnterprise = isAllowed(licenseState, 'enterprise' as LicenseTier);
 
-  const Header = useMemo(() => {
-    let ls: LicenseStateView | null = null;
-    let le: string | null = null;
-    try { ls = LicenseGuard.load().state as LicenseStateView; }
-    catch (e) { le = (e as Error).message; }
-    return function Header(props: { subtitle?: string }): JSX.Element {
-      return <HeaderView {...props} version={version} licenseState={ls} licenseError={le} />;
-    };
-  }, [version]);
-
   const [phase, setPhase] = useState<LzPhase>('input-app');
+  // #4284: the LLM provider chosen for this run (--llm-provider); written only on save-as-default.
+  const [runLlmProvider, setRunLlmProvider] = useState<string | null>(null);
+  const [lzProvidersWithoutRegion, setLzProvidersWithoutRegion] = useState<string[]>([]); // #4285
+  const [appSaveError, setAppSaveError] = useState<string | null>(null);
   const [app, setApp] = useState('');
+  // #4198: which target list the pickers preselect (setup first; last run on request).
+  const [lzPrefillChoice, setLzPrefillChoice] = useState<'setup' | 'last-run'>('setup');
   const [vcsUrl, setVcsUrl] = useState('');
   const [editOnlyMode, setEditOnlyMode] = useState(false);
   const [appLzCatProviders, setAppLzCatProviders] = useState<string[]>([]);
@@ -232,6 +244,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   const [passName, setPassName] = useState('');
   const [passSubLabel, setPassSubLabel] = useState('');
   const [completedPasses, setCompletedPasses] = useState(0);
+  // #4506: the post-run step after the fits ([post] lines), shown on the Stage bar.
+  const [postStep, setPostStep] = useState<PostStepLine | null>(null);
   const [subFraction, setSubFraction] = useState(0);
   const [failedPass, setFailedPass] = useState('');
   const [done, setDone] = useState(false);
@@ -239,7 +253,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   const [lzVerdict, setLzVerdict] = useState('');
   const [lzTargetVerdicts, setLzTargetVerdicts] = useState<{ target: string; verdict: string; gaps: number }[]>([]);
   const [lzTargetGapDetails, setLzTargetGapDetails] = useState<Record<string, {
-    gapType: 'sovereignty' | 'availability' | 'sovereignty+availability' | 'other';
+    gapType: LzGapType;
     sovereigntyStatement: string;
     assessmentMode: 'catalogue-sovereignty-only' | 'partial' | 'full';
     coverageWarning?: string;
@@ -253,71 +267,69 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   passNameRef.current = passName;
   const guidanceOpenRef = useRef(false);
 
+  // #4255 (Design 126 sections 7.4 and 7.5): Esc before the run aborts the flow
+  // (AbortDialog once an app is chosen). The screen reads the keys itself (its
+  // phases are the steps), so the hook only provides the dialog and the decision.
+  const nav = useFlowNavigation({ steps: LZ_CATALOG_STEPS, dirty: app !== '', onExit: onBack, what: 'assessment', active: false });
+  const flowHeader = useMemo(() => {
+    let ls: LicenseStateView | null = null;
+    let le: string | null = null;
+    try { ls = LicenseGuard.load().state as LicenseStateView; }
+    catch (e) { le = (e as Error).message; }
+    return { subtitle: typeLabel, version, licenseState: ls, licenseError: le };
+  }, [version]);
+  const onGuidanceOpenChange = (open: boolean): void => { guidanceOpenRef.current = open; nav.onGuidanceOpenChange(open); };
+  /** The frame of a phase before the run: header, licence line, step bar, title (#4255). */
+  const frame = { header: flowHeader, steps: LZ_CATALOG_STEPS, current: LZ_CATALOG_PHASE_STEP[phase], onGuidanceOpenChange, dialog: nav.dialog };
+  // #4230: the credential list box follows the highlighted entry.
+  // #4213 (Design 126 section 9): the entry of the highlighted option of the current picker
+  // phase; every picker sets it on mount and on each move, so no phase reads a stale entry.
+  const [pickEntry, setPickEntry] = useState<GuidanceEntry | undefined>(undefined);
+  const onPickCursor = (_v: string, o?: { guidance?: GuidanceEntry }): void => { setPickEntry(o?.guidance); };
+  const pickGuidance = pickEntry ? { entry: pickEntry } : {};
+  const { entry: credEntry, onCursorChange: onCredCursor } = useOptionGuidance({ title: 'Credentials', what: 'Credentials are keyed to this app only and stored in the SWAO credential store. Every field is optional; Continue goes on.' });
+
   const [storedCreds] = useState(() => readStoredCredentials());
   const [wsLlmConfig] = useState(() => readWorkspaceLlmConfig(workspace));
 
   const { stdout } = useStdout();
   const terminalRows = stdout?.rows ?? 24;
   const terminalCols = stdout?.columns ?? 80;
-  const maxLiveLines = Math.max(3, terminalRows - 19);
   const passVisibleCount = Math.max(4, terminalRows - 18);
   const guidanceWidth = Math.min(100, Math.max(63, terminalCols - 2));
 
   const totalPasses = appLzCatTargets.length || 1;
-  const inProgressValue = Math.min(totalPasses, completedPasses + subFraction);
-  const progressValue = done ? (code === 0 ? totalPasses : inProgressValue) : inProgressValue;
-  const rawDisplayProgress = (phase === 'running' && progressValue === 0) ? totalPasses * 0.1 : progressValue;
-  const displayProgressValue = phase === 'running' ? Math.min(totalPasses * 0.95, rawDisplayProgress) : progressValue;
 
-  const lzProviderName = (id: string): string =>
-    scaffold.lzCatalogueHint?.entries.find(e => e.provider === id)?.name ?? id;
+  // #4296: the central provider name map (abbreviation plus full name).
+  const lzProviderName = (id: string): string => {
+    const entry = scaffold.lzCatalogueHint?.entries.find(e => e.provider === id);
+    return entry?.label ?? centralProviderLabel(id, 'pair', entry?.name);
+  };
 
-  // #3378 Part B (ADR-0067): pre-select the targets of this app's last LZ run
-  // (from the run record), falling back to the .swao.yml targets a CLI/batch
-  // user may have set. The screen no longer writes the app .swao.yml itself.
+  // #4198 (Design 125 section 5.7, ADR-0067 amendment 2026-11-09): the setup
+  // targets (assessment.landing_zone.targets, the same resolver as the CLI)
+  // are preselected first; the last run's targets are a second choice offered
+  // on the 'input-lz-target-source' phase when they differ. Without setup
+  // targets the last run's targets are preselected (#3378 Part B). The screen
+  // does not write the app .swao.yml.
+  // #4285 (#4289): the set-up targets resolved as the CLI does (azure:germany ->
+  // azure:germanywestcentral), so a geography target matches a region option.
+  const setupLz = setupLzTargetsFor(workspace, app, scaffold.resolveSetupLzTargets, () => readConfiguredLzTargets(workspace, app));
+  const readLzTargetPrefill = (): LzTargetPrefill =>
+    lzTargetPrefill(setupLz.targets, readLastRunLzTargets(workspace, app));
   const prefillLzTargets = (): string[] => {
-    const last = readLastRunLzTargets(workspace, app);
-    return last.length > 0 ? last : readConfiguredLzTargets(workspace, app);
+    return lzTargetsForChoice(readLzTargetPrefill(), lzPrefillChoice);
   };
 
   const truncateLabel = (s: string, reservedChars = 0): string => {
-    const cols = (process.stdout.columns ?? 80) - 2 - reservedChars;
+    // #4110: lines are cut at the TerminalFrame width, not the terminal width.
+    const cols = (terminalFrameWidth(process.stdout.columns) ?? 80) - 2 - reservedChars;
     return s.length > cols ? s.slice(0, Math.max(0, cols - 3)) + '...' : s;
   };
 
-  const writeAppLlmProvider = (appId: string, type: string, model?: string, endpoint?: string): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      const providers = (yml['providers'] ?? {}) as Record<string, unknown>;
-      const llm = (providers['llm'] ?? {}) as Record<string, unknown>;
-      const primary: Record<string, unknown> = { type };
-      if (model)    primary['model']    = model;
-      if (endpoint) primary['endpoint'] = endpoint;
-      llm['primary']    = primary;
-      providers['llm']  = llm;
-      yml['providers']  = providers;
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
-
-  const clearAppLlmProvider = (appId: string): void => {
-    if (!workspace) return;
-    const ymlPath = join(workspace, 'apps', appId, '.swao.yml');
-    if (!existsSync(ymlPath)) return;
-    try {
-      const yml = loadYaml(readFileSync(ymlPath, 'utf-8')) as Record<string, unknown>;
-      const providers = yml['providers'] as Record<string, unknown> | undefined;
-      if (!providers) return;
-      delete (providers['llm'] as Record<string, unknown> | undefined)?.['primary'];
-      writeFileSync(ymlPath, dumpYaml(yml, { lineWidth: 120 }), 'utf-8');
-    } catch { /* best-effort */ }
-  };
-
   const beginRun = () => {
-    const appLlm = readAppLlmConfig(workspace, app);
+    // #4284: the LLM provider chosen for this run (preflight on what the run uses).
+    const appLlm = runAppLlmConfig(readAppLlmConfig(workspace, app), runLlmProvider);
     const connectorId = appLlm.connector ?? wsLlmConfig.connector;
     if (!connectorId) { setPhase('running'); return; }
     const connectors = listLocalConnectors(workspace ?? undefined);
@@ -335,6 +347,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   const handleSelectApp = (id: string) => {
     if (!id) return;
     setApp(id);
+    setRunLlmProvider(null); // #4284
     setEditOnlyMode(false);
     setPhase('input-app-credentials');
   };
@@ -342,6 +355,7 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   const handleEditApp = (id: string) => {
     if (!id) return;
     setApp(id);
+    setRunLlmProvider(null); // #4284
     setEditOnlyMode(true);
     setPhase('input-app-credentials');
   };
@@ -356,10 +370,15 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
   useEffect(() => {
     if (phase !== 'running') return;
     setCompletedPasses(0);
+    // #4256 (A-20): a rerun after a cancel starts on the preparing state, never on the old pass.
+    setPassName('');
+    setPassSubLabel('');
+    setFailedPass('');
     setSubFraction(0);
     setLines([]);
     setLzVerdict('');
     setLzTargetVerdicts([]);
+    setPostStep(null);
     // #2646: lifecycle event -- assess start
     try { logApp(app, 'info', 'assess.lz.start', 'LZ assessment started', { context: { targets: appLzCatTargets, frameworks: appLzCatFrameworks } }); } catch { /* best-effort */ }
 
@@ -369,15 +388,41 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
       args.push('--lz-frameworks', appLzCatFrameworks.join(','));
     }
     if (skipLlm) args.push('--skip-llm'); // #3383: deterministic-only LZ run (no LLM narrative)
+    args.push(...appRunChoiceArgs({ regimes: null, llmProvider: runLlmProvider })); // #4284
 
-    const child = spawn(BIN, [SELF, ...args], {
+    // #4506: SWAO_PASS_MARKERS=1 opts in to the LZ markers (Stage bar, Done screen verdicts).
+    const selfCmd = selfSpawnCommand(args, { env: { ...buildChildEnv(workspace, storedCreds, wsLlmConfig, runAppLlmConfig(readAppLlmConfig(workspace, app), runLlmProvider)), SWAO_PASS_MARKERS: '1' } });
+    const child = spawn(selfCmd.command, selfCmd.args, {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: buildChildEnv(workspace, storedCreds, wsLlmConfig, readAppLlmConfig(workspace, app)),
+      env: selfCmd.env,
       cwd: workspace ?? undefined,
       windowsHide: true,
     });
 
     const allLines: string[] = [];
+    let stopped = false;
+    // #4506: one marker of the CLI applied to the run state (pass start and end, verdicts).
+    const applyLzRunMarker = (m: LzRunMarker): void => {
+      switch (m.kind) {
+        case 'pass':
+          setPassName(m.pass);
+          setPassSubLabel(m.label);
+          // #2646: lifecycle event -- pass start
+          try { logApp(app, 'info', 'assess.lz.pass.start', `LZ pass started: ${m.pass}`, { context: { pass: m.pass, target: m.label } }); } catch { /* best-effort */ }
+          return;
+        case 'pass-done':
+          setCompletedPasses(p => p + 1); setPassSubLabel('');
+          // #2646: lifecycle event -- pass complete
+          try { logApp(app, 'info', 'assess.lz.pass.complete', `LZ pass complete: ${m.pass}`, { context: { pass: m.pass } }); } catch { /* best-effort */ }
+          return;
+        case 'target-verdict':
+          setLzTargetVerdicts(prev => [...prev.filter(v => v.target !== m.target), { target: m.target, verdict: m.verdict, gaps: m.gaps }]);
+          return;
+        case 'verdict':
+          setLzVerdict(m.verdict);
+          return;
+      }
+    };
     const DEP_WARN_FILTER = /\[DEP\d{4}\] DeprecationWarning|Use `.*--trace-deprecation/;
     let pending = false;
     const flush = () => {
@@ -389,35 +434,21 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
       for (const raw of text.split('\n')) {
         const l = raw.replace(/\r$/, '');
         if (!l || DEP_WARN_FILTER.test(l)) continue;
+        // #4506: the markers of the CLI (@swao/core lz-run-marker.ts, opted in with
+        // SWAO_PASS_MARKERS=1) drive the Stage bar and the Done screen; they are not output.
+        const marker = parseLzRunMarker(l);
+        if (marker) {
+          applyLzRunMarker(marker);
+          continue;
+        }
         allLines.push(l);
         // #2599: emit each output line to the NDJSON event log in real-time (parity with AppAssessmentScreen #2571)
         try { logApp(app, 'info', 'tui.output', l, { context: { pass: passNameRef.current || undefined } }); } catch { /* best-effort */ }
-        // Parse progress tokens
-        const passMatch = l.match(/^\[pass\] (\S+)(?:\s+(.+))?$/);
-        if (passMatch) {
-          setPassName(passMatch[1] ?? '');
-          setPassSubLabel(passMatch[2] ?? '');
-          // #2646: lifecycle event -- pass start
-          try { logApp(app, 'info', 'assess.lz.pass.start', `LZ pass started: ${passMatch[1]}`, { context: { pass: passMatch[1] } }); } catch { /* best-effort */ }
-        }
-        const doneMatch = l.match(/^\[pass-done\] (\S+)/);
-        if (doneMatch) {
-          setCompletedPasses(p => p + 1); setPassSubLabel('');
-          // #2646: lifecycle event -- pass complete
-          try { logApp(app, 'info', 'assess.lz.pass.complete', `LZ pass complete: ${doneMatch[1]}`, { context: { pass: doneMatch[1] } }); } catch { /* best-effort */ }
-        }
+        // #4506: a post-run step line ("[post] Portfolio summary: 106 of 235 apps") names the step after the fits.
+        const post = parsePostStepLine(l);
+        if (post) setPostStep(post);
         const fracMatch = l.match(/^\[sub-fraction\] ([\d.]+)/);
         if (fracMatch) setSubFraction(parseFloat(fracMatch[1] ?? '0'));
-        const verdictMatch = l.match(/^\[lz-verdict\] (\S+)/);
-        if (verdictMatch) setLzVerdict(verdictMatch[1] ?? '');
-        const tvMatch = l.match(/^\[lz-target-verdict\] target=(\S+) verdict=(\S+) gaps=(\d+)/);
-        if (tvMatch) {
-          setLzTargetVerdicts(prev => [...prev, {
-            target: tvMatch[1] ?? '',
-            verdict: tvMatch[2] ?? '',
-            gaps: parseInt(tvMatch[3] ?? '0', 10),
-          }]);
-        }
         const logMatch = l.match(/^\[log-path\] (.+)/);
         if (logMatch) setLogFilePath(logMatch[1]?.trim() ?? '');
       }
@@ -426,20 +457,28 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     child.stdout.on('data', push);
     child.stderr.on('data', push);
     child.on('error', (err) => {
+      if (stopped) return;
       allLines.push(`[error] Failed to start assessment: ${err.message}`);
       setLines([...allLines]);
       setCode(1);
       setDone(true);
     });
     child.on('close', (exitCode) => {
+      // #2646: lifecycle event -- assessment complete
+      try { logApp(app, exitCode === 0 ? 'info' : 'warn', 'assess.lz.complete', `LZ assessment complete (exit ${exitCode})`, { context: { exit_code: exitCode } }); } catch { /* best-effort */ }
+      // #4256: a cancelled run (or a screen that left) keeps its state; the cancel set the phase.
+      if (stopped) return;
       flush();
       setCode(exitCode);
       setDone(true);
-      // #2646: lifecycle event -- assessment complete
-      try { logApp(app, exitCode === 0 ? 'info' : 'warn', 'assess.lz.complete', `LZ assessment complete (exit ${exitCode})`, { context: { exit_code: exitCode } }); } catch { /* best-effort */ }
       if (exitCode === 0) setPhase('assess-done');
     });
-    return () => { child.kill(); };
+    // #4256 (Design 126 section 7.6): leaving the run phase (cancel) or the screen
+    // stops the child process tree (taskkill /T on Windows).
+    return () => {
+      stopped = true;
+      if (child.pid) void treeKillPid(child.pid); else child.kill();
+    };
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #0815/#0832: auto-select logic for LZ region phase.
@@ -457,6 +496,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     setApiTokenPage(0);
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // #4256: the real run folder of the finish screen (never `<ts>`).
+  const [lzRunPath, setLzRunPath] = useState<string | null>(null);
   // #2331: read lz-catalogue-fit*.yaml after assessment to classify BLOCKED gap types.
   useEffect(() => {
     if (phase !== 'assess-done' || !workspace || !app) return;
@@ -467,9 +508,10 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
       const latestPath = readFileSync(latestFile, 'utf-8').trim();
       const runDir = join(wspDir, latestPath);
       if (!existsSync(runDir)) return;
+      setLzRunPath(lzRunFolder(app, latestPath));
       const yamlFiles = readdirSync(runDir).filter(f => /^lz-catalogue-fit.*\.yaml$/.test(f));
       const details: Record<string, {
-        gapType: 'sovereignty' | 'availability' | 'sovereignty+availability' | 'other';
+        gapType: LzGapType;
         sovereigntyStatement: string;
         assessmentMode: 'catalogue-sovereignty-only' | 'partial' | 'full';
         coverageWarning?: string;
@@ -482,11 +524,8 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
           } | null;
           if (!parsed?.region) continue;
           const items = Array.isArray(parsed.items) ? parsed.items : [];
-          const hasSov   = items.some(i => i.verdict === 'SOVEREIGNTY_GAP');
-          const hasAvail = items.some(i => i.verdict === 'NOT_AVAILABLE_IN_REGION');
-          const gapType: 'sovereignty' | 'availability' | 'sovereignty+availability' | 'other' =
-            hasSov && hasAvail ? 'sovereignty+availability'
-            : hasSov ? 'sovereignty' : hasAvail ? 'availability' : 'other';
+          // #3569: shared classification incl. BLOCKED_BY_POLICY (lz-gap-type.ts)
+          const gapType: LzGapType = deriveLzGapType(items);
           const rawMode = parsed.assessment_mode ?? 'full';
           const assessmentMode: 'catalogue-sovereignty-only' | 'partial' | 'full' =
             rawMode === 'catalogue-sovereignty-only' || rawMode === 'partial' ? rawMode : 'full';
@@ -502,55 +541,57 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     } catch { /* non-fatal */ }
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /** #4255: the region choices of the selected providers (the region step is a text filter above the threshold). */
+  const regionChoiceCount = (): number => appLzCatProviders.reduce((n, pid) => n + (scaffold.lzCatalogueHint?.entries.find(e => e.provider === pid)?.regions.length ?? 0), 0);
+  /** #4255 (section 7.1): in a text input the left arrow moves the text cursor; Shift+Tab goes back. */
+  const lzTextPhase = (): boolean => {
+    switch (phase) {
+      case 'input-app-cred-vcs-url': case 'input-app-cred-vcs-token': case 'input-app-cred-api-token': return true;
+      case 'input-lz-provider': return (scaffold.lzCatalogueHint?.entries.length ?? 0) === 0;
+      case 'input-lz-region': { const n = regionChoiceCount(); return n === 0 || (n > FILTER_THRESHOLD && appLzRegionFilter === ''); }
+      default: return false;
+    }
+  };
+  /** #4255 (section 7.2): back one step, values kept; a region filter is cleared first. */
+  const backOneStep = (): void => {
+    if (phase === 'input-lz-region' && appLzRegionFilter) { setAppLzRegionFilter(''); return; }
+    if (phase === 'input-app-credentials') setEditOnlyMode(false);
+    const to = lzCatalogBackPhase(phase);
+    if (to) setPhase(to);
+  };
+  /** #4255 (section 7.10): an entry of the credential list (were the letter keys R, A, L and 1 to 9). */
+  const onCredentialSelect = (value: string): void => {
+    if (value === CRED_VCS_URL) { setPhase('input-app-cred-vcs-url'); return; }
+    if (value === CRED_VCS_TOKEN) { setPhase('input-app-cred-vcs-token'); return; }
+    if (value === CRED_LLM) { setPhase('input-app-llm'); return; }
+    if (value.startsWith(CRED_API_PREFIX)) {
+      const idx = apiTokenConnectors.findIndex(c => c.id === value.slice(CRED_API_PREFIX.length));
+      if (idx >= 0) { setApiTokenConnectorIdx(idx); setPhase('input-app-cred-api-token'); }
+      return;
+    }
+    if (value !== CRED_CONTINUE) return;
+    if (editOnlyMode) { setEditOnlyMode(false); setPhase('input-app'); return; }
+    setAppLzCatProviders([]); setAppLzCatTargets([]); setAppLzCatFrameworks([]); setAppLzRegionFilter('');
+    // #4198: offer the last run's targets as a second choice when they differ from the setup targets.
+    setLzPrefillChoice('setup');
+    setPhase(lzPhaseAfterCredentials(readLzTargetPrefill()));
+  };
+
   useInput((input, key) => {
-    if (guidanceOpenRef.current && !(input === 'c' || input === 'C' || input === 'l' || input === 'L')) return;
-    if (phase === 'done' && (key.return || key.escape)) onBack();
-    if (phase === 'assess-done' && key.escape) onBack();
-    if (phase === 'assess-done' && key.return) {
-      // #3383: no LZ Sovereignty Challenge (LLM-driven) for a deterministic-only run.
-      if (onLzChallenge && isEnterprise && !skipLlm) { setPhase('challenge-prompt'); }
-      else { onBack(); }
-    }
-    if (phase === 'assess-done' && (input === 'l' || input === 'L') && logFilePathRef.current) {
-      openWithDefaultApp(logFilePathRef.current);
-    }
-    if (phase === 'assess-done' && (input === 'c' || input === 'C')) {
-      if (!isEnterprise) return;
-      if (skipLlm) return; // #3383: challenge is LLM-driven; not for a deterministic-only run
-      onLzChallenge?.(app);
-    }
-    if (phase === 'input-app-credentials' && key.escape) { setEditOnlyMode(false); setPhase('input-app'); }
-    if (phase === 'input-app-cred-vcs-url'   && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-vcs-token' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-cred-api-token' && key.escape) setPhase('input-app-credentials');
-    if (phase === 'input-app-llm'            && key.escape) setPhase('input-app-credentials');
-    // Credential hub hot-keys (LZ: R=URL, A=token, L=LLM, 1-9=API)
-    if (phase === 'input-app-credentials' && (input === 'r' || input === 'R')) setPhase('input-app-cred-vcs-url');
-    if (phase === 'input-app-credentials' && (input === 'a' || input === 'A')) setPhase('input-app-cred-vcs-token');
-    if (phase === 'input-app-credentials' && (input === 'l' || input === 'L')) setPhase('input-app-llm');
-    if (phase === 'input-app-credentials' && /^[1-9]$/.test(input)) {
-      const pageStart = apiTokenPage * API_TOKEN_PAGE_SIZE;
-      const idx = pageStart + parseInt(input, 10) - 1;
-      if (idx < apiTokenConnectors.length) {
-        setApiTokenConnectorIdx(idx);
-        setPhase('input-app-cred-api-token');
-      }
-    }
-    if (phase === 'input-app-credentials' && (input === ']')) {
-      const totalPages = Math.ceil(apiTokenConnectors.length / API_TOKEN_PAGE_SIZE);
-      if (apiTokenPage < totalPages - 1) setApiTokenPage(p => p + 1);
-    }
-    if (phase === 'input-app-credentials' && (input === '[')) {
-      if (apiTokenPage > 0) setApiTokenPage(p => p - 1);
-    }
-    if (phase === 'input-app-credentials' && (key.return || input === 's' || input === 'S')) {
-      if (editOnlyMode) { setEditOnlyMode(false); setPhase('input-app'); }
-      else { setAppLzCatProviders([]); setAppLzCatTargets([]); setAppLzCatFrameworks([]); setAppLzRegionFilter(''); setPhase('input-lz-provider'); }
-    }
-    if (phase === 'input-lz-provider'    && key.escape) setPhase('input-app');
-    if (phase === 'input-lz-frameworks'  && key.escape) { setAppLzCatFrameworks([]); setPhase('input-lz-provider'); }
-    if (phase === 'input-lz-region'      && key.escape) {
-      if (appLzRegionFilter) { setAppLzRegionFilter(''); } else { setPhase('input-lz-frameworks'); }
+    // #4230 (Design 126 section 7.8): an open guidance box owns Esc, PgUp and PgDn only.
+    if (guidanceOwnsKey(key, guidanceOpenRef.current)) return;
+    if (nav.dialogOpen) return; // #4255: the AbortDialog owns Enter and Esc
+    // #4256: a failed run ends on FinishPanel (its menu owns Enter); Esc returns to the main menu.
+    if (phase === 'done' && (key.escape || (key.return && code === 0))) onBack();
+    // #4256: the finish menu (FinishPanel) owns Enter and the arrows; Esc aborts to the main menu.
+    if (phase === 'assess-done') { if (key.escape) onBack(); return; }
+    // #4255 (Design 126 sections 7.2 and 7.4): before the run Esc aborts the flow
+    // (AbortDialog once an app is chosen); the left arrow, or Shift+Tab in a text
+    // input, goes back one step with the values kept. The letter keys of the
+    // credential list became list entries (section 7.10, onCredentialSelect).
+    if (LZ_CATALOG_PRE_RUN.has(phase)) {
+      if (key.escape) { nav.requestAbort(); return; }
+      if ((key.tab && key.shift) || (key.leftArrow && !lzTextPhase())) { backOneStep(); return; }
     }
   });
 
@@ -568,61 +609,35 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
         onDelete={() => { /* LZ: no delete flow */ }}
         onRename={() => { /* LZ: no rename flow */ }}
         onEditCredentials={handleEditApp}
-        onBack={onBack}
-        Header={Header}
+        onBack={nav.requestAbort}
+        {...frame}
       />
     );
   }
 
+  // #4255 (section 7.10): the credential list is a SelectInput; its entries replace the letter keys.
   if (phase === 'input-app-credentials') {
-    const vcsUrlKey = `vcs-url-${app}`;
-    const vcsKey    = `vcs-token-${app}`;
-    const s = (k: string) => appCredStoredKeys.has(k);
-    const dot = (k: string) => (
-      <Text color={s(k) ? 'green' : 'gray'}>{s(k) ? '[stored]' : '[  --  ]'}</Text>
-    );
-    const continueLabel = editOnlyMode ? 'Save + back' : 'continue';
-    const apiTotalPages = Math.max(1, Math.ceil(apiTokenConnectors.length / API_TOKEN_PAGE_SIZE));
-    const apiPageStart = apiTokenPage * API_TOKEN_PAGE_SIZE;
-    const apiPageConnectors = apiTokenConnectors.slice(apiPageStart, apiPageStart + API_TOKEN_PAGE_SIZE);
-    const apiPageIndicator = apiTotalPages > 1 ? ` (page ${apiTokenPage + 1}/${apiTotalPages})` : '';
-    const apiPageNav = apiTotalPages > 1 ? '  |  [ / ] -- prev/next page' : '';
-    const apiKeyConnectors = apiPageConnectors.filter(c => c.credentialKey);
-    const apiNumHint = apiKeyConnectors.length > 0
-      ? `  |  1${apiKeyConnectors.length > 1 ? `-${apiKeyConnectors.length}` : ''} -- API token`
-      : '';
+    const credOptions = lzCredentialOptions({ app, editOnly: editOnlyMode, stored: (k) => appCredStoredKeys.has(k), connectors: apiTokenConnectors });
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text>{editOnlyMode && <Text dimColor>  (edit mode -- Enter to save and return)</Text>}</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text bold>Credentials for this app</Text>
-          <Text color="gray">Press a shortcut to edit a credential, or Enter to continue.</Text>
-        </Box>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  VCS:</Text>
-          <Text>    {dot(vcsUrlKey)}  <Text bold>R</Text>  Repository URL</Text>
-          <Text>    {dot(vcsKey)}  <Text bold>A</Text>  Access token</Text>
-        </Box>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  API tokens{apiPageIndicator}:</Text>
-          {apiPageConnectors.map((c, i) => {
-            const stored = c.credentialKey ? appCredStoredKeys.has(c.credentialKey) : false;
-            const statusText = c.credentialKey ? (stored ? '[stored]' : '[  --  ]') : '[env-var]';
-            return (
-              <Text key={c.id}>    <Text color={stored ? 'green' : 'gray'}>{statusText.padEnd(9)}</Text> <Text bold={!!c.credentialKey}>{i + 1}</Text>  {c.name}</Text>
-            );
-          })}
-        </Box>
-        <GuidanceBox
-          title="Per-app credentials"
-          what="Credentials are keyed to this app only. Stored securely in the SWAO credential store. All fields are optional."
-          details={[{ label: 'VCS URL key', value: vcsUrlKey }, { label: 'VCS token key', value: vcsKey }]}
-          affordances={[`R -- repo URL  |  A -- access token  |  L -- LLM override${apiNumHint}${apiPageNav}  |  Enter/S -- ${continueLabel}  |  Esc -- back`]}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          maxRows={Math.max(8, terminalRows - 20)}
+      <FlowFrame
+        {...frame}
+        title="Credentials"
+        subtitle={editOnlyMode ? `App ${app}, edit mode: the first entry saves and returns to the apps` : `App ${app}; every credential is optional`}
+        keys={K_PICKER}
+        guidance={{ entry: credEntry, maxRows: Math.max(8, terminalRows - 20) }}
+      >
+        <SelectInput
+          key={`lz-cred-${app}-${editOnlyMode ? 'edit' : 'run'}`}
+          label="Credentials for this app"
+          options={credOptions}
+          initialIndex={0}
+          visibleCount={PICKER_VISIBLE_COUNT}
+          showKeyHints={false}
+          onCursorChange={onCredCursor}
+          onSelect={onCredentialSelect}
+          active
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -630,34 +645,29 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const credKey = `vcs-url-${app}`;
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="lz-input-app-cred-vcs-url"
-            label={alreadyStored ? 'Repository URL (Enter to keep existing)' : 'Repository URL (Enter to skip)'}
-            placeholder="https://github.com/org/repo"
-            onSubmit={(raw) => {
-              const val = raw.trim();
-              if (val) {
-                writeCredential(credKey, val);
-                setVcsUrl(val);
-                setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
-              }
-              setPhase('input-app-credentials');
-            }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="VCS repository URL"
-          what="Full HTTPS clone URL for the application source repository."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      <FlowFrame
+        {...frame}
+        title="Repository URL"
+        subtitle={`App ${app}`}
+        keys={K_SAVE_EMPTY_SKIPS}
+        guidance={{ title: 'Repository URL', what: 'Full HTTPS clone URL for the application source repository.', details: [{ label: 'Credential key', value: credKey }] }}
+      >
+        <TextInput
+          key="lz-input-app-cred-vcs-url"
+          label={alreadyStored ? 'Repository URL (leave it empty to keep the stored one)' : 'Repository URL (leave it empty to skip)'}
+          placeholder="https://github.com/org/repo"
+          onSubmit={(raw) => {
+            const val = raw.trim();
+            if (val) {
+              writeCredential(credKey, val);
+              setVcsUrl(val);
+              setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
+            }
+            setPhase('input-app-credentials');
+          }}
+          active
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -676,33 +686,28 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const credKey = effectiveVcsUrl ? deriveVcsTokenKey(effectiveVcsUrl) : 'provider:vcs:token';
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="lz-input-app-cred-vcs-token"
-            label={alreadyStored ? 'VCS token (Enter to keep existing)' : 'VCS token (Enter to skip)'}
-            placeholder=""
-            onSubmit={(raw) => {
-              const val = raw.trim();
-              if (val) {
-                writeCredential(credKey, val);
-                setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
-              }
-              setPhase('input-app-credentials');
-            }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="VCS token"
-          what="Personal access token for cloning the app repository. Stored under the provider-scoped key."
-          details={[{ label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      <FlowFrame
+        {...frame}
+        title="Access token"
+        subtitle={`App ${app}`}
+        keys={K_SAVE_EMPTY_SKIPS}
+        guidance={{ title: 'Access token', what: 'Personal access token for cloning the app repository. Stored under the provider-scoped key.', details: [{ label: 'Credential key', value: credKey }] }}
+      >
+        <TextInput
+          key="lz-input-app-cred-vcs-token"
+          label={alreadyStored ? 'VCS token (leave it empty to keep the stored one)' : 'VCS token (leave it empty to skip)'}
+          placeholder=""
+          onSubmit={(raw) => {
+            const val = raw.trim();
+            if (val) {
+              writeCredential(credKey, val);
+              setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
+            }
+            setPhase('input-app-credentials');
+          }}
+          active
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -711,44 +716,72 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const credKey = connector?.credentialKey;
     if (!connector || !credKey) {
       const infoMsg = connector?.envVar
-        ? `${connector.name} uses an environment variable (${connector.envVar}) -- no vault key to enter here.`
-        : 'No vault-stored API key for this connector.';
+        ? `${connector.name} uses the environment variable ${connector.envVar}; there is no stored key to enter here.`
+        : 'No stored API key for this connector.';
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle={typeLabel} />
-          <Text color="yellow">{infoMsg}</Text>
-          <Text dimColor>Press Esc to return.</Text>
-        </Box>
+        <FlowFrame {...frame} title="API key" subtitle={`App ${app}`} keys={K_TEXT} guidance={{ title: 'API key', what: infoMsg }}>
+          <Text {...tone('warning')}>{infoMsg}</Text>
+        </FlowFrame>
       );
     }
     const alreadyStored = appCredStoredKeys.has(credKey);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Box marginTop={1}>
-          <PasswordInput
-            label={alreadyStored ? `${connector.name} API key (Enter to keep existing)` : `${connector.name} API key (Enter to skip)`}
-            onSubmit={(raw) => {
-              const val = raw.trim();
-              if (val) {
-                writeCredential(credKey, val);
-                setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
-              }
-              setPhase('input-app-credentials');
-            }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title={`${connector.name} API key`}
-          what={`API key for the ${connector.name} LLM gateway connector. Stored in the SWAO credential vault.`}
-          details={[{ label: 'Connector', value: connector.id }, { label: 'Credential key', value: credKey }]}
-          affordances={['Enter -- save and return  |  Enter (empty) -- skip  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          maxRows={Math.max(8, terminalRows - 20)}
+      <FlowFrame
+        {...frame}
+        title={`${connector.name} API key`}
+        subtitle={`App ${app}`}
+        keys={K_SAVE_EMPTY_SKIPS}
+        guidance={{
+          title: `${connector.name} API key`,
+          what: `API key for the ${connector.name} LLM gateway connector. Stored in the SWAO credential vault.`,
+          details: [{ label: 'Connector', value: connector.id }, { label: 'Credential key', value: credKey }],
+          maxRows: Math.max(8, terminalRows - 20),
+        }}
+      >
+        <PasswordInput
+          label={alreadyStored ? `${connector.name} API key (leave it empty to keep the stored one)` : `${connector.name} API key (leave it empty to skip)`}
+          onSubmit={(raw) => {
+            const val = raw.trim();
+            if (val) {
+              writeCredential(credKey, val);
+              setAppCredStoredKeys(prev => { const n = new Set(prev); n.add(credKey); return n; });
+            }
+            setPhase('input-app-credentials');
+          }}
+          active
         />
-      </Box>
+      </FlowFrame>
+    );
+  }
+
+  // #4284: save the LLM provider of this run as the app default (starts on No).
+  if (phase === 'input-app-llm-save') {
+    return (
+      <FlowFrame
+        {...frame}
+        title="Save as default"
+        subtitle={`App ${app}, LLM provider for this run: ${runLlmProvider ?? 'workspace-default'}`}
+        keys={K_PICKER}
+        guidance={{ title: 'Save as default', what: appSaveHint('llm'), ...pickGuidance }}
+      >
+        {appSaveError && <Text {...tone('error')}>{appSaveError}</Text>}
+        <SelectInput
+          label="Save as the new default for this app?"
+          visibleCount={PICKER_VISIBLE_COUNT}
+          options={appSaveOptions('llm')}
+          initialIndex={0}
+          showKeyHints={false}
+          onCursorChange={onPickCursor}
+          onSelect={(v) => {
+            if (v === APP_SAVE_YES && workspace) {
+              const err = saveAppDefault(workspace, app, appDefaultEdits({ kind: 'llm', provider: runLlmProvider ?? 'workspace-default' }));
+              if (err) { setAppSaveError(err); return; }
+            }
+            setPhase('input-app-credentials');
+          }}
+          active
+        />
+      </FlowFrame>
     );
   }
 
@@ -756,19 +789,67 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const currentAppLlm = readAppLlmConfig(workspace, app);
     const currentLabel = formatLlmCurrentLabel(currentAppLlm.type, currentAppLlm.model, wsLlmConfig.type);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
+      <FlowFrame {...frame} ownGuidance>
         <LlmModelPicker
           app={app}
           currentLabel={currentLabel}
           onSelect={(v) => {
-            if (v === 'workspace-default') { clearAppLlmProvider(app); }
-            else { writeAppLlmProvider(app, v); }
-            setPhase('input-app-credentials');
+            // #4284: this run only; the app file changes on the save-as-default question.
+            setRunLlmProvider(v);
+            setAppSaveError(null);
+            setPhase(workspace && v !== (currentAppLlm.type ?? 'workspace-default') ? 'input-app-llm-save' : 'input-app-credentials');
           }}
-          onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
+          onGuidanceOpenChange={onGuidanceOpenChange}
         />
-      </Box>
+      </FlowFrame>
+    );
+  }
+
+  if (phase === 'input-lz-target-source') {
+    const p = readLzTargetPrefill();
+    const list = (targets: readonly string[]): string => truncateLabel(targets.join(', '), 34);
+    return (
+      <FlowFrame
+        {...frame}
+        title="Target regions to preselect"
+        subtitle={`App ${app}`}
+        keys={K_PICKER}
+        guidance={{
+          title: 'Target regions to preselect',
+          what: 'The targets set up in .swao.yml (assessment.landing_zone.targets) are preselected. The last run of this app used other targets; pick them to preselect those instead. You can still change the selection in the next steps.',
+          details: [
+            { label: 'Setup', value: 'Change the default targets in the LZ Catalog setup.' },
+            { label: 'Saved', value: 'The choice of this run is not written to .swao.yml.' },
+          ],
+          initiallyCollapsed: true,
+          ...pickGuidance,
+        }}
+      >
+        <SelectInput
+          label="Target regions to preselect"
+          visibleCount={PICKER_VISIBLE_COUNT}
+          options={[
+            {
+              label: `Setup targets (default): ${list(p.preselected)}`,
+              value: 'setup',
+              guidance: { title: 'Setup targets', what: `Preselects the targets set up in .swao.yml (assessment.landing_zone.targets): ${p.preselected.join(', ') || 'none'}.` },
+            },
+            {
+              label: `Last run's targets: ${list(p.alternative ?? [])}`,
+              value: 'last-run',
+              guidance: { title: "Last run's targets", what: `Preselects the targets of the last run of this app: ${(p.alternative ?? []).join(', ') || 'none'}. The choice is not written to .swao.yml.` },
+            },
+          ]}
+          initialIndex={0}
+          showKeyHints={false}
+          onCursorChange={onPickCursor}
+          onSelect={(v) => {
+            setLzPrefillChoice(v === 'last-run' ? 'last-run' : 'setup');
+            setPhase('input-lz-provider');
+          }}
+          active
+        />
+      </FlowFrame>
     );
   }
 
@@ -779,71 +860,70 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
     const guidedProvider = activeLzProvider || providerOptions[0]?.value || '';
     const guidance = buildLzProviderGuidance(hint?.entries.find(e => e.provider === guidedProvider));
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Landing Zone Catalog Assessment" />
-        <Text>App: <Text color="cyanBright">{app}</Text></Text>
-        <Text dimColor>  Catalog: bundled  |  run `swao lz catalogue update` to refresh</Text>
-        <Box marginTop={1}>
-          {providerOptions.length > 0 ? (
-            <MultiSelect
-              label="Cloud provider(s)"
-              options={providerOptions}
-              // #3378 Part B: pre-select the providers of the last run (else configured).
-              initialSelected={[...new Set(prefillLzTargets().map(t => t.split(':')[0]!))]
-                .filter(p => providerOptions.some(o => o.value === p))}
-              // #3399: track the highlighted provider for the guidance box.
-              onCursorChange={(v) => setActiveLzProvider(v)}
-              onConfirm={(selected) => {
-                if (selected.length === 0) return;
-                setAppLzCatProviders(selected);
-                setAppLzCatFrameworks([]);
-                setAppLzRegionFilter('');
-                // #2716: emit assess.lz.provider.selected for Design 098 observability.
-                try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider(s) selected', { context: { app_id: app, providers: selected } }); } catch { /* best-effort */ }
-                setPhase('input-lz-frameworks');
-              }}
-            />
-          ) : (
-            <TextInput
-              key="lz-input-lz-provider"
-              label="Cloud provider (aws, azure, stackit, ...)"
-              placeholder="aws"
-              onSubmit={(raw) => {
-                const v = raw.trim();
-                if (!v) return;
-                setAppLzCatProviders([v]);
-                setAppLzCatFrameworks([]);
-                setAppLzRegionFilter('');
-                // #2716: emit assess.lz.provider.selected for Design 098 observability.
-                try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider selected', { context: { app_id: app, providers: [v] } }); } catch { /* best-effort */ }
-                setPhase('input-lz-frameworks');
-              }}
-              active
-            />
-          )}
-        </Box>
-        <GuidanceBox
-          title={guidedProvider ? `Cloud Service Provider: ${guidedProvider}` : 'Cloud Service Provider'}
-          what={guidance.what}
-          details={[
+      <FlowFrame
+        {...frame}
+        title="Cloud providers"
+        subtitle={`App ${app}; the bundled catalogue, refreshed by the LZ catalogue update`}
+        keys={providerOptions.length > 0 ? K_MULTI : K_TEXT}
+        guidance={{
+          title: guidedProvider ? `Cloud Service Provider: ${guidedProvider}` : 'Cloud Service Provider',
+          what: guidance.what,
+          details: [
             ...guidance.details,
             { label: 'Edit catalogues', value: 'Place a lz-catalogues/ folder in the workspace root to override or extend the bundled provider JSON files.' },
-            { label: 'aws vs aws-esc', value: 'Standard aws (eu-central-1) is SOVEREIGNTY_BLOCKED under BSI_C5/Cloud Act frameworks. Select aws-esc (AWS European Sovereign Cloud) for EU-entity sovereignty evaluation.' },
-          ]}
-          affordances={['Up/Down -- move  |  Space -- toggle  |  A -- all  |  Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-        />
-      </Box>
+            { label: 'aws vs aws-esc', value: `Standard aws (eu-central-1) is SOVEREIGNTY_BLOCKED under BSI_C5/Cloud Act frameworks. Select aws-esc (${centralProviderLabel('aws-esc', 'full')}) for EU-entity sovereignty evaluation.` },
+          ],
+        }}
+      >
+        {providerOptions.length > 0 ? (
+          <MultiSelect
+            label="Cloud provider(s)"
+            visibleCount={PICKER_VISIBLE_COUNT}
+            options={providerOptions}
+            showKeyHints={false}
+            // #4198: pre-select the providers of the setup targets (else the last run's).
+            initialSelected={[...new Set(prefillLzTargets().map(t => t.split(':')[0]!))]
+              .filter(p => providerOptions.some(o => o.value === p))}
+            // #3399: track the highlighted provider for the guidance box.
+            onCursorChange={(v) => setActiveLzProvider(v)}
+            onConfirm={(selected) => {
+              if (selected.length === 0) return;
+              setAppLzCatProviders(selected);
+              setAppLzCatFrameworks([]);
+              setAppLzRegionFilter('');
+              // #2716: emit assess.lz.provider.selected for Design 098 observability.
+              try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider(s) selected', { context: { app_id: app, providers: selected } }); } catch { /* best-effort */ }
+              setPhase('input-lz-frameworks');
+            }}
+          />
+        ) : (
+          <TextInput
+            key="lz-input-lz-provider"
+            label="Cloud provider (aws, azure, stackit, ...)"
+            placeholder="aws"
+            onSubmit={(raw) => {
+              const v = raw.trim();
+              if (!v) return;
+              setAppLzCatProviders([v]);
+              setAppLzCatFrameworks([]);
+              setAppLzRegionFilter('');
+              // #2716: emit assess.lz.provider.selected for Design 098 observability.
+              try { logApp(app, 'info', 'assess.lz.provider.selected', 'LZ provider selected', { context: { app_id: app, providers: [v] } }); } catch { /* best-effort */ }
+              setPhase('input-lz-frameworks');
+            }}
+            active
+          />
+        )}
+      </FlowFrame>
     );
   }
 
   if (phase === 'input-lz-frameworks') {
     const providerLabel = truncateLabel(appLzCatProviders.map(pid => lzProviderName(pid)).join(', '), 30 + app.length);
     const discovered = scaffold.discoverLzGateFrameworks?.(workspace ?? '', app) ?? [];
-    const lzFwOptions = applyLzCuratedLabels(discovered);
+    const lzFwOptions = applyLzCuratedLabels(normaliseLzGateFrameworks(discovered)); // #4501
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Landing Zone Catalog Assessment" />
+      <FlowFrame {...frame} ownGuidance>
         <LzCatalogPicker
           app={app}
           providerLabel={providerLabel}
@@ -855,9 +935,30 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
             try { logApp(app, 'info', 'assess.lz.frameworks.selected', 'LZ compliance frameworks selected', { context: { app_id: app, frameworks: selected, count: selected.length } }); } catch { /* best-effort */ }
             setPhase('input-lz-region');
           }}
-          onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
+          onGuidanceOpenChange={onGuidanceOpenChange}
         />
-      </Box>
+      </FlowFrame>
+    );
+  }
+
+  // #4285 (#4289 AC2): a provider selected without any region is named before the run.
+  // #4255 (section 4.4): a ConfirmPanel with the step bar; Enter runs without them, the left arrow goes back.
+  if (phase === 'input-lz-gap') {
+    return (
+      <FlowFrame
+        {...frame}
+        keys={CONFIRM_PANEL_KEYS}
+        guidance={{ title: 'Providers without a region', what: 'A provider without a selected region is not assessed in this run. Go back to the regions to add one, or run with the targets listed.' }}
+      >
+        <ConfirmPanel
+          title="Run without these providers?"
+          subtitle={`App ${app}`}
+          rows={[{ label: 'Targets', value: appLzCatTargets.join(', ') }]}
+          risk={providersWithoutRegionNotice(lzProvidersWithoutRegion)}
+          onConfirm={beginRun}
+          active={!nav.dialogOpen}
+        />
+      </FlowFrame>
     );
   }
 
@@ -871,228 +972,182 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
         label: `${pid.toUpperCase()} / ${r.label ?? `${r.id} - ${r.display}`}`,
         value: `${pid}:${r.id}`,
         country: r.country,
+        // #4213: the guidance box names the full target of the highlighted row.
+        guidance: lzRegionRowGuidance(lzProviderName(pid), r, app),
       }));
     });
     const providerLabel = truncateLabel(appLzCatProviders.map(pid => lzProviderName(pid)).join(', '), 30 + app.length);
+    const regionSubtitle = `App ${app}, CSP(s) ${providerLabel}`;
 
     if (allTargetOptions.length > FILTER_THRESHOLD && appLzRegionFilter === '') {
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle="Landing Zone Catalog Assessment" />
-          <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
-          <Text dimColor>{allTargetOptions.length} regions available. Type a substring to filter.</Text>
+        <FlowFrame
+          {...frame}
+          title="Target regions"
+          subtitle={regionSubtitle}
+          keys={K_FILTER}
+          guidance={{
+            title: 'Filter regions',
+            what: `${allTargetOptions.length} regions across ${appLzCatProviders.length} CSP(s). Type part of the region ID or display name, or leave it empty to show all.`,
+            details: [
+              { label: 'Filter by provider', value: 'Type the provider key (e.g. "stackit", "aws", "gcp") to see ALL regions for that provider.' },
+              { label: 'STACKIT Germany vs Austria', value: 'eu01 (Germany, BSI_C5-certified) vs eu02 (Austria, SOVEREIGNTY_BLOCKED under BSI_C5). Type "eu01" for the German region.' },
+            ],
+          }}
+        >
+          <Text {...tone('muted')}>{allTargetOptions.length} regions available. Type a substring to filter.</Text>
           <Box marginTop={1}>
             <TextInput
               key="lz-region-filter"
-              label="Filter by provider/region ID or name (Enter to show all)"
+              label="Filter by provider/region ID or name (leave it empty to show all)"
               placeholder="eu, Frankfurt, aws"
               onSubmit={(v) => setAppLzRegionFilter(v || SHOW_ALL)}
               active
             />
           </Box>
-          <GuidanceBox
-            title="Filter regions"
-            what={`${allTargetOptions.length} regions across ${appLzCatProviders.length} CSP(s). Type part of the region ID or display name, or Enter to show all.`}
-            details={[
-              { label: 'Filter by provider', value: 'Type the provider key (e.g. "stackit", "aws", "gcp") to see ALL regions for that provider.' },
-              { label: 'STACKIT Germany vs Austria', value: 'eu01 (Germany, BSI_C5-certified) vs eu02 (Austria, SOVEREIGNTY_BLOCKED under BSI_C5). Type "eu01" for the German region.' },
-            ]}
-            affordances={['Type -- filter  |  Enter -- apply  |  Esc -- back to provider']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        </FlowFrame>
       );
     }
 
     const filteredTargetOptions = filterList(allTargetOptions, appLzRegionFilter, r => r.label);
     if (allTargetOptions.length > 0) {
       return (
-        <Box flexDirection="column" padding={1}>
-          <Header subtitle="Landing Zone Catalog Assessment" />
-          <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
+        <FlowFrame
+          {...frame}
+          title="Target regions"
+          subtitle={regionSubtitle}
+          keys={K_MULTI}
+          guidance={{
+            title: 'Target Regions',
+            what: appLzRegionFilter && appLzRegionFilter !== SHOW_ALL
+              ? `${filteredTargetOptions.length} of ${allTargetOptions.length} combinations match "${appLzRegionFilter}". The left arrow clears the filter.`
+              : `${allTargetOptions.length} provider/region combinations. Select all targets to compare in one run.`,
+            ...pickGuidance,
+          }}
+        >
+          {/* #4285: the set-up targets and their geography resolution; a set-up target not offered is named. */}
+          {setupLzTargetsLine(setupLz) && <Text {...tone('muted')}>{setupLzTargetsLine(setupLz)}</Text>}
+          {(() => {
+            const missing = setupTargetsNotOffered(setupLz, appLzCatProviders, allTargetOptions.map(o => o.value));
+            return missing.length > 0 ? <Text {...tone('warning')}>Set-up target(s) not in the catalogue: {missing.join(', ')}</Text> : null;
+          })()}
           {appLzRegionFilter && appLzRegionFilter !== SHOW_ALL && (
-            <Text dimColor>Filter: <Text color="cyanBright">{appLzRegionFilter}</Text>  ({filteredTargetOptions.length}/{allTargetOptions.length} regions)
+            <Text {...tone('muted')}>Filter: <Text {...tone('accent')}>{appLzRegionFilter}</Text>  ({filteredTargetOptions.length}/{allTargetOptions.length} regions)
               {appLzCatProviders.length > 1 && (
-                <Text dimColor>  [{appLzCatProviders.map(pid => {
+                <Text {...tone('muted')}>  [{appLzCatProviders.map(pid => {
                   const n = filteredTargetOptions.filter(o => o.value.startsWith(`${pid}:`)).length;
                   return `${pid.toUpperCase()}: ${n}`;
                 }).join('  ')}]</Text>
               )}
-              <Text dimColor>  Esc to clear</Text>
             </Text>
           )}
           <Box marginTop={1}>
             {filteredTargetOptions.length > 0 ? (
               <MultiSelect
                 key={`lz-region-${appLzCatProviders.join('-')}-${appLzRegionFilter}`}
-                label="Target region(s) -- Space to toggle, Enter to confirm"
+                label="Target region(s)"
                 // #3380: group the filtered regions by country with header rows.
                 options={insertCountryHeaders(filteredTargetOptions)}
-                // #3378 Part B: pre-select the last run's targets (else configured).
+                // #4198: pre-select the setup targets (else the last run's).
                 initialSelected={prefillLzTargets().filter(t => filteredTargetOptions.some(o => o.value === t))}
                 visibleCount={12}
+                showKeyHints={false}
+                onCursorChange={onPickCursor}
                 onConfirm={(selected) => {
                   if (selected.length === 0) return;
                   // #3378 Part B (ADR-0067): no .swao.yml write; the run record is the memory.
                   setAppLzCatTargets(selected);
                   // #2716: emit assess.lz.region.selected for Design 098 observability.
                   try { logApp(app, 'info', 'assess.lz.region.selected', 'LZ target region(s) selected', { context: { app_id: app, targets: selected, count: selected.length } }); } catch { /* best-effort */ }
+                  // #4285 (#4289 AC2): a provider left without a region is named before the run.
+                  const missing = providersWithoutRegion(appLzCatProviders, selected);
+                  if (missing.length > 0) {
+                    try { logApp(app, 'warn', 'assess.lz.provider.skipped', providersWithoutRegionNotice(missing), { context: { app_id: app, providers: missing } }); } catch { /* best-effort */ }
+                    setLzProvidersWithoutRegion(missing);
+                    setPhase('input-lz-gap');
+                    return;
+                  }
                   beginRun();
                 }}
               />
             ) : (
-              <Text color="yellow">No regions match "{appLzRegionFilter}". Press Esc to clear filter.</Text>
+              <Text {...tone('warning')}>No regions match "{appLzRegionFilter}". The left arrow clears the filter.</Text>
             )}
           </Box>
-          <GuidanceBox
-            title="Target Regions"
-            what={appLzRegionFilter && appLzRegionFilter !== SHOW_ALL
-              ? `${filteredTargetOptions.length} of ${allTargetOptions.length} combinations match "${appLzRegionFilter}".`
-              : `${allTargetOptions.length} provider/region combinations. Select all targets to compare in one run.`}
-            affordances={['Up/Down -- move  |  Space -- toggle  |  A -- all  |  Enter -- confirm  |  Esc -- clear filter or back']}
-            onOpenChange={(open) => { guidanceOpenRef.current = open; }}
-          />
-        </Box>
+        </FlowFrame>
       );
     }
 
     // No catalogue data -- manual TextInput fallback.
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle="Landing Zone Catalog Assessment" />
-        <Text>App: <Text color="cyanBright">{app}</Text> | CSP(s): <Text color="cyanBright">{providerLabel}</Text></Text>
-        <Box marginTop={1}>
-          <TextInput
-            key="lz-input-lz-region"
-            label="Region ID (e.g. eu-central-1, westeurope)"
-            placeholder="eu-central-1"
-            onSubmit={(raw) => {
-              const v = raw.trim();
-              if (!v) return;
-              const target = appLzCatProviders.length > 0
-                ? `${appLzCatProviders[0]}:${v}`
-                : v;
-              // #3378 Part B (ADR-0067): no .swao.yml write; the run record is the memory.
-              setAppLzCatTargets([target]);
-              beginRun();
-            }}
-            active
-          />
-        </Box>
-        <GuidanceBox
-          title="Landing Zone Region"
-          what="No region catalogue loaded. Enter the region ID manually. Run `swao lz catalogue list` to see available regions."
-          affordances={['Enter -- confirm  |  Esc -- back']}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      <FlowFrame
+        {...frame}
+        title="Target regions"
+        subtitle={regionSubtitle}
+        keys={K_TEXT}
+        guidance={{ entry: { title: 'Landing Zone Region', what: 'No region catalogue loaded. Enter the region ID manually.', cli: 'swao lz catalogue list' } }}
+      >
+        <TextInput
+          key="lz-input-lz-region"
+          label="Region ID (e.g. eu-central-1, westeurope)"
+          placeholder="eu-central-1"
+          onSubmit={(raw) => {
+            const v = raw.trim();
+            if (!v) return;
+            const target = appLzCatProviders.length > 0
+              ? `${appLzCatProviders[0]}:${v}`
+              : v;
+            // #3378 Part B (ADR-0067): no .swao.yml write; the run record is the memory.
+            setAppLzCatTargets([target]);
+            beginRun();
+          }}
+          active
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
+  // #4256: in the flow frame (header, licence line, step bar on Run).
   if (phase === 'preflight-llm' && preflightConnector) {
     return (
       <PreflightLlmPhase
         connector={preflightConnector}
         apiKey={preflightApiKey}
         app={app}
-        typeLabel={typeLabel}
         onPass={() => { setSkipLlm(false); setPhase('running'); }}
         onBack={() => setPhase('input-app-credentials')}
         onRunWithoutLlm={() => { setSkipLlm(true); setPhase('running'); }}
-        Header={Header}
+        frame={frame}
       />
     );
   }
 
   if (phase === 'assess-done') {
-    const lzCatalogueOnly = lines.some(l => l.includes('No app required-services found'));
+    // #4256 (Design 126 section 4.7): FinishPanel in the flow frame with the
+    // verdict per target, the blocked targets with their gap type, the real run
+    // folder and What next; no letter keys, no double dash.
+    const finishInput = {
+      app, typeLabel, targets: lzTargetVerdicts, overallVerdict: lzVerdict, gapDetails: lzTargetGapDetails,
+      runFolder: lzRunPath, catalogueOnly: lines.some(l => l.includes('No app required-services found')),
+      logAvailable: !!logFilePath,
+      challenge: (!onLzChallenge ? 'none' : skipLlm ? 'no-llm' : !isEnterprise ? 'not-licensed' : 'offer') as LzChallengeOffer,
+    };
+    const view = lzFinishView(finishInput);
     return (
-      <Box flexDirection="column" padding={1}>
-        <Header subtitle={typeLabel} />
-        <Box>
-          <Text color="green">Assessment complete.</Text>
-        </Box>
-        <Box marginTop={1} flexDirection="column">
-          <Text>  App:     <Text color="cyanBright">{app}</Text></Text>
-          <Text>  Passes:  <Text color="cyanBright">{appLzCatTargets.length} (lz_fit)</Text></Text>
-          {lzTargetVerdicts.length > 0 ? (
-            <Box flexDirection="column">
-              <Text>  Verdicts:</Text>
-              {lzTargetVerdicts.map(tv => {
-                const col = tv.verdict === 'ready' ? 'green'
-                  : (tv.verdict === 'advisory' || tv.verdict === 'needs_verification') ? 'yellow'
-                  : 'red';
-                const regionId = tv.target.split('/').at(-1) ?? tv.target;
-                const gapDetail = lzTargetGapDetails[regionId];
-                const isBlocked = tv.verdict === 'blocked' || tv.verdict === 'sovereignty_blocked';
-                const gapLabel = isBlocked && gapDetail
-                  ? (gapDetail.gapType === 'sovereignty' ? '  BLOCKED (sovereignty)'
-                    : gapDetail.gapType === 'availability' ? '  BLOCKED (availability)'
-                    : gapDetail.gapType === 'sovereignty+availability' ? '  BLOCKED (sovereignty + availability)'
-                    : '')
-                  : '';
-                return (
-                  <Box key={tv.target} flexDirection="column">
-                    <Text>    <Text color="cyanBright">{tv.target}</Text>{'  '}<Text color={col}>{tv.verdict.toUpperCase()}</Text>{gapLabel ? <Text color="red">{gapLabel}</Text> : null}{tv.gaps > 0 ? <Text dimColor>{`  (${tv.gaps} gap${tv.gaps !== 1 ? 's' : ''})`}</Text> : null}</Text>
-                    {gapDetail?.assessmentMode === 'partial' && (
-                      <Text dimColor>      [partial coverage -- some baseline service categories missing from service signals]</Text>
-                    )}
-                  </Box>
-                );
-              })}
-            </Box>
-          ) : (
-            <>
-              {lzVerdict === 'ready'    && <Text>  Verdict: <Text color="green">READY  (all LZ controls passed)</Text></Text>}
-              {lzVerdict === 'blocked'  && <Text>  Verdict: <Text color="red">BLOCKED  (blocker-severity controls failed -- review run dir)</Text></Text>}
-              {lzVerdict === 'advisory' && <Text>  Verdict: <Text color="yellow">ADVISORY  (advisory warnings raised -- migration score penalised)</Text></Text>}
-              {lzVerdict && lzVerdict !== 'ready' && lzVerdict !== 'blocked' && lzVerdict !== 'advisory' && <Text>  Verdict: <Text color="gray">{lzVerdict.toUpperCase()}</Text></Text>}
-            </>
-          )}
-          <Text>  Outputs: <Text color="cyanBright">apps/{app}/wsp/runs/&lt;ts&gt;/passes/lz-fit*.yaml</Text></Text>
-          {lzCatalogueOnly && (
-            <Box marginTop={1} flexDirection="column">
-              <Text color="yellow">  [!] Catalogue-only result: no service signals found from a prior App Assessment.</Text>
-              <Text dimColor>      Run App Assessment first, then re-run LZ for full service-fit results.</Text>
-            </Box>
-          )}
-        </Box>
-        <Box marginTop={1}>
-          <Text>Press <Text color="cyanBright">Esc</Text> (or Enter) to return to the main menu.{logFilePath ? <Text>  <Text color="cyanBright">L</Text> -- view log</Text> : null}{onLzChallenge && !skipLlm ? <Text>  {isEnterprise ? <Text color="cyanBright">C</Text> : <Text dimColor>C</Text>} -- LZ Sovereignty Challenge{isEnterprise ? null : <Text dimColor> [Enterprise]</Text>}</Text> : null}</Text>
-          {/* #3383: the LZ Sovereignty Challenge is LLM-driven; not offered for a deterministic-only run. */}
-          {onLzChallenge && skipLlm && <Text dimColor>  LZ Sovereignty Challenge is unavailable for a deterministic-only run (no LLM).</Text>}
-        </Box>
-        <GuidanceBox
-          title="Assessment complete"
-          what={lzVerdict === 'ready'
-            ? 'No blockers detected. Catalogue-level service requirements are met. Use swao publish to include the LZ Catalogue section in the HTML report.'
-            : lzVerdict === 'sovereignty_blocked'
-              ? 'One or more target regions fail sovereignty requirements. Red regions lack required certifications. Select compliant regions or adjust the framework selection.'
-              : lzVerdict === 'blocked'
-                ? 'One or more compliance controls failed with severity: blocker. Review 23-lzr.yaml in the run directory.'
-                : lzVerdict === 'advisory'
-                  ? 'No hard blockers, but advisory-severity controls raised warnings. Review advisory items before proceeding.'
-                  : 'Landing-zone fit written to the run dir. Use swao publish to include the LZ Catalogue section in the HTML report.'}
-          details={[
-            { label: 'Run dir', value: `apps/${app}/wsp/runs/<latest>/` },
-            ...(() => {
-              const blocked = lzTargetVerdicts.find(tv => tv.verdict === 'blocked' || tv.verdict === 'sovereignty_blocked');
-              if (!blocked) return [];
-              const regionId = blocked.target.split('/').at(-1) ?? blocked.target;
-              const stmt = lzTargetGapDetails[regionId]?.sovereigntyStatement;
-              if (!stmt) return [];
-              return [{ label: 'Sovereignty statement', value: stmt }];
-            })(),
-          ]}
-          affordances={[
-            ...(logFilePath ? ['L -- view log file'] : []),
-            ...(onLzChallenge ? [isEnterprise ? 'C -- LZ Sovereignty Challenge' : 'C -- LZ Sovereignty Challenge [Enterprise only]'] : []),
-            'Ctrl+G -- close guidance',
-            'Esc -- main menu',
-          ]}
-          onOpenChange={(open) => { guidanceOpenRef.current = open; }}
+      <FlowFrame {...frame} keys={FINISH_PANEL_KEYS} guidance={{ entry: lzFinishGuidance(finishInput) }}>
+        <FinishPanel
+          title={view.title}
+          level={view.level}
+          rows={view.rows}
+          items={view.items}
+          next={view.next}
+          onSelect={(v) => {
+            if (v === FINISH_MAIN_MENU) { onBack(); return; }
+            if (v === 'log') { if (logFilePathRef.current) openWithDefaultApp(logFilePathRef.current); return; }
+            if (v === 'challenge') setPhase('challenge-prompt');
+          }}
         />
-      </Box>
+      </FlowFrame>
     );
   }
 
@@ -1104,44 +1159,51 @@ export function LzAssessmentScreen({ onBack, version, scaffold, onLzChallenge }:
         isEnterprise={isEnterprise}
         onConfirm={() => { onLzChallenge?.(app); }}
         onBack={onBack}
-        Header={Header}
+        frame={frame}
         offer={challengeOfferForApp(workspace, app, 'landing-zone')} /* #3427 */
       />
     );
   }
 
+  // #4256 (Design 126 sections 4.6 and 7.6, A-20): the run view on RunPanel in
+  // the flow frame; the stage line names the target or pass that runs now and
+  // the guidance follows the run state (never "Cloning..." once a target runs).
+  // Esc asks (AbortDialog), then the child tree stops and the flow returns to
+  // the Regions step, the step that started the run, with the choices kept.
   if (phase === 'running' && !done) {
     return (
       <RunningPhase
-        progressValue={displayProgressValue}
-        progressLabel={passSubLabel ? `${passName} -- ${passSubLabel}` : passName}
-        totalPasses={totalPasses}
-        liveLines={lines}
-        passName={passName}
-        typeLabel={typeLabel}
-        onBack={onBack}
-        Header={Header}
+        header={flowHeader}
+        steps={LZ_CATALOG_STEPS}
+        current={LZ_CATALOG_PHASE_STEP.running}
+        run={{ kind: 'landing-zone', app, passName, passSubLabel, completed: completedPasses, total: totalPasses, postStep }}
+        lines={lines}
+        onCancel={() => setPhase('input-lz-region')}
+        onGuidanceOpenChange={(open) => { guidanceOpenRef.current = open; }}
       />
     );
   }
 
-  // done or running+done fallback
+  // #4256: a run that did not complete ends on FinishPanel (level fail) in the
+  // flow frame: App, exit code, the failed pass, View the log; the cause and
+  // the log path in the guidance box.
+  const failed = failedRunView(typeLabel, app, code, !!logFilePath);
+  const failedItems: FinishItem[] = failedPass
+    ? [{ level: 'fail', label: failedPass.split('_').join(' '), reason: 'failed; the guidance names the likely cause' }]
+    : [];
   return (
-    <Box flexDirection="column" padding={1}>
-      <Header subtitle={typeLabel} />
-      <Text dimColor>
-        {done && code === 0
-          ? 'Assessment complete.'
-          : done
-            ? `Assessment finished with warnings (exit ${code ?? '?'}).`
-            : 'Running...'}
-      </Text>
-      {failedPass && (
-        <Text color="yellow">Pass {failedPass} failed. Check the output above for details.</Text>
-      )}
-      <Box marginTop={1}>
-        <Text dimColor>Press Enter or Escape to return to menu...</Text>
-      </Box>
-    </Box>
+    <FlowFrame {...frame} keys={FINISH_PANEL_KEYS} guidance={{ entry: failedRunGuidance({ typeLabel, app, code, lastLines: lines.slice(-12).join('\n'), logPath: logFilePath || null }) }}>
+      <FinishPanel
+        title={failed.title}
+        level={failed.level}
+        rows={failed.rows}
+        items={failedItems}
+        next={failed.next}
+        onSelect={(v) => {
+          if (v === 'log') { if (logFilePathRef.current) openWithDefaultApp(logFilePathRef.current); return; }
+          onBack();
+        }}
+      />
+    </FlowFrame>
   );
 }
